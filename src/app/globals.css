@@ -3033,6 +3033,14 @@ html[data-view-as] .platform-shell-root {
   flex: 0 0 auto;
 }
 
+/* Caixas de marcar e botoes de radio sem estilo proprio (construtor, ofertas,
+   caixa da comunidade, biblioteca de midia) saiam no azul do navegador ao
+   lado dos navy da casa. Uma regra so, dentro da plataforma. */
+.platform-shell-root input[type="checkbox"],
+.platform-shell-root input[type="radio"] {
+  accent-color: var(--color-primary);
+}
+
 .platform-topbar {
   position: relative;
   /* The topbar already forms a stacking context via `backdrop-filter`. That
@@ -3964,23 +3972,14 @@ body:has([aria-label="Course categories"])
   max-width: 440px;
 }
 
-/* Linha abaixo do painel: o cartao de publicar (360 px, a direita; abaixo de
-   1180 px ocupa a largura) e a biblioteca de midia embaixo. O cartao "Course
-   structure" que ficava a esquerda saiu. */
+/* Linha abaixo do painel: a volta ao estudio e a biblioteca de midia. O
+   cartao de publicar e o "Course structure" sairam (repetiam a aba Publish e
+   a aba Curriculum). */
 .course-builder-footer {
   display: grid;
   gap: 1.25rem;
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
-}
-
-.course-builder-footer > .settings-section-card {
-  justify-self: end;
-  width: min(100%, 360px);
-}
-
-.course-builder-footer__full {
-  grid-column: 1 / -1;
 }
 
 .course-builder-grid {
@@ -7915,10 +7914,6 @@ button:hover > .dash-card,
 
   .create-course-screen {
     grid-template-columns: 1fr;
-  }
-
-  .course-builder-footer > .settings-section-card {
-    width: 100%;
   }
 
   .course-builder-step.is-active::before {

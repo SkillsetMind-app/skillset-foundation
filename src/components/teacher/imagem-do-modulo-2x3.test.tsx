@@ -148,6 +148,22 @@ describe("capa do módulo: 2:3 comprimida no navegador", () => {
     expect(uploadCourseAsset).not.toHaveBeenCalled();
   });
 
+  // O botao dizia "Uploading..." e a nota de baixo repetia. O rotulo agora e
+  // fixo; enquanto a imagem comprime (antes do envio), a nota ja diz que esta
+  // enviando, sem porcentagem.
+  it("enquanto comprime, a nota de envio aparece e o rotulo do botao nao muda", async () => {
+    vi.mocked(createImageBitmap).mockImplementationOnce(() => new Promise<ImageBitmap>(() => {}));
+    const input = await moduleCoverInput();
+    choose(input, new File(["foto"], "capa.png", { type: "image/png" }));
+
+    const region = screen.getByRole("region", { name: "Module cover" });
+    expect(within(region).getByText("Sending...").closest('[role="status"]')).not.toBeNull();
+    expect(within(region).queryByText("Uploading...")).toBeNull();
+    expect(within(region).getByText("Upload cover")).toBeInTheDocument();
+    expect(input).toBeDisabled();
+    expect(uploadCourseAsset).not.toHaveBeenCalled();
+  });
+
   it("se o navegador não abre a imagem (HEIC), sobe o original sem mexer", async () => {
     vi.mocked(createImageBitmap).mockRejectedValueOnce(new Error("formato não suportado"));
     const input = await moduleCoverInput();

@@ -412,6 +412,31 @@ describe("reordenar: anuncio e marca de soltura", () => {
   });
   afterEach(() => cleanup());
 
+  // "Lesson added" e o aviso de mover dividem a linha da lista: vale o mais
+  // novo, e "Lesson added" so na pagina do modulo onde a aula entrou.
+  it("aula nova e depois Up: a linha diz o mais novo, e so no modulo da aula", async () => {
+    openAt("courseId=course-1&tab=content&module=m1");
+    const view = await renderBuilder();
+    fireEvent.click(within(card()).getByRole("button", { name: "Add lesson to module 1" }));
+    const form = card().querySelector("form") as HTMLElement;
+    fireEvent.change(within(form).getByRole("textbox", { name: "Lesson title" }), { target: { value: "Fresh" } });
+    fireEvent.click(within(form).getByRole("button", { name: "Add lesson" }));
+    expect(within(card()).getByRole("status")).toHaveTextContent("Lesson added");
+
+    const ups = within(card()).getAllByRole("button", { name: "Up" });
+    fireEvent.click(ups[ups.length - 1]);
+    expect(within(card()).getByRole("status")).toHaveTextContent('"Fresh" moved to position 2.');
+
+    // De novo uma aula nova, e a pessoa abre outro modulo: la nao aparece.
+    fireEvent.change(within(form).getByRole("textbox", { name: "Lesson title" }), { target: { value: "Another" } });
+    fireEvent.click(within(form).getByRole("button", { name: "Add lesson" }));
+    expect(within(card()).getByRole("status")).toHaveTextContent("Lesson added");
+    openAt("courseId=course-1&tab=content&module=m2");
+    view.rerender(tree());
+    expect(within(card()).getByRole("heading", { name: "Deep work" })).toBeInTheDocument();
+    expect(within(card()).getByRole("status")).toHaveTextContent("");
+  });
+
   it("Up/Down anunciam a nova posicao, na lista e na pagina do modulo", async () => {
     await renderBuilder();
     fireEvent.click(within(rowOf("m1")).getByRole("button", { name: "Down" }));

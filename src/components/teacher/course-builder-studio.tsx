@@ -537,6 +537,7 @@ export function CourseBuilderStudio() {
   // Publish e descobria pelo erro do servidor.
   const {
     account: publishGates,
+    planId,
     loaded: gatesLoaded,
     verificationStatus,
     stripeConnectCountry,
@@ -610,6 +611,9 @@ export function CourseBuilderStudio() {
   // Move aplica (no Chrome/Edge as setas do teclado disparam change na hora).
   const [moveTargets, setMoveTargets] = useState<Record<string, string>>({});
   const [moveStatus, setMoveStatus] = useState<{ moduleId: string; text: string } | null>(null);
+  // Modulo onde a aula entrou: "Lesson added" so na pagina dele. Mover limpa o
+  // `success`, entao a linha sempre mostra o aviso mais novo.
+  const [lessonAddedIn, setLessonAddedIn] = useState<string | null>(null);
   // Lista de modulos: o anuncio do Up/Down e a linha que recebe a aula arrastada.
   const [reorderStatus, setReorderStatus] = useState("");
   const [dragOverModuleId, setDragOverModuleId] = useState<string | null>(null);
@@ -618,8 +622,9 @@ export function CourseBuilderStudio() {
   const [isMediaLibraryOpen, setIsMediaLibraryOpen] = useState(false);
   const [error, setError] = useState<BuilderError | null>(null);
   // Onde o erro aparece: perto do botao que o causou. Num cartao so, no fim
-  // da pagina, o "Save draft" do topo parecia nao fazer nada.
-  const [errorSlot, setErrorSlot] = useState<"hero" | "footer" | "publish">("footer");
+  // da pagina, o "Save draft" do topo parecia nao fazer nada. O rodape saiu:
+  // o que nao vem do Publish nem da biblioteca de midia cai no topo.
+  const [errorSlot, setErrorSlot] = useState<"hero" | "publish" | "media">("hero");
   const [success, setSuccess] = useState<"lessonAdded" | "draftSaved" | "published" | null>(null);
   const errorMessage = error
     ? t(`creatorEditor.builder.errors.${error.code}`)
@@ -858,6 +863,7 @@ export function CourseBuilderStudio() {
       },
       () => {
         setIsLoading(false);
+        setErrorSlot("hero");
         setError({ code: "load" });
       },
     );
@@ -1162,7 +1168,7 @@ export function CourseBuilderStudio() {
       communityEnabled,
     ],
   );
-  // Uma lista so de "o que falta para publicar", a mesma do rodape e do
+  // Uma lista so de "o que falta para publicar", a mesma da aba Publish e do
   // Manage. Antes o construtor montava duas listas proprias e a barra do
   // cabecalho media outra coisa (estagios): tres numeros para um curso so.
   // Le do payload normalizado, entao um preco digitado errado conta como
@@ -1207,6 +1213,19 @@ export function CourseBuilderStudio() {
   // Produto no ar nao publica de novo (teacherCanPublishCourse): no lugar do
   // "Publish product" apagado e mudo, a frase que diz por que.
   const isLive = course?.status === "published";
+  // Quem nunca assinou vai aos planos (o teste gratis mora la), como na Home do
+  // professor; "Manage plan" abria os recibos. Quem ja teve plano gerencia.
+  const planLink = planId === "free"
+    ? { href: "/account/plans", label: t("billingCheckout.seePlans") }
+    : { href: "/account/billing?tab=subscriptions", label: t("creatorEditor.builder.publish.managePlan") };
+  // Erro de preco ou de parcelas sai no proprio campo quando ele esta na tela
+  // (aria-invalid + a frase ligada por aria-describedby); fora da aba de
+  // preco, no alerta perto do botao clicado.
+  const priceFieldShown = activeTab === "pricing" && Boolean(checkoutOffers) && !chargedByOffer && paymentChoice !== "free";
+  const priceFieldError = priceFieldShown
+    && (error?.code === "price" || error?.code === "livePrice" || error?.code === "paidPrice");
+  const installmentsFieldError = priceFieldShown && showSplitPayments && installmentsEnabled
+    && (error?.code === "installmentsSave" || error?.code === "installmentsPublish");
   const activeLessonStudioModule = activeLessonStudio
     ? modules.find((module) => module.id === activeLessonStudio.moduleId) ?? null
     : null;
@@ -1599,6 +1618,7 @@ export function CourseBuilderStudio() {
       moduleId: targetModuleId,
       lessonId: nextLessonId,
     };
+    setLessonAddedIn(targetModuleId);
     setSuccess("lessonAdded");
   }
 
@@ -1628,14 +1648,16 @@ export function CourseBuilderStudio() {
     setSuccess(null);
   }
 
-  function updateModuleCover(moduleId: string, assetId: string) {
+  function updateModuleCover(moduleId: string, assetId: string, slot: "hero" | "media" = "hero") {
     if (!isEditable || !courseId) return;
     setModules((current) => current.map((module) => module.id === moduleId
       ? { ...module, coverAssetId: assetId } : module));
-    refreshCourseAssets();
+    refreshCourseAssets(slot);
   }
 
-  function refreshCourseAssets() {
+  // A biblioteca de midia pede "media": a falha sai embaixo dela, onde se
+  // apagou ou enviou o arquivo. Aula e capa do modulo caem no topo.
+  function refreshCourseAssets(slot: "hero" | "media" = "hero") {
     if (!courseId) return;
     const request = ++assetsRequestRef.current;
     void fetchCourseAssets(courseId)
@@ -1646,6 +1668,7 @@ export function CourseBuilderStudio() {
         }
       })
       .catch(() => {
+        setErrorSlot(slot);
         setError({ code: "load" });
       });
   }
@@ -2008,7 +2031,7 @@ export function CourseBuilderStudio() {
         dripStrategy={dripStrategy}
         onClose={() => {}}
         onSetFreePreview={() => {}}
-        onAssetsChanged={refreshCourseAssets}
+        onAssetsChanged={() => refreshCourseAssets()}
         onUpdateLesson={(patch) => updateLesson(lessonModule.id, lesson.id, patch)}
       />
     );
@@ -2066,7 +2089,7 @@ export function CourseBuilderStudio() {
           }
           setUploadingLesson(null);
         }}
-        onAssetsChanged={refreshCourseAssets}
+        onAssetsChanged={() => refreshCourseAssets()}
         onSetFreePreview={() => {
           const next = freePreviewLessonId === lesson.id ? "" : lesson.id;
           setFreePreviewLessonId(next);
@@ -2170,102 +2193,12 @@ export function CourseBuilderStudio() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-            {t(module.lessons.length === 1
-              ? "creatorEditor.builder.curriculum.lessonOne"
-              : "creatorEditor.builder.curriculum.lessonMany")
-              .replace("{count}", () => String(module.lessons.length))}
-          </p>
-          {isLessonFormOpen ? null : (
-            <button
-              type="button"
-              onClick={() => openLessonForm(module.id)}
-              disabled={!isEditable}
-              aria-label={t("creatorEditor.builder.curriculum.addLessonToModule").replace("{index}", () => String(moduleIndex + 1))}
-              className="button-outline inline-flex items-center gap-1.5 px-3 py-2 text-xs disabled:opacity-50"
-            >
-              <Plus aria-hidden="true" size={13} strokeWidth={2} />
-              {t("creatorEditor.builder.curriculum.addLesson")}
-            </button>
-          )}
-        </div>
-
-        {isLessonFormOpen ? (
-          <form
-            className="grid gap-3 rounded-lg border fine-rule bg-white p-4"
-            onSubmit={handleAddLesson}
-          >
-            <h5 className="flex items-center gap-2 text-sm font-semibold text-[var(--color-ink)]">
-              {t("creatorEditor.builder.curriculum.addLesson")}
-              <InlineHelp
-                topic={t("creatorEditor.builder.curriculum.helpTopic")}
-                href="/help#drip-release"
-              >
-                {t("creatorEditor.builder.curriculum.help")}
-              </InlineHelp>
-            </h5>
-            <input
-              value={lessonTitle}
-              onChange={(event) => {
-                setLessonTitle(event.target.value);
-                // O aviso sai assim que ha titulo, sem esperar outro clique.
-                if (error?.code === "lessonTitle" && event.target.value.trim()) {
-                  setError(null);
-                }
-              }}
-              disabled={!isEditable}
-              aria-label={t("creatorEditor.builder.curriculum.lessonTitle")}
-              aria-invalid={error?.code === "lessonTitle" || undefined}
-              aria-describedby={error?.code === "lessonTitle" ? `lesson-title-error-${module.id}` : undefined}
-              placeholder={t("creatorEditor.builder.curriculum.lessonTitle")}
-              className="min-w-0 rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] aria-[invalid=true]:border-[var(--color-danger-fg)] disabled:bg-[var(--color-surface-soft)]"
-            />
-            {/* Como no formulario do modulo: o aviso sai aqui, nao no rodape. */}
-            {error?.code === "lessonTitle" ? (
-              <p id={`lesson-title-error-${module.id}`} role="alert" className="text-xs font-semibold text-[var(--color-danger-fg)]">
-                {errorMessage}
-              </p>
-            ) : null}
-            {/* Previa gratis e a minoria dos casos: fica a um clique daqui. */}
-            <details className="rounded-md border fine-rule bg-[var(--color-surface-soft)] px-4 py-3">
-              <summary className="cursor-pointer text-xs font-semibold text-[var(--color-ink-soft)]">
-                {t("creatorEditor.builder.curriculum.moreOptions")}
-              </summary>
-              <label className="mt-3 flex items-start gap-3 rounded-md border fine-rule bg-white p-3 text-sm leading-6 text-[var(--color-ink-soft)]">
-                <input
-                  type="checkbox"
-                  checked={lessonIsFreePreview}
-                  disabled={!isEditable}
-                  onChange={(event) => setLessonIsFreePreview(event.target.checked)}
-                  className="mt-1"
-                />
-                {t("creatorEditor.builder.curriculum.makePreview")}
-              </label>
-            </details>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="submit"
-                disabled={!isEditable}
-                className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
-              >
-                {t("creatorEditor.builder.curriculum.addLesson")}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setLessonFormModuleId("");
-                  if (error?.code === "lessonTitle") {
-                    setError(null);
-                  }
-                }}
-                className="button-outline px-4 py-2.5 text-sm"
-              >
-                {t("creatorEditor.builder.curriculum.cancel")}
-              </button>
-            </div>
-          </form>
-        ) : null}
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
+          {t(module.lessons.length === 1
+            ? "creatorEditor.builder.curriculum.lessonOne"
+            : "creatorEditor.builder.curriculum.lessonMany")
+            .replace("{count}", () => String(module.lessons.length))}
+        </p>
 
         {/* Liberacao por posicao (sequencia, por modulo, por aula): mover muda
             quando a aula abre e qual vem antes. Avisa antes, e o mover pede
@@ -2275,11 +2208,6 @@ export function CourseBuilderStudio() {
             {t("creatorEditor.builder.curriculum.moveDripWarning")}
           </p>
         ) : null}
-        {/* Sempre na tela: o leitor de tela so anuncia mudanca de texto numa
-            regiao que ja existia, inclusive a primeira. */}
-        <p role="status" className="text-xs font-semibold text-[var(--color-primary)]">
-          {moveStatus?.moduleId === module.id ? moveStatus.text : ""}
-        </p>
 
         {module.lessons.length === 0 ? (
           productFormat === "course" ? (
@@ -2512,6 +2440,105 @@ export function CourseBuilderStudio() {
           })}
           </ol>
         )}
+
+        {/* "Add lesson" mora no fim da lista, onde a aula nova entra. O
+            formulario abria acima da lista e o "Lesson added" saia no
+            rodape, telas abaixo. A linha de aviso e a da lista (mover, subir,
+            descer, aula nova) e fica sempre na tela: o leitor de tela so
+            anuncia mudanca de texto numa regiao que ja existia. */}
+        <div className="grid gap-2">
+          <p role="status" className="text-xs font-semibold text-[var(--color-primary)]">
+            {success === "lessonAdded" && lessonAddedIn === module.id
+              ? t("creatorEditor.builder.success.lessonAdded")
+              : moveStatus?.moduleId === module.id ? moveStatus.text : ""}
+          </p>
+        {isLessonFormOpen ? (
+          <form
+            className="grid gap-3 rounded-lg border fine-rule bg-white p-4"
+            onSubmit={handleAddLesson}
+          >
+            <h5 className="flex items-center gap-2 text-sm font-semibold text-[var(--color-ink)]">
+              {t("creatorEditor.builder.curriculum.addLesson")}
+              <InlineHelp
+                topic={t("creatorEditor.builder.curriculum.helpTopic")}
+                href="/help#drip-release"
+              >
+                {t("creatorEditor.builder.curriculum.help")}
+              </InlineHelp>
+            </h5>
+            <input
+              value={lessonTitle}
+              onChange={(event) => {
+                setLessonTitle(event.target.value);
+                // O aviso sai assim que ha titulo, sem esperar outro clique.
+                if (error?.code === "lessonTitle" && event.target.value.trim()) {
+                  setError(null);
+                }
+              }}
+              disabled={!isEditable}
+              aria-label={t("creatorEditor.builder.curriculum.lessonTitle")}
+              aria-invalid={error?.code === "lessonTitle" || undefined}
+              aria-describedby={error?.code === "lessonTitle" ? `lesson-title-error-${module.id}` : undefined}
+              placeholder={t("creatorEditor.builder.curriculum.lessonTitle")}
+              className="min-w-0 rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] aria-[invalid=true]:border-[var(--color-danger-fg)] disabled:bg-[var(--color-surface-soft)]"
+            />
+            {/* Como no formulario do modulo: o aviso sai aqui, nao no rodape. */}
+            {error?.code === "lessonTitle" ? (
+              <p id={`lesson-title-error-${module.id}`} role="alert" className="text-xs font-semibold text-[var(--color-danger-fg)]">
+                {errorMessage}
+              </p>
+            ) : null}
+            {/* Previa gratis e a minoria dos casos: fica a um clique daqui. */}
+            <details className="rounded-md border fine-rule bg-[var(--color-surface-soft)] px-4 py-3">
+              <summary className="cursor-pointer text-xs font-semibold text-[var(--color-ink-soft)]">
+                {t("creatorEditor.builder.curriculum.moreOptions")}
+              </summary>
+              <label className="mt-3 flex items-start gap-3 rounded-md border fine-rule bg-white p-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+                <input
+                  type="checkbox"
+                  checked={lessonIsFreePreview}
+                  disabled={!isEditable}
+                  onChange={(event) => setLessonIsFreePreview(event.target.checked)}
+                  className="mt-1"
+                />
+                {t("creatorEditor.builder.curriculum.makePreview")}
+              </label>
+            </details>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="submit"
+                disabled={!isEditable}
+                className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
+              >
+                {t("creatorEditor.builder.curriculum.addLesson")}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLessonFormModuleId("");
+                  if (error?.code === "lessonTitle") {
+                    setError(null);
+                  }
+                }}
+                className="button-outline px-4 py-2.5 text-sm"
+              >
+                {t("creatorEditor.builder.curriculum.cancel")}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <button
+            type="button"
+            onClick={() => openLessonForm(module.id)}
+            disabled={!isEditable}
+            aria-label={t("creatorEditor.builder.curriculum.addLessonToModule").replace("{index}", () => String(moduleIndex + 1))}
+            className="button-outline inline-flex w-fit items-center gap-1.5 px-3 py-2 text-xs disabled:opacity-50"
+          >
+            <Plus aria-hidden="true" size={13} strokeWidth={2} />
+            {t("creatorEditor.builder.curriculum.addLesson")}
+          </button>
+        )}
+        </div>
       </div>
     );
   }
@@ -2524,13 +2551,21 @@ export function CourseBuilderStudio() {
     setError(null);
     setSuccess(null);
 
+    // Com o campo na tela, o foco vai ate ele: no celular o aviso do campo
+    // ficava abaixo da dobra e o Save parecia nao fazer nada.
     if (!priceFieldIsValid) {
       setError({ code: liveWithoutPrice ? "livePrice" : "price" });
+      if (priceFieldShown) {
+        document.getElementById("builder-price")?.focus();
+      }
       return;
     }
 
     if (!installmentsAreValid) {
       setError({ code: "installmentsSave" });
+      if (priceFieldShown && showSplitPayments && installmentsEnabled) {
+        document.getElementById("builder-installments")?.focus();
+      }
       return;
     }
 
@@ -2959,8 +2994,7 @@ export function CourseBuilderStudio() {
   }
 
   // O marco da jornada: latão, com ícone, e o carregando dentro do botão. Mora
-  // no fim da aba Publish (onde a pessoa procura) e, nas outras abas, no
-  // cartão do rodapé — nunca nos dois ao mesmo tempo.
+  // só no fim da aba Publish, onde a pessoa termina (o rodapé repetia).
   // Cada pendencia do Publish leva ao lugar de resolver: a aba e o campo (a
   // mesma ancora do stepper), ou a primeira aula ainda sem conteudo. Plano e
   // pagamentos tem link proprio; verificacao e ativacao, nao (null).
@@ -3013,6 +3047,7 @@ export function CourseBuilderStudio() {
     };
   }
 
+  const showPublishReason = !(readyToPublish || isLive || success === "published");
   const publishButton = isLive ? (
     <p className="text-sm font-semibold text-[var(--color-ink-soft)]">
       {t("creatorEditor.builder.publish.live")}
@@ -3024,10 +3059,12 @@ export function CourseBuilderStudio() {
       icon={<Send aria-hidden="true" size={16} strokeWidth={2} />}
       loading={isSubmitting}
       onClick={() => {
-        setErrorSlot(activeTab === "review" ? "publish" : "footer");
+        setErrorSlot("publish");
         void publishCourse();
       }}
       disabled={!canPublish || !readyToPublish || !priceFieldIsValid}
+      // O botao apagado diz por que: a frase ao lado dele.
+      aria-describedby={showPublishReason ? "builder-publish-reason" : undefined}
       className="w-full disabled:opacity-60 sm:w-auto"
     >
       {isSubmitting
@@ -3039,13 +3076,14 @@ export function CourseBuilderStudio() {
   );
 
   // Um alerta so, renderizado no lugar de errorSlot. O titulo vazio da aula
-  // nova fica no proprio formulario dela.
-  const builderErrorAlert = error && error.code !== "lessonTitle" ? (
+  // nova fica no proprio formulario dela; preco e parcelas, no campo, quando
+  // o campo esta na tela.
+  const builderErrorAlert = error && error.code !== "lessonTitle" && !priceFieldError && !installmentsFieldError ? (
     <InlineAlert tone="error">
       <p>{errorMessage}</p>
       {error.code === "plan" ? (
-        <Link href="/account/billing?tab=subscriptions" className="button-solid mt-3 px-4 py-2 text-xs">
-          {t("creatorEditor.builder.publish.managePlan")}
+        <Link href={planLink.href} className="button-solid mt-3 px-4 py-2 text-xs">
+          {planLink.label}
         </Link>
       ) : error.code === "activation" ? (
         <Link
@@ -3064,7 +3102,37 @@ export function CourseBuilderStudio() {
       ) : null}
     </InlineAlert>
   ) : null;
-  const footerShowsError = errorSlot === "footer" || (errorSlot === "publish" && activeTab !== "review");
+  // Publicou: o pico da jornada. O link para divulgar sai aqui mesmo, sem ir
+  // ao Manage. Mora na aba Publish, no lugar do botao; se a pessoa trocou de
+  // aba enquanto publicava, sai no topo da aba em que ela esta, em vez de
+  // trocar a aba debaixo de quem digita. O botao latao de copiar so pega o
+  // foco quando nada esta focado (CourseShareLink), entao nao rouba teclas.
+  const publishedPanel = success === "published" ? (
+    <>
+      {courseId ? (
+        <PublishedPanel
+          courseId={courseId}
+          courseTitle={title.trim() || t("creatorPanel.hub.header.courseFallback")}
+          headingRef={successNoticeRef}
+        />
+      ) : null}
+      {/* Depois de publicar, e só aí: a oferta do selo, sem travar nada.
+          Status null (leitura falhou ou não chegou) não oferece. */}
+      {user ? (
+        <VerifiedBadgeOffer
+          uid={user.uid}
+          name={user.displayName}
+          photoURL={user.photoURL}
+          verificationStatus={verificationStatus}
+          onDismiss={() => successNoticeRef.current?.focus()}
+        />
+      ) : null}
+    </>
+  ) : null;
+  // Lugar fora da tela (Publish em outra aba, biblioteca fechada): o topo.
+  const heroShowsError = errorSlot === "hero"
+    || (errorSlot === "publish" && activeTab !== "review")
+    || (errorSlot === "media" && !isMediaLibraryOpen);
 
   return (
     <div className="course-builder-shell">
@@ -3135,7 +3203,14 @@ export function CourseBuilderStudio() {
           </Button>
         </div>
       </section>
-      {errorSlot === "hero" ? builderErrorAlert : null}
+      {heroShowsError ? builderErrorAlert : null}
+      {/* O "Save draft" e um so, aqui em cima: a confirmacao sai embaixo dele. */}
+      {success === "draftSaved" ? (
+        <p className="motion-rise-in info-notice">
+          {t("creatorEditor.builder.success.draftSaved")}
+        </p>
+      ) : null}
+      {activeTab === "review" ? null : publishedPanel}
 
       <nav className="course-builder-stepper" aria-label={t("creatorEditor.builder.navigation.steps")}>
         <div className="course-builder-stepper__head">
@@ -3498,18 +3573,14 @@ export function CourseBuilderStudio() {
                   setCommunityEnabled((previous) => !previous);
                   setSuccess(null);
                 }}
-                className={`relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                  communityEnabled
-                    ? "bg-[var(--color-primary)]"
-                    : "bg-[var(--color-line)]"
-                }`}
+                // A chave da Conta (.settings-toggle: botao por transform, nos
+                // tokens de movimento) dentro de um alvo de 44px. A daqui era
+                // feita a mao, 48x28, e o botao pulava por `left`.
+                className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-md disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <span
-                  aria-hidden="true"
-                  className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${
-                    communityEnabled ? "left-6" : "left-1"
-                  }`}
-                />
+                <span aria-hidden="true" className={`settings-toggle ${communityEnabled ? "settings-toggle--on" : ""}`}>
+                  <span />
+                </span>
               </button>
             </div>
             <p className="mt-3 text-xs font-semibold text-[var(--color-ink-soft)]">
@@ -3621,6 +3692,7 @@ export function CourseBuilderStudio() {
                     min-w-0 do próprio select (em CurrencySelect) deixa o controle
                     acompanhar a coluna em vez de a coluna acompanhar o controle. */}
                 <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,200px)]">
+                  <div className="grid min-w-0 content-start gap-2">
                   <label className="grid min-w-0 gap-2 text-sm font-semibold text-[var(--color-ink)]">
                     {t(
                       paymentType === "subscription_monthly"
@@ -3630,14 +3702,30 @@ export function CourseBuilderStudio() {
                           : "creatorEditor.builder.pricing.price",
                     )}
                     <input
+                      id="builder-price"
                       value={priceAmount}
-                      onChange={(event) => setPriceAmount(event.target.value)}
+                      onChange={(event) => {
+                        setPriceAmount(event.target.value);
+                        // O aviso do campo sai ao corrigir, sem esperar outro Save.
+                        if (priceFieldError) {
+                          setError(null);
+                        }
+                      }}
                       disabled={!isEditable}
                       inputMode="decimal"
+                      aria-invalid={priceFieldError || undefined}
+                      aria-describedby={priceFieldError ? "builder-price-error" : undefined}
                       placeholder={t("creatorEditor.builder.pricing.pricePlaceholder")}
-                      className="min-w-0 rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                      className="min-w-0 rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] aria-[invalid=true]:border-[var(--color-danger-fg)] disabled:bg-[var(--color-surface-soft)]"
                     />
                   </label>
+                  {/* Fora do label: dentro dele a frase entraria no nome do campo. */}
+                  {priceFieldError ? (
+                    <p id="builder-price-error" role="alert" className="text-xs font-semibold text-[var(--color-danger-fg)]">
+                      {errorMessage}
+                    </p>
+                  ) : null}
+                  </div>
                   <label className="grid min-w-0 gap-2 text-sm font-semibold text-[var(--color-ink)]">
                     {t("creatorEditor.builder.pricing.currency")}
                     <CurrencySelect
@@ -3688,10 +3776,18 @@ export function CourseBuilderStudio() {
                         <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
                           {t("creatorEditor.builder.pricing.splitMax")}
                           <select
+                            id="builder-installments"
                             value={installmentsMax}
-                            onChange={(event) => setInstallmentsMax(event.target.value)}
+                            onChange={(event) => {
+                              setInstallmentsMax(event.target.value);
+                              if (installmentsFieldError) {
+                                setError(null);
+                              }
+                            }}
                             disabled={!isEditable}
-                            className="rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                            aria-invalid={installmentsFieldError || undefined}
+                            aria-describedby={installmentsFieldError ? "builder-installments-error" : undefined}
+                            className="rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] aria-[invalid=true]:border-[var(--color-danger-fg)]"
                           >
                             {splitCountOptions.map((count) => (
                               <option key={count} value={String(count)}>
@@ -3706,6 +3802,11 @@ export function CourseBuilderStudio() {
                           </p>
                         ) : null}
                       </div>
+                    ) : null}
+                    {installmentsFieldError ? (
+                      <p id="builder-installments-error" role="alert" className="text-xs font-semibold text-[var(--color-danger-fg)]">
+                        {errorMessage}
+                      </p>
                     ) : null}
                   </div>
                 ) : null}
@@ -3968,18 +4069,22 @@ export function CourseBuilderStudio() {
                       >
                         {t("creatorEditor.builder.curriculum.down")}
                       </button>
+                      {/* Longe do Down: a 8 px e do mesmo tamanho, errar o
+                          toque apagava o modulo. */}
                       <button
                         type="button"
                         onClick={() => deleteModule(module.id)}
                         disabled={!isEditable}
-                        className="button-danger px-3 py-2 text-xs disabled:opacity-50"
+                        className="button-danger ml-4 px-3 py-2 text-xs disabled:opacity-50"
                       >
                         {t("creatorEditor.builder.curriculum.delete")}
                       </button>
                     </div>
                     {isEditable && modules.length > 1 && module.lessons.length > 0 ? (
-                      // Caminho do mouse; o acessivel e o seletor da pagina do modulo.
-                      <ul aria-hidden="true" className="flex basis-full flex-wrap gap-1.5">
+                      // Caminho do mouse; o acessivel e o seletor da pagina do
+                      // modulo. No toque o arrastar nao existe: as etiquetas
+                      // somem em vez de parecer que respondem.
+                      <ul aria-hidden="true" className="flex basis-full flex-wrap gap-1.5 pointer-coarse:hidden">
                         {module.lessons.map((lesson) => (
                           <li key={lesson.id}>
                             <span
@@ -4107,8 +4212,8 @@ export function CourseBuilderStudio() {
                       {/* Mesmo destino do Manage: sem ele a pessoa lia "termine
                           o cadastro" e nao tinha onde clicar. */}
                       {item.id === "plan" ? (
-                        <Link href="/account/billing?tab=subscriptions" className="ml-1 font-semibold text-[var(--color-primary)] underline">
-                          {t("creatorEditor.builder.publish.managePlan")}
+                        <Link href={planLink.href} className="ml-1 font-semibold text-[var(--color-primary)] underline">
+                          {planLink.label}
                         </Link>
                       ) : item.id === "payouts" ? (
                         <>
@@ -4153,6 +4258,11 @@ export function CourseBuilderStudio() {
           <div className="mt-6">{builderErrorAlert}</div>
         ) : null}
 
+        {activeTab === "review" ? publishedPanel : null}
+
+        {/* Na pagina da aula a saida e o "Back to module" dela: Back/Continue
+            do construtor empilhavam uma terceira barra de acoes. */}
+        {isLessonPage ? null : (
         <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-line)] pt-6">
           <button
             type="button"
@@ -4192,85 +4302,35 @@ export function CourseBuilderStudio() {
             // A aba Publish terminava num texto; o botão de publicar ficava no
             // cartão do rodapé, que no celular vem depois do resumo inteiro.
             <div className="flex w-full flex-wrap items-center justify-end gap-3 sm:w-auto">
-              {readyToPublish || isLive || success === "published" ? null : (
-                <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
+              {showPublishReason ? (
+                <span id="builder-publish-reason" className="text-xs font-semibold text-[var(--color-ink-soft)]">
                   {t("creatorEditor.builder.publish.finish")}
                 </span>
-              )}
+              ) : null}
               {success === "published" ? null : publishButton}
             </div>
           )}
         </div>
+        )}
       </section>
 
+      {/* O rodape so leva para fora e para a biblioteca. A prontidao e as
+          pendencias moram na aba Publish (com o "Go to..." de cada uma), o
+          "Save draft" no topo e o "Publish product" na aba Publish: aqui
+          repetiam tudo embaixo de toda aba. */}
       <div className="course-builder-footer">
-        {/* O cartao "Course structure" saiu: repetia, embaixo de toda aba, a
-            lista inteira de modulos e aulas que a aba Curriculum ja e. */}
-        <section className="settings-section-card">
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            {t("creatorEditor.builder.publish.title")}
-          </p>
-          {/* Era uma segunda lista, escrita a mao com regra diferente da aba
-              Publish (sem parcelas, outro texto de preco). Mesma fonte agora.
-              A porcentagem fica so no stepper. */}
-          <div className="mt-4 grid gap-2 text-sm text-[var(--color-ink-soft)]">
-            {readiness.pending.length === 0 ? (
-              <p>{t("creatorEditor.builder.publish.passed")}</p>
-            ) : (
-              readiness.pending.map((item) => <p key={item.id}>{item.hint}</p>)
-            )}
-          </div>
-          {builderErrorAlert && footerShowsError ? <div className="mt-4">{builderErrorAlert}</div> : null}
-          {success && success !== "published" ? (
-            <p key={success} className="motion-rise-in mt-4 info-notice">
-              {t(`creatorEditor.builder.success.${success}`)}
-            </p>
-          ) : null}
-          {/* Publicou: o pico da jornada. O link para divulgar sai aqui mesmo,
-              sem ir ao Manage, e o botao latao de copiar recebe o foco. */}
-          {success === "published" && courseId ? (
-            <PublishedPanel
-              courseId={courseId}
-              courseTitle={title.trim() || t("creatorPanel.hub.header.courseFallback")}
-              headingRef={successNoticeRef}
-            />
-          ) : null}
-          {/* Depois de publicar, e só aí: a oferta do selo, sem travar nada.
-              Status null (leitura falhou ou não chegou) não oferece. */}
-          {success === "published" && user ? (
-            <VerifiedBadgeOffer
-              uid={user.uid}
-              name={user.displayName}
-              photoURL={user.photoURL}
-              verificationStatus={verificationStatus}
-              onDismiss={() => successNoticeRef.current?.focus()}
-            />
-          ) : null}
-          <div className="mt-5 grid gap-3">
-            <Button
-              variant="outline"
-              size="lg"
-              loading={isSaving}
-              onClick={() => {
-                setErrorSlot("footer");
-                void saveDraft();
-              }}
-              disabled={!isEditable}
-            >
-              {t("creatorEditor.builder.navigation.save")}
-            </Button>
-            {activeTab === "review" || success === "published" ? null : publishButton}
-            <Link href="/teach" className="button-outline px-4 py-2.5 text-sm">
-              {t("creatorEditor.builder.navigation.studio")}
-            </Link>
-          </div>
-        </section>
-
-        {/* A biblioteca inteira (upload de capa + lista de arquivos) vinha
-            aberta embaixo de toda aba e sozinha respondia por boa parte dos
-            3.138 px da aba de conteudo. Agora e um clique de quem precisa. */}
-        {course ? (
-          <div className="course-builder-footer__full grid gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-line)] pt-4">
+          <Link
+            href="/teach"
+            className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-[var(--color-primary)]"
+          >
+            <ArrowLeft aria-hidden="true" size={14} strokeWidth={2} />
+            {t("creatorEditor.builder.navigation.studio")}
+          </Link>
+          {/* A biblioteca inteira (upload de capa + lista de arquivos) vinha
+              aberta embaixo de toda aba e sozinha respondia por boa parte dos
+              3.138 px da aba de conteudo. Agora e um clique de quem precisa. */}
+          {course ? (
             <button
               type="button"
               onClick={() => setIsMediaLibraryOpen((current) => !current)}
@@ -4281,9 +4341,17 @@ export function CourseBuilderStudio() {
                 ? "creatorEditor.builder.curriculum.closeMediaLibrary"
                 : "creatorEditor.builder.curriculum.openMediaLibrary")}
             </button>
-            {isMediaLibraryOpen ? (
-              <CourseAssetUploader course={course} isEditable={isEditable} onModuleCoverUploaded={updateModuleCover} onAssetDeleted={refreshCourseAssets} />
-            ) : null}
+          ) : null}
+        </div>
+        {course && isMediaLibraryOpen ? (
+          <div className="grid gap-3">
+            {errorSlot === "media" ? builderErrorAlert : null}
+            <CourseAssetUploader
+              course={course}
+              isEditable={isEditable}
+              onModuleCoverUploaded={(moduleId, assetId) => updateModuleCover(moduleId, assetId, "media")}
+              onAssetDeleted={() => refreshCourseAssets("media")}
+            />
           </div>
         ) : null}
       </div>
@@ -4704,11 +4772,11 @@ function CourseCoverField({
             }`}
           >
             <UploadCloud size={16} aria-hidden />
-            {isUploading
-              ? t("creatorEditor.members.uploading")
-              : course.coverImageUrl
-                ? t("creatorEditor.members.replaceCover")
-                : t("creatorEditor.members.uploadCover")}
+            {/* Rotulo fixo: o estado do envio e so a nota logo abaixo (ela dizia
+                "Uploading 45%" embaixo de um botao "Uploading..."). */}
+            {course.coverImageUrl
+              ? t("creatorEditor.members.replaceCover")
+              : t("creatorEditor.members.uploadCover")}
             <input
               key={fileInputKey}
               type="file"
@@ -5035,6 +5103,9 @@ function MembersCoverField({
     }
 
     setIsUploading(true);
+    // A compressao da capa do modulo vem antes do envio e o rotulo nao diz mais
+    // "Uploading...": a nota de envio ja aparece no clique, sem porcentagem.
+    setProgress({ bytesTransferred: 0, totalBytes: file.size, percent: null, state: "running" });
 
     try {
       // Capa do módulo: recorte vertical 2:3 comprimido no navegador (10 MB
@@ -5106,11 +5177,10 @@ function MembersCoverField({
             }`}
           >
             <UploadCloud size={16} aria-hidden />
-            {isUploading
-              ? t("creatorEditor.members.uploading")
-              : coverUrl
-                ? t("creatorEditor.members.replaceCover")
-                : t("creatorEditor.members.uploadCover")}
+            {/* Rotulo fixo; o estado do envio e so a nota logo abaixo. */}
+            {coverUrl
+              ? t("creatorEditor.members.replaceCover")
+              : t("creatorEditor.members.uploadCover")}
             <input
               key={fileInputKey}
               type="file"

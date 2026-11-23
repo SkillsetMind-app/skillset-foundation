@@ -167,6 +167,10 @@ async function renderBuilder() {
 }
 
 const card = () => document.querySelector("#builder-sec-modules") as HTMLElement;
+// Na pagina da aula nao ha Back/Continue do construtor (a saida e o "Back to
+// module"): trocar de aba e pelo passo a passo, o mesmo selectTab.
+const pricingStep = () =>
+  within(screen.getByRole("navigation", { name: "Course creation steps" })).getByRole("button", { name: /Pricing/ });
 
 function startUpload() {
   fireEvent.change(screen.getByLabelText("Upload a lesson video"), {
@@ -457,9 +461,11 @@ describe("pagina da aula no builder", () => {
     navigateTo(moduleUrl);
     expect(screen.getByRole("heading", { name: "Intro" })).toBeInTheDocument();
 
-    // Trocar de aba pelo rodape tambem nao acontece durante o envio.
+    // Trocar de aba pelo passo a passo tambem nao acontece durante o envio, e
+    // o Back/Continue do construtor nao aparece na pagina da aula.
+    expect(screen.queryByRole("button", { name: /^Continue to/ })).toBeNull();
     mocks.router.push.mockClear();
-    fireEvent.click(screen.getByRole("button", { name: /^Continue to/ }));
+    fireEvent.click(pricingStep());
     expect(mocks.router.push).not.toHaveBeenCalled();
 
     // O envio acaba: a tela volta a seguir a URL, e nao ha segundo envio.
@@ -486,8 +492,9 @@ describe("pagina da aula no builder", () => {
     await act(async () => finishUpload("asset-intro"));
 
     await waitFor(() => expect(screen.queryByText(missingIntro)).not.toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: /^Continue to/ }));
+    fireEvent.click(pricingStep());
     const next = String(mocks.router.push.mock.calls.at(-1)?.[0]);
+    expect(next).toContain("tab=pricing");
     expect(next).not.toContain("lesson=");
   }, 10000);
 
@@ -513,6 +520,16 @@ describe("pagina da aula no builder", () => {
     clickConfirm(asking, "Delete file");
 
     await waitFor(() => expect(screen.getAllByText(missingIntro).length).toBeGreaterThan(0));
+    // O Publish mora na aba Publish: la, a aula volta a ser pendencia e o
+    // botao fica apagado.
+    expect(screen.queryByRole("button", { name: "Publish product" })).toBeNull();
+    navigateTo("/teach/builder?courseId=course-1&tab=review");
+    const review = await waitFor(() => {
+      const found = document.getElementById("builder-sec-review");
+      if (!found) throw new Error("aba Publish nao abriu");
+      return found;
+    });
+    await waitFor(() => expect(within(review).getByText(missingIntro)).toBeInTheDocument());
     expect(screen.getByRole("button", { name: "Publish product" })).toBeDisabled();
   }, 10000);
 

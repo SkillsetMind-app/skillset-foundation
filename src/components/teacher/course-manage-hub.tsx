@@ -40,9 +40,11 @@ import {
   quotaStatus,
 } from "@/domain/entitlements";
 import { usePublishGates } from "@/components/teacher/use-publish-gates";
+import type { CourseAsset } from "@/domain/course-asset";
 import {
   countLessonFiles,
   getCourseReadiness,
+  getLessonIdsWithMedia,
   upcomingSessionsOf,
   type CourseReadinessItem,
 } from "@/domain/course-readiness";
@@ -450,22 +452,26 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
       () => {},
     );
   }, [ownerUid, courseId, productFormat]);
-  const ebookModules = productFormat === "ebook" ? course?.modules : undefined;
-  const [fileCount, setFileCount] = useState<{ courseId: string; count: number } | null>(null);
+  // A lista de arquivos, como o construtor le: o arquivo do e-book e o
+  // "conteudo em toda aula". Sem ela o Manage tirava esse item e mostrava
+  // outra porcentagem para o mesmo curso. Lida de novo a cada snapshot do
+  // curso, como era a do e-book.
+  const courseModules = course?.modules;
+  const [courseAssets, setCourseAssets] = useState<{ courseId: string; list: CourseAsset[] } | null>(null);
   useEffect(() => {
-    if (!ebookModules) {
+    if (!courseModules) {
       return;
     }
     let cancelled = false;
     fetchCourseAssets(courseId)
-      .then((assets) => {
-        if (!cancelled) setFileCount({ courseId, count: countLessonFiles(ebookModules, assets) });
+      .then((list) => {
+        if (!cancelled) setCourseAssets({ courseId, list });
       })
       .catch(() => undefined);
     return () => {
       cancelled = true;
     };
-  }, [courseId, ebookModules]);
+  }, [courseId, courseModules]);
 
   const isOwner = Boolean(course && user && course.ownerId === user.uid);
   // Server-enforced by the commerce RPCs; surfaced here so the panels can
@@ -496,19 +502,19 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
     );
   }
 
-  // A mesma lista que o construtor mostra no chip, na barra e no rodape, menos
-  // um item: "conteudo em toda aula" (lessonMedia) precisa da lista de arquivos,
-  // que o Manage nao carrega, entao aqui ele fica de fora e a porcentagem pode
-  // diferir da do construtor. O aviso "aulas sem conteudo" do painel cobre o
-  // mesmo caso com a mesma regra (getLessonIdsWithMedia). Antes o Manage tinha
-  // regra propria e o mesmo curso aparecia com tres porcentagens diferentes.
+  // A mesma lista do construtor, com as mesmas entradas: a lista de arquivos
+  // decide "conteudo em toda aula" (lessonMedia) e o arquivo do e-book, pela
+  // mesma regra do aviso "aulas sem conteudo" do painel. Antes o Manage tirava
+  // o lessonMedia e a porcentagem podia diferir da do construtor.
+  const assets = courseAssets?.courseId === course.id ? courseAssets.list : null;
   const readiness = getCourseReadiness(
     {
       ...course,
+      lessonIdsWithMedia: assets ? getLessonIdsWithMedia(course.modules, assets) : undefined,
       scheduledSessionCount:
         productFormat === "live_event" && sessionCount?.courseId === course.id ? sessionCount.count : undefined,
       lessonFileCount:
-        productFormat === "ebook" && fileCount?.courseId === course.id ? fileCount.count : undefined,
+        productFormat === "ebook" && assets ? countLessonFiles(course.modules, assets) : undefined,
     },
     account,
     t,

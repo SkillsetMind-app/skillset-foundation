@@ -177,7 +177,12 @@ describe("aba Curriculum: a lista de modulos vem primeiro", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add lesson" }));
 
     expect(within(curriculumCard()).getByText("1 lesson")).toBeInTheDocument();
-    expect(within(curriculumCard()).getAllByRole("textbox", { name: "Lesson title" })[1]).toHaveValue("Focus blocks");
+    // O formulario mora no fim da lista: a linha nova vem antes dele.
+    const [row, formInput] = within(curriculumCard()).getAllByRole("textbox", { name: "Lesson title" });
+    expect(row).toHaveValue("Focus blocks");
+    expect(row.compareDocumentPosition(formInput) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(formInput.closest("form")).not.toBeNull();
+    expect(within(curriculumCard()).getByRole("status")).toHaveTextContent("Lesson added — opening the lesson studio once it autosaves...");
     fireEvent.click(screen.getAllByRole("button", { name: "Save draft" })[0]);
     await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalled());
     const saved = vi.mocked(updateTeacherCourseBuilder).mock.calls.at(-1)?.[1].modules;

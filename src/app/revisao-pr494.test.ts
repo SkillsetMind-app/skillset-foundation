@@ -120,8 +120,9 @@ describe("Plausivel 5: botao-texto com pelo menos 24px de area", () => {
     expect(read(file)).toContain(snippet);
   });
 
-  it("os dois Remover do editor de landing tem min-h-6", () => {
-    const hits = read("components/teacher/course-landing-editor.tsx").match(/"min-h-6 justify-self-start/g);
+  // Subiram de 24px para o piso de 44px: sao botoes de apagar no toque.
+  it("os dois Remover do editor de landing tem min-h-11", () => {
+    const hits = read("components/teacher/course-landing-editor.tsx").match(/"min-h-11 justify-self-start/g);
     expect(hits).toHaveLength(2);
   });
 });

@@ -230,7 +230,7 @@ function BlockFields({
                 onClick={() =>
                   onChange({ ...block, steps: block.steps.filter((_, i) => i !== index) })
                 }
-                className="min-h-6 justify-self-start text-xs font-semibold text-[var(--color-danger-fg)]"
+                className="min-h-11 justify-self-start text-xs font-semibold text-[var(--color-danger-fg)]"
               >
                 {t("teacherLanding.fields.removeStep")}
               </button>
@@ -288,7 +288,7 @@ function BlockFields({
                 onClick={() =>
                   onChange({ ...block, quotes: block.quotes.filter((_, i) => i !== index) })
                 }
-                className="min-h-6 justify-self-start text-xs font-semibold text-[var(--color-danger-fg)]"
+                className="min-h-11 justify-self-start text-xs font-semibold text-[var(--color-danger-fg)]"
               >
                 {t("teacherLanding.fields.remove")}
               </button>
@@ -587,7 +587,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
                 onClick={() => move(index, -1)}
                 disabled={index === 0}
                 aria-label={t("teacherLanding.moveUp")}
-                className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-line)] bg-white disabled:opacity-30"
+                className="button-icon border border-[var(--color-line)] bg-white disabled:opacity-30"
               >
                 <ChevronUp className="h-4 w-4" />
               </button>
@@ -596,7 +596,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
                 onClick={() => move(index, 1)}
                 disabled={index === blocks.length - 1}
                 aria-label={t("teacherLanding.moveDown")}
-                className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-line)] bg-white disabled:opacity-30"
+                className="button-icon border border-[var(--color-line)] bg-white disabled:opacity-30"
               >
                 <ChevronDown className="h-4 w-4" />
               </button>
@@ -610,7 +610,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
                 onClick={() => setRemoving({ id, kind: block.kind })}
                 aria-label={t("teacherLanding.removeSection").replace("{section}", () => t(`teacherLanding.blocks.${block.kind}`))}
                 title={t("teacherLanding.removeSection").replace("{section}", () => t(`teacherLanding.blocks.${block.kind}`))}
-                className="ml-2 grid h-8 w-8 place-items-center rounded-md border border-[var(--color-line)] bg-white text-[var(--color-danger-fg)]"
+                className="button-icon ml-2 border border-[var(--color-line)] bg-white text-[var(--color-danger-fg)]"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
