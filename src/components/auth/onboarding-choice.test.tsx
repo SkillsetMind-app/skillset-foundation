@@ -285,13 +285,13 @@ describe("H3: pais na ativacao do professor", () => {
   it("leitura do perfil falhou: concluir nao grava nada e volta ao passo 0 com Try again", async () => {
     mocks.getUserProfile.mockRejectedValueOnce(new Error("offline"));
     await mount();
-    expect(screen.getByText("onboarding.errorProfileLoad")).toBeInTheDocument();
+    expect(screen.getByText("onboarding.errorProfileLoadRetry")).toBeInTheDocument();
     fireEvent.click(screen.getByText("onboarding.pathTeachTitle"));
     fireEvent.change(screen.getByLabelText("connectOnboarding.countryLabel"), { target: { value: "CA" } });
     fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
     // O aviso sai no Continue, como sempre.
-    expect(screen.queryByText("onboarding.errorProfileLoad")).toBeNull();
+    expect(screen.queryByText("onboarding.errorProfileLoadRetry")).toBeNull();
     fireEvent.change(screen.getByPlaceholderText("onboarding.usernamePlaceholder"), { target: { value: "patrick" } });
     fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
     fireEvent.click(screen.getByText("onboarding.goalTeachLabel"));
@@ -304,7 +304,7 @@ describe("H3: pais na ativacao do professor", () => {
     expect(mocks.refreshUser).not.toHaveBeenCalled();
     expect(mocks.router.push).not.toHaveBeenCalled();
     expect(screen.getByText("onboarding.pathTeachTitle")).toBeInTheDocument();
-    expect(screen.getByRole("alert")).toHaveTextContent("onboarding.errorProfileLoad");
+    expect(screen.getByRole("alert")).toHaveTextContent("onboarding.errorProfileLoadRetry");
     expect(screen.getByRole("button", { name: "appErrors.retry" })).toBeEnabled();
   });
 

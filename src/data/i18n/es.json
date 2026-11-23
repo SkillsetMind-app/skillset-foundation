@@ -398,7 +398,7 @@
     "errorSelectGoal": "Selecciona al menos un objetivo para que SkillsetMind dé forma a tu espacio.",
     "errorSessionNotReady": "Tu sesión no está lista. Inicia sesión de nuevo para terminar la configuración.",
     "errorFinish": "No se pudo finalizar el onboarding. Inténtalo de nuevo.",
-    "errorProfileLoad": "No se pudo cargar tu perfil. Aún puedes completar la configuración."
+    "errorProfileLoadRetry": "No pudimos cargar tu perfil. Inténtalo de nuevo para continuar."
   },
   "account": {
     "openMenu": "Abrir menú de cuenta",

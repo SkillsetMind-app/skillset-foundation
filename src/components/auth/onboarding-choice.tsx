@@ -242,13 +242,13 @@ export function OnboardingChoice() {
       }
       // Uma leitura que deu certo tira o aviso de uma leitura anterior que
       // falhou (outro caminho no endereço relê); os outros erros ficam.
-      const readMessage = t("onboarding.errorProfileLoad");
+      const readMessage = t("onboarding.errorProfileLoadRetry");
       setError((current) => (current === readMessage ? "" : current));
       setReadError("");
       if (afterRetry) pageHeadingRef.current?.focus();
     } catch {
       if (generation !== loadGeneration.current) return;
-      const message = t("onboarding.errorProfileLoad");
+      const message = t("onboarding.errorProfileLoadRetry");
       setError(message);
       setReadError(message);
     } finally {
@@ -518,7 +518,7 @@ export function OnboardingChoice() {
     // cai aqui: qualquer leitura que responde, ate vazia (sem linha ou com a
     // linha recem-criada), marca answersLoaded antes de a tela aparecer.
     if (!answersLoaded) {
-      const message = t("onboarding.errorProfileLoad");
+      const message = t("onboarding.errorProfileLoadRetry");
       setStep(0);
       setError(message);
       setReadError(message);

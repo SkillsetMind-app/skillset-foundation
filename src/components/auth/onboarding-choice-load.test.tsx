@@ -289,13 +289,13 @@ describe("OnboardingChoice: a carga normal (caracterizacao)", () => {
     await act(async () => emit({ status: "authenticated", user: authedUser }));
 
     expectOnlyTheRead(1);
-    expect(screen.getByRole("alert")).toHaveTextContent("onboarding.errorProfileLoad");
+    expect(screen.getByRole("alert")).toHaveTextContent("onboarding.errorProfileLoadRetry");
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("page.title");
     expect(screen.getByRole("button", { name: "onboarding.continue" })).toBeEnabled();
     expect(mocks.router.push).not.toHaveBeenCalled();
     // O aviso sai no proximo clique, como qualquer erro desta tela.
     fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
-    expect(screen.queryByText("onboarding.errorProfileLoad")).toBeNull();
+    expect(screen.queryByText("onboarding.errorProfileLoadRetry")).toBeNull();
     expect(screen.getByRole("alert")).toHaveTextContent("onboarding.errorChoosePath");
   });
 });
@@ -324,7 +324,7 @@ describe("OnboardingChoice: \"Try again\" da leitura do perfil", () => {
       .mockReturnValueOnce(new Promise((done, fail) => { resolve = done; reject = fail; }));
     const view = mountOnPage();
     await act(async () => emit({ status: "authenticated", user: authedUser }));
-    expect(screen.getByRole("alert")).toHaveTextContent("onboarding.errorProfileLoad");
+    expect(screen.getByRole("alert")).toHaveTextContent("onboarding.errorProfileLoadRetry");
     return { ...view, resolve, reject };
   }
 
@@ -405,7 +405,7 @@ describe("OnboardingChoice: \"Try again\" da leitura do perfil", () => {
       fireEvent.click(screen.getByRole("button", { name: "appErrors.retry" }));
     });
     expect(mocks.getUserProfile).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("alert")).toHaveTextContent("onboarding.errorProfileLoad");
+    expect(screen.getByRole("alert")).toHaveTextContent("onboarding.errorProfileLoadRetry");
 
     await act(async () => emit({ status: "authenticated", user: { ...authedUser, uid: "learner-2" } }));
     fireEvent.click(screen.getByRole("button", { name: "appErrors.retry" }));
@@ -419,7 +419,7 @@ describe("OnboardingChoice: \"Try again\" da leitura do perfil", () => {
     const { reject } = await failFirstRead();
     fireEvent.click(screen.getByRole("button", { name: "appErrors.retry" }));
     await act(async () => reject(new Error("offline")));
-    expect(screen.getByRole("alert")).toHaveTextContent("onboarding.errorProfileLoad");
+    expect(screen.getByRole("alert")).toHaveTextContent("onboarding.errorProfileLoadRetry");
     expect(screen.getByRole("button", { name: "appErrors.retry" })).toBeEnabled();
     expectOnlyTheRead(2);
   });
