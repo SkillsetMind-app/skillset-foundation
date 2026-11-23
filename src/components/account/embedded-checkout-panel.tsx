@@ -240,12 +240,14 @@ export function EmbeddedCheckoutPanel({
               {t("billingCheckout.perMonth")}
             </span>
           </div>
-          <p className="mt-1 text-[11px] tabular-nums text-[var(--color-ink-soft)]">
+          <p className="mt-1 text-xs tabular-nums text-[var(--color-ink-soft)]">
             {t(isYearly ? "billingCheckout.billedYearly" : "billingCheckout.billedMonthly")
               .replace("{amount}", () => formatUsdWhole(isYearly ? plan.yearlyUsd : plan.monthlyUsd, locale))}
           </p>
         </div>
-        <p className="mt-4 text-[11px] leading-5 text-[var(--color-ink-muted)]">
+        {/* Letra miúda do resumo em 12px (era 11px; o selo do Stripe, 10px):
+            é o texto da assinatura, lido no celular por gente de 55+. */}
+        <p className="mt-4 text-xs leading-5 text-[var(--color-ink-muted)]">
           {t("billingCheckout.commission").replace("{plan}", () => plan.name)}{" "}
           <strong className="text-[var(--color-ink)]">
             {formatPlanCommission(plan)}
@@ -253,10 +255,12 @@ export function EmbeddedCheckoutPanel({
           {t("billingCheckout.processing")}
         </p>
         {/* A frase da renovacao chega junto com a resposta do servidor: o
-            lugar dela fica guardado (tres linhas) enquanto isso, para o resumo
-            nao crescer e empurrar o cartao quando ela aparece. */}
+            lugar dela fica guardado (quatro linhas) enquanto isso, para o resumo
+            nao crescer e empurrar o cartao quando ela aparece. Medido na fonte
+            do site a 12px/20px: com teste gratis, 3 a 4 linhas em ingles e 4
+            em espanhol nas larguras de celular; tres linhas deixavam pular. */}
         {error ? null : (
-          <p className="mt-2 min-h-[3.75rem] text-[11px] font-semibold leading-5 text-[var(--color-ink)]">
+          <p className="mt-2 min-h-[5rem] text-xs font-semibold leading-5 text-[var(--color-ink)]">
             {trialDays !== null ? (
               planDisclosure({ t, locale, plan, cycle, trial: trialDays > 0 })
             ) : (
@@ -267,10 +271,10 @@ export function EmbeddedCheckoutPanel({
             )}
           </p>
         )}
-        <p className="mt-2 text-[11px] leading-5 text-[var(--color-ink-muted)]">
+        <p className="mt-2 text-xs leading-5 text-[var(--color-ink-muted)]">
           {t("billingCheckout.cancel")}
         </p>
-        <p className="mt-3 text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink-muted)]">
+        <p className="mt-3 text-[11px] uppercase tracking-[0.12em] text-[var(--color-ink-muted)]">
           {t("activationCheckout.poweredBy")}
         </p>
       </aside>

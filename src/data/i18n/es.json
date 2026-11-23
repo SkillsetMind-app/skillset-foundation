@@ -299,7 +299,7 @@
       "confirmTitle": "Confirma tu correo para continuar",
       "checkEmailTitle": "Revisa tu correo",
       "confirmWaiting": "Si abres el enlace en este dispositivo, esta página sigue sola.",
-      "confirmBody": "Abre el enlace de ese correo para activar tu cuenta. Justo después completarás tu nombre y teléfono. Puede tardar un minuto — revisa también spam o promociones.",
+      "confirmBody": "Abre el enlace de ese correo para activar tu cuenta. Justo después te haremos unas preguntas rápidas para preparar tu cuenta. El correo puede tardar un minuto en llegar — revisa también spam o promociones.",
       "confirmSentTo": "Enviamos un enlace de confirmación a",
       "confirmSignIn": "Iniciar sesión",
       "confirmResend": "Reenviar el enlace",
@@ -1918,11 +1918,7 @@
       "welcomeNamed": "Bienvenido a tu espacio, {name}",
       "step1Body": "Crea cursos y programas, gestiona a tus alumnos y consulta tus ventas aquí. El inicio muestra los próximos pasos para comenzar.",
       "step2Title": "Crea tu primer producto",
-      "step2Body": "Elige un formato de producto y añade lecciones, vídeos y materiales de aprendizaje en el editor.",
-      "step3Title": "Publica y vende",
-      "step3Body": "Define el precio, revisa el contenido y las reglas de acceso, y publica. Comparte el enlace de venta cuando el producto esté listo.",
-      "step4Title": "Ganancias y ayuda",
-      "step4Body": "Conecta tu cuenta de Stripe en Ganancias para recibir ventas. Stripe gestiona la verificación y los plazos de pago. Usa Ayuda en el menú cuando necesites una mano.",
+      "step2Body": "Elige un formato de producto y añade lecciones, vídeos y materiales de aprendizaje en el editor. Usa Ayuda en el menú cuando necesites una mano.",
       "openStudio": "Abrir mi espacio"
     },
     "reports": {

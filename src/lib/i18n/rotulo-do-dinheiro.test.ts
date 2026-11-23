@@ -18,13 +18,13 @@ function leaves(node: unknown, path = ""): Array<[string, string]> {
 }
 
 describe("um nome so para a pagina do dinheiro", () => {
-  it.each(["en", "es"] as const)("em %s, barra, grupo, atalho e tour usam o mesmo nome", (locale) => {
+  it.each(["en", "es"] as const)("em %s, barra, grupo, atalho e erro usam o mesmo nome", (locale) => {
     const dict = getDictionary(locale);
 
     for (const key of ["platform.nav.earnings", "platform.navSection.earnings", "teach.reports.linkEarnings"]) {
       expect(translate(dict, key), key).toBe(NAME[locale]);
     }
-    expect(translate(dict, "teach.tour.step4Body")).toContain(NAME[locale]);
+    // O tour do professor não cita mais a página (O-11: ficou com dois passos).
     expect(translate(dict, "creatorEditor.builder.errors.payouts")).toContain(NAME[locale]);
   });
 

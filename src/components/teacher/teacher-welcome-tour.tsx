@@ -21,6 +21,8 @@ function buildSteps(firstName: string, t: (key: string) => string): TourStep[] {
     ? t("teach.tour.welcomeNamed").replace("{name}", () => firstName)
     : t("teach.tour.welcome");
 
+  // Dois passos: "Publicar e vender" e "Ganhos e ajuda" saíram, porque a lista
+  // de próximos passos do estúdio já leva a eles. A Ajuda ficou no passo 2.
   return [
     {
       scene: "firstProduct",
@@ -31,16 +33,6 @@ function buildSteps(firstName: string, t: (key: string) => string): TourStep[] {
       scene: "firstLesson",
       title: t("teach.tour.step2Title"),
       body: t("teach.tour.step2Body"),
-    },
-    {
-      scene: "published",
-      title: t("teach.tour.step3Title"),
-      body: t("teach.tour.step3Body"),
-    },
-    {
-      scene: "noSales",
-      title: t("teach.tour.step4Title"),
-      body: t("teach.tour.step4Body"),
     },
   ];
 }
@@ -129,7 +121,7 @@ function TeacherWelcomeTourDialog({
           <SpotArt key={step.scene} scene={step.scene} className={`mx-auto h-20 w-auto ${stepChanged ? "spot-art-in" : ""}`} />
         </div>
 
-        {/* Os quatro passos na mesma célula da grade: a caixa tem a altura do
+        {/* Os passos na mesma célula da grade: a caixa tem a altura do
             passo mais longo, então trocar de passo não mexe nos botões de
             baixo. Só o atual aparece (e existe para o leitor de tela). */}
         <div className="grid px-6 pb-2 pt-4">
