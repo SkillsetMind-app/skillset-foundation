@@ -137,6 +137,97 @@ describe("ProtectedSurface — senha aceita, codigo ainda nao", () => {
   });
 });
 
+// F-03, estagio 0: a espera de toda pagina protegida era um anel numa pagina
+// vazia, e a casca (barra lateral, topo, conteudo) entrava depois de uma vez.
+describe("ProtectedSurface — a espera tem a forma do que vem", () => {
+  afterEach(() => {
+    cleanup();
+    mocks.pathname = "/account";
+    document.cookie = "skillset_sidebar=; path=/; max-age=0";
+  });
+
+  function renderLoading(pathname: string) {
+    mocks.session = { status: "loading", user: null };
+    mocks.pathname = pathname;
+    return renderGuarded().container;
+  }
+
+  it.each([
+    "/teach",
+    "/teach/sales/order-1",
+    "/teach/builder",
+    "/teach/courses/c-1/manage",
+    "/account",
+    "/account/billing/upgrade",
+    "/learn",
+    "/learn/credentials",
+    "/ops",
+    "/ops/users/u-1",
+    "/support",
+  ])("%s espera com a casca da plataforma: inerte, um aviso so", (pathname) => {
+    const container = renderLoading(pathname);
+
+    for (const piece of [".platform-grid", ".platform-sidebar", ".platform-topbar", ".platform-content", ".platform-mobile-nav"]) {
+      expect(container.querySelector(piece), piece).toBeInTheDocument();
+    }
+    // Um role="status" so, com a frase de antes, e nada mais escrito na tela:
+    // nem nome da pessoa nem rotulo do menu.
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+    expect(screen.getByRole("status")).toHaveTextContent("authFlow.loading.title");
+    expect(container.textContent).toBe("authFlow.loading.title");
+    // Nada que o teclado alcance.
+    expect(container.querySelectorAll("a, button, input, select, textarea, [tabindex]")).toHaveLength(0);
+    expect(screen.queryAllByRole("link")).toHaveLength(0);
+    expect(screen.queryAllByRole("button")).toHaveLength(0);
+    // As formas sao decorativas: fora da arvore do leitor de tela.
+    for (const piece of [".platform-sidebar", ".platform-topbar", ".platform-mobile-nav"]) {
+      expect(container.querySelector(piece)).toHaveAttribute("aria-hidden", "true");
+    }
+    for (const block of screen.getByRole("status").children) {
+      if (!block.classList.contains("sr-only")) expect(block).toHaveAttribute("aria-hidden", "true");
+    }
+    expect(screen.getAllByRole("main")).toHaveLength(1);
+    expect(screen.queryByText("conteudo protegido")).toBeNull();
+  });
+
+  // Na duvida, o anel: a sala de aula e a area de membros tem outra casca, a
+  // previa do curso tambem, o certificado nao tem casca, e rota fora da lista
+  // (checkout, cadastro) nao e adivinhada.
+  it.each([
+    "/learn/courses/intro",
+    "/learn/areas/maria/ana",
+    "/teach/builder/c-1/preview",
+    "/learn/credentials/cert-1",
+    "/checkout/course-1",
+    "/onboarding",
+    "/teaching",
+    "",
+  ])("%s mantem o anel de sempre", (pathname) => {
+    const container = renderLoading(pathname);
+
+    expect(container.querySelector(".platform-grid")).toBeNull();
+    expect(screen.getByRole("status")).toContainElement(
+      screen.getByRole("heading", { level: 1, name: "authFlow.loading.title" }),
+    );
+  });
+
+  it("le a barra recolhida como a casca le (o cookie da escolha)", () => {
+    document.cookie = "skillset_sidebar=collapsed; path=/";
+    const container = renderLoading("/teach/sales");
+
+    expect(container.querySelector(".platform-grid")).toHaveClass("platform-grid--collapsed");
+    expect(container.querySelector(".platform-grid")).not.toHaveClass("platform-grid--auto");
+    expect(container.querySelector(".platform-sidebar")).toHaveClass("sidebar-collapsed");
+  });
+
+  it("sem escolha salva, a largura do 1o quadro fica com o CSS", () => {
+    const container = renderLoading("/teach/sales");
+
+    expect(container.querySelector(".platform-grid")).toHaveClass("platform-grid--auto");
+    expect(container.querySelector(".platform-grid")).not.toHaveClass("platform-grid--collapsed");
+  });
+});
+
 // F-03, estagio 0: so o que a espera desenha mudou. Os muros (sem conta, codigo
 // pendente, sem permissao) foram gravados ANTES da mudanca e tem de sair iguais,
 // letra por letra, numa rota da casca e numa da sala de aula.

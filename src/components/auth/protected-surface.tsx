@@ -7,9 +7,11 @@ import type { ReactNode } from "react";
 import { AuthFrame } from "@/components/auth/auth-frame";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { PlatformShellSkeleton } from "@/components/shared/page-skeletons";
 import { SkillsetSpinner } from "@/components/shared/skillset-spinner";
 import { getAuthRoute } from "@/lib/auth/routing";
 import { hasAnyPermission, type Permission } from "@/lib/permissions";
+import { useSidebarState } from "@/lib/ui/sidebar-state";
 
 type ProtectedSurfaceProps = {
   permissions: readonly Permission[];
@@ -24,9 +26,16 @@ export function ProtectedSurface({ permissions, contactWhenSignedOut = false, ch
   const pathname = usePathname() ?? "";
 
   if (status === "loading") {
-    // A mesma frase de /loading e /welcome: logo depois de entrar, esta tela
-    // vem colada nelas e tem de parecer a mesma espera.
-    return <SkillsetSpinner title={t("authFlow.loading.title")} />;
+    // Esta espera só aparece na carga inteira da página (atualizar, aba nova,
+    // link de e-mail) e é o que o servidor manda: vindo de /loading ou de
+    // /welcome a sessão já resolveu antes da troca de rota (o AuthProvider
+    // mora no layout raiz e sobrevive a ela), e a página abre direto. Por
+    // isso, nas telas da plataforma, a espera tem a forma da casca que vem, e
+    // não o anel: a página é a melhor ponte para a página. No resto, o anel.
+    // A frase é a mesma de sempre, para o leitor de tela.
+    const label = t("authFlow.loading.title");
+    const shell = shellWaitFor(pathname);
+    return shell ? <ShellWait label={label} framed={shell.framed} /> : <SkillsetSpinner title={label} />;
   }
 
   if (status === "mfa_required" || !user) {
@@ -98,6 +107,37 @@ export function ProtectedSurface({ permissions, contactWhenSignedOut = false, ch
   }
 
   return children;
+}
+
+// Que espera mostrar, só pelo endereço (nunca por dado da pessoa). As áreas que
+// abrem dentro da PlatformShell ganham a forma dela; rota fora da lista, o anel.
+const SHELL_AREAS = ["/teach", "/learn", "/account", "/ops", "/support"];
+// Dentro dessas áreas, as telas com outra casca: a sala de aula e a área de
+// membros (MemberAreaShell), a prévia do curso no construtor (MemberAreaShell)
+// e o certificado para imprimir (sem casca).
+const OTHER_SHELLS = ["/learn/courses/", "/learn/areas/", "/learn/credentials/", "/teach/builder/"];
+// As telas de pagar plano ficam na largura toda, como na PlatformShell.
+const UNFRAMED_ACCOUNT = ["/account/billing/upgrade", "/account/billing/return", "/account/plans"];
+
+function shellWaitFor(pathname: string) {
+  const under = (prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`);
+  if (!SHELL_AREAS.some(under) || OTHER_SHELLS.some((prefix) => pathname.startsWith(prefix))) {
+    return null;
+  }
+  // A mesma coluna de 1280px da PlatformShell (`framed` em platform-shell.tsx),
+  // conferida rota a rota contra ela em espera-com-a-forma-da-casca.test.tsx.
+  const framed = (under("/teach") && !under("/teach/builder"))
+    || under("/learn")
+    || (under("/account") && !UNFRAMED_ACCOUNT.some((prefix) => pathname.startsWith(prefix)));
+  return { framed };
+}
+
+// A barra recolhida é lida como a PlatformShell lê: o cookie que o layout leu
+// no servidor vale no HTML e na hidratação (sem window na renderização), então
+// a largura da coluna não muda quando a casca de verdade entra.
+function ShellWait({ label, framed }: { label: string; framed: boolean }) {
+  const { isCollapsed, isAuto } = useSidebarState();
+  return <PlatformShellSkeleton label={label} collapsed={isCollapsed} auto={isAuto} framed={framed} />;
 }
 
 function AccessPanel({
