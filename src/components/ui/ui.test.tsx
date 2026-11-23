@@ -63,7 +63,11 @@ describe("Button", () => {
     expect(button).toBeDisabled();
     expect(button).toHaveAttribute("aria-busy", "true");
     expect(screen.queryByTestId("icone")).toBeNull();
-    expect(button.querySelector(".animate-spin")).not.toBeNull();
+    // O anel gira so sem "reduzir movimento"; com ele ligado, fica parado e a
+    // vista (nao some).
+    const ring = button.querySelector("svg")!;
+    expect(ring).toHaveClass("motion-safe:animate-spin");
+    expect(ring).not.toHaveClass("animate-spin");
   });
 
   it("expõe a mesma roupa em texto, para Link vestido de botão", () => {

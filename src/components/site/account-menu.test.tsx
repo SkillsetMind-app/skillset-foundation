@@ -162,6 +162,39 @@ describe("workspace switcher in the account menu", () => {
     expect(screen.getByRole("link", { name: /student area/i })).toBeInTheDocument();
   });
 
+  // Na plataforma o botao do topo ja troca de lado: o menu nao repete o mesmo
+  // destino, mas guarda o que o topo nao tem (Operacoes, "View as").
+  it("does not repeat the destination of the top-bar switch", () => {
+    mocks.pathname = "/teach";
+    render(
+      <AccountMenu
+        user={{ uid: "u-1", email: "person@example.com", displayName: "Test Person", roles: ["admin", "teacher"] } as never}
+        onSignOut={async () => {}}
+        topBarSwitchHref="/learn"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button"));
+
+    expect(screen.queryByRole("link", { name: /student area/i })).toBeNull();
+    expect(screen.getByRole("link", { name: /operations area/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /view as/i })).toBeInTheDocument();
+  });
+
+  it("a teacher inside the platform loses the whole 'Switch area' block, which held only the duplicate", () => {
+    mocks.pathname = "/teach";
+    render(
+      <AccountMenu
+        user={{ uid: "u-1", email: "person@example.com", displayName: "Test Person", roles: ["teacher"] } as never}
+        onSignOut={async () => {}}
+        topBarSwitchHref="/learn"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button"));
+
+    expect(screen.queryByText("Switch area")).toBeNull();
+    expect(screen.queryByRole("link", { name: /student area/i })).toBeNull();
+  });
+
   // O admin procurava "ver como" no menu do avatar (reanalise Ops 5). E um
   // atalho para a fila de acessos, onde o "ver como" de verdade mora.
   it("gives an admin a 'View as' shortcut to the access queue, and nobody else", () => {

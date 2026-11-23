@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
@@ -84,6 +84,22 @@ describe("botao de troca de lado no topo", () => {
     expect(screen.getByRole("link", { name: label })).toHaveAttribute("href", href);
     // "Área del alumno" e "Área del profesor" cortavam os dois em "ÁREA D…".
     expect(container.querySelector(".platform-topbar__side")).toHaveTextContent(new RegExp(`^${side}$`));
+  });
+
+  // O menu da conta listava "Switch area -> Student area", o mesmo destino do
+  // botao ao lado. Na plataforma o topo fica com a troca; o site publico, que
+  // nao tem o botao, segue com ela no menu (account-menu.test).
+  it.each([
+    ["/teach", "Student area"],
+    ["/learn", "Teacher area"],
+  ])("em %s o menu da conta nao repete o destino do botao do topo (%s)", (pathname, duplicate) => {
+    mocks.pathname = pathname;
+    render(<PlatformHeader />);
+    fireEvent.click(screen.getByRole("button", { name: "Open account menu" }));
+
+    expect(document.getElementById("account-menu-panel")).not.toBeNull();
+    expect(screen.queryByRole("link", { name: duplicate })).toBeNull();
+    expect(screen.queryByText("Switch area")).toBeNull();
   });
 
   it("quem so estuda nao ve botao de troca, mas ve em que lado esta", () => {

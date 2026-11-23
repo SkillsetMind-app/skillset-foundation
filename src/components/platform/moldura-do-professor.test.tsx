@@ -68,8 +68,42 @@ describe("moldura das telas do professor", () => {
     expect(frame()).not.toHaveClass("mx-auto");
   });
 
-  it("fora do estudio (sala do aluno, conta) a largura nao muda", () => {
-    mocks.pathname = "/learn/events";
+  // A conta (Ganhos abre pela barra do professor) e as listas do aluno ganham
+  // a mesma coluna: eram as telas que ainda iam de ponta a ponta.
+  it.each([
+    "/account",
+    "/account/payments",
+    "/account/billing",
+    "/account/notifications",
+    "/learn",
+    "/learn/events",
+    "/learn/messages",
+    "/learn/wishlist",
+    "/learn/credentials",
+    "/learn/community",
+  ])("%s ganha a coluna de 1280px, so a partir de 1440px", (pathname) => {
+    mocks.pathname = pathname;
+    render(
+      <I18nProvider initialLocale="en">
+        <PlatformShell title="Events">Rows</PlatformShell>
+      </I18nProvider>,
+    );
+
+    expect(frame()).toHaveClass("mx-auto", "w-full", "min-[1440px]:max-w-7xl");
+    expect(frame().parentElement).toHaveClass("platform-content");
+  });
+
+  // A sala de aula usa a largura toda por desenho; as telas de pagar o plano
+  // ficam como estavam.
+  it.each([
+    "/learn/courses/curso-1",
+    "/learn/courses/curso-1/community",
+    "/account/billing/upgrade",
+    "/account/billing/return",
+    "/account/plans",
+    "/ops",
+  ])("%s segue com a largura de antes", (pathname) => {
+    mocks.pathname = pathname;
     render(
       <I18nProvider initialLocale="en">
         <PlatformShell title="Events">Rows</PlatformShell>

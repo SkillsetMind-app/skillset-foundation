@@ -10110,9 +10110,11 @@ button:hover > .dash-card,
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  /* 1. Troca de etapa: o painel novo sobe 8px e acende; a saída é seca. */
+  /* 1. Troca de etapa: o painel novo sobe 8px e acende; a saída é seca. A
+     gaveta do celular e o Advisor no celular entram igual, no tempo da casa
+     (eram 200ms soltos). */
   .motion-panel-in {
-    animation: motion-panel-in 200ms var(--ease-standard) backwards;
+    animation: motion-panel-in var(--duration-base) var(--ease-standard) backwards;
   }
 
   /* 2. Escolher uma opção: o selo latão cresce de 0,6 para 1 (formato na tela
