@@ -81,6 +81,8 @@ export function BillingTabs() {
   // "Try again" das compras (resumo e lista vêm desta leitura): assina de novo.
   // A limpeza do efeito desfaz a assinatura anterior antes da nova.
   const [ordersReadAttempt, setOrdersReadAttempt] = useState(0);
+  // "Try again" do perfil (o cartão do portal no Overview): assina de novo.
+  const [profileReadAttempt, setProfileReadAttempt] = useState(0);
   // Fica na tela nos dois desfechos e recebe o foco do "Try again".
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -134,7 +136,13 @@ export function BillingTabs() {
         setProfileStatus("error");
       },
     );
-  }, [user]);
+  }, [user, profileReadAttempt]);
+
+  // Volta ao esqueleto do Overview até a leitura nova responder.
+  function retryProfileRead() {
+    setProfileStatus("loading");
+    setProfileReadAttempt((attempt) => attempt + 1);
+  }
 
   const sortedOrders = useMemo(
     () =>
@@ -190,6 +198,7 @@ export function BillingTabs() {
             userId={user?.uid ?? null}
             profile={profile}
             profileStatus={profileStatus}
+            onRetryProfile={retryProfileRead}
             isLoading={isLoading}
             error={error}
             onRetry={retryOrdersRead}
@@ -251,6 +260,7 @@ function OverviewTab({
   userId,
   profile,
   profileStatus,
+  onRetryProfile,
   isLoading,
   error,
   onRetry,
@@ -264,6 +274,7 @@ function OverviewTab({
   userId: string | null;
   profile: UserProfile | null;
   profileStatus: "loading" | "ready" | "error";
+  onRetryProfile: () => void;
   showPlan: boolean;
   onSeePurchases: () => void;
   onSeePlans: () => void;
@@ -413,9 +424,14 @@ function OverviewTab({
           <PortalButton label={t(showPlan
             ? subscription ? "accountPlans.manage" : "accountBilling.billingHistory"
             : "accountBilling.openPortal")} />
+        ) : profileFailed ? (
+          // O perfil não veio: a frase mandava atualizar a página; agora o botão lê de novo.
+          <LoadErrorAlert className="mt-3" onRetry={onRetryProfile} focusRef={retryFocusRef}>
+            {t("accountBilling.detailsLoadError")}
+          </LoadErrorAlert>
         ) : (
           <p className="mt-3 rounded-md border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
-            {t(profileFailed ? "accountBilling.detailsError" : "accountBilling.portalAfterPurchase")}
+            {t("accountBilling.portalAfterPurchase")}
           </p>
         )}
         <p className="mt-4 text-xs leading-6 text-[var(--color-ink-soft)]">

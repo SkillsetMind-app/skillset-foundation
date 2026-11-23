@@ -5007,6 +5007,7 @@
     "portalBody": "Manage your SkillsetMind billing in Stripe. Available invoices and saved payment methods remain accessible without an active subscription. Course receipts are listed under Purchases.",
     "openPortal": "Open Stripe portal",
     "detailsError": "We couldn't load your billing details right now. Refresh to try again.",
+    "detailsLoadError": "We couldn't load your billing details right now.",
     "portalAfterPurchase": "No Stripe billing account is linked here. Check Purchases for available course receipts.",
     "processedBy": "All payments are processed by",
     "cardDetails": "Card details are never stored on SkillsetMind. Course purchases are charged by the educator’s own Stripe account — your SkillsetMind subscription is the only thing charged by us.",
