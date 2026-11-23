@@ -232,18 +232,26 @@ export function CreatorCourseDetail({
   const viewerUid = user?.uid ?? null;
   const enrollmentCourseId = course?.id ?? null;
   const [viewerEnrollmentKey, setViewerEnrollmentKey] = useState<string | null>(null);
+  // A chave da leitura que já respondeu (com matrícula, sem, ou com falha). A
+  // página de compra também lê: quem volta do cadastro ou do "Sign in" pode já
+  // ter o curso, e ali via o botão de pagar em vez de "Continue learning".
+  const [enrollmentAnsweredKey, setEnrollmentAnsweredKey] = useState<string | null>(null);
   useEffect(() => {
-    if (checkoutOnly || !hasBackendConfig || !viewerUid || !enrollmentCourseId) {
+    if (!hasBackendConfig || !viewerUid || !enrollmentCourseId) {
       return;
     }
     const key = `${viewerUid}__${enrollmentCourseId}`;
     return subscribeToEnrollment(
       viewerUid,
       enrollmentCourseId,
-      (enrollment) => setViewerEnrollmentKey(enrollment && canOpenEnrollment(enrollment.status) ? key : null),
-      () => undefined,
+      (enrollment) => {
+        setViewerEnrollmentKey(enrollment && canOpenEnrollment(enrollment.status) ? key : null);
+        setEnrollmentAnsweredKey(key);
+      },
+      // Falhou: fica como era (o botão de pagar; o servidor recusa quem já tem).
+      () => setEnrollmentAnsweredKey(key),
     );
-  }, [checkoutOnly, hasBackendConfig, viewerUid, enrollmentCourseId]);
+  }, [hasBackendConfig, viewerUid, enrollmentCourseId]);
   const [offerLoadError, setOfferLoadError] = useState("");
   const [offerState, setOfferState] = useState<{
     courseId: string | null;
@@ -465,8 +473,14 @@ export function CreatorCourseDetail({
           subscriptionInterval ? ` / ${t(`publicCourses.${subscriptionInterval}`)}` : ""
         }`
       : t("publicCourses.pricingPending");
+  // Página de compra, com sessão: até a matrícula responder, o botão fica na
+  // espera do cartão (a mesma do preço a caminho), e não oferece pagar a quem
+  // talvez já tenha o curso. A página de venda segue como era.
+  const accessPending =
+    checkoutOnly && user != null && enrollmentAnsweredKey !== `${user.uid}__${course.id}`;
   const canCheckout =
     pricingReady
+    && !accessPending
     && checkoutEnabled
     && authStatus === "authenticated"
     && Boolean(user)
@@ -476,6 +490,7 @@ export function CreatorCourseDetail({
     pricingReady && Boolean(resolvedPrice) && (resolvedPrice?.amountMinor ?? 0) > 0;
   const canEnrollFree =
     pricingReady
+    && !accessPending
     && authStatus === "authenticated"
     && Boolean(user)
     && courseIsFree;
@@ -583,8 +598,8 @@ export function CreatorCourseDetail({
   if (requestedOfferCode) returnParams.set("offer", requestedOfferCode);
   if (requestedPriceId) returnParams.set("priceId", requestedPriceId);
   const returnQuery = returnParams.size ? `?${returnParams}` : "";
-  // Entrar (e a compra sem login) volta para ESTA pagina: quem ja tem o curso
-  // so ve "Continue learning" aqui, porque o checkout nao le a matricula.
+  // Entrar (e a compra sem login) volta para ESTA pagina. Quem ja tem o curso
+  // ve "Continue learning" nas duas: as duas leem a matricula.
   const returnTo = `${coursePath}${returnQuery}`;
   // Criar conta volta ao CHECKOUT, com a mesma oferta: conta nova nunca tem o
   // curso, e depois do e-mail e da entrevista o cartao de pagar (ou de entrar
@@ -602,7 +617,9 @@ export function CreatorCourseDetail({
   // fora de venda nos segundos antes do preço chegar.
   const cardActionLabel = authStatus !== "authenticated"
     ? enrollLabel
-    : canEnrollFree
+    : accessPending
+      ? t("publicCourses.enroll")
+      : canEnrollFree
       ? isEnrollingFree ? t("publicCourses.addingCourse") : t("publicCourses.enrollFree")
       : isCheckingOut
         ? t("publicCourses.openingCheckout")
@@ -1224,7 +1241,7 @@ export function CreatorCourseDetail({
                 data-cta-focus
                 onClick={handleCheckout}
                 disabled={!canCheckout || isCheckingOut}
-                aria-busy={(checkoutEnabled && pricePending) || undefined}
+                aria-busy={accessPending || (checkoutEnabled && pricePending) || undefined}
                 className="button-solid mt-6 min-h-12 w-full px-5 py-3 text-base font-semibold"
               >
                 {cardActionLabel}

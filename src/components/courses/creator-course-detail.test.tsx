@@ -1746,9 +1746,9 @@ describe("CreatorCourseDetail: o visitante que cria conta volta ao checkout", ()
     expect(returnOf(screen.getByRole("link", { name: "Sign in" }))).toBe("/courses/course-1");
   });
 
-  // Por que entrar NAO vai ao checkout: quem ja tem o curso e entra pelo
-  // cartao so ve "Continue learning" na pagina de venda. O checkout nao le a
-  // matricula, e la a pessoa veria o botao de pagar de novo.
+  // Entrar volta a esta pagina, e quem ja tem o curso ve "Continue learning".
+  // O checkout agora tambem le a matricula: quem cai nele (pelo cadastro ou
+  // pelo "Sign in" da tela de cadastro) ve o mesmo, e nao o botao de pagar.
   it("quem ja tem o curso e entra pelo cartao volta onde ve 'Continue learning'", async () => {
     const view = render(<CreatorCourseDetail courseIdOverride="course-1" />);
     const signin = await screen.findByRole("link", { name: "Sign in" });
@@ -1764,9 +1764,9 @@ describe("CreatorCourseDetail: o visitante que cria conta volta ao checkout", ()
       vi.mocked(subscribeToEnrollment).mockClear();
 
       render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
-      expect(await screen.findByRole("button", { name: "Enroll — $149.00" })).toBeInTheDocument();
-      expect(screen.queryByRole("link", { name: "Continue learning" })).not.toBeInTheDocument();
-      expect(subscribeToEnrollment).not.toHaveBeenCalled();
+      expect(await screen.findByRole("link", { name: "Continue learning" })).toHaveAttribute("href", "/learn/courses/course-1");
+      expect(screen.queryByRole("button", { name: /^Enroll/ })).not.toBeInTheDocument();
+      expect(subscribeToEnrollment).toHaveBeenCalledTimes(1);
     } finally {
       enrollmentState.current = null;
     }
@@ -1833,5 +1833,84 @@ describe("CreatorCourseDetail: o visitante que cria conta volta ao checkout", ()
     expect(field).not.toHaveClass("bg-white");
     fireEvent.change(field, { target: { value: "save 25!" } });
     expect(field).toHaveValue("SAVE25");
+  });
+});
+
+// A página de compra lê a matrícula, como a página de venda: quem já tem o
+// curso vê "Continue learning". Até a leitura responder, o botão espera; se
+// ela falhar, fica o botão de pagar de antes (o servidor recusa quem já tem).
+describe("CreatorCourseDetail: a página de compra reconhece quem já tem o curso", () => {
+  const signIn = () => { fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "student-1" }; };
+  afterEach(() => {
+    enrollmentState.current = null;
+    enrollmentState.deliverLater = false;
+  });
+
+  it("quem já tem: 'Continue learning' para a sala, sem botão de pagar, uma leitura só", async () => {
+    signIn();
+    enrollmentState.current = { status: "active" };
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
+
+    expect(await screen.findByRole("link", { name: "Continue learning" })).toHaveAttribute("href", "/learn/courses/course-1");
+    expect(screen.queryByRole("button", { name: /^Enroll/ })).not.toBeInTheDocument();
+    expect(startCourseCheckout).not.toHaveBeenCalled();
+    expect(subscribeToEnrollment).toHaveBeenCalledTimes(1);
+    expect(subscribeToEnrollment).toHaveBeenCalledWith("student-1", "course-1", expect.any(Function), expect.any(Function));
+  });
+
+  it("quem não tem: com o preço na tela o botão espera a leitura, e só depois oferece pagar", async () => {
+    signIn();
+    enrollmentState.deliverLater = true;
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
+
+    await screen.findByText("$149.00");
+    const waiting = screen.getByRole("button", { name: "Enroll" });
+    expect(waiting).toBeDisabled();
+    expect(waiting).toHaveAttribute("aria-busy", "true");
+    fireEvent.click(waiting);
+    expect(startCourseCheckout).not.toHaveBeenCalled();
+
+    act(() => enrollmentState.onNext?.(null));
+    const pay = await screen.findByRole("button", { name: "Enroll — $149.00" });
+    expect(pay).toBeEnabled();
+    expect(pay).not.toHaveAttribute("aria-busy");
+    expect(screen.queryByRole("link", { name: "Continue learning" })).not.toBeInTheDocument();
+  });
+
+  it("curso grátis: o botão de entrar grátis também espera a leitura", async () => {
+    Object.assign(fixtures.course, { paymentType: "free", priceAmountMinor: 0 });
+    signIn();
+    enrollmentState.deliverLater = true;
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
+
+    const waiting = await screen.findByRole("button", { name: "Enroll" });
+    expect(waiting).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Enroll free" })).not.toBeInTheDocument();
+
+    act(() => enrollmentState.onNext?.(null));
+    expect(await screen.findByRole("button", { name: "Enroll free" })).toBeEnabled();
+  });
+
+  it("sem sessão: nada muda, e a matrícula não é lida", async () => {
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
+
+    expect(await screen.findByRole("link", { name: "Enroll — $149.00" }))
+      .toHaveAttribute("href", "/auth?mode=signup&returnTo=%2Fcourses%2Fcourse-1%2Fcheckout");
+    expect(subscribeToEnrollment).not.toHaveBeenCalled();
+  });
+
+  it("a leitura falhou: fica o botão de pagar, como antes", async () => {
+    signIn();
+    vi.mocked(subscribeToEnrollment).mockImplementationOnce((_uid, _courseId, _onNext, onError) => {
+      onError(new Error("offline"));
+      return Object.assign(() => {}, { reload: async () => {} });
+    });
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
+
+    const pay = await screen.findByRole("button", { name: "Enroll — $149.00" });
+    expect(pay).toBeEnabled();
+    expect(screen.queryByRole("link", { name: "Continue learning" })).not.toBeInTheDocument();
+    fireEvent.click(pay);
+    expect(startCourseCheckout).toHaveBeenCalledWith("course-1", {});
   });
 });
