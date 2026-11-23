@@ -311,12 +311,12 @@ describe("comentarios da aula sob o player", () => {
   it("mostra so os posts desta aula, com contagem, autor, hora, respostas e o link para a gaveta", () => {
     renderClassroom("lesson=l1");
 
-    // Enquanto o feed nao chega: titulo sem numero e "carregando" — dito ao
-    // leitor de tela num aviso so; na tela, uma linha de espera no formato do
-    // comentario, nao o texto.
+    // Enquanto o feed nao chega: titulo sem numero e, na tela, uma linha de
+    // espera no formato do comentario, nao o texto. O "carregando" e um so, o
+    // do painel da aula (F-02): o aviso daqui fica mudo ate o "posted".
     const loading = screen.getByRole("region", { name: "Lesson comments" });
-    expect(within(loading).getByRole("status")).toHaveTextContent("Loading lesson comments...");
-    expect(within(loading).getByText("Loading lesson comments...")).toHaveClass("sr-only");
+    expect(within(loading).getByRole("status")).toBeEmptyDOMElement();
+    expect(within(loading).queryByText(/Loading/)).toBeNull();
     expect(subscribeToCommunityPosts).toHaveBeenCalledExactlyOnceWith(
       "course-1", expect.any(Function), expect.any(Function),
     );

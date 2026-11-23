@@ -30,7 +30,7 @@ export function ManagedCoursePanel() {
   const [busyCourseId, setBusyCourseId] = useState<string | null>(null);
   // Qual botão foi apertado: só ele gira; os outros do cartão só travam (I-08).
   const [busyAction, setBusyAction] = useState<string | null>(null);
-  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState<TeacherCourse | null>(null);
   const [confirmingUnpublish, setConfirmingUnpublish] = useState<TeacherCourse | null>(null);
 
   useEffect(() => {
@@ -66,7 +66,6 @@ export function ManagedCoursePanel() {
     } finally {
       setBusyCourseId(null);
       setBusyAction(null);
-      setConfirmingDeleteId(null);
     }
   }
 
@@ -121,6 +120,18 @@ export function ManagedCoursePanel() {
           confirmLabel={t(`${copy}.unpublish`)}
           onConfirm={() => handleUnpublish(confirmingUnpublish.id)}
           onClose={() => setConfirmingUnpublish(null)}
+        />
+      ) : null}
+      {/* Apagar pergunta na mesma janela do Unpublish (I-04): o par "Confirm
+          delete / Cancel" nascia no lugar do botão, e o segundo toque de um
+          duplo clique podia cair no "Confirm delete". */}
+      {confirmingDelete ? (
+        <ConfirmActionDialog
+          title={t(`${copy}.deleteTitle`).replace("{title}", () => confirmingDelete.title)}
+          body={t(`${copy}.deleteBody`)}
+          confirmLabel={t(`${copy}.delete`)}
+          onConfirm={() => handleDelete(confirmingDelete.id)}
+          onClose={() => setConfirmingDelete(null)}
         />
       ) : null}
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -211,35 +222,16 @@ export function ManagedCoursePanel() {
                     {t(`${copy}.republish`)}
                   </Button>
                 ) : null}
-                {confirmingDeleteId === course.id ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(course.id)}
-                      disabled={busyCourseId === course.id}
-                      className="button-danger min-h-11 px-3.5 py-2 text-xs"
-                    >
-                      {t(`${copy}.${busyCourseId === course.id ? "deleting" : "confirmDelete"}`)}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirmingDeleteId(null)}
-                      disabled={busyCourseId === course.id}
-                      className="button-outline min-h-11 px-3.5 py-2 text-xs"
-                    >
-                      {t(`${copy}.cancel`)}
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setConfirmingDeleteId(course.id)}
-                    disabled={busyCourseId === course.id}
-                    className="button-danger min-h-11 px-3.5 py-2 text-xs"
-                  >
-                    {t(`${copy}.delete`)}
-                  </button>
-                )}
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => setConfirmingDelete(course)}
+                  disabled={busyCourseId === course.id}
+                  loading={busyCourseId === course.id && busyAction === "delete"}
+                  className="min-h-11 px-3.5 py-2"
+                >
+                  {t(`${copy}.delete`)}
+                </Button>
               </div>
             </article>
           ))

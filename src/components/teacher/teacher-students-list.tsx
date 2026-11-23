@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { ExportTableButton } from "@/components/shared/export-table-button";
 import { StatusChip } from "@/components/shared/status-chip";
 import { TableSkeleton } from "@/components/teacher/builder-skeleton";
 import { Button, EmptyState, InlineAlert } from "@/components/ui";
@@ -85,8 +86,8 @@ export function TeacherStudentsList() {
   }, [uid, attempt]);
 
   if (state.status === "loading") {
-    // Busca + filtro de acesso: a mesma fileira que vem depois.
-    return <TableSkeleton label={t("teach.studentsPage.loading")} controls={2} />;
+    // Busca + filtro de acesso + Export: a mesma fileira que vem depois.
+    return <TableSkeleton label={t("teach.studentsPage.loading")} controls={3} />;
   }
 
   if (state.status === "error") {
@@ -133,6 +134,16 @@ export function TeacherStudentsList() {
   );
   const visible = matches.slice(0, visibleCount);
   const hiddenCount = matches.length - visible.length;
+  // T-18: o Export leva o recorte inteiro da busca e do filtro, nao so as 50
+  // linhas abertas, com as colunas da lista por produto (mais o produto).
+  const exportRows = matches.map((student) => ({
+    name: student.displayName,
+    email: student.email,
+    product: student.courseTitle,
+    access: student.status,
+    progressPercent: student.progressPercent,
+    enrolledAt: student.enrolledAt,
+  }));
 
   return (
     <section className="rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
@@ -174,6 +185,7 @@ export function TeacherStudentsList() {
             </option>
           ))}
         </select>
+        <ExportTableButton rows={exportRows} filename="students" />
       </div>
       {visible.length === 0 ? (
         <p role="status" className="mt-4 text-sm leading-6 text-[var(--color-ink-soft)]">

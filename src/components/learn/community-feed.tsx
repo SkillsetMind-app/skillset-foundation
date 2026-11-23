@@ -978,7 +978,7 @@ function FeedCard({
           aria-pressed={liked}
           aria-label={t("learn.community.card.clap").replace("{count}", () => String(likes.count))}
           aria-describedby={isOwn ? clapReasonId : undefined}
-          className={`inline-flex min-h-11 items-center gap-1.5 rounded-md px-3 ${liked ? "bg-[var(--color-surface-soft)] text-[var(--color-ink)]" : "hover:bg-[var(--color-surface-soft)]"} disabled:opacity-70`}
+          className={`inline-flex min-h-11 items-center gap-1.5 rounded-md px-3 ${liked ? "bg-[var(--color-surface-soft)] text-[var(--color-ink)]" : "hover:bg-[var(--color-surface-soft)]"} disabled:opacity-60`}
         >
           {/* Ícone, não emoji (o contrato de design proíbe emoji na interface). */}
           <ThumbsUp size={14} aria-hidden />

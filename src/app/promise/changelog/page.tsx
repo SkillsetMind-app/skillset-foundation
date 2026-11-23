@@ -45,8 +45,9 @@ export default async function PromiseChangelogPage() {
             // Uma linha por mudança, separadas por um filete: era um cartão
             // com borda dentro do cartão da página.
             <div key={entry.title} className="mt-8 border-t border-[var(--color-line)] pt-6">
+              {/* S-25: a data por extenso, como no cabeçalho, e não a ISO crua. */}
               <p className="text-sm font-bold text-[var(--color-ink)]">
-                {entry.date} — {t(`${copy}.${entry.title}`)}
+                {effectiveAt} — {t(`${copy}.${entry.title}`)}
               </p>
               <div className="mt-4 grid gap-2 text-sm leading-7 text-[var(--color-ink-soft)]">
                 {entry.lines.map((line) => (
