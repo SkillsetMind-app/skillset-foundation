@@ -2207,15 +2207,19 @@ html[data-view-as] .site-header {
 }
 
 .account-menu-context-chip {
+  /* Etiqueta do papel na conta: era rosa do vermelho antigo com texto dourado,
+     a 9px. Agora a etiqueta neutra da casa (a das tabelas do /ops): fundo
+     suave, texto em tinta, 11px, raio de etiqueta. Os tokens trocam no tema
+     escuro, então o contraste passa de 4.5:1 nos dois temas sem regra extra. */
   display: inline-flex;
   margin-top: 0.45rem;
-  border: 1px solid rgba(178, 34, 52, 0.2);
-  border-radius: 999px;
-  background: rgba(178, 34, 52, 0.06);
-  padding: 0.2rem 0.45rem;
-  color: var(--color-accent-fg);
-  font-size: 0.5625rem;
-  font-weight: 900;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-chip);
+  background: var(--color-surface-soft);
+  padding: 0.25rem 0.5rem;
+  color: var(--color-ink);
+  font-size: 0.6875rem;
+  font-weight: 700;
   letter-spacing: 0.14em;
   line-height: 1;
   text-transform: uppercase;
@@ -2387,9 +2391,9 @@ html[data-view-as] .site-header {
    trigger pill (translucent white) is inverted to a translucent light tint so
    its light-ink name/role stop sitting on near-white. Light mode untouched.
    (The --danger selectors that used to be listed here now read the promoted
-   --color-danger-fg token instead, so there is one dark red, not two. The chip
-   and role pill stay hardcoded: they are context labels, not failures.) */
-[data-theme="dark"] .account-menu-context-chip,
+   --color-danger-fg token instead, so there is one dark red, not two. The role
+   pill stays hardcoded: it is a context label, not a failure. A etiqueta do
+   papel dentro do menu saiu daqui: usa os tokens neutros, que já trocam.) */
 [data-theme="dark"] .account-menu-trigger__role {
   color: #e06472;
 }

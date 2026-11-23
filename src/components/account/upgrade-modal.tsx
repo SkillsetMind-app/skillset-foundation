@@ -73,7 +73,7 @@ export function UpgradeModal({
       <div className="modal-panel relative z-[75] flex w-full max-w-5xl flex-col overflow-hidden bg-white shadow-[0_30px_80px_rgba(15,39,68,0.32)] sm:rounded-xl">
         <header className="flex items-center justify-between gap-3 border-b border-[var(--color-line)] px-5 py-4 sm:px-6">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
               {t("billingCheckout.secure")}
             </p>
             <h2

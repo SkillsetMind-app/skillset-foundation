@@ -299,7 +299,7 @@
       "confirmTitle": "Confirm your email to continue",
       "checkEmailTitle": "Check your email",
       "confirmWaiting": "If you open the link on this device, this page continues by itself.",
-      "confirmBody": "Open the link in that email to activate your account. Right after, you'll fill in your name and phone. It can take a minute to arrive — check spam or promotions too.",
+      "confirmBody": "Open the link in that email to activate your account. Right after, we'll ask a few quick questions to set up your account. It can take a minute to arrive — check spam or promotions too.",
       "confirmSentTo": "We sent a confirmation link to",
       "confirmSignIn": "Sign in",
       "confirmResend": "Resend the link",
@@ -1918,11 +1918,7 @@
       "welcomeNamed": "Welcome to your studio, {name}",
       "step1Body": "Create courses and programs, manage your learners, and follow sales here. Your home shows the next steps for getting started.",
       "step2Title": "Create your first product",
-      "step2Body": "Choose a product format, then add lessons, videos, and learning materials in the builder.",
-      "step3Title": "Publish and sell",
-      "step3Body": "Set your pricing, review the content and access rules, then publish. Share your sales link when the product is ready.",
-      "step4Title": "Earnings and help",
-      "step4Body": "Connect your Stripe account in Earnings to receive sales. Stripe handles verification and payout timing. Use Help in the menu when you need a hand.",
+      "step2Body": "Choose a product format, then add lessons, videos, and learning materials in the builder. Use Help in the menu when you need a hand.",
       "openStudio": "Open your studio"
     },
     "reports": {
