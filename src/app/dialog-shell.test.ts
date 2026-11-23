@@ -85,6 +85,44 @@ describe("moldura das janelas", () => {
     }
   });
 
+  it("um painel e um rodapé só: uma sombra, filete em cima e empilhar abaixo de 480px", () => {
+    const panel = css.slice(css.indexOf("  .dialog-panel {"), css.indexOf("}", css.indexOf("  .dialog-panel {")));
+    expect(panel).toContain("box-shadow: var(--shadow-strong);");
+    expect(panel).toContain("border-radius: var(--radius-xl);");
+    const footer = css.slice(css.indexOf("  .dialog-footer {"), css.indexOf("}", css.indexOf("  .dialog-footer {")));
+    expect(footer).toContain("border-top: 1px solid var(--color-line);");
+    expect(footer).toContain("justify-content: flex-end;");
+    // A principal vem por último no código; empilhado, column-reverse a põe em cima.
+    expect(css).toMatch(/@media \(width < 480px\) \{\s*\.dialog-footer \{\s*flex-direction: column-reverse;/);
+
+    for (const file of [
+      "ui/confirm-dialog.tsx",
+      "account/billing-tabs.tsx",
+      "account/totp-mfa-section.tsx",
+      "teacher/course-actions.tsx",
+      "learn/welcome-tour.tsx",
+      "teacher/teacher-welcome-tour.tsx",
+    ]) {
+      const source = readFileSync(join(process.cwd(), "src", "components", file), "utf8");
+      expect(source, file).toContain("dialog-panel modal-panel");
+      expect(source, file).toContain('"dialog-footer');
+      // As sombras próprias das janelas saíram: é a do painel.
+      expect(source, file).not.toMatch(/shadow-\[(0_24px_60px|0_30px_80px)/);
+    }
+    for (const file of ["account/upgrade-modal.tsx", "learn/course-unlock-modal.tsx", "learn/lesson-list-overlay.tsx"]) {
+      const source = readFileSync(join(process.cwd(), "src", "components", file), "utf8");
+      expect(source, file).toContain("dialog-panel");
+      expect(source, file).not.toContain("shadow-[0_30px_80px");
+    }
+  });
+
+  it("o estúdio da aula como janela entra subindo, só sem 'reduzir movimento'", () => {
+    const ranges = noPreferenceRanges();
+    const at = css.search(/\.lesson-modal:not\(\.lesson-modal--page\) \{\s*animation: motion-panel-in var\(--duration-base\) var\(--ease-standard\) backwards;/);
+    expect(at).toBeGreaterThan(-1);
+    expect(ranges.some(([start, end]) => at > start && at < end)).toBe(true);
+  });
+
   it("nenhuma janela volta a pintar o fundo preto a 55%", () => {
     const root = join(process.cwd(), "src", "components");
     const offenders = readdirSync(root, { recursive: true, withFileTypes: true })

@@ -300,7 +300,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
             role="dialog"
             aria-modal="true"
             aria-labelledby="totp-setup-title"
-            className="modal-panel modal-panel-scroll relative w-full max-w-md rounded-xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)] outline-none"
+            className="dialog-panel modal-panel modal-panel-scroll relative outline-none"
           >
             {/* O X é o mesmo Cancelar do rodapé, e some enquanto ele trava
                 (conferindo o código). */}
@@ -314,6 +314,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                 <X aria-hidden="true" size={18} />
               </button>
             )}
+            <div className="px-6 pb-4 pt-6">
             <h2
               id="totp-setup-title"
               className="display-title pr-10 text-2xl leading-tight text-[var(--color-primary)]"
@@ -397,15 +398,20 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
               ) : null}
             </div>
 
+            </div>
+
+            {/* O código no corpo e os botões no rodapé da casa (eram uma linha
+                de formulário com botões de 12px), o Cancelar antes do Ativar.
+                O erro fica acima dos botões, junto do campo. */}
             <form
-              className="mt-4 flex flex-wrap items-end gap-3"
               onSubmit={(event) => {
                 event.preventDefault();
                 void handleConfirm();
               }}
             >
+              <div className="grid gap-3 px-6 pb-6">
               <label className="grid gap-1 text-sm">
-                <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">
+                <span className="font-semibold text-[var(--color-ink)]">
                   {t("accountSecurity.mfa.code")}
                 </span>
                 <input
@@ -420,28 +426,30 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                   className="field-input max-w-32 text-center font-mono tracking-[0.3em]"
                 />
               </label>
-              <button
-                type="submit"
-                disabled={busy || code.length < 6}
-                className="button-solid px-3.5 py-2.5 text-xs"
-              >
-                {t(busy ? "accountSecurity.mfa.verifying" : "accountSecurity.mfa.enable")}
-              </button>
-              <button
-                type="button"
-                onClick={closeSetup}
-                disabled={busy}
-                className="button-outline px-3.5 py-2.5 text-xs"
-              >
-                {t("accountSecurity.mfa.cancel")}
-              </button>
+              {error ? (
+                <InlineAlert tone="error">
+                  {"key" in error ? t(error.key) : getAuthErrorMessage(error.cause, t)}
+                </InlineAlert>
+              ) : null}
+              </div>
+              <div className="dialog-footer">
+                <button
+                  type="button"
+                  onClick={closeSetup}
+                  disabled={busy}
+                  className="button-outline min-h-11 px-4 py-2.5 text-sm"
+                >
+                  {t("accountSecurity.mfa.cancel")}
+                </button>
+                <button
+                  type="submit"
+                  disabled={busy || code.length < 6}
+                  className="button-solid min-h-11 px-4 py-2.5 text-sm"
+                >
+                  {t(busy ? "accountSecurity.mfa.verifying" : "accountSecurity.mfa.enable")}
+                </button>
+              </div>
             </form>
-
-            {error ? (
-              <InlineAlert tone="error" className="mt-3">
-                {"key" in error ? t(error.key) : getAuthErrorMessage(error.cause, t)}
-              </InlineAlert>
-            ) : null}
           </div>
         </div>
       ) : null}

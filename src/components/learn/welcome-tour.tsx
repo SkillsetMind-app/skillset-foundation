@@ -116,7 +116,7 @@ function WelcomeTourDialog({ userId, firstName }: WelcomeTourProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="welcome-tour-title"
-        className="modal-panel modal-panel-scroll w-full max-w-md overflow-hidden rounded-xl border border-[var(--color-line)] bg-white shadow-[0_24px_60px_rgba(15,31,58,0.28)] outline-none"
+        className="dialog-panel modal-panel modal-panel-scroll overflow-hidden outline-none"
         onMouseDown={(event) => event.stopPropagation()}
       >
         {/* Um controle de pular só, o "Skip" do rodapé (e o Esc). O X do
@@ -170,7 +170,10 @@ function WelcomeTourDialog({ userId, firstName }: WelcomeTourProps) {
           ))}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-line)] px-6 py-4">
+        {/* O rodapé da casa (filete, respiro), mas sem empilhar no celular:
+            o Back só aparece do 2º passo, e empilhado ele mudaria a altura
+            da janela entre os passos. O Skip fica à esquerda. */}
+        <div className="dialog-footer flex-row flex-wrap items-center justify-between">
           <button
             type="button"
             onClick={dismiss}
