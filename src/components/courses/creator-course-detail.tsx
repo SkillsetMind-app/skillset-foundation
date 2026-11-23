@@ -918,11 +918,13 @@ export function CreatorCourseDetail({
             exactly. The price and the checkout handler are passed in rather
             than recomputed: re-deriving from the course row would ignore
             offers and coupons and quote the buyer a number that is not what
-            they will be charged. */}
+            they will be charged. Só vai preço de verdade: carregando ou com
+            falha, o bloco fica sem a linha do preço, em vez de imprimir
+            "Loading pricing..." / "Pricing unavailable" como se fosse um. */}
         <CourseLandingBlocks
           blocks={landing.blocks}
           template={landing.template}
-          priceLabel={priceLabel}
+          priceLabel={pricingReady ? priceLabel : undefined}
           onEnrol={handleCardAction}
           enrolDisabled={isEnrollingFree || isCheckingOut}
         />
