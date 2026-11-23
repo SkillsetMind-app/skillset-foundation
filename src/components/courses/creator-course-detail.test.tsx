@@ -1891,6 +1891,12 @@ describe("CreatorCourseDetail: o visitante que cria conta volta ao checkout", ()
     const field = screen.getByLabelText("Coupon code");
     expect(field).toHaveClass("field-input");
     expect(field).not.toHaveClass("bg-white");
+    // Rótulo da casa: o mesmo do Field, 14px e sem caixa alta.
+    const label = screen.getByText("Coupon code");
+    expect(label.closest("label")).toContainElement(field);
+    expect(label).toHaveClass("text-sm", "text-[var(--color-ink)]");
+    expect(label).not.toHaveClass("uppercase");
+    expect(label).not.toHaveClass("text-xs");
     fireEvent.change(field, { target: { value: "save 25!" } });
     expect(field).toHaveValue("SAVE25");
   });
