@@ -465,6 +465,7 @@ describe("modal de excluir/arquivar — a pagina de tras", () => {
 // o confirmar segue travado até ela chegar (sem contagem, nem apagar nem arquivar).
 describe("modal de excluir/arquivar — contagem que não carrega", () => {
   const deleteError = "We could not delete this product. Nothing was removed. Please try again or contact SkillsetMind support.";
+  const audienceError = "We could not check who bought this product. Nothing was removed.";
 
   it("ganha \"Try again\", relê a contagem uma vez só e só então libera o confirmar", async () => {
     let resolve!: (value: { enrollments: number; orders: number; subscriptions: number }) => void;
@@ -474,14 +475,16 @@ describe("modal de excluir/arquivar — contagem que não carrega", () => {
       .mockReturnValueOnce(new Promise((done) => { resolve = done; }));
     renderEn(<DeleteOrArchiveCourseDialog courseId="course-1" courseTitle="Facilitation foundations" onCancel={vi.fn()} onDone={vi.fn()} />);
     const dialog = await screen.findByRole("dialog", { name: "Delete Facilitation foundations" });
-    expect(await within(dialog).findByText(deleteError)).toBeInTheDocument();
+    // A frase da contagem, nunca a do apagar: o "Try again" não tenta apagar.
+    expect(await within(dialog).findByText(audienceError)).toBeInTheDocument();
+    expect(within(dialog).queryByText(deleteError)).toBeNull();
     expect(within(dialog).getByRole("button", { name: "Yes, delete" })).toBeDisabled();
 
     const retry = within(dialog).getByRole("button", { name: "Try again" });
     fireEvent.click(retry);
     fireEvent.click(retry);
     // Lendo: as linhas de espera e o confirmar ainda travado.
-    expect(within(dialog).queryByText(deleteError)).toBeNull();
+    expect(within(dialog).queryByText(audienceError)).toBeNull();
     expect(within(dialog).getByRole("button", { name: "Checking for buyers..." })).toBeDisabled();
 
     await act(async () => resolve({ enrollments: 0, orders: 0, subscriptions: 0 }));
@@ -496,6 +499,7 @@ describe("modal de excluir/arquivar — contagem que não carrega", () => {
     const dialog = await screen.findByRole("dialog", { name: "Delete Facilitation foundations" });
     fireEvent.click(await within(dialog).findByRole("button", { name: "Yes, delete" }));
     expect(await within(dialog).findByText(deleteError)).toBeInTheDocument();
+    expect(within(dialog).queryByText(audienceError)).toBeNull();
     expect(within(dialog).queryByRole("button", { name: "Try again" })).toBeNull();
     expect(mocks.getCourseAudience).toHaveBeenCalledTimes(1);
   });

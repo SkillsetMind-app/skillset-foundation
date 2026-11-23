@@ -2842,6 +2842,7 @@
       "signIn": "Sign in as a creator to start a product.",
       "loadError": "We could not load your products. If it keeps failing, contact SkillsetMind support.",
       "deleteError": "We could not delete this product. Nothing was removed. Please try again or contact SkillsetMind support.",
+      "audienceError": "We could not check who bought this product. Nothing was removed.",
       "removeEyebrow": "Remove product",
       "removeChecking": "Checking for buyers...",
       "actions": {

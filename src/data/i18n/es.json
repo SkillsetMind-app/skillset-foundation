@@ -2842,6 +2842,7 @@
       "signIn": "Inicia sesión como creador para empezar un producto.",
       "loadError": "No pudimos cargar tus productos. Si el problema continúa, contacta con el soporte de SkillsetMind.",
       "deleteError": "No pudimos eliminar este producto. No se borró nada. Inténtalo de nuevo o contacta con el soporte de SkillsetMind.",
+      "audienceError": "No pudimos comprobar quién compró este producto. No se borró nada.",
       "removeEyebrow": "Quitar producto",
       "removeChecking": "Buscando compradores...",
       "actions": {

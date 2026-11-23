@@ -319,7 +319,9 @@ export function DeleteOrArchiveCourseDialog({
             e só ela ganha "Try again". A falha de apagar segue como era. */}
         {failed && !known ? (
           <LoadErrorAlert className="mt-4" onRetry={retryAudience} focusRef={dialogRef}>
-            {t("creatorPanel.products.deleteError")}
+            {/* Frase própria da contagem: a do apagar ao lado do "Try again" fazia
+                pensar que o botão tentava apagar de novo. */}
+            {t("creatorPanel.products.audienceError")}
           </LoadErrorAlert>
         ) : failed ? (
           <InlineAlert tone="error" className="mt-4">
