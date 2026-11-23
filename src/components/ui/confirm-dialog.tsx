@@ -193,9 +193,12 @@ export function ConfirmDialog({
           className={danger && !acknowledge ? "button-danger-solid" : undefined}
           data-confirm-cancel={acknowledge ? "" : undefined}
           loading={pending}
+          // Os dois rótulos na mesma célula (busyLabel): o botão não cresce
+          // quando "Delete" vira "Deleting...". Sem pendingLabel, como era.
+          busyLabel={pendingLabel || undefined}
           onClick={() => void confirm()}
         >
-          {pending && pendingLabel ? pendingLabel : confirmLabel}
+          {confirmLabel}
         </Button>
       </div>
     </dialog>

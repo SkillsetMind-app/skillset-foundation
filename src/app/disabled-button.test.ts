@@ -123,4 +123,14 @@ describe("botões feitos à mão do cadastro", () => {
     expect(opacities.length).toBeGreaterThan(0);
     expect(new Set(opacities)).toEqual(new Set(["60"]));
   });
+
+  // A quarta opção quando três já foram escolhidas (entrevista) e o plano que
+  // não está disponível (cartões de plano) apagavam a 50% e 55%.
+  it("a escolha que não pode ser feita apaga nos mesmos 60%", () => {
+    for (const file of ["src/components/auth/onboarding-wizard.tsx", "src/components/shared/plan-selector-cards.tsx"]) {
+      const source = readFileSync(join(process.cwd(), file), "utf8");
+      const opacities = [...source.matchAll(/\bcursor-not-allowed opacity-(\d+)\b/g)].map((match) => match[1]);
+      expect(opacities, file).toEqual(["60"]);
+    }
+  });
 });

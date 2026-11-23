@@ -115,6 +115,24 @@ describe("ConfirmDialog", () => {
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
+  // O confirmar trocava o rótulo pelo de espera e crescia; agora os dois moram
+  // na mesma célula (busyLabel do Button) e o nome é sempre o que está à vista.
+  it("o confirmar guarda os dois rótulos: o nome é o de repouso e, ocupado, o de espera", async () => {
+    let finish!: () => void;
+    openDialog(vi.fn(() => new Promise<void>((resolve) => { finish = resolve; })));
+    vi.advanceTimersByTime(CONFIRM_GUARD_MS);
+    const confirm = screen.getByRole("button", { name: "Yes, delete" });
+    expect(confirm).toHaveTextContent("Deleting…");
+    expect(confirm).not.toHaveAttribute("aria-busy");
+
+    fireEvent.click(confirm);
+    expect(confirm).toHaveAccessibleName("Deleting…");
+    expect(confirm).toHaveAttribute("aria-busy", "true");
+    expect(confirm).toHaveTextContent("Yes, delete");
+
+    await act(async () => finish());
+  });
+
   // No celular o confirmar ocupa a largura toda logo abaixo do centro: num
   // toque duplo em "Delete account", o 2º toque cairia nele.
   it("ignora o confirmar logo depois de abrir e aceita depois da trava", () => {

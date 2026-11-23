@@ -66,7 +66,7 @@ export function PlanSelectorCards<TValue extends string>({
                   ? "border-[var(--color-primary)] bg-[var(--color-surface-soft)]"
                   : "border-[var(--color-line)] hover:border-[var(--color-line-strong)]",
                 isDisabled &&
-                  "cursor-not-allowed opacity-55 hover:translate-y-0 hover:border-[var(--color-line)] hover:shadow-none",
+                  "cursor-not-allowed opacity-60 hover:translate-y-0 hover:border-[var(--color-line)] hover:shadow-none",
               )}
             >
               <span className="flex items-start justify-between gap-3">

@@ -151,9 +151,12 @@ vi.mock("@/domain/host-routing", async (importOriginal) => {
 });
 
 // The teacher's sales blocks: one button wired to onEnrol, like their CTA block.
+// `data-price`: o preço que o bloco recebe (sem atributo quando não recebe nada).
 vi.mock("@/components/courses/course-landing-blocks", () => ({
-  CourseLandingBlocks: ({ onEnrol }: { onEnrol?: () => void }) => (
-    <button type="button" onClick={onEnrol}>Sales block CTA</button>
+  CourseLandingBlocks: ({ onEnrol, priceLabel }: { onEnrol?: () => void; priceLabel?: string }) => (
+    <div data-testid="landing-blocks" data-price={priceLabel}>
+      <button type="button" onClick={onEnrol}>Sales block CTA</button>
+    </div>
   ),
 }));
 
@@ -294,6 +297,26 @@ describe("CreatorCourseDetail: enquanto carrega", () => {
     expect(screen.queryByText("Checkout not available yet")).not.toBeInTheDocument();
     // O texto só para o leitor de tela; na tela, a barra do tamanho do preço.
     expect(within(container.querySelector<HTMLElement>("#enroll-card")!).getByText("Loading pricing...")).toHaveClass("sr-only");
+  });
+
+  // O bloco de chamada do professor imprimia "Loading pricing..." e "Pricing
+  // unavailable" em 18px negrito, como se fossem o preço.
+  it("o bloco do professor só recebe preço de verdade: nada carregando, nada com falha", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
+    const loading = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+    expect(await screen.findByTestId("landing-blocks")).not.toHaveAttribute("data-price");
+    loading.unmount();
+
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, json: async () => ({ error: "unavailable" }) })));
+    const failed = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+    await screen.findByText("Offers are temporarily unavailable.");
+    expect(screen.getByTestId("landing-blocks")).not.toHaveAttribute("data-price");
+    failed.unmount();
+
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ offers: [] }) })));
+    render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+    await screen.findAllByText("$149.00");
+    expect(screen.getByTestId("landing-blocks")).toHaveAttribute("data-price", "$149.00");
   });
 
   // Com a compra desligada o botão não diz "Enroll" para virar o aviso depois.

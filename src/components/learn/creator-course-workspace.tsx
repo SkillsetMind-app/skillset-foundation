@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
 import { ClassroomLoading } from "@/components/learn/classroom-loading";
 import { EnrolledCourseWorkspace } from "@/components/learn/enrolled-course-workspace";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import type { ClassroomTab } from "@/domain/classroom-tabs";
 import { canOpenEnrollment, type Enrollment } from "@/domain/enrollment";
 import type { TeacherCourse } from "@/domain/teacher-course";
@@ -42,6 +43,12 @@ export function CreatorCourseWorkspace({
   const cameFromCheckout = searchParams.get("checkout") === "success";
   const [checkoutGraceExpired, setCheckoutGraceExpired] = useState(false);
   const [enrollmentRecheck, setEnrollmentRecheck] = useState(0);
+  // "Try again" da leitura do curso: o mesmo contador-nas-dependências do
+  // enrollmentRecheck, para a assinatura do curso (só leitura, nada é gravado).
+  const [courseRecheck, setCourseRecheck] = useState(0);
+  // Depois de um "Try again" que deu certo, a sala recebe o foco no título:
+  // o botão some com a espera e o foco caía no <body>.
+  const [focusClassroom, setFocusClassroom] = useState(false);
   const hasBackendConfig = Boolean(getSupabaseClientConfig());
   const { user, signOut } = useAuth();
   const [enrollmentState, setEnrollmentState] = useState<{
@@ -194,7 +201,7 @@ export function CreatorCourseWorkspace({
         });
       },
     );
-  }, [courseId, enrollment]);
+  }, [courseId, courseRecheck, enrollment]);
 
   if (!courseId) {
     return (
@@ -228,7 +235,27 @@ export function CreatorCourseWorkspace({
   }
 
   if (error) {
-    return <CreatorWorkspaceState title={t("learnWave2.workspace.unavailable")} detail={t(error)} whitelabel={whitelabel} />;
+    // Só a FALHA de leitura ganha "Try again" (sem acesso, sem matrícula e
+    // curso inexistente seguem como estão). Ele zera a leitura que falhou (a
+    // espera da sala volta à tela) e refaz a mesma leitura uma vez.
+    const retryRead = () => {
+      setFocusClassroom(true);
+      if (enrollmentState.key === courseId && enrollmentState.error) {
+        setEnrollmentState({ enrollment: null, error: "", key: null, ready: false });
+        setEnrollmentRecheck((tick) => tick + 1);
+        return;
+      }
+      setCourseState({ course: null, error: "", key: null, ready: false });
+      setCourseRecheck((tick) => tick + 1);
+    };
+    return (
+      <CreatorWorkspaceState
+        title={t("learnWave2.workspace.unavailable")}
+        detail={t(error)}
+        whitelabel={whitelabel}
+        onRetry={retryRead}
+      />
+    );
   }
 
   // Sem acesso, a saída é a página pública do curso (e sair da conta, se for a conta errada).
@@ -311,6 +338,7 @@ export function CreatorCourseWorkspace({
         // Already subscribed above: the classroom used to fetch the same row
         // again, behind its own loading screen.
         enrollment={enrollment}
+        focusTitleOnOpen={focusClassroom}
       />
     </>
   );
@@ -322,6 +350,7 @@ function CreatorWorkspaceState({
   whitelabel = false,
   coursePage,
   onSignOut,
+  onRetry,
 }: {
   title: string;
   detail: string;
@@ -330,10 +359,13 @@ function CreatorWorkspaceState({
   /** The course's own public page: the main way out when there is no access. */
   coursePage?: { href: string; label: string };
   onSignOut?: () => void;
+  /** Falha de LEITURA: o detalhe vira o aviso da casa com "Try again". */
+  onRetry?: () => void;
 }) {
   const { t } = useTranslation();
+  const sectionRef = useRef<HTMLElement>(null);
   return (
-    <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+    <section ref={sectionRef} tabIndex={-1} className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
         {t("learnWave2.workspace.eyebrow")}
       </p>
@@ -346,9 +378,15 @@ function CreatorWorkspaceState({
       <h1 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
         {title}
       </h1>
-      <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-        {detail}
-      </p>
+      {onRetry ? (
+        <LoadErrorAlert focusRef={sectionRef} onRetry={onRetry} className="mt-4 max-w-2xl">
+          {detail}
+        </LoadErrorAlert>
+      ) : (
+        <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
+          {detail}
+        </p>
+      )}
       <div className="mt-6 flex flex-wrap gap-3">
         {coursePage ? (
           <Link href={coursePage.href} className="button-solid px-4 py-2.5 text-sm">
