@@ -5750,6 +5750,7 @@
       "missingDetail": "No se encontró este certificado en tu cuenta o todavía no se ha emitido. Emítelo primero desde tu página de credenciales.",
       "error": "No pudimos cargar este certificado.",
       "errorDetail": "Ocurrió un error al cargar la credencial. Actualiza la página o inténtalo de nuevo desde tu lista de credenciales.",
+      "errorRetryDetail": "Ocurrió un error al cargar la credencial. Inténtalo de nuevo o ábrela desde tu lista de credenciales.",
       "metadataTitle": "Certificado",
       "metadataDescription": "Consulta e imprime tu certificado SkillsetMind Verified."
     },

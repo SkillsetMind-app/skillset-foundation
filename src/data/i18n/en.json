@@ -5750,6 +5750,7 @@
       "missingDetail": "This certificate could not be found on your account, or it has not been issued yet. Issue it from your credentials page first.",
       "error": "We could not load this certificate.",
       "errorDetail": "Something went wrong loading the credential. Refresh the page or try again from your credentials list.",
+      "errorRetryDetail": "Something went wrong loading the credential. Try again, or open it from your credentials list.",
       "metadataTitle": "Certificate",
       "metadataDescription": "View and print your SkillsetMind Verified certificate."
     },

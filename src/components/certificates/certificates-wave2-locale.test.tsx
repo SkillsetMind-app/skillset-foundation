@@ -156,6 +156,32 @@ describe("certificate interface locale does not rewrite issued documents", () =>
     expect(screen.queryByRole("button", { name: "Imprimir o guardar como PDF" })).not.toBeInTheDocument();
   });
 
+  it("print error offers 'Try again', which reads the certificate once more and shows it", async () => {
+    let resolve!: (value: Certificate) => void;
+    mocks.get
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockReturnValueOnce(new Promise<Certificate>((done) => { resolve = done; }));
+    const view = show(<CertificatePrintView certificateId={certificate.id} />);
+    expect(await screen.findByText("Ocurrió un error al cargar la credencial. Inténtalo de nuevo o ábrela desde tu lista de credenciales.")).toBeVisible();
+    expect(screen.queryByText(/Actualiza la página/)).toBeNull();
+    const retry = screen.getByRole("button", { name: "Intentar de nuevo" });
+    fireEvent.click(retry);
+    fireEvent.click(retry);
+    // Lendo: o papel do certificado de sempre no lugar do aviso.
+    expect(screen.getByText("Preparando tu certificado...")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Intentar de nuevo" })).toBeNull();
+    await act(async () => resolve(certificate));
+    expect(view.container.querySelector(".cert-doc")).not.toBeNull();
+    expect(mocks.get).toHaveBeenCalledTimes(2);
+  });
+
+  it("a missing certificate (not a read failure) has no 'Try again'", async () => {
+    mocks.get.mockResolvedValue(null);
+    show(<CertificatePrintView certificateId={certificate.id} />);
+    expect(await screen.findByRole("heading", { name: "Certificado no disponible." })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Intentar de nuevo" })).toBeNull();
+  });
+
   it("localizes public verification validation and preserves typed codes", async () => {
     mocks.verify.mockRejectedValue(new Error("Internal detail"));
     show(<CertificateVerificationPanel />);
