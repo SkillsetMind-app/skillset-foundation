@@ -3962,6 +3962,8 @@ body:has([aria-label="Course categories"])
   padding: 1rem 0;
   display: grid;
   gap: 0.9rem;
+  /* A faixa de etapas decide pela largura dela (@container mais abaixo). */
+  container-type: inline-size;
 }
 
 .course-builder-stepper__head {
@@ -5030,41 +5032,7 @@ body:has([aria-label="Course categories"])
   line-height: 1.55;
 }
 
-.lesson-modal-setting button {
-  position: relative;
-  width: 3rem;
-  height: 1.65rem;
-  flex: 0 0 auto;
-  border: 1px solid var(--color-line);
-  border-radius: 999px;
-  background: var(--color-surface-strong);
-  transition:
-    background-color 180ms ease,
-    border-color 180ms ease;
-}
-
-.lesson-modal-setting button::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 0.25rem;
-  width: 1.1rem;
-  height: 1.1rem;
-  border-radius: 999px;
-  background: #ffffff;
-  box-shadow: 0 3px 8px rgba(15, 39, 68, 0.16);
-  transform: translateY(-50%);
-  transition: left 180ms ease;
-}
-
-.lesson-modal-setting button.is-on {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
-}
-
-.lesson-modal-setting button.is-on::after {
-  left: 1.55rem;
-}
+/* A chave da aula agora é a .settings-toggle da casa (lesson-content-modal). */
 
 .lesson-modal__footer {
   display: flex;
@@ -5137,18 +5105,12 @@ body:has([aria-label="Course categories"])
   background: var(--color-surface);
 }
 
-[data-theme="dark"] .lesson-modal-setting button:not(.is-on) {
+[data-theme="dark"] .lesson-modal-setting .settings-toggle:not(.settings-toggle--on) {
   background: var(--color-base);
 }
 
 [data-theme="dark"] .lesson-modal--page {
   background: var(--color-surface);
-}
-
-/* On-toggle track inverts to light blue in dark; flip the knob to dark ink so it
-   stays visible (8.8:1) and the color shift reinforces the positional state. */
-[data-theme="dark"] .lesson-modal-setting button.is-on::after {
-  background: var(--color-base);
 }
 
 @media (max-width: 1280px) {
@@ -8099,8 +8061,19 @@ button:hover > .dash-card,
     grid-template-columns: minmax(0, 1fr);
   }
 
+  /* As três ações do topo (Manage product, Preview, Save draft) quebravam em
+     duas linhas e empurravam o primeiro campo para baixo: uma linha só, três
+     colunas iguais, e o rótulo longo quebra dentro do próprio botão. */
   .course-builder-hero__actions {
-    justify-content: flex-start;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .course-builder-hero__actions > * {
+    gap: 0.375rem;
+    padding-inline: 0.5rem;
+    line-height: 1.2;
+    text-align: center;
   }
 
   /* No celular os cinco passos empilhados (~270px) empurravam o primeiro
@@ -8136,6 +8109,35 @@ button:hover > .dash-card,
   /* A linha de apoio de cada passo sai, o nome fica. */
   .course-builder-step__sub {
     display: none;
+  }
+}
+
+/* Fora do celular, quando as cinco etapas não cabem lado a lado (5 x 150px +
+   gaps = 782px; entre ~681 e ~1100px de tela, conforme a barra lateral), a
+   grade dava 4 etapas e 1 sozinha embaixo: vale a mesma faixa do celular.
+   Pela largura da própria faixa (container query no .course-builder-stepper),
+   não da tela. O bloco acima fica para navegador sem container query. */
+@container (width < 782px) {
+  .course-builder-steps {
+    display: flex;
+    overflow-x: auto;
+    margin-inline: -5px;
+    padding: 5px 5px 6px;
+    scroll-padding-inline: 48px;
+    scrollbar-width: none;
+  }
+
+  .course-builder-steps::-webkit-scrollbar {
+    display: none;
+  }
+
+  .course-builder-steps[data-more="true"] {
+    mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent);
+  }
+
+  .course-builder-steps > .course-builder-step {
+    flex: 0 0 auto;
+    width: auto;
   }
 }
 

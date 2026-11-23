@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {
   useEffect,
+  useId,
   useImperativeHandle,
   useLayoutEffect,
   useRef,
@@ -1324,14 +1325,21 @@ export function LessonContentModal({
                   <strong>{t("creatorEditor.lesson.freePreview")}</strong>
                   <p>{t("creatorEditor.lesson.freePreviewHelp")}</p>
                 </div>
+                {/* A chave da Conta e da comunidade do construtor (.settings-toggle)
+                    num alvo de 44px. Esta era outra, feita à mão (48x26, botão
+                    pulando por `left`): duas chaves de desenho e ritmo diferentes. */}
                 <button
                   type="button"
-                  className={isFreePreview ? "is-on" : ""}
                   onClick={onSetFreePreview}
                   disabled={!isEditable}
                   aria-pressed={isFreePreview}
                   aria-label={t("creatorEditor.lesson.freePreviewLabel")}
-                />
+                  className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center self-start rounded-md disabled:cursor-not-allowed disabled:opacity-60 lg:self-auto"
+                >
+                  <span aria-hidden="true" className={`settings-toggle ${isFreePreview ? "settings-toggle--on" : ""}`}>
+                    <span />
+                  </span>
+                </button>
               </div>
               {/* So a estrategia "time_drip_custom" le os dias por aula
                   (src/domain/drip-policy.ts); nas outras o campo nao faz nada. */}
@@ -1436,6 +1444,9 @@ function LessonUploadForm({
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const [unpreviewableFile, setUnpreviewableFile] = useState<File | null>(null);
   const isVideo = isVideoAssetKind(uploadKind);
+  // "Upload file" fica apagado até haver arquivo: a linha embaixo diz por quê.
+  const needsFileId = useId();
+  const needsFile = isEditable && !isUploading && !selectedFile;
 
   useEffect(() => {
     const video = localVideoRef.current;
@@ -1535,6 +1546,7 @@ function LessonUploadForm({
         type="submit"
         autoFocus={isVideo && Boolean(selectedFile)}
         disabled={!isEditable || isUploading || !selectedFile}
+        aria-describedby={needsFile ? needsFileId : undefined}
         className="button-solid min-h-11 px-4 py-2.5 text-sm"
       >
         {t(`creatorEditor.lesson.file.${isUploading ? "uploading" : "upload"}`)}
@@ -1562,6 +1574,11 @@ function LessonUploadForm({
         </span>
       </label>
       </div>
+      {needsFile ? (
+        <p id={needsFileId} className="text-xs text-[var(--color-ink-soft)]">
+          {t("creatorEditor.lesson.file.needsFile")}
+        </p>
+      ) : null}
       {onKindChange ? (
         <label className="lesson-modal-field" hidden={isUploading}>
           <span>{t("creatorEditor.lesson.file.videoType")}</span>

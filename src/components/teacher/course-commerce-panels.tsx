@@ -5,6 +5,7 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 
+import { SavedNote } from "@/components/teacher/save-status-line";
 import { Button, Card, Field, InlineAlert } from "@/components/ui";
 import type {
   CourseCommerceSettings,
@@ -88,33 +89,17 @@ function GateNotice() {
 }
 
 /**
- * O texto de retorno era um <p> colorido sem papel nenhum: a falha de criar um
- * cupom e o "salvo com sucesso" entravam na página em silêncio. Agora o erro
- * interrompe o leitor de tela e o aviso de sucesso entra na fila educada.
+ * O erro interrompe o leitor de tela, embaixo do formulário. O "salvo" não
+ * mora mais aqui: era uma caixa verde embaixo do formulário, outro desenho de
+ * sucesso; agora é o SavedNote na linha do botão (F-05).
  */
-function FeedbackText({
-  error,
-  notice,
-}: {
-  error: string;
-  notice: string;
-}) {
+function FeedbackError({ error }: { error: string }) {
   const { t } = useTranslation();
-  if (error) {
-    return (
-      <InlineAlert tone="error" className="mt-3">
-        {t(error)}
-      </InlineAlert>
-    );
-  }
-  if (notice) {
-    return (
-      <InlineAlert tone="success" className="mt-3">
-        {t(notice)}
-      </InlineAlert>
-    );
-  }
-  return null;
+  return error ? (
+    <InlineAlert tone="error" className="mt-3">
+      {t(error)}
+    </InlineAlert>
+  ) : null;
 }
 
 const commerceErrorKeys: Record<string, string> = {
@@ -267,7 +252,8 @@ export function CouponsPanel({
       description={t("courseCommerce.couponsHelp")}
     >
       {activationBlocked ? <GateNotice /> : null}
-      <form onSubmit={handleCreate} className="mt-4 grid gap-3 sm:grid-cols-2">
+      {/* Mexeu num campo, o "Coupon created" de antes já não fala deste. */}
+      <form onSubmit={handleCreate} onChange={() => setNotice("")} className="mt-4 grid gap-3 sm:grid-cols-2">
         <Field id="coupon-code" label={t("courseCommerce.code")} required>
           {(a11y) => (
             <input
@@ -323,13 +309,14 @@ export function CouponsPanel({
             />
           )}
         </Field>
-        <div className="sm:col-span-2">
+        <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
           <Button type="submit" disabled={saving}>
             {saving ? t("courseCommerce.creating") : t("courseCommerce.create")}
           </Button>
+          {notice && !error ? <SavedNote text={t(notice)} /> : null}
         </div>
       </form>
-      <FeedbackText error={error} notice={notice} />
+      <FeedbackError error={error} />
       {coupons.length > 0 ? (
         <ul className="mt-4 grid gap-2">
           {coupons.map((coupon) => {
@@ -478,7 +465,8 @@ export function TaxPanel({ courseId }: { courseId: string }) {
       title={t("courseCommerce.tax")}
       description={t("courseCommerce.taxHelp")}
     >
-      <form onSubmit={handleSave} className="mt-4 grid gap-3">
+      {/* Mexeu num campo depois de salvar: o "salvo" sai, era sobre o valor anterior. */}
+      <form onSubmit={handleSave} onChange={() => setNotice("")} className="mt-4 grid gap-3">
         <label className="flex items-center gap-3">
           <input
             type="checkbox"
@@ -520,13 +508,14 @@ export function TaxPanel({ courseId }: { courseId: string }) {
             />
           )}
         </Field>
-        <div>
+        <div className="flex flex-wrap items-center gap-3">
           <Button type="submit" disabled={saving || !settingsLoaded}>
             {saving ? t("courseCommerce.saving") : t("courseCommerce.save")}
           </Button>
+          {notice && !error ? <SavedNote text={t(notice)} /> : null}
         </div>
       </form>
-      <FeedbackText error={error} notice={notice} />
+      <FeedbackError error={error} />
     </PanelCard>
   );
 }

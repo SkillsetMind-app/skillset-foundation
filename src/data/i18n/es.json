@@ -1865,6 +1865,9 @@
       "save": "Guardar área de miembros",
       "saving": "Guardando...",
       "saved": "Guardado. Tus estudiantes ven los cambios la próxima vez que abran el área.",
+      "saveBlockedLocked": "No se puede guardar: tu plan actual no incluye esta área.",
+      "saveBlockedUploading": "Espera a que termine de subir la portada y luego guarda.",
+      "saveBlockedCourses": "No se puede guardar hasta que cargue tu lista de productos.",
       "previewAsStudent": "Ver como estudiante",
       "previewHelp": "La vista de estudiante muestra la última versión guardada.",
       "errors": {
@@ -2693,6 +2696,8 @@
       "checklist": {
         "title": "Lista de publicación",
         "progress": "{done} de {total} pasos obligatorios listos · {percent}% listo",
+        "progressPending": "Revisando el contenido de tus lecciones... · —% listo",
+        "assetsError": "No pudimos revisar el contenido de tus lecciones, así que el porcentaje queda en espera.",
         "optional": "Opcional",
         "openVerification": "Abrir verificación",
         "edit": "Editar",
@@ -3930,6 +3935,7 @@
         "select": "Elegir archivo",
         "cancel": "Cancelar subida",
         "upload": "Subir archivo",
+        "needsFile": "Primero elige un archivo y luego súbelo.",
         "uploading": "Subiendo..."
       },
       "progress": {
@@ -4278,6 +4284,7 @@
         "optional": "Opcional",
         "checksHelp": "SkillsetMind verifica al profesional. Los requisitos del producto, del precio y de los cobros se comprueban antes de abrir el enlace del marketplace.",
         "finish": "Completa los requisitos de publicación para lanzar el curso.",
+        "fixPrice": "Corrige el precio en Precios para publicar.",
         "fixIn": "Ir a {step}",
         "openLesson": "Abrir la lección",
         "live": "Este producto ya está publicado. Los cambios guardados no necesitan publicarse de nuevo.",
@@ -4302,6 +4309,7 @@
         "outcomePlaceholder": "Ejemplo: Crear y lanzar un curso de pago por grupos",
         "noOutcomes": "Aún no hay resultados de aprendizaje. Añade los logros concretos que alcanzará el estudiante.",
         "addOutcome": "Añadir resultado de aprendizaje",
+        "outcomesMax": "Puedes incluir hasta {max} resultados.",
         "help": "Usa un título específico, una categoría clara y una descripción centrada en lo que aprenderá el estudiante. Este texto aparecerá en el marketplace."
       },
       "community": {
@@ -4363,6 +4371,7 @@
         "offersRefreshFailed": "No pudimos actualizar tus precios. Estos son los últimos que cargamos.",
         "preview": "Lección de vista previa gratuita",
         "noPreview": "Aún no hay una vista previa seleccionada",
+        "previewNeedsLesson": "Añade primero una lección en Contenido y luego elígela aquí.",
         "listingHelp": "Las personas pagan en una página segura antes de entrar."
       },
       "save": {
@@ -5434,7 +5443,7 @@
     "preserved": "Acceso existente conservado",
     "revoked": "Se revocó el acceso concedido por el creador",
     "conflict": "El acceso existente requiere revisión de soporte",
-    "loadError": "No pudimos cargar los registros de acceso. Recarga para intentarlo de nuevo.",
+    "loadError": "No pudimos cargar los registros de acceso.",
     "conflictNotice": "El acceso existente requiere revisión de soporte. No se cambió ningún acceso ni se envió ningún correo.",
     "revokedNotice": "Se revocó el acceso concedido por el creador. Se conservan el progreso, los certificados y el acceso comprado.",
     "emailFailed": "Acceso registrado, pero no se pudo enviar el correo. Usa Reenviar enlace para reintentarlo (hasta 3 intentos por hora).",

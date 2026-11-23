@@ -27,6 +27,9 @@ describe("F-07: as últimas caixas vermelhas à mão viraram o aviso da casa", (
     // Frases vermelhas soltas que viraram o aviso da casa.
     "components/teacher/activation-checkout-panel.tsx",
     "components/teacher/custom-domains-panel.tsx",
+    // Os dois chips de falha do salvar do construtor e a capa da área de membros.
+    "components/teacher/course-builder-studio.tsx",
+    "components/teacher/member-area-settings-panel.tsx",
   ])("%s usa o InlineAlert de erro", (file) => {
     const source = read(file);
     expect(source).not.toContain(handRedBox);

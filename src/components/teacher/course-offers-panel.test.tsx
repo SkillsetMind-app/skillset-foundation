@@ -236,3 +236,18 @@ it("a lista que a rota nao leu vira erro de leitura, nao 'nenhum preco'", async 
   expect(await screen.findByRole("alert")).toHaveTextContent("Could not load your prices.");
   expect(screen.queryByText("Offers are unavailable.")).not.toBeInTheDocument();
 });
+
+// F-11: sem a lista, a tela não sabe se há preço. Não abre o formulário de
+// criar (gravaria outro preço principal) e "Try again" lê de novo.
+it("lista que nao carregou: sem formulario de criar, e Try again le de novo", async () => {
+  const fetchMock = vi.fn(async () => ({ ok: false, json: async () => ({ error: "boom" }) }));
+  vi.stubGlobal("fetch", fetchMock);
+  render(<CourseOffersPanel courseId="course-1" courseTitle="Launch course" />);
+  expect(await screen.findByRole("alert")).toHaveTextContent("Could not load your prices.");
+  expect(screen.queryByLabelText("Amount")).not.toBeInTheDocument();
+
+  stubOffers();
+  fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+  expect(await screen.findByText("Launch")).toBeInTheDocument();
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+});

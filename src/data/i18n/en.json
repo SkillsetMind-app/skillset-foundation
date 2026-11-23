@@ -1865,6 +1865,9 @@
       "save": "Save members area",
       "saving": "Saving...",
       "saved": "Saved. Students see the changes the next time they open the area.",
+      "saveBlockedLocked": "Saving is off: your current plan does not include this area.",
+      "saveBlockedUploading": "Wait for the cover to finish uploading, then save.",
+      "saveBlockedCourses": "Saving is off until your product list loads.",
       "previewAsStudent": "View as student",
       "previewHelp": "The student view shows the last saved version.",
       "errors": {
@@ -2693,6 +2696,8 @@
       "checklist": {
         "title": "Publish checklist",
         "progress": "{done} of {total} required steps done · {percent}% ready",
+        "progressPending": "Checking the content of your lessons... · —% ready",
+        "assetsError": "We could not check the content of your lessons, so the percentage is on hold.",
         "optional": "Optional",
         "openVerification": "Open verification",
         "edit": "Edit",
@@ -3930,6 +3935,7 @@
         "select": "Choose file",
         "cancel": "Cancel upload",
         "upload": "Upload file",
+        "needsFile": "Choose a file first, then upload it.",
         "uploading": "Uploading..."
       },
       "progress": {
@@ -4278,6 +4284,7 @@
         "optional": "Optional",
         "checksHelp": "SkillsetMind gates the professional, not each course. Product, pricing, and payout checks run before the marketplace link opens.",
         "finish": "Finish the publication checks to go live.",
+        "fixPrice": "Fix the price in Pricing to publish.",
         "fixIn": "Go to {step}",
         "openLesson": "Open the lesson",
         "live": "This product is already live. Saved changes don't need a new publish.",
@@ -4302,6 +4309,7 @@
         "outcomePlaceholder": "Example: Launch a paid cohort course end to end",
         "noOutcomes": "No outcomes yet. Add the concrete results a student walks away with.",
         "addOutcome": "Add learning outcome",
+        "outcomesMax": "You can list up to {max} outcomes.",
         "help": "Keep the title specific, the category clear, and the description focused on learner outcomes. This copy will influence the marketplace page."
       },
       "community": {
@@ -4363,6 +4371,7 @@
         "offersRefreshFailed": "Couldn't refresh your prices. These are the last ones loaded.",
         "preview": "Free preview lesson",
         "noPreview": "No preview selected yet",
+        "previewNeedsLesson": "Add a lesson in Curriculum first, then pick it here.",
         "listingHelp": "People pay on a secure page before they get access."
       },
       "save": {
@@ -5434,7 +5443,7 @@
     "preserved": "Existing access preserved",
     "revoked": "Creator access revoked",
     "conflict": "Existing access needs support review",
-    "loadError": "Could not load access records. Reload to try again.",
+    "loadError": "Could not load access records.",
     "conflictNotice": "Existing access needs support review. No access was changed and no email was sent.",
     "revokedNotice": "Creator access revoked. Progress, certificates and purchased access are preserved.",
     "emailFailed": "Access recorded, but the email could not be sent. Use Resend link to try again (up to 3 attempts per hour).",

@@ -535,7 +535,7 @@ export function CourseLandingEditor({
     return (
       <PanelCard title={t("teacherLanding.title")}>
         <p className="mt-3 flex items-center gap-2 text-sm text-[var(--color-ink-soft)]">
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <Loader2 aria-hidden="true" className="h-4 w-4 motion-safe:animate-spin" />
           {t("teacherLanding.loading")}
         </p>
       </PanelCard>
@@ -562,7 +562,7 @@ export function CourseLandingEditor({
                 disabled={locked}
                 aria-pressed={active}
                 onClick={() => setTemplate(option)}
-                className={`inline-flex min-h-11 items-center gap-1.5 rounded-sm px-3 py-2 text-sm font-semibold transition-colors duration-[var(--duration-base)] ease-[var(--ease-standard)] disabled:cursor-not-allowed disabled:opacity-50 ${
+                className={`inline-flex min-h-11 items-center gap-1.5 rounded-sm px-3 py-2 text-sm font-semibold transition-colors duration-[var(--duration-base)] ease-[var(--ease-standard)] disabled:cursor-not-allowed disabled:opacity-60 ${
                   active
                     ? "bg-[var(--color-surface)] text-[var(--color-primary)] shadow-[var(--shadow-soft)]"
                     : "text-[var(--color-ink-soft)] enabled:hover:bg-[var(--color-surface-strong)] enabled:hover:text-[var(--color-ink)]"
@@ -651,7 +651,7 @@ export function CourseLandingEditor({
             type="button"
             disabled={atLimit}
             onClick={() => setEntries((current) => [...current, withId(blankBlock(kind, t))])}
-            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)] disabled:opacity-40"
+            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Plus className="h-3.5 w-3.5" />
             {t(`teacherLanding.blocks.${kind}`)}

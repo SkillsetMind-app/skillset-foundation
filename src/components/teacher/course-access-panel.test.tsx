@@ -46,3 +46,16 @@ it("keeps keyboard focus through confirmation, Escape, Cancel and revocation", a
   fireEvent.click(screen.getByRole("button", { name: "Confirm revocation" }));
   await waitFor(() => expect(screen.getByRole("status")).toHaveFocus());
 });
+
+// F-11: a lista que não carregou mandava recarregar a página. Agora "Try
+// again" lê de novo, e o aviso sai quando a lista chega.
+it("a load failure offers Try again, which reads the list again", async () => {
+  mocks.list.mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce([grant]);
+  render(<CourseAccessPanel courseId="course-1" />);
+  expect(await screen.findByRole("alert")).toHaveTextContent("Could not load access records.");
+  expect(screen.queryByText(/Reload/)).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+  expect(await screen.findByText(grant.learner_email)).toBeInTheDocument();
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(mocks.list).toHaveBeenCalledTimes(2);
+});
