@@ -39,12 +39,19 @@ type Candidate = {
 };
 
 // Aproximação suficiente para os seletores de botão: ids, classes/atributos/
-// pseudo-classes, elementos.
+// pseudo-classes, elementos. `:is()`/`:not()` valem o argumento mais pesado e
+// `:where()` vale zero, como na spec: contar `:is(.a, .b):is(:disabled, [x])`
+// como cinco classes fazia a regra de desligado vencer onde não vence.
 function specificity(selector: string): number {
-  const ids = (selector.match(/#[\w-]+/g) ?? []).length;
-  const classes = (selector.match(/\.[\w-]+|\[[^\]]*\]|:(?!:)[\w-]+/g) ?? []).length;
-  const tags = (selector.match(/(^|[\s>+~(])[a-z][\w-]*/g) ?? []).length;
-  return ids * 100 + classes * 10 + tags;
+  let nested = 0;
+  const flat = selector.replace(/:(is|not|where)\(([^()]*)\)/g, (_match, fn: string, args: string) => {
+    if (fn !== "where") nested += Math.max(...args.split(",").map((arg) => specificity(arg.trim())));
+    return "";
+  });
+  const ids = (flat.match(/#[\w-]+/g) ?? []).length;
+  const classes = (flat.match(/\.[\w-]+|\[[^\]]*\]|:(?!:)[\w-]+/g) ?? []).length;
+  const tags = (flat.match(/(^|[\s>+~(])[a-z][\w-]*/g) ?? []).length;
+  return ids * 100 + classes * 10 + tags + nested;
 }
 
 function readLayerOrder(css: Root): string[] {
@@ -57,7 +64,22 @@ function readLayerOrder(css: Root): string[] {
   return order;
 }
 
-function collect(css: Root, element: Element, props: Set<string>): Candidate[] {
+// O `:is()` com lista não é confiável no motor de seletores do jsdom: abre a
+// lista em seletores simples (`:is(.a, .b):is(:x, [y])` vira quatro) e casa
+// qualquer um. A especificidade segue sendo a do seletor original.
+function expandIs(selector: string): string[] {
+  const match = /:is\(([^()]*)\)/.exec(selector);
+  if (!match) return [selector];
+  const before = selector.slice(0, match.index);
+  const after = selector.slice(match.index + match[0].length);
+  return match[1].split(",").flatMap((arg) => expandIs(`${before}${arg.trim()}${after}`));
+}
+
+// `hover`: trata o elemento como se o mouse estivesse em cima (o seletor casa
+// sem o `:hover`, mas a especificidade conta o `:hover`).
+function collect(css: Root, element: Element, props: Set<string>, hover = false): Candidate[] {
+  const matchesAs = (selector: string) =>
+    expandIs(hover ? selector.replace(/:hover/g, "") : selector).some((simple) => element.matches(simple));
   const layerOrder = readLayerOrder(css);
   const unlayered = layerOrder.length;
   const candidates: Candidate[] = [];
@@ -80,7 +102,7 @@ function collect(css: Root, element: Element, props: Set<string>): Candidate[] {
 
     const matches = rule.selectors.some((selector) => {
       try {
-        return element.matches(selector);
+        return matchesAs(selector);
       } catch {
         return false;
       }
@@ -90,7 +112,7 @@ function collect(css: Root, element: Element, props: Set<string>): Candidate[] {
     const bestSelector = Math.max(
       ...rule.selectors.map((selector) => {
         try {
-          return element.matches(selector) ? specificity(selector) : -1;
+          return matchesAs(selector) ? specificity(selector) : -1;
         } catch {
           return -1;
         }
@@ -117,7 +139,14 @@ function collect(css: Root, element: Element, props: Set<string>): Candidate[] {
 // depois a camada mais TARDIA; entre importantes a ordem inverte (camada mais
 // cedo vence, sem-camada perde de todas); então especificidade, então ordem.
 function resolve(css: Root, element: Element, ...props: string[]): string | undefined {
-  const candidates = collect(css, element, new Set(props));
+  return pick(css, collect(css, element, new Set(props)));
+}
+
+function resolveHover(css: Root, element: Element, ...props: string[]): string | undefined {
+  return pick(css, collect(css, element, new Set(props), true));
+}
+
+function pick(css: Root, candidates: Candidate[]): string | undefined {
   const unlayered = readLayerOrder(css).length;
   const key = (candidate: Candidate) => [
     candidate.important ? 1 : 0,
@@ -276,6 +305,56 @@ describe("botão desligado (C-11)", () => {
     button.setAttribute("disabled", "");
     expect(resolve(css, button, "opacity")).toBe("0.6");
     expect(resolve(css, button, "background")).toBe("var(--color-primary)");
+  });
+
+  function disabled(className: string, wrapper?: Record<string, string>, off = true): Element {
+    const button = mount(className);
+    if (off) button.setAttribute("disabled", "");
+    if (wrapper) {
+      const box = document.createElement("div");
+      for (const [name, value] of Object.entries(wrapper)) box.setAttribute(name, value);
+      document.body.append(box);
+      box.append(button);
+    }
+    return button;
+  }
+
+  // Cada caso: o botão desligado tem, em repouso e com o mouse em cima, o
+  // mesmo desenho do botão ligado em repouso (no mesmo tema e escopo).
+  const member = { class: "member-classroom", "data-members-theme": "light" };
+  it.each([
+    ["button-solid", undefined, "background"],
+    ["button-outline", undefined, "background"],
+    // O par grande: o :hover dele (dois seletores de classe) vencia a regra
+    // de desligado e o "Back" apagado ia de cinza a navy.
+    ["button-outline button-lg", undefined, "border-color"],
+    // No escuro, a borda de repouso do tema escuro, não a do claro.
+    ["button-danger", { "data-theme": "dark" }, "border-color"],
+    ["button-outline", { "data-theme": "dark" }, "border-color"],
+    ["button-danger button-danger-solid", undefined, "background"],
+    // Área de membros: as regras do escopo pesam mais que a central.
+    ["button-solid", member, "background"],
+    ["button-outline", member, "border-color"],
+    ["button-icon", undefined, "color"],
+  ] as const)("%s desligado (%o): %s de repouso, também no hover", (className, wrapper, prop) => {
+    const props = prop === "background" ? ["background", "background-color"] : [prop];
+    const resting = resolve(css, disabled(className, wrapper, false), ...props);
+    expect(resting).toBeTruthy();
+    const button = disabled(className, wrapper);
+    expect(resolve(css, button, ...props)).toBe(resting);
+    expect(resolveHover(css, button, ...props)).toBe(resting);
+  });
+
+  // Prova de que o hover forçado funciona: o botão LIGADO muda.
+  it("ligado, o hover forçado escurece o fundo", () => {
+    const button = disabled("button-solid", undefined, false);
+    expect(resolveHover(css, button, "background")).toBe("var(--color-primary-dark)");
+  });
+
+  it("na área de membros o desligado não ganha sombra nem sobe no hover", () => {
+    const button = disabled("button-solid", { class: "member-classroom", "data-members-theme": "light" });
+    expect(resolveHover(css, button, "box-shadow")).toBe("none");
+    expect(resolveHover(css, button, "transform")).toBe("none");
   });
 });
 

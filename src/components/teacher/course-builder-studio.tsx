@@ -2329,7 +2329,7 @@ export function CourseBuilderStudio() {
                   disabled={!isEditable || lessonIndex === 0}
                   aria-label={t("creatorEditor.builder.curriculum.up")}
                   title={t("creatorEditor.builder.curriculum.up")}
-                  className="grid size-11 shrink-0 place-items-center rounded-md text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-soft)] disabled:opacity-50"
+                  className="grid size-11 shrink-0 place-items-center rounded-md text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-soft)] disabled:opacity-60"
                 >
                   <ArrowUp aria-hidden="true" size={16} strokeWidth={2} />
                 </button>
@@ -2342,7 +2342,7 @@ export function CourseBuilderStudio() {
                   }
                   aria-label={t("creatorEditor.builder.curriculum.down")}
                   title={t("creatorEditor.builder.curriculum.down")}
-                  className="grid size-11 shrink-0 place-items-center rounded-md text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-soft)] disabled:opacity-50"
+                  className="grid size-11 shrink-0 place-items-center rounded-md text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-soft)] disabled:opacity-60"
                 >
                   <ArrowDown aria-hidden="true" size={16} strokeWidth={2} />
                 </button>
@@ -2367,7 +2367,7 @@ export function CourseBuilderStudio() {
                       )
                     }
                     disabled={!isEditable}
-                    className={`min-h-11 rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-50 ${
+                    className={`min-h-11 rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-60 ${
                       freePreviewLessonId === lesson.id
                         ? "border-[var(--color-primary)] bg-[rgba(26,54,93,0.08)] text-[var(--color-primary)]"
                         : "border-[var(--color-line)] bg-white text-[var(--color-ink-soft)]"
@@ -2392,7 +2392,7 @@ export function CourseBuilderStudio() {
                           "{title}",
                           () => lessonName,
                         )}
-                        className="min-h-11 rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-xs text-[var(--color-ink-soft)] disabled:opacity-50"
+                        className="min-h-11 rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-xs text-[var(--color-ink-soft)] disabled:opacity-60"
                       >
                         <option value="">{t("creatorEditor.builder.curriculum.moveToModule")}</option>
                         {modules.map((other, otherIndex) =>
@@ -3647,7 +3647,7 @@ export function CourseBuilderStudio() {
                 // A chave da Conta (.settings-toggle: botao por transform, nos
                 // tokens de movimento) dentro de um alvo de 44px. A daqui era
                 // feita a mao, 48x28, e o botao pulava por `left`.
-                className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-md disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-md disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <span aria-hidden="true" className={`settings-toggle ${communityEnabled ? "settings-toggle--on" : ""}`}>
                   <span />

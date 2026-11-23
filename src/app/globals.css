@@ -448,6 +448,12 @@ dialog.modal-panel::backdrop {
     background: var(--color-surface-soft);
     color: var(--color-primary);
   }
+
+  /* Desligado não reage ao mouse: fica o fundo e a cor de repouso. */
+  .button-icon:is(:disabled, [aria-disabled="true"]) {
+    background: transparent;
+    color: var(--color-ink-soft);
+  }
 }
 
 /* O "limpar" da busca mora encostado na ponta de um campo com overflow
@@ -1778,9 +1784,22 @@ p {
   border-color: var(--color-line);
 }
 
+/* O par grande tem contorno navy em repouso, e o :hover dele (dois seletores
+   de classe) vencia a regra acima: o "Back" apagado do construtor ia de cinza
+   a navy sob o mouse. */
+.button-outline.button-lg:is(:disabled, [aria-disabled="true"]) {
+  border-color: var(--color-primary);
+}
+
 .button-danger:is(:disabled, [aria-disabled="true"]) {
   border-color: rgba(178, 34, 52, 0.38);
   background: var(--color-surface);
+}
+
+/* Mesmo peso da borda escura em repouso, e depois dela: sem isto o "Delete"
+   apagado ganhava no escuro a borda do tema claro. */
+[data-theme="dark"] .button-danger:is(:disabled, [aria-disabled="true"]) {
+  border-color: rgba(232, 128, 140, 0.5);
 }
 
 .button-danger.button-danger-solid:is(:disabled, [aria-disabled="true"]) {
@@ -6989,6 +7008,24 @@ html:has(#member-lesson-player) {
   background: color-mix(in srgb, var(--ma-accent) 10%, transparent);
   color: var(--ma-ink) !important;
   box-shadow: none;
+}
+
+/* Desligado na área de membros: as regras acima têm mais peso que a central
+   (botão desligado), e o "Post" apagado da comunidade escurecia e ganhava
+   sombra no hover. Fica o desenho de repouso, sem sombra e parado. */
+.member-classroom[data-members-theme] .button-solid:is(:disabled, [aria-disabled="true"]),
+.member-classroom[data-members-theme] .button-accent:is(:disabled, [aria-disabled="true"]) {
+  border-color: var(--ma-accent);
+  background: var(--ma-accent);
+  box-shadow: none;
+  transform: none;
+}
+
+.member-classroom[data-members-theme] .button-outline:is(:disabled, [aria-disabled="true"]) {
+  border-color: var(--ma-line-2);
+  background: transparent;
+  box-shadow: none;
+  transform: none;
 }
 
 @media (max-width: 767.98px) {

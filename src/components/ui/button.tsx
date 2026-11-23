@@ -62,11 +62,7 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   fullWidth?: boolean;
   /** Ícone à esquerda do texto. Decorativo: o nome do botão é o texto. */
   icon?: ReactNode;
-  /**
-   * Carregando: o botão trava. Com ícone, o spinner toma o lugar dele; sem
-   * ícone, o spinner fica no centro, por cima do texto, que segue no lugar
-   * (invisível) para o botão não mudar de largura.
-   */
+  /** Carregando: o spinner toma o lugar do ícone e o botão trava. */
   loading?: boolean;
 };
 
@@ -82,28 +78,21 @@ export function Button({
   type = "button",
   ...rest
 }: ButtonProps) {
-  const spinner = <Loader2 aria-hidden="true" size={16} strokeWidth={2.2} className="shrink-0 animate-spin" />;
-  // Sem ícone, o spinner entrava na frente do texto e o botão crescia 24px
-  // enquanto salvava. O texto fica (opacidade 0 segue lido como nome do botão).
-  const centred = loading && !icon;
   return (
     <button
       // Sem type explícito, todo botão dentro de <form> envia o formulário.
       type={type}
-      className={buttonClasses({ variant, size, fullWidth }, cn(centred && "relative", className))}
+      className={buttonClasses({ variant, size, fullWidth }, className)}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       {...rest}
     >
-      {loading && icon ? spinner : icon}
-      {centred ? (
-        <>
-          <span className="inline-flex items-center gap-2 opacity-0">{children}</span>
-          <span className="absolute inset-0 flex items-center justify-center">{spinner}</span>
-        </>
+      {loading ? (
+        <Loader2 aria-hidden="true" size={16} strokeWidth={2.2} className="shrink-0 animate-spin" />
       ) : (
-        children
+        icon
       )}
+      {children}
     </button>
   );
 }

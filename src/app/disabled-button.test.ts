@@ -68,6 +68,20 @@ describe("botao desligado nao reage ao mouse nem ao clique", () => {
     expect(css.slice(at, css.indexOf("}", at))).toContain("background: var(--color-danger);");
   });
 
+  // Regras que pesam o mesmo ou mais que a de desligado e vinham antes dela:
+  // cada uma precisa de uma de desligado DEPOIS, no mesmo peso. No escuro, o
+  // "Delete" apagado ganhava a borda do tema claro; o "Back" grande ia de
+  // cinza a navy no hover. (A cascata de verdade está em button-sizes-cascade.)
+  it.each([
+    ['[data-theme="dark"] .button-danger {', '[data-theme="dark"] .button-danger:is(:disabled, [aria-disabled="true"]) {'],
+    ['[data-theme="dark"] .button-outline:hover {', '[data-theme="dark"] .button-outline:is(:disabled, [aria-disabled="true"]) {'],
+    [".button-outline.button-lg:hover {", '.button-outline.button-lg:is(:disabled, [aria-disabled="true"]) {'],
+    [".member-classroom[data-members-theme] .button-outline:hover {", '.member-classroom[data-members-theme] .button-outline:is(:disabled, [aria-disabled="true"]) {'],
+  ])("%s tem a regra de desligado depois dela", (before, after) => {
+    expect(css.indexOf(before)).toBeGreaterThan(-1);
+    expect(css.indexOf(after)).toBeGreaterThan(css.indexOf(before));
+  });
+
   // A regra central vence a utility (fica fora de camada), então a utility da
   // chamada só criava a quinta variação. Ela não volta.
   it("nenhum botão .button-* escreve a própria opacidade de desligado", () => {
