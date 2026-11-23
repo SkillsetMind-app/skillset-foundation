@@ -12,6 +12,9 @@ import { communityEnrollmentCourseIds, createEnrollmentCommunityCards } from "@/
 import { getCommunityCourseIds, subscribeToUserEnrollments } from "@/lib/data/enrollments";
 
 const NO_COURSES: ReadonlySet<string> = new Set();
+// A busca só aparece a partir de 3 comunidades: com uma ou duas ela era um
+// cartão inteiro para filtrar o que já cabe na tela.
+const SEARCH_FROM = 3;
 
 export function LearnCommunityHub() {
   const { t, locale } = useTranslation();
@@ -107,8 +110,12 @@ export function LearnCommunityHub() {
       // Só para a busca: o cartão não mostra mais a categoria.
       categories: t("learnWave2.communityHub.category"),
     }));
+  const showSearch = communityCards.length >= SEARCH_FROM;
   const filteredCards = communityCards.filter((space) => {
-    const normalizedSearch = search.trim().toLowerCase();
+    // Com a caixa escondida o texto não filtra: se a contagem cai com uma
+    // busca digitada, o aluno ficava em "No communities match" sem a caixa
+    // para limpar.
+    const normalizedSearch = showSearch ? search.trim().toLowerCase() : "";
     const matchesSearch =
       !normalizedSearch ||
       space.name.toLowerCase().includes(normalizedSearch) ||
@@ -141,25 +148,27 @@ export function LearnCommunityHub() {
 
   return (
     <section className="space-y-5">
-      <div className="rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
-        <div className="grid gap-3">
-          <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-            {t("learnWave2.communityHub.search")}
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder={t("learnWave2.communityHub.placeholder")}
-              className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
-            />
-          </label>
+      {showSearch ? (
+        <div className="rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
+          <div className="grid gap-3">
+            <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+              {t("learnWave2.communityHub.search")}
+              <input
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={t("learnWave2.communityHub.placeholder")}
+                className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+              />
+            </label>
+          </div>
+          <p className="mt-4 text-xs uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
+            {t("learnWave2.communityHub.count")
+              .replace("{count}", () => new Intl.NumberFormat(locale).format(filteredCards.length))
+              .replace("{total}", () => new Intl.NumberFormat(locale).format(communityCards.length))}
+          </p>
         </div>
-        <p className="mt-4 text-xs uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
-          {t("learnWave2.communityHub.count")
-            .replace("{count}", () => new Intl.NumberFormat(locale).format(filteredCards.length))
-            .replace("{total}", () => new Intl.NumberFormat(locale).format(communityCards.length))}
-        </p>
-      </div>
+      ) : null}
 
       {filteredCards.length === 0 ? (
         <div className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">

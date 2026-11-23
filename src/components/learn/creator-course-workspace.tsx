@@ -217,7 +217,14 @@ export function CreatorCourseWorkspace({
   }
 
   if (isLoadingEnrollment || isLoadingCourse) {
-    return <ClassroomLoading label={t("learnWave2.courseLoading.title")} />;
+    // Mesma forma da espera do workspace logo depois: aula no endereço =
+    // cabeçalho curto (enrolled-course-workspace.tsx, isCourseHome).
+    return (
+      <ClassroomLoading
+        label={t("learnWave2.courseLoading.title")}
+        short={Boolean(searchParams.get("lesson")) && tab !== "about"}
+      />
+    );
   }
 
   if (error) {

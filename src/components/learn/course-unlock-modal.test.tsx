@@ -40,7 +40,7 @@ describe("CourseUnlockModal", () => {
 
     expect(screen.getByText("Deep Focus Systems")).toBeInTheDocument();
     // The popup owns no checkout logic — /courses/[id] does.
-    const cta = screen.getByRole("link", { name: /Unlock course/ });
+    const cta = screen.getByRole("link", { name: /Buy course/ });
     expect(cta).toHaveAttribute("href", "/courses/course-1");
     expect(cta).toHaveTextContent("$249.00");
   });
@@ -64,6 +64,7 @@ describe("CourseUnlockModal", () => {
       />,
     );
 
+    // Sem preço conhecido: o "Unlock course" neutro.
     const cta = screen.getByRole("link", { name: /Unlock course/ });
     expect(cta).toHaveAttribute("href", "#enroll-card");
     fireEvent.click(cta);
@@ -73,6 +74,19 @@ describe("CourseUnlockModal", () => {
 
     frame.mockRestore();
     target.remove();
+  });
+
+  // "Buy course" num curso grátis estava errado: o verbo e o aviso saem do
+  // preço que o curso já traz, sempre do mesmo par.
+  it.each([
+    ["pago", 24900, "Buy course - $249.00", "You do not have access to this course yet. Buy it to start watching right here in your members area."],
+    ["grátis", 0, "Enroll free", "Enroll free to watch every lesson."],
+    ["sem preço", null, "Unlock course", "You do not have access to this course yet. Unlock it to start watching right here in your members area."],
+  ] as const)("curso %s: botão e aviso combinam", (_kind, priceAmountMinor, label, note) => {
+    render(<CourseUnlockModal course={course({ priceAmountMinor, currency: "USD" })} onClose={() => {}} />);
+
+    expect(screen.getByRole("link", { name: label })).toHaveAttribute("href", "/courses/course-1");
+    expect(screen.getByText(note)).toBeInTheDocument();
   });
 
   it("closes on Escape so the dashboard is never trapped behind it", () => {

@@ -9,8 +9,9 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 const COUNTDOWN_SECONDS = 5;
 /** O aviso entra na região viva um instante DEPOIS de ela existir. */
 const ANNOUNCE_DELAY_MS = 50;
-/** Tem que bater com a transição de `.member-next-lesson.is-leaving`. */
-const EXIT_MS = 250;
+/** Tem que bater com a transição de `.member-next-lesson.is-leaving`
+ *  (--duration-base, o tempo padrão do sistema). */
+const EXIT_MS = 180;
 
 // O cartão "Próxima aula" que sobe sobre o vídeo quando ele termina.
 //
@@ -87,9 +88,11 @@ export function NextLessonCard({
     .replace("{seconds}", () => String(COUNTDOWN_SECONDS))
     .replace("{title}", () => lesson.title);
 
+  // Região rotulada, não diálogo: o cartão não prende o foco nem bloqueia o
+  // vídeo, e "dialog" prometia ao leitor de tela uma janela que não existe.
   return (
     <div
-      role="dialog"
+      role="region"
       aria-label={t("learn.classroom.nextLesson.title")}
       className={`member-next-lesson ${leaving ? "is-leaving" : ""} absolute inset-x-3 bottom-3 z-10 flex items-center gap-3 rounded-lg bg-[rgba(15,39,68,0.92)] p-3 text-white shadow-[0_18px_36px_rgba(15,39,68,0.35)] backdrop-blur sm:inset-x-auto sm:right-3 sm:max-w-[360px]`}
     >
@@ -108,8 +111,10 @@ export function NextLessonCard({
         {announced ? announcement : ""}
       </p>
       <div className="min-w-0 flex-1">
-        <p aria-hidden="true" className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/60">
-          {t("learn.classroom.nextLesson.countdown").replace("{seconds}", () => String(secondsLeft))}
+        {/* A contagem fica só no anel; aqui, "Next lesson" parado (o mesmo
+            nome da região, por isso fora da árvore de acessibilidade). */}
+        <p aria-hidden="true" className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/70">
+          {t("learn.classroom.nextLesson.title")}
         </p>
         <p className="truncate text-sm font-semibold">{lesson.title}</p>
       </div>

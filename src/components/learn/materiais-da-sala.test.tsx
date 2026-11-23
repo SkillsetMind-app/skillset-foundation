@@ -247,7 +247,7 @@ describe("aula só de arquivo", () => {
     mocks.searchParams = new URLSearchParams("lesson=l3");
     render(<EnrolledCourseWorkspace course={course} enableFirestoreAssets />);
 
-    expect(document.querySelector(".member-video-empty h5")).toHaveTextContent("Lesson locked");
+    expect(document.querySelector(".member-video-empty h3")).toHaveTextContent("Lesson locked");
     expect(screen.queryByText(/^This lesson is a file\./)).toBeNull();
     await act(async () => {});
     expect(screen.queryByRole("button", { name: /Download/ })).toBeNull();

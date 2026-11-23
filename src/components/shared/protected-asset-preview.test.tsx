@@ -37,6 +37,9 @@ describe("protected asset preview identity", () => {
       <I18nProvider initialLocale="en"><ChangeLanguage /><ProtectedAssetPreview asset={selectedAsset} /></I18nProvider>,
     );
     expect(screen.getByText("Preparing protected asset...")).toBeInTheDocument();
+    // Arquivo que não é vídeo: uma linha com o anel, sem a pílula branca.
+    expect(screen.getByRole("status")).toHaveTextContent("Preparing protected asset...");
+    expect(screen.getByRole("status")).not.toHaveClass("bg-white");
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
     expect(screen.getByText("Preparando archivo protegido...")).toBeInTheDocument();
     expect(sign).toHaveBeenCalledOnce();
@@ -87,6 +90,9 @@ describe("protected asset preview identity", () => {
     rerender(<ProtectedAssetPreview asset={asset("next")} />);
     expect(screen.queryByLabelText("old")).not.toBeInTheDocument();
     expect(screen.getByText("Preparing protected asset...")).toBeInTheDocument();
+    // Vídeo: a espera tem o 16:9 do player que vem (a caixa da sala), não uma
+    // pílula branca que depois vira o vídeo inteiro.
+    expect(screen.getByRole("status")).toHaveClass("member-video-empty--loading", "protected-asset-loading");
     expect(revoke).toHaveBeenCalledWith("blob:old");
   });
 

@@ -2,14 +2,12 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock,
   FileText,
-  Info,
   Loader2,
   LockKeyhole,
   PlayCircle,
@@ -37,7 +35,7 @@ import { NextLessonCard } from "@/components/learn/next-lesson-card";
 import { MembersAreaHero } from "@/components/learn/members-area-hero";
 import { TrustedEmbedPlayer } from "@/components/learn/trusted-embed-player";
 import { CourseSubscriptionCard } from "@/components/learn/course-subscription-card";
-import { CourseUnlockModal } from "@/components/learn/course-unlock-modal";
+import { CourseUnlockModal, unlockCopyKeys } from "@/components/learn/course-unlock-modal";
 import { VideoDock } from "@/components/learn/video-dock";
 import {
   VideoWatermark,
@@ -825,7 +823,14 @@ export function EnrolledCourseWorkspace({
   if (isLoading) {
     // The classroom's one loading state, the same the route file and the
     // creator workspace paint, so a student never sees the wait change look.
-    return <ClassroomLoading label={t("learnWave2.courseLoading.title")} />;
+    // Com a aula no endereço a sala abre no cabeçalho curto, não na capa (a
+    // conta de isCourseHome, sem o progresso, que ainda não chegou).
+    return (
+      <ClassroomLoading
+        label={t("learnWave2.courseLoading.title")}
+        short={Boolean(lessonParam) && !previewMode && tab !== "about"}
+      />
+    );
   }
 
   if (error) {
@@ -879,7 +884,12 @@ export function EnrolledCourseWorkspace({
               ? t("learn.classroom.workspace.enrollmentDelayed")
               : t("learn.classroom.workspace.openingCourse")}
           </h1>
-          <p role="status" className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
+          <p role="status" className="mt-4 flex max-w-2xl items-start gap-2 text-sm leading-7 text-[var(--color-ink-soft)]">
+            {/* Até 90s esperando a matrícula: o anel diz que algo está
+                andando. Some quando a espera estoura (aí o texto pede ação). */}
+            {checkoutGraceExpired ? null : (
+              <Loader2 size={18} aria-hidden className="mt-1.5 shrink-0 motion-safe:animate-spin" />
+            )}
             {checkoutGraceExpired
               ? t("learn.classroom.workspace.delayedDetails")
               : t("learn.classroom.workspace.openingDetails")}
@@ -907,8 +917,10 @@ export function EnrolledCourseWorkspace({
           }}
           ctaHref={`/courses/${course.slug}`}
           // No price here: the modal's fallback formats the raw course price
-          // in English. The course page owns the real, resolved price.
-          ctaLabel={t("learn.paths.unlock")}
+          // in English. The course page owns the real, resolved price. The
+          // verb (and the modal's note) still follow it: buy, enroll free, or
+          // the neutral "Unlock course" when the price is unknown.
+          ctaLabel={t(unlockCopyKeys(course.priceAmountMinor).label)}
           secondaryLink={{ href: "/learn", label: t("learn.classroom.workspace.backToLearning") }}
           onClose={() => router.push("/learn")}
         />
@@ -1471,14 +1483,14 @@ export function EnrolledCourseWorkspace({
               || (selectedLessonReleasing && !resolvedSelectedLesson?.contentText?.trim())
             }
             lesson={resolvedSelectedLesson}
-            moduleTitle={selectedModule?.title ?? null}
             onEnded={handleLessonEnded}
             unlockState={selectedLessonUnlockState}
             previousRequiredLesson={previousRequiredLesson}
+            underHero={isCourseHome}
             onSelectLesson={selectLesson}
             previewMode={previewMode}
             lessonComments={
-              // Sob o player e "Informacoes da aula" (paridade Hotmart, P3):
+              // No fim do painel, depois do material (paridade Hotmart, P3):
               // o feed da comunidade filtrado por esta aula. Some sozinho
               // quando a comunidade do curso esta desligada.
               <LessonComments
@@ -2058,82 +2070,6 @@ function LessonStepper({
   );
 }
 
-// "Informacoes da aula" sob o player (paridade Hotmart, §4.3): tipo, duracao,
-// modulo, materiais e data de liberacao — so o que `lesson`, o modulo e o
-// estado de liberacao ja trazem; nenhuma leitura nova. Estado local + botao
-// (nao <details>): aria-expanded / aria-controls explicitos, alvo de 44px.
-function LessonInfo({
-  lesson,
-  moduleTitle,
-  materialsCount,
-  unlocksAt,
-}: {
-  lesson: Lesson;
-  moduleTitle: string | null;
-  /** null = curso sem arquivos (catalogo) ou ainda carregando: a linha some. */
-  materialsCount: number | null;
-  unlocksAt: Date | null;
-}) {
-  const { t, locale } = useTranslation();
-  const [open, setOpen] = useState(false);
-  const rows: Array<[string, string]> = [
-    [t("learn.classroom.lessonInfo.type"), t(lessonTypeLabels[lesson.type])],
-  ];
-  // Mesmo criterio do relogio no cabecalho: so duracao de verdade.
-  if (/\d/.test(lesson.duration)) {
-    rows.push([t("learn.classroom.lessonInfo.duration"), lesson.duration]);
-  }
-  if (moduleTitle) {
-    rows.push([t("learn.classroom.lessonInfo.module"), moduleTitle]);
-  }
-  if (materialsCount != null) {
-    rows.push([
-      t("learn.classroom.lessonInfo.materials"),
-      t(`learn.classroom.resources.${materialsCount === 1 ? "fileOne" : "fileMany"}`)
-        .replace("{count}", () => String(materialsCount)),
-    ]);
-  }
-  if (unlocksAt) {
-    rows.push([
-      t("learn.classroom.lessonInfo.availableFrom"),
-      new Intl.DateTimeFormat(locale, { month: "short", day: "numeric", year: "numeric" })
-        .format(unlocksAt),
-    ]);
-  }
-
-  return (
-    <div className="mt-3">
-      <button
-        type="button"
-        aria-expanded={open}
-        aria-controls={open ? "member-lesson-info" : undefined}
-        onClick={() => setOpen((current) => !current)}
-        className="inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-sm font-semibold text-[var(--color-ink)] underline-offset-4 hover:underline"
-      >
-        <Info aria-hidden="true" size={15} />
-        {t("learn.classroom.lessonInfo.toggle")}
-        <ChevronDown aria-hidden="true" size={15} className={open ? "rotate-180" : ""} />
-      </button>
-      {/* Fechado = fora do DOM, nao `hidden`: o tipo da aula ja esta no
-          cabecalho do painel, e uma copia oculta viraria texto duplicado para
-          quem busca por ele (leitor de tela em modo de leitura, testes). */}
-      {open ? (
-        <dl
-          id="member-lesson-info"
-          className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3 text-sm"
-        >
-          {rows.map(([term, value]) => (
-            <Fragment key={term}>
-              <dt className="font-semibold text-[var(--color-ink-soft)]">{term}</dt>
-              <dd className="m-0 text-[var(--color-ink)]">{value}</dd>
-            </Fragment>
-          ))}
-        </dl>
-      ) : null}
-    </div>
-  );
-}
-
 // "Mark complete" used to live at the end of this panel. It now sits in the
 // sticky lesson action bar with Previous / All lessons / Next, so the student
 // never has to scroll past the discussion to find it.
@@ -2147,7 +2083,6 @@ function LessonContentPanel({
   isLoadingContent,
   lesson,
   lessonComments = null,
-  moduleTitle,
   nextUp = null,
   onCancelNextUp,
   onEnded,
@@ -2155,6 +2090,7 @@ function LessonContentPanel({
   onSelectLesson,
   previewMode,
   previousRequiredLesson = null,
+  underHero = false,
   unlockState,
 }: {
   assets: CourseAsset[];
@@ -2173,18 +2109,18 @@ function LessonContentPanel({
   onPlayNextUp?: () => void;
   isLoadingContent: boolean;
   lesson: Lesson;
-  /** Comentarios da aula (feed da comunidade filtrado), logo abaixo de
-   *  "Informacoes da aula". O painel nao sabe de comunidade: quem monta e a
-   *  sala, que tem o caminho base e o numero da aula. */
+  /** Comentarios da aula (feed da comunidade filtrado), no fim do painel.
+   *  O painel nao sabe de comunidade: quem monta e a sala, que tem o caminho
+   *  base e o numero da aula. */
   lessonComments?: ReactNode;
-  /** Modulo da aula, para "Informacoes da aula". */
-  moduleTitle: string | null;
   onEnded: () => void;
   /** Abre outra aula da sala (o botão "Go to that lesson" da aula trancada). */
   onSelectLesson?: (lessonId: string) => void;
   previewMode: boolean;
   /** Sequencial trancado: a aula que falta concluir antes desta. */
   previousRequiredLesson?: Pick<Lesson, "id" | "title"> | null;
+  /** A capa do curso está acima do painel (primeira visita, preview, About). */
+  underHero?: boolean;
   unlockState: LessonUnlockState | null;
 }) {
   const { t, locale } = useTranslation();
@@ -2247,7 +2183,7 @@ function LessonContentPanel({
   const textOnly = contentReady && (isTextFirstLesson || fileOnly);
   // O tipo dito pelo que a aula mostra, nao pelo campo: aula nova nasce
   // "video" (acima), e uma aula so de leitura ou so de arquivo dizia "VIDEO
-  // LESSON" no topo e em "Informacoes da aula".
+  // LESSON" no topo.
   const shownType: LessonType =
     lesson.type === "video" && fileOnly
       ? "download"
@@ -2322,9 +2258,15 @@ function LessonContentPanel({
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
             {t(lessonTypeLabels[shownType])}
           </p>
-          <h4 className="display-title mt-2 text-3xl text-[var(--color-ink)]">
+          {/* h2: a aula é a seção principal sob o h1 do curso (antes h4, e
+              as subseções h5). Sob a capa, que já traz o título de 56px do
+              curso, o da aula vai na letra do texto, em 18px: uma serifa
+              grande por tela. No cabeçalho curto a serifa fica com a aula. */}
+          <h2
+            className={`mt-2 text-[var(--color-ink)] ${underHero ? "text-lg font-semibold" : "display-title text-3xl"}`}
+          >
             {lesson.title}
-          </h4>
+          </h2>
         </div>
         {/* Sem duracao real (o fallback "Self-paced" de published-courses)
             nao ha relogio a mostrar: a duracao nao se digita mais. */}
@@ -2349,7 +2291,7 @@ function LessonContentPanel({
         {locked ? (
           <div className="member-video-empty">
             <LockKeyhole size={28} aria-hidden />
-            <h5>{t("learn.classroom.lesson.locked")}</h5>
+            <h3>{t("learn.classroom.lesson.locked")}</h3>
             <p>
               {unlockState
                 ? formatUnlockMessage(unlockState, locale, t, previousRequiredLesson?.title ?? null)
@@ -2400,12 +2342,12 @@ function LessonContentPanel({
           // iguais. O texto segue para o leitor de tela, num aviso so.
           <div className="member-video-empty member-video-empty--loading" role="status">
             <Loader2 size={32} aria-hidden className="motion-safe:animate-spin" />
-            <h5 className="sr-only">{t("learn.classroom.lesson.loading")}</h5>
+            <h3 className="sr-only">{t("learn.classroom.lesson.loading")}</h3>
           </div>
         ) : (
           <div className="member-video-empty">
             <PlayCircle size={34} aria-hidden />
-            <h5>{t("learn.classroom.lesson.mediaMissing")}</h5>
+            <h3>{t("learn.classroom.lesson.mediaMissing")}</h3>
             <p>{t("learn.classroom.lesson.mediaDetails")}</p>
           </div>
         )}
@@ -2413,16 +2355,10 @@ function LessonContentPanel({
       </VideoDock>
       )}
 
-      <LessonInfo
-        lesson={shownType === lesson.type ? lesson : { ...lesson, type: shownType }}
-        moduleTitle={moduleTitle}
-        materialsCount={
-          enableFirestoreAssets && !isLoadingAssets ? supportingAssets.length : null
-        }
-        unlocksAt={unlockState?.unlocksAt ?? null}
-      />
-
-      {/* O material do professor (descricao, notas, arquivos, quiz) vem logo
+      {/* "Lesson information" saiu: repetia tipo (acima), duracao (o chip),
+          modulo (a lista de aulas) e arquivos (a lista abaixo); a data de
+          uma aula trancada segue no aviso do palco.
+          O material do professor (descricao, notas, arquivos, quiz) vem logo
           sob a aula, e os comentarios por ultimo. Na aula de video o corpo
           ficava embaixo de uma lista de comentarios sem fim. */}
       {lessonBody}

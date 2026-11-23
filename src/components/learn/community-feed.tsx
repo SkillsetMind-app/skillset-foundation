@@ -350,7 +350,7 @@ export function CommunityFeed({
         </h2>
         {liveChip ? (
           <p className="lg:hidden">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(22,163,74,0.1)] px-3 py-1 text-xs font-bold text-[rgb(21,128,61)]">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-success-soft)] px-3 py-1 text-xs font-bold text-[var(--color-success-fg)]">
               <Radio size={12} aria-hidden /> {liveChip}
             </span>
           </p>
@@ -381,7 +381,7 @@ export function CommunityFeed({
                 type="button"
                 aria-pressed={filter === id}
                 onClick={() => setFilter(id)}
-                className={`min-h-11 rounded-md px-4 text-sm font-semibold transition ${
+                className={`min-h-11 rounded-md px-4 text-sm font-semibold transition-colors duration-[var(--duration-base)] ease-[var(--ease-standard)] ${
                   filter === id
                     ? "bg-[var(--color-primary)] text-[var(--color-base)]"
                     : "text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-soft)]"
@@ -776,8 +776,8 @@ function Composer({
       ) : null}
 
       {similar.length > 0 ? (
-        <div className="rounded-md border border-[rgba(22,163,74,0.35)] bg-[rgba(22,163,74,0.06)] p-3 text-sm">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[rgb(21,128,61)]">
+        <div className="rounded-md border border-[var(--color-success)] bg-[var(--color-success-soft)] p-3 text-sm">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-success-fg)]">
             {t("learn.community.composer.similar")}
           </p>
           <ul className="mt-2 grid gap-1">
@@ -926,7 +926,7 @@ function FeedCard({
           <span
             className={`ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-bold ${
               answered
-                ? "bg-[rgba(22,163,74,0.1)] text-[rgb(21,128,61)]"
+                ? "bg-[var(--color-success-soft)] text-[var(--color-success-fg)]"
                 : "bg-[var(--color-surface-soft)] text-[var(--color-ink-soft)]"
             }`}
           >
@@ -967,8 +967,10 @@ function FeedCard({
           <ThumbsUp size={14} aria-hidden />
           {likes.count}
         </button>
+        {/* O motivo à vista, ao lado do botão travado: antes só o leitor de
+            tela sabia por que o "Like" do próprio post não respondia. */}
         {isOwn ? (
-          <span id={clapReasonId} className="sr-only">
+          <span id={clapReasonId} className="font-normal text-[var(--color-ink-soft)]">
             {t("learn.community.card.clapOwn")}
           </span>
         ) : null}
@@ -1007,7 +1009,7 @@ function FeedCard({
               <li
                 key={reply.id}
                 className={`flex gap-2 rounded-md p-2 text-sm ${
-                  isAnswer ? "bg-[rgba(22,163,74,0.08)]" : ""
+                  isAnswer ? "bg-[var(--color-success-soft)]" : ""
                 }`}
               >
                 <Avatar name={reply.authorName} small />
@@ -1016,7 +1018,7 @@ function FeedCard({
                     <span className="font-semibold text-[var(--color-ink)]">{reply.authorName}</span>
                     {replyFromInstructor ? ` · ${t("learn.community.card.instructor")}` : ""}
                     {isAnswer ? (
-                      <span className="ml-1 inline-flex items-center gap-0.5 font-bold text-[rgb(21,128,61)]">
+                      <span className="ml-1 inline-flex items-center gap-0.5 font-bold text-[var(--color-success-fg)]">
                         <CheckCircle2 size={11} aria-hidden /> {t("learn.community.card.answer")}
                       </span>
                     ) : null}
@@ -1074,11 +1076,11 @@ function LiveCard({ live, now, locale }: { live: CourseEvent; now: number; local
       aria-label={t("learn.community.live.next")}
       className={`rounded-lg border p-4 shadow-[var(--shadow-soft)] ${
         running
-          ? "border-[rgba(22,163,74,0.35)] bg-[rgba(22,163,74,0.06)]"
+          ? "border-[var(--color-success)] bg-[var(--color-success-soft)]"
           : "border-[var(--color-line)] bg-white"
       }`}
     >
-      <p className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.18em] text-[rgb(21,128,61)]">
+      <p className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-success-fg)]">
         <Radio size={12} aria-hidden /> {liveChipLabel(live, now, t)}
       </p>
       <p className="mt-2 text-sm font-semibold text-[var(--color-ink)]">{live.title}</p>
@@ -1143,7 +1145,7 @@ function Avatar({ name, online = false, small = false }: { name: string; online?
     >
       {initials}
       {online ? (
-        <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-[rgb(22,163,74)]" />
+        <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-[var(--color-success)]" />
       ) : null}
     </span>
   );

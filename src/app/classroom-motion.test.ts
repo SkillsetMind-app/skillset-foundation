@@ -46,9 +46,10 @@ describe("os rotulos da barra lateral", () => {
 
 describe("o cartao 'Proxima aula'", () => {
   // Ele aparecia seco sobre o video e sumia igual.
+  // Entrada e saída no tempo do sistema (180ms), não nos 250ms de antes.
   it("entra subindo com fade", () => {
     expect(block(".member-next-lesson")).toMatch(
-      /animation: member-next-lesson-in \d+ms/,
+      /animation: member-next-lesson-in var\(--duration-base\) var\(--ease-standard\)/,
     );
     const keyframes = css.slice(css.indexOf("@keyframes member-next-lesson-in"));
     expect(keyframes.slice(0, 200)).toContain("translateY(12px)");
@@ -58,7 +59,24 @@ describe("o cartao 'Proxima aula'", () => {
     const leaving = block(".member-next-lesson.is-leaving");
     expect(leaving).toContain("animation: none");
     expect(leaving).toContain("transform: translateY(12px)");
-    expect(leaving).toMatch(/transition:\s*\n?\s*opacity \d+ms/);
+    expect(leaving).toMatch(/transition:\s*\n?\s*opacity var\(--duration-base\) var\(--ease-standard\)/);
+  });
+
+  // Com o mini player ligado o cartão nascia dentro do vídeo de ~150x84px.
+  it("com o mini player ligado vira uma faixa logo abaixo dele", () => {
+    const media = css.lastIndexOf(
+      "@media (max-width: 767.98px) {",
+      css.indexOf(".member-video-dock--mini .member-video-stage:has(> .member-next-lesson) > .member-next-lesson {"),
+    );
+    expect(media).toBeGreaterThan(-1);
+    expect(block(".member-video-dock--mini .member-video-stage:has(> .member-next-lesson)")).toContain("position: static;");
+    // As duas metades sob o mesmo :has(): sem suporte, as duas caem juntas e
+    // o cartão fica onde estava (sem isso ele ia para baixo do palco, que
+    // corta o que passa da borda, e sumia).
+    expect(css).not.toContain(".member-video-dock--mini .member-next-lesson {");
+    const strip = block(".member-video-dock--mini .member-video-stage:has(> .member-next-lesson) > .member-next-lesson");
+    expect(strip).toContain("top: 100%;");
+    expect(strip).toContain("bottom: auto;");
   });
 });
 
@@ -100,6 +118,25 @@ describe("a moldura da sala", () => {
     expect(css).toMatch(
       /\.member-classroom\[data-members-theme\] \.button-solid \*,[\s\S]{0,200}?\{\s*color: var\(--ma-on-accent\) !important;/,
     );
+  });
+
+  // Brilho vermelho fixo sob todo botão cheio, e contorno com hover vermelho,
+  // mesmo num curso verde ou azul.
+  it("botões da sala sem vermelho fixo: sombra navy e realce na cor do curso", () => {
+    expect(block(".member-classroom[data-members-theme] .button-accent:hover")).toContain(
+      "box-shadow: var(--shadow-button-strong);",
+    );
+    expect(css).toMatch(
+      /\.member-classroom\[data-members-theme\] \.button-accent \{[^}]*box-shadow: var\(--shadow-button\);/,
+    );
+    expect(block(".member-classroom[data-members-theme] .button-outline:hover")).toContain(
+      "background: color-mix(in srgb, var(--ma-accent) 10%, transparent);",
+    );
+  });
+
+  it("sobras de 160/200ms da sala no tempo do sistema", () => {
+    expect(block(".member-playlist__chevron")).toContain("transform var(--duration-base) var(--ease-standard)");
+    expect(css).toMatch(/animation: member-video-mini-in var\(--duration-base\) var\(--ease-standard\);/);
   });
 
   it("a caixa de espera do vídeo já tem o 16:9 do player", () => {

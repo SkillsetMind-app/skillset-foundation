@@ -117,6 +117,8 @@ describe("MemberAreaHomeView", () => {
     const mine = screen.getByRole("region", { name: "My products" });
     expect(within(mine).getByRole("link").getAttribute("href")).toBe("/learn/courses/c-a");
     expect(within(mine).getByText("12% complete")).toBeTruthy();
+    // A barra da casa, anunciada como barra (antes era só um traço mudo).
+    expect(within(mine).getByRole("progressbar", { name: "12% complete" }).getAttribute("aria-valuenow")).toBe("12");
 
     const more = screen.getByRole("region", { name: "More from this creator" });
     expect(within(more).getByText("Locked")).toBeTruthy();
@@ -149,17 +151,22 @@ describe("MemberAreaHomeView", () => {
     renderView();
     expect(await screen.findByText(/Preview: this is what your students see/)).toBeTruthy();
     expect(screen.getByRole("link", { name: "Edit members area" }).getAttribute("href")).toBe("/teach/member-area");
-    expect(screen.getByText("Open one of your products below to start.")).toBeTruthy();
+    // Seção vazia some (título + "nada aqui" eram uma seção sem conteúdo);
+    // só "My products" fica, com o aviso de vazio.
+    expect(screen.queryByRole("region", { name: "Continue where you left off" })).toBeNull();
+    expect(screen.queryByText("Open one of your products below to start.")).toBeNull();
     expect(screen.getByText("You have no products from this creator yet.")).toBeTruthy();
-    // Sem nada comprado, a vitrine vazia não diz "você já tem tudo".
-    expect(screen.getByText("This creator has no other products yet.")).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "More from this creator" })).toBeNull();
+    expect(screen.queryByText("This creator has no other products yet.")).toBeNull();
     expect(screen.queryByText("You already have every product from this creator.")).toBeNull();
   });
 
-  it("quem já tem tudo vê 'você já tem tudo'; assinatura mostra o intervalo", async () => {
+  it("quem já tem tudo não vê a vitrine vazia; assinatura mostra o intervalo", async () => {
     mocks.getMemberAreaHome.mockResolvedValueOnce({ ...home, moreProducts: [] });
     renderView();
-    expect(await screen.findByText("You already have every product from this creator.")).toBeTruthy();
+    expect(await screen.findByRole("region", { name: "My products" })).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "More from this creator" })).toBeNull();
+    expect(screen.queryByText("You already have every product from this creator.")).toBeNull();
     cleanup();
     mocks.getMemberAreaHome.mockResolvedValueOnce({
       ...home,

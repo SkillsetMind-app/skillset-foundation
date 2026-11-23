@@ -45,10 +45,13 @@ export function LessonQuiz({ courseId, lessonId }: { courseId: string; lessonId:
   const headingId = `lesson-quiz-${lessonId}`;
 
   return (
-    <section aria-labelledby={headingId} className="mt-6 grid gap-4 rounded-lg border border-[var(--color-line)] p-4">
-      <h5 id={headingId} ref={headingRef} tabIndex={-1} className="text-base font-semibold text-[var(--color-ink)] outline-none">
+    // O quiz chega depois do resto da aula (leitura própria): entra com a
+    // subida curta do sistema em vez de aparecer de uma vez empurrando a
+    // página. h3: subseção da aula, que é o h2 do painel.
+    <section aria-labelledby={headingId} className="motion-rise-in mt-6 grid gap-4 rounded-lg border border-[var(--color-line)] p-4">
+      <h3 id={headingId} ref={headingRef} tabIndex={-1} className="text-base font-semibold text-[var(--color-ink)] outline-none">
         {t("learn.classroom.quiz.title")}
-      </h5>
+      </h3>
       {questions.map((question, index) => {
         const choice = chosen[index];
         const isChecked = Boolean(checked[index]);

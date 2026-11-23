@@ -64,6 +64,12 @@ describe("CourseReviewPanel locale and state", () => {
     expect(submitCourseReview).toHaveBeenCalledExactlyOnceWith({ courseId: "course-test", rating: 3, body });
     await act(async () => resolve({ success: true, reviewId: "review-test", ratingAverage: 3, ratingCount: 1 }));
     expect(screen.getByText("Review saved. Thank you for rating this course.")).toBeInTheDocument();
+    // Sucesso com cara de sucesso, ao lado do botão (que não sai do lugar), e
+    // sem a caixa de erro: antes os dois eram a mesma pílula navy.
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent("Review saved. Thank you for rating this course.");
+    expect(document.querySelector("button[type=submit]")!.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
     expect(screen.getByText("Reseña guardada. Gracias por valorar este curso.")).toBeInTheDocument();
     expect(field).toHaveValue(body);
@@ -116,6 +122,10 @@ describe("CourseReviewPanel locale and state", () => {
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "Draft $$ $&" } });
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Enviar reseña" })); });
     expect(screen.getByText(expected)).toBeInTheDocument();
+    // A falha é uma caixa de erro (lida em voz alta), e a região do "salvou"
+    // fica vazia.
+    expect(screen.getByRole("alert")).toHaveTextContent(expected);
+    expect(screen.getByRole("status").textContent).toBe("");
     expect(screen.getByRole("textbox")).toHaveValue("Draft $$ $&");
     expect(screen.queryByText(message)).not.toBeInTheDocument();
     expect(screen.queryByText(/Reseña guardada/)).not.toBeInTheDocument();

@@ -681,3 +681,48 @@ describe.each(COMBOS)("InlineAlert inside the classroom — %s", (_name, vars, c
     );
   });
 });
+
+// A comunidade da sala nas cores do CURSO, nas quatro misturas. Antes o feed
+// pintava "respondida", "ao vivo" e "Answer" num verde fixo (3.6:1 num curso
+// escuro), e o filtro ativo, a pílula "N new posts" e os avatares no navy da
+// plataforma (~1.3:1 contra o painel de um curso escuro: o filtro escolhido
+// parecia não escolhido).
+describe.each(COMBOS)("comunidade da sala nas cores do curso — %s", (_name, vars, courseTheme) => {
+  const surfaces = ["--ma-bg", "--ma-elev", "--ma-surface", "--ma-surface-2"];
+  const success = palette(`.member-classroom[data-members-theme="${courseTheme}"] [class*="var(--color-success-"]`);
+  const inverted = palette(
+    '.member-classroom[data-members-theme] .member-lesson-comments [class*="bg-[var(--color-primary)]"]',
+  );
+
+  it("lê o verde de sucesso a 4.5:1 no próprio fundo e direto na superfície", () => {
+    expect(Object.keys(success).length, "remapeamento do verde não encontrado").toBeGreaterThan(0);
+    const merged = { ...vars, ...success };
+    for (const surface of surfaces) {
+      for (const background of ["var(--color-success-soft)", `var(${surface})`]) {
+        const contrast = ratio("var(--color-success-fg)", background, merged, surface);
+        expect(contrast, `${background} over ${surface} must resolve`).not.toBeNull();
+        expect(contrast!, `${background} over ${surface}`).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+
+  it("o filtro ativo, a pílula e o avatar leem o texto e se destacam do painel", () => {
+    expect(Object.keys(inverted).length, "remapeamento do navy não encontrado").toBeGreaterThan(0);
+    const merged = { ...vars, ...inverted };
+    for (const surface of surfaces) {
+      const label = ratio("var(--color-base)", "var(--color-primary)", merged, surface);
+      expect(label, `texto sobre o preenchimento, ${surface}`).not.toBeNull();
+      expect(label!).toBeGreaterThanOrEqual(4.5);
+      // O preenchimento contra o painel: 3:1, o mínimo para o que não é texto.
+      const fill = ratio("var(--color-primary)", `var(${surface})`, merged, surface);
+      expect(fill!, `preenchimento sobre ${surface}`).toBeGreaterThanOrEqual(3);
+    }
+  });
+});
+
+it("o feed e a gaveta da comunidade não pintam mais verde fixo", () => {
+  for (const file of ["community-feed.tsx", "community-post-drawer.tsx"]) {
+    const source = readFileSync(join(process.cwd(), "src/components/learn", file), "utf8");
+    expect(source, file).not.toMatch(/rgba?\(2[12],\s*1(28|63),/);
+  }
+});

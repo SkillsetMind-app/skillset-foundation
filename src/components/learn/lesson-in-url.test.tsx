@@ -89,12 +89,12 @@ const course = {
   ],
 } as unknown as Course;
 
-// O titulo da aula aberta e o h4 do cabecalho do painel da aula, dentro do
+// O titulo da aula aberta e o h2 do cabecalho do painel da aula, dentro do
 // player (a secao tem outros h4: o cartao "continuar", a lista de aulas).
 function playerHeading() {
   return document
     .getElementById("member-lesson-player")
-    ?.querySelector(".member-lesson-panel__head h4")?.textContent;
+    ?.querySelector(".member-lesson-panel__head h2")?.textContent;
 }
 
 describe("a aula atual vive no endereco", () => {
@@ -229,7 +229,7 @@ describe("aviso do player sem video segue o conteudo, nao o tipo", () => {
   function playerNotice() {
     return document
       .getElementById("member-lesson-player")
-      ?.querySelector(".member-video-empty h5")?.textContent;
+      ?.querySelector(".member-video-empty h3")?.textContent;
   }
 
   const semVideo = {

@@ -183,7 +183,16 @@ export function MembersAreaHero({
                 </>
               )}
             </span>
-            <span className="members-hero__bar">
+            {/* A barra da capa fica (o desenho dela é para cima da foto); só
+                passa a ser anunciada como barra de progresso. */}
+            <span
+              className="members-hero__bar"
+              role="progressbar"
+              aria-valuenow={pct}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={t("learn.paths.percentComplete").replace("{percent}", () => String(pct))}
+            >
               <span style={{ width: `${pct}%` }} />
             </span>
           </div>

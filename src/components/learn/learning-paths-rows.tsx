@@ -9,6 +9,7 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 import {
   CourseCover,
   CourseUnlockModal,
+  unlockCopyKeys,
 } from "@/components/learn/course-unlock-modal";
 import type { Enrollment } from "@/domain/enrollment";
 import type { LearningPath } from "@/domain/learning-path";
@@ -325,7 +326,7 @@ function CourseRowCard({
           className="button-outline mt-3 inline-flex w-full items-center justify-center gap-2 px-3 py-2 text-xs"
         >
           <Lock size={14} aria-hidden="true" />
-          {t("learn.paths.unlock")}
+          {t(unlockCopyKeys(course.priceAmountMinor).label)}
         </button>
       ) : (
         <Link

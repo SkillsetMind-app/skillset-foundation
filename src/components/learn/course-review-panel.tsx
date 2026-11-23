@@ -1,10 +1,11 @@
 "use client";
 
-import { Star } from "lucide-react";
+import { CheckCircle2, Star } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import type { CourseReview } from "@/domain/course-review";
 import {
   submitCourseReview,
@@ -55,7 +56,11 @@ export function CourseReviewPanel({
   const [rating, setRating] = useState(5);
   const [body, setBody] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [message, setMessage] = useState("");
+  // Sucesso e falha separados: antes eram o mesmo estado e a mesma pílula
+  // navy, e "Review saved." tinha a cara de "We could not load your review.".
+  const [saved, setSaved] = useState(false);
+  // Chave do dicionário, nunca texto: o idioma pode trocar com o erro na tela.
+  const [error, setError] = useState("");
   const progressMissing = requiresProgress && progressPercent < 50;
   const canReview = !previewMode && !progressMissing && Boolean(user);
 
@@ -75,7 +80,7 @@ export function CourseReviewPanel({
         }
       },
       () => {
-        setMessage("learn.classroom.review.loadError");
+        setError("learn.classroom.review.loadError");
       },
     );
   }, [courseId, previewMode, user]);
@@ -88,13 +93,14 @@ export function CourseReviewPanel({
     }
 
     setIsSaving(true);
-    setMessage("");
+    setSaved(false);
+    setError("");
 
     try {
       await submitCourseReview({ courseId, rating, body });
-      setMessage("learn.classroom.review.saved");
-    } catch (error) {
-      setMessage(reviewFailureKey(error));
+      setSaved(true);
+    } catch (failure) {
+      setError(reviewFailureKey(failure));
     } finally {
       setIsSaving(false);
     }
@@ -153,23 +159,32 @@ export function CourseReviewPanel({
           </p>
         ) : null}
 
-        {message ? (
-          <p className="rounded-md bg-white px-3 py-2 text-xs font-semibold leading-5 text-[var(--color-primary)]">
-            {t(message)}
-          </p>
-        ) : null}
+        {/* O padrão da casa: "salvou" ao lado do botão, numa região sempre
+            montada (o botão não sai do lugar); a falha numa caixa de erro
+            com ícone, embaixo dele. */}
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="submit"
+            disabled={!canReview || isSaving}
+            className="button-solid w-fit px-4 py-2.5 text-sm disabled:opacity-60"
+          >
+            {isSaving
+              ? t("learn.classroom.review.saving")
+              : existingReview
+                ? t("learn.classroom.review.update")
+                : t("learn.classroom.review.submit")}
+          </button>
+          <span role="status" className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--color-success-fg)]">
+            {saved ? (
+              <>
+                <CheckCircle2 aria-hidden="true" size={16} />
+                {t("learn.classroom.review.saved")}
+              </>
+            ) : null}
+          </span>
+        </div>
 
-        <button
-          type="submit"
-          disabled={!canReview || isSaving}
-          className="button-solid w-fit px-4 py-2.5 text-sm disabled:opacity-60"
-        >
-          {isSaving
-            ? t("learn.classroom.review.saving")
-            : existingReview
-              ? t("learn.classroom.review.update")
-              : t("learn.classroom.review.submit")}
-        </button>
+        {error ? <InlineAlert tone="error">{t(error)}</InlineAlert> : null}
       </form>
     </section>
   );

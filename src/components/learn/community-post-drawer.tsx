@@ -162,7 +162,7 @@ export function CommunityPostDrawer({
             <span
               className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${
                 answered
-                  ? "bg-[rgba(22,163,74,0.1)] text-[var(--color-success-fg)]"
+                  ? "bg-[var(--color-success-soft)] text-[var(--color-success-fg)]"
                   : "bg-[var(--color-surface-soft)] text-[var(--color-ink-soft)]"
               }`}
             >
@@ -202,7 +202,7 @@ export function CommunityPostDrawer({
                     data-community-item
                     className={`rounded-lg p-3 text-sm ${
                       isAnswer
-                        ? "border border-[rgba(22,163,74,0.35)] bg-[rgba(22,163,74,0.08)]"
+                        ? "border border-[var(--color-success)] bg-[var(--color-success-soft)]"
                         : "bg-[var(--color-surface-soft)]"
                     }`}
                   >

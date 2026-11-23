@@ -18,7 +18,8 @@ const unsubscribable = () => Object.assign(vi.fn(), { reload: vi.fn(async () => 
  *   - anterior / proxima junto do titulo da aula, uma vez so, sem burlar o
  *     cadeado;
  *   - "Tocando agora" na playlist, so no item atual;
- *   - "Informacoes da aula" sob o player (tipo, duracao, modulo, materiais);
+ *   - "Informacoes da aula" saiu: tipo, duracao, modulo e arquivos ja estao
+ *     na tela, cada um uma vez;
  *   - "N de M aulas · X%" e "Ver certificado" (so a 100%) no hero da home.
  *
  * Arquivo proprio: classroom-home.test.tsx ja e pesado e um arquivo grande
@@ -293,35 +294,23 @@ describe("Tocando agora na playlist", () => {
   });
 });
 
-describe("Informacoes da aula sob o player", () => {
-  it("abre e fecha com aria-expanded e mostra tipo, duracao e modulo", () => {
+// "Lesson information" repetia o que ja esta na tela: o tipo (o sobrescrito do
+// painel), a duracao (o chip), o modulo (a lista de aulas) e os arquivos (a
+// lista do corpo). Saiu; cada informacao fica uma vez, no lugar dela.
+describe("informacoes da aula sem repeticao", () => {
+  it("tipo, duracao e modulo aparecem uma vez, sem o painel 'Lesson information'", () => {
     renderClassroom("lesson=l2");
 
-    const toggle = screen.getByRole("button", { name: "Lesson information" });
-    expect(toggle).toHaveAttribute("aria-expanded", "false");
-    // Fechado = fora do DOM (uma copia oculta duplicaria "Text lesson", que o
-    // cabecalho do painel ja mostra) — e sem aria-controls para um id que
-    // nao existe.
-    expect(toggle).not.toHaveAttribute("aria-controls");
+    expect(screen.queryByRole("button", { name: "Lesson information" })).toBeNull();
     expect(document.getElementById("member-lesson-info")).toBeNull();
+    // O tipo: so o sobrescrito do painel.
     expect(screen.getAllByText("Text lesson")).toHaveLength(1);
-
-    fireEvent.click(toggle);
-    expect(toggle).toHaveAttribute("aria-expanded", "true");
-    expect(toggle).toHaveAttribute("aria-controls", "member-lesson-info");
-    const panel = document.getElementById("member-lesson-info") as HTMLElement;
-    expect(panel).toBeInTheDocument();
-    expect(within(panel).getByText("Text lesson")).toBeInTheDocument();
-    expect(within(panel).getByText("7 min")).toBeInTheDocument();
-    expect(within(panel).getByText("Module one")).toBeInTheDocument();
-    // Sem arquivos de curso (catalogo) e sem gotejamento por data, essas
-    // linhas nao existem — nada de "0 files" nem data vazia.
-    expect(within(panel).queryByText("Materials")).toBeNull();
-    expect(within(panel).queryByText("Available from")).toBeNull();
-
-    fireEvent.click(toggle);
-    expect(toggle).toHaveAttribute("aria-expanded", "false");
-    expect(document.getElementById("member-lesson-info")).toBeNull();
+    // A duracao: o chip do cabecalho do painel.
+    expect(document.querySelector(".member-lesson-panel__head .member-meta-chip")).toHaveTextContent("7 min");
+    // O modulo: na lista de aulas.
+    expect(within(playlist()).getByText("Module one")).toBeInTheDocument();
+    // Sem gotejamento por data nada fala de liberacao.
+    expect(screen.queryByText("Available from")).toBeNull();
     expect(recordLessonProgress).not.toHaveBeenCalled();
   });
 
@@ -345,10 +334,12 @@ describe("Informacoes da aula sob o player", () => {
       asset({ id: "other-lesson", lessonId: "l1" }),
     ]));
 
-    fireEvent.click(screen.getByRole("button", { name: "Lesson information" }));
-    const panel = document.getElementById("member-lesson-info") as HTMLElement;
-    expect(within(panel).getByText("Materials")).toBeInTheDocument();
-    expect(within(panel).getByText("1 file")).toBeInTheDocument();
+    // So o material desta aula, uma vez, na lista do corpo (a miniatura e o
+    // arquivo da outra aula ficam de fora); nenhuma contagem repetida.
+    const body = document.getElementById("member-lesson-content") as HTMLElement;
+    expect(within(body).getAllByText("Worksheet.pdf")).toHaveLength(1);
+    expect(within(body).queryByText("thumb.png")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Lesson information" })).toBeNull();
   });
 });
 
@@ -359,6 +350,8 @@ describe("hero da home do curso", () => {
         completedCount={3} totalCount={12} certificateHref="/learn/credentials" />,
     );
     expect(screen.getByText("3 of 12 lessons · 25%")).toBeInTheDocument();
+    // A barra da capa e anunciada como barra de progresso.
+    expect(screen.getByRole("progressbar", { name: "25% complete" })).toHaveAttribute("aria-valuenow", "25");
     expect(screen.queryByRole("link", { name: "Get certificate" })).toBeNull();
 
     rerender(
@@ -477,20 +470,17 @@ describe("EN <-> ES com a sala aberta", () => {
       </I18nProvider>,
     );
 
-    const toggle = screen.getByRole("button", { name: "Lesson information" });
-    fireEvent.click(toggle);
+    const eyebrow = screen.getByText("Text lesson");
+    const list = playlist();
     expect(within(head()).getByRole("button", { name: "Next lesson: Lesson three" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
     expect(within(head()).getByRole("button", { name: "Siguiente lección: Lesson three" })).toBeInTheDocument();
     expect(within(head()).getByRole("button", { name: "Lección anterior: Lesson one" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Información de la lección" })).toBe(toggle);
-    expect(toggle).toHaveAttribute("aria-expanded", "true");
-    const panel = document.getElementById("member-lesson-info") as HTMLElement;
-    expect(within(panel).getByText("Duración")).toBeInTheDocument();
-    expect(within(panel).getByText("Lección de texto")).toBeInTheDocument();
+    // O mesmo elemento, traduzido: a aula nao foi remontada.
+    expect(screen.getByText("Lección de texto")).toBe(eyebrow);
     // Titulo do modulo e do autor: nao se traduz.
-    expect(within(panel).getByText("Module one")).toBeInTheDocument();
+    expect(within(list).getByText("Module one")).toBeInTheDocument();
     expect(screen.getByText("Reproduciendo ahora")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));

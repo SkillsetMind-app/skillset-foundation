@@ -1376,7 +1376,6 @@
   },
   "learn": {
     "memberArea": {
-      "moreProductsNone": "Este creador todavía no tiene otros productos.",
       "tabTitle": "Área de miembros",
       "loading": "Cargando el área de miembros...",
       "loadError": "No pudimos cargar esta área de miembros. Inténtalo de nuevo.",
@@ -1384,14 +1383,12 @@
       "editArea": "Editar área de miembros",
       "byCreator": "Por {name}",
       "continueTitle": "Continúa donde te quedaste",
-      "continueEmpty": "Abre uno de tus productos abajo para empezar.",
       "resumeLesson": "Retomar: {title}",
       "resumeAt": "desde {time}",
       "myProducts": "Mis productos",
       "myProductsEmpty": "Todavía no tienes productos de este creador.",
       "progress": "{percent}% completado",
       "moreProducts": "Más de este creador",
-      "moreProductsEmpty": "Ya tienes todos los productos de este creador.",
       "locked": "Bloqueado",
       "viewProduct": "Ver detalles",
       "free": "Gratis",
@@ -1512,7 +1509,6 @@
       },
       "nextLesson": {
         "title": "Siguiente lección",
-        "countdown": "Siguiente lección en {seconds} s",
         "announce": "La siguiente lección empieza en {seconds} segundos: {title}. Elige Cancelar para quedarte en esta lección.",
         "watch": "Ver ahora",
         "cancel": "Cancelar"
@@ -1523,14 +1519,6 @@
         "next": "Siguiente lección",
         "nextTitled": "Siguiente lección: {title}"
       },
-      "lessonInfo": {
-        "toggle": "Información de la lección",
-        "type": "Tipo",
-        "duration": "Duración",
-        "module": "Módulo",
-        "materials": "Materiales",
-        "availableFrom": "Disponible desde"
-      },
       "lessonComments": {
         "title": "Comentarios de la lección",
         "prompt": "Comenta algo sobre la lección.",
@@ -1538,6 +1526,7 @@
         "bodyLabel": "Tu comentario sobre esta lección",
         "publish": "Comentar",
         "loading": "Cargando los comentarios de la lección...",
+        "posted": "Comentario publicado.",
         "empty": "Todavía no hay comentarios en esta lección.",
         "replyOne": "{count} respuesta",
         "replyMany": "{count} respuestas",
@@ -1585,6 +1574,7 @@
         "sending": "Enviando...",
         "send": "Enviar mensaje",
         "loadError": "No pudimos cargar tus mensajes.",
+        "loading": "Cargando tus mensajes...",
         "sendError": "No pudimos enviar tu mensaje. Inténtalo de nuevo.",
         "emptyBody": "Escribe un mensaje antes de enviarlo.",
         "invalidCourse": "Selecciona un curso válido para enviar mensajes.",
@@ -1676,6 +1666,8 @@
       "locked": "Bloqueado",
       "unlock": "Desbloquear curso",
       "unlockNote": "Todavia no tienes acceso a este curso. Desbloquealo para verlo aqui mismo en tu area de miembros.",
+      "buy": "Comprar curso",
+      "buyNote": "Todavía no tienes acceso a este curso. Cómpralo para verlo aquí mismo en tu área de miembros.",
       "close": "Cerrar",
       "instructorEyebrow": "Mas para explorar",
       "instructorTitle": "Mas de {name}",
