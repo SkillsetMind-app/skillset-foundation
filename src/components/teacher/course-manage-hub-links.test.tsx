@@ -77,6 +77,11 @@ vi.mock("@/components/teacher/course-overview-panel", () => ({
   CourseOverviewPanel: () => null,
 }));
 
+// O checklist le a lista de arquivos (conteudo em toda aula), como o construtor.
+vi.mock("@/lib/data/course-assets", () => ({
+  fetchCourseAssets: () => Promise.resolve([]),
+}));
+
 afterEach(() => cleanup());
 
 function renderLinks() {
@@ -134,3 +139,13 @@ describe("promo links section", () => {
   });
 });
 vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));
+
+// A secao aberta so mudava de cor: o leitor de tela nao sabia onde estava.
+describe("manage section nav", () => {
+  it("announces the open section with aria-current and only that one", () => {
+    renderLinks();
+    expect(screen.getByRole("button", { name: "Promo links" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("button", { name: "Panel" })).not.toHaveAttribute("aria-current");
+    expect(document.querySelectorAll('nav [aria-current="page"]')).toHaveLength(1);
+  });
+});

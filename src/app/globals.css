@@ -85,6 +85,10 @@
      surface-soft e 3.00:1 no surface-strong (no limite dos 3:1 de
      componente). Cartoes seguem com a linha. */
   --color-field-border: #7c8a98;
+  /* Fundo de toda janela centrada. Eram 9 fundos (preto a 55%, três navys a
+     38-62%, com e sem desfoque) e cada popup parecia de um kit diferente.
+     O tema escuro tem o seu (preto), porque navy ali não escurece nada. */
+  --color-scrim: rgba(15, 39, 68, 0.62);
   --shadow-avatar: 0 8px 18px rgba(26, 54, 93, 0.14);
   /* Design V2 net-new tokens (additive — no existing value changed) */
   --color-on-primary: #ffffff;
@@ -151,6 +155,24 @@
      festa (publicado, produto criado). Feedback fica nos 120-280ms acima. */
   --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
   --duration-celebrate: 600ms;
+  /* Camadas (z-index), de baixo para cima, um nome por papel. O cartão de
+     envio do vídeo estava em 90, por cima de toda janela escurecida (até do
+     aceite de termos), e a faixa "Rascunho salvo" em 60, por baixo do menu
+     lateral. A barra de baixo do celular fica em 40, abaixo de tudo isto.
+     overlay-layers.test.ts confere cada regra que usa um destes papéis. */
+  --z-dropdown: 50;
+  --z-topbar: 60;
+  --z-rail: 65;
+  /* Avisos de andamento que não pedem ação: cartão de envio e faixa
+     "Rascunho salvo". Abaixo do menu de categoria do celular (67) e do
+     Advisor (68), que eles cobririam no celular. */
+  --z-status: 66;
+  --z-float: 68;
+  --z-banner: 69;
+  --z-modal: 70;
+  --z-modal-studio: 80;
+  --z-modal-top: 85;
+  --z-tooltip: 100;
 }
 
 [data-theme="dark"] {
@@ -168,6 +190,9 @@
   /* Sobre fundo escuro o navy some; o anel vira claro para manter contraste. */
   --focus-ring: var(--color-primary-light);
   --color-field-border: var(--color-line-strong);
+  /* Navy a 62% sobre o fundo escuro dava ~#0d1e34, quase o painel (#0f1626):
+     tingia em vez de escurecer. Preto a 60% separa a janela da página. */
+  --color-scrim: rgba(0, 0, 0, 0.6);
   --color-ink: #e8edf5;
   --color-ink-soft: #a4b3c8;
   /* Lifted from #6b7e9a → #8493ad: the old value failed WCAG AA on dark
@@ -227,6 +252,11 @@
   --radius-2xl: 16px;
   --radius-3xl: 16px;
   --radius-4xl: 16px;
+  /* Toda utility transition-* sem duração própria anda no tempo da casa
+     (eram os 150ms do Tailwind, e o controle feito à mão terminava antes do
+     botão do sistema ao lado). A curva das utilities fica a do Tailwind, de
+     propósito: o movimento do site público foi aprovado assim. */
+  --default-transition-duration: var(--duration-base);
 }
 
 @theme inline {
@@ -361,6 +391,133 @@ html {
   }
 }
 
+/* O fundo de toda janela centrada: a camada `fixed inset-0` das feitas à mão
+   (.dialog-backdrop) e o ::backdrop do <dialog> nativo (ui/confirm-dialog, a
+   janela de acesso do /ops). Sem desfoque: o README só permite blur no topo
+   e no cartão de vidro. */
+.dialog-backdrop {
+  background: var(--color-scrim);
+}
+
+/* Regra própria: um navegador que não aceita o seletor descarta a lista
+   inteira e levaria o .dialog-backdrop junto. E antes do Chrome 122, Firefox
+   120 e Safari 17.4 (iPhone parado no iOS 16) o ::backdrop não herda
+   variáveis: sem o valor de reserva o fundo da confirmação ficava transparente. */
+dialog.modal-panel::backdrop {
+  background: var(--color-scrim, rgba(15, 39, 68, 0.62));
+}
+
+/* Entrada única das janelas: o fundo acende e o painel sobe 8px, em 180ms.
+   Antes todas apareciam e sumiam num corte seco de tela inteira escura. A
+   saída continua seca: fechar não espera animação nem deixa a janela no DOM.
+   Fill `backwards`: terminada a entrada, nada fica invisível nem com
+   transform preso. O <dialog> nativo repete a entrada a cada showModal(). */
+@media (prefers-reduced-motion: no-preference) {
+  .modal-panel {
+    animation: motion-panel-in var(--duration-base) var(--ease-standard) backwards;
+  }
+
+  .dialog-backdrop {
+    animation: motion-fade var(--duration-base) var(--ease-standard) backwards;
+  }
+
+  dialog.modal-panel::backdrop {
+    animation: motion-fade var(--duration-base) var(--ease-standard) backwards;
+  }
+}
+
+/* Painel e rodapé únicos das janelas centradas. Havia três sombras de painel,
+   larguras soltas e seis jeitos de pôr os botões (à direita sem filete, em
+   linha de formulário, empilhados só em algumas). Agora: uma sombra, um canto,
+   quatro larguras; o rodapé tem filete em cima, ações à direita com a
+   principal por último e, abaixo de 640px (o sm, onde a confirmação já
+   empilhava), empilha na largura toda com a principal em cima e o Cancelar
+   embaixo, onde o polegar cai (column-reverse). O fundo é o token de superfície (no
+   escuro, o mesmo do bg-white). Em camada: a janela que precisa de outra
+   coisa num tamanho (o checkout em tela cheia no celular) muda por utility. */
+@layer components {
+  .dialog-panel {
+    width: 100%;
+    max-width: 28rem;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-xl);
+    background: var(--color-surface);
+    padding: 0;
+    box-shadow: var(--shadow-strong);
+  }
+
+  .dialog-panel--md {
+    max-width: 36rem;
+  }
+
+  .dialog-panel--lg {
+    max-width: 48rem;
+  }
+
+  .dialog-panel--xl {
+    max-width: 64rem;
+  }
+
+  /* Do sm em diante, uma linha só (sem quebra), como a confirmação sempre foi. */
+  .dialog-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    border-top: 1px solid var(--color-line);
+    padding: 1rem 1.5rem;
+  }
+
+  @media (width < 640px) {
+    .dialog-footer {
+      flex-direction: column-reverse;
+      align-items: stretch;
+    }
+  }
+}
+
+/* Botão só de ícone: alvo de 44px, ícone no centro, canto de 8px (redondo é
+   de avatar e de chave). Havia seis tamanhos, de 24 a 44px, e os pequenos
+   escapavam do dedo. O anel de foco é o global de `button:focus-visible`.
+   Em camada para as utilities ao lado (cor, posição, margem) vencerem. */
+@layer components {
+  .button-icon {
+    display: inline-grid;
+    flex: none;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: var(--radius-md);
+    color: var(--color-ink-soft);
+    transition:
+      background-color var(--duration-base) var(--ease-standard),
+      color var(--duration-base) var(--ease-standard);
+  }
+
+  .button-icon:hover {
+    background: var(--color-surface-soft);
+    color: var(--color-primary);
+  }
+
+  /* Desligado não reage ao mouse: fica o fundo e a cor de repouso. */
+  .button-icon:is(:disabled, [aria-disabled="true"]) {
+    background: transparent;
+    color: var(--color-ink-soft);
+  }
+}
+
+/* O "limpar" da busca mora encostado na ponta de um campo com overflow
+   hidden: o anel global (3px para fora) era cortado em três lados, e o hover
+   do .button-icon pintava a mesma cor do campo. Anel para dentro e hover um
+   tom acima. Sem camada: precisa vencer `button:focus-visible`. */
+.listing-search-clear:hover {
+  background: var(--color-surface-strong);
+}
+
+.listing-search-clear:focus-visible {
+  outline-offset: -3px;
+}
+
 @media (min-width: 1024px) {
   /* A foto cobre o hero inteiro: o quadro é o próprio hero (w-full no JSX) e a
      imagem ancora o topo (lg:object-[center_top]) para o rosto sobreviver ao
@@ -421,8 +578,12 @@ body {
   background: transparent;
 }
 
+/* Link sem cor própria aqui: o preflight do Tailwind já herda a cor do pai
+   DENTRO de `@layer base`. A mesma herança fora de camada vencia toda utility
+   num <a>/<Link>, e o link que pedia a cor de destaque saía com a do texto em
+   volta (cascade em button-sizes-cascade.test.tsx). O sublinhado continua
+   desligado aqui: ligar os `underline` mortos é outra decisão. */
 a {
-  color: inherit;
   text-decoration: none;
 }
 
@@ -665,6 +826,12 @@ p {
   color: var(--color-ink);
 }
 
+/* O telefone é uma caixa só (país + número, shared/phone-input): o campo de
+   dentro segue o fundo da caixa, senão o escuro mostrava dois tons. */
+[data-theme="dark"] .phone-field input {
+  background-color: transparent !important;
+}
+
 [data-theme="dark"] option {
   background-color: var(--color-surface);
   color: var(--color-ink);
@@ -713,7 +880,6 @@ p {
    glyph/text stays var(--color-primary) and reads ~7.7:1 on surface-soft. */
 [data-theme="dark"] .account-settings-tab__icon,
 [data-theme="dark"] .settings-info-row__icon,
-[data-theme="dark"] .course-upload-preset__icon,
 [data-theme="dark"] .studio-action-card__icon,
 [data-theme="dark"] .settings-pill--neutral {
   background: var(--color-surface-soft);
@@ -721,16 +887,6 @@ p {
 
 [data-theme="dark"] .settings-pill--neutral {
   border-color: var(--color-line);
-}
-
-/* Selected tabs keep their white "selected" affordance (like .platform-nav-active)
-   but their label used var(--color-primary) -> light blue on white (~2.16:1).
-   Pin the label to the same dark ink the nav chip uses (~15:1). Covers hover. */
-[data-theme="dark"] .studio-range-tabs button:hover,
-[data-theme="dark"] .studio-range-tabs button.is-active,
-[data-theme="dark"] .credential-filter-tabs button:hover,
-[data-theme="dark"] .credential-filter-tabs button.is-active {
-  color: #0f2744;
 }
 
 /* Decorative number/progress badges: white bg + light-blue var(--color-primary)
@@ -743,7 +899,6 @@ p {
    text to ~1:1 in dark. Use an elevated dark surface for the hover highlight
    instead (text stays readable; matches the row/card resting surface). */
 [data-theme="dark"] .account-settings-tab:hover,
-[data-theme="dark"] .course-upload-preset:hover,
 [data-theme="dark"] .studio-course-row:hover,
 [data-theme="dark"] .studio-action-card:hover {
   background: var(--color-surface-strong);
@@ -849,6 +1004,14 @@ p {
   white-space: nowrap;
 }
 
+/* I-16, só no /ops: etiqueta com 6px de raio e 11px no lugar da pílula de
+   10px. O resto do produto fica como está até cada tela ser conferida no
+   navegador. `.ops-surface` está no conteúdo de /ops e da ficha da pessoa. */
+.ops-surface .status-chip {
+  border-radius: var(--radius-chip);
+  font-size: 0.6875rem;
+}
+
 .status-chip__dot {
   width: 0.375rem;
   height: 0.375rem;
@@ -908,8 +1071,11 @@ p {
 }
 
 /* Visible by default: without JavaScript nothing would ever add --in, so
-   the page used to render its sections invisible. The inline head script
-   stamps html.js before first paint; only then does a section start hidden. */
+   the page used to render its sections invisible. Também não some antes da
+   hidratação: o html.js chega antes da primeira pintura, e esconder só por ele
+   deixava a home em branco num celular lento (ou para sempre, se o JavaScript
+   falhasse). Só a seção que o useRevealOnView armou, já montada e ainda abaixo
+   da tela, começa escondida. */
 .reveal-on-view {
   transition:
     opacity 300ms ease,
@@ -917,10 +1083,12 @@ p {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  html.js .reveal-on-view:not(.reveal-on-view--in) {
+  html.js .reveal-on-view--armed:not(.reveal-on-view--in) {
     opacity: 0;
     transform: translateY(12px);
     will-change: opacity, transform;
+    /* Some de uma vez (está fora da tela); a entrada usa a transição acima. */
+    transition: none;
   }
 }
 
@@ -967,6 +1135,830 @@ p {
 @media (prefers-reduced-motion: no-preference) {
   .hero-copy-rise {
     animation: hero-copy-rise 620ms cubic-bezier(0.2, 0.6, 0.2, 1) both;
+  }
+}
+
+/* ─── Home: coreografia de rolagem ───────────────────────────────────────
+   A home entra junto com a rolagem, e não de uma vez só: cada peça anda no
+   ritmo do dedo (ou da roda do mouse) e volta se a pessoa sobe a página.
+   É CSS puro (animation-timeline), sem JavaScript e sem biblioteca: o
+   navegador roda tudo fora da thread principal e só mexe em transform e
+   opacity. Três redes de segurança:
+   - só vale dentro de prefers-reduced-motion: no-preference;
+   - só vale onde o navegador entende animation-timeline (@supports); nos
+     outros a home segue com a entrada antiga do RevealSection;
+   - tudo é escopado em .home-scroll, a classe que só a home põe na moldura.
+   Os quadros (@keyframes motion-scroll-*) ficam fora do @media, como os
+   demais do catálogo, e só animam transform e opacity. */
+@keyframes motion-scroll-progress {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes motion-scroll-rise {
+  from {
+    opacity: 0;
+    transform: translateY(2.5rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes motion-scroll-unfold {
+  from {
+    opacity: 0;
+    transform: perspective(900px) translateY(3rem) rotateX(12deg) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes motion-scroll-line {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes motion-scroll-drift {
+  from {
+    transform: translateY(1.75rem);
+  }
+
+  to {
+    transform: translateY(-1rem);
+  }
+}
+
+@keyframes motion-scroll-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.5) rotate(-12deg);
+  }
+
+  70% {
+    opacity: 1;
+    transform: scale(1.08) rotate(0deg);
+  }
+
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes motion-scroll-zoom {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes motion-scroll-from-left {
+  from {
+    opacity: 0;
+    transform: translateX(-2.5rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes motion-scroll-from-right {
+  from {
+    opacity: 0;
+    transform: translateX(2.5rem) rotate(1.5deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes motion-scroll-hero-photo {
+  from {
+    transform: scale(1) translateY(0);
+  }
+
+  to {
+    transform: scale(1.1) translateY(6%);
+  }
+}
+
+@keyframes motion-scroll-hero-copy {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-4rem);
+  }
+}
+
+/* Cenas da home no computador (bloco "Cenas" no fim do @supports abaixo).
+   O passo a passo preso: cada passo tem UM jogo de quadros para a opacidade
+   e um para o tamanho do ícone e do número, com a mesma régua (contain da
+   faixa alta). 1 = ativo, 0.55 = calmo; no fim os três voltam inteiros, para
+   a seção ler normal a quem volta de baixo. Entre um passo e outro, o
+   seguinte acende antes de o anterior apagar: sempre há um passo inteiro. */
+@keyframes motion-scroll-step-first {
+  0%,
+  30%,
+  92%,
+  100% {
+    opacity: 1;
+  }
+
+  36%,
+  84% {
+    opacity: 0.55;
+  }
+}
+
+@keyframes motion-scroll-step-second {
+  0%,
+  24%,
+  69%,
+  84% {
+    opacity: 0.55;
+  }
+
+  30%,
+  63%,
+  92%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes motion-scroll-step-third {
+  0%,
+  57% {
+    opacity: 0.55;
+  }
+
+  63%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes motion-scroll-mark-first {
+  0%,
+  30%,
+  92%,
+  100% {
+    transform: none;
+  }
+
+  36%,
+  84% {
+    transform: scale(0.84);
+  }
+}
+
+@keyframes motion-scroll-mark-second {
+  0%,
+  24%,
+  69%,
+  84% {
+    transform: scale(0.84);
+  }
+
+  30%,
+  63%,
+  92%,
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes motion-scroll-mark-third {
+  0%,
+  57% {
+    transform: scale(0.84);
+  }
+
+  63%,
+  100% {
+    transform: none;
+  }
+}
+
+/* A cortina da promessa: um arco que nasce embaixo e sobe dentro da faixa.
+   Sobe depressa enquanto ainda está fora da tela (até 36%), cobre todo o
+   conteúdo por volta de 50% e daí sobe devagar, com a borda curva à vista,
+   até encostar no topo da faixa em 85% (1/1.08). Em 1 cobre os cantos. */
+@keyframes motion-scroll-curtain {
+  0% {
+    transform: scale(0.12);
+  }
+
+  36% {
+    transform: scale(0.8);
+  }
+
+  51% {
+    transform: scale(0.856);
+  }
+
+  85% {
+    transform: scale(0.926);
+  }
+
+  100% {
+    transform: none;
+  }
+}
+
+/* O desdobrar dos cartões com profundidade: cada coluna parte de uma
+   distância (--home-depth) e todas assentam juntas. */
+@keyframes motion-scroll-assemble {
+  from {
+    opacity: 0;
+    transform: perspective(900px) translateY(calc(3rem + var(--home-depth, 0px))) rotateX(12deg) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* A foto do curso assenta no quadro. Usada sem o preenchimento de depois
+   (fill backwards): acabada a entrada, o transform volta a ser do :hover. */
+@keyframes motion-scroll-settle {
+  from {
+    transform: scale(1.06);
+  }
+
+  to {
+    transform: none;
+  }
+}
+
+/* Sem suporte ou com movimento reduzido a barra de leitura não existe. */
+.home-scroll-progress {
+  display: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Só entra quem entende a coreografia inteira: um navegador que conheça
+     a linha do tempo mas não os trechos (animation-range) deixaria o texto
+     meio apagado no meio da tela. */
+  @supports (animation-timeline: view()) and (animation-range: entry 0% cover 30%) and (view-timeline: --x block) {
+    /* 1. Barra de leitura: um fio dourado no topo que enche conforme a página
+       desce. Fica acima da barra do site (40) e abaixo de menus e janelas. */
+    .home-scroll-progress {
+      display: block;
+      position: fixed;
+      inset-inline: 0;
+      top: 0;
+      z-index: 41;
+      height: 3px;
+      background: var(--color-accent);
+      transform-origin: 0 50%;
+      pointer-events: none;
+      animation: motion-scroll-progress 1ms linear both;
+      animation-timeline: scroll(root block);
+    }
+
+    /* 2. A entrada antiga (de uma vez, por IntersectionObserver) sai de cena
+       aqui: quem conduz é a rolagem. Sem isto as duas brigariam. */
+    html.js .home-scroll .reveal-on-view:not(.reveal-on-view--in) {
+      opacity: 1;
+      transform: none;
+    }
+
+    /* 3. Topo: ao sair, a foto recua devagar (profundidade) e o texto sobe e
+       some. O hero corta o que passa dele (overflow hidden), então a linha do
+       tempo tem nome e é declarada no próprio hero. */
+    .home-scroll .home-hero {
+      view-timeline: --home-hero block;
+    }
+
+    .home-scroll .home-hero .hero-portrait-layer {
+      animation: motion-scroll-hero-photo 1ms linear both;
+      animation-timeline: --home-hero;
+      animation-range: exit 0% exit 100%;
+    }
+
+    .home-scroll .home-hero__copy {
+      animation: motion-scroll-hero-copy 1ms linear both;
+      animation-timeline: --home-hero;
+      /* No celular o texto de apoio fica embaixo do hero: ele só começa a
+         sumir quando metade do hero já saiu, para dar tempo de ler. */
+      animation-range: exit 45% exit 95%;
+    }
+
+    /* Quem volta ao topo pelo teclado não pode achar o botão focado quase
+       invisível: com foco dentro, o texto do topo não some. */
+    .home-scroll .home-hero__copy:has(:focus-visible) {
+      animation: none;
+    }
+
+    /* 4. Títulos de seção. */
+    .home-scroll .home-heading {
+      animation: motion-scroll-rise 1ms var(--ease-standard) both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 30%;
+    }
+
+    /* 5. Os três passos: cada um sobe, o ícone gira para o lugar, o número
+       grande desliza mais devagar que o resto e uma linha dourada percorre o
+       topo do passo. */
+    .home-scroll .home-steps {
+      view-timeline: --home-steps block;
+    }
+
+    .home-scroll .home-step {
+      animation: motion-scroll-rise 1ms var(--ease-standard) both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 26%;
+    }
+
+    .home-scroll .home-step__line {
+      position: relative;
+    }
+
+    .home-scroll .home-step__line::before {
+      content: "";
+      position: absolute;
+      inset-inline: 0;
+      top: -2px;
+      height: 2px;
+      background: var(--color-accent);
+      transform-origin: 0 50%;
+      animation: motion-scroll-line 1ms linear both;
+      animation-timeline: view();
+      animation-range: entry 60% cover 42%;
+    }
+
+    .home-scroll .home-step__icon {
+      animation: motion-scroll-pop 1ms linear both;
+      animation-timeline: view();
+      animation-range: entry 30% cover 32%;
+    }
+
+    .home-scroll .home-step__number {
+      animation: motion-scroll-drift 1ms linear both;
+      animation-timeline: view();
+      animation-range: cover 0% cover 100%;
+    }
+
+    /* 6. Cartão do curso de verdade. */
+    .home-scroll .home-feature > a {
+      animation: motion-scroll-zoom 1ms var(--ease-standard) both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 30%;
+    }
+
+    /* 7. Os seis recursos: cada cartão se desdobra de baixo para cima. */
+    .home-scroll .home-card {
+      transform-origin: 50% 100%;
+      animation: motion-scroll-unfold 1ms var(--ease-standard) both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 28%;
+    }
+
+    /* 8. A promessa: o texto chega pela esquerda, a carta pela direita, e as
+       seis cláusulas entram uma a uma. A carta corta o que passa dela, então
+       as cláusulas usam a linha do tempo com nome declarada na carta. */
+    .home-scroll .home-promise__text {
+      animation: motion-scroll-from-left 1ms var(--ease-standard) both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 30%;
+    }
+
+    .home-scroll .home-promise__charter {
+      view-timeline: --home-charter block;
+      animation: motion-scroll-from-right 1ms var(--ease-standard) both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 30%;
+    }
+
+    .home-scroll .home-promise__clause {
+      animation: motion-scroll-rise 1ms var(--ease-standard) both;
+      animation-timeline: --home-charter;
+      animation-range: entry 40% cover 34%;
+    }
+
+    .home-scroll .home-promise__clause:nth-child(2) {
+      animation-range: entry 48% cover 37%;
+    }
+
+    .home-scroll .home-promise__clause:nth-child(3) {
+      animation-range: entry 56% cover 40%;
+    }
+
+    .home-scroll .home-promise__clause:nth-child(4) {
+      animation-range: entry 64% cover 43%;
+    }
+
+    .home-scroll .home-promise__clause:nth-child(5) {
+      animation-range: entry 72% cover 46%;
+    }
+
+    .home-scroll .home-promise__clause:nth-child(6) {
+      animation-range: entry 80% cover 49%;
+    }
+
+    /* 9. Faixa final: o bloco azul cresce para o lugar e o conteúdo dele
+       entra em seguida, um item depois do outro. */
+    .home-scroll .home-creators {
+      view-timeline: --home-creators block;
+      animation: motion-scroll-zoom 1ms var(--ease-standard) both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 24%;
+    }
+
+    .home-scroll .home-creators__lead,
+    .home-scroll .home-creators__item {
+      animation: motion-scroll-rise 1ms var(--ease-standard) both;
+      animation-timeline: --home-creators;
+      animation-range: entry 30% cover 30%;
+    }
+
+    /* O título fica no começo da faixa. Num celular pequeno com letra
+       grande a faixa passa de duas telas, e medido pela faixa inteira ele
+       chegava ao meio da tela a 75%. Ele termina de entrar ainda na
+       primeira tela da faixa. */
+    .home-scroll .home-creators__lead {
+      animation-range: entry 10% entry 60%;
+    }
+
+    .home-scroll .home-creators__item:nth-child(2) {
+      animation-range: entry 45% cover 34%;
+    }
+
+    .home-scroll .home-creators__item:nth-child(3) {
+      animation-range: entry 55% cover 37%;
+    }
+
+    .home-scroll .home-creators__item:nth-child(4) {
+      animation-range: entry 65% cover 40%;
+    }
+
+    /* Do tablet para cima as peças vizinhas entram em escada, da esquerda
+       para a direita, em vez de todas juntas. */
+    @media (min-width: 768px) and (max-width: 1279.98px) {
+      .home-scroll .home-card:nth-child(2n) {
+        animation-range: entry 14% cover 34%;
+      }
+    }
+
+    @media (min-width: 1280px) {
+      .home-scroll .home-card:nth-child(3n + 2) {
+        animation-range: entry 12% cover 33%;
+      }
+
+      .home-scroll .home-card:nth-child(3n) {
+        animation-range: entry 24% cover 38%;
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .home-scroll .home-hero__copy {
+        animation-range: exit 20% exit 85%;
+      }
+
+      /* Três colunas lado a lado: a linha do tempo passa a ser a da grade
+         inteira, e a linha dourada percorre um passo de cada vez, do 01 ao
+         03, como um caminho que se desenha. */
+      .home-scroll .home-step,
+      .home-scroll .home-step__icon,
+      .home-scroll .home-step__line::before {
+        animation-timeline: --home-steps;
+      }
+
+      .home-scroll .home-step:nth-child(1) {
+        animation-range: entry 0% cover 24%;
+      }
+
+      .home-scroll .home-step:nth-child(2) {
+        animation-range: entry 25% cover 30%;
+      }
+
+      .home-scroll .home-step:nth-child(3) {
+        animation-range: entry 50% cover 36%;
+      }
+
+      .home-scroll .home-step:nth-child(1) .home-step__icon {
+        animation-range: entry 30% cover 28%;
+      }
+
+      .home-scroll .home-step:nth-child(2) .home-step__icon {
+        animation-range: entry 55% cover 34%;
+      }
+
+      .home-scroll .home-step:nth-child(3) .home-step__icon {
+        animation-range: entry 80% cover 40%;
+      }
+
+      .home-scroll .home-step:nth-child(1) .home-step__line::before {
+        animation-range: cover 20% cover 32%;
+      }
+
+      .home-scroll .home-step:nth-child(2) .home-step__line::before {
+        animation-range: cover 32% cover 44%;
+      }
+
+      .home-scroll .home-step:nth-child(3) .home-step__line::before {
+        animation-range: cover 44% cover 56%;
+      }
+    }
+
+    /* 10. Cenas: só em tela de computador. No celular, com movimento
+       reduzido ou sem suporte, nada aqui existe: sem faixa alta, sem
+       cortina, sem texto escondido, e a página tem a mesma altura de antes.
+       Tudo que trava a tela ou pinta a cortina mora só neste bloco. A partir
+       de 1280 de largura bastam 640 de altura; entre 1024 e 1279 as colunas
+       dos passos são estreitas (o passo 3 em espanhol passa de 7 linhas) e o
+       painel preso só cabe abaixo da barra a partir de 720 de altura. */
+    @media (min-width: 1280px) and (min-height: 640px), (min-width: 1024px) and (min-height: 720px) {
+      /* Cena 1: "How it works" preso. A seção da página vira uma faixa alta
+         (uma tela + 3 × 40% de tela) e o conteúdo gruda logo abaixo da barra
+         enquanto ela passa. A régua desconta a barra (inset), então contain
+         0% é o instante em que a tela trava e contain 100% o que ela solta:
+         120% de tela de rolagem a mais, nada além. A âncora pousa no começo
+         da faixa: título à vista e o passo 1 aceso. */
+      .home-scroll .home-how {
+        height: calc(220svh - var(--site-header-height));
+        scroll-margin-top: var(--site-header-height);
+        view-timeline: --home-how block;
+        view-timeline-inset: var(--site-header-height) 0px;
+      }
+
+      .home-scroll .home-how__panel {
+        position: sticky;
+        top: var(--site-header-height);
+        display: flex;
+        min-height: calc(100svh - var(--site-header-height));
+        flex-direction: column;
+        justify-content: center;
+        padding-block: 1.5rem;
+      }
+
+      /* Os passos acendem um de cada vez: 1 até 30%, 2 de 30% a 63%, 3 de
+         63% ao fim; de 84% a 92% os três voltam inteiros e a tela solta em
+         100%. Cada propriedade tem dono único (opacidade no passo, tamanho
+         no ícone e no número), então nada briga. */
+      .home-scroll .home-step:nth-child(1) {
+        animation: motion-scroll-step-first 1ms ease-in-out both;
+        animation-timeline: --home-how;
+        animation-range: contain 0% contain 100%;
+      }
+
+      .home-scroll .home-step:nth-child(2) {
+        animation: motion-scroll-step-second 1ms ease-in-out both;
+        animation-timeline: --home-how;
+        animation-range: contain 0% contain 100%;
+      }
+
+      .home-scroll .home-step:nth-child(3) {
+        animation: motion-scroll-step-third 1ms ease-in-out both;
+        animation-timeline: --home-how;
+        animation-range: contain 0% contain 100%;
+      }
+
+      .home-scroll .home-step:nth-child(1) .home-step__icon,
+      .home-scroll .home-step:nth-child(1) .home-step__number {
+        animation: motion-scroll-mark-first 1ms ease-in-out both;
+        animation-timeline: --home-how;
+        animation-range: contain 0% contain 100%;
+      }
+
+      .home-scroll .home-step:nth-child(2) .home-step__icon,
+      .home-scroll .home-step:nth-child(2) .home-step__number {
+        animation: motion-scroll-mark-second 1ms ease-in-out both;
+        animation-timeline: --home-how;
+        animation-range: contain 0% contain 100%;
+      }
+
+      .home-scroll .home-step:nth-child(3) .home-step__icon,
+      .home-scroll .home-step:nth-child(3) .home-step__number {
+        animation: motion-scroll-mark-third 1ms ease-in-out both;
+        animation-timeline: --home-how;
+        animation-range: contain 0% contain 100%;
+      }
+
+      /* O número encolhe para o lado do ícone, sem abrir buraco entre os dois. */
+      .home-scroll .home-step__number {
+        transform-origin: 0 50%;
+      }
+
+      /* A linha dourada no topo dos três passos vira a barra de progresso
+         da cena: cada trecho enche enquanto o seu passo está aceso. */
+      .home-scroll .home-step__line::before {
+        animation-timeline: --home-how;
+      }
+
+      .home-scroll .home-step:nth-child(1) .home-step__line::before {
+        animation-range: contain 0% contain 28%;
+      }
+
+      .home-scroll .home-step:nth-child(2) .home-step__line::before {
+        animation-range: contain 30% contain 61%;
+      }
+
+      .home-scroll .home-step:nth-child(3) .home-step__line::before {
+        animation-range: contain 63% contain 90%;
+      }
+
+      /* Cena 2: a cortina da promessa. A faixa perde o fundo claro e um arco
+         da cor da marca nasce no meio da borda de baixo e sobe dentro dela,
+         como um sol nascendo. A régua é a da própria faixa, em altura de
+         tela: o trecho vai do topo da faixa no fundo da tela (0) ao topo a
+         45% da tela (55svh). O arco cobre a coluna de texto com o topo da
+         faixa a ~82% e a carta a ~74%; a borda curva fica à vista até o topo
+         a ~53% (85% do trecho) e os cantos fecham antes dos 48%. Cada bloco
+         de texto só aparece depois de coberto, de cima para baixo: sobretítulo
+         21-28, título 23-30, parágrafo 25-32, botão 27-34, carta 28-35 e as
+         cláusulas pela própria posição; todos inteiros antes de chegar a 75%
+         da tela. Cores de tokens: no tema claro azul com texto claro; no
+         escuro a cortina é a superfície da faixa e o texto fica o de sempre. */
+      .home-scroll .home-promise {
+        --home-curtain: var(--color-primary);
+        --home-curtain-ink: var(--color-on-primary);
+        --home-curtain-ink-soft: color-mix(in srgb, var(--color-on-primary) 80%, transparent);
+        --home-curtain-kicker: var(--color-accent-soft);
+        --home-curtain-ring: var(--color-accent);
+        position: relative;
+        isolation: isolate;
+        overflow: clip;
+        background-color: transparent;
+        view-timeline: --home-curtain block;
+      }
+
+      [data-theme="dark"] .home-scroll .home-promise {
+        --home-curtain: var(--color-surface-soft);
+        --home-curtain-ink: var(--color-primary);
+        --home-curtain-ink-soft: var(--color-ink-soft);
+        --home-curtain-kicker: var(--color-accent-fg);
+        --home-curtain-ring: var(--color-primary-light);
+      }
+
+      /* Elipse de 320% x 216% da faixa, centro no meio da borda de baixo:
+         raio de pé 108% da altura (passa o topo em escala 1/1.08) e raio
+         deitado 160% da largura, então o arco é suave e as colunas dos lados
+         são cobertas quase junto com o meio; em escala 1 ainda cobre os
+         cantos (a 50% da largura o arco está a 102% da altura). A faixa corta
+         o que passa dela (overflow clip), sem rolagem de lado. */
+      .home-scroll .home-promise::before {
+        content: "";
+        position: absolute;
+        z-index: -1;
+        top: -8%;
+        left: -110%;
+        width: 320%;
+        height: 216%;
+        border-radius: 50%;
+        background: var(--home-curtain);
+        pointer-events: none;
+        animation: motion-scroll-curtain 1ms linear both;
+        animation-timeline: --home-curtain;
+        animation-range: cover 0% cover 55svh;
+      }
+
+      /* A coluna de texto não anda inteira: cada bloco sobe no seu tempo,
+         sem andar de lado por cima do texto. O anel de foco troca para
+         latão: azul sobre azul sumia. */
+      .home-scroll .home-promise__text {
+        --focus-ring: var(--home-curtain-ring);
+        animation: none;
+      }
+
+      .home-scroll .home-promise__text > * {
+        color: var(--home-curtain-ink-soft);
+        animation: motion-scroll-rise 1ms var(--ease-standard) both;
+        animation-timeline: --home-curtain;
+        animation-range: cover 21svh cover 28svh;
+      }
+
+      .home-scroll .home-promise__text > h2 {
+        color: var(--home-curtain-ink);
+        animation-range: cover 23svh cover 30svh;
+      }
+
+      .home-scroll .home-promise__text > h2 + p {
+        animation-range: cover 25svh cover 32svh;
+      }
+
+      /* O botão sobe só com o preenchimento de antes (backwards): acabada a
+         entrada, o transform volta a ser do :hover e do :active dele. */
+      .home-scroll .home-promise__text > a {
+        animation: motion-scroll-rise 1ms var(--ease-standard) backwards;
+        animation-timeline: --home-curtain;
+        animation-range: cover 27svh cover 34svh;
+      }
+
+      .home-scroll .home-promise__text > p:first-child {
+        color: var(--home-curtain-kicker);
+      }
+
+      /* Com o foco do teclado na faixa, nada dela fica apagado. */
+      .home-scroll .home-promise:has(:focus-visible) .home-promise__text > * {
+        animation: none;
+      }
+
+      /* A carta corta os cantos com clip, não hidden: assim ela não vira
+         área de rolagem e cada cláusula mede a própria posição na tela. A
+         carta é branca e lê em qualquer fundo, mas só entra depois que o arco
+         passou a borda de cima dela, para não boiar na página clara. A
+         escada das cláusulas sai da posição de cada uma, de cima para baixo,
+         e começa depois da carta. */
+      .home-scroll .home-promise__charter {
+        overflow: clip;
+        animation: motion-scroll-rise 1ms var(--ease-standard) both;
+        animation-timeline: --home-curtain;
+        animation-range: cover 28svh cover 35svh;
+      }
+
+      .home-scroll .home-promise__clause:nth-child(n) {
+        animation-timeline: view();
+        animation-range: cover 8svh cover 18svh;
+      }
+
+      /* Cena 3: profundidade. As colunas da grade partem de distâncias
+         diferentes e assentam juntas, inteiras, com o topo a 74% da tela. */
+      .home-scroll .home-card:nth-child(n) {
+        animation: motion-scroll-assemble 1ms var(--ease-standard) both;
+        animation-timeline: view();
+        animation-range: entry 0% cover 26svh;
+      }
+
+      @media (max-width: 1279.98px) {
+        .home-scroll .home-card:nth-child(2n) {
+          --home-depth: 22px;
+        }
+      }
+
+      @media (min-width: 1280px) {
+        .home-scroll .home-card:nth-child(3n + 2) {
+          --home-depth: 18px;
+        }
+
+        .home-scroll .home-card:nth-child(3n) {
+          --home-depth: 36px;
+        }
+      }
+
+      /* A foto de cada curso da vitrine assenta no quadro até o cartão
+         chegar ao meio da tela. A régua é do item da lista: o quadro e o
+         cartão cortam o que passa deles (overflow hidden), e view() dentro
+         deles mediria o quadro, não a tela. */
+      .home-scroll .marketplace-course-grid > li {
+        view-timeline: --home-course block;
+      }
+
+      .home-scroll .marketplace-course-grid > li .marketplace-card__media > img {
+        animation: motion-scroll-settle 1ms var(--ease-standard) backwards;
+        animation-timeline: --home-course;
+        animation-range: entry 0% cover 50%;
+      }
+    }
+  }
+}
+
+/* No papel não há rolagem: nada fica parado no meio de uma entrada, e a
+   barra de leitura não se repete em cada folha. */
+@media print {
+  .home-scroll *,
+  .home-scroll *::before {
+    animation: none !important;
+  }
+
+  html.js .home-scroll .reveal-on-view:not(.reveal-on-view--in) {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .home-scroll-progress {
+    display: none !important;
   }
 }
 
@@ -1207,6 +2199,76 @@ p {
   background: rgba(255, 255, 255, 0.14);
 }
 
+/* Botão desligado não reage: um "Publish product" apagado ainda subia e
+   ganhava sombra com o mouse e afundava no clique, como se fosse clicável.
+   Fica chato (sem sombra), parado e com o cursor de bloqueado. Vem DEPOIS de
+   todos os :hover e :active acima, que têm a mesma especificidade: é a ordem
+   que faz esta regra valer. A opacidade era escrita em cada chamada, com cinco
+   valores (30 a 70%); agora é uma só, daqui, e vence a utility da chamada
+   (regra fora de camada). */
+:is(.button-solid, .button-outline, .button-accent, .button-danger, .button-solid-light, .button-outline-light, .button-icon):is(:disabled, [aria-disabled="true"]) {
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
+  box-shadow: none;
+}
+
+/* O fundo e a borda também ficam os de repouso: no hover o "Save" apagado
+   ainda escurecia como se fosse clicável. Cada variante repete o próprio
+   desenho em repouso, com a especificidade do :hover e depois dele. */
+.button-solid:is(:disabled, [aria-disabled="true"]) {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+}
+
+.button-outline:is(:disabled, [aria-disabled="true"]) {
+  border-color: var(--color-line-strong);
+  background: var(--color-surface);
+  /* O :hover troca o rótulo para o navy escuro com !important. */
+  color: var(--color-primary) !important;
+}
+
+[data-theme="dark"] .button-outline:is(:disabled, [aria-disabled="true"]) {
+  border-color: var(--color-line);
+}
+
+/* O par grande tem contorno navy em repouso, e o :hover dele (dois seletores
+   de classe) vencia a regra acima: o "Back" apagado do construtor ia de cinza
+   a navy sob o mouse. */
+.button-outline.button-lg:is(:disabled, [aria-disabled="true"]) {
+  border-color: var(--color-primary);
+}
+
+.button-danger:is(:disabled, [aria-disabled="true"]) {
+  border-color: rgba(178, 34, 52, 0.38);
+  background: var(--color-surface);
+}
+
+/* Mesmo peso da borda escura em repouso, e depois dela: sem isto o "Delete"
+   apagado ganhava no escuro a borda do tema claro. */
+[data-theme="dark"] .button-danger:is(:disabled, [aria-disabled="true"]) {
+  border-color: rgba(232, 128, 140, 0.5);
+}
+
+.button-danger.button-danger-solid:is(:disabled, [aria-disabled="true"]) {
+  border-color: var(--color-danger);
+  background: var(--color-danger);
+}
+
+.button-accent:is(:disabled, [aria-disabled="true"]) {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+}
+
+.button-solid-light:is(:disabled, [aria-disabled="true"]) {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+}
+
+.button-outline-light:is(:disabled, [aria-disabled="true"]) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
 /* Hero conversion card — an always-light surface sitting on the always-navy
    hero, so every color is FIXED (not a theme token): theme tokens invert in
    dark mode and would wreck contrast on this white card (same rationale as the
@@ -1329,16 +2391,13 @@ p {
    wash across the top of the page (the gradient is an arbitrary value, so the
    global .bg-white dark override never reached it) — give it a muted dark-amber
    surface with warm light text so it still reads as a warning without glaring. */
+/* A faixa usa as cores de aviso da plataforma (as mesmas do InlineAlert).
+   Era o único degradê do produto, em âmbar do Tailwind; os tokens já trocam
+   no tema escuro, então a regra própria do escuro saiu. */
 .account-status-banner {
-  background: linear-gradient(90deg, #fef3c7 0%, #fde68a 100%);
-  border-bottom: 1px solid #f59e0b;
-  color: #78350f;
-}
-
-[data-theme="dark"] .account-status-banner {
-  background: linear-gradient(90deg, rgba(192, 123, 10, 0.18) 0%, rgba(192, 123, 10, 0.26) 100%);
-  border-bottom-color: rgba(245, 158, 11, 0.42);
-  color: #fad79f;
+  background: var(--color-warning-soft);
+  border-bottom: 1px solid var(--color-warning);
+  color: var(--color-warning-fg);
 }
 
 /* Active account-nav pill. Light = navy fill with white text (correct). In dark
@@ -1374,6 +2433,12 @@ p {
   box-shadow: 0 8px 24px rgba(15, 39, 68, 0.1);
 }
 
+/* O site público também é visto na prévia: a barra dele é fixa (camada 40) e
+   desce para baixo da faixa, como a da plataforma. */
+html[data-view-as] .site-header {
+  top: var(--view-as-offset, 0px);
+}
+
 /* A barra saiu do fluxo, então o SiteNav monta esta faixa logo abaixo dela
    para devolver a altura que a página perdeu. Uma variável só, usada nos dois
    lugares, para não haver como as duas medidas divergirem. */
@@ -1388,7 +2453,18 @@ p {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 8px 20px;
+  /* A mesma margem das páginas em toda largura: 20px no celular, 32px a
+     partir de 640px (px-5 sm:px-8 do PublicPage e das faixas da home). De 640
+     a 1279px a barra ficava com 20px e o título logo abaixo com 32px. */
+  padding: 8px var(--container-pad-mobile);
+}
+
+/* 40rem, e não 640px: é o ponto do sm:px-8 das páginas, que acompanha a
+   fonte padrão aumentada no navegador. */
+@media (width >= 40rem) {
+  .site-header__inner {
+    padding-inline: var(--container-pad-desktop);
+  }
 }
 
 .site-header__links {
@@ -1435,18 +2511,21 @@ p {
   margin-left: auto;
 }
 
+/* "Sign in" da barra com a mesma cara do .button-outline do menu do celular
+   (contorno navy, 14px). Era um contorno dourado de 13px que, no hover, tingia
+   o fundo com o vermelho antigo da marca. */
 .btn-signin {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   min-height: 44px;
   padding: 9px 16px;
-  border: 1.5px solid var(--color-accent-fg);
+  border: 1px solid var(--color-line-strong);
   border-radius: var(--radius-md);
   background: var(--color-surface);
-  color: var(--color-accent-fg);
+  color: var(--color-primary);
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   line-height: 1;
   transition:
@@ -1456,7 +2535,7 @@ p {
 }
 
 .btn-signin:hover {
-  background: rgba(178, 34, 52, 0.04);
+  background: var(--color-surface-soft);
 }
 
 .btn-signin:focus-visible {
@@ -1479,7 +2558,8 @@ p {
   font-weight: 600;
   line-height: 1;
   text-decoration: none;
-  box-shadow: 0 6px 16px rgba(178, 34, 52, 0.22);
+  /* Sombra navy: o brilho vermelho era resto da marca antiga. */
+  box-shadow: 0 6px 16px rgba(26, 54, 93, 0.18);
   transition:
     background-color 180ms ease,
     box-shadow 180ms ease,
@@ -1489,7 +2569,7 @@ p {
 .btn-cta-hero:hover {
   background: var(--color-accent-hover);
   transform: translateY(-1px);
-  box-shadow: 0 10px 22px rgba(178, 34, 52, 0.28);
+  box-shadow: 0 10px 22px rgba(26, 54, 93, 0.22);
 }
 
 .btn-cta-hero:focus-visible {
@@ -1508,7 +2588,6 @@ p {
   border-radius: var(--radius-lg);
   background: var(--color-surface);
   box-shadow: var(--shadow-strong);
-  animation: dropdown-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .account-menu-trigger {
@@ -1574,15 +2653,19 @@ p {
 }
 
 .account-menu-context-chip {
+  /* Etiqueta do papel na conta: era rosa do vermelho antigo com texto dourado,
+     a 9px. Agora a etiqueta neutra da casa (a das tabelas do /ops): fundo
+     suave, texto em tinta, 11px, raio de etiqueta. Os tokens trocam no tema
+     escuro, então o contraste passa de 4.5:1 nos dois temas sem regra extra. */
   display: inline-flex;
   margin-top: 0.45rem;
-  border: 1px solid rgba(178, 34, 52, 0.2);
-  border-radius: 999px;
-  background: rgba(178, 34, 52, 0.06);
-  padding: 0.2rem 0.45rem;
-  color: var(--color-accent-fg);
-  font-size: 0.5625rem;
-  font-weight: 900;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-chip);
+  background: var(--color-surface-soft);
+  padding: 0.25rem 0.5rem;
+  color: var(--color-ink);
+  font-size: 0.6875rem;
+  font-weight: 700;
   letter-spacing: 0.14em;
   line-height: 1;
   text-transform: uppercase;
@@ -1754,9 +2837,9 @@ p {
    trigger pill (translucent white) is inverted to a translucent light tint so
    its light-ink name/role stop sitting on near-white. Light mode untouched.
    (The --danger selectors that used to be listed here now read the promoted
-   --color-danger-fg token instead, so there is one dark red, not two. The chip
-   and role pill stay hardcoded: they are context labels, not failures.) */
-[data-theme="dark"] .account-menu-context-chip,
+   --color-danger-fg token instead, so there is one dark red, not two. The role
+   pill stays hardcoded: it is a context label, not a failure. A etiqueta do
+   papel dentro do menu saiu daqui: usa os tokens neutros, que já trocam.) */
 [data-theme="dark"] .account-menu-trigger__role {
   color: #e06472;
 }
@@ -1815,12 +2898,13 @@ p {
   padding: 0.85rem;
   color: var(--color-ink-soft);
   text-align: left;
+  /* Tempos e curva do catálogo de movimento (eram 180ms "ease" soltos). */
   transition:
-    background 180ms ease,
-    border-color 180ms ease,
-    color 180ms ease,
-    transform 180ms ease,
-    box-shadow 180ms ease;
+    background var(--duration-base) var(--ease-standard),
+    border-color var(--duration-base) var(--ease-standard),
+    color var(--duration-base) var(--ease-standard),
+    transform var(--duration-base) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard);
 }
 
 .account-settings-tab:hover {
@@ -1933,9 +3017,10 @@ p {
   border: 1px solid var(--color-line);
   border-radius: 999px;
   background: var(--color-surface-strong);
+  /* Tokens do catálogo de movimento, como a aba de configurações acima. */
   transition:
-    background 180ms ease,
-    border-color 180ms ease;
+    background var(--duration-base) var(--ease-standard),
+    border-color var(--duration-base) var(--ease-standard);
 }
 
 .settings-toggle span {
@@ -1949,7 +3034,7 @@ p {
      themes (same fix already applied to the lesson-modal toggle). */
   background: var(--color-on-primary);
   box-shadow: 0 4px 10px rgba(26, 54, 93, 0.14);
-  transition: transform 180ms ease;
+  transition: transform var(--duration-base) var(--ease-standard);
 }
 
 .settings-toggle--on {
@@ -1964,14 +3049,6 @@ p {
 .payouts-shell {
   display: grid;
   gap: 1.25rem;
-}
-
-.payouts-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
 }
 
 .payouts-grid {
@@ -2037,73 +3114,6 @@ p {
   }
 }
 
-.course-upload-presets {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0.75rem;
-}
-
-@media (min-width: 768px) {
-  .course-upload-presets {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.course-upload-preset {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: start;
-  gap: 0.75rem;
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface-soft);
-  padding: 1rem;
-  color: var(--color-ink-soft);
-  text-align: left;
-  transition:
-    transform 180ms ease,
-    background 180ms ease,
-    border-color 180ms ease,
-    box-shadow 180ms ease;
-}
-
-.course-upload-preset:hover {
-  transform: translateY(-1px);
-  border-color: rgba(26, 54, 93, 0.22);
-  background: #ffffff;
-  color: var(--color-ink);
-  box-shadow: var(--shadow-soft);
-}
-
-.course-upload-preset--active {
-  border-color: rgba(26, 54, 93, 0.34);
-  background: var(--color-primary);
-  color: var(--color-base);
-  box-shadow: 0 16px 32px rgba(26, 54, 93, 0.16);
-}
-
-.course-upload-preset--active span:last-child span:last-child {
-  color: rgba(255, 255, 255, 0.76);
-}
-
-/* A1-cont-2: same inversion as .account-settings-tab--active — the preset's
-   --color-primary fill goes light blue in dark, so this muted-white sub-label
-   fails (~1.9:1). Match the parent's --color-base dark ink (8.8:1). Dark-scoped. */
-[data-theme="dark"] .course-upload-preset--active span:last-child span:last-child {
-  color: var(--color-base);
-}
-
-.course-upload-preset__icon {
-  display: grid;
-  width: 38px;
-  height: 38px;
-  place-items: center;
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-md);
-  background: #ffffff;
-  color: var(--color-primary);
-}
-
 @media (width < 1024px) {
   .payouts-grid {
     grid-template-columns: 1fr;
@@ -2136,9 +3146,22 @@ p {
     scroll-snap-type: x mandatory;
   }
 
+  /* Abaixo de 1024px as abas viravam cartões de 220px com ícone e descrição:
+     cabia uma aba e meia e os ajustes começavam abaixo da primeira tela. Aqui
+     são só o rótulo, numa fileira de 44px que rola de lado. */
   .account-settings-tab {
-    min-width: 220px;
+    display: flex;
+    flex: none;
+    width: auto;
+    min-height: 44px;
+    align-items: center;
+    padding: 0.5rem 0.9rem;
     scroll-snap-align: start;
+  }
+
+  .account-settings-tab__icon,
+  .account-settings-tab__description {
+    display: none;
   }
 }
 
@@ -2158,9 +3181,18 @@ p {
   line-height: 1.4;
   color: var(--color-ink);
   transition:
-    border-color 150ms ease,
-    box-shadow 150ms ease,
-    background-color 150ms ease;
+    border-color var(--duration-base) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard),
+    background-color var(--duration-base) var(--ease-standard);
+}
+
+/* 44px, a altura do botão e da busca ao lado: select e data saíam de 38 a
+   46px conforme o navegador. Em camada, e não na regra acima, para um min-h-*
+   do JSX (as caixas de texto de 88px) continuar valendo. */
+@layer components {
+  .field-input {
+    min-height: 44px;
+  }
 }
 
 .field-input::placeholder {
@@ -2214,6 +3246,17 @@ select:focus-visible {
   box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
+/* A mesma pele numa fileira de filtros (vendas, alunos): sem a largura toda,
+   que quebrava a linha, e com 44px cravados, a altura da busca e dos botoes
+   ao lado. A largura vem do conteudo ou de flex/min-w. Fica depois da regra
+   do .field-input para vencer o `width: 100%` dele (as utilidades do Tailwind
+   moram numa camada e perdem para regra solta). */
+.field-input--inline {
+  width: auto;
+  min-height: 44px;
+  padding-block: 0;
+}
+
 .auth-split {
   min-height: 100svh;
   display: grid;
@@ -2259,8 +3302,31 @@ select:focus-visible {
     linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
 }
 
-.welcome-question {
-  animation: welcome-question-in 320ms ease-out both;
+/* Celular: "Continue" preso ao pe da tela. A barra rolava junto com a pagina
+   e ficava abaixo da dobra (e atras do teclado no passo do telefone). No
+   tablet e no computador ela volta a ser a barra comum do fim da pagina. */
+@media (max-width: 639.98px) {
+  .onboarding-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    border-top: 1px solid var(--color-line);
+    background: var(--color-base);
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Campo focado e aviso de erro nunca param atras da barra presa. */
+  html:has(.onboarding-footer) {
+    scroll-padding-bottom: 6rem;
+  }
+}
+
+/* Cada pergunta entra com a mesma subida curta (180ms do sistema), so para
+   quem nao pediu menos movimento. */
+@media (prefers-reduced-motion: no-preference) {
+  .welcome-question {
+    animation: welcome-question-in var(--duration-base) var(--ease-standard) both;
+  }
 }
 
 @keyframes welcome-question-in {
@@ -2371,13 +3437,10 @@ select:focus-visible {
 }
 
 @media (width < 1280px) {
+  /* Os links ficam no menu até 1279px: a conta em barra-do-topo-cabe.test.ts
+     mostra que em 1024px eles e os botões não cabem (logado, ou em espanhol). */
   .site-header__links {
     display: none;
-  }
-
-  .site-header__inner {
-    padding-right: 14px;
-    padding-left: 14px;
   }
 
   .btn-signin,
@@ -2404,9 +3467,30 @@ select:focus-visible {
   background: linear-gradient(180deg, var(--color-base) 0%, var(--color-surface-soft) 100%);
 }
 
+/* I-15, prévia "ver como" do admin (view-as.tsx): a faixa fixa (camada 70)
+   cobria a barra da plataforma (camada 60). Enquanto ela aparece, a página
+   desce a altura medida da faixa; a casca da plataforma tem altura fixa e
+   desconta a mesma medida, senão o pé dela sairia da tela. */
+html[data-view-as] body {
+  padding-top: var(--view-as-offset, 0px);
+}
+
+html[data-view-as] .platform-shell-root {
+  height: calc(100dvh - var(--view-as-offset, 0px));
+  min-height: calc(100dvh - var(--view-as-offset, 0px));
+}
+
 .platform-shell-root > header,
 .platform-shell-root > .sticky {
   flex: 0 0 auto;
+}
+
+/* Caixas de marcar e botoes de radio sem estilo proprio (construtor, ofertas,
+   caixa da comunidade, biblioteca de midia) saiam no azul do navegador ao
+   lado dos navy da casa. Uma regra so, dentro da plataforma. */
+.platform-shell-root input[type="checkbox"],
+.platform-shell-root input[type="radio"] {
+  accent-color: var(--color-primary);
 }
 
 .platform-topbar {
@@ -2574,7 +3658,9 @@ select:focus-visible {
 .platform-topbar__actions .account-menu-trigger {
   width: auto !important;
   min-height: 44px;
-  border-radius: 999px !important;
+  /* Canto de 8px como os vizinhos: botao com texto nao e pilula. O avatar
+     dentro continua redondo. */
+  border-radius: var(--radius-md) !important;
   background: #ffffff !important;
   padding: 5px 14px 5px 6px;
   box-shadow: 0 8px 18px rgba(15, 39, 68, 0.06);
@@ -2648,6 +3734,28 @@ select:focus-visible {
 [data-theme="dark"] .help-menu-trigger {
   background: var(--color-surface);
   color: var(--color-ink);
+}
+
+/* ── Barra do topo da plataforma: uma moldura so ──────────────────────────
+   Eram quatro formas na mesma linha: a troca de lado em pilula (um circulo
+   abaixo de 1280px), quadrados brancos com borda, a conta em pilula comprida
+   e o idioma sem borda nem fundo, que parecia texto solto. Agora todos: 44px,
+   borda de 1px, fundo branco, canto de 8px. Fora da barra (site, Ajuda da
+   sala) nada muda. */
+.platform-topbar__actions .platform-topbar__switch {
+  border-radius: var(--radius-md);
+}
+
+.platform-topbar__actions .locale-switcher-compact {
+  border: 1px solid var(--color-line);
+  background: var(--color-surface);
+  color: var(--color-primary);
+  box-shadow: 0 8px 18px rgba(15, 39, 68, 0.06);
+}
+
+.platform-topbar__actions .locale-switcher-compact:hover {
+  border-color: var(--color-line-strong);
+  background: var(--color-surface-soft);
 }
 
 .platform-topbar__side {
@@ -2768,19 +3876,8 @@ select:focus-visible {
   box-shadow: 18px 0 44px rgba(7, 23, 42, 0.1);
 }
 
-.platform-sidebar-panel::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
-  background-size: 28px 28px;
-  mask-image: radial-gradient(circle at 30% 18%, #000 0%, transparent 70%);
-  opacity: 0.6;
-}
-
+/* A trama quadriculada de 28px do rail saiu: textura repetida e um dos
+   padroes que o desenho da casa proibe. O degrade navy fica. */
 .platform-sidebar-panel > * {
   position: relative;
 }
@@ -2884,6 +3981,16 @@ select:focus-visible {
   body:has(.platform-mobile-nav) .created-strip {
     bottom: calc(60px + 0.75rem + env(safe-area-inset-bottom, 0px));
   }
+
+  /* O cartão de envio do vídeo (lesson-upload-provider.tsx) ficava a 16px do
+     fundo e tapava as cinco abas enquanto o vídeo subia: sobe a barra (60px)
+     e mantém os 16px de respiro. */
+  body:has(.platform-mobile-nav) .lesson-upload-card {
+    bottom: calc(60px + 1rem + env(safe-area-inset-bottom, 0px));
+    /* O teto do componente (100svh - 2rem) não conta a subida: num celular
+       deitado o topo do cartão saía da tela. */
+    max-height: calc(100svh - 60px - 2rem - env(safe-area-inset-bottom, 0px));
+  }
 }
 
 .cookie-consent__inner {
@@ -2929,8 +4036,8 @@ select:focus-visible {
 
 @media (max-width: 640px) {
   /* Mais baixo no celular (era 240px de 812 na 1ª visita): texto em 12px, sem
-     perder o alvo de 44px. Recusar e Aceitar dividem a 1ª linha por igual
-     (recusar tão fácil quanto aceitar); "Gerenciar" vai sozinho por último. */
+     perder o alvo de 44px. Recusar e Aceitar dividem a linha por igual
+     (recusar tão fácil quanto aceitar). */
   .cookie-consent {
     padding-top: 0.75rem;
   }
@@ -2959,11 +4066,6 @@ select:focus-visible {
     flex: 1 1 0;
     padding: 0.625rem 0.75rem;
     white-space: normal;
-  }
-
-  .cookie-consent__actions > a.button-outline {
-    flex-basis: 100%;
-    order: 1;
   }
 }
 
@@ -3099,6 +4201,22 @@ select:focus-visible {
   height: min(560px, calc(100dvh - 7rem));
 }
 
+/* Gatilho na barra do topo (advisor-sidebar.tsx mede o botao): a conversa
+   abre logo abaixo dele, e nao no rodape. A altura desconta o topo medido,
+   para o painel inteiro caber na janela. No celular nada muda. */
+.floating-action--advisor.floating-action--anchored {
+  /* Logo abaixo da camada da barra do topo (60): o painel do sino e o menu da
+     conta, que moram nela, abrem POR CIMA da conversa, nao escondidos atras. */
+  z-index: 59;
+  top: var(--advisor-top, 4.5rem);
+  bottom: auto;
+  inset-inline-end: var(--advisor-right, 1.5rem);
+}
+
+.floating-action--anchored .advisor-panel {
+  height: min(560px, calc(100dvh - var(--advisor-top, 4.5rem) - 1rem));
+}
+
 /* Get the floating trigger out of the way when the cookie banner or the course
    category menu is up — but never while a conversation is open. The category
    menu lives in the course builder (course-category-select.tsx:114), which is
@@ -3143,8 +4261,16 @@ body:has([aria-label="Course categories"])
   color: var(--color-ink);
 }
 
+/* O mesmo fundo das janelas, com a mesma reserva do dialog.modal-panel: o
+   ::backdrop antigo não herda variáveis. */
 .contextual-help-dialog::backdrop {
-  background: rgba(10, 15, 26, 0.38);
+  background: var(--color-scrim, rgba(15, 39, 68, 0.62));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .contextual-help-dialog::backdrop {
+    animation: motion-fade var(--duration-base) var(--ease-standard) backwards;
+  }
 }
 
 .contextual-help-panel {
@@ -3282,6 +4408,8 @@ body:has([aria-label="Course categories"])
   padding: 1rem 0;
   display: grid;
   gap: 0.9rem;
+  /* A faixa de etapas decide pela largura dela (@container mais abaixo). */
+  container-type: inline-size;
 }
 
 .course-builder-stepper__head {
@@ -3298,17 +4426,14 @@ body:has([aria-label="Course categories"])
   max-width: 440px;
 }
 
-/* Full-width row below the editing panel: course-structure recap + the
-   review/submit action card, with the asset uploader spanning underneath. */
+/* Linha abaixo do painel: a volta ao estudio e a biblioteca de midia. O
+   cartao de publicar e o "Course structure" sairam (repetiam a aba Publish e
+   a aba Curriculum). */
 .course-builder-footer {
   display: grid;
   gap: 1.25rem;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 360px);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
-}
-
-.course-builder-footer__full {
-  grid-column: 1 / -1;
 }
 
 .course-builder-grid {
@@ -3363,11 +4488,11 @@ body:has([aria-label="Course categories"])
     transform 180ms ease;
 }
 
+/* Como as abas da casa: o hover so escurece o texto. Antes ele pintava borda,
+   fundo e cor iguais aos da etapa aberta, e com o ponteiro em cima nao se
+   sabia qual estava aberta. A marca de feito continua no numero. */
 .course-builder-step:hover {
-  transform: translateY(-1px);
-  border-color: var(--color-line);
-  background: var(--color-surface-soft);
-  color: var(--color-primary);
+  color: var(--color-ink);
 }
 
 .course-builder-step.is-active {
@@ -3386,7 +4511,8 @@ body:has([aria-label="Course categories"])
   width: auto;
   height: 2px;
   border-radius: 999px;
-  background: var(--color-accent);
+  /* Navy, como a aba escolhida da casa; latao e de marco. */
+  background: var(--color-primary);
 }
 
 .course-builder-step__num {
@@ -3657,15 +4783,15 @@ body:has([aria-label="Course categories"])
   color: var(--color-on-accent);
 }
 
+/* O fundo vem do .dialog-backdrop (lesson-content-modal.tsx), como nas outras
+   janelas: era navy a 52% com desfoque de 8px, um kit à parte. */
 .lesson-modal-overlay {
   position: fixed;
-  z-index: 80;
+  z-index: var(--z-modal-studio);
   inset: 0;
   display: grid;
   place-items: center;
-  background: rgba(15, 39, 68, 0.52);
   padding: 1.25rem;
-  backdrop-filter: blur(8px);
 }
 
 .lesson-modal {
@@ -3689,7 +4815,22 @@ body:has([aria-label="Course categories"])
   max-height: none;
   overflow: visible;
   border-color: var(--color-line);
+  /* Pagina, nao janela: sem o canto de 16 px e sem o brilho vermelho do canto
+     (radial e so do hero). */
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
   box-shadow: none;
+}
+
+/* A 1920 px a aula esticava ate 1.450 px: previa do video de 1.474 x 829 px e
+   campos de ponta a ponta. Uma coluna de leitura, como nas pranchas. */
+.lesson-modal--page .lesson-modal__body > * {
+  max-width: 48rem;
+}
+
+/* O titulo da aula ficava em 37,6 px, maior que o h1 do curso (30 px). */
+.lesson-modal--page .lesson-modal__context h3 {
+  font-size: 1.5rem;
 }
 
 .lesson-modal__trail {
@@ -3819,22 +4960,67 @@ body:has([aria-label="Course categories"])
     color 180ms ease;
 }
 
-.lesson-modal__tabs button:hover,
+/* O desenho das abas da casa (HorizontalTabs): passar o mouse so escurece o
+   texto, sem linha; a escolhida e navy com a linha navy. Antes o hover era a
+   mesma regra da escolhida (linha de latao), e com o ponteiro na barra nao se
+   sabia qual aba estava aberta. O latao fica para marco. */
+.lesson-modal__tabs button:hover {
+  color: var(--color-ink);
+}
+
 .lesson-modal__tabs button.is-active {
-  border-bottom-color: var(--color-accent-fg);
+  border-bottom-color: var(--color-primary);
   color: var(--color-primary);
 }
 
-.lesson-modal__tabs span {
-  border: 1px solid var(--color-line);
-  border-radius: 999px;
+/* Estado da aba em tamanho fixo: a palavra trocava a largura e a fileira
+   pulava. Marca de 10 px (a palavra fica no title e em sr-only) e, em
+   Materials, o numero. */
+.lesson-modal__tab-count {
+  min-width: 1.25rem;
+  border-radius: var(--radius-sm);
   background: var(--color-surface-soft);
-  padding: 0.125rem 0.45rem;
+  padding: 0.0625rem 0.375rem;
   color: var(--color-primary);
-  font-size: 0.625rem;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+/* A forma diz o estado, nao so a cor: anel vazio (off), meio cheio (busy),
+   cheio (done/on). Todas as cores passam de 3:1 sobre a barra das abas nos dois
+   temas (o cinza de linha e o latao claro davam ~2,5:1). */
+.lesson-modal__tab-dot {
+  box-sizing: border-box;
+  width: 0.625rem;
+  height: 0.625rem;
+  flex: none;
+  border: 1.5px solid var(--color-ink-muted);
+  border-radius: 999px;
+  background: transparent;
+}
+
+.lesson-modal__tab-dot[data-tone="busy"] {
+  border-color: var(--color-accent-fg);
+  background: linear-gradient(90deg, var(--color-accent-fg) 50%, transparent 50%);
+}
+
+.lesson-modal__tab-dot[data-tone="done"] {
+  border-color: var(--color-success-fg);
+  background: var(--color-success-fg);
+}
+
+.lesson-modal__tab-dot[data-tone="on"] {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+}
+
+.lesson-modal__tabs-note {
+  margin-bottom: 1rem;
+  color: var(--color-ink-soft);
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 .lesson-modal__body {
@@ -3858,6 +5044,7 @@ body:has([aria-label="Course categories"])
 
 .lesson-video-source-picker__options {
   display: grid;
+  max-width: 48rem;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 0.75rem;
 }
@@ -3939,7 +5126,6 @@ body:has([aria-label="Course categories"])
 
 .lesson-video-source-picker__url.is-active {
   border-color: var(--color-brass);
-  box-shadow: inset 3px 0 0 var(--color-brass);
 }
 
 .lesson-video-source-picker__url-label {
@@ -4129,14 +5315,45 @@ body:has([aria-label="Course categories"])
   background: var(--color-surface-soft);
 }
 
+/* Cartao de envio compacto: era grid sem limite, e o botao "Upload file" e
+   a previa local esticavam ate a largura da pagina. Agora a previa 16:9 fica
+   ao lado (vai para cima no celular) e os botoes tem a largura do texto. */
 .lesson-modal-upload {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
   min-width: 0;
-  gap: 0.85rem;
+  max-width: 48rem;
+  gap: 1.25rem;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-lg);
   background: #ffffff;
-  padding: 1rem;
+  padding: 1.25rem;
+}
+
+.lesson-modal-upload__video {
+  width: 13rem;
+  max-width: 100%;
+  flex: none;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-md);
+  background: #000000;
+  object-fit: contain;
+}
+
+.lesson-modal-upload__body {
+  display: grid;
+  flex: 1 1 16rem;
+  min-width: 0;
+  justify-items: start;
+  gap: 0.75rem;
+}
+
+.lesson-modal-upload__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
 }
 
 .lesson-modal-upload label:has(> input[type="file"]) {
@@ -4167,6 +5384,16 @@ body:has([aria-label="Course categories"])
   color: var(--color-primary);
   font-size: 0.75rem;
   font-weight: 800;
+}
+
+/* O nome do arquivo e o titulo do cartao, nao mais uma caixa azul. */
+.lesson-modal-upload__file {
+  max-width: 100%;
+  background: none;
+  padding: 0;
+  color: var(--color-ink);
+  font-size: 0.9375rem;
+  font-weight: 700;
 }
 
 .lesson-modal-upload__error {
@@ -4236,6 +5463,30 @@ body:has([aria-label="Course categories"])
   border-radius: var(--radius-lg);
   background: #ffffff;
   padding: 1rem;
+  /* A linha é o botão da chave (lesson-content-modal): o texto também liga. */
+  width: 100%;
+  text-align: left;
+  transition: border-color var(--duration-base) var(--ease-standard);
+}
+
+.lesson-modal-setting:hover:not(:disabled) {
+  border-color: var(--color-line-strong);
+}
+
+/* Desligada (curso sem edição): só o trilho apaga, como antes; o texto segue
+   legível. A regra do [role="switch"] punha a mãozinha mesmo desligada. */
+.lesson-modal-setting:disabled {
+  cursor: not-allowed;
+}
+
+.lesson-modal-setting:disabled .settings-toggle {
+  opacity: 0.6;
+}
+
+/* Abaixo de 1024px a linha vira coluna, e o flex-basis de 46px do trilho
+   passaria a ser a ALTURA: ficava um círculo. */
+.lesson-modal-setting > .settings-toggle {
+  flex: none;
 }
 
 .lesson-modal-setting strong {
@@ -4243,7 +5494,8 @@ body:has([aria-label="Course categories"])
   font-size: 0.9375rem;
 }
 
-.lesson-modal-setting p {
+.lesson-modal-setting__help {
+  display: block;
   margin-top: 0.35rem;
   color: var(--color-ink-soft);
   font-size: 0.8125rem;
@@ -4251,41 +5503,7 @@ body:has([aria-label="Course categories"])
   line-height: 1.55;
 }
 
-.lesson-modal-setting button {
-  position: relative;
-  width: 3rem;
-  height: 1.65rem;
-  flex: 0 0 auto;
-  border: 1px solid var(--color-line);
-  border-radius: 999px;
-  background: var(--color-surface-strong);
-  transition:
-    background-color 180ms ease,
-    border-color 180ms ease;
-}
-
-.lesson-modal-setting button::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 0.25rem;
-  width: 1.1rem;
-  height: 1.1rem;
-  border-radius: 999px;
-  background: #ffffff;
-  box-shadow: 0 3px 8px rgba(15, 39, 68, 0.16);
-  transform: translateY(-50%);
-  transition: left 180ms ease;
-}
-
-.lesson-modal-setting button.is-on {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
-}
-
-.lesson-modal-setting button.is-on::after {
-  left: 1.55rem;
-}
+/* A chave da aula agora é a .settings-toggle da casa (lesson-content-modal). */
 
 .lesson-modal__footer {
   display: flex;
@@ -4348,15 +5566,22 @@ body:has([aria-label="Course categories"])
 [data-theme="dark"] .lesson-modal-assets article,
 [data-theme="dark"] .lesson-video-source-picker__dropzone,
 [data-theme="dark"] .lesson-video-source-picker__url,
-[data-theme="dark"] .lesson-video-source-picker__url input,
 [data-theme="dark"] .lesson-modal-setting {
   background: var(--color-surface-strong);
 }
 
-/* On-toggle track inverts to light blue in dark; flip the knob to dark ink so it
-   stays visible (8.8:1) and the color shift reinforces the positional state. */
-[data-theme="dark"] .lesson-modal-setting button.is-on::after {
+/* No escuro o campo de link e a chave desligada tinham a cor do proprio
+   cartao e so se liam pela linha fina: um degrau mais fundo que o cartao. */
+[data-theme="dark"] .lesson-video-source-picker__url input {
+  background: var(--color-surface);
+}
+
+[data-theme="dark"] .lesson-modal-setting .settings-toggle:not(.settings-toggle--on) {
   background: var(--color-base);
+}
+
+[data-theme="dark"] .lesson-modal--page {
+  background: var(--color-surface);
 }
 
 @media (max-width: 1280px) {
@@ -4402,7 +5627,8 @@ body:has([aria-label="Course categories"])
 
   .lesson-modal__tabs button {
     display: grid;
-    grid-template-columns: 0.875rem minmax(0, 1fr);
+    grid-template-columns: 0.875rem minmax(0, 1fr) auto;
+    align-items: center;
     min-width: 0;
     gap: 0 0.375rem;
     padding: 0.25rem 0.5rem;
@@ -4411,13 +5637,6 @@ body:has([aria-label="Course categories"])
     text-align: left;
     white-space: normal;
     overflow-wrap: anywhere;
-  }
-
-  .lesson-modal__tabs span {
-    grid-column: 2;
-    justify-self: start;
-    min-width: 0;
-    max-width: 100%;
   }
 }
 
@@ -4457,9 +5676,39 @@ body:has([aria-label="Course categories"])
   box-shadow: 0 14px 34px rgba(15, 39, 68, 0.055);
 }
 
+/* A faixa da prévia gruda logo abaixo da barra do topo da área de membros
+   (member-area-shell.tsx, sticky top 0: 44px dos botões + 24 de respiro + 1 de
+   borda = 69px), não em top 0, onde ficaria atrás dela. Era um cartão comum:
+   depois de rolar, nada dizia que era uma prévia. Sticky guarda o próprio
+   lugar, então em repouso não cobre nada. Uma linha fina: 44px + 8 + 8.
+   69px e z 30 ficam escritos: a barra do topo não tem variável de altura
+   (o 92px da lista de aulas abaixo sai da mesma conta) e a escala --z-* começa
+   em 50, acima dela (z-40), que a faixa não pode cobrir. */
 .member-preview-banner {
+  position: sticky;
+  top: 69px;
+  z-index: 30;
   background: var(--color-surface-strong);
-  padding: 16px;
+  padding: 8px 16px;
+}
+
+/* A faixa presa cobre o topo: o foco do teclado e as âncoras param abaixo dela
+   (barra do topo 69 + faixa ~62 + folga). */
+html:has(.member-preview-banner) {
+  scroll-padding-top: 148px;
+}
+
+/* No celular o texto ao lado do botão quebra em linhas, em vez de o botão
+   descer para uma segunda faixa: presa no topo, cada linha a mais é tela a
+   menos. */
+@media (max-width: 639.98px) {
+  .member-preview-banner > div {
+    flex-wrap: nowrap;
+  }
+
+  .member-preview-banner > div > a {
+    flex: none;
+  }
 }
 
 .member-classroom-hero {
@@ -4609,18 +5858,19 @@ body:has([aria-label="Course categories"])
    `is-leaving` e posta pelo proprio cartao, que so avisa o pai depois).
    prefers-reduced-motion zera as duas duracoes no bloco global la embaixo. */
 .member-next-lesson {
-  animation: member-next-lesson-in 250ms ease-out both;
+  animation: member-next-lesson-in var(--duration-base) var(--ease-standard) both;
 }
 
 .member-next-lesson.is-leaving {
   /* A animacao de entrada tem fill `both`: sem cancela-la aqui, ela segurava o
-     estado final e a saida nao acontecia. */
+     estado final e a saida nao acontecia. A duracao bate com EXIT_MS em
+     next-lesson-card.tsx. */
   animation: none;
   opacity: 0;
   transform: translateY(12px);
   transition:
-    opacity 250ms ease-out,
-    transform 250ms ease-out;
+    opacity var(--duration-base) var(--ease-standard),
+    transform var(--duration-base) var(--ease-standard);
 }
 
 @keyframes member-next-lesson-in {
@@ -4641,9 +5891,20 @@ body:has([aria-label="Course categories"])
   gap: 14px;
   border: 0;
   box-shadow: none;
-  /* A playlist rola dentro da lateral; o vídeo fica parado. */
-  max-height: calc(100vh - 108px);
+  /* A playlist rola dentro da lateral; o vídeo fica parado. top 92px = barra
+     do topo da área de membros (~68px) + 24px; 108px deixa 16px embaixo. */
+  max-height: calc(100svh - 108px);
   overflow-y: auto;
+}
+
+/* Na prévia a faixa presa (~62px) fica entre a barra do topo e a lista de
+   aulas: a lista desce o mesmo tanto para não passar por baixo dela. Só onde a
+   lista é presa (acima de 1180px; abaixo ela vira acordeão estático). */
+@media (width > 1180px) {
+  .member-classroom:has(> .member-preview-banner) .member-classroom-sidebar {
+    top: 154px;
+    max-height: calc(100svh - 170px);
+  }
 }
 
 /* Cabeçalho curto de aula — a capa inteira fica para a primeira visita. */
@@ -4677,26 +5938,6 @@ body:has([aria-label="Course categories"])
   white-space: nowrap;
   text-overflow: ellipsis;
   color: var(--color-ink);
-}
-
-.member-classroom-head__progress {
-  display: block;
-  height: 6px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--color-line);
-}
-
-.member-classroom-head__progress > span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--color-accent);
-  /* Concluir uma aula reescreve a largura de uma vez: a barra SALTAVA para a
-     nova marca, e o unico feedback de "isso contou" passava batido. Animar a
-     largura faz o avanco ser visto. (prefers-reduced-motion zera a duracao no
-     bloco global la embaixo.) */
-  transition: width 400ms ease-out;
 }
 
 .member-classroom-head__percent {
@@ -4844,7 +6085,7 @@ body:has([aria-label="Course categories"])
 }
 
 .member-playlist__chevron {
-  transition: transform 160ms ease;
+  transition: transform var(--duration-base) var(--ease-standard);
 }
 
 .member-playlist__chevron.is-open {
@@ -5088,12 +6329,31 @@ body:has([aria-label="Course categories"])
     box-shadow: var(--shadow-strong);
     /* Só transform e opacity: nada de largura/altura animada. O bloco global
        de prefers-reduced-motion zera a duração. */
-    animation: member-video-mini-in 200ms ease-out;
+    animation: member-video-mini-in var(--duration-base) var(--ease-standard);
   }
 
   .member-video-dock--mini .member-video-stage {
     flex: 0 0 42%;
     border-radius: var(--radius-md);
+  }
+
+  /* O vídeo terminou com o mini ligado: o cartão "Next lesson" nascia dentro
+     do vídeo pequeno (~150x84px) e só o anel aparecia. Aqui o palco deixa de
+     ser a referência do cartão, e ele vira uma faixa logo abaixo da barra do
+     mini, de ponta a ponta. O vídeo não sai do lugar no DOM. As duas regras
+     dependem do mesmo :has(): navegador sem ele ignora as duas e o cartão
+     fica onde estava, em vez de cair sob o overflow do palco e sumir. */
+  .member-video-dock--mini .member-video-stage:has(> .member-next-lesson) {
+    position: static;
+  }
+
+  .member-video-dock--mini .member-video-stage:has(> .member-next-lesson) > .member-next-lesson {
+    top: 100%;
+    right: 0;
+    bottom: auto;
+    left: 0;
+    max-width: none;
+    border-radius: 0;
   }
 
   .member-video-dock--mini .member-video-mini {
@@ -5156,13 +6416,40 @@ body:has([aria-label="Course categories"])
   color: #ffffff;
 }
 
+/* Esperando o vídeo: a caixa já tem o 16:9 do player (o iframe é
+   aspect-video). Com a altura do clamp acima ela media 260-520px e a aula
+   pulava 50-110px quando o vídeo chegava. O clamp fica para trancada e sem
+   mídia, que têm texto e botão. */
+.member-video-empty--loading {
+  aspect-ratio: 16 / 9;
+  min-height: 0;
+  padding: 0;
+}
+
+/* Espera do vídeo enviado (protected-asset-preview.tsx). Na sala ela cai
+   dentro do palco escuro e herda o fundo dele; fora dela (prévia do professor)
+   não há palco, e o anel branco sumiria no branco. */
+.protected-asset-loading {
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, #081426 0%, #102744 100%);
+}
+
+.member-video-stage .protected-asset-loading {
+  background: none;
+}
+
 .member-video-empty svg {
   color: rgba(255, 255, 255, 0.82);
 }
 
+/* h3 nos avisos da sala (subseção da aula, que é h2); h5 segue no player da
+   Bunny (components/courses), que mora no mesmo palco. 18px, não 20: sob a
+   capa o título da aula (o h2 acima) tem 18px, e um subtítulo não pode ser
+   maior que o título dele. */
+.member-video-empty h3,
 .member-video-empty h5 {
   margin-top: 16px;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 800;
 }
 
@@ -5193,38 +6480,6 @@ body:has([aria-label="Course categories"])
   justify-content: space-between;
   gap: 20px;
   flex-wrap: wrap;
-}
-
-.member-curriculum-progress {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 220px;
-  max-width: 360px;
-  flex: 1 1 220px;
-}
-
-.member-curriculum-progress > span {
-  color: var(--color-success-fg);
-  font-size: 12px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.member-curriculum-progress > div {
-  flex: 1;
-  height: 6px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--color-surface-strong);
-}
-
-.member-curriculum-progress > div > span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
 }
 
 .member-module-rail {
@@ -5366,22 +6621,6 @@ body:has([aria-label="Course categories"])
   background: var(--ma-success);
   color: var(--ma-on-success);
   box-shadow: 0 4px 12px rgba(31, 138, 91, 0.4);
-}
-
-.member-module-card__bar {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 3;
-  height: 5px;
-  background: rgba(255, 255, 255, 0.28);
-}
-
-.member-module-card__bar > span {
-  display: block;
-  height: 100%;
-  background: var(--color-accent);
 }
 
 .member-module-card__body {
@@ -5638,8 +6877,20 @@ body:has([aria-label="Course categories"])
     grid-template-columns: auto minmax(0, 1fr) auto;
   }
 
+  /* Linha 1: a seta de voltar (só ícone, 44px) e o título com as setas de
+     aula. Linha 2: barra e porcentagem juntas. Antes a barra ocupava a linha
+     2 inteira e o "40%" caía sozinho numa terceira. */
+  .member-classroom-head__back {
+    min-width: 44px;
+    justify-content: center;
+  }
+
+  .member-classroom-head__main {
+    grid-column: 2 / -1;
+  }
+
   .member-classroom-head__progress {
-    grid-column: 1 / -1;
+    grid-column: 1 / 3;
   }
 }
 
@@ -5654,10 +6905,6 @@ body:has([aria-label="Course categories"])
 
   .member-classroom-sidebar {
     grid-template-columns: 1fr;
-  }
-
-  .member-curriculum-progress {
-    max-width: none;
   }
 
   .member-module-lessons-head {
@@ -5678,13 +6925,26 @@ body:has([aria-label="Course categories"])
 }
 
 .member-classroom[data-members-theme] {
+  /* clip, e não hidden: hidden faz da sala um contêiner de rolagem, e tudo o
+     que é sticky dentro dela (barra "Mark complete & next", lista de aulas,
+     aviso de posts novos) grudava nela e rolava junto com a página. clip
+     corta os cantos igual e deixa o sticky grudar na tela. hidden fica como
+     reserva para navegador sem clip. */
   overflow: hidden;
+  overflow: clip;
   gap: 0;
   border: 1px solid var(--ma-line);
   border-radius: var(--radius-lg);
   background: var(--ma-bg);
   color: var(--ma-ink);
   box-shadow: var(--ma-shadow);
+}
+
+/* Com a barra "Mark complete & next" presa no pé da tela (~69px: 44 do botão,
+   24 de respiro, 1 de borda), o navegador levava o item focado pelo Tab até a
+   borda de baixo, atrás dela. Só na página que tem a aula aberta. */
+html:has(#member-lesson-player) {
+  scroll-padding-bottom: 88px;
 }
 
 .member-classroom[data-members-theme] > .members-hero {
@@ -5705,13 +6965,38 @@ body:has([aria-label="Course categories"])
   box-shadow: none;
 }
 
-.member-classroom[data-members-theme] > .member-classroom-layout {
-  margin: 24px;
+/* Respiro entre a moldura da sala e o que vai dentro dela. Os painéis moram
+   no invólucro da aba (.member-classroom-body, enrolled-course-workspace.tsx);
+   as margens antigas miravam filhos diretos da sala, deixaram de casar quando
+   o invólucro entrou, e os cartões passaram a encostar na borda. Cabeçalho
+   curto e abas recuam o mesmo tanto, para as bordas esquerdas alinharem. */
+.member-classroom[data-members-theme] > .member-classroom-body {
+  padding: 0 24px 24px;
 }
 
-.member-classroom[data-members-theme] > .member-module-deck,
-.member-classroom[data-members-theme] > .member-resource-panel {
-  margin: 0 24px 24px;
+.member-classroom[data-members-theme] > .member-classroom-head {
+  margin-inline: 24px;
+  padding-inline: 0;
+}
+
+/* A barra rola de lado (overflow-x), e isso corta o que passa da borda dela:
+   o anel de foco (2px + 3px de afastamento) da primeira aba sumia à
+   esquerda. 6px de folga por dentro, descontados da margem, e o texto segue
+   alinhado com os painéis. */
+.member-classroom[data-members-theme] > .member-classroom-tabs {
+  margin-inline: 18px;
+  padding-inline: 6px;
+}
+
+/* O texto da primeira aba começa na mesma linha dos painéis. */
+.member-classroom[data-members-theme] > .member-classroom-tabs > a:first-child {
+  padding-inline-start: 0;
+}
+
+/* A faixa "ao vivo" (live-session-parts.tsx) entre as abas e o painel: o
+   mesmo recuo dos painéis e o mesmo respiro que as abas deixam embaixo. */
+.member-classroom[data-members-theme] > .member-live-strip {
+  margin: 0 24px 18px;
 }
 
 .member-classroom[data-members-theme] [class*="border-[var(--color-line)]"],
@@ -5738,6 +7023,87 @@ body:has([aria-label="Course categories"])
 
 .member-classroom[data-members-theme] [class*="text-[var(--color-accent-fg)]"] {
   color: var(--ma-accent-ink) !important;
+}
+
+/* Avisos de erro da sala (InlineAlert e linhas de erro): o vermelho da
+   plataforma dava ~2.7:1 num curso escuro. Troca a variável, não a cor, para o
+   ícone e o texto da caixa seguirem juntos. */
+.member-classroom[data-members-theme] [class*="text-[var(--color-danger-fg)]"] {
+  --color-danger-fg: var(--ma-accent-ink);
+}
+
+/* Avisos (âmbar) da sala: a sala segue o tema do CURSO, não o da plataforma.
+   Com a plataforma escura num curso claro, o âmbar claro do escuro (#e6b24f)
+   ficava 1.59:1 sobre o fundo claro do aviso. O par certo vem do tema do curso:
+   claro 5.2:1, escuro 6.7:1 ou mais nas superfícies da sala. */
+.member-classroom[data-members-theme="light"] [class*="text-[var(--color-warning-fg)]"] {
+  --color-warning-fg: #8a5d08;
+  --color-warning-soft: #fcefd2;
+}
+
+.member-classroom[data-members-theme="dark"] [class*="text-[var(--color-warning-fg)]"] {
+  --color-warning-fg: #e6b24f;
+  --color-warning-soft: rgba(192, 123, 10, 0.18);
+}
+
+/* Verde de "respondida", "ao vivo" e sucesso na sala: o mesmo mecanismo do
+   âmbar acima, com o par da plataforma do tema do CURSO. Antes o feed usava um
+   verde fixo (3.6:1 num curso escuro) e o fundo claro do verde da plataforma
+   clara ficava aceso num curso escuro. Vale para texto, fundo e borda. */
+.member-classroom[data-members-theme="light"] [class*="var(--color-success-"] {
+  --color-success-fg: #176b46;
+  --color-success-soft: #e4f3eb;
+}
+
+.member-classroom[data-members-theme="dark"] [class*="var(--color-success-"] {
+  --color-success-fg: #5fc99a;
+  --color-success-soft: rgba(31, 138, 91, 0.18);
+}
+
+/* Filtro ativo, pílula "N new posts", avatares e o contorno do compositor na
+   comunidade e nos comentários da aula: o navy da plataforma sobre o fundo do
+   curso (≈1.3:1 num curso escuro; num curso claro com a plataforma escura, o
+   claro do navy sumia no branco). Na sala, o par invertido do próprio curso.
+   Só nessas duas superfícies: o fundo navy do player continua escuro. */
+.member-classroom[data-members-theme] .community-feed [class*="bg-[var(--color-primary)]"],
+.member-classroom[data-members-theme] .community-feed [class*="border-[var(--color-primary)]"],
+.member-classroom[data-members-theme] .member-lesson-comments [class*="bg-[var(--color-primary)]"] {
+  --color-primary: var(--ma-ink);
+  --color-base: var(--ma-bg);
+}
+
+/* Borda forte (a tracejada do EmptyState) na sala: a da plataforma é navy a
+   40% e some num curso escuro; a regra de --color-line acima não a alcança. */
+.member-classroom[data-members-theme] [class*="border-[var(--color-line-strong)]"] {
+  border-color: var(--ma-line-2) !important;
+}
+
+/* A gaveta da pergunta não sai da sala (não é portal), então o texto dela já
+   vem na cor do CURSO pelas regras acima. Fundo, divisórias e os tons que as
+   regras acima não trocam passam a ler a mesma paleta: sem isso a gaveta era
+   branca num curso escuro, com o texto claro por cima. Fora da sala (área do
+   criador, caixa do professor) ela segue os tokens da plataforma. */
+.member-classroom[data-members-theme] .community-drawer {
+  --color-surface: var(--ma-surface);
+  --color-surface-soft: var(--ma-surface-2);
+  --color-line: var(--ma-line);
+  --color-ink: var(--ma-ink);
+  --color-ink-soft: var(--ma-ink-soft);
+  /* --ma-ink-muted não chega a 4.5:1 no escuro; o meta (autor, hora) é
+     leitura, então usa o tom suave. */
+  --color-ink-muted: var(--ma-ink-soft);
+}
+
+/* Erro e "respondida" na gaveta e nos cartões do feed da sala (o fundo dos
+   cartões já é --ma-surface pela regra do bg-white). O vermelho e o verde da
+   plataforma davam ~2.7:1 num curso escuro, e o vermelho do modo escuro
+   ~2.7:1 sobre o branco de um curso claro. Os -ink do curso existem para
+   isso: no claro 5.5:1 e 7:1 sobre branco; no escuro 5.6:1 e 5.3:1 sobre
+   #141923. */
+.member-classroom[data-members-theme] .community-drawer,
+.member-classroom[data-members-theme] [data-community-item] {
+  --color-danger-fg: var(--ma-accent-ink);
+  --color-success-fg: var(--ma-success-ink);
 }
 
 .member-classroom[data-members-theme] .member-preview-banner,
@@ -5851,12 +7217,10 @@ body:has([aria-label="Course categories"])
   color: var(--ma-on-accent);
 }
 
+/* O trilho da barra do topo (ProgressBar) na linha do curso; o preenchimento
+   no acento vem da própria barra (fillClassName). */
 .member-classroom[data-members-theme] .member-classroom-head__progress {
   background: var(--ma-line);
-}
-
-.member-classroom[data-members-theme] .member-classroom-head__progress > span {
-  background: var(--ma-accent);
 }
 
 .member-classroom[data-members-theme] .member-sidebar-card--dark {
@@ -5886,10 +7250,6 @@ body:has([aria-label="Course categories"])
   color: var(--ma-ink-muted);
 }
 
-.member-classroom[data-members-theme] .member-curriculum-progress > span {
-  color: var(--ma-success-ink);
-}
-
 .member-classroom[data-members-theme] .member-lesson-chip--done {
   border-color: rgba(39, 160, 106, 0.32);
   background: rgba(39, 160, 106, 0.12);
@@ -5912,6 +7272,7 @@ body:has([aria-label="Course categories"])
   background: linear-gradient(135deg, #05070a 0%, #111824 58%, #1d1016 100%);
 }
 
+.member-classroom[data-members-theme] .member-video-empty h3,
 .member-classroom[data-members-theme] .member-video-empty h5,
 .member-classroom[data-members-theme] .member-video-empty p {
   color: #ffffff !important;
@@ -5920,10 +7281,6 @@ body:has([aria-label="Course categories"])
 .member-classroom[data-members-theme] .member-lesson-body {
   border-color: var(--ma-line);
   background: var(--ma-surface);
-}
-
-.member-classroom[data-members-theme] .member-curriculum-progress > div {
-  background: var(--ma-surface-2);
 }
 
 .member-classroom[data-members-theme] .member-module-card__title,
@@ -6007,19 +7364,46 @@ body:has([aria-label="Course categories"])
   color: var(--ma-ink-muted);
 }
 
+/* O campo da casa dentro da sala segue o tema do CURSO, como a regra acima.
+   Com a plataforma escura, o fundo `!important` e a borda de foco do
+   [data-theme="dark"] .field-input venciam a sala: num curso claro, a caixa
+   de mensagem e a de avaliação ficavam no tom da plataforma. Só o fundo
+   precisa do `!important` (o do escuro também tem); a borda vence por peso. */
+.member-classroom[data-members-theme] .field-input,
+.member-classroom[data-members-theme] .field-input:focus,
+.member-classroom[data-members-theme] .field-input:focus-visible {
+  border-color: var(--ma-line);
+  background: var(--ma-surface) !important;
+  color: var(--ma-ink);
+}
+
+/* Sombra navy da casa, não um brilho vermelho: o vermelho fixo ficava sob o
+   botão mesmo quando a cor do curso é verde ou azul, e o contrato só aceita
+   sombra navy. */
 .member-classroom[data-members-theme] .button-solid,
 .member-classroom[data-members-theme] .button-accent {
   border-color: var(--ma-accent);
   background: var(--ma-accent);
   color: var(--ma-on-accent) !important;
-  box-shadow: 0 12px 26px rgba(178, 34, 52, 0.3);
+  box-shadow: var(--shadow-button);
 }
 
 .member-classroom[data-members-theme] .button-solid:hover,
 .member-classroom[data-members-theme] .button-accent:hover {
   border-color: var(--ma-accent-hover);
   background: var(--ma-accent-hover);
-  box-shadow: 0 16px 32px rgba(178, 34, 52, 0.34);
+  box-shadow: var(--shadow-button-strong);
+}
+
+/* O ícone dentro do botão (o Play de "Watch now") segue o rótulo. Sem isto
+   a regra da plataforma para `.button-solid *` pintava o ícone escuro no modo
+   escuro, ou branco sobre uma cor clara do professor, com o texto de outra
+   cor ao lado. */
+.member-classroom[data-members-theme] .button-solid *,
+.member-classroom[data-members-theme] .button-solid:hover *,
+.member-classroom[data-members-theme] .button-accent *,
+.member-classroom[data-members-theme] .button-accent:hover * {
+  color: var(--ma-on-accent) !important;
 }
 
 .member-classroom[data-members-theme] .button-outline {
@@ -6029,11 +7413,31 @@ body:has([aria-label="Course categories"])
   box-shadow: none;
 }
 
+/* O realce do contorno sai da cor do curso (a do professor, se houver), não
+   do vermelho fixo. */
 .member-classroom[data-members-theme] .button-outline:hover {
   border-color: var(--ma-accent);
-  background: rgba(178, 34, 52, 0.1);
+  background: color-mix(in srgb, var(--ma-accent) 10%, transparent);
   color: var(--ma-ink) !important;
   box-shadow: none;
+}
+
+/* Desligado na área de membros: as regras acima têm mais peso que a central
+   (botão desligado), e o "Post" apagado da comunidade escurecia e ganhava
+   sombra no hover. Fica o desenho de repouso, sem sombra e parado. */
+.member-classroom[data-members-theme] .button-solid:is(:disabled, [aria-disabled="true"]),
+.member-classroom[data-members-theme] .button-accent:is(:disabled, [aria-disabled="true"]) {
+  border-color: var(--ma-accent);
+  background: var(--ma-accent);
+  box-shadow: none;
+  transform: none;
+}
+
+.member-classroom[data-members-theme] .button-outline:is(:disabled, [aria-disabled="true"]) {
+  border-color: var(--ma-line-2);
+  background: transparent;
+  box-shadow: none;
+  transform: none;
 }
 
 @media (max-width: 767.98px) {
@@ -6045,18 +7449,22 @@ body:has([aria-label="Course categories"])
   }
 
   .member-classroom[data-members-theme] > .member-classroom-head,
-  .member-classroom[data-members-theme] > .member-preview-banner,
-  .member-classroom[data-members-theme] > .member-classroom-layout,
-  .member-classroom[data-members-theme] > .member-module-deck,
-  .member-classroom[data-members-theme] > .member-resource-panel {
+  .member-classroom[data-members-theme] > .member-preview-banner {
     margin-right: 14px;
     margin-left: 14px;
   }
 
-  .member-classroom[data-members-theme] > .member-classroom-layout,
-  .member-classroom[data-members-theme] > .member-module-deck,
-  .member-classroom[data-members-theme] > .member-resource-panel {
-    margin-bottom: 14px;
+  /* 14px menos os 6px de folga do anel de foco (regra de cima). */
+  .member-classroom[data-members-theme] > .member-classroom-tabs {
+    margin-inline: 8px;
+  }
+
+  .member-classroom[data-members-theme] > .member-classroom-body {
+    padding: 0 14px 14px;
+  }
+
+  .member-classroom[data-members-theme] > .member-live-strip {
+    margin-inline: 14px;
   }
 
   .member-classroom[data-members-theme] > .member-preview-banner {
@@ -6072,8 +7480,8 @@ body:has([aria-label="Course categories"])
   }
 
   /* Phone: the lesson video runs edge to edge. Stacked side insets left it
-     ~280px wide on a 375px screen. The dock pulls out through the layout
-     margin (14px), the player border (1px) and its padding (16px) above; the
+     ~280px wide on a 375px screen. The dock pulls out through the body
+     padding (14px), the player border (1px) and its padding (16px) above; the
      text around the video keeps those 31px. The dock, not the stage, takes
      the margin: in the mini player the stage sits in a fixed bar. */
   .member-classroom[data-members-theme] .member-video-dock {
@@ -6120,6 +7528,11 @@ body:has([aria-label="Course categories"])
     0 10px 22px rgba(0, 0, 0, 0.16) !important;
 }
 
+/* O item traz também as classes da gaveta do celular (before:top-1/2
+   before:-translate-y-1/2), que no Tailwind 4 usam a propriedade
+   `translate`. Com `transform: translateY(-50%)` aqui os dois somavam e o
+   filete subia 9px, acima do quadradinho do ícone. Uma propriedade só: a
+   mesma `translate`, que esta regra (sem camada) vence. */
 .platform-sidebar .platform-nav-active::before {
   content: "";
   position: absolute;
@@ -6129,7 +7542,8 @@ body:has([aria-label="Course categories"])
   height: 18px;
   border-radius: 999px;
   background: var(--color-accent);
-  transform: translateY(-50%);
+  translate: 0 -50%;
+  transform: none;
 }
 
 .platform-sidebar .platform-nav-active .platform-sidebar-label {
@@ -6189,12 +7603,13 @@ body:has([aria-label="Course categories"])
   gap: 0.25rem;
 }
 
+/* Sales e Promote sao itens do primeiro nivel como os outros: a altura (44px),
+   o texto (14px) e o chip (32px) vem do mesmo lugar dos links diretos. Antes
+   este bloco os encolhia para 38px, 11,5px em MAIUSCULAS e 66% de branco, e
+   eles pareciam titulos de secao. */
 .platform-sidebar .platform-nav-link.platform-nav-section-trigger {
-  min-height: 38px;
-  gap: 0.5rem;
   border-color: transparent !important;
   background: transparent !important;
-  color: rgba(255, 255, 255, 0.66) !important;
   box-shadow: none !important;
 }
 
@@ -6204,23 +7619,10 @@ body:has([aria-label="Course categories"])
   color: #ffffff !important;
 }
 
-.platform-nav-section-trigger .platform-nav-icon-chip {
-  width: 28px;
-  height: 28px;
-  flex-basis: 28px;
-}
-
-.platform-nav-section-trigger .platform-sidebar-label {
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0;
-  text-transform: uppercase;
-}
-
 .platform-nav-section-chevron {
   margin-inline-start: auto;
   flex: 0 0 auto;
-  transition: transform 160ms ease;
+  transition: transform var(--duration-base) var(--ease-standard);
 }
 
 .platform-nav-section-chevron.is-open {
@@ -6383,8 +7785,8 @@ body:has([aria-label="Course categories"])
   border-radius: var(--radius-lg);
   box-shadow: 0 12px 28px rgba(26, 54, 93, 0.04);
   transition:
-    border-color 180ms ease,
-    box-shadow 220ms ease;
+    border-color var(--duration-base) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard);
 }
 /* Only metric / interactive dash-cards (anything inside an <a>, <button>,
    or with the .dash-card--interactive helper) get the hover lift.
@@ -6455,9 +7857,17 @@ button:hover > .dash-card,
   min-height: 390px;
 }
 
+/* ── Seletor segmentado do estudio (PeriodTabs): uma entre poucas opcoes ──
+   O unico desenho para filtro (periodo dos relatorios e da Home,
+   espacos/comunidades em Membros, cursos e credenciais do aluno, ciclo dos
+   planos). Texto normal, sem versalete; 36px de botao no mouse e 44px no toque
+   (regra logo abaixo). Passar o mouse nao pinta igual a ativa (antes as duas
+   regras eram a mesma e nao se sabia qual estava escolhida). */
 .studio-range-tabs {
   display: inline-flex;
-  overflow: hidden;
+  max-width: 100%;
+  overflow-x: auto;
+  gap: 0.25rem;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-lg);
   background: var(--color-surface-soft);
@@ -6465,27 +7875,65 @@ button:hover > .dash-card,
 }
 
 .studio-range-tabs button {
+  flex: 0 0 auto;
+  min-height: 36px;
   border: 0;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-ink-soft);
   cursor: pointer;
-  font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  padding: 0.55rem 0.85rem;
-  text-transform: uppercase;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 0 0.875rem;
+  white-space: nowrap;
   transition:
     background 180ms ease,
     color 180ms ease,
     box-shadow 180ms ease;
 }
 
-.studio-range-tabs button:hover,
-.studio-range-tabs button.is-active {
-  background: #ffffff;
+.studio-range-tabs button:hover {
+  background: var(--color-surface-strong);
+  color: var(--color-ink);
+}
+
+.studio-range-tabs button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.studio-range-tabs button[aria-pressed="true"] {
+  background: var(--color-surface);
   color: var(--color-primary);
-  box-shadow: 0 6px 14px rgba(15, 39, 68, 0.06);
+  box-shadow: var(--shadow-soft);
+}
+
+/* No escuro a pastilha escolhida (#0f1626) e a moldura (#141d33) quase se
+   confundem e a sombra some no fundo escuro: sobrava so a cor do texto, e
+   este seletor decide o que a pessoa paga (Mensal/Anual). Um contorno por
+   dentro em --color-primary passa de 3:1 contra a moldura e nao mexe no
+   tamanho do botao. O claro fica como esta. */
+[data-theme="dark"] .studio-range-tabs button[aria-pressed="true"] {
+  box-shadow:
+    inset 0 0 0 1.5px var(--color-primary),
+    var(--shadow-soft);
+}
+
+/* A moldura de 4px e do grupo, nao do botao: tocar nela nao escolhe nada.
+   Publico de 55+ no celular: um toque que erra "Yearly" deixa o professor no
+   Mensal. No toque o botao tem os 44px inteiros. */
+@media (pointer: coarse) {
+  .studio-range-tabs button {
+    min-height: 44px;
+  }
+}
+
+/* Variante que quebra a linha (credenciais: quatro filtros com numero). A
+   rolagem por dentro escondia "En curso N" atras dela a 360px em espanhol;
+   quebrando, os quatro ficam a vista e seguem na mesma moldura. */
+.studio-range-tabs--wrap {
+  flex-wrap: wrap;
+  overflow-x: visible;
 }
 
 .studio-chart-canvas {
@@ -6495,9 +7943,8 @@ button:hover > .dash-card,
   overflow: hidden;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-lg);
-  background:
-    radial-gradient(circle at 80% 24%, rgba(178, 34, 52, 0.08), transparent 11rem),
-    linear-gradient(180deg, #ffffff 0%, var(--color-surface-soft) 100%);
+  /* Sem o brilho vermelho da marca antiga no canto. */
+  background: linear-gradient(180deg, #ffffff 0%, var(--color-surface-soft) 100%);
   padding: 1rem;
 }
 
@@ -6525,9 +7972,7 @@ button:hover > .dash-card,
    tokens. (The SVG gridlines + axis labels are tokenized inline in
    teacher-studio-insights.tsx, so they theme themselves.) */
 [data-theme="dark"] .studio-chart-canvas {
-  background:
-    radial-gradient(circle at 80% 24%, rgba(178, 34, 52, 0.12), transparent 11rem),
-    linear-gradient(180deg, var(--color-surface) 0%, var(--color-base) 100%);
+  background: linear-gradient(180deg, var(--color-surface) 0%, var(--color-base) 100%);
 }
 
 [data-theme="dark"] .studio-chart-empty {
@@ -6535,17 +7980,12 @@ button:hover > .dash-card,
   background: var(--color-surface);
 }
 
-[data-theme="dark"] .studio-range-tabs button:hover,
-[data-theme="dark"] .studio-range-tabs button.is-active {
-  background: var(--color-surface-strong);
-  color: var(--color-ink);
-}
-
 .studio-chart-empty p {
+  /* Professor: a serifa fica so no titulo da pagina (T-09). */
   color: var(--color-primary);
-  font-family: var(--font-display);
-  font-size: 1.25rem;
-  font-weight: 700;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 .studio-chart-empty span {
@@ -6601,8 +8041,8 @@ button:hover > .dash-card,
   box-shadow: 0 10px 22px rgba(15, 39, 68, 0.18);
   text-decoration: none;
   transition:
-    transform 180ms ease,
-    box-shadow 200ms ease;
+    transform var(--duration-base) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard);
 }
 
 .studio-payout-chip:hover {
@@ -6667,9 +8107,7 @@ button:hover > .dash-card,
   height: 2.75rem;
   place-items: center;
   border-radius: var(--radius-md);
-  background:
-    radial-gradient(circle at 75% 20%, rgba(178, 34, 52, 0.28), transparent 1.5rem),
-    var(--color-primary);
+  background: var(--color-primary);
   color: var(--color-on-primary);
   font-size: 0.75rem;
   font-weight: 900;
@@ -6740,9 +8178,11 @@ button:hover > .dash-card,
   color: var(--color-primary);
 }
 
+/* Urgente e vermelho de verdade (fundo e texto de perigo), nao vermelho com
+   letra latao. */
 .studio-activity-card__icon.is-urgent {
-  background: rgba(178, 34, 52, 0.1);
-  color: var(--color-accent-fg);
+  background: var(--color-danger-soft);
+  color: var(--color-danger-fg);
 }
 
 .studio-activity-card__icon.is-success {
@@ -6751,11 +8191,12 @@ button:hover > .dash-card,
 }
 
 .studio-activity-card strong {
+  /* Professor: titulo de cartao no texto da casa, nao em serifa (T-09). */
   color: var(--color-primary);
-  font-family: var(--font-display);
-  font-size: 1.24rem;
-  font-weight: 700;
-  line-height: 1.18;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.35;
 }
 
 .studio-activity-card small {
@@ -6908,38 +8349,6 @@ button:hover > .dash-card,
   line-height: 1;
 }
 
-.credential-filter-tabs {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface-soft);
-  padding: 0.25rem;
-}
-
-.credential-filter-tabs button {
-  border: 0;
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--color-ink-soft);
-  cursor: pointer;
-  font-size: 0.75rem;
-  font-weight: 800;
-  padding: 0.55rem 0.75rem;
-  transition:
-    background 180ms ease,
-    color 180ms ease,
-    box-shadow 180ms ease;
-}
-
-.credential-filter-tabs button:hover,
-.credential-filter-tabs button.is-active {
-  background: #ffffff;
-  color: var(--color-primary);
-  box-shadow: 0 6px 14px rgba(15, 39, 68, 0.06);
-}
-
 .credential-card {
   transition:
     transform 180ms ease,
@@ -6964,8 +8373,9 @@ button:hover > .dash-card,
 
 .member-review-star {
   display: grid;
-  width: 2.5rem;
-  height: 2.5rem;
+  /* 44px: alvo de toque mínimo (era 40px). */
+  width: 2.75rem;
+  height: 2.75rem;
   place-items: center;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-md);
@@ -7017,10 +8427,6 @@ button:hover > .dash-card,
 
   .create-course-screen {
     grid-template-columns: 1fr;
-  }
-
-  .course-builder-footer {
-    grid-template-columns: minmax(0, 1fr);
   }
 
   .course-builder-step.is-active::before {
@@ -7101,12 +8507,91 @@ button:hover > .dash-card,
     grid-template-columns: minmax(0, 1fr);
   }
 
+  /* As três ações do topo (Manage product, Preview, Save draft) quebravam em
+     duas linhas e empurravam o primeiro campo para baixo: uma linha só, três
+     colunas iguais, e o rótulo longo quebra dentro do próprio botão. */
   .course-builder-hero__actions {
-    justify-content: flex-start;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .course-builder-hero__actions > * {
+    gap: 0.375rem;
+    padding-inline: 0.5rem;
+    line-height: 1.2;
+    text-align: center;
+  }
+
+  /* No celular os cinco passos empilhados (~270px) empurravam o primeiro
+     campo para ~800 px do topo: viram uma faixa que rola de lado, com a etapa
+     aberta no meio (course-builder-studio.tsx) e a borda direita esmaecida
+     enquanto houver etapa escondida, como as abas da sala. A rolagem corta o
+     que passa da borda: 5px de respiro guardam o anel de foco (2px + 3px de
+     afastamento) e o traço da etapa aberta (bottom -0.25rem); a margem
+     negativa devolve o alinhamento com o resto da página. O foco pelo Tab
+     para fora dos 48px esmaecidos da borda (scroll-padding). */
   .course-builder-steps {
-    grid-template-columns: 1fr;
+    display: flex;
+    overflow-x: auto;
+    margin-inline: -5px;
+    padding: 5px 5px 6px;
+    scroll-padding-inline: 48px;
+    scrollbar-width: none;
+  }
+
+  .course-builder-steps::-webkit-scrollbar {
+    display: none;
+  }
+
+  .course-builder-steps[data-more="true"] {
+    mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent);
+  }
+
+  .course-builder-steps > .course-builder-step {
+    flex: 0 0 auto;
+    width: auto;
+  }
+
+  /* A linha de apoio de cada passo sai, o nome fica. */
+  .course-builder-step__sub {
+    display: none;
+  }
+}
+
+/* Fora do celular, quando as cinco etapas não cabem lado a lado (5 x 150px +
+   gaps = 782px; entre ~681 e ~1100px de tela, conforme a barra lateral), a
+   grade dava 4 etapas e 1 sozinha embaixo: vale a mesma faixa do celular.
+   Pela largura da própria faixa (container query no .course-builder-stepper),
+   não da tela. O bloco acima fica para navegador sem container query. */
+@container (width < 782px) {
+  .course-builder-steps {
+    display: flex;
+    overflow-x: auto;
+    margin-inline: -5px;
+    padding: 5px 5px 6px;
+    scroll-padding-inline: 48px;
+    scrollbar-width: none;
+  }
+
+  .course-builder-steps::-webkit-scrollbar {
+    display: none;
+  }
+
+  .course-builder-steps[data-more="true"] {
+    mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent);
+  }
+
+  .course-builder-steps > .course-builder-step {
+    flex: 0 0 auto;
+    width: auto;
+  }
+}
+
+/* Abaixo do sm (o mesmo corte do botão "More about this step", que só existe
+   ali) a ajuda da etapa fica fechada até a pessoa pedir. */
+@media (max-width: 639.98px) {
+  .course-builder-step-help:not([data-open="true"]) {
+    display: none;
   }
 }
 
@@ -7202,6 +8687,14 @@ button:hover > .dash-card,
   border-top: 1px solid var(--color-line);
   background: #ffffff;
   box-shadow: var(--shadow-strong);
+}
+
+/* Onde a pessoa está: a aba atual ganha um traço em cima, além da cor. Só a
+   cor (dois azuis escuros) não dava para distinguir. */
+.platform-mobile-nav [aria-current="page"],
+.platform-mobile-nav [data-current="true"] {
+  box-shadow: inset 0 2px 0 var(--color-primary);
+  color: var(--color-primary);
 }
 
 /* TELAS MÉDIAS (768–1179px): o rail de 64px é o padrão, e o conteúdo fica
@@ -7433,12 +8926,160 @@ button:hover > .dash-card,
   }
 }
 
+/* Document palette is intentionally independent of the application theme. */
+.cert-doc {
+  --cert-ink: #102a43;
+  --cert-soft: #4a6278;
+  --cert-accent: #795615;
+  --cert-rule: #c99a46;
+  color-scheme: light;
+  color: var(--cert-ink);
+  background: #ffffff;
+  max-width: 186mm;
+  font-family: Arial, Helvetica, sans-serif;
+  line-height: 1.5;
+  letter-spacing: 0;
+  box-shadow: 0 8px 32px rgb(16 42 67 / 10%);
+}
+
+.cert-doc *,
+.cert-doc *::before,
+.cert-doc *::after {
+  box-sizing: border-box;
+  letter-spacing: 0;
+}
+
+.cert-doc-frame {
+  position: relative;
+  border: 2px solid var(--cert-ink);
+  padding: 36px;
+}
+
+.cert-doc-rule {
+  position: absolute;
+  inset: 7px;
+  border: 1px solid var(--cert-rule);
+  pointer-events: none;
+}
+
+.cert-doc-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 850px;
+  gap: 24px;
+}
+
+.cert-doc-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--cert-rule);
+}
+
+.cert-doc-heading { text-align: right; }
+.cert-doc .cert-doc-authority {
+  color: var(--cert-accent);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.cert-doc .cert-doc-type {
+  margin-top: 4px;
+  color: var(--cert-ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+.cert-doc .cert-doc-caption {
+  color: var(--cert-soft);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+.cert-doc-cobrand { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.cert-doc-award {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  padding-block: 28px;
+  text-align: center;
+}
+.cert-doc .cert-doc-name,
+.cert-doc .cert-doc-course,
+.cert-doc-wordmark,
+.cert-doc-signature-fallback {
+  font-family: var(--font-display, Georgia), Georgia, serif;
+  font-weight: 500;
+  color: var(--cert-ink);
+  overflow-wrap: anywhere;
+}
+.cert-doc .cert-doc-name { margin-top: 16px; font-size: 44px; line-height: 1.12; }
+.cert-doc .cert-doc-name-long { font-size: 30px; }
+.cert-doc .cert-doc-completion { margin-top: 28px; color: var(--cert-soft); font-size: 14px; }
+.cert-doc .cert-doc-course { margin-top: 16px; font-size: 30px; line-height: 1.2; }
+.cert-doc .cert-doc-course-long { font-size: 22px; }
+.cert-doc .cert-doc-category { margin-top: 12px; color: var(--cert-accent); font-size: 12px; }
+.cert-doc-wordmark { font-size: 22px; }
+.cert-doc-footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: end;
+  gap: 28px;
+  padding-top: 24px;
+}
+.cert-doc-footer > *, .cert-doc-header > * { min-width: 0; max-width: 100%; }
+.cert-doc-signature { display: flex; min-height: 56px; align-items: end; }
+.cert-doc-signature-fallback { font-size: 26px; line-height: 1.15; font-style: italic; }
+.cert-doc-signatory { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--cert-ink); }
+.cert-doc .cert-doc-teacher, .cert-doc .cert-doc-issued { font-size: 13px; font-weight: 600; }
+.cert-doc-verification { text-align: right; }
+.cert-doc-verification .cert-doc-caption { margin-top: 12px; }
+.cert-doc .cert-doc-code { margin-top: 4px; font: 600 13px/1.5 monospace; }
+.cert-doc .cert-doc-verify-url { margin-top: 4px; color: var(--cert-soft); font-size: 11px; }
+.cert-doc p, .cert-doc-wordmark { overflow-wrap: anywhere; }
+
+@media screen and (max-width: 480px) {
+  .cert-doc-frame { padding: 24px; }
+  .cert-doc-content { min-height: 0; }
+  .cert-doc-heading { text-align: left; }
+  .cert-doc .cert-doc-name { font-size: 34px; }
+  .cert-doc .cert-doc-name-long { font-size: 26px; }
+  .cert-doc .cert-doc-course { font-size: 26px; }
+  .cert-doc .cert-doc-course-long { font-size: 20px; }
+  .cert-doc-footer { grid-template-columns: minmax(0, 1fr); }
+  .cert-doc-verification { text-align: left; }
+}
+
 /* Clean print/PDF output for certificates: controlled page margin and faithful
    brand colors (browsers drop colored borders and fills from print by default). */
 @media print {
   @page {
     margin: 12mm;
   }
+  @page skillset-certificate {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+  html:has(.cert-doc), body:has(.cert-doc) {
+    color-scheme: light;
+    background: #ffffff;
+  }
+
+  .cert-doc {
+    page: skillset-certificate;
+    width: 186mm;
+    max-width: 100%;
+    box-shadow: none;
+    break-inside: avoid;
+  }
+  .cert-doc-frame { padding: 10mm; }
+  .cert-doc-content { min-height: 248mm; gap: 6mm; }
+  .cert-doc-header { padding-bottom: 6mm; }
+  .cert-doc-award { padding-block: 6mm; }
+  .cert-doc-footer { padding-top: 6mm; }
 
   .cert-doc,
   .cert-doc * {
@@ -7482,6 +9123,10 @@ button:hover > .dash-card,
      --ma-success is already 5.14:1 here and stays as-is. */
   --ma-accent-ink: #e8697c;
   --ma-success-ink: #27a06a;
+  /* A lista de aulas abre dentro da sala: num curso escuro o navy a 62%
+     clareava o fundo (#0a0d12) em vez de escurecer. Preto, como no tema
+     escuro da plataforma. */
+  --color-scrim: rgba(0, 0, 0, 0.6);
 }
 [data-members-theme="light"] {
   --ma-bg: #f6f8fb;
@@ -7526,6 +9171,25 @@ button:hover > .dash-card,
   --ma-on-success: #0a0d12;
   --ma-display: "Cormorant Garamond", Georgia, serif;
   --ma-sans: "Manrope", system-ui, -apple-system, sans-serif;
+}
+/* Área do criador carregando: o tema dela só chega com a leitura no
+   navegador. Até lá a casca (member-area-shell.tsx) usa os tons da
+   PLATAFORMA, que seguem o claro/escuro do app, em vez de nascer no claro da
+   área e virar escura um instante depois. */
+[data-members-theme="pending"] {
+  --ma-bg: var(--color-base);
+  --ma-bg-top: var(--color-base);
+  --ma-elev: var(--color-surface);
+  --ma-surface: var(--color-surface);
+  --ma-surface-2: var(--color-surface-soft);
+  --ma-line: var(--color-line);
+  --ma-line-2: var(--color-line-strong);
+  --ma-ink: var(--color-ink);
+  --ma-ink-soft: var(--color-ink-soft);
+  --ma-ink-muted: var(--color-ink-muted);
+  --ma-shadow: var(--shadow-soft);
+  --ma-accent-ink: var(--color-danger-fg);
+  --ma-success-ink: var(--color-success-fg);
 }
 
 .members-hero {
@@ -7613,10 +9277,12 @@ button:hover > .dash-card,
   font-weight: 700;
   font-size: 15px;
   text-decoration: none;
-  opacity: 0.92;
+  text-underline-offset: 4px;
 }
+/* Hover por sublinhado, não por opacidade (o texto ficava 8% apagado em
+   repouso e o hover só o acendia). */
 .members-hero__back:hover {
-  opacity: 1;
+  text-decoration: underline;
 }
 .members-hero__title {
   margin: 0;
@@ -7685,18 +9351,9 @@ button:hover > .dash-card,
   color: #fff;
   font-variant-numeric: tabular-nums;
 }
+/* A barra da capa é a ProgressBar da casa; aqui só o trilho claro sobre a foto. */
 .members-hero__bar {
-  display: block;
-  height: 6px;
-  border-radius: 999px;
   background: rgba(255, 255, 255, 0.22);
-  overflow: hidden;
-}
-.members-hero__bar > span {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  background: var(--ma-accent);
 }
 /* "Ver certificado" no hero, só a 100%: branco sobre o acento (AA nos dois
    temas, o mesmo par do botão de acento da sala). */
@@ -7774,7 +9431,8 @@ button:hover > .dash-card,
   overflow: hidden;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-lg);
-  background: linear-gradient(135deg, #ffffff 0%, #f5f9ff 70%, #fff7f9 100%);
+  /* Termina no mesmo azul-claro: o rosa (#fff7f9) era resto do vermelho antigo. */
+  background: linear-gradient(135deg, #ffffff 0%, #f5f9ff 70%, #f5f9ff 100%);
   box-shadow: var(--shadow-soft);
   padding: clamp(1.5rem, 3vw, 2.25rem);
 }
@@ -7937,6 +9595,12 @@ button:hover > .dash-card,
   box-shadow: 0 0 0 3px rgba(26, 54, 93, 0.08);
 }
 
+/* Teclado: o anel padrão de volta. A regra acima (0,2,0) vencia o
+   `select:focus-visible` global e deixava só um halo a 8% (≈1,1:1). */
+.marketplace-select:focus-visible {
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}
+
 .marketplace-searchbox input {
   min-width: 0;
   border: 0;
@@ -7998,6 +9662,82 @@ button:hover > .dash-card,
 
 .marketplace-icon-button:hover {
   transform: translateY(-1px);
+}
+
+/* Catálogo no celular: cabeçalho e filtros abertos davam uns 800px antes do
+   primeiro curso. Abaixo de 640px os filtros ficam atrás de um botão "Filters"
+   (com o número de filtros valendo); a partir de 640px o botão some e o painel
+   fica sempre aberto, como antes. */
+.marketplace-filters-toggle {
+  display: none;
+}
+
+.marketplace-filters-toggle__count {
+  display: inline-grid;
+  min-width: 1.375rem;
+  height: 1.375rem;
+  place-items: center;
+  border-radius: var(--radius-chip);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-family: var(--font-num);
+  font-size: 0.75rem;
+  padding-inline: 0.3rem;
+}
+
+.marketplace-filters-toggle__chevron {
+  margin-left: auto;
+  color: var(--color-ink-muted);
+}
+
+.marketplace-filters-toggle[aria-expanded="true"] .marketplace-filters-toggle__chevron {
+  transform: rotate(180deg);
+}
+
+@media (max-width: 639.98px) {
+  .marketplace-filters-toggle {
+    display: flex;
+    width: 100%;
+    min-height: 3rem;
+    align-items: center;
+    gap: 0.6rem;
+    border: 0;
+    background: transparent;
+    color: var(--color-ink);
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 800;
+    padding: 0.75rem 0.9rem;
+    text-align: left;
+  }
+
+  /* O painel corta o que passa da borda (overflow: hidden): o anel de foco
+     vai para dentro do botão. */
+  .marketplace-filters-toggle:focus-visible {
+    outline-offset: -3px;
+  }
+
+  .marketplace-filter-body:not(.is-open) {
+    display: none;
+  }
+
+  .marketplace-filter-body.is-open {
+    border-top: 1px solid var(--color-line);
+  }
+
+  /* O título fica; o parágrafo de cinco linhas sai do celular. */
+  .marketplace-page-copy {
+    display: none;
+  }
+}
+
+/* Abaixo de 640px a grade e a lista são a mesma coluna única: o seletor de
+   grade/lista não mudava nada e gastava uns 80px. De 640 a 767px ele fica,
+   porque lá a grade tem duas colunas e a lista uma. */
+@media (max-width: 639.98px) {
+  .marketplace-view {
+    display: none;
+  }
 }
 
 .marketplace-continue {
@@ -8198,9 +9938,7 @@ button:hover > .dash-card,
   display: none;
 }
 
-/* Selo de profissional verificado: quadrado, como os cantos da marca (só o
-   avatar é redondo), e nunca o azul do Instagram. Claro: marinho com check de
-   latão (5,7:1). Escuro: o marinho vira claro, e o check vira o fundo. */
+/* Lucide BadgeCheck: brand-colored seal and check, with a theme-aware contrast. */
 .verified-seal {
   --seal-ground: var(--color-primary);
   --seal-mark: var(--color-accent);
@@ -8242,7 +9980,8 @@ button:hover > .dash-card,
   inset: 0;
   background:
     linear-gradient(180deg, rgba(7, 23, 42, 0.12), rgba(7, 23, 42, 0.72)),
-    linear-gradient(135deg, transparent 0%, transparent 58%, rgba(178, 34, 52, 0.22) 100%);
+    /* Canto navy, não o vermelho da marca antiga (hoje o vermelho é cor de erro). */
+    linear-gradient(135deg, transparent 0%, transparent 58%, rgba(26, 54, 93, 0.22) 100%);
   pointer-events: none;
 }
 
@@ -8301,9 +10040,10 @@ button:hover > .dash-card,
   color: var(--color-accent-fg);
 }
 
+/* Tinta escura sobre o dourado: branco ali dá 2,6:1 (ícone pede 3:1). */
 .marketplace-card__wishlist.is-active {
   background: var(--color-accent);
-  color: #ffffff;
+  color: var(--color-on-accent);
 }
 
 .marketplace-card__body {
@@ -8489,11 +10229,17 @@ button:hover > .dash-card,
    input, que é (0,1,1) — o comentário anterior errava essa conta. Um !important
    de folha de estilo ainda atropelaria todo `style={{ fontSize }}` inline da
    aplicação, e obrigaria o próximo override legítimo a nascer com outro.
-   (Auditoria de produto de 2026-08-30, achado P-11.) */
+   (Auditoria de produto de 2026-08-30, achado P-11.)
+
+   `textarea` e `select` sozinhos são (0,0,1) e perdem para `.field-input`
+   (0,1,0, 14px), que vem antes no arquivo mas tem mais peso: Bio e Fuso do
+   perfil davam zoom. `textarea.field-input` (0,1,1) devolve o piso a eles. */
 @media (hover: none) and (pointer: coarse) {
   input:not([type="checkbox"]):not([type="radio"]),
   textarea,
-  select {
+  select,
+  textarea.field-input,
+  select.field-input {
     font-size: 16px;
   }
 }
@@ -8532,7 +10278,16 @@ button:hover > .dash-card,
     font-size: 13px;
     font-weight: 600;
     white-space: nowrap;
-    transition: color 0.15s ease, border-color 0.15s ease;
+    transition:
+      color var(--duration-base) var(--ease-standard),
+      border-color var(--duration-base) var(--ease-standard);
+  }
+
+  /* Há aba escondida à direita (classroom-tabs.tsx marca data-more): a borda
+     esmaece, sinal de que a barra rola. Sem isso a barra de rolagem oculta
+     fazia "Review" e "About" parecerem não existir. */
+  .member-classroom-tabs[data-more="true"] {
+    mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent);
   }
 
   .member-classroom-tabs > a:hover {
@@ -8560,16 +10315,28 @@ button:hover > .dash-card,
     margin-left: auto;
     color: var(--ma-accent-ink);
   }
+
+  /* No celular "Get certificate" ficava no fim da barra que rola, fora da
+     tela. Ele já está na capa do curso e no botão da última aula. */
+  @media (max-width: 767.98px) {
+    .member-classroom-tabs > .member-classroom-tabs__action {
+      display: none;
+    }
+  }
 }
 
 /* ── A gaveta da pergunta (mockup 5, 11b) ───────────────────────────────────
    Desliza da direita (560px) por cima do feed escurecido; no celular sobe como
-   folha inferior. A caixa de resposta fica fixa no rodapé da gaveta. ─────── */
+   folha inferior. A caixa de resposta fica fixa no rodapé da gaveta.
+   Fundo pelo token de superfície, não #ffffff: o texto segue o tema e, no
+   escuro, ficava quase branco sobre branco. Camada 70, a dos popups: na 60 o
+   menu lateral (65), o assistente (68) e o aviso de cookies (69) passavam por
+   cima da gaveta. ─────────────────────────────────────────────────────────── */
 @layer components {
   .community-drawer-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 60;
+    z-index: 70;
     display: flex;
     justify-content: flex-end;
     background: rgba(16, 42, 67, 0.45);
@@ -8580,7 +10347,7 @@ button:hover > .dash-card,
     width: min(560px, 100%);
     height: 100%;
     flex-direction: column;
-    background: #ffffff;
+    background: var(--color-surface);
     box-shadow: -12px 0 32px rgba(16, 42, 67, 0.18);
   }
 
@@ -8596,7 +10363,7 @@ button:hover > .dash-card,
     align-items: center;
     gap: 8px;
     border-top: 1px solid var(--color-line);
-    background: #ffffff;
+    background: var(--color-surface);
     padding: 12px 16px;
   }
 
@@ -8608,10 +10375,49 @@ button:hover > .dash-card,
     .community-drawer {
       width: 100%;
       height: auto;
-      max-height: 90vh;
+      max-height: 90svh;
       border-radius: var(--radius-xl) var(--radius-xl) 0 0;
       box-shadow: 0 -12px 32px rgba(16, 42, 67, 0.18);
     }
+  }
+
+  /* Entrada: o fundo escurece e a gaveta chega 16px da direita (no celular,
+     de baixo), em 180ms. Só opacity e transform; fill backwards, então fora da
+     animação nada fica preso nem invisível. */
+  @media (prefers-reduced-motion: no-preference) {
+    .community-drawer-backdrop {
+      animation: community-drawer-fade var(--duration-base) var(--ease-standard) backwards;
+    }
+
+    .community-drawer {
+      animation: community-drawer-in var(--duration-base) var(--ease-standard) backwards;
+    }
+
+    @media (max-width: 767px) {
+      .community-drawer {
+        animation-name: community-sheet-in;
+      }
+    }
+  }
+}
+
+@keyframes community-drawer-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes community-drawer-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+
+@keyframes community-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
   }
 }
 
@@ -8710,7 +10516,9 @@ button:hover > .dash-card,
   right: max(1rem, env(safe-area-inset-right, 0px));
   bottom: max(1rem, env(safe-area-inset-bottom, 0px));
   left: max(1rem, env(safe-area-inset-left, 0px));
-  z-index: 60;
+  /* Status: em 60 passava por baixo do menu lateral (65); acima dele, mas
+     abaixo do menu de categoria do celular (67) e do Advisor (68). */
+  z-index: var(--z-status);
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -8741,9 +10549,13 @@ button:hover > .dash-card,
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  /* 1. Troca de etapa: o painel novo sobe 8px e acende; a saída é seca. */
+  /* 1. Troca de etapa: o painel novo sobe 8px e acende; a saída é seca. É a
+     entrada compartilhada: etapa do construtor e da criação de curso, troca
+     de aba da sala, lista de aulas, os dois tours de boas-vindas, o menu de
+     ajuda, a ajuda da tela, a gaveta do celular e o Advisor no celular.
+     Todas no tempo da casa (eram 200ms soltos). */
   .motion-panel-in {
-    animation: motion-panel-in 200ms var(--ease-standard) backwards;
+    animation: motion-panel-in var(--duration-base) var(--ease-standard) backwards;
   }
 
   /* 2. Escolher uma opção: o selo latão cresce de 0,6 para 1 (formato na tela
@@ -8826,7 +10638,10 @@ button:hover > .dash-card,
     animation: motion-panel-in var(--duration-slow) var(--ease-standard) backwards;
   }
 
-  /* 11. Menu que abre de um botão (Compartilhar): cai 6px e acende. */
+  /* 11. Menu que abre de um botão (Compartilhar): cai 6px e acende. O menu
+     da conta entra igual: tinha curva e 180ms próprios, e animava mesmo com
+     "reduzir movimento" ligado. */
+  .account-menu-panel,
   .motion-drop-in {
     animation: dropdown-in var(--duration-fast) var(--ease-standard) backwards;
   }
@@ -8942,5 +10757,72 @@ button:hover > .dash-card,
 @keyframes motion-lift {
   from {
     transform: translateY(6px);
+  }
+}
+
+/* ── Carregamento: envio de arquivo sem porcentagem (F-20) ─────────────────
+   O Storage não informa o andamento; um trecho de 30% desliza pelo trilho
+   para a espera não parecer travada. Parado, um trecho parcial se leria como
+   "30% feito": com "reduzir movimento" o trilho fica inteiro preenchido e
+   apagado, sem número nenhum. Só transform (regra do catálogo de movimento). */
+.upload-indeterminate-fill {
+  width: 100%;
+  opacity: 0.35;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .upload-indeterminate-fill {
+    width: 30%;
+    opacity: 1;
+    animation: motion-track-slide 1.2s ease-in-out infinite;
+  }
+}
+
+@keyframes motion-track-slide {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(340%);
+  }
+}
+
+/* ── Barra nativa de envio da aula (F-09) ──────────────────────────────────
+   O <progress> do envio da aula e o do aviso flutuante eram a barra do
+   navegador (cinza, com cara diferente em cada um). Com porcentagem, os mesmos
+   tokens da ProgressBar compartilhada: 6px, trilho --color-line, preenchimento
+   no latão de texto. Sem porcentagem ([value] ausente) fica a barra nativa
+   indeterminada, que já se mexe sozinha: pintada à mão ela pararia e se leria
+   como "travou". O accent-color dá a ela o mesmo latão onde o navegador deixa. */
+@layer components {
+  .upload-progress {
+    display: block;
+    width: 100%;
+    height: 0.375rem;
+    accent-color: var(--color-accent-fg);
+  }
+
+  .upload-progress[value] {
+    appearance: none;
+    overflow: hidden;
+    border: 0;
+    border-radius: 9999px;
+    background: var(--color-line);
+  }
+
+  .upload-progress[value]::-webkit-progress-bar {
+    border-radius: 9999px;
+    background: var(--color-line);
+  }
+
+  .upload-progress[value]::-webkit-progress-value {
+    border-radius: 9999px;
+    background: var(--color-accent-fg);
+  }
+
+  .upload-progress[value]::-moz-progress-bar {
+    border-radius: 9999px;
+    background: var(--color-accent-fg);
   }
 }

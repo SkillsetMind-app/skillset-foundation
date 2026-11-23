@@ -1,6 +1,6 @@
 "use client";
 
-import { Shield } from "lucide-react";
+import { Loader2, Shield } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -20,8 +20,10 @@ import type { Role } from "@/lib/permissions";
 const copy = "platform.ops.usersPanel";
 const table = "platform.ops.userTable";
 const STATUSES: readonly OpsUserStatus[] = ["active", "suspended", "blocked"];
+const COLUMNS = ["person", "level", "status", "joined", "lastSignIn"] as const;
 const ROLES: readonly Role[] = ["student", "teacher", "admin", "support", "moderator", "ops"];
-const roleLabelKeys = {
+// A ficha da pessoa usa os mesmos nomes de nível na faixa de resumo.
+export const roleLabelKeys = {
   guest: "platform.ops.usersPanel.roles.guest",
   student: "roles.learner",
   teacher: "platform.ops.accessPanel.levels.teacher.label",
@@ -32,6 +34,11 @@ const roleLabelKeys = {
 } satisfies Record<Role, string>;
 
 type LoadError = "mfaRequired" | "loadError";
+
+// Que busca a tela pediu: comparar com a última que voltou diz se há uma em curso.
+function requestKey(...parts: unknown[]): string {
+  return JSON.stringify(parts);
+}
 
 function formatDate(value: string | null, locale: string): string | null {
   if (!value) return null;
@@ -55,15 +62,20 @@ export function OpsUserTable() {
   const [error, setError] = useState<LoadError | null>(null);
   const [reload, setReload] = useState(0);
   const [target, setTarget] = useState<OpsUserRow | null>(null);
+  const [answeredKey, setAnsweredKey] = useState<string | null>(null);
+  // Durante o atraso de 300ms e a consulta, a lista antiga fica no lugar, apagada
+  // e marcada como ocupada, em vez de parada sem sinal nenhum (I-12).
+  const searching = result !== null && answeredKey !== requestKey(search, status, role, page, reload);
 
   useEffect(() => {
     let current = true;
+    const key = requestKey(search, status, role, page, reload);
     // Debounce: digitar um nome não dispara uma consulta por tecla.
     const timer = window.setTimeout(() => {
       setError(null);
       searchOpsUsers({ search, status: status || null, role: role || null, page })
-        .then((next) => { if (current) setResult(next); })
-        .catch((caught) => { if (current) { setResult(null); setError(errorKey(caught)); } });
+        .then((next) => { if (current) { setResult(next); setAnsweredKey(key); } })
+        .catch((caught) => { if (current) { setResult(null); setError(errorKey(caught)); setAnsweredKey(key); } });
     }, 300);
     return () => { current = false; window.clearTimeout(timer); };
   }, [search, status, role, page, reload]);
@@ -78,20 +90,26 @@ export function OpsUserTable() {
         <AccountControlDialog key={target.uid} uid={target.uid} label={target.email || target.displayName || target.uid}
           onClose={() => { setTarget(null); setReload((value) => value + 1); }} />
       ) : null}
-      <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t(`${copy}.eyebrow`)}</p>
-      <h3 className="mt-2 text-base font-semibold text-[var(--color-ink)]">{t(`${copy}.title`)}</h3>
+      <h3 className="text-base font-semibold text-[var(--color-ink)]">{t(`${copy}.title`)}</h3>
       <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">{t(`${copy}.description`)}</p>
 
       <div className="mt-5 grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,10rem)_minmax(0,10rem)]">
         <Field id="ops-user-search" label={t(`${table}.searchLabel`)}>
-          {(a11y) => <input {...a11y} type="search" value={search} placeholder={t(`${table}.searchPlaceholder`)}
-            onChange={(event) => { setSearch(event.target.value); setPage(0); }}
-            className="min-h-11 w-full rounded-md border border-[var(--color-line)] px-4 py-2.5 text-sm font-normal" />}
+          {(a11y) => <div className="relative">
+            <input {...a11y} type="search" value={search} placeholder={t(`${table}.searchPlaceholder`)}
+              onChange={(event) => { setSearch(event.target.value); setPage(0); }}
+              // A pele padrão dos campos (I-14). O `!` é preciso: o padding do
+              // .field-input é regra solta e venceria o pr-10, e o giro da busca
+              // cairia em cima do texto.
+              className="field-input min-h-11 pr-10!" />
+            {searching ? <Loader2 size={16} aria-hidden="true" data-searching=""
+              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-ink-muted)] motion-safe:animate-spin" /> : null}
+          </div>}
         </Field>
         <Field id="ops-user-status" label={t(`${table}.statusLabel`)}>
           {(a11y) => <select {...a11y} value={status}
             onChange={(event) => { setStatus(event.target.value as OpsUserStatus | ""); setPage(0); }}
-            className="min-h-11 w-full rounded-md border border-[var(--color-line)] bg-transparent px-3 text-sm">
+            className="field-input min-h-11">
             <option value="">{t(`${table}.all`)}</option>
             {STATUSES.map((value) => <option key={value} value={value}>{t(`${table}.status.${value}`)}</option>)}
           </select>}
@@ -99,7 +117,7 @@ export function OpsUserTable() {
         <Field id="ops-user-role" label={t(`${table}.roleLabel`)}>
           {(a11y) => <select {...a11y} value={role}
             onChange={(event) => { setRole(event.target.value as Role | ""); setPage(0); }}
-            className="min-h-11 w-full rounded-md border border-[var(--color-line)] bg-transparent px-3 text-sm">
+            className="field-input min-h-11">
             <option value="">{t(`${table}.all`)}</option>
             {ROLES.map((value) => <option key={value} value={value}>{t(roleLabelKeys[value])}</option>)}
           </select>}
@@ -125,37 +143,48 @@ export function OpsUserTable() {
       {result && result.users.length === 0 ? <p className="mt-6 text-sm text-[var(--color-ink-soft)]">{t(`${copy}.empty`)}</p> : null}
 
       {result && result.users.length > 0 ? (
-        <ul className="mt-6 grid min-w-0 gap-3">
-          {result.users.map((user) => {
-            const joined = formatDate(user.createdAt, locale);
-            const lastSignIn = formatDate(user.lastSignInAt, locale);
-            const facts = [
-              user.roles.map((entry) => t(roleLabelKeys[entry])).join(", "),
-              joined ? t(`${table}.joined`).replace("{date}", () => joined) : null,
-              lastSignIn ? t(`${table}.lastSignIn`).replace("{date}", () => lastSignIn) : t(`${table}.neverSignedIn`),
-            ].filter(Boolean).join(" · ");
-            return (
-              <li key={user.uid} className="min-w-0 rounded-lg border border-[var(--color-line)] p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
+        // Tabela no lugar de 50 cartões altos (~9.400px): datas em coluna, dez
+        // linhas por tela. Rola de lado dentro do próprio quadro no celular (I-01).
+        <div role="region" aria-label={t(`${copy}.title`)} tabIndex={0} aria-busy={searching || undefined}
+          className={`mt-5 min-w-0 overflow-x-auto ${searching ? "opacity-60" : ""}`}>
+          <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+            <thead>
+              <tr className="border-b fine-rule">
+                {COLUMNS.map((column) => (
+                  <th key={column} scope="col" className="py-2 pr-4 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
+                    {t(`${table}.columns.${column}`)}
+                  </th>
+                ))}
+                <th scope="col" className="py-2"><span className="sr-only">{t(`${table}.columns.actions`)}</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.users.map((user) => (
+                <tr key={user.uid} className="border-b fine-rule last:border-b-0">
+                  <td className="py-2 pr-4">
                     <Link href={`/ops/users/${encodeURIComponent(user.uid)}`}
-                      className="inline-flex min-h-11 items-center break-words text-sm font-bold text-[var(--color-ink)] underline underline-offset-4">
+                      className="inline-flex min-h-11 items-center break-words font-semibold text-[var(--color-ink)] underline underline-offset-4">
                       {user.displayName || t(`${copy}.unnamed`)}
                     </Link>
-                    <p className="break-all text-xs text-[var(--color-ink-soft)]">{user.email || t(`${copy}.noEmail`)}</p>
-                  </div>
-                  <StatusChip status={user.status} label={t(`${table}.status.${user.status}`)} />
-                </div>
-                <p className="mt-2 break-words text-xs text-[var(--color-ink-soft)]">{facts}</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Button variant="outline" className="min-h-11 max-w-full whitespace-normal" onClick={() => setTarget(user)}>
-                    <Shield size={16} className="shrink-0" aria-hidden />{t("accountControls.title")}
-                  </Button>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+                    <span className="block break-all text-xs text-[var(--color-ink-soft)]">{user.email || t(`${copy}.noEmail`)}</span>
+                  </td>
+                  <td className="py-2 pr-4 text-[var(--color-ink)]">{user.roles.map((entry) => t(roleLabelKeys[entry])).join(", ")}</td>
+                  <td className="py-2 pr-4"><StatusChip status={user.status} label={t(`${table}.status.${user.status}`)} /></td>
+                  <td className="py-2 pr-4 text-xs tabular-nums text-[var(--color-ink-soft)]">{formatDate(user.createdAt, locale) ?? "—"}</td>
+                  <td className="py-2 pr-4 text-xs tabular-nums text-[var(--color-ink-soft)]">
+                    {formatDate(user.lastSignInAt, locale) ?? t(`${table}.neverSignedIn`)}
+                  </td>
+                  <td className="py-2 text-right">
+                    <Button variant="outline" size="sm" className="min-h-11 px-3 whitespace-nowrap" onClick={() => setTarget(user)}
+                      icon={<Shield size={16} className="shrink-0" aria-hidden />}>
+                      {t("accountControls.title")}
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : null}
 
       {result && total > 0 ? (

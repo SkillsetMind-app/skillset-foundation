@@ -120,13 +120,13 @@ function groupTitle(text: string) {
 const copy = {
   en: {
     groups: ["Content saved · 2 of 3", "Page prepared · 2 of 2", "Sale available · 0 of 1"],
-    banner: "This product is not published yet. Students only see it after you publish.",
-    link: "Open the product panel",
+    banner: "Students see it after you publish.",
+    link: "Manage product",
   },
   es: {
     groups: ["Contenido guardado · 2 de 3", "Página preparada · 2 de 2", "Venta disponible · 0 de 1"],
-    banner: "Este producto todavía no está publicado. Los estudiantes solo lo verán después de publicarlo.",
-    link: "Abrir el panel del producto",
+    banner: "Los estudiantes lo ven después de publicarlo.",
+    link: "Gestionar producto",
   },
 } as const;
 
@@ -164,11 +164,12 @@ describe("checklist de publicacao em tres blocos e faixa de rascunho", () => {
     expect(review.querySelector('[data-readiness-group="page"]')).toHaveTextContent(/Cover image|Imagen de portada/);
     expect(review.querySelector('[data-readiness-group="sale"]')).toHaveTextContent(/Pricing|Precios/);
 
+    // A faixa azul repetia o selo "Draft": agora e uma frase curta ao lado dele,
+    // e o caminho para o painel e o "Manage product" do mesmo cabecalho.
     const banner = screen.getByText(copy[locale].banner);
-    expect(banner.closest('[role="status"]')).not.toBeNull();
+    expect(banner.closest(".course-builder-hero")).not.toBeNull();
     const link = screen.getByRole("link", { name: copy[locale].link });
     expect(link).toHaveAttribute("href", "/teach/courses/course-1/manage");
-    expect(link.className).toContain("min-h-11");
 
     // Agrupar nao mexe na trava: o mesmo curso continua sem poder publicar.
     expect(screen.getByRole("button", { name: /Publish product|Publicar producto/ })).toBeDisabled();
@@ -207,7 +208,6 @@ describe("checklist de publicacao em tres blocos e faixa de rascunho", () => {
 
     expect(groupTitle(copy.en.groups[0])).toBeInTheDocument();
     expect(screen.queryByText(copy.en.banner)).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: copy.en.link })).not.toBeInTheDocument();
     expect(publishTeacherCourse).not.toHaveBeenCalled();
   });
 
@@ -222,7 +222,7 @@ describe("checklist de publicacao em tres blocos e faixa de rascunho", () => {
     const sale = list.querySelector<HTMLElement>('[data-readiness-group="sale"]')!;
     expect(within(sale).getByRole("link", { name: "Open verification" })).toHaveAttribute("href", "/teach/verification");
     expect(within(sale).getByText("Set a price above $0, or choose Free.")).toBeInTheDocument();
-    expect(screen.getByTestId("publish-readiness-bar")).toHaveStyle({ width: "67%" });
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "67");
   });
 });
 vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));

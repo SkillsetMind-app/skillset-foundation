@@ -181,7 +181,7 @@ export function subscribeToTeacherOrders(
   teacherId: string,
   callback: (orders: Order[]) => void,
   onError: (error: Error) => void,
-): () => void {
+): (() => void) & { reload: () => Promise<void> } {
   // Scope both the initial query and realtime fan-in to this teacher. The
   // canonical order row now carries teacher_id for one-time and recurring sales.
   const supabase = getSupabaseBrowserClient();
@@ -236,9 +236,14 @@ export function subscribeToTeacherOrders(
     )
     .subscribe();
 
-  return () => {
-    stopped = true;
-    loadVersion += 1;
-    void supabase.removeChannel(channel);
-  };
+  // `reload()` le de novo SEM mexer no canal (o "Try again" da Home): sem o
+  // intervalo entre sair e entrar de novo no Realtime.
+  return Object.assign(
+    () => {
+      stopped = true;
+      loadVersion += 1;
+      void supabase.removeChannel(channel);
+    },
+    { reload: load },
+  );
 }

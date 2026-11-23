@@ -6,6 +6,13 @@ import type { TeacherCourse } from "@/domain/teacher-course";
 import type { UploadCourseAssetProgress } from "@/lib/data/course-assets";
 import { deleteCourseAsset, subscribeToCourseAssets } from "@/lib/data/course-assets";
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
+import { CONFIRM_GUARD_MS } from "@/components/ui/confirm-dialog";
+
+// Apagar um arquivo pergunta na janela da plataforma (não mais no
+// window.confirm). O jsdom não tem showModal/close: o stub faz o mínimo que o
+// navegador faz.
+const originalShow = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal");
+const originalClose = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "close");
 
 type UploadInput = {
   onProgress?: (progress: UploadCourseAssetProgress) => void;
@@ -72,12 +79,19 @@ describe("CourseAssetUploader", () => {
     // jsdom não implementa object URLs; o componente usa para a prévia local.
     URL.createObjectURL = vi.fn(() => "blob:preview-1");
     URL.revokeObjectURL = vi.fn();
+    Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value() { this.setAttribute("open", ""); } });
+    Object.defineProperty(HTMLDialogElement.prototype, "close", { configurable: true, value() { if (!this.hasAttribute("open")) return; this.removeAttribute("open"); this.dispatchEvent(new Event("close")); } });
   });
 
   afterEach(() => {
     cleanup();
+    vi.useRealTimers();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+    if (originalShow) Object.defineProperty(HTMLDialogElement.prototype, "showModal", originalShow);
+    else Reflect.deleteProperty(HTMLDialogElement.prototype, "showModal");
+    if (originalClose) Object.defineProperty(HTMLDialogElement.prototype, "close", originalClose);
+    else Reflect.deleteProperty(HTMLDialogElement.prototype, "close");
   });
 
   it("explains the cover-only uploader and directs lesson media to the existing studio in both languages", () => {
@@ -101,7 +115,9 @@ describe("CourseAssetUploader", () => {
     });
     const targetCourse = { ...course, modules: [{ id: "m1", title: "Módulo $$ $&", lessons: [] }] };
     const { unmount } = render(<I18nProvider initialLocale="en"><SwitchLanguage /><CourseAssetUploader course={targetCourse} isEditable /></I18nProvider>);
-    fireEvent.click(within(screen.getByRole("list", { name: "Upload type" })).getByText("Module cover").closest("button")!);
+    // Os cartões de tipo saíram (repetiam o select): o tipo se escolhe no select.
+    expect(screen.queryByRole("list", { name: "Upload type" })).toBeNull();
+    fireEvent.change(screen.getByLabelText("Asset type"), { target: { value: "module_cover" } });
     fireEvent.change(screen.getByLabelText("Attach to module"), { target: { value: "m1" } });
     const file = new File(["png"], "portada-$$-$&.png", { type: "image/png" });
     const input = screen.getByLabelText("Choose a module cover file");
@@ -212,7 +228,6 @@ describe("CourseAssetUploader", () => {
     const asset: CourseAsset = { id: "a1", courseId: course.id, ownerId: course.ownerId, kind: "course_cover", fileName: "Portada $$ $&.png", contentType: "image/png", size: 3, storagePath: "fixture/a1.png", downloadUrl: "/fixture-cover.png", isPreview: false, lessonId: null };
     mocks.assets = [asset];
     mocks.uploadCourseAsset.mockResolvedValueOnce("a2");
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     render(<I18nProvider initialLocale="en"><SwitchLanguage /><CourseAssetUploader course={course} isEditable /></I18nProvider>);
     chooseCover();
     fireEvent.click(screen.getByRole("button", { name: "Upload asset" }));
@@ -221,7 +236,11 @@ describe("CourseAssetUploader", () => {
     expect(screen.getByText("Archivo subido.")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Portada del curso: Portada $$ $&.png" })).toHaveAttribute("src", "/fixture-cover.png");
     fireEvent.click(screen.getByRole("button", { name: "Eliminar" }));
-    expect(confirm).toHaveBeenCalledExactlyOnceWith('¿Eliminar "Portada $$ $&.png"? El archivo se eliminará de forma permanente.');
+    // A frase de sempre, agora na janela; desistir não apaga nada.
+    const dialog = screen.getByRole("dialog", { name: "¿Eliminar este archivo?" });
+    expect(dialog).toHaveTextContent('¿Eliminar "Portada $$ $&.png"? El archivo se eliminará de forma permanente.');
+    fireEvent.click(within(dialog).getByRole("button", { name: "Mantener el archivo" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(deleteCourseAsset).not.toHaveBeenCalled();
     expect(mocks.uploadCourseAsset).toHaveBeenCalledOnce();
     expect(subscribeToCourseAssets).toHaveBeenCalledOnce();
@@ -248,11 +267,20 @@ describe("CourseAssetUploader", () => {
     const asset: CourseAsset = { id: "a1", courseId: course.id, ownerId: course.ownerId, kind: "course_cover", fileName: "Portada.png", contentType: "image/png", size: 3, storagePath: "fixture/a1.png", downloadUrl: "/fixture-cover.png", isPreview: false, lessonId: null };
     mocks.assets = [asset];
     if (fails) vi.mocked(deleteCourseAsset).mockRejectedValueOnce(new Error("Fixture failure"));
-    vi.spyOn(window, "confirm").mockReturnValue(true);
+    // Só o Date é falso: o confirmar ignora cliques nos primeiros 500ms.
+    vi.useFakeTimers({ toFake: ["Date"] });
     const onAssetDeleted = vi.fn();
     render(<I18nProvider initialLocale="en"><SwitchLanguage /><CourseAssetUploader course={course} isEditable onAssetDeleted={onAssetDeleted} /></I18nProvider>);
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    const dialog = screen.getByRole("dialog", { name: "Delete this file?" });
+    expect(dialog).toHaveTextContent('Delete "Portada.png"? This permanently removes the file.');
+    vi.advanceTimersByTime(CONFIRM_GUARD_MS);
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete file" }));
     await screen.findByText(fails ? /We could not delete this asset/ : "Asset deleted.");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    // Deu certo: o aviso é anunciado (role="status"); falhou: só o erro.
+    if (fails) expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    else expect(screen.getByRole("status")).toHaveTextContent("Asset deleted.");
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
     expect(screen.getByText(fails ? "No pudimos eliminar este archivo. Comprueba la propiedad del curso y los permisos actuales." : "Archivo eliminado.")).toBeInTheDocument();
     expect(deleteCourseAsset).toHaveBeenCalledExactlyOnceWith(asset);
@@ -352,6 +380,9 @@ describe("CourseAssetUploader", () => {
     fireEvent.click(screen.getByRole("button", { name: "Upload asset" }));
 
     expect(await screen.findByRole("status")).toHaveTextContent("42%");
+    // Rótulo fixo: o botão não vira "Uploading..."; o andamento é só a nota.
+    expect(screen.getByRole("button", { name: "Upload asset" })).toHaveAttribute("aria-busy", "true");
+    expect(screen.queryByText("Uploading...")).toBeNull();
   });
 
   // Falhou depois de começar: o progresso antigo não pode ficar na tela ao

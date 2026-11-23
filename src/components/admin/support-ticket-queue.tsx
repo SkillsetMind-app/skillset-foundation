@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { flushSync } from "react-dom";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { ExportTableButton } from "@/components/shared/export-table-button";
 import { StatusChip } from "@/components/shared/status-chip";
-import { Field, InlineAlert } from "@/components/ui";
+import { BusyLabel, Button, Field, InlineAlert } from "@/components/ui";
 import {
   supportTicketCategoryLabels,
   supportTicketStatusLabels,
@@ -28,8 +29,14 @@ export function SupportTicketQueue({ query = "" }: { query?: string }) {
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTicketId, setActiveTicketId] = useState<string | null>(null);
+  // Qual status foi apertado: só ele gira; os outros só travam (I-08).
+  const [activeStatus, setActiveStatus] = useState<SupportTicketStatus | null>(null);
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const [replyingTicketId, setReplyingTicketId] = useState<string | null>(null);
+  // A caixa de resposta abre por "Reply", só no chamado pedido: dez chamados
+  // eram dez caixas abertas e dez botões principais (I-09). O rascunho fica
+  // guardado se a caixa fechar sem enviar.
+  const [openReplies, setOpenReplies] = useState<Record<string, boolean>>({});
   const [loadError, setLoadError] = useState(false);
   const [error, setError] = useState<"statusError" | "replyError" | null>(null);
   const [success, setSuccess] = useState<"statusSuccess" | "replySuccess" | null>(null);
@@ -73,6 +80,7 @@ export function SupportTicketQueue({ query = "" }: { query?: string }) {
     setError(null);
     setSuccess(null);
     setActiveTicketId(ticketId);
+    setActiveStatus(status);
 
     try {
       await updateSupportTicketStatus(ticketId, status);
@@ -81,6 +89,7 @@ export function SupportTicketQueue({ query = "" }: { query?: string }) {
       setError("statusError");
     } finally {
       setActiveTicketId(null);
+      setActiveStatus(null);
     }
   }
 
@@ -99,6 +108,7 @@ export function SupportTicketQueue({ query = "" }: { query?: string }) {
       await respondToSupportTicket(ticketId, draft, user.uid);
       setReplyDrafts((drafts) => ({ ...drafts, [ticketId]: "" }));
       setSuccess("replySuccess");
+      closeReply(ticketId);
     } catch {
       setError("replyError");
     } finally {
@@ -106,14 +116,18 @@ export function SupportTicketQueue({ query = "" }: { query?: string }) {
     }
   }
 
+  // Fecha a caixa e devolve o foco ao "Reply" que a abriu: o botão que tinha o
+  // foco some junto com a caixa, e o foco cairia no começo da página.
+  function closeReply(ticketId: string) {
+    flushSync(() => setOpenReplies((open) => ({ ...open, [ticketId]: false })));
+    document.getElementById(`support-reply-open-${ticketId}`)?.focus();
+  }
+
   return (
     <section className="min-w-0 break-words rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            {t("platform.ops.support")}
-          </p>
-          <h3 className="mt-2 text-base font-semibold text-[var(--color-ink)]">
+          <h3 className="text-base font-semibold text-[var(--color-ink)]">
             {t(`${copy}.title`)}
           </h3>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
@@ -173,57 +187,82 @@ export function SupportTicketQueue({ query = "" }: { query?: string }) {
                   </p>
                 </div>
               ) : null}
-              <div className="mt-3 grid gap-2">
-                <Field
-                  id={`support-reply-${ticket.id}`}
-                  label={t(`${copy}.replyLabel`)}
-                  hint={t(`${copy}.replyHint`)}
-                  className="min-w-0"
-                >
-                  {(a11y) => (
-                    <textarea
-                      {...a11y}
-                      value={replyDrafts[ticket.id] ?? ""}
-                      onChange={(event) =>
-                        setReplyDrafts((drafts) => ({
-                          ...drafts,
-                          [ticket.id]: event.target.value,
-                        }))
-                      }
-                      rows={3}
-                      placeholder={t(`${copy}.replyPlaceholder`)}
-                      className="min-w-0 resize-none rounded-md border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)]"
-                    />
-                  )}
-                </Field>
-                <button
-                  type="button"
-                  onClick={() => handleReply(ticket.id)}
-                  disabled={
-                    replyingTicketId === ticket.id
-                    || (replyDrafts[ticket.id] ?? "").trim().length < 2
-                  }
-                  className="button-solid max-w-full w-fit whitespace-normal px-4 py-2 text-xs disabled:opacity-60"
-                >
-                  {replyingTicketId === ticket.id
-                    ? t(`${copy}.sending`)
-                    : ticket.adminResponse
-                      ? t(`${copy}.updateReply`)
-                      : t(`${copy}.sendReply`)}
-                </button>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {nextStatuses.map((status) => (
-                  <button
-                    key={status}
-                    type="button"
-                    onClick={() => handleStatusUpdate(ticket.id, status)}
-                    disabled={activeTicketId === ticket.id || ticket.status === status}
-                    className="button-outline px-4 py-2 text-xs disabled:opacity-60"
+              {openReplies[ticket.id] ? (
+                <div className="mt-3 grid gap-2">
+                  <Field
+                    id={`support-reply-${ticket.id}`}
+                    label={t(`${copy}.replyLabel`)}
+                    hint={t(`${copy}.replyHint`)}
+                    className="min-w-0"
                   >
-                    {activeTicketId === ticket.id ? t(`${copy}.updating`) : t(`statusChip.${status}`)}
-                  </button>
-                ))}
+                    {(a11y) => (
+                      <textarea
+                        {...a11y}
+                        autoFocus
+                        value={replyDrafts[ticket.id] ?? ""}
+                        onChange={(event) =>
+                          setReplyDrafts((drafts) => ({
+                            ...drafts,
+                            [ticket.id]: event.target.value,
+                          }))
+                        }
+                        rows={3}
+                        placeholder={t(`${copy}.replyPlaceholder`)}
+                        className="field-input min-w-0 resize-none"
+                      />
+                    )}
+                  </Field>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleReply(ticket.id)}
+                      disabled={
+                        replyingTicketId === ticket.id
+                        || (replyDrafts[ticket.id] ?? "").trim().length < 2
+                      }
+                      className="button-solid max-w-full w-fit whitespace-normal px-4 py-2 text-xs"
+                    >
+                      <BusyLabel
+                        busy={replyingTicketId === ticket.id}
+                        idle={ticket.adminResponse ? t(`${copy}.updateReply`) : t(`${copy}.sendReply`)}
+                        busyText={t(`${copy}.sending`)}
+                      />
+                    </button>
+                    <Button variant="outline" size="sm" className="min-h-11 px-4 py-2" disabled={replyingTicketId === ticket.id}
+                      onClick={() => closeReply(ticket.id)}>
+                      {t("platform.ops.confirmDialog.cancel")}
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+              {/* Cada status sempre no mesmo lugar, o atual travado: tirar o atual
+                  da fila fazia o botão de baixo do clique virar outro status, e
+                  um 2º clique reabria o chamado (I-09). */}
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                {openReplies[ticket.id] ? null : (
+                  <Button id={`support-reply-open-${ticket.id}`} variant="outline" size="sm" className="min-h-11 px-4 py-2"
+                    onClick={() => setOpenReplies((open) => ({ ...open, [ticket.id]: true }))}>
+                    {t(`${copy}.reply`)}
+                  </Button>
+                )}
+                <div role="group" aria-labelledby={`support-move-${ticket.id}`} className="flex flex-wrap items-center gap-2">
+                  <span id={`support-move-${ticket.id}`} className="text-xs font-semibold text-[var(--color-ink-soft)]">
+                    {t(`${copy}.moveTo`)}
+                  </span>
+                  {nextStatuses.map((status) => (
+                    <Button
+                      key={status}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleStatusUpdate(ticket.id, status)}
+                      disabled={activeTicketId === ticket.id || ticket.status === status}
+                      loading={activeTicketId === ticket.id && activeStatus === status}
+                      className="min-h-11 px-4 py-2"
+                    >
+                      {t(`statusChip.${status}`)}
+                    </Button>
+                  ))}
+                </div>
               </div>
             </article>
           ))

@@ -4,7 +4,7 @@ import { Ban, RotateCcw, Send } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { Button, Field, InlineAlert } from "@/components/ui";
+import { BusyLabel, Button, ConfirmDialog, Field, InlineAlert } from "@/components/ui";
 import type { PlatformInvite } from "@/domain/platform-invites";
 import { createPlatformInvite, listPlatformInvites, resendPlatformInvite, revokePlatformInvite } from "@/lib/data/platform-invites";
 
@@ -23,6 +23,7 @@ export function PlatformInviteManager() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [revoking, setRevoking] = useState<PlatformInvite | null>(null);
   const [emailStatuses, setEmailStatuses] = useState<Record<string, "sent" | "failed">>({});
   const [revision, setRevision] = useState(0);
   const [now, setNow] = useState(() => Date.now());
@@ -68,13 +69,15 @@ export function PlatformInviteManager() {
     }
   }
 
+  // O revoke chega aqui só pelo confirmar da janela (antes, o OK do
+  // window.confirm). O botão que abre a pergunta já fica travado nos mesmos
+  // casos da trava abaixo.
   async function update(invite: PlatformInvite, action: "resend" | "revoke", clickedAt: number) {
     if (busy || invite.accepted_at || invite.revoked_at) return;
     if (action === "resend" && !(Date.parse(invite.expires_at) > clickedAt)) {
       setNow(clickedAt);
       return;
     }
-    if (action === "revoke" && !window.confirm(t(`${copy}.revokeConfirm`).replace("{email}", () => invite.email))) return;
     setBusy(true);
     setError("");
     setNotice("");
@@ -100,7 +103,7 @@ export function PlatformInviteManager() {
         <fieldset disabled={busy} className="min-w-0 space-y-4">
           <div className="grid min-w-0 gap-4 sm:grid-cols-2">
             <Field id="platform-invite-email" label={t(`${copy}.email`)}>
-              {a11y => <input {...a11y} type="email" autoComplete="email" required value={email} onChange={event => { setEmail(event.target.value); setConfirmAdmin(false); }} className="min-h-11 w-full min-w-0 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]" />}
+              {a11y => <input {...a11y} type="email" autoComplete="email" required value={email} onChange={event => { setEmail(event.target.value); setConfirmAdmin(false); }} className="field-input min-h-11 min-w-0" />}
             </Field>
             <Field id="platform-invite-level" label={t(`${copy}.level`)}>
               {a11y => <select {...a11y} value={accessLevel} onChange={event => {
@@ -109,7 +112,7 @@ export function PlatformInviteManager() {
                 setAccessLevel(next as PlatformInvite["access_level"]);
                 setWaiveActivation(false);
                 setConfirmAdmin(false);
-              }} className="min-h-11 w-full min-w-0 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]">
+              }} className="field-input min-h-11 min-w-0">
                 {levels.map(level => <option key={level} value={level}>{t(`platform.ops.accessPanel.levels.${level}.label`)}</option>)}
               </select>}
             </Field>
@@ -123,7 +126,8 @@ export function PlatformInviteManager() {
             {t(`${copy}.confirmAdmin`)}
           </label> : null}
           <Button type="submit" variant={accessLevel === "admin" ? "danger" : "solid"} disabled={busy || loading || (accessLevel === "admin" && !confirmAdmin)} className="min-h-11 max-w-full whitespace-normal">
-            <Send size={16} className="shrink-0" aria-hidden />{t(`${copy}.${busy ? "saving" : "send"}`)}
+            <Send size={16} className="shrink-0" aria-hidden />
+            <BusyLabel busy={busy} idle={t(`${copy}.send`)} busyText={t(`${copy}.saving`)} />
           </Button>
         </fieldset>
       </form>
@@ -150,12 +154,24 @@ export function PlatformInviteManager() {
               {emailStatuses[invite.id] ? <p className={`text-sm ${emailStatuses[invite.id] === "failed" ? "text-[var(--color-warning-fg)]" : "text-[var(--color-ink-soft)]"}`}>{t(`${copy}.${emailStatuses[invite.id] === "failed" ? "emailFailed" : "emailSent"}`)}</p> : null}
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" disabled={busy || loading || ended || state === "expired"} className="min-h-11 max-w-full whitespace-normal" onClick={() => void update(invite, "resend", Date.now())}><Send size={16} className="shrink-0" aria-hidden />{t(`${copy}.resend`)}</Button>
-                <Button variant="danger" disabled={busy || loading || ended} className="min-h-11 max-w-full whitespace-normal" onClick={() => void update(invite, "revoke", Date.now())}><Ban size={16} className="shrink-0" aria-hidden />{t(`${copy}.revoke`)}</Button>
+                <Button variant="danger" disabled={busy || loading || ended} className="min-h-11 max-w-full whitespace-normal" onClick={() => setRevoking(invite)}><Ban size={16} className="shrink-0" aria-hidden />{t(`${copy}.revoke`)}</Button>
               </div>
             </li>;
           })}
         </ul>
       </section>
+      {revoking ? (
+        <ConfirmDialog
+          title={t(`${copy}.revokeTitle`)}
+          confirmLabel={t(`${copy}.revokeInvitation`)}
+          cancelLabel={t("platform.ops.confirmDialog.cancel")}
+          danger
+          onConfirm={() => update(revoking, "revoke", Date.now())}
+          onClose={() => setRevoking(null)}
+        >
+          {t(`${copy}.revokeConfirm`).replace("{email}", () => revoking.email)}
+        </ConfirmDialog>
+      ) : null}
     </div>
   );
 }

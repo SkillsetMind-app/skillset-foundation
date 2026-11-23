@@ -1,9 +1,10 @@
-import { MailCheck } from "lucide-react";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Mail } from "lucide-react";
 
+import { PaymentReturnCard } from "@/components/account/payment-return-card";
 import { GuestAccessLink } from "@/components/courses/guest-access-link";
 import { CheckoutHeader } from "@/components/site/checkout-header";
 import { getServerTranslation } from "@/lib/i18n/server";
@@ -47,27 +48,33 @@ export default async function CheckoutThanksPage({ searchParams }: PageProps) {
           no mesmo lugar, e o próximo passo é o e-mail, não o menu do site. */}
       <CheckoutHeader secureLabel={t("publicCourses.checkoutSecure")} skipLabel={t("nav.skipToContent")} />
       <main id="conteudo" className="mx-auto w-full max-w-xl px-6 py-10 sm:px-8 sm:py-14">
-        <span className="grid size-14 place-items-center rounded-full bg-[var(--color-success-soft)] text-[var(--color-success-fg)]">
-          <MailCheck aria-hidden="true" size={28} strokeWidth={1.8} />
-        </span>
-        <h1 className="display-title page-title mt-5 break-words text-[var(--color-ink)]">
-          {t("guestCheckout.thanks.title")}
-        </h1>
-        <p className="mt-4 text-base leading-7 text-[var(--color-ink-soft)]">{t("guestCheckout.thanks.body")}</p>
-        {pending ? (
-          <GuestAccessLink maskedEmail={maskEmail(pending.email)} />
-        ) : (
-          <p className="mt-6 info-notice">{t("guestCheckout.thanks.noEmail")}</p>
-        )}
-        <p className="mt-6 text-sm text-[var(--color-ink-soft)]">
-          {t("guestCheckout.thanks.haveAccount")}{" "}
-          <Link
-            href={`/login?returnTo=${encodeURIComponent(coursePath)}`}
-            className="font-semibold text-[var(--color-primary)]"
-          >
-            {t("guestCheckout.form.signIn")}
-          </Link>
-        </p>
+        {/* O mesmo cartão das outras telas de depois do pagamento (plano e
+            taxa de ativação), com as mesmas frases e links de antes. Aqui não
+            há casca com título de página: a frase do cartão é o h1. */}
+        <PaymentReturnCard
+          headingLevel={1}
+          icon={<Mail aria-hidden="true" size={20} />}
+          heading={t("guestCheckout.thanks.title")}
+          body={t("guestCheckout.thanks.body")}
+          actions={
+            <div className="grid w-full gap-4">
+              {pending ? (
+                <GuestAccessLink maskedEmail={maskEmail(pending.email)} />
+              ) : (
+                <p className="info-notice">{t("guestCheckout.thanks.noEmail")}</p>
+              )}
+              <p className="text-sm text-[var(--color-ink-soft)]">
+                {t("guestCheckout.thanks.haveAccount")}{" "}
+                <Link
+                  href={`/login?returnTo=${encodeURIComponent(coursePath)}`}
+                  className="font-semibold text-[var(--color-primary)]"
+                >
+                  {t("guestCheckout.form.signIn")}
+                </Link>
+              </p>
+            </div>
+          }
+        />
       </main>
     </div>
   );

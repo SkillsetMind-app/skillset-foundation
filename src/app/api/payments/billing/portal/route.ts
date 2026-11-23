@@ -11,10 +11,7 @@ import { getAppUrl } from "@/lib/payments/server/app-url";
 import { getUserRow, resolvePortalConfigurationId } from "@/lib/payments/server/stripe-helpers";
 import { getServerLocale } from "@/lib/i18n/server";
 
-// Ports createBillingPortalSession: opens the Stripe billing portal for an
-// existing subscriber. Faithful to source — refuses (failed-precondition) when
-// the account has no Stripe customer instead of silently creating one, so the
-// portal never opens empty. Firebase-free; getStripeClient() 503s when dormant.
+// Customer existente permite historico/cartao mesmo sem assinatura ativa.
 export async function POST() {
   try {
     const uid = await requireUserId();
@@ -39,7 +36,7 @@ export async function POST() {
       customer: profile.stripe_customer_id,
       configuration,
       locale,
-      return_url: `${appUrl}/account/billing?tab=subscriptions`,
+      return_url: `${appUrl}/account/billing?tab=overview`,
     });
 
     return NextResponse.json({ url: portal.url });

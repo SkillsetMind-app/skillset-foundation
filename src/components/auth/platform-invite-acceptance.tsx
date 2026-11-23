@@ -4,9 +4,10 @@ import { Check, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import { AuthFrame } from "@/components/auth/auth-frame";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { Button, InlineAlert, buttonClasses } from "@/components/ui";
+import { BusyLabel, Button, InlineAlert, buttonClasses } from "@/components/ui";
 import type { PlatformInvite } from "@/domain/platform-invites";
 import { acceptPlatformInvite, getMyPlatformInvite } from "@/lib/data/platform-invites";
 
@@ -18,8 +19,10 @@ export function PlatformInviteAcceptance({ id }: { id: string }) {
   const [reauthenticationPath, setReauthenticationPath] = useState("");
   const returnTo = encodeURIComponent(`/invitations/${encodeURIComponent(id)}`);
 
-  return <section className="mx-auto w-full max-w-xl min-w-0 space-y-5 px-4 py-10 text-[var(--color-ink)]">
-    <h1 className="text-2xl font-bold">{t(`${copy}.acceptTitle`)}</h1>
+  // Mesma moldura do /auth (logo, voltar ao inicio, idioma): a pagina solta,
+  // sem logo nem caminho de volta, nao parecia ser da SkillsetMind.
+  return <AuthFrame homeLabel={t("auth.page.backToHome")}><section className="min-w-0 space-y-5 text-[var(--color-ink)]">
+    <h1 className="auth-title display-title">{t(`${copy}.acceptTitle`)}</h1>
     {reauthenticationPath ? <div className="space-y-4">
       <InlineAlert tone="info">{t(`${copy}.reauthenticationRequired`)}</InlineAlert>
       <div className="flex flex-wrap gap-3">
@@ -35,7 +38,7 @@ export function PlatformInviteAcceptance({ id }: { id: string }) {
         <Link href={`/signup?returnTo=${returnTo}`} className={buttonClasses({ variant: "outline" }, "min-h-11 max-w-full whitespace-normal")}>{t(`${copy}.signUp`)}</Link>
       </div>
     </div>}
-  </section>;
+  </section></AuthFrame>;
 }
 
 function RecipientInvite({ id, onReauthentication }: { id: string; onReauthentication: (path: string) => void }) {
@@ -95,7 +98,7 @@ function RecipientInvite({ id, onReauthentication }: { id: string; onReauthentic
       <dl className="space-y-3 border-y border-[var(--color-line)] py-4 text-sm">
         <div><dt className="text-[var(--color-ink-soft)]">{t(`${copy}.level`)}</dt><dd className="font-semibold">{t(`platform.ops.accessPanel.levels.${invite.access_level}.label`)}</dd></div>
       </dl>
-      {ended ? <InlineAlert tone="info">{t(`${copy}.status.${ended}`)}</InlineAlert> : <Button disabled={busy} className="min-h-11 max-w-full whitespace-normal" onClick={() => void accept()}><Check size={16} className="shrink-0" aria-hidden />{t(`${copy}.${busy ? "accepting" : "accept"}`)}</Button>}
+      {ended ? <InlineAlert tone="info">{t(`${copy}.status.${ended}`)}</InlineAlert> : <Button disabled={busy} className="min-h-11 max-w-full whitespace-normal" onClick={() => void accept()}><Check size={16} className="shrink-0" aria-hidden /><BusyLabel busy={busy} idle={t(`${copy}.accept`)} busyText={t(`${copy}.accepting`)} /></Button>}
     </> : null}
   </div>;
 }

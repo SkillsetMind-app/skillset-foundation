@@ -1,11 +1,14 @@
 "use client";
 
-import { AlertTriangle } from "lucide-react";
+import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { ComponentType, ReactNode } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { InlineAlert } from "@/components/ui/inline-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
+import { moveFocusByKey } from "@/lib/a11y/menu-keys";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 import {
   deleteOrArchiveCourse,
@@ -23,6 +26,7 @@ import {
 const MENU_WIDTH_PX = 224;
 // Folga minima entre o menu e a borda da janela.
 const MENU_MARGIN_PX = 8;
+const MENU_ITEM = '[role="menuitem"]';
 
 /**
  * Casca do menu de acoes: gatilho so-icone, fecha no Escape e no clique fora,
@@ -50,11 +54,16 @@ export function CourseActionsMenu({
   const [menuLeftPx, setMenuLeftPx] = useState<number | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) {
       return;
     }
+
+    // Menu aberto = foco no 1º item; antes ficava no gatilho e as setas não
+    // tinham onde agir.
+    menuRef.current?.querySelector<HTMLElement>(MENU_ITEM)?.focus({ preventScroll: true });
 
     function handlePointerDown(event: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
@@ -78,7 +87,18 @@ export function CourseActionsMenu({
   }, [open]);
 
   return (
-    <div ref={wrapperRef} className="relative">
+    <div
+      ref={wrapperRef}
+      // Tab para fora do menu fecha: o foco já começa dentro dele, e o menu
+      // aberto ficava por cima do que recebeu o foco.
+      onBlur={(event) => {
+        const next = event.relatedTarget;
+        if (open && next instanceof Node && !event.currentTarget.contains(next)) {
+          setOpen(false);
+        }
+      }}
+      className="relative"
+    >
       <button
         ref={triggerRef}
         type="button"
@@ -107,14 +127,16 @@ export function CourseActionsMenu({
         // quem abre um modal logo em seguida rouba o foco no efeito, depois do
         // commit, entao a ordem continua sendo menu -> modal.
         <div
+          ref={menuRef}
           role="menu"
           aria-label={t("creatorPanel.products.actions.menu").replace("{title}", () => courseTitle)}
+          onKeyDown={(event) => moveFocusByKey(event, MENU_ITEM)}
           onClick={() => {
             setOpen(false);
             triggerRef.current?.focus();
           }}
           style={menuLeftPx === null ? undefined : { left: menuLeftPx }}
-          className={`absolute top-[calc(100%+8px)] z-40 w-56 rounded-lg border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)] ${menuLeftPx === null ? "right-0" : ""}`}
+          className={`motion-drop-in absolute top-[calc(100%+8px)] z-40 w-56 rounded-lg border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)] ${menuLeftPx === null ? "right-0" : ""}`}
         >
           {children}
         </div>
@@ -146,6 +168,8 @@ export function DeleteOrArchiveCourseDialog({
   const [audience, setAudience] = useState<{ enrollments: number; orders: number; subscriptions: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  // "Try again" da contagem: relê SÓ a contagem (getCourseAudience), nunca o apagar.
+  const [audienceAttempt, setAudienceAttempt] = useState(0);
   useModalFocus(dialogRef, true);
 
   useEffect(() => {
@@ -163,7 +187,14 @@ export function DeleteOrArchiveCourseDialog({
     return () => {
       live = false;
     };
-  }, [courseId]);
+  }, [courseId, audienceAttempt]);
+
+  // Volta às linhas de espera do texto; o botão de confirmar segue travado
+  // (sem contagem) até a contagem chegar, como na primeira leitura.
+  function retryAudience() {
+    setFailed(false);
+    setAudienceAttempt((attempt) => attempt + 1);
+  }
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -176,9 +207,23 @@ export function DeleteOrArchiveCourseDialog({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [busy, onCancel]);
 
+  // A pagina de tras nao rola enquanto a janela esta aberta. No estudio quem
+  // rola e o .platform-content, nao o body: travar o body nao segurava nada.
+  useEffect(() => {
+    const scroller = document.querySelector<HTMLElement>(".platform-content") ?? document.body;
+    const previousOverflow = scroller.style.overflow;
+    scroller.style.overflow = "hidden";
+    return () => {
+      scroller.style.overflow = previousOverflow;
+    };
+  }, []);
+
   // Assinatura tambem e comprador: o servidor arquiva, entao o texto promete arquivar.
   const hasAudience = audience !== null && audience.enrollments + audience.orders + audience.subscriptions > 0;
   const prefix = hasAudience ? "creatorPanel.products.archive" : "creatorPanel.products.delete";
+  // Sem a contagem, nem "apagar" nem "arquivar": o modal abria em vermelho
+  // dizendo Delete e virava Archive em azul quando a resposta chegava.
+  const known = audience !== null;
 
   async function handleConfirm() {
     setBusy(true);
@@ -193,7 +238,7 @@ export function DeleteOrArchiveCourseDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[70] grid place-items-center bg-[rgba(7,9,13,0.55)] p-4"
+      className="dialog-backdrop fixed inset-0 z-[70] grid place-items-center p-4"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !busy) {
           onCancel();
@@ -206,24 +251,50 @@ export function DeleteOrArchiveCourseDialog({
         role="dialog"
         aria-modal="true"
         aria-label={t("creatorPanel.products.delete.aria").replace("{title}", () => courseTitle)}
-        className="modal-panel modal-panel-scroll w-full max-w-md rounded-xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)] outline-none"
+        className="dialog-panel modal-panel modal-panel-scroll relative outline-none"
       >
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-danger-fg)]">
-          {t(`${prefix}.eyebrow`)}
+        {/* O X é o Cancelar: some enquanto apaga ou arquiva, quando o
+            Cancelar também trava. */}
+        {busy ? null : (
+          <button
+            type="button"
+            onClick={onCancel}
+            aria-label={t("creatorPanel.products.delete.close")}
+            className="button-icon absolute right-3 top-3"
+          >
+            <X aria-hidden="true" size={18} />
+          </button>
+        )}
+        <div className="p-6">
+        <p className={`pr-10 text-xs font-bold uppercase tracking-[0.2em] ${known ? "text-[var(--color-danger-fg)]" : "text-[var(--color-ink-muted)]"}`}>
+          {known ? t(`${prefix}.eyebrow`) : t("creatorPanel.products.removeEyebrow")}
         </p>
-        <h2 className="mt-2 text-2xl font-semibold text-[var(--color-primary)]">
-          {t(`${prefix}.title`).replace("{title}", () => courseTitle)}
+        {/* Título no desenho das outras janelas (serifa, 24px), como no
+            ConfirmDialog; era Manrope semibold só aqui e no 2FA. */}
+        <h2 className="display-title mt-2 pr-10 text-2xl leading-tight text-[var(--color-primary)]">
+          {known ? t(`${prefix}.title`).replace("{title}", () => courseTitle) : courseTitle}
         </h2>
-        <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
-          {t(`${prefix}.description`)}
-        </p>
+        {/* Altura do texto mais longo (o de apagar, com a lista e o aviso dos
+            arquivos): os botoes nao pulam quando a contagem chega. */}
+        <div className="min-h-[27rem] sm:min-h-[21rem]">
+        {known ? (
+          <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+            {t(`${prefix}.description`)}
+          </p>
+        ) : failed ? null : (
+          <div aria-hidden="true" className="mt-4 grid gap-2 motion-safe:animate-pulse">
+            <span className="h-3 w-full rounded bg-[var(--color-surface-strong)]" />
+            <span className="h-3 w-11/12 rounded bg-[var(--color-surface-strong)]" />
+            <span className="h-3 w-2/3 rounded bg-[var(--color-surface-strong)]" />
+          </div>
+        )}
 
         {hasAudience ? (
           // O "Importante" da Hotmart: a frase que o professor precisa ler
           // antes de decidir nao pode dividir peso com o resto do texto.
-          <InlineAlert tone="warning" className="mt-4 flex items-start gap-2">
-            <AlertTriangle aria-hidden="true" size={18} strokeWidth={1.9} className="mt-0.5 shrink-0" />
-            <span>{t("creatorPanel.products.archive.callout")}</span>
+          // O ícone de aviso agora vem do próprio InlineAlert (um só).
+          <InlineAlert tone="warning" className="mt-4">
+            {t("creatorPanel.products.archive.callout")}
           </InlineAlert>
         ) : audience !== null ? (
           // O que some junto, dito antes do clique: a migration 20261008030000
@@ -244,29 +315,47 @@ export function DeleteOrArchiveCourseDialog({
           </>
         ) : null}
 
-        {failed ? (
+        {/* Sem contagem, o confirmar está travado: a falha só pode ser da LEITURA,
+            e só ela ganha "Try again". A falha de apagar segue como era. */}
+        {failed && !known ? (
+          <LoadErrorAlert className="mt-4" onRetry={retryAudience} focusRef={dialogRef}>
+            {/* Frase própria da contagem: a do apagar ao lado do "Try again" fazia
+                pensar que o botão tentava apagar de novo. */}
+            {t("creatorPanel.products.audienceError")}
+          </LoadErrorAlert>
+        ) : failed ? (
           <InlineAlert tone="error" className="mt-4">
             {t("creatorPanel.products.deleteError")}
           </InlineAlert>
         ) : null}
+        </div>
+        </div>
 
-        <div className="mt-6 flex flex-wrap justify-end gap-3">
+        {/* O rodapé da casa: filete em cima e, abaixo do sm, empilha com a
+            ação em cima e o Cancelar embaixo (antes ficavam lado a lado e
+            quebravam soltos). Do sm em diante pode quebrar, como antes. */}
+        <div className="dialog-footer flex-wrap">
           <button
             type="button"
             onClick={onCancel}
             disabled={busy}
-            className="button-outline px-4 text-sm disabled:opacity-60"
+            className="button-outline px-4 text-sm"
           >
             {t("creatorPanel.products.delete.cancel")}
           </button>
           <button
             type="button"
             onClick={() => void handleConfirm()}
-            disabled={busy || audience === null}
+            disabled={busy || !known}
             // Apagar e para sempre: vermelho cheio. Arquivar volta atras: azul.
-            className={`${hasAudience ? "button-solid" : "button-danger button-danger-solid"} px-4 text-sm disabled:opacity-60`}
+            // Antes da contagem, contorno neutro: nem um nem outro.
+            className={`${!known ? "button-outline" : hasAudience ? "button-solid" : "button-danger button-danger-solid"} px-4 text-sm`}
           >
-            {busy ? t(`${prefix}.busy`) : t(`${prefix}.confirm`)}
+            <BusyLabel
+              busy={(known || failed) && busy}
+              idle={!known && !failed ? t("creatorPanel.products.removeChecking") : t(`${prefix}.confirm`)}
+              busyText={t(`${prefix}.busy`)}
+            />
           </button>
         </div>
       </div>

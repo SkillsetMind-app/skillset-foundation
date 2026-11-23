@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BillingTabs } from "./billing-tabs";
 import { PlansPanel } from "./plans-panel";
@@ -7,11 +7,11 @@ import type { Order } from "@/domain/order";
 import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 
 const mocks = vi.hoisted(() => ({
-  user: { uid: "learner-1", roles: ["student"] }, tab: "overview", orders: [] as Order[], profile: { currentPlanId: "free", stripeCustomerId: "customer-test" },
+  user: { uid: "learner-1", roles: ["student"] }, authStatus: "authenticated", tab: "overview", orders: [] as Order[], profile: { currentPlanId: "free", stripeCustomerId: "customer-test" },
   refund: vi.fn(), portal: vi.fn(), replace: vi.fn(),
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), replace: mocks.replace }), useSearchParams: () => new URLSearchParams({ tab: mocks.tab }) }));
-vi.mock("@/components/auth/auth-provider", () => ({ useAuth: () => ({ status: "authenticated", user: mocks.user }) }));
+vi.mock("@/components/auth/auth-provider", () => ({ useAuth: () => ({ status: mocks.authStatus, user: mocks.user }) }));
 vi.mock("@/lib/data/orders", () => ({ subscribeToUserOrders: (_uid: string, next: (rows: Order[]) => void) => { next(mocks.orders); return vi.fn(); } }));
 vi.mock("@/lib/data/user-profiles", () => ({ subscribeToUserProfile: (_uid: string, next: (profile: typeof mocks.profile) => void) => { next(mocks.profile); return vi.fn(); } }));
 vi.mock("@/lib/payments/billing", () => ({
@@ -33,7 +33,7 @@ const order: Order = {
   amountMinor: 1950, currency: "USD", platformFeeBps: 1000, status: "paid", provider: "stripe", checkoutSessionId: null, paymentIntentId: null,
   createdAt: "2026-09-01T12:00:00Z", receiptUrl: "https://example.com/receipt",
 };
-beforeEach(() => { vi.clearAllMocks(); mocks.tab = "overview"; mocks.orders = []; mocks.user.roles = ["student"]; mocks.refund.mockResolvedValue(undefined); mocks.portal.mockResolvedValue(undefined); });
+beforeEach(() => { vi.clearAllMocks(); mocks.authStatus = "authenticated"; mocks.tab = "overview"; mocks.orders = []; mocks.user.roles = ["student"]; mocks.refund.mockResolvedValue(undefined); mocks.portal.mockResolvedValue(undefined); });
 afterEach(cleanup);
 
 describe("billing locale with real dictionaries", () => {
@@ -53,10 +53,12 @@ describe("billing locale with real dictionaries", () => {
 
   it("translates overview and navigation without changing route keys", () => {
     mount(<BillingTabs />);
-    expect(screen.getByRole("group", { name: "Secciones de facturación" })).toBeTruthy();
+    expect(screen.getByRole("tablist", { name: "Secciones de facturación" })).toBeTruthy();
     expect(screen.getByText("Gasto total")).toBeTruthy();
-    expect(screen.getByText("0 cursos comprados", { exact: false })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Compras" }));
+    // Cada numero uma vez: a contagem mora so na linha "Cursos comprados".
+    expect(within(screen.getByText("Cursos comprados").parentElement!).getByText("0")).toBeTruthy();
+    expect(screen.queryByText(/^\d+ cursos? comprados?$/)).toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "Compras" }));
     expect(mocks.replace).toHaveBeenCalledWith("/account/billing?tab=purchases", { scroll: false });
   });
 
@@ -64,11 +66,27 @@ describe("billing locale with real dictionaries", () => {
     mocks.tab = "purchases";
     const first = mount(<BillingTabs />);
     expect(screen.getByRole("heading", { name: "Aún no tienes compras." })).toBeTruthy();
+    // Sem a etiqueta "VACÍO" no ambar de pendente.
+    expect(screen.queryByText("Vacío")).toBeNull();
     first.unmount();
     mocks.tab = "payment-methods";
     mount(<BillingTabs />);
     expect(screen.getByRole("heading", { name: "Gestionados de forma segura por Stripe." })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Gestionar métodos de pago" })).toBeTruthy();
+  });
+
+  // Carregando: esqueleto no formato da aba, com a frase so para o leitor de tela.
+  it.each([
+    ["overview", "Cargando el resumen de facturación..."],
+    ["purchases", "Cargando tus compras..."],
+    ["payment-methods", "Cargando tus métodos de pago..."],
+  ])("shows a skeleton announced as loading on %s", (tab, label) => {
+    mocks.authStatus = "loading"; mocks.tab = tab;
+    mount(<BillingTabs />);
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent(label);
+    expect(status.querySelector(".sr-only")).toHaveTextContent(label);
+    expect(status.querySelector("[aria-hidden='true'].animate-pulse")).not.toBeNull();
   });
 
   it("keeps course text and refund identity while translating confirmation and success", async () => {
@@ -86,6 +104,54 @@ describe("billing locale with real dictionaries", () => {
     expect(within(modal).getByText(order.courseTitle)).toBeTruthy();
     fireEvent.click(within(modal).getByRole("button", { name: "Listo" }));
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  // O X do cabeçalho é o Cancelar: fecha sem pedir nada e some enquanto o
+  // pedido está indo (o Cancelar trava nessa hora).
+  it("closes the refund dialog from the X without requesting, and nothing closes it while submitting", async () => {
+    mocks.tab = "purchases"; mocks.orders = [order];
+    let finish!: () => void;
+    mocks.refund.mockReturnValue(new Promise<void>((resolve) => { finish = resolve; }));
+    mount(<BillingTabs />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Solicitar un reembolso" }));
+    let modal = screen.getByRole("dialog", { name: "Solicitar un reembolso" });
+    expect(within(modal).getByRole("button", { name: "Cerrar" })).toHaveClass("button-icon");
+    fireEvent.click(within(modal).getByRole("button", { name: "Cerrar" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(mocks.refund).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Solicitar un reembolso" }));
+    modal = screen.getByRole("dialog", { name: "Solicitar un reembolso" });
+    fireEvent.click(within(modal).getByRole("button", { name: "Solicitar reembolso" }));
+    expect(within(modal).getByRole("button", { name: "Cancelar" })).toBeDisabled();
+    expect(within(modal).queryByRole("button", { name: "Cerrar" })).toBeNull();
+    // Esc e o clique no fundo (a própria camada do diálogo) também não fecham.
+    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.click(modal);
+    expect(screen.getByRole("dialog", { name: "Solicitar un reembolso" })).toBe(modal);
+    await act(async () => finish());
+    expect(await within(modal).findByRole("button", { name: "Cerrar" })).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  // A-15 / A-22 / C-12: pedir dinheiro de volta é um botão de contorno de
+  // 44px (era um link dourado de 24px), o recibo tem alvo de 44px, e a página
+  // de trás para de rolar enquanto a janela está aberta.
+  it("refund trigger is a 44px outline button and the page behind stops scrolling", () => {
+    mocks.tab = "purchases"; mocks.orders = [order];
+    mount(<BillingTabs />);
+    const trigger = screen.getByRole("button", { name: "Solicitar un reembolso" });
+    expect(trigger).toHaveClass("button-outline");
+    expect(trigger.className).not.toContain("accent");
+    expect(screen.getByRole("link", { name: /Ver recibo/ })).toHaveClass("min-h-11");
+
+    fireEvent.click(trigger);
+    expect(document.body.style.overflow).toBe("hidden");
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancelar" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.body.style.overflow).toBe("");
   });
 
   // O número que o aluno manda ao suporte quando "comprei e não entrou".
@@ -122,8 +188,9 @@ describe("billing locale with real dictionaries", () => {
   // subscription: Free" next to the courses they bought.
   it("a learner sees what they bought, with no creator plan", () => {
     mount(<BillingTabs />);
-    expect(screen.queryByRole("button", { name: "Suscripción" })).toBeNull();
-    expect(screen.queryByText("Suscripción activa")).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Suscripción" })).toBeNull();
+    expect(screen.queryByText("Acceso actual")).toBeNull();
+    expect(screen.queryByText("Suscripción de Stripe")).toBeNull();
     expect(screen.queryByText(/suscripción Free/i)).toBeNull();
     expect(screen.getByText("Cursos comprados")).toBeTruthy();
     cleanup();
@@ -137,8 +204,9 @@ describe("billing locale with real dictionaries", () => {
   it("a teacher keeps the Subscription tab and the plan line", () => {
     mocks.user.roles = ["student", "teacher"];
     mount(<BillingTabs />);
-    expect(screen.getByRole("button", { name: "Suscripción" })).toBeTruthy();
-    expect(screen.getByText("Suscripción activa")).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Suscripción" })).toBeTruthy();
+    expect(screen.getByText("Acceso actual")).toBeTruthy();
+    expect(screen.getByText("Suscripción de Stripe")).toBeTruthy();
     cleanup();
     mocks.tab = "subscriptions";
     mount(<BillingTabs />);
@@ -148,16 +216,17 @@ describe("billing locale with real dictionaries", () => {
   it("translates plans and their existing pricing highlights without changing cycle", async () => {
     mount(<PlansPanel />);
     expect(screen.getByText("Plan actual:")).toBeTruthy();
-    expect(screen.getByRole("radiogroup", { name: "Ciclo de facturación" })).toBeTruthy();
-    const annual = screen.getByRole("radio", { name: "Anual" });
+    // O seletor segmentado da casa (PeriodTabs): grupo com aria-pressed.
+    expect(screen.getByRole("group", { name: "Ciclo de facturación" })).toBeTruthy();
+    const annual = screen.getByRole("button", { name: /^Anual/ });
     fireEvent.click(annual);
-    expect(annual.getAttribute("aria-checked")).toBe("true");
+    expect(annual.getAttribute("aria-pressed")).toBe("true");
     expect(await screen.findByRole("button", { name: "Mejorar a Pro" })).toBeTruthy();
-    expect(screen.getByText("La comisión más baja de la oferta.")).toBeTruthy();
+    expect(screen.getByText("0% de comisión en Pro. El procesamiento de tarjetas de Stripe se sigue aplicando.")).toBeTruthy();
     expect(screen.getByText(/^\$890 al año, desde hoy\. Se renueva automáticamente/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "English" }));
-    expect(screen.getByRole("radio", { name: "Yearly" }).getAttribute("aria-checked")).toBe("true");
-    expect(screen.getByText("The lowest commission on the offer.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Yearly/ }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByText("0% commission on Pro. Card processing by Stripe still applies.")).toBeTruthy();
     expect(screen.getByText(/^\$890\/year, starting today\./)).toBeTruthy();
   });
 });

@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
@@ -86,6 +86,22 @@ describe("botao de troca de lado no topo", () => {
     expect(container.querySelector(".platform-topbar__side")).toHaveTextContent(new RegExp(`^${side}$`));
   });
 
+  // O menu da conta listava "Switch area -> Student area", o mesmo destino do
+  // botao ao lado. Na plataforma o topo fica com a troca; o site publico, que
+  // nao tem o botao, segue com ela no menu (account-menu.test).
+  it.each([
+    ["/teach", "Student area"],
+    ["/learn", "Teacher area"],
+  ])("em %s o menu da conta nao repete o destino do botao do topo (%s)", (pathname, duplicate) => {
+    mocks.pathname = pathname;
+    render(<PlatformHeader />);
+    fireEvent.click(screen.getByRole("button", { name: "Open account menu" }));
+
+    expect(document.getElementById("account-menu-panel")).not.toBeNull();
+    expect(screen.queryByRole("link", { name: duplicate })).toBeNull();
+    expect(screen.queryByText("Switch area")).toBeNull();
+  });
+
   it("quem so estuda nao ve botao de troca, mas ve em que lado esta", () => {
     mocks.roles = ["student"];
     mocks.pathname = "/learn";
@@ -116,6 +132,39 @@ describe("o topo nao tem Ajuda", () => {
     render(<PlatformHeader />);
 
     expect(within(screen.getByRole("banner")).queryByRole("button", { name: "Help" })).toBeNull();
+  });
+});
+
+// No celular a troca de lado mora na barra de baixo, e o menu da conta nao a
+// repete mais. Topo e barra calculam o destino cada um por si: este teste
+// trava os dois juntos, para uma edicao num lado nao tirar a unica troca do
+// celular sem ninguem ver.
+describe("barra de baixo e topo levam ao mesmo outro lado", () => {
+  it.each(
+    [["student"], ["teacher"], ["admin", "teacher"]].flatMap((roles) =>
+      ["/teach", "/learn", "/ops"].map((pathname) => [roles.join("+"), pathname, roles] as const),
+    ),
+  )("%s em %s", (_label, pathname, roles) => {
+    mocks.pathname = pathname;
+    mocks.roles = [...roles];
+    const { container } = render(
+      <>
+        <PlatformHeader />
+        <MobileSidebarDrawer open={false} onOpen={vi.fn()} onClose={vi.fn()} />
+      </>,
+    );
+
+    const headerTarget = container.querySelector(".platform-topbar__switch")?.getAttribute("href") ?? null;
+    const bar = screen.getByRole("navigation", { name: "Mobile platform navigation" });
+    const barTargets = within(bar).getAllByRole("link").map((link) => link.getAttribute("href"));
+    if (headerTarget) {
+      expect(barTargets).toContain(headerTarget);
+    } else {
+      // Quem so estuda nao tem troca no topo, nem atalho do estudio na barra
+      // (o Home segue o endereco, por isso o nome e nao o href).
+      expect(roles).toEqual(["student"]);
+      expect(within(bar).queryByRole("link", { name: "Teach" })).toBeNull();
+    }
   });
 });
 

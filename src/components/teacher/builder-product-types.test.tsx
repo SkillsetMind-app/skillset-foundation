@@ -110,7 +110,8 @@ function session(): CourseEvent {
     description: "",
     type: "live_class",
     status: "scheduled",
-    startsAt: "2026-11-20T22:30:00.000Z",
+    // Sessao por vir: a data antiga (20/11/2026) venceu e derrubava o teste.
+    startsAt: "2099-11-20T22:30:00.000Z",
     externalUrl: "",
     recordingAssetId: null,
   };
@@ -238,7 +239,7 @@ describe("e-book: so o arquivo", () => {
     expect(await screen.findByRole("heading", { name: "File to download" })).toBeInTheDocument();
     expect(screen.queryByText("Add your first module")).toBeNull();
     expect(screen.queryByRole("button", { name: /Add module/i })).toBeNull();
-    expect(screen.queryByRole("navigation", { name: /Lesson setup/i })).toBeNull();
+    expect(screen.queryByRole("tablist", { name: /Lesson setup/i })).toBeNull();
     expect(screen.queryByText("Workbook")).toBeNull();
     expect(screen.queryByText(/1 module/i)).toBeNull();
   });
@@ -251,7 +252,7 @@ describe("e-book: so o arquivo", () => {
     renderBuilder("content");
 
     expect(await screen.findByRole("heading", { name: "File to download" })).toBeInTheDocument();
-    expect(screen.queryByRole("navigation", { name: /Lesson setup/i })).toBeNull();
+    expect(screen.queryByRole("tablist", { name: /Lesson setup/i })).toBeNull();
     expect(screen.queryByText("Workbook")).toBeNull();
   });
 
@@ -297,14 +298,14 @@ describe("como as pessoas vao pagar", () => {
     return within(group)
       .getAllByRole("button")
       .filter((button) => button.hasAttribute("aria-pressed"))
-      .map((button) => button.querySelector(".display-title")?.textContent);
+      .map((button) => button.querySelector(".plan-card-title")?.textContent);
   }
 
   function pressed() {
     const group = screen.getByRole("group", { name: /How will people pay\?/ });
     return within(group)
       .getAllByRole("button", { pressed: true })
-      .map((button) => button.querySelector(".display-title")?.textContent);
+      .map((button) => button.querySelector(".plan-card-title")?.textContent);
   }
 
   afterEach(() => {
@@ -478,15 +479,41 @@ describe("como as pessoas vao pagar", () => {
     it.each([
       ["a leitura falha", { ok: false, json: async () => ({}) }],
       ["a rota avisa que nao leu", { ok: true, json: async () => ({ offers: [], warning: "Offers are unavailable." }) }],
-    ])("quando %s: sem cartoes, pede para recarregar", async (_label, response) => {
+    ])("quando %s: sem cartoes, e Try again le de novo", async (_label, response) => {
       vi.stubGlobal("fetch", vi.fn(async () => response));
       mocks.course = paid("course", "one_time", 9700, { status: "published" });
       renderBuilder("pricing");
 
-      expect(await screen.findByText("Couldn't load your prices. Reload the page.")).toHaveAttribute("role", "alert");
+      expect(await screen.findByText("Couldn't load your prices.")).toHaveAttribute("role", "alert");
       expect(screen.queryByRole("group", { name: /How will people pay\?/ })).toBeNull();
       expect(screen.queryByRole("textbox", { name: /Price/ })).toBeNull();
       expect(screen.queryByText("$97")).toBeNull();
+
+      // A mesma leitura, de novo, sem recarregar a pagina.
+      stubOffers([]);
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+      expect(await screen.findByRole("group", { name: /How will people pay\?/ })).toBeInTheDocument();
+      expect(screen.queryByRole("alert")).toBeNull();
+    });
+
+    // Enquanto a lista chega: um bloco por cartao, no lugar deles, e os tres
+    // cartoes do curso numa linha so (em duas colunas o terceiro sobrava).
+    it("carregando: blocos no lugar dos cartoes; carregado: tres colunas", async () => {
+      let answer!: (value: unknown) => void;
+      vi.stubGlobal("fetch", vi.fn(() => new Promise((resolve) => { answer = resolve; })));
+      mocks.course = paid("course", "one_time", 9700);
+      renderBuilder("pricing");
+
+      const waiting = await screen.findByText("Loading prices...");
+      const skeleton = waiting.closest('[role="status"]')!;
+      expect(skeleton.querySelectorAll(".h-28")).toHaveLength(3);
+      expect(skeleton.querySelector(".md\\:grid-cols-3")).not.toBeNull();
+
+      await act(async () => answer({ ok: true, json: async () => ({ offers: [] }) }));
+      const group = await screen.findByRole("group", { name: /How will people pay\?/ });
+      expect(group.querySelector(".md\\:grid-cols-3")).not.toBeNull();
+      expect(screen.queryByText("Loading prices...")).toBeNull();
+      expect(group.querySelector(".display-title")).toBeNull();
     });
 
     // Aba aberta antes do preco principal: outra aba cria o preco, e ao voltar
@@ -505,6 +532,50 @@ describe("como as pessoas vao pagar", () => {
       // O resumo ao lado tambem diz o que a pagina cobra.
       expect(screen.queryByText("$29 / month")).toBeNull();
       expect(screen.getByText("$97")).toBeInTheDocument();
+    });
+
+    // A releitura do foco que falha nao apaga a lista boa da tela: o aviso com
+    // "Try again" sai acima dela, como em toda lista.
+    it("releitura que falha mantem os precos na tela, com Try again", async () => {
+      stubOffers([main]);
+      mocks.course = paid("course", "one_time", 9700, { status: "published" });
+      renderBuilder("pricing");
+      expect(await screen.findByText(/^Your page charges \$97 \(One payment\)\./)).toBeInTheDocument();
+
+      vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, json: async () => ({}) })));
+      fireEvent.focus(window);
+
+      expect(await screen.findByText("Couldn't refresh your prices. These are the last ones loaded.")).toHaveAttribute("role", "alert");
+      expect(screen.getByText(/^Your page charges \$97 \(One payment\)\./)).toBeInTheDocument();
+      expect(screen.getByText("$97")).toBeInTheDocument();
+
+      // Enquanto tenta de novo, o aviso fica, com o botão em espera.
+      let answer!: (value: unknown) => void;
+      vi.stubGlobal("fetch", vi.fn(() => new Promise((resolve) => { answer = resolve; })));
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+      expect(screen.getByText("Couldn't refresh your prices. These are the last ones loaded.")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Try again" })).toHaveAttribute("aria-busy", "true");
+      await act(async () => answer({ ok: true, json: async () => ({ offers: [main] }) }));
+      await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+      expect(screen.getByText(/^Your page charges \$97 \(One payment\)\./)).toBeInTheDocument();
+    });
+
+    // A lista mantida tambem alimenta a regra do Save: produto no ar, cobrado
+    // pela oferta e sem valor no construtor. Antes a falha virava "preco
+    // desconhecido" e o Save era recusado ("livePrice"); agora vale a ultima
+    // lista boa, e o Save grava.
+    it("produto no ar cobrado pela oferta: com a releitura falhando, o Save ainda grava", async () => {
+      stubOffers([main]);
+      mocks.course = paid("course", "one_time", 0, { status: "published" });
+      renderBuilder("pricing");
+      expect(await screen.findByText(/^Your page charges \$97 \(One payment\)\./)).toBeInTheDocument();
+
+      vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, json: async () => ({}) })));
+      fireEvent.focus(window);
+      await screen.findByText("Couldn't refresh your prices. These are the last ones loaded.");
+
+      fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+      await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalledOnce());
     });
   });
 

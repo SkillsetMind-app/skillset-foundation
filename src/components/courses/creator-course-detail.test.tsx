@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CreatorCourseDetail } from "@/components/courses/creator-course-detail";
 import { RealCoursesProvider } from "@/components/site/real-courses";
 import { startCourseCheckout, enrollInFreeCreatorCourse, startGuestCourseCheckout } from "@/lib/payments/checkout";
-import { getLoadingRoute } from "@/lib/auth/routing";
+import { getLoadingRoute, getSafeReturnTo } from "@/lib/auth/routing";
 import { isPlatformHost } from "@/domain/host-routing";
 import { signInWithGoogle } from "@/lib/auth/supabase-auth";
 import { PaymentRequestError } from "@/lib/payments/client-fetch";
@@ -20,6 +20,14 @@ const fixtures = vi.hoisted(() => ({
   query: "",
   locale: "en" as "en" | "es",
   subscriptions: 0,
+  // true: a assinatura do curso não responde, como uma leitura ainda a caminho.
+  holdCourse: false,
+  // O último onNext da assinatura do curso, para entregar o curso mais tarde.
+  courseNext: null as ((course: TeacherCourse) => void) | null,
+  // O último onError da assinatura do curso, para simular a rede que cai.
+  courseError: null as ((error: Error) => void) | null,
+  // As chaves públicas (payments.checkout): ligadas, salvo no teste que as desliga.
+  flagsOn: true,
   router: { push: vi.fn(), replace: vi.fn() },
   course: {
     id: "course-1",
@@ -77,7 +85,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(fixtures.query),
 }));
 
-vi.mock("@/lib/feature-flags", () => ({ isPublicFeatureEnabled: () => true }));
+vi.mock("@/lib/feature-flags", () => ({ isPublicFeatureEnabled: () => fixtures.flagsOn }));
 
 vi.mock("@/lib/supabase/config", () => ({
   getSupabaseClientConfig: () => ({}),
@@ -88,9 +96,12 @@ vi.mock("@/lib/data/published-courses", () => ({
   subscribeToViewableTeacherCourse: (
     _ref: string,
     onNext: (course: TeacherCourse) => void,
+    onError: (error: Error) => void,
   ) => {
     fixtures.subscriptions += 1;
-    onNext(fixtures.course);
+    fixtures.courseNext = onNext;
+    fixtures.courseError = onError;
+    if (!fixtures.holdCourse) onNext(fixtures.course);
     return () => {};
   },
 }));
@@ -140,9 +151,12 @@ vi.mock("@/domain/host-routing", async (importOriginal) => {
 });
 
 // The teacher's sales blocks: one button wired to onEnrol, like their CTA block.
+// `data-price`: o preço que o bloco recebe (sem atributo quando não recebe nada).
 vi.mock("@/components/courses/course-landing-blocks", () => ({
-  CourseLandingBlocks: ({ onEnrol }: { onEnrol?: () => void }) => (
-    <button type="button" onClick={onEnrol}>Sales block CTA</button>
+  CourseLandingBlocks: ({ onEnrol, priceLabel }: { onEnrol?: () => void; priceLabel?: string }) => (
+    <div data-testid="landing-blocks" data-price={priceLabel}>
+      <button type="button" onClick={onEnrol}>Sales block CTA</button>
+    </div>
   ),
 }));
 
@@ -177,6 +191,8 @@ beforeEach(() => {
   fixtures.query = "";
   fixtures.locale = "en";
   fixtures.subscriptions = 0;
+  fixtures.holdCourse = false;
+  fixtures.flagsOn = true;
   fixtures.auth.status = "unauthenticated";
   fixtures.auth.user = null;
   fixtures.course.paymentType = "one_time";
@@ -242,15 +258,111 @@ describe("CreatorCourseDetail", () => {
   });
 });
 
+// Carregar não é erro: antes, um segundo h1 "Loading course..." e um botão que
+// levava o comprador para fora da página; depois, "Loading pricing..." em 36px
+// e "Checkout not available yet" para quem já tinha conta.
+describe("CreatorCourseDetail: enquanto carrega", () => {
+  it.each([false, true])("o curso a caminho mostra o esqueleto: sem título, sem botão de saída (compra: %s)", (checkoutOnly) => {
+    fixtures.holdCourse = true;
+    render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader checkoutOnly={checkoutOnly} />);
+
+    expect(screen.getByRole("status")).toHaveTextContent(checkoutOnly ? "Loading course checkout..." : "Loading course...");
+    expect(screen.queryByRole("heading")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("um erro de verdade segue com o aviso, e vira h2 sob o h1 que o servidor já pôs", () => {
+    render(<CreatorCourseDetail hideHeader />);
+
+    expect(screen.getByRole("heading", { level: 2, name: "Course not selected." })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
+    expect(screen.queryByText("Creator course")).not.toBeInTheDocument();
+  });
+
+  it("o preço a caminho guarda o lugar, e o botão de quem tem conta diz Enroll, desligado", async () => {
+    fixtures.auth.status = "authenticated";
+    fixtures.auth.user = { uid: "buyer" };
+    vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+
+    const button = await waitFor(() => {
+      const found = container.querySelector<HTMLButtonElement>("#enroll-card button[data-cta-focus]");
+      expect(found).not.toBeNull();
+      return found!;
+    });
+    expect(button).toHaveTextContent(/^Enroll$/);
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute("aria-busy", "true");
+    expect(screen.queryByText("Checkout not available yet")).not.toBeInTheDocument();
+    // O texto só para o leitor de tela; na tela, a barra do tamanho do preço.
+    expect(within(container.querySelector<HTMLElement>("#enroll-card")!).getByText("Loading pricing...")).toHaveClass("sr-only");
+  });
+
+  // O bloco de chamada do professor imprimia "Loading pricing..." e "Pricing
+  // unavailable" em 18px negrito, como se fossem o preço.
+  it("o bloco do professor só recebe preço de verdade: nada carregando, nada com falha", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
+    const loading = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+    expect(await screen.findByTestId("landing-blocks")).not.toHaveAttribute("data-price");
+    loading.unmount();
+
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, json: async () => ({ error: "unavailable" }) })));
+    const failed = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+    await screen.findByText("Offers are temporarily unavailable.");
+    expect(screen.getByTestId("landing-blocks")).not.toHaveAttribute("data-price");
+    failed.unmount();
+
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ offers: [] }) })));
+    render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+    await screen.findAllByText("$149.00");
+    expect(screen.getByTestId("landing-blocks")).toHaveAttribute("data-price", "$149.00");
+  });
+
+  // Com a compra desligada o botão não diz "Enroll" para virar o aviso depois.
+  it("com a compra desligada, o aviso vem direto, sem o rótulo de espera", async () => {
+    fixtures.flagsOn = false;
+    fixtures.auth.status = "authenticated";
+    fixtures.auth.user = { uid: "buyer" };
+    vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+
+    const button = await waitFor(() => {
+      const found = container.querySelector<HTMLButtonElement>("#enroll-card button[data-cta-focus]");
+      expect(found).not.toBeNull();
+      return found!;
+    });
+    expect(button).toHaveTextContent("Checkout not available yet");
+    expect(button).not.toHaveAttribute("aria-busy");
+  });
+
+  it("o cancelamento da compra é aviso neutro, e o erro de checkout é anunciado", async () => {
+    fixtures.query = "checkout=cancelled";
+    fixtures.auth.status = "authenticated";
+    fixtures.auth.user = { uid: "buyer" };
+    vi.mocked(startCourseCheckout).mockRejectedValue(new Error("network"));
+    render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+
+    expect(await screen.findByRole("status")).toHaveTextContent("Checkout was cancelled.");
+    fireEvent.click(await screen.findByRole("button", { name: /Enroll — \$149\.00/ }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("We could not start secure checkout");
+  });
+});
+
 // Loja vazia não é destino: a volta e a ação padrão dos estados levam ao início.
 describe("CreatorCourseDetail: links para a loja", () => {
   it.each([
     [true, "Back to all courses", "/courses"],
     [false, "Go home", "/"],
-  ])("a volta do cartão de compra (loja com curso real: %s)", async (value, name, href) => {
-    render(<RealCoursesProvider value={value}><CreatorCourseDetail courseIdOverride="course-1" hideHeader /></RealCoursesProvider>);
+  ])("a volta ao catálogo, no alto da página e fora do cartão de compra (loja com curso real: %s)", async (value, name, href) => {
+    const { container } = render(<RealCoursesProvider value={value}><CreatorCourseDetail courseIdOverride="course-1" hideHeader /></RealCoursesProvider>);
 
-    expect(await screen.findByRole("link", { name })).toHaveAttribute("href", href);
+    const back = await screen.findByRole("link", { name });
+    expect(back).toHaveAttribute("href", href);
+    expect(back.closest("#enroll-card")).toBeNull();
+    // Antes da capa, do título e das seções: é o primeiro item da coluna.
+    expect(back.parentElement?.firstElementChild).toBe(back);
+    expect(back.compareDocumentPosition(container.querySelector("#enroll-card")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it.each([
@@ -345,6 +457,57 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
     expect(labels).toContain("Category");
   });
 
+  // Antes: rótulo "Access" no preço e cinco blocos depois do botão, dois em
+  // caixas de cores diferentes. Agora: "Price", o botão e um só bloco de fatos.
+  it("rotula o preço como 'Price' e junta os fatos num bloco só, depois do botão", async () => {
+    fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+    const button = await screen.findByRole("button", { name: "Enroll — $149.00" });
+    const card = container.querySelector("#enroll-card") as HTMLElement;
+
+    expect(card.firstElementChild).toHaveTextContent(/^Price$/);
+    const facts = [
+      "Category",
+      "Paid access opens automatically once your payment is confirmed — usually within seconds.",
+      "Secure payment processed by Stripe.",
+      "7-day refund guarantee.",
+      "Sold by your instructor, not by SkillsetMind.",
+    ].map((text) => within(card).getByText(text));
+    for (const fact of facts) {
+      expect(button.compareDocumentPosition(fact) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+    // Nenhuma caixa colorida própria: o reembolso e o vendedor são linhas da mesma lista.
+    const list = within(card).getByRole("list");
+    expect(within(list).getByText("7-day refund guarantee.")).toBeInTheDocument();
+    expect(within(list).getByText("Sold by your instructor, not by SkillsetMind.")).toBeInTheDocument();
+    expect(card.querySelector('[class*="success-soft"]')).toBeNull();
+    // A barra fixa do celular usa o mesmo rótulo do cartão.
+    expect(container.querySelector('a[href="#enroll-card"]')?.closest("div.fixed")).toHaveTextContent(/^Price/);
+  });
+
+  // Até o preço chegar o curso ainda não "é grátis": um curso grátis lia
+  // "Paid access opens…", o reembolso e o vendedor enquanto o preço carregava.
+  it.each([
+    ["carregando", () => new Promise(() => {})],
+    ["com a leitura falhando", async () => ({ ok: false, json: async () => ({ error: "unavailable" }) })],
+  ])("curso grátis com o preço %s: nenhuma frase de compra paga no cartão", async (_state, respond) => {
+    Object.assign(fixtures.course, { paymentType: "free", priceAmountMinor: 0 });
+    vi.stubGlobal("fetch", vi.fn(respond));
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+    await waitFor(() => expect(container.querySelector("#enroll-card")).not.toBeNull());
+    const card = container.querySelector("#enroll-card") as HTMLElement;
+
+    for (const text of [
+      "Paid access opens automatically once your payment is confirmed — usually within seconds.",
+      "7-day refund guarantee.",
+      "Sold by your instructor, not by SkillsetMind.",
+    ]) {
+      expect(within(card).queryByText(text)).not.toBeInTheDocument();
+    }
+    // A ficha do curso segue no lugar.
+    expect(within(card).getByText("Category")).toBeInTheDocument();
+  });
+
   it("mantém o cartão à vista: gruda na rolagem e ganha barra fixa no celular", async () => {
     const { container } = render(
       <CreatorCourseDetail courseIdOverride="course-1" hideHeader />,
@@ -352,13 +515,16 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
     await screen.findAllByText("$149.00");
 
     expect(container.querySelector("#enroll-card")).toHaveClass("lg:sticky");
-    // Barra do celular: leva ao cartão; no desktop some enquanto o cartão está à vista.
+    // Barra de compra: leva ao cartão. Sem IntersectionObserver (jsdom), ou
+    // antes do primeiro aviso dele, nada foi medido: a barra fica à vista no
+    // celular, como sempre foi. Só a medição a esconde.
     const bar = container.querySelector('a[href="#enroll-card"]');
     expect(bar).not.toBeNull();
     expect(bar?.closest("div.fixed")).toHaveClass("lg:hidden");
+    expect(bar?.closest("div.fixed")).not.toHaveClass("hidden");
   });
 
-  it("no desktop, com o cartão fora da tela, a barra de compra flutua no canto", async () => {
+  it("com o cartão fora da tela a barra de compra aparece (no desktop, no canto); com o botão à vista, some", async () => {
     let notify: ((entries: Array<{ isIntersecting: boolean }>) => void) | null = null;
     const observe = vi.fn();
     vi.stubGlobal("IntersectionObserver", class {
@@ -371,9 +537,12 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
       await screen.findAllByText("$149.00");
       await waitFor(() => expect(observe).toHaveBeenCalledWith(container.querySelector("#enroll-card")));
       const bar = () => container.querySelector('a[href="#enroll-card"]')?.closest("div.fixed");
+      // Antes do primeiro aviso: à vista no celular.
+      expect(bar()).toHaveClass("lg:hidden");
+      expect(bar()).not.toHaveClass("hidden");
 
       act(() => notify?.([{ isIntersecting: false }]));
-      expect(bar()).not.toHaveClass("lg:hidden");
+      expect(bar()).not.toHaveClass("hidden");
       expect(bar()).toHaveClass("lg:right-6");
 
       // Topo do cartão à vista, mas o botão ainda abaixo da dobra: a barra fica.
@@ -381,12 +550,18 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
       const rect = vi.spyOn(cta, "getBoundingClientRect");
       rect.mockReturnValue({ top: window.innerHeight + 200, bottom: window.innerHeight + 244 } as DOMRect);
       act(() => notify?.([{ isIntersecting: true }]));
-      expect(bar()).not.toHaveClass("lg:hidden");
+      expect(bar()).not.toHaveClass("hidden");
 
-      // O botão entrou na tela: a barra some.
+      // O botão entrou na tela: a barra some em qualquer largura (display
+      // none: fora da ordem do Tab), e não só a partir de lg.
       rect.mockReturnValue({ top: 300, bottom: 344 } as DOMRect);
       act(() => notify?.([{ isIntersecting: true }]));
-      expect(bar()).toHaveClass("lg:hidden");
+      expect(bar()).toHaveClass("hidden");
+      expect(bar()).not.toHaveClass("lg:right-6");
+
+      // Saiu de novo: a barra volta.
+      act(() => notify?.([{ isIntersecting: false }]));
+      expect(bar()).not.toHaveClass("hidden");
     } finally {
       vi.unstubAllGlobals();
     }
@@ -473,7 +648,7 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
     expect(blocks).toEqual(["what-you-will-learn", "instructor", "free-preview"]);
   });
 
-  it("chama o visitante de volta para o curso depois de criar conta", async () => {
+  it("chama o visitante de volta para o checkout do curso depois de criar conta", async () => {
     render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
 
     const enroll = await screen.findByRole("link", {
@@ -481,7 +656,7 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
     });
     expect(enroll).toHaveAttribute(
       "href",
-      "/auth?mode=signup&returnTo=%2Fcourses%2Fcourse-1",
+      "/auth?mode=signup&returnTo=%2Fcourses%2Fcourse-1%2Fcheckout",
     );
   });
 
@@ -516,13 +691,13 @@ function withOffers(offers: object[] = [launchOffer]) {
 describe("CreatorCourseDetail: the sales-page button does what the buy card does", () => {
   const salesCta = () => screen.getByRole("button", { name: "Sales block CTA" });
 
-  it("a visitor goes to sign up and comes back to this course, like the card's link", async () => {
+  it("a visitor goes to sign up and comes back to this course's checkout, like the card's link", async () => {
     render(<CreatorCourseDetail courseIdOverride="course-1" />);
     const cardLink = await screen.findByRole("link", { name: "Enroll — $149.00" });
 
     fireEvent.click(salesCta());
 
-    expect(fixtures.router.push).toHaveBeenCalledWith("/auth?mode=signup&returnTo=%2Fcourses%2Fcourse-1");
+    expect(fixtures.router.push).toHaveBeenCalledWith("/auth?mode=signup&returnTo=%2Fcourses%2Fcourse-1%2Fcheckout");
     expect(fixtures.router.push).toHaveBeenCalledWith(cardLink.getAttribute("href"));
     expect(startCourseCheckout).not.toHaveBeenCalled();
   });
@@ -668,15 +843,18 @@ describe("permanent checkout", () => {
     expect(startCourseCheckout).not.toHaveBeenCalled();
   });
 
-  it.each([false, true])("keeps offer and price through signup and signin (checkout %s)", async (checkoutOnly) => {
+  // Criar conta volta sempre ao checkout; entrar volta à página onde a pessoa
+  // estava. Os dois com a oferta e o preço, nunca o `returnTo` do endereço.
+  it.each([false, true])("keeps offer and price through signup (to the checkout) and signin (to this page) (checkout %s)", async (checkoutOnly) => {
     fixtures.query = "offer=LAUNCH&priceId=price-1&checkout=cancelled&returnTo=https://evil.example";
     withOffers();
     render(<CreatorCourseDetail courseIdOverride="focus-slug" checkoutOnly={checkoutOnly} />);
     const enroll = await screen.findByRole("link", { name: /Enroll — \$49.00/ });
-    const destination = `/courses/focus-slug${checkoutOnly ? "/checkout" : ""}?offer=LAUNCH&priceId=price-1`;
-    expect(new URL(enroll.getAttribute("href")!, "https://test.local").searchParams.get("returnTo")).toBe(destination);
+    expect(new URL(enroll.getAttribute("href")!, "https://test.local").searchParams.get("returnTo"))
+      .toBe("/courses/focus-slug/checkout?offer=LAUNCH&priceId=price-1");
     const signin = screen.getByRole("link", { name: /Sign in/ });
-    expect(new URL(signin.getAttribute("href")!, "https://test.local").searchParams.get("returnTo")).toBe(destination);
+    expect(new URL(signin.getAttribute("href")!, "https://test.local").searchParams.get("returnTo"))
+      .toBe(`/courses/focus-slug${checkoutOnly ? "/checkout" : ""}?offer=LAUNCH&priceId=price-1`);
   });
 
   it("keeps the decision by the price: no detail list, no way back to the catalog, trust marks by the button", async () => {
@@ -697,7 +875,9 @@ describe("permanent checkout", () => {
   it("no secure-payment mark while there is no paid price to process", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, json: async () => ({ error: "unavailable" }) })));
     render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
-    expect(await screen.findByText("Pricing unavailable")).toBeInTheDocument();
+    // Um aviso só (o vermelho): o lugar do preço não repete "Pricing unavailable".
+    expect(await screen.findByRole("alert")).toHaveTextContent("Offers are temporarily unavailable.");
+    expect(screen.queryByText("Pricing unavailable")).not.toBeInTheDocument();
     expect(screen.queryByText("Secure payment processed by Stripe.")).not.toBeInTheDocument();
   });
 
@@ -705,8 +885,10 @@ describe("permanent checkout", () => {
     const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
     await screen.findAllByText("$149.00");
     expect(screen.getByText("Category")).toBeInTheDocument();
-    // Sem curso real na loja, a volta leva ao início.
-    expect(container.querySelector('#enroll-card a[href="/"]')).not.toBeNull();
+    // Sem curso real na loja, a volta leva ao início. Ela fica no alto da
+    // coluna da esquerda, fora do cartão de compra.
+    expect(screen.getByRole("link", { name: "Go home" })).toHaveAttribute("href", "/");
+    expect(container.querySelector('#enroll-card a[href="/"]')).toBeNull();
   });
 
   it("keeps offer selection on the checkout surface", async () => {
@@ -1144,7 +1326,7 @@ describe("CreatorCourseDetail: o que cada tipo entrega", () => {
     try {
       await screen.findAllByText("$149.00");
       expectNoCurriculum(container);
-      expect(screen.getByText("A file you download right after purchase.")).toBeInTheDocument();
+      expect(screen.getByText("Digital download: a file you get right after purchase.")).toBeInTheDocument();
     } finally {
       restore();
     }
@@ -1397,5 +1579,566 @@ describe("CreatorCourseDetail: buying without an account", () => {
       // @ts-expect-error jsdom não define scrollIntoView; remove o stub do teste
       delete Element.prototype.scrollIntoView;
     }
+  });
+});
+
+// A capa sozinha acima das colunas empurrava preço e "Enroll" para baixo da
+// primeira tela. Agora o cabeçalho do servidor (`lead`) é o topo da coluna da
+// esquerda e o cartão de compra é a coluna da direita desde o alto.
+describe("CreatorCourseDetail: o cabeçalho do servidor no topo da coluna", () => {
+  const lead = (
+    <header id="overview">
+      <h1>Deep Focus Systems</h1>
+      <p>Server summary</p>
+    </header>
+  );
+
+  it("o cabeçalho abre a coluna da esquerda, e o cartão de compra é a coluna ao lado", async () => {
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader lead={lead} />);
+    await screen.findAllByText("$149.00");
+
+    const title = screen.getByRole("heading", { level: 1, name: "Deep Focus Systems" });
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    const column = title.closest("section") as HTMLElement;
+    // Mesma grade: a coluna do cabeçalho e o cartão são irmãos.
+    expect(column.nextElementSibling).toBe(container.querySelector("#enroll-card"));
+    // Antes da assinatura do instrutor e do menu das seções.
+    const nav = screen.getByRole("navigation", { name: "Course sections" });
+    expect(title.compareDocumentPosition(nav) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("enquanto o curso carrega, o cabeçalho segue à vista (fora do pulso e do aria-hidden)", () => {
+    fixtures.holdCourse = true;
+    render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader lead={lead} />);
+
+    expect(screen.getByRole("status")).toHaveTextContent("Loading course...");
+    const title = screen.getByRole("heading", { level: 1, name: "Deep Focus Systems" });
+    expect(title.closest('[aria-hidden="true"]')).toBeNull();
+    expect(title.closest(".animate-pulse")).toBeNull();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
+
+  it("quando o curso chega, o cabeçalho é o MESMO nó: não desmonta (a capa não pisca)", async () => {
+    fixtures.holdCourse = true;
+    render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader lead={lead} />);
+    const before = screen.getByRole("heading", { level: 1, name: "Deep Focus Systems" });
+
+    act(() => fixtures.courseNext?.(fixtures.course));
+    await screen.findAllByText("$149.00");
+
+    expect(screen.queryByText("Loading course...")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Deep Focus Systems" })).toBe(before);
+    expect(before.isConnected).toBe(true);
+  });
+
+  it("num estado de erro, o cabeçalho fica no alto e o aviso vira h2", () => {
+    render(<CreatorCourseDetail hideHeader lead={lead} />);
+
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    const state = screen.getByRole("heading", { level: 2, name: "Course not selected." });
+    const title = screen.getByRole("heading", { level: 1 });
+    expect(title.compareDocumentPosition(state) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
+
+describe("CreatorCourseDetail: preço que falha e quem vende", () => {
+  it("com a leitura do preço falhando, o cartão diz uma vez só: o aviso vermelho", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, json: async () => ({ error: "unavailable" }) })));
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+    const card = await waitFor(() => {
+      const found = container.querySelector<HTMLElement>("#enroll-card");
+      expect(found).not.toBeNull();
+      return found!;
+    });
+
+    expect(await within(card).findByRole("alert")).toHaveTextContent("Offers are temporarily unavailable.");
+    expect(within(card).queryByText("Pricing unavailable")).not.toBeInTheDocument();
+  });
+
+  it("na página de venda, quem vende é uma linha com 'Learn more'; a frase inteira segue na página", async () => {
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+    await screen.findAllByText("$149.00");
+    const card = container.querySelector("#enroll-card") as HTMLElement;
+
+    const details = within(card).getByText("Sold by your instructor, not by SkillsetMind.").closest("details") as HTMLElement;
+    expect(details).not.toBeNull();
+    expect(details).not.toHaveAttribute("open");
+    expect(details.querySelector("summary")).toHaveTextContent("Learn more");
+    // Mesma chave, mesmo texto, sem navegar para outra página.
+    expect(within(details).getByText(/This course is sold directly by the independent educator/)).toBeInTheDocument();
+  });
+
+  it("na página de compra, logo antes de pagar, a frase de quem vende fica inteira e aberta", async () => {
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
+    await screen.findByText("$149.00");
+
+    expect(screen.getByText(/This course is sold directly by the independent educator/).closest("details")).toBeNull();
+    expect(screen.queryByText("Learn more")).not.toBeInTheDocument();
+  });
+
+  it("com o preço a caminho, a barra de compra guarda o lugar com a mesma barra pulsante", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+    const bar = await waitFor(() => {
+      const found = container.querySelector('a[href="#enroll-card"]')?.closest<HTMLElement>("div.fixed");
+      expect(found).toBeTruthy();
+      return found!;
+    });
+
+    expect(within(bar).getByText("Loading pricing...")).toHaveClass("sr-only");
+    expect(bar.querySelector('[aria-hidden="true"].animate-pulse')).not.toBeNull();
+  });
+
+  // S-04: com o preço falhando, a barra mostra o traço do cartão (e não
+  // "Pricing unavailable" em letra de título) e, no lugar do "Enroll" sem
+  // preço, o mesmo "Try again" do aviso do cartão: no celular o cartão fica
+  // no fim da página, depois do currículo inteiro.
+  it("com a leitura do preço falhando, a barra de compra mostra o traço e o 'Try again' do cartão", async () => {
+    let answerRetry: (response: unknown) => void = () => {};
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ error: "unavailable" }) })
+      .mockImplementationOnce(() => new Promise((resolve) => { answerRetry = resolve; }));
+    vi.stubGlobal("fetch", fetchMock);
+    const offerReads = () => fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/offers")).length;
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+    const card = await waitFor(() => {
+      const found = container.querySelector<HTMLElement>("#enroll-card");
+      expect(found).not.toBeNull();
+      return found!;
+    });
+    expect(await within(card).findByRole("alert")).toHaveTextContent("Offers are temporarily unavailable.");
+    expect(within(card).getByRole("button", { name: "Try again" })).toBeInTheDocument();
+
+    const bar = container.querySelector<HTMLElement>(".course-buy-float")!;
+    expect(bar).not.toBeNull();
+    expect(within(bar).getByText("—")).toHaveAttribute("aria-hidden", "true");
+    expect(within(bar).getByText("Pricing unavailable")).toHaveClass("sr-only");
+    expect(bar.querySelector("a")).toBeNull();
+    const retry = within(bar).getByRole("button", { name: "Try again" });
+    // A mesma altura de 44px do "Enroll": a barra não encolhe neste estado.
+    expect(retry).toHaveClass("min-h-11");
+    expect(offerReads()).toBe(1);
+    // Os dois rótulos já moram no botão (a largura é a do maior); em repouso o
+    // da espera fica escondido e fora do nome.
+    expect(within(retry).getByText("Trying again...")).toHaveAttribute("aria-hidden", "true");
+    expect(within(retry).getByText("Try again")).not.toHaveAttribute("aria-hidden");
+
+    fireEvent.click(retry);
+    fireEvent.click(within(bar).getByRole("button", { name: "Trying again..." }));
+
+    // Uma releitura só, e a barra espera com o botão travado: o mesmo botão,
+    // agora com o nome da espera, e o rótulo de repouso escondido no lugar.
+    expect(offerReads()).toBe(2);
+    const waiting = within(bar).getByRole("button", { name: "Trying again..." });
+    expect(waiting).toBe(retry);
+    expect(waiting).toHaveAttribute("aria-busy", "true");
+    expect(within(waiting).getByText("Try again")).toHaveAttribute("aria-hidden", "true");
+    expect(within(bar).queryByRole("button", { name: "Try again" })).toBeNull();
+    expect(within(bar).getByText("Loading pricing...")).toHaveClass("sr-only");
+
+    await act(async () => answerRetry({ ok: true, json: async () => ({ offers: [] }) }));
+
+    expect(await within(bar).findByText("$149.00")).toBeInTheDocument();
+    expect(within(bar).getByRole("link", { name: "Enroll" })).toHaveAttribute("href", "#enroll-card");
+    expect(within(bar).queryByRole("button")).toBeNull();
+    expect(within(card).queryByRole("alert")).not.toBeInTheDocument();
+    expect(offerReads()).toBe(2);
+  });
+});
+
+// Um curso de 10 módulos era uma coluna enorme, tudo aberto.
+describe("CreatorCourseDetail: um módulo por sanfona", () => {
+  const mutable = fixtures.course as TeacherCourse;
+  const original = mutable.modules;
+  afterEach(() => {
+    mutable.modules = original;
+  });
+
+  it("o primeiro módulo abre sozinho, os outros fecham; aulas e duração na linha do módulo", async () => {
+    mutable.modules = [
+      original[0],
+      {
+        id: "module-2",
+        title: "Practice",
+        lessons: [
+          { id: "lesson-2", title: "Morning block", type: "video", description: "", durationMinutes: 20 },
+          { id: "lesson-3", title: "Shutdown ritual", type: "text", description: "" },
+        ],
+      },
+    ];
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+    await screen.findAllByText("$149.00");
+
+    // Cada módulo é um título (navegável por títulos, também no VoiceOver)
+    // com o botão de abrir dentro: o padrão de sanfona.
+    const curriculum = container.querySelector("#curriculum") as HTMLElement;
+    const toggles = Array.from(curriculum.querySelectorAll<HTMLButtonElement>("h2 > button[aria-expanded]"));
+    expect(toggles).toHaveLength(2);
+    expect(within(curriculum).getByRole("heading", { level: 2, name: /^Foundations 1 lesson · 1h 30m$/ })).toContainElement(toggles[0]);
+    expect(toggles[0]).toHaveAttribute("aria-expanded", "true");
+    expect(toggles[1]).toHaveAttribute("aria-expanded", "false");
+    // Sem minutos em todas as aulas, a duração não aparece (nada se estima).
+    expect(within(toggles[1]).getByText("2 lessons")).toBeInTheDocument();
+    const panel = (toggle: HTMLButtonElement) => document.getElementById(toggle.getAttribute("aria-controls")!) as HTMLElement;
+    expect(panel(toggles[0])).not.toHaveAttribute("hidden");
+    expect(panel(toggles[1])).toHaveAttribute("hidden");
+    // Nada sai da página: as aulas do módulo fechado seguem no DOM, e a trancada
+    // continua abrindo a compra.
+    expect(within(panel(toggles[1])).getByText("Shutdown ritual").closest("button")).toHaveAttribute("aria-haspopup", "dialog");
+
+    fireEvent.click(toggles[1]);
+    expect(toggles[1]).toHaveAttribute("aria-expanded", "true");
+    expect(panel(toggles[1])).not.toHaveAttribute("hidden");
+    fireEvent.click(toggles[0]);
+    expect(panel(toggles[0])).toHaveAttribute("hidden");
+  });
+});
+
+// O-09: quem CRIA CONTA para comprar volta ao checkout do curso, com a oferta,
+// e nao ao topo da pagina de venda. Quem ENTRA (e a compra sem login) volta a
+// esta pagina, como antes. A-11: o cupom e o campo da casa.
+describe("CreatorCourseDetail: o visitante que cria conta volta ao checkout", () => {
+  const returnOf = (link: HTMLElement) =>
+    new URL(link.getAttribute("href")!, "https://test.local").searchParams.get("returnTo");
+
+  it("curso pago, sem oferta: criar conta volta ao checkout; entrar, a esta pagina", async () => {
+    render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    const enroll = await screen.findByRole("link", { name: "Enroll — $149.00" });
+
+    expect(enroll).toHaveAttribute("href", "/auth?mode=signup&returnTo=%2Fcourses%2Fcourse-1%2Fcheckout");
+    expect(screen.getByRole("link", { name: "Sign in" }))
+      .toHaveAttribute("href", "/auth?mode=signin&returnTo=%2Fcourses%2Fcourse-1");
+  });
+
+  it("curso pago com ?offer=: a oferta vai junto nos dois", async () => {
+    fixtures.query = "offer=LAUNCH";
+    withOffers();
+    render(<CreatorCourseDetail courseIdOverride="focus-slug" />);
+    const enroll = await screen.findByRole("link", { name: "Enroll — $49.00" });
+
+    expect(returnOf(enroll)).toBe("/courses/focus-slug/checkout?offer=LAUNCH");
+    expect(returnOf(screen.getByRole("link", { name: "Sign in" }))).toBe("/courses/focus-slug?offer=LAUNCH");
+  });
+
+  it("curso gratis: criar conta volta ao cartao de entrar gratis do checkout; entrar, a esta pagina", async () => {
+    Object.assign(fixtures.course, { paymentType: "free", priceAmountMinor: 0 });
+    render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    const enroll = await screen.findByRole("link", { name: "Enroll free" });
+
+    expect(returnOf(enroll)).toBe("/courses/course-1/checkout");
+    expect(returnOf(screen.getByRole("link", { name: "Sign in" }))).toBe("/courses/course-1");
+  });
+
+  // Entrar volta a esta pagina, e quem ja tem o curso ve "Continue learning".
+  // O checkout agora tambem le a matricula: quem cai nele (pelo cadastro ou
+  // pelo "Sign in" da tela de cadastro) ve o mesmo, e nao o botao de pagar.
+  it("quem ja tem o curso e entra pelo cartao volta onde ve 'Continue learning'", async () => {
+    const view = render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    const signin = await screen.findByRole("link", { name: "Sign in" });
+    expect(returnOf(signin)).toBe("/courses/course-1");
+    view.unmount();
+
+    fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "student-1" };
+    enrollmentState.current = { status: "active" };
+    try {
+      render(<CreatorCourseDetail courseIdOverride="course-1" />);
+      expect((await screen.findAllByRole("link", { name: "Continue learning" })).length).toBeGreaterThan(0);
+      cleanup();
+      vi.mocked(subscribeToEnrollment).mockClear();
+
+      render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
+      expect(await screen.findByRole("link", { name: "Continue learning" })).toHaveAttribute("href", "/learn/courses/course-1");
+      expect(screen.queryByRole("button", { name: /^Enroll/ })).not.toBeInTheDocument();
+      expect(subscribeToEnrollment).toHaveBeenCalledTimes(1);
+    } finally {
+      enrollmentState.current = null;
+    }
+  });
+
+  it("a compra sem login (desligada hoje) leva o mesmo destino de antes", async () => {
+    vi.stubEnv("NEXT_PUBLIC_GUEST_CHECKOUT_ENABLED", "true");
+    vi.stubEnv("NEXT_PUBLIC_TURNSTILE_SITE_KEY", "site-key");
+    try {
+      render(<CreatorCourseDetail courseIdOverride="course-1" />);
+      await screen.findByRole("button", { name: "Enroll — $149.00" });
+
+      expect(screen.getByRole("link", { name: "Sign in" }))
+        .toHaveAttribute("href", `/login?returnTo=${encodeURIComponent("/courses/course-1")}`);
+      fireEvent.click(screen.getByRole("button", { name: "Continue with Google" }));
+      expect(signInWithGoogle).toHaveBeenCalledWith(getLoadingRoute("welcome", null, "/courses/course-1"));
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("a barra do celular continua levando ao cartao, cujo link volta ao checkout", async () => {
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    await screen.findByRole("link", { name: "Enroll — $149.00" });
+
+    const bar = container.querySelector("div.fixed") as HTMLElement;
+    expect(Array.from(bar.querySelectorAll("a")).map((link) => link.getAttribute("href"))).toEqual(["#enroll-card"]);
+    const cardLink = container.querySelector<HTMLElement>("#enroll-card a[data-cta-focus]")!;
+    expect(returnOf(cardLink)).toBe("/courses/course-1/checkout");
+  });
+
+  // O filtro de sempre (getSafeReturnTo, o mesmo do login, do e-mail de
+  // confirmacao e do fim da entrevista) deixa o checkout passar inteiro e
+  // continua barrando o que leva para fora.
+  it.each([
+    ["/courses/focus-slug/checkout", "/courses/focus-slug/checkout"],
+    ["/courses/focus-slug/checkout?offer=LAUNCH", "/courses/focus-slug/checkout?offer=LAUNCH"],
+    ["/courses/focus-slug/checkout?offer=LAUNCH&priceId=price-1", "/courses/focus-slug/checkout?offer=LAUNCH&priceId=price-1"],
+    ["//evil.example", null],
+    ["https://evil.example", null],
+    ["/\\evil", null],
+    ["/%2F%2Fevil.example", null],
+    ["/courses/%2F%2Fevil.example/checkout", null],
+  ])("o filtro de destino: %s", (returnTo, expected) => {
+    expect(getSafeReturnTo(new URLSearchParams({ returnTo }))).toBe(expected);
+  });
+
+  it("o destino que o link leva passa no filtro sem mudar", async () => {
+    fixtures.query = "offer=LAUNCH&priceId=price-1";
+    withOffers();
+    render(<CreatorCourseDetail courseIdOverride="focus-slug" />);
+    const destination = returnOf(await screen.findByRole("link", { name: "Enroll — $49.00" }))!;
+
+    expect(getSafeReturnTo(new URLSearchParams({ returnTo: destination }))).toBe(destination);
+  });
+
+  it("o cupom usa o campo da casa e guarda o mesmo filtro do texto", async () => {
+    fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
+    render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Have a coupon?" }));
+
+    const field = screen.getByLabelText("Coupon code");
+    expect(field).toHaveClass("field-input");
+    expect(field).not.toHaveClass("bg-white");
+    // Rótulo da casa: o mesmo do Field, 14px e sem caixa alta.
+    const label = screen.getByText("Coupon code");
+    expect(label.closest("label")).toContainElement(field);
+    expect(label).toHaveClass("text-sm", "text-[var(--color-ink)]");
+    expect(label).not.toHaveClass("uppercase");
+    expect(label).not.toHaveClass("text-xs");
+    fireEvent.change(field, { target: { value: "save 25!" } });
+    expect(field).toHaveValue("SAVE25");
+  });
+});
+
+// A página de compra lê a matrícula, como a página de venda: quem já tem o
+// curso vê "Continue learning". Até a leitura responder, o botão espera; se
+// ela falhar, fica o botão de pagar de antes (o servidor recusa quem já tem).
+describe("CreatorCourseDetail: a página de compra reconhece quem já tem o curso", () => {
+  const signIn = () => { fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "student-1" }; };
+  afterEach(() => {
+    enrollmentState.current = null;
+    enrollmentState.deliverLater = false;
+  });
+
+  it("quem já tem: 'Continue learning' para a sala, sem botão de pagar, uma leitura só", async () => {
+    signIn();
+    enrollmentState.current = { status: "active" };
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
+
+    expect(await screen.findByRole("link", { name: "Continue learning" })).toHaveAttribute("href", "/learn/courses/course-1");
+    expect(screen.queryByRole("button", { name: /^Enroll/ })).not.toBeInTheDocument();
+    expect(startCourseCheckout).not.toHaveBeenCalled();
+    expect(subscribeToEnrollment).toHaveBeenCalledTimes(1);
+    expect(subscribeToEnrollment).toHaveBeenCalledWith("student-1", "course-1", expect.any(Function), expect.any(Function));
+  });
+
+  it("quem não tem: com o preço na tela o botão espera a leitura, e só depois oferece pagar", async () => {
+    signIn();
+    enrollmentState.deliverLater = true;
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
+
+    await screen.findByText("$149.00");
+    const waiting = screen.getByRole("button", { name: "Enroll" });
+    expect(waiting).toBeDisabled();
+    expect(waiting).toHaveAttribute("aria-busy", "true");
+    fireEvent.click(waiting);
+    expect(startCourseCheckout).not.toHaveBeenCalled();
+
+    act(() => enrollmentState.onNext?.(null));
+    const pay = await screen.findByRole("button", { name: "Enroll — $149.00" });
+    expect(pay).toBeEnabled();
+    expect(pay).not.toHaveAttribute("aria-busy");
+    expect(screen.queryByRole("link", { name: "Continue learning" })).not.toBeInTheDocument();
+  });
+
+  it("curso grátis: o botão de entrar grátis também espera a leitura", async () => {
+    Object.assign(fixtures.course, { paymentType: "free", priceAmountMinor: 0 });
+    signIn();
+    enrollmentState.deliverLater = true;
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
+
+    const waiting = await screen.findByRole("button", { name: "Enroll" });
+    expect(waiting).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Enroll free" })).not.toBeInTheDocument();
+
+    act(() => enrollmentState.onNext?.(null));
+    expect(await screen.findByRole("button", { name: "Enroll free" })).toBeEnabled();
+  });
+
+  it("sem sessão: nada muda, e a matrícula não é lida", async () => {
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
+
+    expect(await screen.findByRole("link", { name: "Enroll — $149.00" }))
+      .toHaveAttribute("href", "/auth?mode=signup&returnTo=%2Fcourses%2Fcourse-1%2Fcheckout");
+    expect(subscribeToEnrollment).not.toHaveBeenCalled();
+  });
+
+  it("a leitura falhou: fica o botão de pagar, como antes", async () => {
+    signIn();
+    vi.mocked(subscribeToEnrollment).mockImplementationOnce((_uid, _courseId, _onNext, onError) => {
+      onError(new Error("offline"));
+      return Object.assign(() => {}, { reload: async () => {} });
+    });
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
+
+    const pay = await screen.findByRole("button", { name: "Enroll — $149.00" });
+    expect(pay).toBeEnabled();
+    expect(screen.queryByRole("link", { name: "Continue learning" })).not.toBeInTheDocument();
+    fireEvent.click(pay);
+    expect(startCourseCheckout).toHaveBeenCalledWith("course-1", {});
+  });
+});
+
+// F-11: com a rede ruim, a leitura que falha tem saída na própria página
+// ("Try again" lê de novo), e nunca mostra preço ou botão de pagar inventados.
+describe("CreatorCourseDetail: a leitura que falha tem 'Try again'", () => {
+  it.each([false, true])("o curso não carregou: aviso, 'Try again' que assina de novo, e a loja como link (compra: %s)", async (checkoutOnly) => {
+    fixtures.holdCourse = true;
+    render(<RealCoursesProvider value><CreatorCourseDetail courseIdOverride="course-1" hideHeader checkoutOnly={checkoutOnly} /></RealCoursesProvider>);
+    act(() => fixtures.courseError?.(new Error("offline")));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load this course right now.");
+    expect(screen.getByRole("link", { name: "Open marketplace" })).toHaveAttribute("href", "/courses");
+    expect(screen.queryByText("$149.00")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Enroll/ })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(fixtures.subscriptions).toBe(2);
+    // O aviso fica até a resposta, com o botão ocupado.
+    expect(screen.getByRole("button", { name: "Trying again..." })).toHaveAttribute("aria-busy", "true");
+
+    act(() => fixtures.courseNext?.(fixtures.course));
+    expect((await screen.findAllByText("$149.00")).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("a releitura que falha de novo devolve o aviso, sem botão de pagar", async () => {
+    fixtures.holdCourse = true;
+    render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+    act(() => fixtures.courseError?.(new Error("offline")));
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    act(() => fixtures.courseError?.(new Error("offline")));
+
+    expect(await screen.findByRole("button", { name: "Try again" })).toBeEnabled();
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load this course right now.");
+    expect(screen.queryByRole("button", { name: /Enroll/ })).not.toBeInTheDocument();
+  });
+
+  it("o preço não carregou: 'Try again' no cartão lê as ofertas de novo, e o preço chega", async () => {
+    fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ error: "unavailable" }) })
+      .mockResolvedValue({ ok: true, json: async () => ({ offers: [] }) });
+    vi.stubGlobal("fetch", fetchMock);
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+    const card = await waitFor(() => {
+      const found = container.querySelector<HTMLElement>("#enroll-card");
+      expect(found).not.toBeNull();
+      return found!;
+    });
+
+    expect(await within(card).findByRole("alert")).toHaveTextContent("Offers are temporarily unavailable.");
+    expect(within(card).queryByText("$149.00")).not.toBeInTheDocument();
+    expect(within(card).getByRole("button", { name: "Checkout not available yet" })).toBeDisabled();
+
+    fireEvent.click(within(card).getByRole("button", { name: "Try again" }));
+    expect(await within(card).findByRole("button", { name: "Enroll — $149.00" })).toBeEnabled();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(within(card).queryByRole("alert")).not.toBeInTheDocument();
+  });
+});
+
+// A leitura da matrícula que não responde nem falha não prende a compra: em 4 s
+// o botão de pagar volta (como numa falha). E a resposta atrasada de outra
+// pessoa não mexe no botão de quem está na página agora.
+describe("CreatorCourseDetail: o prazo da leitura da matrícula no checkout", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "student-1" };
+    enrollmentState.deliverLater = true;
+  });
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+    enrollmentState.current = null;
+    enrollmentState.deliverLater = false;
+  });
+
+  it("sem resposta em 4 s, o botão de pagar volta, como numa falha", async () => {
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
+    await screen.findByText("$149.00");
+    expect(screen.getByRole("button", { name: "Enroll" })).toBeDisabled();
+
+    act(() => vi.advanceTimersByTime(3_000));
+    expect(screen.getByRole("button", { name: "Enroll" })).toBeDisabled();
+    act(() => vi.advanceTimersByTime(1_000));
+    const pay = screen.getByRole("button", { name: "Enroll — $149.00" });
+    expect(pay).toBeEnabled();
+    fireEvent.click(pay);
+    expect(startCourseCheckout).toHaveBeenCalledWith("course-1", {});
+  });
+
+  it("a resposta em 1 s vale, e o prazo não muda nada depois", async () => {
+    const armed = vi.spyOn(window, "setTimeout");
+    const disarmed = vi.spyOn(window, "clearTimeout");
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
+    await screen.findByText("$149.00");
+    const index = armed.mock.calls.findIndex(([, delay]) => delay === 4_000);
+    expect(index).toBeGreaterThan(-1);
+    const deadline = armed.mock.results[index].value;
+    act(() => vi.advanceTimersByTime(1_000));
+    act(() => enrollmentState.onNext?.({ status: "active" }));
+
+    expect(screen.getByRole("link", { name: "Continue learning" })).toBeInTheDocument();
+    // O prazo foi desarmado com a resposta, antes de vencer.
+    expect(disarmed).toHaveBeenCalledWith(deadline);
+    act(() => vi.advanceTimersByTime(5_000));
+    expect(screen.getByRole("link", { name: "Continue learning" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Enroll/ })).not.toBeInTheDocument();
+    armed.mockRestore();
+    disarmed.mockRestore();
+  });
+
+  it("desmontar não deixa prazo pendente", async () => {
+    const view = render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
+    await screen.findByText("$149.00");
+    expect(vi.getTimerCount()).toBeGreaterThan(0);
+    view.unmount();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("trocou a pessoa com a 1ª leitura no ar: a resposta velha não mexe na de agora", async () => {
+    const old: { next: ((enrollment: unknown) => void) | null } = { next: null };
+    vi.mocked(subscribeToEnrollment).mockImplementationOnce((_uid, _courseId, onNext) => {
+      old.next = onNext as (enrollment: unknown) => void;
+      return Object.assign(() => {}, { reload: async () => {} });
+    });
+    const view = render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
+    await screen.findByText("$149.00");
+
+    fixtures.auth.user = { uid: "student-2" };
+    view.rerender(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
+    expect(subscribeToEnrollment).toHaveBeenLastCalledWith("student-2", "course-1", expect.any(Function), expect.any(Function));
+    act(() => enrollmentState.onNext?.(null));
+    expect(screen.getByRole("button", { name: "Enroll — $149.00" })).toBeEnabled();
+
+    act(() => old.next?.({ status: "active" }));
+    expect(screen.getByRole("button", { name: "Enroll — $149.00" })).toBeEnabled();
+    expect(screen.queryByRole("link", { name: "Continue learning" })).not.toBeInTheDocument();
   });
 });

@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { PlatformShell } from "@/components/platform/platform-shell";
 import { ActivationCheckoutPanel } from "@/components/teacher/activation-checkout-panel";
+import { StripeFrameSkeleton } from "@/components/teacher/builder-skeleton";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { uuidPattern } from "@/lib/uuid";
@@ -32,8 +33,10 @@ export default async function TeachActivatePage({
       <PlatformShell title={t("activationCheckout.pageTitle")} compact>
         <Suspense
           fallback={
-            <div className="rounded-lg border fine-rule bg-white p-8 text-sm text-[var(--color-ink-soft)] shadow-[var(--shadow-soft)]">
-              {t("activationCheckout.preparing")}
+            // O mesmo lugar guardado do painel: o formulario da Stripe entra
+            // sem empurrar a pagina.
+            <div className="overflow-hidden rounded-lg border fine-rule bg-white shadow-[var(--shadow-soft)]">
+              <StripeFrameSkeleton label={t("activationCheckout.preparing")} />
             </div>
           }
         >

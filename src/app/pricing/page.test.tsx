@@ -32,7 +32,7 @@ describe("pricing page", () => {
 
     expect(
       screen.getByText(
-        "Every plan publishes and sells, and each starts with 14 days free. Higher plans lower the commission and raise your limits.",
+        "Every plan publishes and sells, and each starts with a 14-day free trial, card required. Higher plans lower the commission, down to 0% on Pro, and raise your limits.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText("Which plan is for me?")).not.toBeInTheDocument();
@@ -52,23 +52,71 @@ describe("pricing page", () => {
     );
   });
 
-  it("leads every card with the commission and keeps the subscription small", async () => {
+  it("leads every card with the dollar price and keeps the commission small", async () => {
     render(await PricingPage());
 
     const grid = within(screen.getByRole("region", { name: "Plan comparison" }));
     for (const plan of publicPlans) {
-      expect(grid.getByText(`${plan.commissionPercent}%`).className).toContain(
-        "text-4xl",
-      );
+      expect(grid.getByText(`$${plan.monthlyUsd}`).className).toContain("text-4xl");
+      expect(grid.getByText(`${plan.commissionPercent}%`).className).not.toContain("text-4xl");
     }
-    expect(grid.getByText("$5/mo").className).not.toContain("text-4xl");
-    expect(grid.getByText("$89/mo")).toBeInTheDocument();
+    expect(grid.getByText("$89")).toBeInTheDocument();
     // Only the three plans on offer: no Free card, no Enterprise.
     expect(grid.queryByText("Free")).not.toBeInTheDocument();
     expect(grid.queryByText("Enterprise")).not.toBeInTheDocument();
-    expect(grid.getAllByText("+ $0.30 per sale")).toHaveLength(3);
+    // Pro is 0%: no fixed part, and the Stripe caveat instead.
+    expect(grid.getAllByText("+ $0.30 per sale")).toHaveLength(2);
+    expect(grid.getByText("commission. Card processing by Stripe still applies.").closest("article")).toHaveTextContent("Pro");
     expect(grid.queryByText(/no subscription/i)).not.toBeInTheDocument();
     expect(grid.getByText("Recommended").closest("article")).toHaveTextContent("Starter");
+  });
+
+  // Cada fato uma vez: a taxa na linha abaixo do preço, a economia anual no
+  // seletor e o teste grátis numa frase junto dos botões. O Pro dizia "0%
+  // commission" três vezes seguidas e a página citava o teste nove vezes.
+  it("states the fee, the yearly saving and the trial once each", async () => {
+    render(await PricingPage());
+
+    const region = screen.getByRole("region", { name: "Plan comparison" });
+    const count = (text: string, part: string) => text.split(part).length - 1;
+    for (const card of within(region).getAllByRole("article")) {
+      const text = card.textContent ?? "";
+      expect(count(text, "per sale")).toBeLessThanOrEqual(1);
+      expect(count(text, "Card processing by Stripe still applies")).toBeLessThanOrEqual(1);
+      expect(text).not.toContain("Annual billing saves");
+    }
+    // A lista fica só com o que muda de um plano para o outro.
+    const pro = within(region).getByText("Pro").closest("article")!;
+    expect(pro).toHaveTextContent("Creators with an established catalog.");
+    expect(pro).toHaveTextContent("5 custom domains and 5 marketplace highlights");
+    expect(pro).toHaveTextContent("Remove the SkillsetMind mark");
+    expect(within(region).getByText("1 custom domain and 1 marketplace highlight")).toBeInTheDocument();
+    expect(within(region).getByText("Publish once your course passes the launch checks")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Yearly/).closest("label")).toHaveTextContent("~17% off");
+    // Os cartões do app leem o mesmo plans.ts: o filtro é só desta página.
+    expect(publicPlans.find((plan) => plan.id === "basic")?.highlights).toContain("Annual billing saves ~17%");
+    expect(publicPlans.find((plan) => plan.id === "pro")?.highlights[0]).toMatch(/^0% commission/);
+
+    expect(screen.getAllByText(translate(getDictionary("en"), "planTrial.publicNote"))).toHaveLength(1);
+    const closing = screen.getByText("Ready to publish on SkillsetMind?").closest("section")!;
+    expect(closing).not.toHaveTextContent("14-day free trial");
+  });
+
+  // O total anual ("$190 yearly") só existia no anual: trocar o seletor
+  // aumentava os três cartões e empurrava a página.
+  it("keeps the yearly total line in both cycles, invisible on monthly", async () => {
+    render(await PricingPage());
+
+    const region = screen.getByRole("region", { name: "Plan comparison" });
+    expect(region.className).toContain("md:grid-cols-3");
+    const yearlyLines = [...region.querySelectorAll("p")].filter((line) => line.textContent?.endsWith(" yearly"));
+    expect(yearlyLines).toHaveLength(publicPlans.length);
+    for (const line of yearlyLines) {
+      const classes = line.className.split(" ");
+      expect(classes).toContain("invisible");
+      expect(classes).toContain("group-has-[#billing-yearly:checked]:visible");
+      expect(classes).not.toContain("hidden");
+    }
   });
 
   it("stretches the cards and pins the button to the bottom", async () => {
@@ -80,14 +128,45 @@ describe("pricing page", () => {
     for (const card of cards) {
       expect(card.className).toContain("flex h-full flex-col");
     }
-    const cta = grid.getByRole("link", { name: "Start 14-day free trial — Starter" });
-    expect(cta).toHaveTextContent("Start 14-day free trial");
+    // One link per cycle; CSS shows the one for the selected cycle.
+    const [cta, yearlyCta] = grid.getAllByRole("link", { name: "Start your 14-day free trial — Starter" });
+    expect(cta).toHaveTextContent("Start your 14-day free trial");
+    expect(yearlyCta.parentElement).toBe(cta.parentElement);
     expect(cta.parentElement?.className).toContain("mt-auto");
     // The renewal terms sit next to the button, for each cycle.
     expect(cta.parentElement).toHaveTextContent(
-      "14 days free, then $19/month. A card is required. Renews automatically until you cancel. Cancel in Billing before your trial ends to avoid the subscription charge.",
+      "14-day free trial, then $19/month. A card is required. Renews automatically until you cancel. Cancel in Billing before your trial ends to avoid the subscription charge.",
     );
-    expect(cta.parentElement).toHaveTextContent("14 days free, then $190/year.");
+    expect(cta.parentElement).toHaveTextContent("14-day free trial, then $190/year.");
+  });
+
+  // The plan used to be lost on the way to signup: all three buttons went to
+  // the same /auth link and the teacher had to pick the plan again after
+  // onboarding. Each button now says which plan and which cycle.
+  it("sends each plan button to signup with its plan and the selected cycle", async () => {
+    render(await PricingPage());
+
+    const grid = within(screen.getByRole("region", { name: "Plan comparison" }));
+    expect(publicPlans.map((plan) => plan.id)).toEqual(["basic", "starter", "pro"]);
+    for (const plan of publicPlans) {
+      const links = grid.getAllByRole("link", { name: `Start your 14-day free trial — ${plan.name}` });
+      expect(links.map((link) => link.getAttribute("href"))).toEqual([
+        `/auth?mode=signup&path=teacher&plan=${plan.id}&cycle=monthly`,
+        `/auth?mode=signup&path=teacher&plan=${plan.id}&cycle=yearly`,
+      ]);
+      // Same toggle as the prices: exactly one of the two is displayed.
+      const [monthly, yearly] = links.map((link) => link.className.split(" "));
+      expect(monthly).toContain("group-has-[#billing-yearly:checked]:hidden");
+      expect(monthly).not.toContain("hidden");
+      expect(yearly).toContain("hidden");
+      expect(yearly).toContain("group-has-[#billing-yearly:checked]:inline-flex");
+    }
+    // The closing button names no plan and stays as it was.
+    const closing = screen.getByText("Ready to publish on SkillsetMind?").closest("section")!;
+    expect(within(closing).getByRole("link", { name: "Create account" })).toHaveAttribute(
+      "href",
+      "/auth?mode=signup&path=teacher",
+    );
   });
 
   it("keeps the no-JavaScript billing toggle, in 13px sentence case", async () => {
@@ -99,5 +178,21 @@ describe("pricing page", () => {
     const label = monthly.closest("label");
     expect(label?.className).toContain("text-[13px]");
     expect(label?.className).not.toContain("uppercase");
+  });
+
+  // Num celular de 360px a coluna da resposta ficava toda fora da caixa.
+  it("keeps the fee table's last column, You receive, pinned while the table scrolls", async () => {
+    render(await PricingPage());
+
+    const table = screen.getByRole("table");
+    expect(table.parentElement?.className).toContain("overflow-x-auto");
+    const headers = within(table).getAllByRole("columnheader");
+    expect(headers.at(-1)).toHaveTextContent("You receive");
+    const rows = within(table).getAllByRole("row");
+    expect(rows).toHaveLength(publicPlans.length + 1);
+    for (const row of rows) {
+      const last = within(row).queryAllByRole("cell").at(-1) ?? within(row).getAllByRole("columnheader").at(-1);
+      expect(last).toHaveClass("sticky", "right-0", "sm:shadow-none");
+    }
   });
 });

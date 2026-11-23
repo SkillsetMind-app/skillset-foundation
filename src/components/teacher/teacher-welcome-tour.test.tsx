@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { LegalGateContext } from "@/components/auth/legal-gate-state";
 import { WelcomeTour } from "@/components/learn/welcome-tour";
 import { TeacherWelcomeTour } from "@/components/teacher/teacher-welcome-tour";
 import { I18nProvider } from "@/components/i18n/i18n-provider";
@@ -25,25 +26,62 @@ describe("saídas do tour de boas-vindas", () => {
     cleanup();
   });
 
-  it("no tour do professor, X e Skip têm alvo de 44px", async () => {
+  // C-17: no tour do professor também ficou só o "Skip" do rodapé (e o Esc);
+  // o X ("Skip the tour") fazia a mesma coisa. A saída que resta tem nome
+  // visível e alvo de 44px.
+  it("no tour do professor, a única saída (Skip) tem nome e alvo de 44px", async () => {
     render(<TeacherWelcomeTour userId="teacher-1" firstName="Ana" />);
 
-    await screen.findByRole("dialog");
+    const dialog = await screen.findByRole("dialog");
 
-    expect(screen.getByRole("button", { name: "Skip the tour" })).toHaveClass("h-11", "w-11");
-    expect(screen.getByRole("button", { name: "Skip" })).toHaveClass("min-h-11");
+    expect(within(dialog).queryByRole("button", { name: "Skip the tour" })).toBeNull();
+    expect(within(dialog).getAllByRole("button", { name: /skip/i })).toHaveLength(1);
+    expect(within(dialog).getByRole("button", { name: "Skip" })).toHaveClass("min-h-11");
   });
 
-  it("no tour do aluno, X e Skip têm alvo de 44px", async () => {
+  // C-17: trocar de passo não muda a altura (os passos na mesma célula da
+  // grade), o foco vai para o título novo e só o passo atual existe para o
+  // leitor de tela. Os traços não animam largura. O-11: são dois passos.
+  it("no tour do professor, a altura não pula e o foco vai ao título do passo", async () => {
+    render(<TeacherWelcomeTour userId="teacher-steady" firstName="Ana" />);
+    const dialog = await screen.findByRole("dialog");
+    const titles = dialog.querySelectorAll("h2");
+    expect(titles).toHaveLength(2);
+    const stack = titles[0].parentElement!.parentElement!;
+    expect(stack).toHaveClass("grid");
+    for (const title of titles) expect(title.parentElement).toHaveClass("[grid-area:1/1]");
+    // Na abertura quem entra é a janela; o texto não sobe junto.
+    expect(titles[0].parentElement).not.toHaveClass("motion-panel-in");
+
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    const current = screen.getByRole("heading", { name: "Create your first product" });
+    expect(current).toHaveFocus();
+    expect(current.parentElement).toHaveClass("motion-panel-in");
+    expect(screen.getAllByRole("heading")).toHaveLength(1);
+    expect(dialog).toHaveAccessibleName("Create your first product");
+    const dots = dialog.querySelectorAll("[aria-hidden='true'] > span.rounded-full");
+    expect(dots).toHaveLength(2);
+    for (const dot of dots) {
+      expect(dot).toHaveClass("w-6");
+      expect(dot.className).not.toContain("transition-all");
+    }
+
+    // Voltar ao passo 1 tira o "Back" da tela: o foco não cai atrás da janela.
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.getByRole("heading", { name: "Welcome to your studio, Ana" })).toHaveFocus();
+  });
+
+  // C-17: no tour do aluno o X ("Skip the tour") e o "Skip" faziam a mesma
+  // coisa; ficou só o "Skip" do rodapé (e o Esc). A saída que resta continua
+  // com nome visível e alvo de 44px.
+  it("no tour do aluno, a única saída (Skip) tem nome e alvo de 44px", async () => {
     render(<WelcomeTour userId="student-1" firstName="Ana" />);
 
-    await screen.findByRole("dialog");
+    const dialog = await screen.findByRole("dialog");
 
-    // Ordem no DOM: o X no cabeçalho, depois o Skip no rodapé, antes de Next.
-    const [close, skip] = within(screen.getByRole("dialog")).getAllByRole("button");
-    expect(close).toHaveAttribute("aria-label");
-    expect(close).toHaveClass("h-11", "w-11");
-    expect(skip).toHaveClass("min-h-11");
+    expect(within(dialog).queryByRole("button", { name: "Skip the tour" })).toBeNull();
+    expect(within(dialog).getAllByRole("button", { name: /skip/i })).toHaveLength(1);
+    expect(within(dialog).getByRole("button", { name: "Skip" })).toHaveClass("min-h-11");
   });
 
   it("no tour do aluno, um nome com $& aparece literal, sem virar '{name}'", async () => {
@@ -57,35 +95,51 @@ describe("saídas do tour de boas-vindas", () => {
   it.each(["en", "es"] as const)("localizes the creator steps and current help location (%s)", async (locale) => {
     render(<I18nProvider initialLocale={locale}><TeacherWelcomeTour userId={`locale-${locale}`} firstName="Mc$&Donald" /></I18nProvider>);
     expect(await screen.findByRole("heading", { name: locale === "en" ? "Welcome to your studio, Mc$&Donald" : "Bienvenido a tu espacio, Mc$&Donald" })).toBeInTheDocument();
-    for (let step = 0; step < 3; step += 1) fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Next" : "Siguiente" }));
+    fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Next" : "Siguiente" }));
     // A Ajuda mora no menu (barra lateral; no celular, dentro da gaveta), nao no topo.
     expect(screen.getByText(locale === "en" ? /Help in the menu/ : /Ayuda en el menú/)).toBeInTheDocument();
     // The advisor is open on every account: the tour no longer ties it to a fee.
     expect(screen.queryByText(/active storefront|tienda activa/)).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Open your studio" : "Abrir mi espacio" }));
+    // Sem produto, a ultima pagina leva a criar o primeiro, em vez de so fechar.
+    const create = screen.getByRole("link", { name: locale === "en" ? "Create my first product" : "Crear mi primer producto" });
+    expect(create).toHaveAttribute("href", "/teach/builder?newCourse=1&format=course");
+    expect(screen.queryByRole("button", { name: locale === "en" ? "Open your studio" : "Abrir mi espacio" })).not.toBeInTheDocument();
+    // O link leva a criar E fecha o tour na hora.
+    fireEvent.click(create);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("com produto, a ultima pagina so fecha o tour ('Open your studio')", async () => {
+    render(<TeacherWelcomeTour userId="teacher-with-product" firstName="Ana" hasProducts />);
+    await screen.findByRole("dialog");
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.queryByRole("link", { name: "Create my first product" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Open your studio" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   // O iconezinho redondo de cada passo virou uma faixa de gravura com a cena
-  // do passo: produto, aula, publicado, recibo.
+  // do passo: produto e aula. O-11: no segundo passo o tour acaba (sem "Next").
   it("no tour do professor, cada passo mostra a sua cena de gravura", async () => {
     render(<TeacherWelcomeTour userId="teacher-scenes" firstName="Ana" />);
     const dialog = await screen.findByRole("dialog");
     const scenes: string[] = [];
-    for (let step = 0; step < 4; step += 1) {
+    for (let step = 0; step < 2; step += 1) {
       const art = dialog.querySelector("svg[data-scene]")!;
       expect(art).toHaveAttribute("aria-hidden", "true");
       scenes.push(art.getAttribute("data-scene")!);
-      if (step < 3) fireEvent.click(screen.getByRole("button", { name: "Next" }));
+      if (step < 1) fireEvent.click(screen.getByRole("button", { name: "Next" }));
     }
-    expect(scenes).toEqual(["firstProduct", "firstLesson", "published", "noSales"]);
+    expect(scenes).toEqual(["firstProduct", "firstLesson"]);
+    expect(screen.queryByRole("button", { name: "Next" })).not.toBeInTheDocument();
   });
 });
 
+// Quantos passos cada tour tem (O-11: o do professor ficou com dois).
 describe.each([
-  ["teacher", TeacherWelcomeTour],
-  ["student", WelcomeTour],
-] as const)("first welcome for %s", (surface, Tour) => {
+  ["teacher", TeacherWelcomeTour, 2],
+  ["student", WelcomeTour, 4],
+] as const)("first welcome for %s", (surface, Tour, stepCount) => {
   beforeEach(() => {
     rpc.mockReset().mockResolvedValue({ data: true, error: null });
     localStorage.clear();
@@ -94,11 +148,27 @@ describe.each([
 
   it("lets narrow footer actions wrap instead of squeezing their labels", async () => {
     await act(async () => { render(<Tour userId="narrow-footer" firstName="Ana" />); });
-    for (let step = 0; step < 3; step += 1) fireEvent.click(screen.getByRole("button", { name: /^Next$/ }));
+    for (let step = 0; step < stepCount - 1; step += 1) fireEvent.click(screen.getByRole("button", { name: /^Next$/ }));
     const actions = screen.getByRole("button", { name: /^Back$/ }).parentElement!;
     expect(actions.parentElement).toHaveClass("flex-wrap");
     expect(actions).toHaveClass("flex-wrap", "max-w-full");
     for (const button of within(actions).getAllByRole("button")) expect(button).toHaveClass("shrink-0");
+  });
+
+  // A janela dos termos vem antes: com as duas abertas, o Tab preso no tour
+  // deixava o foco atrás dela. Enquanto ela espera, o tour nem pede o "visto".
+  it("waits for the legal window: no claim and no dialog while it is open, then opens", async () => {
+    const gated = (waiting: boolean) => (
+      <LegalGateContext.Provider value={waiting}><Tour userId="legal-first" firstName="Ana" /></LegalGateContext.Provider>
+    );
+    const { rerender } = render(gated(true));
+    await act(async () => {});
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(rpc).not.toHaveBeenCalled();
+
+    rerender(gated(false));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(rpc).toHaveBeenCalledExactlyOnceWith("claim_welcome_tour", { p_uid: "legal-first", p_surface: surface });
   });
 
   it("waits for the account claim before interrupting the page", async () => {
@@ -167,7 +237,8 @@ describe.each([
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("storage unavailable"); });
     render(<Tour userId="no-storage" firstName="Ana" />);
     await screen.findByRole("dialog");
-    fireEvent.click(screen.getByRole("button", { name: "Skip the tour" }));
+    // "Skip" existe nos dois tours (no do aluno é a única saída).
+    fireEvent.click(screen.getByRole("button", { name: "Skip" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });

@@ -28,7 +28,9 @@ begin
       or coalesce(qual, with_check, '') not like '%community-presence:%'
       or coalesce(qual, with_check, '') not like '%account_session_allowed%'
       or coalesce(qual, with_check, '') not like '%owns_course_reference%'
-      or coalesce(qual, with_check, '') not like '%has_enrollment_for_course_slug%'
+      -- 20261113020000: has_community_access = matrícula no curso OU aluno da
+      -- área cuja comunidade é este curso (ela chama has_enrollment_for_course_slug).
+      or coalesce(qual, with_check, '') not like '%has_community_access%'
       or coalesce(qual, with_check, '') not like '%is_admin%'
       or coalesce(qual, with_check, '') not like '%presence%'
     );

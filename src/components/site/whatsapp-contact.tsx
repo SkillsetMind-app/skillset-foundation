@@ -22,7 +22,7 @@ export function WhatsAppContact({ t, className = "" }: { t: (key: string) => str
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex min-h-11 items-center font-semibold text-[var(--color-primary)] hover:underline"
+        className="inline-flex min-h-11 items-center font-semibold text-[var(--color-primary)]! hover:underline"
       >
         {t("whatsappContact.cta")} &rarr;
       </a>{" "}

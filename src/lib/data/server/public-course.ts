@@ -90,10 +90,14 @@ function toSummary(row: CourseRow): PublicCourseSummary {
  *
  * Só `published`: a policy também libera `in_review`, mas curso em revisão não
  * está à venda e não deve ganhar página pública nem entrar no sitemap.
+ *
+ * `cache` do React: generateMetadata e a página leem o mesmo ref no mesmo
+ * pedido. Sem ele o banco respondia duas vezes, e as duas leituras podiam
+ * divergir (o card do link descrevia uma coisa e o corpo mostrava outra).
  */
-export async function getPublicCourseByRef(
+export const getPublicCourseByRef = cache(async (
   ref: string,
-): Promise<PublicCourseSummary | null> {
+): Promise<PublicCourseSummary | null> => {
   try {
     const supabase = await createSupabaseServerClient();
 
@@ -120,7 +124,7 @@ export async function getPublicCourseByRef(
     // então uma falha de leitura aqui degrada o metadata — nunca derruba a rota.
     return null;
   }
-}
+});
 
 export type CourseRefAccess = "visible" | "missing" | "unknown";
 
@@ -143,8 +147,11 @@ type AccessRow = { id: string; status: string | null; owner_id: string | null };
  * - "missing": 404 de verdade.
  * - "unknown": a leitura falhou; quem chama NÃO deve responder 404 — um
  *   soluço do banco não pode derrubar a página de um curso publicado.
+ *
+ * `cache` do React pelo mesmo motivo de getPublicCourseByRef: metadata e
+ * página decidem amostra/404 com UMA resposta por pedido.
  */
-export async function getCourseRefAccess(ref: string): Promise<CourseRefAccess> {
+export const getCourseRefAccess = cache(async (ref: string): Promise<CourseRefAccess> => {
   try {
     const supabase = await createSupabaseServerClient();
 
@@ -211,7 +218,7 @@ export async function getCourseRefAccess(ref: string): Promise<CourseRefAccess> 
   } catch {
     return "unknown";
   }
-}
+});
 
 /**
  * Cliente ANÔNIMO para leitura pública no servidor: sem cookie (o token
@@ -264,6 +271,38 @@ export const hasRealPublishedCourse = cache(async (): Promise<boolean> => {
     return (data?.length ?? 0) > 0;
   } catch (error) {
     console.error("[public-course] hasRealPublishedCourse failed", error);
+    return false;
+  }
+});
+
+// Vitrine aberta (decisão do dono, 13/11/2026): a seção "The marketplace" da
+// home e as portas para a loja (menu, rodapé, atalhos) só aparecem com uma
+// vitrine de verdade. Abaixo disso, somem sozinhas; /courses segue no ar.
+export const MARKETPLACE_MIN_COURSES = 12;
+export const MARKETPLACE_MIN_TEACHERS = 5;
+
+export function marketplaceIsOpen(ownerIds: ReadonlyArray<string | null>): boolean {
+  return ownerIds.length >= MARKETPLACE_MIN_COURSES && new Set(ownerIds).size >= MARKETPLACE_MIN_TEACHERS;
+}
+
+/**
+ * A loja tem cursos reais publicados suficientes para virar vitrine? Mesma
+ * leitura anônima e em cache de hasRealPublishedCourse; falha conta como
+ * fechada — a home nunca quebra por isso.
+ */
+export const isMarketplaceOpen = cache(async (): Promise<boolean> => {
+  try {
+    const { data, error } = await anonymousReadClient({ timeoutMs: 1_500, revalidate: 300 })
+      .from("courses")
+      .select("owner_id")
+      .eq("status", "published")
+      .not("id", "like", `${INTERNAL_COURSE_ID_PREFIX}%`)
+      .not("title", "like", `${INTERNAL_COURSE_TITLE_PREFIX}%`)
+      .limit(1000);
+    if (error) throw error;
+    return marketplaceIsOpen((data ?? []).map((row) => row.owner_id));
+  } catch (error) {
+    console.error("[public-course] isMarketplaceOpen failed", error);
     return false;
   }
 });

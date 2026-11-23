@@ -54,7 +54,7 @@ function buildClient(initial: Assurance, user: unknown = supabaseUser) {
   let assurance = initial;
 
   const client = {
-    rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
+    rpc: vi.fn().mockResolvedValue({ data: true, error: null }),
     auth: {
       getUser: async () => ({ data: { user }, error: null }),
       mfa: {
@@ -321,10 +321,11 @@ describe("sessao aal1 sem a lista de fatores do Auth: o banco decide", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("conta bloqueada (fraca e nao liberada) nao vira pedido de codigo: o servidor e quem barra", async () => {
+  it("conta bloqueada nao vira pedido de codigo nem sessao autenticada na interface", async () => {
     supabaseMocks.getSupabaseBrowserClient.mockReturnValue(hiddenFactors(false, false).client);
 
-    expect((await getCurrentAuthSession()).status).toBe("authenticated");
+    expect((await getCurrentAuthSession()).status).toBe("unauthenticated");
+    expect(profileMocks.getUserProfile).not.toHaveBeenCalled();
   });
 
   it("rota fora do ar: deve o codigo e o fator nao veio -> erro de rede, nunca segue como logado", async () => {

@@ -135,8 +135,8 @@ export async function updateCourseEvent(
 
 /**
  * Cancel an event without deleting it, so learners who already RSVP'd see the
- * cancelled state. subscribeToCourseEvents filters to scheduled, so cancelled
- * events drop off the learner agenda automatically.
+ * cancelled state: /learn/events and the classroom tab read with
+ * `includeCancelled`; the dashboard and the community still drop it.
  */
 export async function cancelCourseEvent(eventId: string) {
   const supabase = getSupabaseBrowserClient();
@@ -165,15 +165,23 @@ export function subscribeToTeacherCourseEvents(
   ownerId: string,
   callback: (events: CourseEvent[]) => void,
   onError: (error: Error) => void,
-): () => void {
+): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
+  // So a leitura mais nova entrega: um "Try again" que volta depois de uma
+  // releitura do canal traria a agenda velha.
+  let active = true;
+  let latestLoad = 0;
 
   const load = async () => {
+    const thisLoad = ++latestLoad;
     const { data, error } = await supabase
       .from("course_events")
       .select("*")
       .eq("owner_id", ownerId);
 
+    if (!active || thisLoad !== latestLoad) {
+      return;
+    }
     if (error) {
       onError(error instanceof Error ? error : new Error(String(error)));
       return;
@@ -204,9 +212,14 @@ export function subscribeToTeacherCourseEvents(
     )
     .subscribe();
 
-  return () => {
-    void supabase.removeChannel(channel);
-  };
+  // `reload()` le de novo SEM mexer no canal (o "Try again" de Eventos).
+  return Object.assign(
+    () => {
+      active = false;
+      void supabase.removeChannel(channel);
+    },
+    { reload: load },
+  );
 }
 
 export async function saveCourseEventRsvp(input: {
@@ -349,19 +362,35 @@ export function subscribeToCourseEventRsvps(
   };
 }
 
+// `includeCancelled`: a agenda /learn/events e a aba da sala mostram a sessao
+// cancelada marcada como tal (a tela decide por quantos dias). A consulta e a
+// mesma; so o filtro do navegador muda. Sem a opcao, como sempre: so as marcadas.
 export function subscribeToCourseEvents(
   courseSlug: string,
   callback: (events: CourseEvent[]) => void,
   onError: (error: Error) => void,
-): () => void {
+  { includeCancelled = false }: { includeCancelled?: boolean } = {},
+): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
+  // `reload()` (o "Try again") repete esta leitura sem mexer no canal. As de
+  // sempre (a inicial e as do canal) entregam como antes, so cedem a um reload
+  // mais novo; o que o reload comecou nao entrega depois de desligar nem por
+  // cima de uma leitura mais nova (traria a agenda sem a sessao nova).
+  let active = true;
+  let latestLoad = 0;
+  let latestReload = 0;
 
-  const load = async () => {
+  const load = async (fromReload = false) => {
+    const thisLoad = ++latestLoad;
+    if (fromReload) latestReload = thisLoad;
     const { data, error } = await supabase
       .from("course_events")
       .select("*")
       .eq("course_slug", courseSlug);
 
+    if (fromReload ? !active || thisLoad !== latestLoad : thisLoad < latestReload) {
+      return;
+    }
     if (error) {
       onError(error instanceof Error ? error : new Error(String(error)));
       return;
@@ -370,7 +399,7 @@ export function subscribeToCourseEvents(
     callback(
       (data ?? [])
         .map(rowToCourseEvent)
-        .filter((event) => event.status === "scheduled")
+        .filter((event) => event.status === "scheduled" || (includeCancelled && event.status === "cancelled"))
         .sort((left, right) => left.startsAt.localeCompare(right.startsAt)),
     );
   };
@@ -393,7 +422,12 @@ export function subscribeToCourseEvents(
     )
     .subscribe();
 
-  return () => {
-    void supabase.removeChannel(channel);
-  };
+  // `reload()` le de novo SEM mexer no canal (o "Try again" de Eventos).
+  return Object.assign(
+    () => {
+      active = false;
+      void supabase.removeChannel(channel);
+    },
+    { reload: () => load(true) },
+  );
 }

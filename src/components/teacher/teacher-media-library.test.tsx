@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { CourseAsset } from "@/domain/course-asset";
@@ -6,6 +6,12 @@ import type { TeacherCourse } from "@/domain/teacher-course";
 
 const state = vi.hoisted(() => ({
   assets: [] as CourseAsset[],
+  // "data": chega na hora; "pending": ainda nao chegou; "error": falhou.
+  assetsMode: "data" as "data" | "pending" | "error",
+  coursesFail: false,
+  emitAssets: (() => undefined) as (assets: CourseAsset[]) => void,
+  assetReloads: 0,
+  courseReloads: 0,
   // Objeto estável: o componente depende de `[user]` num efeito, e um objeto
   // novo a cada render vira loop infinito de inscrição.
   user: { uid: "teacher-1" },
@@ -19,11 +25,19 @@ vi.mock("@/lib/data/teacher-courses", () => ({
   subscribeToTeacherCourses: (
     _uid: string,
     onData: (courses: TeacherCourse[]) => void,
+    onError: (error: Error) => void,
   ) => {
-    onData([
-      { id: "course-1", title: "Curso 1", status: "published" } as unknown as TeacherCourse,
-    ]);
-    return () => {};
+    const read = () => {
+      if (state.coursesFail) onError(new Error("offline"));
+      else onData([{ id: "course-1", title: "Curso 1", status: "published" } as unknown as TeacherCourse]);
+    };
+    read();
+    return Object.assign(() => {}, {
+      reload: async () => {
+        state.courseReloads += 1;
+        read();
+      },
+    });
   },
 }));
 
@@ -31,9 +45,18 @@ vi.mock("@/lib/data/course-assets", () => ({
   subscribeToCourseAssets: (
     _courseId: string,
     onAssets: (assets: CourseAsset[]) => void,
+    onError: (error: Error) => void,
   ) => {
-    onAssets(state.assets);
-    return () => {};
+    state.emitAssets = onAssets;
+    if (state.assetsMode === "data") onAssets(state.assets);
+    if (state.assetsMode === "error") onError(new Error("offline"));
+    // Como a de verdade: a releitura que da certo entrega a lista.
+    return Object.assign(() => {}, {
+      reload: async () => {
+        state.assetReloads += 1;
+        onAssets(state.assets);
+      },
+    });
   },
 }));
 
@@ -62,6 +85,55 @@ describe("TeacherMediaLibrary", () => {
   afterEach(() => {
     cleanup();
     state.assets = [];
+    state.assetsMode = "data";
+    state.coursesFail = false;
+    state.assetReloads = 0;
+    state.courseReloads = 0;
+  });
+
+  it("antes de os arquivos chegarem mostra carregando, nao 'no files'", () => {
+    state.assetsMode = "pending";
+    render(<TeacherMediaLibrary />);
+
+    expect(screen.getByRole("status")).toHaveTextContent("Loading this course's files...");
+    // T-07: cartões no formato do arquivo, não uma frase num cartão.
+    expect(screen.getByRole("status")).toHaveAttribute("data-skeleton", "cards");
+    expect(screen.queryByText("Upload from the builder.")).toBeNull();
+
+    act(() => state.emitAssets([]));
+    expect(screen.getByText("Upload from the builder.")).toBeInTheDocument();
+  });
+
+  it("falha nos arquivos: erro com 'Try again', que le de novo pelo mesmo canal", async () => {
+    state.assetsMode = "error";
+    state.assets = [asset({})];
+    render(<TeacherMediaLibrary />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load assets for this course.");
+    expect(screen.queryByText("Upload from the builder.")).toBeNull();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    });
+    expect(state.assetReloads).toBe(1);
+    expect(state.courseReloads).toBe(0);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByText("IMG_4821.jpg")).toBeInTheDocument();
+  });
+
+  it("falha nos cursos nao diz 'crie seu primeiro curso'", async () => {
+    state.coursesFail = true;
+    render(<TeacherMediaLibrary />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load your courses.");
+    expect(screen.queryByText("Create a course before uploading files.")).toBeNull();
+
+    state.coursesFail = false;
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    });
+    expect(state.courseReloads).toBe(1);
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   // Três capas chamadas IMG_xxxx.jpg eram três quadrados idênticos escritos

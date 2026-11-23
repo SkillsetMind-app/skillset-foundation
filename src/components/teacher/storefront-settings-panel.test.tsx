@@ -199,6 +199,8 @@ describe("StorefrontSettingsPanel", () => {
     });
 
     expect(saveButton).toBeDisabled();
+    // Desligado, mas dizendo por que (antes so ficava cinza).
+    expect(saveButton).toHaveAccessibleDescription("You can save when the image finishes uploading.");
 
     await act(async () => {
       resolveLogo("https://media.example/storefront-logo.png?v=1");
@@ -211,6 +213,8 @@ describe("StorefrontSettingsPanel", () => {
       await heroUpload;
     });
     await waitFor(() => expect(saveButton).toBeEnabled());
+    expect(saveButton).not.toHaveAttribute("aria-describedby");
+    expect(screen.queryByText("You can save when the image finishes uploading.")).toBeNull();
   });
 
   it("removes an uploaded object only after its saved URL is cleared", async () => {
@@ -277,6 +281,20 @@ describe("StorefrontSettingsPanel", () => {
     expect(
       screen.getByText(/old image could not be removed/i),
     ).toBeInTheDocument();
+    // F-05: o "salvo" nasce ao lado do botão (mesma linha, depois dele) e é
+    // anunciado; acima, empurrava o botão recém-clicado para baixo.
+    const saved = screen.getByRole("status");
+    expect(saved).toHaveTextContent("Storefront saved.");
+    expect(saved.classList.contains("info-notice")).toBe(false);
+    expect(saved.parentElement).toBe(screen.getByRole("button", { name: "Save storefront" }).parentElement);
+
+    // Editar de novo tira o "salvo" (a frase só vale para o que foi gravado);
+    // o aviso de erro da limpeza fica, e nada é gravado por isso.
+    const saves = mocks.updateUserStorefront.mock.calls.length;
+    fireEvent.change(screen.getByLabelText("Tagline"), { target: { value: "A new line" } });
+    expect(screen.queryByText("Storefront saved.")).toBeNull();
+    expect(screen.getByText(/old image could not be removed/i)).toBeInTheDocument();
+    expect(mocks.updateUserStorefront.mock.calls.length).toBe(saves);
   });
 
   // A rejeição era escrita no rodapé do formulário, ~120 linhas abaixo do
@@ -353,6 +371,128 @@ describe("StorefrontSettingsPanel", () => {
     const status = await screen.findByRole("status");
     expect(status).toHaveTextContent("Sending...");
     expect(status).not.toHaveTextContent("%");
+  });
+
+  // B-05: logo e capa desenham a casca única de imagem. Cada um segue com o
+  // próprio envio, tipos, limite, remover e moldura; o Save manda o mesmo.
+  describe("logo e capa no campo único de imagem", () => {
+    const logoUrl = "https://media.example/storefront-logo.png?v=1";
+    const heroUrl = "https://media.example/storefront-hero.png?v=1";
+
+    function givenImages(branding: { logoUrl?: string; heroImageUrl?: string }) {
+      mocks.getUserProfile.mockResolvedValue({
+        displayName: "Dr. Ana Silva",
+        storefront: { branding: { themePreset: "default", ...branding }, showcase: { orderedCourseIds: [] } },
+      });
+    }
+
+    it.each([
+      ["logo", "Storefront logo", "Upload storefront logo", ".aspect-square.w-24", true],
+      ["hero", "Storefront cover", "Upload storefront hero image", ".aspect-\\[16\\/7\\]", false],
+    ] as const)("%s: mesmo accept, mesma moldura, a escolha zerada e o arquivo inteiro no envio", async (kind, title, inputLabel, frame, contain) => {
+      givenImages({ logoUrl, heroImageUrl: heroUrl });
+      mocks.uploadUserStorefrontImage.mockReturnValueOnce(new Promise<string>(() => undefined));
+      render(<StorefrontSettingsPanel />);
+
+      const region = await screen.findByRole("region", { name: title });
+      const input = within(region).getByLabelText(inputLabel);
+      expect(input).toHaveAttribute("type", "file");
+      expect(input).toHaveAttribute("accept", "image/jpeg,image/png,image/webp");
+      expect(input).toHaveAccessibleDescription(/JPG, PNG, or WebP under 5 MB\.$/);
+      expect(region.querySelector(frame)).not.toBeNull();
+      const image = region.querySelector("img");
+      expect(image).toHaveAttribute("src", kind === "logo" ? logoUrl : heroUrl);
+      expect(image?.classList.contains("object-contain")).toBe(contain);
+      expect(image?.classList.contains("object-cover")).toBe(!contain);
+
+      // A escolha é zerada no onChange: o mesmo arquivo pode vir de novo.
+      let resetTo: string | undefined;
+      Object.defineProperty(input, "value", {
+        configurable: true,
+        get: () => "",
+        set: (value: string) => { resetTo = value; },
+      });
+      const file = new File(["x"], `${kind}.png`, { type: "image/png" });
+      fireEvent.change(input, { target: { files: [file] } });
+      expect(resetTo).toBe("");
+      expect(mocks.uploadUserStorefrontImage).toHaveBeenCalledWith("teacher-1", kind, file, expect.any(Function));
+      expect(mocks.uploadUserStorefrontImage).toHaveBeenCalledOnce();
+    });
+
+    it.each([
+      ["logo", "Upload storefront logo", "Remove storefront logo"],
+      ["hero", "Upload storefront hero image", "Remove storefront hero image"],
+    ] as const)("%s: travado e sem Remove enquanto sobe; o Remove volta depois de uma falha", async (_kind, inputLabel, removeLabel) => {
+      vi.spyOn(console, "error").mockImplementation(() => undefined);
+      givenImages({ logoUrl, heroImageUrl: heroUrl });
+      let fail: (reason: Error) => void = () => undefined;
+      mocks.uploadUserStorefrontImage.mockReturnValueOnce(new Promise<string>((_resolve, reject) => { fail = reject; }));
+      render(<StorefrontSettingsPanel />);
+
+      const input = await screen.findByLabelText(inputLabel);
+      expect(screen.getByRole("button", { name: removeLabel })).toBeEnabled();
+      fireEvent.change(input, { target: { files: [new File(["x"], "a.png", { type: "image/png" })] } });
+      expect(input).toBeDisabled();
+      expect(screen.queryByRole("button", { name: removeLabel })).toBeNull();
+
+      await act(async () => { fail(new Error("LOCAL TEST: offline")); });
+      expect(await screen.findByRole("alert")).toHaveTextContent("We could not upload this image. Please try again.");
+      expect(input).toBeEnabled();
+      expect(screen.getByRole("button", { name: removeLabel })).toBeEnabled();
+    });
+
+    it.each([
+      ["sem imagem", {}],
+      ["só com o logo", { logoUrl }],
+      ["só com a capa", { heroImageUrl: heroUrl }],
+      ["com as duas", { logoUrl, heroImageUrl: heroUrl }],
+    ] as const)("Save manda o mesmo pacote %s", async (_state, branding: { logoUrl?: string; heroImageUrl?: string }) => {
+      givenImages(branding);
+      render(<StorefrontSettingsPanel />);
+      fireEvent.click(await screen.findByRole("button", { name: "Save storefront" }));
+      await waitFor(() => expect(mocks.updateUserStorefront).toHaveBeenCalledWith("teacher-1", {
+        branding: {
+          accentColor: null,
+          logoUrl: branding.logoUrl ?? null,
+          heroImageUrl: branding.heroImageUrl ?? null,
+          themePreset: "default",
+        },
+        showcase: { tagline: null, orderedCourseIds: [], featuredCourseId: null },
+      }));
+      expect(mocks.removeUserStorefrontImage).not.toHaveBeenCalled();
+    });
+
+    it("Save depois de trocar o logo e tirar a capa: o mesmo pacote e a limpeza só da capa", async () => {
+      givenImages({ logoUrl, heroImageUrl: heroUrl });
+      const newLogo = "https://media.example/storefront-logo.png?v=2";
+      mocks.uploadUserStorefrontImage.mockResolvedValueOnce(newLogo);
+      render(<StorefrontSettingsPanel />);
+
+      fireEvent.change(await screen.findByLabelText("Upload storefront logo"), {
+        target: { files: [new File(["x"], "logo.png", { type: "image/png" })] },
+      });
+      expect(await screen.findByText("Logo uploaded. Save the storefront to publish it.")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Remove storefront hero image" }));
+      fireEvent.click(screen.getByRole("button", { name: "Save storefront" }));
+
+      await waitFor(() => expect(mocks.removeUserStorefrontImage).toHaveBeenCalledWith("teacher-1", "hero"));
+      expect(mocks.updateUserStorefront).toHaveBeenCalledWith("teacher-1", {
+        branding: { accentColor: null, logoUrl: newLogo, heroImageUrl: null, themePreset: "default" },
+        showcase: { tagline: null, orderedCourseIds: [], featuredCourseId: null },
+      });
+      expect(mocks.removeUserStorefrontImage).toHaveBeenCalledOnce();
+    });
+
+    it("escolher uma imagem segue tirando o \"salvo\" (o campo continua dentro do formulário)", async () => {
+      render(<StorefrontSettingsPanel />);
+      fireEvent.click(await screen.findByRole("button", { name: "Save storefront" }));
+      expect(await screen.findByText("Storefront saved.")).toBeInTheDocument();
+      fireEvent.change(screen.getByLabelText("Upload storefront logo"), {
+        target: { files: [new File(["bmp"], "logo.bmp", { type: "image/bmp" })] },
+      });
+      expect(screen.queryByText("Storefront saved.")).toBeNull();
+      expect(mocks.uploadUserStorefrontImage).not.toHaveBeenCalled();
+    });
   });
 
   describe("idioma real da vitrine", () => {
@@ -525,6 +665,9 @@ describe("StorefrontSettingsPanel", () => {
 
       const { container } = renderWithLocale();
       expect(screen.getByText("Loading storefront settings...")).toBeInTheDocument();
+      // T-07: a forma da tela (prévia e campos), não uma frase solta.
+      expect(screen.getByText("Loading storefront settings...").closest('[role="status"]'))
+        .toHaveAttribute("data-skeleton", "storefront");
       expectNoStorefrontActions();
       fireEvent.click(screen.getByRole("button", { name: "Use ES" }));
       expect(screen.getByText("Cargando la configuración de la tienda...")).toBeInTheDocument();
@@ -599,10 +742,11 @@ describe("StorefrontSettingsPanel", () => {
       let deliverCourses: (courses: unknown[]) => void = () => undefined;
       let failCourses: (error: Error) => void = () => undefined;
       const unsubscribeCourses = vi.fn();
+      const reloadCourses = vi.fn(async () => undefined);
       mocks.subscribeToTeacherCourses.mockImplementation((_uid, onData, onError) => {
         deliverCourses = onData;
         failCourses = onError;
-        return unsubscribeCourses;
+        return Object.assign(unsubscribeCourses, { reload: reloadCourses });
       });
       const expectDraftIntact = () => {
         expect(screen.getByLabelText(/^(Accent color|Color de acento)$/)).toHaveValue(draft.accentColor);
@@ -618,6 +762,7 @@ describe("StorefrontSettingsPanel", () => {
       const tagline = await screen.findByLabelText("Tagline");
       const save = screen.getByRole("button", { name: "Save storefront" });
       expect(save).toBeDisabled();
+      expect(save).toHaveAccessibleDescription("You can save once your published products have loaded.");
       expect(screen.getByText("Loading courses...")).toBeInTheDocument();
       fireEvent.change(screen.getByLabelText("Accent color"), { target: { value: draft.accentColor } });
       fireEvent.change(tagline, { target: { value: draft.tagline } });
@@ -644,9 +789,12 @@ describe("StorefrontSettingsPanel", () => {
       expect(mocks.getUserProfile).toHaveBeenCalledOnce();
       expect(mocks.subscribeToTeacherCourses).toHaveBeenCalledOnce();
 
+      // "Intentar de nuevo" le de novo pela mesma inscricao (reload): nao
+      // desliga o canal nem abre outra inscricao.
       fireEvent.click(screen.getByRole("button", { name: "Intentar de nuevo" }));
-      await waitFor(() => expect(mocks.subscribeToTeacherCourses).toHaveBeenCalledTimes(2));
-      expect(unsubscribeCourses).toHaveBeenCalledOnce();
+      await waitFor(() => expect(reloadCourses).toHaveBeenCalledOnce());
+      expect(mocks.subscribeToTeacherCourses).toHaveBeenCalledOnce();
+      expect(unsubscribeCourses).not.toHaveBeenCalled();
       expect(mocks.getUserProfile).toHaveBeenCalledOnce();
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
       expect(screen.getByText("Cargando cursos...")).toBeInTheDocument();
@@ -672,7 +820,7 @@ describe("StorefrontSettingsPanel", () => {
       }));
       expect(mocks.updateUserStorefront).toHaveBeenCalledOnce();
       expect(mocks.getUserProfile).toHaveBeenCalledOnce();
-      expect(mocks.subscribeToTeacherCourses).toHaveBeenCalledTimes(2);
+      expect(mocks.subscribeToTeacherCourses).toHaveBeenCalledOnce();
       expect(mocks.uploadUserStorefrontImage).not.toHaveBeenCalled();
       expect(mocks.removeUserStorefrontImage).not.toHaveBeenCalled();
     });

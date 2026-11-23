@@ -76,6 +76,27 @@ describe("guest checkout thank-you page", () => {
     );
   });
 
+  // A-24: o mesmo cartão das outras telas de depois do pagamento, com as
+  // mesmas frases e links; sem casca de plataforma, a frase do cartão é o h1.
+  it.each([true, false])("lives in the shared payment-return card (checkout cookie: %s)", async (hasCookie) => {
+    if (!hasCookie) state.cookie = undefined;
+    render(await Page({ searchParams: Promise.resolve({ course: "course-1" }) }));
+
+    const heading = screen.getByRole("heading", { level: 1, name: "Check your email" });
+    expect(screen.getAllByRole("heading")).toHaveLength(1);
+    const status = heading.closest('[role="status"]') as HTMLElement;
+    expect(status).toHaveAttribute("aria-live", "polite");
+    expect(status).toHaveTextContent("Your course opens as soon as the payment is confirmed, usually within a minute.");
+    const card = status.parentElement as HTMLElement;
+    expect(card).toHaveClass("p-6", "bg-[var(--color-surface)]");
+    expect(card).toContainElement(screen.getByRole("link", { name: "Sign in" }));
+    if (hasCookie) {
+      expect(card).toContainElement(screen.getByRole("button", { name: "Send the link again" }));
+    } else {
+      expect(card).toHaveTextContent(translate(getDictionary("en"), "guestCheckout.thanks.noEmail"));
+    }
+  });
+
   it("resends on request and says when the limit is reached", async () => {
     render(await Page({}));
 

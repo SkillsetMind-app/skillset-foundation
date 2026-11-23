@@ -6,6 +6,11 @@ import type { FormEvent } from "react";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { CourseShareLink } from "@/components/teacher/course-share-link";
 import { CurrencySelect } from "@/components/teacher/currency-select";
+import { SavedNote } from "@/components/teacher/save-status-line";
+import { BusyLabel } from "@/components/ui/busy-label";
+import { InlineAlert } from "@/components/ui/inline-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
+import { isActivationRequiredError } from "@/domain/creator-verification";
 import { paymentChoiceOf, type CoursePricingShape } from "@/domain/product-pricing";
 import type { TeacherCoursePaymentType } from "@/domain/teacher-course";
 
@@ -27,8 +32,8 @@ type OfferRow = {
   prices: OfferPrice[];
 };
 
-const inputClass =
-  "rounded-md border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]";
+// A pele de todo campo da plataforma (44px, borda que aparece no branco).
+const inputClass = "field-input";
 
 // O tipo de pagamento vem da API como texto livre. So os quatro conhecidos tem
 // traducao; qualquer outro cai no formato antigo em vez de virar chave crua.
@@ -38,6 +43,23 @@ const KNOWN_PAYMENT_TYPES = new Set([
   "subscription_monthly",
   "subscription_yearly",
 ]);
+
+// Os motivos da rota que a pessoa consegue resolver viram frase da casa; o
+// resto cai na frase geral. A mensagem crua do servidor (em inglês, às vezes
+// técnica) nunca vai para a tela. Mesmo molde do toMessageKey dos cupons.
+const offerErrorKeys: Record<string, string> = {
+  "A paid offer must have a positive price.": "creatorPanel.offers.invalidAmount",
+  "A free offer must have a zero price.": "creatorPanel.offers.invalidAmount",
+  "amountMinor must be a non-negative whole number.": "creatorPanel.offers.invalidAmount",
+  // O limite de tentativas (429): a pessoa precisa saber que é para esperar.
+  "Too many attempts. Please wait before trying again.": "creatorPanel.offers.rateError",
+};
+
+function offerErrorKey(error: unknown, fallback: string): string {
+  const message = error instanceof Error ? error.message : "";
+  if (isActivationRequiredError(message)) return "creatorPanel.offers.activationError";
+  return Object.hasOwn(offerErrorKeys, message) ? offerErrorKeys[message] : fallback;
+}
 
 function money(amountMinor: number, currency: string): string {
   try {
@@ -89,15 +111,18 @@ export function CourseOffersPanel({
   const { t } = useTranslation();
   // `t` fica fora das dependencias dos efeitos: com ele la, um provider que
   // devolva funcao nova por render reinscreve tudo em laco (a suite do CI
-  // ficou muda 16 min). A ref le sempre o `t` atual sem reinscrever nada.
-  const tRef = useRef(t);
-  useEffect(() => {
-    tRef.current = t;
-  }, [t]);
+  // ficou muda 16 min). Por isso erro e aviso guardam a CHAVE e o texto sai
+  // no render, no idioma da hora.
   const [offers, setOffers] = useState<OfferRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // Falha de LEITURA da lista, separada do erro de criar: com ela a tela não
+  // sabe se há preço, então não diz "nenhum preço" nem abre o formulário de
+  // criar (com a lista vazia ele gravaria outro preço principal), e oferece
+  // "Try again" no lugar da lista (F-11).
+  const [loadError, setLoadError] = useState("");
+  const headingRef = useRef<HTMLHeadingElement>(null);
   const [notice, setNotice] = useState("");
   const [name, setName] = useState(() =>
     t(
@@ -140,7 +165,7 @@ export function CourseOffersPanel({
   const hasOffers = !loading && offers.length > 0;
   const canAddPrice = paymentTypes.length > 0;
   // Sem nenhuma oferta o formulario segue aberto: vazio guiado bate tabela vazia.
-  const formOpen = canAddPrice && (creating || (!loading && offers.length === 0));
+  const formOpen = canAddPrice && !loadError && (creating || (!loading && offers.length === 0));
   // Sem preco principal, o checkout usa o primeiro preco ativo daqui
   // (resolveCoursePrice). Quem adiciona um preco a mais precisa saber disso.
   const hasMainPrice = offers.some((offer) => offer.isDefault && offer.active);
@@ -149,6 +174,7 @@ export function CourseOffersPanel({
   const reload = useCallback(async () => {
     setLoading(true);
     setError("");
+    setLoadError("");
     try {
       const res = await fetch(
         `/api/teach/offers?courseId=${encodeURIComponent(courseId)}`,
@@ -156,18 +182,16 @@ export function CourseOffersPanel({
       );
       const data = (await res.json()) as { offers?: OfferRow[]; error?: string; warning?: string };
       if (!res.ok) {
-        throw new Error(data.error || tRef.current("creatorPanel.offers.loadError"));
+        throw new Error(data.error);
       }
       setOffers(data.offers ?? []);
+      // A rota responde 200 com aviso quando não leu a lista: é falha de
+      // leitura, não "nenhum preço" (e o aviso vinha em inglês, cru).
       if (data.warning) {
-        setNotice(data.warning);
+        setLoadError("creatorPanel.offers.loadError");
       }
-    } catch (loadError) {
-      setError(
-        loadError instanceof Error
-          ? loadError.message
-          : tRef.current("creatorPanel.offers.loadError"),
-      );
+    } catch (failure) {
+      setLoadError(offerErrorKey(failure, "creatorPanel.offers.loadError"));
       setOffers([]);
     } finally {
       setLoading(false);
@@ -190,7 +214,7 @@ export function CourseOffersPanel({
     setNotice("");
     const amountMinor = Math.round(Number(amount) * 100);
     if (!Number.isFinite(amountMinor) || amountMinor < 0) {
-      setError(t("creatorPanel.offers.invalidAmount"));
+      setError("creatorPanel.offers.invalidAmount");
       setSaving(false);
       return;
     }
@@ -203,7 +227,7 @@ export function CourseOffersPanel({
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) {
-        throw new Error(data.error || t("creatorPanel.offers.createError"));
+        throw new Error(data.error);
       }
     };
     try {
@@ -224,16 +248,12 @@ export function CourseOffersPanel({
         await reload();
       }
       await postOffer({ name, amountMinor, currency, paymentType, isDefault, publicCode });
-      setNotice(t("creatorPanel.offers.created"));
+      setNotice("creatorPanel.offers.created");
       setPublicCode("");
       setCreating(false);
       await reload();
     } catch (createError) {
-      setError(
-        createError instanceof Error
-          ? createError.message
-          : t("creatorPanel.offers.createError"),
-      );
+      setError(offerErrorKey(createError, "creatorPanel.offers.createError"));
     } finally {
       setSaving(false);
     }
@@ -241,14 +261,15 @@ export function CourseOffersPanel({
 
   return (
     <section aria-labelledby="course-offers-title">
-      <h2 id="course-offers-title" className="text-xl font-semibold text-[var(--color-ink)]">
+      {/* tabIndex -1: o "Try again" põe o foco aqui antes de sumir. */}
+      <h2 ref={headingRef} tabIndex={-1} id="course-offers-title" className="text-xl font-semibold text-[var(--color-ink)]">
         {t("creatorPanel.offers.title")}
       </h2>
       {/* Com oferta criada, o formulario empurrava a lista real para baixo:
           quem ja precificou vem aqui para conferir ou copiar link, nao para
           criar de novo. */}
       {/* "Sem outros precios" so e verdade sem nenhum na lista. */}
-      {canAddPrice || loading || offers.length ? null : (
+      {canAddPrice || loading || loadError || offers.length ? null : (
         <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
           {t("creatorPanel.offers.free")}
         </p>
@@ -268,10 +289,18 @@ export function CourseOffersPanel({
         </div>
       ) : null}
 
+      {/* A forma da lista que vem (linhas de preço), não uma frase (F-03). */}
       {loading ? (
-        <p className="mt-4 text-sm text-[var(--color-ink-soft)]">
-          {t("creatorPanel.offers.loading")}
-        </p>
+        <div role="status" className="mt-4 grid animate-pulse gap-2">
+          <span className="sr-only">{t("creatorPanel.offers.loading")}</span>
+          {[0, 1].map((row) => (
+            <div key={row} aria-hidden="true" className="h-14 rounded-md bg-[var(--color-surface-strong)]" />
+          ))}
+        </div>
+      ) : loadError ? (
+        <LoadErrorAlert className="mt-4" focusRef={headingRef} onRetry={reload}>
+          {t(loadError)}
+        </LoadErrorAlert>
       ) : offers.length ? (
         <ul className="mt-4 divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">
           {offers.map((offer) => {
@@ -306,6 +335,7 @@ export function CourseOffersPanel({
                     )}
                     title={courseTitle}
                     entry="pay"
+                    compact
                     path={`/courses/${encodeURIComponent(courseId)}/checkout?${
                       offer.publicCode
                         ? `offer=${encodeURIComponent(offer.publicCode)}`
@@ -421,21 +451,25 @@ export function CourseOffersPanel({
             <button
               type="submit"
               disabled={saving || loading}
-              className="button-solid px-5 py-2.5 text-xs disabled:opacity-60"
+              className="button-solid px-5 py-2.5 text-xs"
             >
-              {saving
-                ? t("creatorPanel.offers.submitting")
-                : t("creatorPanel.offers.submit")}
+              <BusyLabel
+                busy={saving}
+                idle={t("creatorPanel.offers.submit")}
+                busyText={t("creatorPanel.offers.submitting")}
+              />
             </button>
           </div>
         </form>
       ) : null}
 
-      {error ? (
-        <p className="mt-3 text-sm text-[var(--color-danger-fg)]">{error}</p>
-      ) : null}
+      {/* Anunciados: criar um preço e falhar não acontecia de modo audível. */}
+      {error ? <InlineAlert tone="error" className="mt-3">{t(error)}</InlineAlert> : null}
+      {/* "Criado" com cara de criado (o check verde), não o cinza de uma dica. */}
       {notice ? (
-        <p className="mt-3 text-sm text-[var(--color-ink-soft)]">{notice}</p>
+        <p className="mt-3">
+          <SavedNote text={t(notice)} />
+        </p>
       ) : null}
 
     </section>

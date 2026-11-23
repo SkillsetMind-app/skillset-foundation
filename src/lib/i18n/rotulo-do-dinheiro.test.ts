@@ -18,13 +18,13 @@ function leaves(node: unknown, path = ""): Array<[string, string]> {
 }
 
 describe("um nome so para a pagina do dinheiro", () => {
-  it.each(["en", "es"] as const)("em %s, barra, grupo, atalho e tour usam o mesmo nome", (locale) => {
+  it.each(["en", "es"] as const)("em %s, barra, grupo, atalho e erro usam o mesmo nome", (locale) => {
     const dict = getDictionary(locale);
 
     for (const key of ["platform.nav.earnings", "platform.navSection.earnings", "teach.reports.linkEarnings"]) {
       expect(translate(dict, key), key).toBe(NAME[locale]);
     }
-    expect(translate(dict, "teach.tour.step4Body")).toContain(NAME[locale]);
+    // O tour do professor não cita mais a página (O-11: ficou com dois passos).
     expect(translate(dict, "creatorEditor.builder.errors.payouts")).toContain(NAME[locale]);
   });
 
@@ -44,7 +44,9 @@ describe("um nome so para a pagina do dinheiro", () => {
     expect(page).toContain('privatePageMetadata("platform.nav.earnings")');
     expect(page).toContain('title={t("platform.nav.earnings")}');
 
-    for (const file of ["src/components/site/account-menu.tsx", "src/components/teacher/teacher-wallet-panel.tsx"]) {
+    // O painel de Ganhos nao repete mais o nome em cima do titulo (era o rotulo
+    // generico das telas irmas); o nome segue na barra, no menu e na aba.
+    for (const file of ["src/components/site/account-menu.tsx"]) {
       expect(readFileSync(file, "utf8"), file).toContain('t("platform.nav.earnings")');
     }
   });

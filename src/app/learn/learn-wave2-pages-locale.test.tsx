@@ -8,6 +8,7 @@ import LearnWishlistPage from "@/app/learn/wishlist/page";
 import LearnCredentialsPage from "@/app/learn/credentials/page";
 import LearnMessagesPage from "@/app/learn/messages/page";
 import LoadingCourse from "@/app/learn/courses/[slug]/loading";
+import LoadingMemberArea from "@/app/learn/areas/[criador]/loading";
 import WelcomePage, { generateMetadata } from "@/app/welcome/page";
 import OnboardingPage from "@/app/onboarding/page";
 import { LearnCoursePage } from "@/components/learn/learn-course-page";
@@ -77,21 +78,33 @@ describe("learner routes read the real locale cookie", () => {
 
   it("localizes welcome Suspense and metadata without changing indexing policy", async () => {
     render(<I18nProvider initialLocale="es">{await WelcomePage()}</I18nProvider>);
-    expect(screen.getByRole("heading", { name: "Preparando la configuración inicial" })).toBeVisible();
-    expect(screen.getByText("Un momento. SkillsetMind está preparando todo.")).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Abriendo SkillsetMind..." })).toBeVisible();
     expect(await generateMetadata()).toEqual({ title: "Configura tu cuenta | SkillsetMind", robots: { index: false, follow: false } });
   });
 
   it("localizes onboarding Suspense without adding another page heading", async () => {
     render(<I18nProvider initialLocale="es">{await OnboardingPage()}</I18nProvider>);
-    expect(screen.getByText("Preparando la configuración inicial")).toBeVisible();
-    expect(screen.queryByRole("heading", { name: "Preparando la configuración inicial" })).not.toBeInTheDocument();
+    expect(screen.getByText("Abriendo SkillsetMind...")).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "Abriendo SkillsetMind..." })).not.toBeInTheDocument();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   });
 
   // Abrir um curso passava por ate quatro telas de espera diferentes — a da
   // rota pintada de escuro (os cursos nascem claros), a do Suspense, um cartao
   // branco e o esqueleto da sala. A da rota e a do Suspense agora sao a MESMA.
+  // F-03: a area de membros busca a marca no servidor antes de responder; sem
+  // loading.tsx o clique deixava a tela anterior parada ate a resposta. A
+  // espera e o esqueleto da propria area, o mesmo que ela mostra enquanto le.
+  it("the members-area routes answer at once with the area's own skeleton", async () => {
+    const view = render(await LoadingMemberArea());
+    expect(screen.getByRole("status")).toHaveTextContent("Cargando el área de miembros...");
+    expect(view.container.querySelectorAll("[aria-hidden='true'] [class*='aspect-[4/3]']")).toHaveLength(3);
+    expect(screen.queryByRole("heading")).toBeNull();
+    mocks.locale = "en";
+    view.rerender(await LoadingMemberArea());
+    expect(screen.getByRole("status")).toHaveTextContent("Loading the members area...");
+  });
+
   it("shows one loading state: the route file and the published-course Suspense fallback match", async () => {
     const view = render(await LoadingCourse());
     expect(screen.getByRole("status")).toHaveTextContent("Cargando curso...");

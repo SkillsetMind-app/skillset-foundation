@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BadgeCheck } from "lucide-react";
 import { useEffect, useId, useLayoutEffect, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -22,8 +23,7 @@ export function SelfReportedTag() {
 }
 
 /**
- * O selo em si: quadrado com check. Desenho próprio de propósito — nada do
- * círculo recortado do Instagram nem do BadgeCheck do Lucide. Cores em
+ * O selo em si: contorno recortado com check, usando o BadgeCheck. Cores em
  * `.verified-seal` (globals.css), que troca no tema escuro.
  *
  * Com `label` vira imagem com nome acessível (cartões, onde o selo está dentro
@@ -39,24 +39,17 @@ export function VerifiedSeal({
   className?: string;
 }) {
   return (
-    <svg
-      viewBox="0 0 16 16"
+    <BadgeCheck
       width={size}
       height={size}
       focusable="false"
+      fill="var(--seal-ground)"
+      stroke="var(--seal-mark)"
+      strokeWidth={2}
       data-verified-seal=""
       className={cn("verified-seal shrink-0", className)}
       {...(label ? { role: "img", "aria-label": label } : { "aria-hidden": true })}
-    >
-      <rect width="16" height="16" rx="4" fill="var(--seal-ground)" />
-      <path
-        d="M4.2 8.3 6.9 11l4.9-5.6"
-        fill="none"
-        stroke="var(--seal-mark)"
-        strokeWidth="2"
-        strokeLinecap="square"
-      />
-    </svg>
+    />
   );
 }
 
@@ -130,7 +123,9 @@ export function VerifiedBadge({
     const shift = rect.left < gutter
       ? gutter - rect.left
       : rect.right > width - gutter ? width - gutter - rect.right : 0;
-    panel.style.transform = `translateX(calc(-50% + ${shift}px))`;
+    // Em `translate`, não em `transform`: a entrada (motion-drop-in) anima o
+    // transform e, se o centro morasse nele, o painel pularia de lado.
+    panel.style.translate = `calc(-50% + ${shift}px) 0`;
   }, [open]);
 
   useEffect(() => {
@@ -196,8 +191,8 @@ export function VerifiedBadge({
           ref={panelRef}
           id={panelId}
           data-verified-popover=""
-          style={{ transform: "translateX(-50%)" }}
-          className="absolute block left-1/2 top-full z-30 mt-2 w-72 max-w-[calc(100vw-1rem)] rounded-lg border border-[var(--color-line-strong)] border-t-2 border-t-[var(--color-accent)] bg-[var(--color-surface)] p-4 text-left shadow-[var(--shadow-strong)]"
+          style={{ translate: "-50% 0" }}
+          className="motion-drop-in absolute block left-1/2 top-full z-30 mt-2 w-72 max-w-[calc(100vw-1rem)] rounded-lg border border-[var(--color-line-strong)] border-t-2 border-t-[var(--color-accent)] bg-[var(--color-surface)] p-4 text-left shadow-[var(--shadow-strong)]"
         >
           <span className="flex items-center gap-2 text-sm font-bold text-[var(--color-primary)]">
             <VerifiedSeal size={16} />

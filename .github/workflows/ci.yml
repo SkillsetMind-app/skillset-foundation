@@ -45,12 +45,28 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Unit tests (vitest)
+        id: unit
         run: npx vitest run
 
       # .env.production is tracked and carries ONLY publishable NEXT_PUBLIC_*
       # values, so the production build works in CI without extra secrets.
       - name: Build (next)
         run: npm run build
+
+      - name: Certificate browser and A4 checks (synthetic only)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends poppler-utils python3-pypdf
+          node scripts/check-certificate-visual.mjs
+
+      - name: Certificate visual fixtures (synthetic only)
+        if: always() && steps.unit.outcome == 'success'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: certificate-visual-fixtures
+          path: /tmp/skillsetmind-certificate-ssr-*/
+          if-no-files-found: error
+          retention-days: 3
 
   # Os smoke tests de RLS em supabase/tests/ existem desde julho e nunca foram
   # executados. Até aqui eles dependiam do secret STAGING_DATABASE_URL, que
@@ -116,6 +132,46 @@ jobs:
 
       - name: RLS smoke tests (supabase/tests)
         run: npm run test:db
+
+      - name: Compra avulsa concorrente (duas conexoes reais)
+        timeout-minutes: 3
+        run: node scripts/check-order-concurrency.mjs
+
+      - name: Prova por reversao da trava do pedido
+        timeout-minutes: 3
+        run: |
+          set +e
+          output=$(WITHOUT_ORDER_ROW_LOCK=1 node scripts/check-order-concurrency.mjs 2>&1)
+          status=$?
+          set -e
+          printf '%s\n' "$output"
+          test "$status" -ne 0
+          printf '%s\n' "$output" | grep -Fqx '[order-concurrency] PASS paid-wins-no-coupon-overlap'
+          printf '%s\n' "$output" | grep -Fqx '[order-concurrency] PASS functions-restored'
+          printf '%s\n' "$output" | grep -Fqx '[order-concurrency] PASS cleanup'
+          expected=$(printf '%s\n' '[order-concurrency] FAIL paid-wins-no-coupon-outcome' '[order-concurrency] FAIL paid-wins-no-coupon-state' '[order-concurrency] FAIL assertions')
+          actual=$(printf '%s\n' "$output" | grep -F '[order-concurrency] FAIL')
+          test "$actual" = "$expected"
+
+      - name: Certificado e reembolso concorrentes (duas conexoes reais)
+        timeout-minutes: 3
+        run: node scripts/check-certificate-concurrency.mjs
+
+      - name: Prova por reversao da trava da matricula
+        timeout-minutes: 3
+        run: |
+          set +e
+          output=$(WITHOUT_CERTIFICATE_ENROLLMENT_LOCK=1 node scripts/check-certificate-concurrency.mjs 2>&1)
+          status=$?
+          set -e
+          printf '%s\n' "$output"
+          test "$status" -ne 0
+          printf '%s\n' "$output" | grep -Fqx '[certificate-concurrency] PASS refund-first-overlap'
+          printf '%s\n' "$output" | grep -Fqx '[certificate-concurrency] PASS function-restored'
+          printf '%s\n' "$output" | grep -Fqx '[certificate-concurrency] PASS cleanup'
+          expected=$(printf '%s\n' '[certificate-concurrency] FAIL refund-first-state' '[certificate-concurrency] FAIL refund-first-rejected' '[certificate-concurrency] FAIL assertions')
+          actual=$(printf '%s\n' "$output" | grep -F '[certificate-concurrency] FAIL')
+          test "$actual" = "$expected"
 
       - name: Real Auth invite security (GoTrue ephemeral)
         timeout-minutes: 5

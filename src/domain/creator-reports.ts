@@ -6,7 +6,8 @@
  * KPIs saem do mesmo `startMillis`, entao a linha e o numero nunca contam
  * periodos diferentes.
  */
-import { isPaidOrder, type Order, type OrderStatus } from "@/domain/order";
+import { normalizeCurrency } from "@/domain/creator-ops";
+import { isPaidOrder, orderRevenueMinor, type Order, type OrderStatus } from "@/domain/order";
 import { toDate } from "@/lib/format-date";
 
 export type ReportPeriod = "7d" | "30d" | "90d" | "12m" | "all";
@@ -27,6 +28,15 @@ export type RevenuePoint = {
   key: string;
   label: string;
   grossMinor: number;
+};
+
+/** Pedidos pagos de UMA moeda: quantos e quanto, sem converter nada. */
+export type CurrencyOrderGroup = {
+  currency: string;
+  orders: number;
+  /** Pedidos com dinheiro (> 0): sao eles que escolhem a moeda do grafico. */
+  earningOrders: number;
+  totalMinor: number;
 };
 
 export type ReportProductRow = {
@@ -144,10 +154,42 @@ function bucketKey(date: Date, bucket: RevenueBucket): string {
     : `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 }
 
+/**
+ * Os pedidos com receita agrupados por moeda: nada converte, nada soma moedas
+ * diferentes (o grafico somava R$100 com $20 e escrevia "$120"). Cada pedido
+ * conta o que ficou dele (`orderRevenueMinor`); quem nao e receita fica fora.
+ * Primeiro vem a moeda com mais pedidos COM dinheiro (empate: ordem
+ * alfabetica), a que o grafico desenha: cinco pedidos de $0 nao podem
+ * esconder um de R$100.
+ */
+export function groupPaidOrdersByCurrency(paidOrders: Order[]): CurrencyOrderGroup[] {
+  const groups = new Map<string, CurrencyOrderGroup>();
+  for (const order of paidOrders) {
+    const revenue = orderRevenueMinor(order);
+    if (revenue === null) continue;
+    const currency = normalizeCurrency(order.currency);
+    const group = groups.get(currency) ?? { currency, orders: 0, earningOrders: 0, totalMinor: 0 };
+    group.orders += 1;
+    if (revenue > 0) group.earningOrders += 1;
+    group.totalMinor += revenue;
+    groups.set(currency, group);
+  }
+  return [...groups.values()].sort(
+    (left, right) =>
+      right.earningOrders - left.earningOrders ||
+      left.currency.localeCompare(right.currency),
+  );
+}
+
+/**
+ * Serie de receita de UMA moeda (`currency`): pedidos de outra moeda ficam de
+ * fora, para que um balde nunca some moedas diferentes.
+ */
 export function buildRevenueSeries(
   paidOrders: Order[],
   window: ReportWindow,
   formatLabel: (date: Date, bucket: RevenueBucket) => string,
+  currency: string,
   now = new Date(),
 ): RevenuePoint[] {
   const points = Array.from({ length: window.count }, (_, index) => {
@@ -166,10 +208,12 @@ export function buildRevenueSeries(
   const byKey = new Map(points.map((point) => [point.key, point]));
 
   for (const order of paidOrders) {
+    const revenue = orderRevenueMinor(order);
+    if (revenue === null || normalizeCurrency(order.currency) !== currency) continue;
     const millis = getTimestampMillis(order.createdAt);
     const date = millis === null ? now : new Date(millis);
     const point = byKey.get(bucketKey(date, window.bucket));
-    if (point) point.grossMinor += order.amountMinor;
+    if (point) point.grossMinor += revenue;
   }
 
   return points;
@@ -193,7 +237,8 @@ export function calculateRefundRate(orders: Order[]): RefundRate {
 
 /**
  * Mesma contagem do "Top courses" da home, mas com todas as linhas, os
- * reembolsos do periodo e ordenada pela receita.
+ * reembolsos do periodo e ordenada pela receita. Uma linha por produto E
+ * moeda: um produto vendido em duas moedas tem duas linhas, nunca uma soma.
  */
 export function buildReportProductRows(orders: Order[]): ReportProductRow[] {
   const byCourse = new Map<string, ReportProductRow>();
@@ -203,23 +248,30 @@ export function buildReportProductRows(orders: Order[]): ReportProductRow[] {
     const isRefund = isRefundedOrder(order.status);
     if (!isPaid && !isRefund) continue;
 
-    const row = byCourse.get(order.courseId) ?? {
+    // Sem moeda gravada o pedido contava como USD aqui, sem saber se era.
+    // Agora sai como "UNSPECIFIED", o mesmo nome do grafico e de Ganhos.
+    const currency = normalizeCurrency(order.currency);
+    const key = `${order.courseId}:${currency}`;
+    const row = byCourse.get(key) ?? {
       courseId: order.courseId,
       courseTitle: order.courseTitle,
-      currency: String(order.currency || "USD").toUpperCase(),
+      currency,
       orders: 0,
       grossMinor: 0,
       refunds: 0,
     };
 
-    if (isPaid) {
+    // Reembolso parcial: a venda conta (com o que ficou) E o reembolso conta.
+    const revenue = orderRevenueMinor(order);
+    if (revenue !== null) {
       row.orders += 1;
-      row.grossMinor += order.amountMinor;
-    } else {
+      row.grossMinor += revenue;
+    }
+    if (isRefund) {
       row.refunds += 1;
     }
 
-    byCourse.set(order.courseId, row);
+    byCourse.set(key, row);
   }
 
   return [...byCourse.values()].sort(

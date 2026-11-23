@@ -2,7 +2,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
 import { isCronRequest } from "@/lib/cron/authorized";
+import { isPublicFeatureEnabled } from "@/lib/feature-flags";
 import { sendOpsAlert } from "@/lib/ops/alert";
+import { isGuestCheckoutConfigured } from "@/lib/payments/server/guest-checkout";
+import { isStripeConfigured } from "@/lib/payments/server/stripe";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
 // GET /api/cron/stripe-attention — tells a human when a Stripe event did not
@@ -25,8 +28,8 @@ import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 //
 // When there IS something to report and nobody could be told (no relay URL,
 // relay down, relay refused), the answer is 500: the GitHub run turns red and
-// its failure email is the second channel. A green run means a human was told
-// or there was nothing to tell.
+// its failure email is the second channel. Enabled payment flows also need
+// their configuration: an incomplete configuration stays red even if reported.
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +41,23 @@ export async function GET(request: Request) {
   if (!isCronRequest(request)) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
+
+  // Check intent before readiness: the public helper hides a missing site key.
+  const guestEnabled = process.env.NEXT_PUBLIC_GUEST_CHECKOUT_ENABLED === "true";
+  const paymentsEnabled = guestEnabled || isPublicFeatureEnabled("payments.checkout")
+    || Boolean(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+  const configurationUnavailable = (guestEnabled && !isGuestCheckoutConfigured())
+    || (paymentsEnabled && !isStripeConfigured());
+  const configurationAlerted = configurationUnavailable && await sendOpsAlert({
+    event: "payments.configuration.unavailable",
+    severity: "critical",
+    summary: "O pagamento esta habilitado, mas falta uma configuracao necessaria. Compras podem estar bloqueadas. Revise a configuracao e publique novamente.",
+    context: { status: 503 },
+  });
+  const configurationResult = configurationUnavailable
+    ? { ok: false, reason: "payments_not_configured", configuration_alerted: configurationAlerted }
+    : {};
+  const status = configurationUnavailable ? 503 : 200;
 
   let admin;
   try {
@@ -60,7 +80,7 @@ export async function GET(request: Request) {
 
   const claims = ((data ?? []) as { claimed_at: string }[]).map((row) => Date.parse(row.claimed_at));
   if (claims.length === 0) {
-    return NextResponse.json({ ok: true, count: 0, alerted: false });
+    return NextResponse.json({ ok: true, count: 0, alerted: false, ...configurationResult }, { status });
   }
 
   const now = Date.now();
@@ -71,7 +91,10 @@ export async function GET(request: Request) {
     : null;
 
   if (!reason) {
-    return NextResponse.json({ ok: true, count, oldest_hours: oldestHours, alerted: false });
+    return NextResponse.json(
+      { ok: true, count, oldest_hours: oldestHours, alerted: false, ...configurationResult },
+      { status },
+    );
   }
 
   const failure = !process.env.OPS_ALERT_WEBHOOK_URL ? "alert_channel_missing"
@@ -91,5 +114,8 @@ export async function GET(request: Request) {
     );
   }
 
-  return NextResponse.json({ ok: true, count, oldest_hours: oldestHours, alerted: true });
+  return NextResponse.json(
+    { ok: true, count, oldest_hours: oldestHours, alerted: true, ...configurationResult },
+    { status },
+  );
 }

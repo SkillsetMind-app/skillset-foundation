@@ -8,6 +8,7 @@ import { StatusChip } from "@/components/shared/status-chip";
 import {
   Button,
   Card,
+  ConfirmDialog,
   Eyebrow,
   Field,
   InlineAlert,
@@ -124,6 +125,7 @@ function DomainCard({
   errorMessage?: string;
 }) {
   const { t } = useTranslation();
+  const [asking, setAsking] = useState(false);
   const action = domain.status === "active" ? null : t(`teach.customDomains.nextAction.${domain.status}`);
   const dns = dnsInstructionFor(domain.hostname);
 
@@ -140,8 +142,9 @@ function DomainCard({
         <StatusChip status={domain.status} label={t(`teach.customDomains.status.${domain.status}`)} className="max-w-full whitespace-normal!" />
       </div>
 
+      {/* F-07: era uma frase vermelha solta, sem ícone e sem anúncio. */}
       {domain.status === "error" && domain.error_reason ? (
-        <p className="text-sm text-[var(--color-danger-fg)]">{t(domainErrorKey(domain.error_reason, "setup"))}</p>
+        <InlineAlert tone="error">{t(domainErrorKey(domain.error_reason, "setup"))}</InlineAlert>
       ) : null}
 
       {action ? (
@@ -182,20 +185,32 @@ function DomainCard({
         <Button
           variant="danger"
           disabled={busy}
-          onClick={() => {
-            const confirmed = window.confirm(
-              t("teach.customDomains.confirmDisconnect").replace("{hostname}", () => domain.hostname),
-            );
-            if (confirmed) {
-              onRemove(domain.id);
-            }
-          }}
+          onClick={() => setAsking(true)}
           className="ml-auto"
         >
           <Trash2 className="h-4 w-4" />
           {t("teach.customDomains.disconnect")}
         </Button>
       </div>
+
+      {/* A janela NÃO espera o DELETE: a rota espera a API da Vercel sem
+          prazo, e esperar ali travaria a página inteira (Esc e Cancel
+          incluídos). Fecha na hora; o botão do cartão fica ocupado pelo
+          busyId e o erro continua aparecendo no cartão, como antes. */}
+      {asking ? (
+        <ConfirmDialog
+          title={t("teach.customDomains.disconnectTitle")}
+          confirmLabel={t("teach.customDomains.disconnectDomain")}
+          cancelLabel={t("teach.customDomains.keepDomain")}
+          danger
+          onConfirm={() => {
+            onRemove(domain.id);
+          }}
+          onClose={() => setAsking(false)}
+        >
+          {t("teach.customDomains.confirmDisconnect").replace("{hostname}", () => domain.hostname)}
+        </ConfirmDialog>
+      ) : null}
     </Card>
   );
 }
@@ -323,7 +338,7 @@ export function CustomDomainsPanel() {
   return (
     <section ref={panelRef} tabIndex={-1} className="settings-section-card" aria-label={t("teach.customDomains.title")} aria-busy={loading}>
       <SectionHeader
-        eyebrow={t("teach.page.eyebrow")}
+        size="card"
         title={t("teach.customDomains.title")}
         description={t("teach.customDomains.description")}
       />
@@ -343,7 +358,7 @@ export function CustomDomainsPanel() {
           {loadError ? (
             <Button
               variant="outline"
-              className="justify-self-start aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+              className="justify-self-start aria-disabled:cursor-not-allowed"
               aria-disabled={loading}
               onClick={(event) => {
                 if (loading) return;
@@ -401,7 +416,7 @@ export function CustomDomainsPanel() {
                     onChange={(event) => setHostname(event.target.value)}
                     placeholder={t("teach.customDomains.hostnamePlaceholder")}
                     disabled={atQuota || adding}
-                    className="min-w-0 flex-1 rounded-md border border-[var(--color-line)] bg-white px-3 py-2.5 font-mono text-sm text-[var(--color-ink)] disabled:opacity-50"
+                    className="field-input field-input--inline min-w-0 flex-1 font-mono disabled:opacity-60"
                   />
                   <Button type="submit" disabled={atQuota || adding || !hostname.trim()}>
                     {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : null}

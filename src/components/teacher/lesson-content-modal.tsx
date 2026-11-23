@@ -3,11 +3,13 @@
 import Link from "next/link";
 import {
   useEffect,
+  useId,
   useImperativeHandle,
   useLayoutEffect,
   useRef,
   useState,
   type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
   type Ref,
 } from "react";
@@ -30,6 +32,8 @@ import {
   type LessonVideoSourcePickerHandle,
 } from "@/components/teacher/lesson-video-source-picker";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { Button } from "@/components/ui/button";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { BunnyVideoPlayer } from "@/components/courses/bunny-video-player";
 import { TrustedEmbedPlayer } from "@/components/learn/trusted-embed-player";
 import { ProtectedAssetPreview } from "@/components/shared/protected-asset-preview";
@@ -67,6 +71,11 @@ import {
   type UploadCourseAssetProgress,
 } from "@/lib/data/course-assets";
 import { isBunnyConfigured } from "@/lib/bunny/config";
+import { isTeacherAiEnabled } from "@/lib/ai/config";
+import { LessonAiCaptions } from "@/components/teacher/lesson-ai-captions";
+import { LessonAiQuiz } from "@/components/teacher/lesson-ai-quiz";
+import { AiSuggest } from "@/components/teacher/ai-suggest";
+import { useConfirm } from "@/components/teacher/use-confirm";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 import { useLessonUpload, startLessonUpload, cancelLessonUpload } from "@/components/teacher/lesson-upload-provider";
 import { lessonUploadIsBusy } from "@/lib/data/lesson-upload";
@@ -233,6 +242,7 @@ export function LessonContentModal({
   filesOnly = false,
 }: LessonContentModalProps) {
   const { t } = useTranslation();
+  const { ask, asking, dialog: confirmDialog } = useConfirm();
   const uploadManager = useLessonUpload();
   const sharedUpload = uploadManager?.job?.courseId === course.id && uploadManager.job.lessonId === lesson.id ? uploadManager.job : null;
   const mountedRef = useRef(true);
@@ -259,7 +269,10 @@ export function LessonContentModal({
   const [localUploadProgress, setUploadProgress] = useState<UploadCourseAssetProgress | null>(null);
   const uploadProgress = sharedUpload?.progress ?? localUploadProgress;
   const [error, setError] = useState<LessonError | null>(null);
-  const [success, setSuccess] = useState<"uploaded" | "deleted" | "oldLinkRemoved" | "renamed" | "ordered" | null>(null);
+  const [success, setSuccess] = useState<"uploaded" | "deleted" | "oldLinkRemoved" | "ordered" | null>(null);
+  // "Name saved." (ou a falha) sai embaixo do campo renomeado: antes caía na
+  // caixa de envio, acima da lista, longe do arquivo que mudou.
+  const [renameNotice, setRenameNotice] = useState<{ assetId: string; failed: boolean } | null>(null);
   const [isSavingOrder, setIsSavingOrder] = useState(false);
   const completedAssetId = sharedUpload?.status === "success" ? sharedUpload.assetId : undefined;
   const [handledAssetId, setHandledAssetId] = useState<string | undefined>();
@@ -309,6 +322,11 @@ export function LessonContentModal({
   // Contador, nao booleano: cada recusa vira um no novo no role="status" e e
   // anunciada de novo. null = sem aviso.
   const [linkNotSaved, setLinkNotSaved] = useState<number | null>(null);
+  // Sobe quando a troca do link antigo e confirmada na janela: remonta o
+  // seletor, que nasce mostrando o link gravado. O campo tinha voltado ao
+  // salvo ("") ao perguntar; sem isso ele seguia vazio e o blur seguinte
+  // apagava o link recem-gravado.
+  const [linkReplaced, setLinkReplaced] = useState(0);
   const [deletingAssetId, setDeletingAssetId] = useState<string | null>(null);
   const lessonAssets = assets.filter((asset) => asset.lessonId === lesson.id);
   const videoAssets = lessonAssets.filter((asset) => isVideoAssetKind(asset.kind));
@@ -342,11 +360,13 @@ export function LessonContentModal({
   // Link antigo que nao e video (Drive etc.): so leitura, com botao de tirar.
   // O aluno continua com o botao "Open resource".
   const oldLink = lesson.externalUrl?.trim() && !trustedEmbed ? lesson.externalUrl : null;
+  const assetStatus = getAssetStatus(lessonAssets, lesson);
+  const videoBusy = tab === "video" && (isUploading || Boolean(selectedFile));
   const videoStatus = tab === "video" && isUploading
     ? t("creatorEditor.lesson.file.uploading")
     : tab === "video" && selectedFile
       ? t("creatorEditor.lesson.file.selected")
-      : t(`creatorEditor.lesson.state.${getAssetStatus(lessonAssets, lesson)}`);
+      : t(`creatorEditor.lesson.state.${assetStatus}`);
   // So vale antes da primeira carga boa: depois dela, um recarregamento em
   // tempo real que falha deixava o alerta fixo ao lado de uma lista que
   // continua na tela.
@@ -357,6 +377,39 @@ export function LessonContentModal({
   const dialogRef = useRef<HTMLElement>(null);
 
   useModalFocus(dialogRef, variant === "dialog");
+
+  // F-11: a falha da lista de arquivos era um beco, so a frase. A frase segue
+  // onde ja e anunciada (no campo do link, no aviso do envio, no formulario de
+  // envio), entao aqui vem so a saida: "Try again" le de novo pela mesma recarga
+  // do fim do envio. O foco vai antes para a janela, porque o botao some quando
+  // a lista chega.
+  const [retryingAssets, setRetryingAssets] = useState(false);
+  async function retryAssets() {
+    if (retryingAssets) return;
+    dialogRef.current?.focus();
+    setRetryingAssets(true);
+    try {
+      await assetsReloadRef.current?.();
+    } finally {
+      setRetryingAssets(false);
+    }
+  }
+  const assetsRetry = loadErrorMessage ? (
+    <Button variant="outline" className="justify-self-start" loading={retryingAssets} onClick={() => void retryAssets()}>
+      {t(retryingAssets ? "appErrors.retrying" : "appErrors.retry")}
+    </Button>
+  ) : null;
+
+  // Envio cancelado numa aula sem video: o cartao de envio sai com o botao
+  // Cancelar focado e volta a area de soltar. O foco vai para o campo dela em
+  // vez de cair no body. Com o cartao ainda na tela, ele mesmo cuida do foco.
+  const refocusUploadRef = useRef(false);
+  useEffect(() => {
+    if (!refocusUploadRef.current || isUploading) return;
+    refocusUploadRef.current = false;
+    if (document.activeElement && document.activeElement !== document.body) return;
+    dialogRef.current?.querySelector<HTMLInputElement>('.lesson-video-source-picker input[type="file"]')?.focus();
+  });
 
   // Closing mid-upload would drop the progress UI while bytes are still
   // flying — every close affordance funnels through requestClose so an
@@ -506,15 +559,25 @@ export function LessonContentModal({
     }
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape" && !isUploading && flushLinkAllowsClose(linkHandleRef.current)) {
-        onClose();
+      // Com a confirmacao aberta, o Esc e dela: fecha so a pergunta.
+      if (event.key !== "Escape" || asking || isUploading) {
+        return;
       }
+      if (flushLinkAllowsClose(linkHandleRef.current)) {
+        onClose();
+        return;
+      }
+      // A descarga segurou o estudio (link recusado, ou a pergunta da troca
+      // acabou de abrir). Este mesmo Esc ainda esta sendo entregue: sem o
+      // preventDefault o navegador o aplicava a janela recem-aberta, que
+      // piscava e fechava antes de o professor responder.
+      event.preventDefault();
     }
 
     document.addEventListener("keydown", handleKeyDown);
 
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isUploading, onClose, variant]);
+  }, [asking, isUploading, onClose, variant]);
 
   // Na pagina, o voltar do navegador desmonta so esta pagina (o builder fica):
   // o link digitado e ainda sem blur e gravado antes, sem perguntar. Efeito de
@@ -667,6 +730,7 @@ export function LessonContentModal({
         setUploadProgress(null);
         setSelectedFile(null);
         setFileInputKey((current) => current + 1);
+        refocusUploadRef.current = true;
       } else {
         // Show the real blocker (413 size cap, 403 permission, ...) instead of a
         // generic message that made failures look random. E sem deixar o
@@ -684,19 +748,23 @@ export function LessonContentModal({
     }
   }
 
-  async function handleDeleteAsset(asset: CourseAsset) {
+  function handleDeleteAsset(asset: CourseAsset) {
     if (!isEditable) {
       return;
     }
 
-    const confirmed = window.confirm(
-      t("creatorEditor.lesson.deleteConfirm").replace("{fileName}", () => asset.fileName),
-    );
+    // A janela espera o apagar terminar; o erro sai na pagina, como antes.
+    ask({
+      title: t("creatorEditor.lesson.deleteTitle"),
+      body: t("creatorEditor.lesson.deleteConfirm").replace("{fileName}", () => asset.fileName),
+      confirmLabel: t("creatorEditor.lesson.deleteFile"),
+      cancelLabel: t("creatorEditor.lesson.keepFile"),
+      danger: true,
+      run: () => deleteAsset(asset),
+    });
+  }
 
-    if (!confirmed) {
-      return;
-    }
-
+  async function deleteAsset(asset: CourseAsset) {
     setError(null);
     setSuccess(null);
     setDeletingAssetId(asset.id);
@@ -717,6 +785,9 @@ export function LessonContentModal({
       }
 
       setSuccess("deleted");
+      // O botao de apagar some com o arquivo: o foco vai para o titulo da aula
+      // (ou a propria pagina, no e-book), depois de a janela fechar.
+      window.setTimeout(() => (document.getElementById("lesson-modal-title") ?? dialogRef.current)?.focus(), 0);
       void assetsReloadRef.current?.();
       onAssetsChanged?.();
     } catch {
@@ -730,12 +801,13 @@ export function LessonContentModal({
     if (!isEditable) return;
     setError(null);
     setSuccess(null);
+    setRenameNotice(null);
     try {
       await renameCourseAsset(asset.id, title);
-      setSuccess("renamed");
+      setRenameNotice({ assetId: asset.id, failed: false });
       void assetsReloadRef.current?.();
     } catch {
-      setError({ kind: "save" });
+      setRenameNotice({ assetId: asset.id, failed: true });
     }
   }
 
@@ -761,6 +833,28 @@ export function LessonContentModal({
   }
 
   const isPage = variant === "page";
+
+  // Abas da WAI-ARIA: setas, Home e End só levam o foco (com volta); abrir a
+  // aba é no Enter, no Espaço ou no clique. Trocar de aba limpa o arquivo
+  // escolhido e ainda não enviado (resetUploadState): passar pela barra com as
+  // setas não pode apagar a escolha do professor.
+  function handleTabKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>) {
+    const tabs = Array.from(
+      event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]:not(:disabled)') ?? [],
+    );
+    const index = tabs.indexOf(event.currentTarget);
+    const jump: Record<string, number> = { ArrowRight: index + 1, ArrowLeft: index - 1, Home: 0, End: tabs.length - 1 };
+    if (index === -1 || !(event.key in jump)) return;
+    event.preventDefault();
+    tabs[(jump[event.key] + tabs.length) % tabs.length]?.focus();
+  }
+
+  // Sem a barra (só os arquivos), o painel não é de aba nenhuma.
+  function tabPanelProps(value: LessonModalTab) {
+    return filesOnly
+      ? {}
+      : { role: "tabpanel", id: `lesson-modal-panel-${value}`, "aria-labelledby": `lesson-modal-tab-${value}` };
+  }
 
   // Sair pela trilha passa pelo mesmo cuidado de fechar: envio no ar segura, o
   // link digitado vai antes, e link recusado ou nao confirmado segura na tela.
@@ -810,7 +904,10 @@ export function LessonContentModal({
                   {crumbs.moduleLabel}
                 </Link>
               </li>
-              <li aria-current="page">{lesson.title || t("creatorEditor.lesson.untitled")}</li>
+              {/* Na tela o nome da aula nao entra na trilha: ele e o h3 logo
+                  abaixo (antes aparecia tres vezes). Para o leitor de tela a
+                  trilha continua dizendo onde se esta. */}
+              <li aria-current="page" className="sr-only">{lesson.title || t("creatorEditor.lesson.untitled")}</li>
             </ol>
           </nav>
         ) : (
@@ -824,57 +921,87 @@ export function LessonContentModal({
         )}
 
         {filesOnly ? null : (
-        <nav className="lesson-modal__tabs" aria-label={t("creatorEditor.lesson.setup")}>
+        <div role="tablist" className="lesson-modal__tabs" aria-label={t("creatorEditor.lesson.setup")}>
           {lessonModalTabs.map((item) => {
             const Icon = item.icon;
             const active = tab === item.value;
-            const badge =
+            // Etiqueta de largura fixa: a palavra do estado mudava a largura da
+            // aba enquanto o professor trabalhava ("Empty" > "Uploading" >
+            // "Uploaded") e a fileira pulava. Agora e uma marca de 10 px que
+            // muda de FORMA (anel vazio, meio cheio, cheio), nao so de cor; a
+            // palavra fica no title e para o leitor de tela. Materials mostra
+            // so o numero.
+            const descriptionDone = lesson.description.trim().length > 0 || Boolean(lesson.contentText?.trim());
+            const dot =
               item.value === "video"
-                ? videoStatus
+                ? { label: videoStatus, tone: videoBusy ? "busy" : assetStatus === "empty" ? "off" : "done" }
                 : item.value === "description"
-                  ? lesson.description.trim().length > 0 || lesson.contentText?.trim()
-                    ? t("creatorEditor.lesson.state.done")
-                    : t("creatorEditor.lesson.state.empty")
-                  : item.value === "materials"
-                    ? String(materialAssets.length)
-                    : isFreePreview
-                      ? t("creatorEditor.lesson.state.preview")
-                      : t("creatorEditor.lesson.state.private");
+                  ? {
+                      label: t(`creatorEditor.lesson.state.${descriptionDone ? "done" : "empty"}`),
+                      tone: descriptionDone ? "done" : "off",
+                    }
+                  : item.value === "settings"
+                    ? {
+                        // Previa gratis e publica: o professor precisa ver sem abrir a aba.
+                        label: t(`creatorEditor.lesson.state.${isFreePreview ? "preview" : "private"}`),
+                        tone: isFreePreview ? "on" : "off",
+                      }
+                    : null;
 
             return (
               <button
                 key={item.value}
                 type="button"
-                aria-current={active ? "page" : undefined}
+                role="tab"
+                id={`lesson-modal-tab-${item.value}`}
+                aria-selected={active}
+                // Só a aba aberta tem painel na tela; o Tab entra na barra por ela.
+                aria-controls={active ? `lesson-modal-panel-${item.value}` : undefined}
+                tabIndex={active ? 0 : -1}
                 className={active ? "is-active" : ""}
                 disabled={isUploading}
                 onClick={() => handleTabChange(item.value)}
+                onKeyDown={handleTabKeyDown}
               >
                 <Icon aria-hidden="true" size={14} />
                 {t(`creatorEditor.lesson.tabs.${item.value}`)}
-                <span>{badge}</span>
+                {item.value === "materials" ? (
+                  <span className="lesson-modal__tab-count">{materialAssets.length}</span>
+                ) : dot ? (
+                  <span className="lesson-modal__tab-dot" data-tone={dot.tone} title={dot.label}>
+                    <span className="sr-only">{dot.label}</span>
+                  </span>
+                ) : null}
               </button>
             );
           })}
-        </nav>
+        </div>
         )}
 
         <div className="lesson-modal__body">
+          {/* As abas travam durante o envio; sem esta frase pareciam quebradas. */}
+          {isUploading && !filesOnly ? (
+            <p className="lesson-modal__tabs-note">{t("creatorEditor.lesson.tabsLocked")}</p>
+          ) : null}
           {filesOnly ? null : (
           <div className="lesson-modal__context">
             <h3 id="lesson-modal-title" tabIndex={-1}>{lesson.title || t("creatorEditor.lesson.untitled")}</h3>
+            {/* Na pagina a trilha ja diz curso e modulo: a linha repetia o modulo. */}
+            {isPage && crumbs ? null : (
             <p className="lesson-modal__crumb">
               {t("creatorEditor.lesson.context")
                 .replace("{moduleIndex}", () => String(moduleIndex + 1))
                 .replace("{lessonIndex}", () => String(lessonIndex + 1))
                 .replace("{moduleTitle}", () => module.title)}
             </p>
+            )}
           </div>
           )}
           {tab === "video" ? (
-            <div className="grid gap-5">
+            <div className="grid gap-5" {...tabPanelProps("video")}>
 
               <LessonVideoSourcePicker
+                key={linkReplaced}
                 mode={videoMode}
                 disabled={!isEditable || isUploading}
                 accept={courseAssetAcceptTypes[uploadKind]}
@@ -930,11 +1057,39 @@ export function LessonContentModal({
                     return;
                   }
                   // O link aceito substitui o link antigo (Drive etc.): pede a
-                  // mesma confirmacao do botao de tirar. Recusou, nada muda e
-                  // o campo volta ao salvo.
+                  // mesma confirmacao do botao de tirar, na janela da
+                  // plataforma (era o window.confirm). A pergunta e assincrona
+                  // e o seletor espera uma resposta agora: daqui sai "nao
+                  // gravou" (o campo volta ao salvo e o Esc nao fecha o
+                  // estudio) e a gravacao fica para o confirmar, uma vez so.
+                  // Cancelou: nada muda, e so entao o aviso "nao salvo" sai no
+                  // role="status" (antes era lido com a pergunta aberta).
                   // Saindo da pagina (silent) nao da para perguntar: nao grava.
-                  if (oldLink && (options?.silent || !window.confirm(t("creatorEditor.lesson.removeOldLinkConfirm")))) {
-                    setLinkNotSaved((count) => (count ?? 0) + 1);
+                  if (oldLink) {
+                    if (options?.silent) {
+                      setLinkNotSaved((count) => (count ?? 0) + 1);
+                      return false;
+                    }
+                    // Com a pergunta ja aberta, nao abre outra por cima.
+                    if (!asking) {
+                      ask({
+                        title: t("creatorEditor.lesson.removeOldLinkTitle"),
+                        body: t("creatorEditor.lesson.removeOldLinkConfirm"),
+                        confirmLabel: t("creatorEditor.lesson.removeOldLink"),
+                        danger: true,
+                        run: () => {
+                          setLinkNotSaved(null);
+                          onUpdateLesson({ videoSource: "youtube", externalUrl: nextUrl });
+                          setLinkReplaced((count) => count + 1);
+                          // O campo que abriu a pergunta foi remontado: sem
+                          // alvo, o foco vai para um botao que fica.
+                          window.setTimeout(() => {
+                            if (document.activeElement === document.body) replaceButtonRef.current?.focus();
+                          }, 0);
+                        },
+                        onCancel: () => setLinkNotSaved((count) => (count ?? 0) + 1),
+                      });
+                    }
                     return false;
                   }
                   setLinkNotSaved(null);
@@ -962,6 +1117,7 @@ export function LessonContentModal({
                     progressPercent={uploadProgress?.percent}
                     onCancel={cancelUpload}
                     selectedFile={selectedFile}
+                    uploadingFileName={sharedUpload?.fileName}
                     fileInputKey={fileInputKey}
                     success={successMessage}
                     uploadKind={uploadKind}
@@ -980,20 +1136,25 @@ export function LessonContentModal({
                   <p className="text-xs text-[var(--color-ink-soft)]">{t("creatorEditor.lesson.oldLinkHelp")}</p>
                   <button
                     type="button"
-                    className="button-outline justify-self-start px-3 py-2 text-xs disabled:opacity-60"
+                    className="button-outline justify-self-start px-3 py-2 text-xs"
                     // Durante o envio o botao de troca fica desabilitado: o
                     // foco nao teria para onde ir e o aviso se perdia.
                     disabled={!isEditable || isUploading}
-                    onClick={() => {
-                      if (window.confirm(t("creatorEditor.lesson.removeOldLinkConfirm"))) {
+                    onClick={() => ask({
+                      title: t("creatorEditor.lesson.removeOldLinkTitle"),
+                      body: t("creatorEditor.lesson.removeOldLinkConfirm"),
+                      confirmLabel: t("creatorEditor.lesson.removeOldLink"),
+                      danger: true,
+                      run: () => {
                         onUpdateLesson({ externalUrl: null });
                         // Esta secao some junto com o link: o foco vai para um
                         // botao que fica, e o aviso sai pelo role="status".
+                        // Depois de a janela fechar (ate la a pagina e inerte).
                         setSuccess("oldLinkRemoved");
                         setLinkNotSaved(null);
-                        replaceButtonRef.current?.focus();
-                      }
-                    }}
+                        window.setTimeout(() => replaceButtonRef.current?.focus(), 0);
+                      },
+                    })}
                   >
                     {t("creatorEditor.lesson.removeOldLink")}
                   </button>
@@ -1013,6 +1174,7 @@ export function LessonContentModal({
                       : videoMode === "upload" ? loadErrorMessage : ""}
                 </p>
               )}
+              {assetsRetry}
 
               {videoAssets.length > 0 ? (
                   <LessonAssetList
@@ -1050,6 +1212,23 @@ export function LessonContentModal({
                 </section>
               ) : null}
 
+              {/* Legenda com IA: só para vídeo enviado à Bunny (é dela que sai
+                  o áudio e é nela que a legenda publicada aparece). */}
+              {/* Recolhida por padrão: aberta, a legenda (10 linhas) e o quiz
+                  (pergunta por pergunta) faziam a aba de vídeo virar três telas
+                  e empurravam o "Done" para longe. */}
+              {isTeacherAiEnabled && isEditable && resolvedSource === "upload" && primaryVideo?.bunnyVideoId ? (
+                <details className="rounded-md border fine-rule bg-[var(--color-surface-soft)] px-4 py-1">
+                  <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold text-[var(--color-ink)]">
+                    {t("creatorEditor.lesson.ai.tools")}
+                  </summary>
+                  <div className="grid gap-6 pb-3 pt-2">
+                    <LessonAiCaptions key={primaryVideo.id} courseId={course.id} lessonId={lesson.id} assetId={primaryVideo.id} />
+                    <LessonAiQuiz key={`quiz-${primaryVideo.id}`} courseId={course.id} lessonId={lesson.id} assetId={primaryVideo.id} />
+                  </div>
+                </details>
+              ) : null}
+
               <p className="lesson-modal__guidance">
                 {t("creatorEditor.lesson.videoHelp")}
               </p>
@@ -1057,7 +1236,7 @@ export function LessonContentModal({
           ) : null}
 
           {tab === "description" ? (
-            <div className="grid gap-4">
+            <div className="grid gap-4" {...tabPanelProps("description")}>
               <label className="lesson-modal-field">
                 <span>{t("creatorEditor.lesson.title")}</span>
                 <input
@@ -1066,6 +1245,18 @@ export function LessonContentModal({
                   disabled={!isEditable}
                 />
               </label>
+              {/* Sugestão com IA: lê a legenda da aula; "Use" só preenche o campo. */}
+              {isTeacherAiEnabled && isEditable && primaryVideo?.bunnyVideoId ? (
+                <AiSuggest
+                  courseId={course.id}
+                  lessonId={lesson.id}
+                  assetId={primaryVideo.id}
+                  target="lesson"
+                  currentDescription={lesson.contentText}
+                  onUseTitle={(title) => onUpdateLesson({ title })}
+                  onUseDescription={(contentText) => onUpdateLesson({ contentText })}
+                />
+              ) : null}
               {/* Um campo so, em texto simples, no campo PROTEGIDO (contentText:
                   course_lesson_content, fora do JSON publico). Links viram
                   clicaveis na area de membros (decisao de 14/09). */}
@@ -1128,6 +1319,7 @@ export function LessonContentModal({
                 success={successMessage}
                 uploadKind="lesson_thumbnail"
               />
+              {assetsRetry}
               <LessonAssetList
                 assets={thumbnailAssets}
                 emptyLabel={t("creatorEditor.lesson.noThumbnail")}
@@ -1139,7 +1331,7 @@ export function LessonContentModal({
           ) : null}
 
           {tab === "materials" ? (
-            <div className="grid gap-5">
+            <div className="grid gap-5" {...tabPanelProps("materials")}>
               <div className="lesson-modal-note">
                 <FileText aria-hidden="true" size={17} />
                 <p>
@@ -1166,6 +1358,7 @@ export function LessonContentModal({
                 success={successMessage}
                 uploadKind="lesson_material"
               />
+              {assetsRetry}
               <LessonAssetList
                 assets={materialAssets}
                 emptyLabel={t("creatorEditor.lesson.noMaterials")}
@@ -1173,6 +1366,8 @@ export function LessonContentModal({
                 deletingAssetId={deletingAssetId}
                 onDelete={handleDeleteAsset}
                 onRename={(asset, title) => void handleRenameAsset(asset, title)}
+                renameNotice={renameNotice}
+                onRenameEdit={() => setRenameNotice(null)}
                 onMove={(index, delta) => void handleMoveMaterial(index, delta)}
                 isSavingOrder={isSavingOrder}
               />
@@ -1180,21 +1375,31 @@ export function LessonContentModal({
           ) : null}
 
           {tab === "settings" ? (
-            <div className="grid gap-5">
-              <div className="lesson-modal-setting">
-                <div>
+            <div className="grid gap-5" {...tabPanelProps("settings")}>
+              {/* A linha inteira é a chave, como na Conta: antes só o alvo de
+                  44px em volta do trilho respondia e o texto ao lado não. O
+                  trilho é a .settings-toggle da casa; role="switch" diz
+                  ligada/desligada (o aria-pressed dizia "apertado"). */}
+              <button
+                type="button"
+                role="switch"
+                aria-checked={isFreePreview}
+                aria-label={t("creatorEditor.lesson.freePreviewLabel")}
+                aria-describedby="lesson-modal-free-preview-help"
+                onClick={onSetFreePreview}
+                disabled={!isEditable}
+                className="lesson-modal-setting"
+              >
+                <span>
                   <strong>{t("creatorEditor.lesson.freePreview")}</strong>
-                  <p>{t("creatorEditor.lesson.freePreviewHelp")}</p>
-                </div>
-                <button
-                  type="button"
-                  className={isFreePreview ? "is-on" : ""}
-                  onClick={onSetFreePreview}
-                  disabled={!isEditable}
-                  aria-pressed={isFreePreview}
-                  aria-label={t("creatorEditor.lesson.freePreviewLabel")}
-                />
-              </div>
+                  <span id="lesson-modal-free-preview-help" className="lesson-modal-setting__help">
+                    {t("creatorEditor.lesson.freePreviewHelp")}
+                  </span>
+                </span>
+                <span aria-hidden="true" className={`settings-toggle ${isFreePreview ? "settings-toggle--on" : ""}`}>
+                  <span />
+                </span>
+              </button>
               {/* So a estrategia "time_drip_custom" le os dias por aula
                   (src/domain/drip-policy.ts); nas outras o campo nao faz nada. */}
               {dripStrategy === "time_drip_custom" ? (
@@ -1222,7 +1427,8 @@ export function LessonContentModal({
               ) : null}
             </div>
           ) : null}
-          {filesOnly ? null : (
+          {/* Na aba de video a frase do video ja fecha a aba: eram duas seguidas. */}
+          {filesOnly || tab === "video" ? null : (
           <p className="lesson-modal__guidance">
             {t("creatorEditor.lesson.contextHelp")}
           </p>
@@ -1237,19 +1443,26 @@ export function LessonContentModal({
           </p>
           <button
             type="button"
-            className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
+            className="button-solid px-4 py-2.5 text-sm"
             onClick={requestClose}
             disabled={isUploading}
           >
-            {isUploading ? t("creatorEditor.lesson.file.uploading") : t("creatorEditor.lesson.state.done")}
+            {/* "Done" era tambem o estado da aba Description; na pagina o botao
+                diz para onde leva. */}
+            <BusyLabel
+              busy={isUploading}
+              idle={t(isPage ? "creatorEditor.lesson.backToModule" : "creatorEditor.lesson.state.done")}
+              busyText={t("creatorEditor.lesson.file.uploading")}
+            />
           </button>
         </footer>
         )}
+        {confirmDialog}
       </section>
   );
 
   return isPage ? content : (
-    <div className="lesson-modal-overlay" role="presentation" onMouseDown={requestClose}>
+    <div className="dialog-backdrop lesson-modal-overlay" role="presentation" onMouseDown={requestClose}>
       {content}
     </div>
   );
@@ -1266,6 +1479,7 @@ function LessonUploadForm({
   progressLabel,
   progressPercent,
   selectedFile,
+  uploadingFileName,
   success,
   uploadKind,
   onKindChange,
@@ -1281,6 +1495,8 @@ function LessonUploadForm({
   progressLabel: string;
   progressPercent?: number | null;
   selectedFile: File | null;
+  /** Envio que segue de outra montagem da aula: so o nome, sem o arquivo. */
+  uploadingFileName?: string;
   success: string;
   uploadKind: CourseAssetKind;
   onKindChange?: (kind: CourseAssetKind) => void;
@@ -1289,6 +1505,9 @@ function LessonUploadForm({
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const [unpreviewableFile, setUnpreviewableFile] = useState<File | null>(null);
   const isVideo = isVideoAssetKind(uploadKind);
+  // "Upload file" fica apagado até haver arquivo: a linha embaixo diz por quê.
+  const needsFileId = useId();
+  const needsFile = isEditable && !isUploading && !selectedFile;
 
   useEffect(() => {
     const video = localVideoRef.current;
@@ -1302,8 +1521,40 @@ function LessonUploadForm({
     };
   }, [selectedFile]);
 
+  // Foco no teclado: o "Upload file" focado some quando o envio comeca, e o
+  // foco caia no body (Cancelar ficava a uma volta inteira de Tab). Vai para
+  // Cancelar (ou para o andamento, enquanto Cancelar nao existe) e, no fim,
+  // volta ao botao de envio ou ao campo de arquivo. So mexe se o foco estava
+  // neste cartao ou perdido.
+  const formRef = useRef<HTMLFormElement>(null);
+  const statusRef = useRef<HTMLParagraphElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const submitRef = useRef<HTMLButtonElement>(null);
+  const wasUploadingRef = useRef(isUploading);
+  const hasCancel = Boolean(onCancel);
+  useEffect(() => {
+    const wasUploading = wasUploadingRef.current;
+    wasUploadingRef.current = isUploading;
+    const form = formRef.current;
+    const active = document.activeElement;
+    if (active && active !== document.body && !form?.contains(active)) return;
+    if (isUploading && (!wasUploading || active === statusRef.current)) {
+      (cancelRef.current ?? statusRef.current)?.focus();
+    } else if (!isUploading && wasUploading) {
+      const submit = submitRef.current;
+      (submit && !submit.disabled ? submit : form?.querySelector<HTMLInputElement>('input[type="file"]'))?.focus();
+    }
+  }, [isUploading, hasCancel]);
+
+  // Cartao compacto (prancha "Estados"): a previa 16:9 do lado, e do outro o
+  // nome, o andamento, UMA barra e Cancelar. O form era grid sem limite e o
+  // botao "Upload file" ocupava a largura da pagina (1.453 px a 1920 px).
+  const fileLabel = selectedFile
+    ? `${selectedFile.name} - ${formatCourseAssetSize(selectedFile.size)}`
+    : isUploading ? uploadingFileName : undefined;
   return (
     <form
+      ref={formRef}
       className="lesson-modal-upload"
       onSubmit={onSubmit}
       onDragOver={(event) => { if (isVideo) event.preventDefault(); }}
@@ -1315,51 +1566,52 @@ function LessonUploadForm({
         if (file) onFileChange(file);
       }}
     >
-      {selectedFile ? (
-        <p className="lesson-modal-upload__file">
-          {selectedFile.name} - {formatCourseAssetSize(selectedFile.size)}
-        </p>
+      {isVideo && selectedFile?.type.startsWith("video/") ? (
+        <video
+          ref={localVideoRef}
+          controls
+          playsInline
+          preload="metadata"
+          aria-label={t("creatorEditor.lesson.file.localPreview")}
+          className="lesson-modal-upload__video"
+          hidden={unpreviewableFile === selectedFile}
+          onError={() => setUnpreviewableFile(selectedFile)}
+        />
       ) : null}
+      <div className="lesson-modal-upload__body">
+      {fileLabel ? <p className="lesson-modal-upload__file">{fileLabel}</p> : null}
       {error ? <p role="alert" className="lesson-modal-upload__error">{error}</p> : null}
-      <p role="status" className={success ? "lesson-modal-upload__success" : "text-sm text-[var(--color-ink-soft)]"}>
+      <p ref={statusRef} tabIndex={-1} role="status" className={success ? "lesson-modal-upload__success" : "text-sm text-[var(--color-ink-soft)]"}>
         {isUploading ? progressLabel || t("creatorEditor.lesson.file.uploading")
           : success || (selectedFile ? t("creatorEditor.lesson.file.selectedHelp") : "")}
       </p>
       {isUploading ? (
-        <div className="grid min-w-0 gap-2">
-          <progress className="h-2 w-full accent-[var(--color-ink)]" max={100} value={progressPercent ?? undefined} aria-label={t("creatorEditor.lesson.file.uploading")} />
+        <>
+          <progress className="upload-progress" max={100} value={progressPercent ?? undefined} aria-label={t("creatorEditor.lesson.file.uploading")} />
           {onCancel ? (
-            <button type="button" onClick={onCancel} className="button-outline min-h-11 px-3 text-sm">
+            <button ref={cancelRef} type="button" onClick={onCancel} className="button-outline min-h-11 px-3 text-sm">
               {t("creatorEditor.lesson.file.cancel")}
             </button>
           ) : null}
-        </div>
+        </>
       ) : null}
+      {isVideo && selectedFile && unpreviewableFile === selectedFile ? (
+        <p className="text-sm text-[var(--color-ink-soft)]">{t("creatorEditor.lesson.file.previewUnavailable")}</p>
+      ) : null}
+      {/* Durante o envio estes controles ja ficavam desligados e so repetiam
+          o andamento ("Uploading..."): saem da vista, mas ficam montados para
+          o campo de arquivo nao ser recriado no meio do envio. */}
+      <div className="lesson-modal-upload__actions" hidden={isUploading}>
       <button
+        ref={submitRef}
         type="submit"
         autoFocus={isVideo && Boolean(selectedFile)}
         disabled={!isEditable || isUploading || !selectedFile}
-        className="button-solid min-h-11 px-4 py-2.5 text-sm disabled:opacity-60"
+        aria-describedby={needsFile ? needsFileId : undefined}
+        className="button-solid min-h-11 px-4 py-2.5 text-sm"
       >
         {t(`creatorEditor.lesson.file.${isUploading ? "uploading" : "upload"}`)}
       </button>
-      {isVideo && selectedFile?.type.startsWith("video/") ? (
-        <>
-          <video
-            ref={localVideoRef}
-            controls
-            playsInline
-            preload="metadata"
-            aria-label={t("creatorEditor.lesson.file.localPreview")}
-            className="aspect-video max-h-48 w-full rounded-md bg-black object-contain"
-            hidden={unpreviewableFile === selectedFile}
-            onError={() => setUnpreviewableFile(selectedFile)}
-          />
-          {unpreviewableFile === selectedFile ? (
-            <p className="text-sm text-[var(--color-ink-soft)]">{t("creatorEditor.lesson.file.previewUnavailable")}</p>
-          ) : null}
-        </>
-      ) : null}
       <label>
         <span>{getCourseAssetKindLabel(uploadKind, t)}</span>
         <input
@@ -1382,8 +1634,14 @@ function LessonUploadForm({
           {t(`creatorEditor.lesson.file.${selectedFile ? "selectAnother" : "select"}`)}
         </span>
       </label>
+      </div>
+      {needsFile ? (
+        <p id={needsFileId} className="text-xs text-[var(--color-ink-soft)]">
+          {t("creatorEditor.lesson.file.needsFile")}
+        </p>
+      ) : null}
       {onKindChange ? (
-        <label className="lesson-modal-field">
+        <label className="lesson-modal-field" hidden={isUploading}>
           <span>{t("creatorEditor.lesson.file.videoType")}</span>
           <select value={uploadKind} disabled={!isEditable || isUploading}
             onChange={(event) => onKindChange(event.target.value as "lesson_video" | "live_recording")}>
@@ -1392,6 +1650,7 @@ function LessonUploadForm({
           </select>
         </label>
       ) : null}
+      </div>
     </form>
   );
 }
@@ -1403,6 +1662,8 @@ function LessonAssetList({
   deletingAssetId,
   onDelete,
   onRename,
+  renameNotice = null,
+  onRenameEdit,
   onMove,
   isSavingOrder = false,
 }: {
@@ -1413,6 +1674,10 @@ function LessonAssetList({
   onDelete: (asset: CourseAsset) => void;
   /** Materiais: o nome que o aluno vê, gravado ao sair do campo. */
   onRename?: (asset: CourseAsset, title: string) => void;
+  /** O resultado do último nome gravado, mostrado embaixo do campo dele. */
+  renameNotice?: { assetId: string; failed: boolean } | null;
+  /** Voltou a digitar: o "salvo" de antes deixa de ser verdade. */
+  onRenameEdit?: () => void;
   /** Materiais: sobe (-1) ou desce (+1) o arquivo na lista. */
   onMove?: (index: number, delta: -1 | 1) => void;
   isSavingOrder?: boolean;
@@ -1446,6 +1711,9 @@ function LessonAssetList({
                   defaultValue={title}
                   maxLength={courseAssetTitleMaxLength}
                   disabled={!isEditable}
+                  onChange={() => {
+                    if (renameNotice?.assetId === asset.id) onRenameEdit?.();
+                  }}
                   onBlur={(event) => {
                     const next = event.target.value.trim();
                     if (next !== title) onRename(asset, next);
@@ -1459,6 +1727,16 @@ function LessonAssetList({
             ) : (
               <strong>{title}</strong>
             )}
+            {/* Fora do label (senão entraria no nome do campo) e em <p>: o
+                span desta lista é caixa alta e cinza. */}
+            {renameNotice?.assetId === asset.id ? (
+              <p
+                role={renameNotice.failed ? "alert" : "status"}
+                className={`mt-1 text-xs font-semibold ${renameNotice.failed ? "text-[var(--color-danger-fg)]" : "text-[var(--color-success-fg)]"}`}
+              >
+                {renameNotice.failed ? getLessonErrorMessage({ kind: "save" }, t) : t("creatorEditor.lesson.success.renamed")}
+              </p>
+            ) : null}
             <span>
               {getCourseAssetKindLabel(asset.kind, t)} - {formatCourseAssetSize(asset.size)}
             </span>
@@ -1478,7 +1756,7 @@ function LessonAssetList({
                   onClick={() => onMove(index, -1)}
                   aria-disabled={index === 0 || isSavingOrder}
                   aria-label={t("creatorEditor.lesson.files.moveUp").replace("{title}", () => title)}
-                  className="button-outline min-h-11 min-w-11 px-2 aria-disabled:opacity-40"
+                  className="button-outline min-h-11 min-w-11 px-2"
                 >
                   <ArrowUp aria-hidden="true" size={16} />
                 </button>
@@ -1487,7 +1765,7 @@ function LessonAssetList({
                   onClick={() => onMove(index, 1)}
                   aria-disabled={index === assets.length - 1 || isSavingOrder}
                   aria-label={t("creatorEditor.lesson.files.moveDown").replace("{title}", () => title)}
-                  className="button-outline min-h-11 min-w-11 px-2 aria-disabled:opacity-40"
+                  className="button-outline min-h-11 min-w-11 px-2"
                 >
                   <ArrowDown aria-hidden="true" size={16} />
                 </button>
@@ -1501,8 +1779,12 @@ function LessonAssetList({
                 type="button"
                 onClick={() => onDelete(asset)}
                 disabled={deletingAssetId === asset.id}
-                className="button-danger px-3.5 py-2 text-xs disabled:opacity-60"
+                className="button-danger px-3.5 py-2 text-xs"
               >
+                {/* Sem BusyLabel de propósito: a regra fora de camada
+                    `.lesson-modal-assets span` (globals.css) pinta todo span
+                    daqui de bloco cinza e maiúsculo, e as duas faces
+                    empilhariam. Converter só depois de escopar essa regra. */}
                 {t(`creatorEditor.lesson.${deletingAssetId === asset.id ? "deleting" : "delete"}`)}
               </button>
             ) : null}

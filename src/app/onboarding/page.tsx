@@ -17,7 +17,7 @@ export default async function OnboardingPage() {
       footer={
         <>
           {t("auth.onboardingShell.footerPrompt")}{" "}
-          <Link href="/courses" className="font-semibold text-[var(--color-primary)]">
+          <Link href="/courses" className="font-semibold text-[var(--color-primary)]!">
             {t("auth.onboardingShell.footerLink")}
           </Link>
         </>
@@ -25,11 +25,7 @@ export default async function OnboardingPage() {
     >
       <Suspense
         fallback={
-          <SkillsetSpinner
-            fullscreen={false}
-            title={t("learnWave2.onboarding.title")}
-            description={t("learnWave2.onboarding.description")}
-          />
+          <SkillsetSpinner fullscreen={false} title={t("authFlow.loading.title")} />
         }
       >
         <OnboardingChoice />

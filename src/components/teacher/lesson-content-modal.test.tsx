@@ -3,6 +3,7 @@ import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
+import { clickConfirm, stubDialogs } from "@/components/teacher/confirm-test-helpers";
 import type { CourseAsset } from "@/domain/course-asset";
 import type { DripStrategy } from "@/domain/drip-policy";
 import { resolveLessonVideoSource, type TeacherCourse, type TeacherLesson } from "@/domain/teacher-course";
@@ -132,6 +133,7 @@ function renderModal(
 
   const onUpdateLesson = vi.fn();
   const onClose = vi.fn();
+  const onSetFreePreview = vi.fn();
 
   const modal = (nextLesson: TeacherLesson, onChange: (patch: Partial<TeacherLesson>) => void = onUpdateLesson) => (
     <LessonContentModal
@@ -144,7 +146,7 @@ function renderModal(
       isFreePreview={isFreePreview}
       dripStrategy={dripStrategy}
       onClose={onClose}
-      onSetFreePreview={vi.fn()}
+      onSetFreePreview={onSetFreePreview}
       onUpdateLesson={onChange}
     />
   );
@@ -159,7 +161,7 @@ function renderModal(
     <I18nProvider initialLocale="en"><ChangeLanguage /><EditableModal /></I18nProvider>
   ) : modal(lesson));
 
-  return { onClose, onUpdateLesson, lesson, unmount: view.unmount, rerenderLesson: (patch: Partial<TeacherLesson>) => view.rerender(modal({ ...lesson, ...patch })) };
+  return { onClose, onUpdateLesson, onSetFreePreview, lesson, unmount: view.unmount, rerenderLesson: (patch: Partial<TeacherLesson>) => view.rerender(modal({ ...lesson, ...patch })) };
 }
 
 function chooseVideoFile(name = "aula.mp4") {
@@ -182,15 +184,104 @@ describe("LessonContentModal — dias de espera", () => {
 
   it("esconde os dias de espera quando a estrategia do curso nao os usa", () => {
     renderModal({ dripDelayDays: 7 }, "Módulo 1", false, "instant");
-    fireEvent.click(screen.getByRole("button", { name: /^Settings/ }));
-    expect(screen.getByRole("button", { name: "Use this lesson as the free preview" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: /^Settings/ }));
+    const toggle = screen.getByRole("switch", { name: "Use this lesson as the free preview" });
+    expect(toggle).toBeInTheDocument();
+    // B-22 / C-13: a mesma chave da Conta, e a linha inteira (com o texto) é o
+    // controle, então o alvo passa dos 44px.
+    expect(toggle).toHaveClass("lesson-modal-setting");
+    expect(toggle).toHaveTextContent("Free preview");
+    expect(toggle).toHaveAccessibleDescription(/Make this lesson visible before purchase/);
+    expect(toggle.querySelector(".settings-toggle")).not.toBeNull();
     expect(screen.queryByDisplayValue("7")).not.toBeInTheDocument();
   });
 
   it("mostra os dias de espera na liberacao por aula", () => {
     renderModal({ dripDelayDays: 7 }, "Módulo 1", false, "time_drip_custom");
-    fireEvent.click(screen.getByRole("button", { name: /^Settings/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Settings/ }));
     expect(screen.getByDisplayValue("7")).toBeInTheDocument();
+  });
+});
+
+// C-04: eram botoes com aria-current e sem setas. C-13: so o trilho da chave
+// respondia; o texto ao lado nao.
+describe("LessonContentModal — abas e chave da previa", () => {
+  beforeEach(() => {
+    currentAssets = [];
+    vi.clearAllMocks();
+  });
+
+  it("a barra e um tablist: so a aba aberta entra no Tab e o painel diz de qual aba e", () => {
+    renderModal();
+    const tabs = within(screen.getByRole("tablist", { name: "Lesson setup" })).getAllByRole("tab");
+    expect(tabs).toHaveLength(4);
+    const [video, ...others] = tabs;
+    expect(video).toHaveAttribute("aria-selected", "true");
+    expect(video).toHaveAttribute("tabindex", "0");
+    for (const tab of others) {
+      expect(tab).toHaveAttribute("aria-selected", "false");
+      expect(tab).toHaveAttribute("tabindex", "-1");
+    }
+    const panel = screen.getByRole("tabpanel");
+    expect(video).toHaveAttribute("aria-controls", panel.id);
+    expect(panel).toHaveAttribute("aria-labelledby", video.id);
+  });
+
+  it("setas, Home e End levam o foco sem abrir a aba nem perder o arquivo escolhido", () => {
+    renderModal();
+    chooseVideoFile();
+    const [video, description, materials, settings] = within(screen.getByRole("tablist")).getAllByRole("tab");
+    act(() => video.focus());
+    fireEvent.keyDown(video, { key: "ArrowRight" });
+    expect(description).toHaveFocus();
+    fireEvent.keyDown(description, { key: "End" });
+    expect(settings).toHaveFocus();
+    fireEvent.keyDown(settings, { key: "ArrowRight" });
+    expect(video).toHaveFocus();
+    fireEvent.keyDown(video, { key: "ArrowLeft" });
+    expect(settings).toHaveFocus();
+    fireEvent.keyDown(settings, { key: "Home" });
+    expect(video).toHaveFocus();
+    // Passar pela barra nao trocou de aba: o video escolhido continua la.
+    expect(video).toHaveAttribute("aria-selected", "true");
+    expect(video.querySelector(".lesson-modal__tab-dot")).toHaveAttribute("data-tone", "busy");
+
+    fireEvent.click(materials);
+    expect(materials).toHaveAttribute("aria-selected", "true");
+    expect(materials).toHaveAttribute("tabindex", "0");
+    expect(screen.getByRole("tabpanel")).toHaveAttribute("aria-labelledby", materials.id);
+  });
+
+  it("tocar no texto da previa gratis liga a chave, como na Conta", () => {
+    const { onSetFreePreview } = renderModal();
+    fireEvent.click(screen.getByRole("tab", { name: /^Settings/ }));
+    const toggle = screen.getByRole("switch", { name: "Use this lesson as the free preview" });
+    expect(toggle).toHaveAttribute("aria-checked", "false");
+    expect(toggle).not.toHaveAttribute("aria-pressed");
+    fireEvent.click(within(toggle).getByText("Free preview"));
+    fireEvent.click(within(toggle).getByText(/Make this lesson visible before purchase/));
+    expect(onSetFreePreview).toHaveBeenCalledTimes(2);
+  });
+});
+
+// F-12: "Upload file" ficava apagado sem dizer que faltava escolher o arquivo.
+describe("LessonContentModal — envio sem arquivo", () => {
+  beforeEach(() => {
+    currentAssets = [];
+    vi.clearAllMocks();
+  });
+
+  it("o Upload file apagado diz que falta o arquivo, e a frase sai quando ele vem", () => {
+    renderModal({}, "Módulo 1", true);
+    fireEvent.click(screen.getByRole("tab", { name: /^Materials/ }));
+    const upload = screen.getByRole("button", { name: "Upload file" });
+    expect(upload).toBeDisabled();
+    expect(upload).toHaveAccessibleDescription("Choose a file first, then upload it.");
+    fireEvent.change(screen.getByLabelText("Lesson material"), {
+      target: { files: [new File(["pdf"], "apostila.pdf", { type: "application/pdf" })] },
+    });
+    expect(screen.getByRole("button", { name: "Upload file" })).toBeEnabled();
+    expect(screen.queryByText("Choose a file first, then upload it.")).not.toBeInTheDocument();
   });
 });
 
@@ -206,7 +297,7 @@ describe("LessonContentModal — descricao", () => {
 
   it("a descricao grava no texto protegido e a nota publica antiga fica recolhida", () => {
     const { onUpdateLesson } = renderModal({ description: "old", contentText: null });
-    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
 
     const oldNote = screen
       .getByText(oldNoteLabel)
@@ -227,7 +318,7 @@ describe("LessonContentModal — descricao", () => {
 
   it("a nota antiga continua editavel e some quando a aula nao tem nota", () => {
     const { onUpdateLesson, unmount } = renderModal({ description: "old", contentText: "corpo" });
-    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
 
     expect(screen.getByPlaceholderText("Explain what the student is about to learn and why it matters.")).toHaveValue("corpo");
     fireEvent.change(
@@ -238,7 +329,7 @@ describe("LessonContentModal — descricao", () => {
     unmount();
 
     renderModal({ description: "", contentText: "corpo" });
-    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
     expect(screen.queryByText(oldNoteLabel)).not.toBeInTheDocument();
   });
 
@@ -246,7 +337,7 @@ describe("LessonContentModal — descricao", () => {
   // conseguia redigitar nem desfazer, e o autosave gravava "".
   it("apagar a nota antiga nao some com o campo", () => {
     const { onUpdateLesson } = renderModal({ description: "old", contentText: null }, "Módulo 1", true);
-    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
     const note = () => screen.queryByRole("textbox", { name: oldNoteLabel, hidden: true });
 
     fireEvent.change(note() as HTMLElement, { target: { value: "" } });
@@ -259,13 +350,13 @@ describe("LessonContentModal — descricao", () => {
   // O texto da aula de previa gratis e lido por qualquer um na pagina do curso.
   it("na aula de previa gratis a ajuda avisa que o texto e publico", () => {
     const { unmount } = renderModal({}, "Módulo 1", false, "instant", true);
-    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
     expect(screen.getByText(/anyone can read this text on the course page/)).toBeInTheDocument();
     expect(screen.queryByText(/for enrolled students/)).not.toBeInTheDocument();
     unmount();
 
     renderModal();
-    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
     expect(screen.getByText(/for enrolled students/)).toBeInTheDocument();
   });
 });
@@ -278,14 +369,17 @@ describe("LessonContentModal — um video por aula", () => {
   const youtube = "https://www.youtube.com/watch?v=abc";
   const vimeo = "https://vimeo.com/123456";
 
+  let restoreDialogs = () => {};
   beforeEach(() => {
     currentAssets = [];
     bunnyConfig.isBunnyConfigured = false;
     vi.clearAllMocks();
+    restoreDialogs = stubDialogs();
   });
   afterEach(() => {
     vi.restoreAllMocks();
     subscribeOutcome = "emit";
+    restoreDialogs();
   });
 
   it("com video enviado, o campo de link so aparece depois de Replace with link", () => {
@@ -330,8 +424,7 @@ describe("LessonContentModal — um video por aula", () => {
     expect(screen.getByRole("button", { name: /delete/i })).toBeInTheDocument();
   });
 
-  it("link antigo que nao e video aparece so leitura como Old link", () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+  it("link antigo que nao e video aparece so leitura como Old link", async () => {
     const { onUpdateLesson } = renderModal({ externalUrl: drive }, "Módulo 1", true);
 
     const old = screen.getByRole("region", { name: "Old link" });
@@ -347,22 +440,26 @@ describe("LessonContentModal — um video por aula", () => {
     expect(onUpdateLesson).not.toHaveBeenCalled();
 
     fireEvent.click(within(old).getByRole("button", { name: "Remove old link" }));
-    expect(confirm).toHaveBeenCalledOnce();
+    const asking = screen.getByRole("dialog", { name: "Remove this link?" });
+    expect(asking).toHaveAccessibleDescription("Remove the old link? Students will lose the button that opens it.");
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+    clickConfirm(asking, "Remove old link");
     expect(onUpdateLesson).toHaveBeenCalledExactlyOnceWith({ externalUrl: null });
     // A secao some com o link: o foco vai para um botao que fica e o aviso
     // sai pelo role="status".
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Remove this link?" })).toBeNull());
     expect(screen.queryByRole("region", { name: "Old link" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Replace with upload" })).toHaveFocus();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Replace with upload" })).toHaveFocus());
     expect(screen.getByRole("status")).toHaveTextContent("Old link removed.");
   });
 
   it("recusar a confirmacao de tirar o link antigo nao muda nada", () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     const { onUpdateLesson } = renderModal({ externalUrl: drive }, "Módulo 1", true);
 
     fireEvent.click(screen.getByRole("button", { name: "Remove old link" }));
+    fireEvent.click(within(screen.getByRole("dialog", { name: "Remove this link?" })).getByRole("button", { name: "Cancel" }));
 
-    expect(confirm).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("dialog", { name: "Remove this link?" })).toBeNull();
     expect(onUpdateLesson).not.toHaveBeenCalled();
     expect(screen.getByRole("region", { name: "Old link" })).toHaveTextContent(drive);
     expect(screen.getByRole("status")).toBeEmptyDOMElement();
@@ -370,54 +467,74 @@ describe("LessonContentModal — um video por aula", () => {
 
   // O primeiro link aceito sobrescrevia o link antigo sem perguntar: a unica
   // confirmacao estava no botao de tirar.
-  it("link do Vimeo numa aula com link antigo pede a confirmacao antes de gravar", () => {
-    const confirm = vi.spyOn(window, "confirm")
-      .mockReturnValueOnce(false).mockReturnValueOnce(false).mockReturnValueOnce(true);
+  // A troca pelo link pergunta na janela da plataforma (era o window.confirm).
+  const replaceAsk = () => screen.queryByRole("dialog", { name: "Remove this link?" });
+  const declineReplace = () => fireEvent.click(within(replaceAsk()!).getByRole("button", { name: "Cancel" }));
+
+  it("link do Vimeo numa aula com link antigo pede a confirmacao antes de gravar", async () => {
+    const nativeConfirm = vi.spyOn(window, "confirm");
     const { onUpdateLesson } = renderModal({ externalUrl: drive }, "Módulo 1", true);
     const notice = "Link not saved. The old link stays.";
     fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
 
     fireEvent.change(linkField(), { target: { value: vimeo } });
     fireEvent.blur(linkField());
-    expect(confirm).toHaveBeenCalledExactlyOnceWith("Remove the old link? Students will lose the button that opens it.");
+    expect(replaceAsk()).toHaveAccessibleDescription("Remove the old link? Students will lose the button that opens it.");
     expect(onUpdateLesson).not.toHaveBeenCalled();
     expect(screen.getByRole("region", { name: "Old link" })).toHaveTextContent(drive);
+    // Com a pergunta aberta o aviso "nao salvo" ainda nao sai: o leitor de
+    // tela o lia enquanto o professor era perguntado.
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+    declineReplace();
+    expect(replaceAsk()).toBeNull();
+    expect(onUpdateLesson).not.toHaveBeenCalled();
     // Recusou: o campo volta ao salvo e avisa. Sair de novo (X, aba, troca)
     // nao pergunta outra vez nem come o clique.
     expect(linkField()).toHaveValue("");
     expect(screen.getByRole("status")).toHaveTextContent(notice);
+    expect(screen.getByRole("region", { name: "Old link" })).toHaveTextContent(drive);
     const firstNotice = screen.getByText(notice);
     fireEvent.blur(linkField());
-    expect(confirm).toHaveBeenCalledOnce();
+    expect(replaceAsk()).toBeNull();
 
     // A segunda recusa vira um no novo no status, para ser anunciada de novo.
     fireEvent.change(linkField(), { target: { value: vimeo } });
     fireEvent.blur(linkField());
-    expect(confirm).toHaveBeenCalledTimes(2);
+    expect(replaceAsk()).not.toBeNull();
+    declineReplace();
     expect(screen.getByText(notice)).not.toBe(firstNotice);
 
+    // Confirmou: grava uma vez so, depois do confirmar.
     fireEvent.change(linkField(), { target: { value: vimeo } });
     fireEvent.blur(linkField());
-    expect(confirm).toHaveBeenCalledTimes(3);
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+    clickConfirm(replaceAsk()!, "Remove old link");
     expect(onUpdateLesson).toHaveBeenCalledExactlyOnceWith({ videoSource: "youtube", externalUrl: vimeo });
-    expect(confirm.mock.invocationCallOrder[2]).toBeLessThan(onUpdateLesson.mock.invocationCallOrder[0]);
+    await waitFor(() => expect(replaceAsk()).toBeNull());
+    expect(onUpdateLesson).toHaveBeenCalledOnce();
     expect(screen.queryByRole("region", { name: "Old link" })).not.toBeInTheDocument();
+    // O campo mostra o link gravado: o blur seguinte nao o apaga.
+    expect(linkField()).toHaveValue(vimeo);
+    fireEvent.blur(linkField());
+    expect(onUpdateLesson).toHaveBeenCalledOnce();
     // Gravou: o aviso de "nao salvo" sai.
     expect(screen.getByRole("status")).toBeEmptyDOMElement();
+    expect(nativeConfirm).not.toHaveBeenCalled();
   });
 
   it("o aviso de link nao salvo some depois de tirar o link antigo e ao trocar de aba", () => {
-    vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
     renderModal({ externalUrl: drive }, "Módulo 1", true);
     fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
     fireEvent.change(linkField(), { target: { value: vimeo } });
     fireEvent.blur(linkField());
+    declineReplace();
     expect(screen.getByRole("status")).toHaveTextContent("Link not saved. The old link stays.");
 
     fireEvent.click(screen.getByRole("button", { name: "Remove old link" }));
+    clickConfirm(screen.getByRole("dialog", { name: "Remove this link?" }), "Remove old link");
     expect(screen.getByRole("status")).toHaveTextContent("Old link removed.");
-    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
-    fireEvent.click(screen.getByRole("button", { name: /^Video/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Video/ }));
     expect(screen.getByRole("status")).toBeEmptyDOMElement();
   });
 
@@ -534,20 +651,28 @@ describe("LessonContentModal — um video por aula", () => {
   });
 
   it("Esc e Cancelar na confirmacao deixam o estudio aberto; o Esc seguinte fecha", () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     const { onUpdateLesson, onClose } = renderModal({ externalUrl: drive }, "Módulo 1", true);
     fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
     fireEvent.change(linkField(), { target: { value: vimeo } });
 
-    fireEvent.keyDown(linkField(), { key: "Escape" });
-    expect(confirm).toHaveBeenCalledOnce();
+    // O Esc que abriu a pergunta sai cancelado (preventDefault): no navegador,
+    // sem isso, o mesmo Esc fechava a janela recem-aberta.
+    expect(fireEvent.keyDown(linkField(), { key: "Escape" })).toBe(false);
+    expect(replaceAsk()).not.toBeNull();
     expect(onClose).not.toHaveBeenCalled();
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+    // Com a pergunta aberta, o Esc e dela: o estudio nao fecha por baixo.
+    fireEvent.keyDown(linkField(), { key: "Escape" });
+    expect(onClose).not.toHaveBeenCalled();
+    declineReplace();
+    expect(replaceAsk()).toBeNull();
     expect(onUpdateLesson).not.toHaveBeenCalled();
     expect(screen.getByRole("status")).toHaveTextContent("Link not saved. The old link stays.");
 
     // O campo voltou ao salvo: nada mais a perder, o Esc seguinte fecha.
     fireEvent.keyDown(linkField(), { key: "Escape" });
-    expect(confirm).toHaveBeenCalledOnce();
+    expect(replaceAsk()).toBeNull();
     expect(onClose).toHaveBeenCalledOnce();
   });
 
@@ -588,8 +713,8 @@ describe("LessonContentModal — um video por aula", () => {
     subscribeOutcome = "fail";
     const { onUpdateLesson } = renderModal();
     fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
-    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
-    fireEvent.click(screen.getByRole("button", { name: /^Video/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Video/ }));
 
     expect(linkField()).toHaveAttribute("readonly");
     expect(screen.getByText("We could not load lesson assets.")).toBeInTheDocument();
@@ -676,9 +801,29 @@ describe("LessonContentModal — um video por aula", () => {
     renderModal();
     expect(screen.getByRole("status")).toHaveTextContent("We could not load lesson assets.");
   });
+
+  // F-11: a falha da lista era um beco (so a frase). "Try again" le de novo
+  // pela mesma recarga; o foco fica na janela quando o botao some.
+  it("o erro de carga tem Try again, que le os arquivos de novo", async () => {
+    subscribeOutcome = "fail";
+    reloadServesCurrentAssets = true;
+    currentAssets = [videoAsset()];
+    try {
+      renderModal();
+      expect(screen.getByRole("status")).toHaveTextContent("We could not load lesson assets.");
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+      await waitFor(() => expect(screen.queryByText("We could not load lesson assets.")).not.toBeInTheDocument());
+      expect(screen.queryByRole("button", { name: /Try again|Trying again/ })).toBeNull();
+      expect(screen.getByRole("dialog")).toHaveFocus();
+      expect(subscribed).toHaveBeenCalledTimes(1);
+    } finally {
+      reloadServesCurrentAssets = false;
+    }
+  });
 });
 
 describe("LessonContentModal — video tab", () => {
+  let restoreDialogs = () => {};
   beforeEach(() => {
     currentAssets = [];
     bunnyConfig.isBunnyConfigured = false;
@@ -687,10 +832,12 @@ describe("LessonContentModal — video tab", () => {
       static createObjectURL = vi.fn((file: File) => `blob:local-${file.name}`);
       static revokeObjectURL = vi.fn();
     });
+    restoreDialogs = stubDialogs();
   });
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+    restoreDialogs();
   });
 
   // Tirar o link antigo no meio de um envio sumia com o botao focado e o foco
@@ -728,7 +875,7 @@ describe("LessonContentModal — video tab", () => {
     expect(form.compareDocumentPosition(screen.getByRole("button", { name: "Replace with link" })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(onUpdateLesson).not.toHaveBeenCalled();
     expect(uploadCourseAsset).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: /^Video/ })).toHaveTextContent("Selected");
+    expect(screen.getByRole("tab", { name: /^Video/ })).toHaveTextContent("Selected");
 
     fireEvent.error(preview);
     expect(screen.getByText("This browser cannot preview this file. You can still upload it.")).toBeInTheDocument();
@@ -764,6 +911,153 @@ describe("LessonContentModal — video tab", () => {
     expect(screen.getByRole("status")).toHaveTextContent("File uploaded to this lesson.");
     expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:local-aula.mp4");
   });
+
+  // A queixa do dono: ao enviar, um bloco enorme tomava a tela (botao de
+  // 1.453 px, previa de ponta a ponta). Durante o envio o cartao fica com nome,
+  // andamento, uma barra e Cancelar; as abas dizem por que travaram.
+  it("durante o envio o cartao fica compacto e a frase explica as abas travadas", async () => {
+    let finish!: () => void;
+    uploadCourseAsset.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
+    renderModal();
+    chooseVideoFile("minha aula.mp4");
+    const videoTab = screen.getByRole("tab", { name: /^Video/ });
+    // Meio cheio (forma, nao so cor) e a palavra no title para quem usa mouse.
+    expect(videoTab.querySelector(".lesson-modal__tab-dot")).toHaveAttribute("data-tone", "busy");
+    expect(videoTab.querySelector(".lesson-modal__tab-dot")).toHaveAttribute("title", "Selected");
+    expect(screen.queryByText("Tabs unlock when the upload finishes.")).not.toBeInTheDocument();
+    const submit = screen.getByRole("button", { name: "Upload file" });
+    act(() => submit.focus());
+    fireEvent.click(submit);
+
+    const progress = await screen.findByRole("progressbar", { name: "Uploading..." });
+    const form = progress.closest("form")!;
+    // O botao focado some: sem Cancelar neste envio, o foco vai para o andamento.
+    expect(within(form).getByRole("status")).toHaveFocus();
+    expect(within(form).getByText(/minha aula\.mp4/)).toBeInTheDocument();
+    expect(within(form).getAllByRole("progressbar")).toHaveLength(1);
+    // O botao de enviar so repetia "Uploading...": sai da vista, o campo fica montado.
+    expect(within(form).queryByRole("button", { name: "Uploading..." })).not.toBeInTheDocument();
+    expect(within(form).queryByRole("combobox", { name: "Video type" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Lesson video")).toBeInTheDocument();
+    expect(screen.getByText("Tabs unlock when the upload finishes.")).toBeInTheDocument();
+    // A etiqueta da aba nao troca mais de palavra visivel (e de largura).
+    expect(within(videoTab).queryByText("Uploading...")?.className).toBe("sr-only");
+
+    await act(async () => { finish(); });
+    expect(screen.queryByText("Tabs unlock when the upload finishes.")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Upload file" })).toBeVisible();
+    // Sem arquivo novo o envio fica desligado: o foco volta ao campo de arquivo.
+    expect(screen.getByLabelText("Lesson video")).toHaveFocus();
+  });
+
+  // F-04: o botão do rodapé diz "Uploading..." enquanto o arquivo sobe, mas
+  // os dois rótulos ficam na mesma célula: a largura não muda, e o nome é
+  // sempre o que está à vista.
+  it("o botao do rodape diz Uploading... durante o envio sem trocar de largura", async () => {
+    let finish!: () => void;
+    uploadCourseAsset.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
+    renderModal();
+    const footer = document.querySelector(".lesson-modal__footer") as HTMLElement;
+    const done = within(footer).getByRole("button", { name: "Done" });
+    expect(within(done).getByText("Uploading...")).toHaveAttribute("aria-hidden", "true");
+    chooseVideoFile();
+    fireEvent.click(screen.getByRole("button", { name: "Upload file" }));
+
+    const busy = await within(footer).findByRole("button", { name: "Uploading..." });
+    expect(busy).toBe(done);
+    expect(busy).toBeDisabled();
+    expect(within(busy).getByText("Done")).toHaveAttribute("aria-hidden", "true");
+    expect(within(footer).queryByRole("button", { name: "Done" })).toBeNull();
+
+    await act(async () => { finish(); });
+    expect(within(footer).getByRole("button", { name: "Done" })).toBe(done);
+    expect(done).toBeEnabled();
+  });
+
+  // O Delete da lista de arquivos fica SEM o par empilhado: a regra fora de
+  // camada `.lesson-modal-assets span` (globals.css) faria de cada span um
+  // bloco cinza e maiúsculo, empilhando as duas faces. Só converter depois de
+  // escopar essa regra.
+  it("o Delete da lista de arquivos troca o rotulo sem span, nos dois estados", async () => {
+    currentAssets = [videoAsset()];
+    let finish!: () => void;
+    deleteCourseAsset.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
+    renderModal();
+    const list = document.querySelector(".lesson-modal-assets") as HTMLElement;
+    const remove = within(list).getByRole("button", { name: "Delete" });
+    expect(remove.querySelector("span")).toBeNull();
+    expect(remove.textContent).toBe("Delete");
+
+    fireEvent.click(remove);
+    clickConfirm(screen.getByRole("dialog", { name: "Delete this file?" }), "Delete file");
+
+    const busy = await within(list).findByRole("button", { name: "Deleting..." });
+    expect(busy).toBeDisabled();
+    expect(busy.querySelector("span")).toBeNull();
+    expect(busy.textContent).toBe("Deleting...");
+
+    await act(async () => { finish(); });
+  });
+
+  it("o foco vai para Cancelar quando o envio comeca e volta ao campo quando ele e cancelado", async () => {
+    bunnyConfig.isBunnyConfigured = true;
+    const { CourseAssetUploadCancelled } = await import("@/lib/data/course-assets");
+    let fail!: (error: Error) => void;
+    const cancel = vi.fn(() => fail(new CourseAssetUploadCancelled()));
+    uploadLessonVideoToBunny.mockImplementationOnce((input) => {
+      (input as { onCancelAvailable: (cancel: () => void) => void }).onCancelAvailable(cancel);
+      return new Promise<void>((_resolve, reject) => { fail = reject; });
+    });
+    renderModal();
+    chooseVideoFile();
+    const submit = screen.getByRole("button", { name: "Upload file" });
+    act(() => submit.focus());
+    fireEvent.click(submit);
+
+    const cancelButton = await screen.findByRole("button", { name: "Cancel upload" });
+    expect(cancelButton).toHaveFocus();
+    await act(async () => { fireEvent.click(cancelButton); });
+    expect(cancel).toHaveBeenCalledOnce();
+    // Aula sem video: o cartao sai e volta a area de soltar, com o foco nela.
+    await waitFor(() => expect(screen.getByLabelText("Upload a lesson video")).toHaveFocus());
+  });
+
+  it("numa aula com video, cancelar devolve o foco ao campo de arquivo do cartao", async () => {
+    currentAssets = [videoAsset()];
+    bunnyConfig.isBunnyConfigured = true;
+    const { CourseAssetUploadCancelled } = await import("@/lib/data/course-assets");
+    let fail!: (error: Error) => void;
+    uploadLessonVideoToBunny.mockImplementationOnce((input) => {
+      (input as { onCancelAvailable: (cancel: () => void) => void }).onCancelAvailable(() => fail(new CourseAssetUploadCancelled()));
+      return new Promise<void>((_resolve, reject) => { fail = reject; });
+    });
+    renderModal({ videoSource: "upload" });
+    fireEvent.change(screen.getByLabelText("Lesson video"), {
+      target: { files: [new File(["video"], "nova.mp4", { type: "video/mp4" })] },
+    });
+    const submit = screen.getByRole("button", { name: "Upload file" });
+    act(() => submit.focus());
+    fireEvent.click(submit);
+    const cancelButton = await screen.findByRole("button", { name: "Cancel upload" });
+    expect(cancelButton).toHaveFocus();
+    await act(async () => { fireEvent.click(cancelButton); });
+    await waitFor(() => expect(screen.getByLabelText("Lesson video")).toHaveFocus());
+  });
+
+  // A aba Settings dizia "Preview" ou "Private"; sem a marca, so quem abria a
+  // aba sabia que a aula esta aberta ao publico.
+  it.each([[true, "Preview", "on"], [false, "Private", "off"]] as const)(
+    "a aba Settings mostra se a aula e previa gratis (%s)",
+    (isFreePreview, label, tone) => {
+      renderModal({}, "Módulo 1", false, "instant", isFreePreview);
+      const settings = screen.getByRole("tab", { name: /^Settings/ });
+      // O leitor de tela ouve o estado junto com o nome da aba.
+      expect(settings).toHaveAccessibleName(new RegExp(`${label}$`));
+      const mark = settings.querySelector(".lesson-modal__tab-dot");
+      expect(mark).toHaveAttribute("data-tone", tone);
+      expect(mark).toHaveAttribute("title", label);
+    },
+  );
 
   it("retains the selected file when choosing live recording", async () => {
     renderModal();
@@ -840,12 +1134,12 @@ describe("LessonContentModal — video tab", () => {
       });
       const url = "https://youtu.be/author-link";
       const { onUpdateLesson } = renderModal({ externalUrl: url }, "Módulo $& integral", true);
-      fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+      fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
       fireEvent.change(screen.getByLabelText("Lesson title"), { target: { value: "Título $& íntegro" } });
       fireEvent.change(screen.getByPlaceholderText("Explain what the student is about to learn and why it matters."), {
         target: { value: "Descrição autoral — não traduzir" },
       });
-      fireEvent.click(screen.getByRole("button", { name: /^Video/ }));
+      fireEvent.click(screen.getByRole("tab", { name: /^Video/ }));
       // A aula tem link do YouTube: a aba abre no link, e o envio e uma troca explicita.
       fireEvent.click(screen.getByRole("button", { name: "Replace with upload" }));
       const file = chooseVideoFile("Aula $& — ação.mp4");
@@ -862,7 +1156,7 @@ describe("LessonContentModal — video tab", () => {
       // O link salvo nunca foi tocado pela troca nem pelo envio.
       expect(onUpdateLesson).not.toHaveBeenCalledWith(expect.objectContaining({ externalUrl: expect.anything() }));
       for (const name of [/^Video/, /^Descripción/, /^Materiales/, /^Ajustes/]) {
-        expect(screen.getByRole("button", { name })).toBeDisabled();
+        expect(screen.getByRole("tab", { name })).toBeDisabled();
       }
       expect(onUpdateLesson).toHaveBeenCalledTimes(updatesBeforeLanguage);
       expect(subscribed).toHaveBeenCalledOnce();
@@ -879,7 +1173,7 @@ describe("LessonContentModal — video tab", () => {
       } else {
         await act(async () => { emitAssets([videoAsset()]); finish(); });
       }
-      await waitFor(() => expect(screen.getByRole("button", { name: /^Descripción/ })).toBeEnabled());
+      await waitFor(() => expect(screen.getByRole("tab", { name: /^Descripción/ })).toBeEnabled());
       if (outcome === "failure") {
         expect(screen.getByText(/Demasiadas subidas en la última hora/)).toBeInTheDocument();
       } else if (outcome === "success") {
@@ -892,7 +1186,7 @@ describe("LessonContentModal — video tab", () => {
       fireEvent.click(screen.getByRole("button", { name: "Change language" }));
       if (outcome === "failure") expect(screen.getByText(/Too many uploads in the last hour/)).toBeInTheDocument();
       if (outcome === "success") expect(screen.getByText("File uploaded to this lesson.")).toBeInTheDocument();
-      fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+      fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
       expect(screen.getByLabelText("Lesson title")).toHaveValue("Título $& íntegro");
       expect(screen.getByDisplayValue("Descrição autoral — não traduzir")).toBeInTheDocument();
       expect(subscribed).toHaveBeenCalledOnce();
@@ -925,7 +1219,7 @@ describe("LessonContentModal — video tab", () => {
     });
     try {
       renderModal({}, "Módulo 1", true);
-      fireEvent.click(screen.getByRole("button", { name: /^Materials/ }));
+      fireEvent.click(screen.getByRole("tab", { name: /^Materials/ }));
       expect(screen.queryByText("apostila.pdf")).not.toBeInTheDocument();
       fireEvent.change(screen.getByLabelText("Lesson material"), {
         target: { files: [new File(["pdf"], "apostila.pdf", { type: "application/pdf" })] },
@@ -944,17 +1238,17 @@ describe("LessonContentModal — video tab", () => {
       downloadUrl: "https://example.supabase.co/storage/v1/object/public/public-media/thumbnail.png",
     })];
     const { onUpdateLesson } = renderModal({ type: "external_embed", durationMinutes: 12, dripDelayDays: 7 }, "Módulo $& {lessonIndex}", true, "time_drip_custom");
-    fireEvent.click(screen.getByRole("button", { name: /^Settings/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Settings/ }));
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    expect(screen.getByRole("button", { name: /^Ajustes/ })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("tab", { name: /^Ajustes/ })).toHaveAttribute("aria-selected", "true");
     expect(screen.queryByLabelText("Tipo de lección")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Duración en minutos")).not.toBeInTheDocument();
     expect(screen.getByDisplayValue("7")).toBeInTheDocument();
     expect(screen.getByText("Módulo 1 - Módulo $& {lessonIndex} / Lección 1")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Usar esta lección como vista previa gratuita" })).toHaveAttribute("aria-pressed", "false");
-    fireEvent.click(screen.getByRole("button", { name: /^Descripción/ }));
+    expect(screen.getByRole("switch", { name: "Usar esta lección como vista previa gratuita" })).toHaveAttribute("aria-checked", "false");
+    fireEvent.click(screen.getByRole("tab", { name: /^Descripción/ }));
     expect(screen.getByRole("img", { name: "Miniatura de la lección: Miniatura $&.png" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /^Materiales/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Materiales/ }));
     expect(screen.getByLabelText("Material de la lección")).toBeInTheDocument();
     expect(screen.getByText("Todavía no hay materiales complementarios.")).toBeInTheDocument();
     expect(onUpdateLesson).not.toHaveBeenCalled();
@@ -987,7 +1281,7 @@ describe("LessonContentModal — video tab", () => {
         .toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     }
 
-    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
     expect(dialog).toHaveAccessibleName(title);
     expect(body).toContainElement(screen.getByRole("heading", { name: title }));
     expect(screen.getByRole("button", { name: "Done" })).toBeInTheDocument();
@@ -1096,7 +1390,7 @@ describe("LessonContentModal — video tab", () => {
   it("shows the uploaded thumbnail beside lesson details, not release settings", () => {
     currentAssets = [videoAsset({ kind: "lesson_thumbnail", contentType: "image/png", fileName: "thumbnail.png", downloadUrl: "https://example.supabase.co/storage/v1/object/public/public-media/thumbnail.png" })];
     renderModal();
-    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
     expect(screen.getByRole("img", { name: "Lesson thumbnail: thumbnail.png" })).toHaveAttribute("src", currentAssets[0].downloadUrl);
   });
 
@@ -1126,10 +1420,10 @@ describe("LessonContentModal — video tab", () => {
       const progress = await screen.findByText(/^50% - /);
 
       for (const name of [/^Video/, /^Description/, /^Materials/, /^Settings/]) {
-        fireEvent.click(screen.getByRole("button", { name }));
+        fireEvent.click(screen.getByRole("tab", { name }));
         expect(progress).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Cancel upload" })).toBeEnabled();
-        expect(screen.getByRole("button", { name })).toBeDisabled();
+        expect(screen.getByRole("tab", { name })).toBeDisabled();
       }
 
       if (outcome === "cancel") {
@@ -1141,7 +1435,7 @@ describe("LessonContentModal — video tab", () => {
         finish();
       }
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: /^Description/ })).toBeEnabled();
+        expect(screen.getByRole("tab", { name: /^Description/ })).toBeEnabled();
       });
       expect(screen.queryByRole("button", { name: "Cancel upload" })).not.toBeInTheDocument();
       if (outcome === "success") {
@@ -1149,7 +1443,7 @@ describe("LessonContentModal — video tab", () => {
       } else {
         expect(onUpdateLesson).not.toHaveBeenCalled();
       }
-      fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+      fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
       expect(screen.getByLabelText("Lesson title")).toBeInTheDocument();
     },
   );
@@ -1158,7 +1452,6 @@ describe("LessonContentModal — video tab", () => {
   // deixava `videoSource` prometendo um arquivo que não existe mais.
   it("clears the declared upload source when the last video asset is deleted", async () => {
     currentAssets = [videoAsset()];
-    vi.spyOn(window, "confirm").mockReturnValue(true);
 
     const { onUpdateLesson } = renderModal({
       videoSource: "upload",
@@ -1166,6 +1459,10 @@ describe("LessonContentModal — video tab", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: /delete/i }));
+    // Nada sai antes do confirmar na janela; confirmar apaga uma vez.
+    const asking = screen.getByRole("dialog", { name: "Delete this file?" });
+    expect(deleteCourseAsset).not.toHaveBeenCalled();
+    clickConfirm(asking, "Delete file");
 
     await waitFor(() => {
       expect(deleteCourseAsset).toHaveBeenCalledTimes(1);
@@ -1176,11 +1473,11 @@ describe("LessonContentModal — video tab", () => {
 
   it("keeps the source when another video asset survives the delete", async () => {
     currentAssets = [videoAsset(), videoAsset({ id: "asset-2" })];
-    vi.spyOn(window, "confirm").mockReturnValue(true);
 
     const { onUpdateLesson } = renderModal({ videoSource: "upload" });
 
     fireEvent.click(screen.getAllByRole("button", { name: /delete/i })[0]);
+    clickConfirm(screen.getByRole("dialog", { name: "Delete this file?" }), "Delete file");
 
     await waitFor(() => {
       expect(deleteCourseAsset).toHaveBeenCalledTimes(1);

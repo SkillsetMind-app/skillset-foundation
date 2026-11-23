@@ -1,15 +1,19 @@
 "use client";
 
-import { CheckCircle2, HelpCircle, Pin, Radio, X } from "lucide-react";
+import { CheckCircle2, HelpCircle, Pin, Radio, ThumbsUp, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { formatNotificationTime } from "@/components/account/notification-row";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { CommunityItemActions } from "@/components/learn/community-item-actions";
 import { CommunityPostDrawer } from "@/components/learn/community-post-drawer";
+import { BusyLabel } from "@/components/ui/busy-label";
+import { EmptyState } from "@/components/ui/empty-state";
+import { InlineAlert } from "@/components/ui/inline-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import type { SkillsetUser } from "@/domain/auth";
 import {
   countOpenQuestions,
@@ -25,7 +29,14 @@ import {
   type CommunityFeedFilter,
 } from "@/domain/community-feed";
 import type { CommunityComment, CommunityPost } from "@/domain/community-post";
-import type { CourseEvent } from "@/domain/course-event";
+import {
+  EVENT_STARTING_SOON_MS,
+  formatEventDateTime,
+  getEventLiveState,
+  pickClosestEvent,
+  type CourseEvent,
+} from "@/domain/course-event";
+import { noJoinLinkKey } from "@/components/learn/live-session-parts";
 import type { Enrollment } from "@/domain/enrollment";
 import { getSafeExternalUrl } from "@/domain/external-url";
 import type { CommunitySpace } from "@/domain/learning";
@@ -81,8 +92,9 @@ type CommunityFeedProps = {
 };
 
 const SAY_HI_WINDOW_MS = 7 * 24 * 3_600_000;
+// O cartão aparece 24 h antes; quando a sessão acaba vem da janela comum
+// (getEventLiveState, course-event.ts).
 const LIVE_SOON_WINDOW_MS = 24 * 3_600_000;
-const LIVE_RUNNING_WINDOW_MS = 3 * 3_600_000;
 
 export function CommunityFeed({
   space,
@@ -108,6 +120,16 @@ export function CommunityFeed({
   const [enrollmentReady, setEnrollmentReady] = useState(skipEnrollmentGate);
   // Chave do dicionario, nao texto: o idioma pode trocar com o erro na tela.
   const [error, setError] = useState("");
+  // "Posted." na região de status depois de publicar: a lista deixou de ser
+  // aria-live, o próprio post entra direto nela e o formulário fecha, então
+  // quem usa leitor de tela não ouvia nada. Some depois de alguns segundos
+  // para o próximo post ser anunciado de novo.
+  const [posted, setPosted] = useState(false);
+  useEffect(() => {
+    if (!posted) return;
+    const timer = window.setTimeout(() => setPosted(false), 4000);
+    return () => window.clearTimeout(timer);
+  }, [posted]);
 
   // Feed: `all` e tudo o que chegou; `visible` e o que esta na tela; `pending`
   // sao posts de OUTRAS pessoas que chegaram pelo realtime e esperam a pessoa
@@ -132,31 +154,65 @@ export function CommunityFeed({
   const [deleted, setDeleted] = useState<ReadonlySet<string>>(() => new Set());
   const hide = useCallback((id: string) => setDeleted((current) => new Set(current).add(id)), []);
 
+  // Falhas de LEITURA à parte do `error` (o do compositor): cada uma com o seu
+  // "Try again", que relê pelo mesmo canal e só some quando a leitura volta.
+  const [accessFailed, setAccessFailed] = useState(false);
+  const [postsFailed, setPostsFailed] = useState(false);
+  const enrollmentSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
+  const postsSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
+  // O título do feed é o ponto fixo do foco quando o botão some; a porta
+  // de acesso, enquanto a matrícula não chega.
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const gateRef = useRef<HTMLElement>(null);
+  const focusFeedOnOpen = useRef(false);
+
   useEffect(() => {
     if (!user || skipEnrollmentGate) {
       return;
     }
-    return subscribeToEnrollment(
+    const current = subscribeToEnrollment(
       user.uid,
       space.courseSlug,
       (next) => {
         setEnrollment(next);
+        setAccessFailed(false);
         setEnrollmentReady(true);
       },
       () => {
-        setError("learn.community.accessError");
+        // Falhou de novo: o foco não pula sozinho numa leitura boa mais tarde.
+        focusFeedOnOpen.current = false;
+        setAccessFailed(true);
         setEnrollmentReady(true);
       },
     );
+    enrollmentSubscription.current = current;
+    return () => {
+      enrollmentSubscription.current = null;
+      current();
+    };
   }, [skipEnrollmentGate, space.courseSlug, user]);
 
   const canRead = skipEnrollmentGate || Boolean(enrollment);
+
+  // A porta some quando o "Try again" do acesso dá certo: o foco segue para o
+  // título do feed, em vez de cair no <body>.
+  useEffect(() => {
+    if (canRead && focusFeedOnOpen.current) {
+      focusFeedOnOpen.current = false;
+      headingRef.current?.focus();
+    }
+  }, [canRead]);
+
+  function retryAccess() {
+    focusFeedOnOpen.current = true;
+    return enrollmentSubscription.current?.reload();
+  }
 
   useEffect(() => {
     if (!canRead) {
       return;
     }
-    return subscribeToCommunityPosts(
+    const current = subscribeToCommunityPosts(
       space.courseSlug,
       (posts) => {
         setFeed((current) => {
@@ -178,12 +234,20 @@ export function CommunityFeed({
             ready: true,
           };
         });
+        setPostsFailed(false);
       },
       () => {
-        setError("learn.community.postsError");
-        setFeed({ all: [], visible: [], pending: 0, ready: true });
+        // O feed não muda: posts já na tela ficam, com o aviso acima deles.
+        // Sem nenhuma leitura boa ele segue "não pronto", e a primeira que
+        // chegar depois do "Try again" entra direto, não como "N new posts".
+        setPostsFailed(true);
       },
     );
+    postsSubscription.current = current;
+    return () => {
+      postsSubscription.current = null;
+      current();
+    };
   }, [canRead, space.courseSlug, user?.uid]);
 
   useEffect(() => {
@@ -250,12 +314,19 @@ export function CommunityFeed({
   }
 
   if (!enrollmentReady) {
-    return <p className="text-sm text-[var(--color-ink-soft)]">{t("learn.community.loading")}</p>;
+    // A mesma forma da espera dos posts, com a faixa dos filtros em cima: o
+    // acesso e os posts chegam sem trocar de frase nem pular.
+    return (
+      <div className="grid gap-4">
+        <div aria-hidden="true" className={`h-11 w-72 max-w-full rounded-md ${feedBone}`} />
+        <FeedPostsSkeleton label={t("learn.community.loading")} />
+      </div>
+    );
   }
 
   if (!canRead) {
     return (
-      <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+      <section ref={gateRef} tabIndex={-1} className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {t("learn.community.accessRequired")}
         </p>
@@ -265,10 +336,10 @@ export function CommunityFeed({
         <p className="mt-4 text-sm leading-7 text-[var(--color-ink-soft)]">
           {t("learn.community.gateDetails")}
         </p>
-        {error ? (
-          <p className="mt-4 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-            {t(error)}
-          </p>
+        {accessFailed ? (
+          <LoadErrorAlert className="mt-4" focusRef={gateRef} onRetry={retryAccess}>
+            {t("learn.community.accessError")}
+          </LoadErrorAlert>
         ) : null}
       </section>
     );
@@ -280,26 +351,36 @@ export function CommunityFeed({
   return (
     <div className="community-feed grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
       <div className="grid gap-4">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-              {t("learn.community.eyebrow")}
-            </p>
-            {/* Recebe o foco quando o ultimo post visivel e apagado. */}
-            <h2 data-community-heading tabIndex={-1} className="display-title mt-1 text-2xl text-[var(--color-ink)]">
-              {space.name.replace(/ community$/i, "")}
-            </h2>
-          </div>
-          {liveChip ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(22,163,74,0.1)] px-3 py-1 text-xs font-bold text-[rgb(21,128,61)] lg:hidden">
+        {/* Título só para leitor de tela: logo acima já estão o nome do curso
+            (h1) e a aba "Community" ativa, e o eyebrow mais o h2 de 24px
+            repetiam os dois. Fora do fluxo (sr-only), não abre espaço na
+            grade. Recebe o foco quando o último post visível é apagado, e aí
+            aparece (focus:not-sr-only) para o foco não sumir da tela. */}
+        <h2
+          ref={headingRef}
+          data-community-heading
+          tabIndex={-1}
+          className="sr-only text-lg font-semibold text-[var(--color-ink)] focus:not-sr-only"
+        >
+          {space.name.replace(/ community$/i, "")}
+        </h2>
+        {liveChip ? (
+          <p className="lg:hidden">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-success-soft)] px-3 py-1 text-xs font-bold text-[var(--color-success-fg)]">
               <Radio size={12} aria-hidden /> {liveChip}
             </span>
-          ) : null}
-        </header>
+          </p>
+        ) : null}
 
-        {/* Tres filtros no lugar de seis espacos com ordenacao. */}
+        {/* Tres filtros no lugar de seis espacos com ordenacao. Filtram uma
+            lista, nao trocam de painel: grupo com aria-pressed, no desenho do
+            seletor segmentado da casa (moldura clara, a escolhida em pastilha
+            com borda e sombra). Em utilities, e nao .studio-range-tabs: a sala
+            troca a paleta pelas classes (borda, bg-white, surface-soft e as
+            tintas), e o .studio-range-tabs usaria as da plataforma num curso
+            escuro. */}
         <div className="flex flex-wrap items-center gap-2">
-          <div role="tablist" aria-label={t("learn.community.filters")} className="flex flex-wrap gap-1">
+          <div role="group" aria-label={t("learn.community.filters")} className="inline-flex max-w-full flex-wrap gap-1 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-1">
             {(
               [
                 ["all", t("learn.community.all")],
@@ -316,13 +397,12 @@ export function CommunityFeed({
               <button
                 key={id}
                 type="button"
-                role="tab"
-                aria-selected={filter === id}
+                aria-pressed={filter === id}
                 onClick={() => setFilter(id)}
-                className={`min-h-11 rounded-md px-4 text-sm font-semibold transition ${
+                className={`min-h-11 rounded-md border px-4 text-sm font-semibold transition-colors duration-[var(--duration-base)] ease-[var(--ease-standard)] ${
                   filter === id
-                    ? "bg-[var(--color-primary)] text-[var(--color-base)]"
-                    : "text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-soft)]"
+                    ? "border-[var(--color-line)] bg-white text-[var(--color-primary)] shadow-[var(--shadow-soft)]"
+                    : "border-transparent text-[var(--color-ink-soft)] hover:text-[var(--color-primary)]"
                 }`}
               >
                 {label}
@@ -350,17 +430,22 @@ export function CommunityFeed({
             answeredPosts={feed.visible}
             canModerate={canModerate}
             onError={setError}
+            onPosted={() => setPosted(true)}
           />
         ) : null}
 
-        {error ? (
-          <p className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-            {t(error)}
-          </p>
+        {postsFailed ? (
+          <LoadErrorAlert focusRef={headingRef} onRetry={() => postsSubscription.current?.reload()}>
+            {t("learn.community.postsError")}
+          </LoadErrorAlert>
         ) : null}
 
+        {error ? <InlineAlert tone="error">{t(error)}</InlineAlert> : null}
+
         {feed.pending > 0 ? (
-          <div className="sticky top-2 z-10 flex justify-center">
+          // 76px = a barra do topo da área de membros (~68px, sticky, z-40)
+          // + 8px: com top-2 o aviso grudava ATRÁS da barra e sumia.
+          <div className="sticky top-[76px] z-10 flex justify-center">
             <button
               type="button"
               onClick={showPending}
@@ -371,13 +456,24 @@ export function CommunityFeed({
           </div>
         ) : null}
 
-        <div className="grid gap-3" aria-live="polite">
+        {/* O leitor de tela ouve só a linha "N new posts" (ou "Posted."
+            depois de publicar). Antes a lista inteira era aria-live: cada
+            curtida e cada post novo eram lidos. */}
+        <p role="status" className="sr-only">
+          {feed.pending > 0
+            ? t(`learn.community.${feed.pending === 1 ? "newPostOne" : "newPostMany"}`).replace("{count}", () => String(feed.pending))
+            : posted
+              ? t("learn.community.composer.posted")
+              : ""}
+        </p>
+
+        <div className="grid gap-3">
+          {/* Com a leitura em erro, nem "carregando" nem o vazio: só o aviso. */}
           {!feed.ready ? (
-            <p className="text-sm text-[var(--color-ink-soft)]">{t("learn.community.feedLoading")}</p>
-          ) : shownPosts.length === 0 ? (
-            <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
-              {t(livePosts.length === 0 ? "learn.community.empty" : "learn.community.emptyFilter")}
-            </p>
+            postsFailed ? null : <FeedPostsSkeleton label={t("learn.community.feedLoading")} />
+          ) : shownPosts.length === 0 && postsFailed ? null : shownPosts.length === 0 ? (
+            // O vazio de lista da plataforma; h3 como o título de cada post.
+            <EmptyState as="h3" title={t(livePosts.length === 0 ? "learn.community.empty" : "learn.community.emptyFilter")} />
           ) : (
             shownPosts.map((post) => (
               <FeedCard
@@ -408,7 +504,9 @@ export function CommunityFeed({
       ) : null}
 
       <aside className="grid gap-3">
-        <LiveCard live={nextLive} now={now} locale={locale} />
+        {/* Só com uma live marcada. Antes a lateral sempre abria com um
+            cartão vazio "No live scheduled yet.". */}
+        {nextLive ? <LiveCard live={nextLive} now={now} locale={locale} /> : null}
 
         <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)]">
           <div className="flex items-center gap-2">
@@ -452,12 +550,15 @@ export function CommunityFeed({
           >
             {t("learn.community.rules")}
           </button>
-          <Link
-            href={pathname.replace(/\/community(\/.*)?$/, "") + "/lives"}
-            className="flex min-h-11 items-center rounded-md px-3 text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
-          >
-            {t("learn.community.recordings")}
-          </Link>
+          {/* A comunidade da área (/learn/areas/...) não tem aba de gravações. */}
+          {pathname.startsWith("/learn/areas/") ? null : (
+            <Link
+              href={pathname.replace(/\/community(\/.*)?$/, "") + "/lives"}
+              className="flex min-h-11 items-center rounded-md px-3 text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
+            >
+              {t("learn.community.recordings")}
+            </Link>
+          )}
         </nav>
 
         {asideView === "members" ? (
@@ -500,6 +601,7 @@ function Composer({
   answeredPosts,
   canModerate,
   onError,
+  onPosted,
 }: {
   user: SkillsetUser;
   space: CommunitySpace;
@@ -509,9 +611,20 @@ function Composer({
   canModerate: boolean;
   /** Recebe a CHAVE do dicionario (ou "" para limpar); o pai traduz na tela. */
   onError: (messageKey: string) => void;
+  /** Publicou: o pai anuncia "Posted." na região de status do feed. */
+  onPosted: () => void;
 }) {
   const { t, locale } = useTranslation();
   const [mode, setMode] = useState<"idle" | "ask" | "share" | "update">("idle");
+  // Depois de publicar o formulário fecha e o botão que tinha o foco some:
+  // o foco volta para o campo do compositor, em vez de cair no corpo da página.
+  const promptRef = useRef<HTMLButtonElement>(null);
+  const focusPromptAfterPost = useRef(false);
+  useEffect(() => {
+    if (mode !== "idle" || !focusPromptAfterPost.current) return;
+    focusPromptAfterPost.current = false;
+    promptRef.current?.focus();
+  }, [mode]);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -566,7 +679,9 @@ function Composer({
         lessonTitle: mode === "ask" && lesson ? `lesson ${lesson.number}` : null,
         user,
       });
+      focusPromptAfterPost.current = true;
       reset();
+      onPosted();
     } catch (failure) {
       onError(isRateLimitError(failure) ? "learn.community.rateLimit" : "learn.community.composer.publishError");
     } finally {
@@ -579,6 +694,7 @@ function Composer({
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--color-line)] bg-white p-3 shadow-[var(--shadow-soft)]">
         <Avatar name={user.displayName ?? ""} small />
         <button
+          ref={promptRef}
           type="button"
           onClick={() => setMode("share")}
           className="min-h-11 flex-1 rounded-md bg-[var(--color-surface-soft)] px-4 text-left text-sm text-[var(--color-ink-muted)]"
@@ -592,13 +708,8 @@ function Composer({
         >
           {t("learn.community.composer.ask")}
         </button>
-        <button
-          type="button"
-          onClick={() => setMode("share")}
-          className="button-outline min-h-11 px-4 text-sm"
-        >
-          {t("learn.community.composer.share")}
-        </button>
+        {/* Sem "Share" ao lado: o campo de mentira já abre o mesmo
+            formulário, e o botão a mais quebrava a linha no celular. */}
         {canModerate ? (
           <button
             type="button"
@@ -683,8 +794,8 @@ function Composer({
       ) : null}
 
       {similar.length > 0 ? (
-        <div className="rounded-md border border-[rgba(22,163,74,0.35)] bg-[rgba(22,163,74,0.06)] p-3 text-sm">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[rgb(21,128,61)]">
+        <div className="rounded-md border border-[var(--color-success)] bg-[var(--color-success-soft)] p-3 text-sm">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-success-fg)]">
             {t("learn.community.composer.similar")}
           </p>
           <ul className="mt-2 grid gap-1">
@@ -706,17 +817,19 @@ function Composer({
         <button
           type="submit"
           disabled={isSubmitting}
-          className="button-solid min-h-11 px-4 text-sm disabled:opacity-60"
+          className="button-solid min-h-11 px-4 text-sm"
         >
-          {t(
-            isSubmitting
-              ? "learn.community.composer.posting"
-              : mode === "ask"
+          <BusyLabel
+            busy={isSubmitting}
+            idle={t(
+              mode === "ask"
                 ? "learn.community.composer.postQuestion"
                 : mode === "update"
                   ? "learn.community.composer.postUpdate"
                   : "learn.community.composer.post",
-          )}
+            )}
+            busyText={t("learn.community.composer.posting")}
+          />
         </button>
       </div>
     </form>
@@ -760,6 +873,8 @@ function FeedCard({
   const answered = isAnswered(post);
   const inline = pickInlineReply(post, comments, instructorIds);
   const isOwn = currentUser?.uid === post.authorId;
+  // O "curtir" do próprio post fica travado: o motivo vai junto do botão.
+  const clapReasonId = useId();
   const liked = currentUser ? likes.likerIds.includes(currentUser.uid) : false;
   const inlineIsAnswer = Boolean(inline && post.acceptedCommentId === inline.id);
 
@@ -808,9 +923,9 @@ function FeedCard({
     <article
       data-community-item
       aria-label={post.title ?? post.body.slice(0, 60)}
-      className={`rounded-lg border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)] ${
-        fromInstructor ? "border-l-4 border-l-[var(--color-primary)]" : ""
-      }`}
+      // O post do instrutor se marca pelo "· Instructor" do cabeçalho; a
+      // borda colorida à esquerda é proibida pelo contrato de design.
+      className="rounded-lg border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)]"
     >
       <header className="flex flex-wrap items-center gap-2 text-xs text-[var(--color-ink-muted)]">
         <Avatar name={post.authorName} small />
@@ -831,7 +946,7 @@ function FeedCard({
           <span
             className={`ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-bold ${
               answered
-                ? "bg-[rgba(22,163,74,0.1)] text-[rgb(21,128,61)]"
+                ? "bg-[var(--color-success-soft)] text-[var(--color-success-fg)]"
                 : "bg-[var(--color-surface-soft)] text-[var(--color-ink-soft)]"
             }`}
           >
@@ -865,10 +980,20 @@ function FeedCard({
           disabled={!currentUser || isOwn || likePending}
           aria-pressed={liked}
           aria-label={t("learn.community.card.clap").replace("{count}", () => String(likes.count))}
-          className={`min-h-11 rounded-md px-3 ${liked ? "bg-[var(--color-surface-soft)] text-[var(--color-ink)]" : "hover:bg-[var(--color-surface-soft)]"} disabled:opacity-70`}
+          aria-describedby={isOwn ? clapReasonId : undefined}
+          className={`inline-flex min-h-11 items-center gap-1.5 rounded-md px-3 ${liked ? "bg-[var(--color-surface-soft)] text-[var(--color-ink)]" : "hover:bg-[var(--color-surface-soft)]"} disabled:opacity-60`}
         >
-          👏 {likes.count}
+          {/* Ícone, não emoji (o contrato de design proíbe emoji na interface). */}
+          <ThumbsUp size={14} aria-hidden />
+          {likes.count}
         </button>
+        {/* O motivo à vista, ao lado do botão travado: antes só o leitor de
+            tela sabia por que o "Like" do próprio post não respondia. */}
+        {isOwn ? (
+          <span id={clapReasonId} className="font-normal text-[var(--color-ink-soft)]">
+            {t("learn.community.card.clapOwn")}
+          </span>
+        ) : null}
         <button
           type="button"
           onClick={() => setReplyOpen((open) => !open)}
@@ -904,7 +1029,7 @@ function FeedCard({
               <li
                 key={reply.id}
                 className={`flex gap-2 rounded-md p-2 text-sm ${
-                  isAnswer ? "bg-[rgba(22,163,74,0.08)]" : ""
+                  isAnswer ? "bg-[var(--color-success-soft)]" : ""
                 }`}
               >
                 <Avatar name={reply.authorName} small />
@@ -913,7 +1038,7 @@ function FeedCard({
                     <span className="font-semibold text-[var(--color-ink)]">{reply.authorName}</span>
                     {replyFromInstructor ? ` · ${t("learn.community.card.instructor")}` : ""}
                     {isAnswer ? (
-                      <span className="ml-1 inline-flex items-center gap-0.5 font-bold text-[rgb(21,128,61)]">
+                      <span className="ml-1 inline-flex items-center gap-0.5 font-bold text-[var(--color-success-fg)]">
                         <CheckCircle2 size={11} aria-hidden /> {t("learn.community.card.answer")}
                       </span>
                     ) : null}
@@ -943,14 +1068,18 @@ function FeedCard({
             />
           </label>
           {replyError ? (
-            <p className="text-xs font-semibold text-[var(--color-danger-fg)]">{t(replyError)}</p>
+            <InlineAlert tone="error" className="px-3 py-2 text-xs leading-5">{t(replyError)}</InlineAlert>
           ) : null}
           <div className="flex justify-end gap-2">
             <button type="button" onClick={() => setReplyOpen(false)} className="button-outline min-h-11 px-3 text-sm">
               {t("learn.community.composer.cancel")}
             </button>
-            <button type="submit" disabled={isReplying} className="button-solid min-h-11 px-3 text-sm disabled:opacity-60">
-              {t(isReplying ? "learn.community.composer.posting" : "learn.community.card.postReply")}
+            <button type="submit" disabled={isReplying} className="button-solid min-h-11 px-3 text-sm">
+              <BusyLabel
+                busy={isReplying}
+                idle={t("learn.community.card.postReply")}
+                busyText={t("learn.community.composer.posting")}
+              />
             </button>
           </div>
         </form>
@@ -961,35 +1090,32 @@ function FeedCard({
 
 // ---------------------------------------------------------------------------
 
-function LiveCard({ live, now, locale }: { live: CourseEvent | null; now: number; locale: string }) {
+function LiveCard({ live, now, locale }: { live: CourseEvent; now: number; locale: string }) {
   const { t } = useTranslation();
-  if (!live) {
-    return (
-      <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 text-sm text-[var(--color-ink-soft)] shadow-[var(--shadow-soft)]">
-        {t("learn.community.live.none")}
-      </section>
-    );
-  }
-  const startsAt = Date.parse(live.startsAt);
-  const running = startsAt <= now;
+  const state = getEventLiveState(live.startsAt, now);
+  const running = state === "live";
+  // O link de entrar aparece 15 min antes, como nas outras telas (antes só
+  // depois do início).
+  const canJoin = running || state === "startingSoon";
   const safeJoinUrl = getSafeExternalUrl(live.externalUrl);
   return (
     <section
       aria-label={t("learn.community.live.next")}
       className={`rounded-lg border p-4 shadow-[var(--shadow-soft)] ${
         running
-          ? "border-[rgba(22,163,74,0.35)] bg-[rgba(22,163,74,0.06)]"
+          ? "border-[var(--color-success)] bg-[var(--color-success-soft)]"
           : "border-[var(--color-line)] bg-white"
       }`}
     >
-      <p className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.18em] text-[rgb(21,128,61)]">
+      <p className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-success-fg)]">
         <Radio size={12} aria-hidden /> {liveChipLabel(live, now, t)}
       </p>
       <p className="mt-2 text-sm font-semibold text-[var(--color-ink)]">{live.title}</p>
+      {/* A mesma frase das outras telas, com data e fuso (antes "Wed 04:00 PM"). */}
       <p className="mt-0.5 text-xs text-[var(--color-ink-muted)]">
-        {new Date(startsAt).toLocaleString(locale, { weekday: "short", hour: "2-digit", minute: "2-digit" })}
+        {formatEventDateTime(live.startsAt, locale, t("platform.events.datePending"))}
       </p>
-      {running && safeJoinUrl ? (
+      {canJoin && safeJoinUrl ? (
         <a
           href={safeJoinUrl}
           target="_blank"
@@ -1000,21 +1126,26 @@ function LiveCard({ live, now, locale }: { live: CourseEvent | null; now: number
         </a>
       ) : (
         <p className="mt-3 text-xs text-[var(--color-ink-muted)]">
-          {t(safeJoinUrl ? "learn.community.live.joinLater" : "platform.events.linkUnavailable")}
+          {safeJoinUrl
+            ? t("learn.community.live.joinLater").replace("{minutes}", () => String(EVENT_STARTING_SOON_MS / 60_000))
+            : t(noJoinLinkKey(live.type))}
         </p>
       )}
     </section>
   );
 }
 
+// A sessão de início mais perto de agora (pickClosestEvent): a mais antiga
+// seguia "ao vivo" por 3 h e escondia a seguinte. Prazo não é live: fica fora.
 function pickNextLive(events: CourseEvent[], now: number): CourseEvent | null {
-  return (
-    events
-      .filter((event) => {
-        const startsAt = Date.parse(event.startsAt);
-        return startsAt >= now - LIVE_RUNNING_WINDOW_MS && startsAt <= now + LIVE_SOON_WINDOW_MS;
-      })
-      .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))[0] ?? null
+  return pickClosestEvent(
+    events.filter((event) => {
+      const startsAt = Date.parse(event.startsAt);
+      return event.type !== "deadline"
+        && startsAt <= now + LIVE_SOON_WINDOW_MS
+        && getEventLiveState(event.startsAt, now) !== "over";
+    }),
+    now,
   );
 }
 
@@ -1047,9 +1178,33 @@ function Avatar({ name, online = false, small = false }: { name: string; online?
     >
       {initials}
       {online ? (
-        <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-[rgb(22,163,74)]" />
+        <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-[var(--color-success)]" />
       ) : null}
     </span>
+  );
+}
+
+// Osso das esperas do feed: na sala, a linha do curso (--ma-line), como as
+// outras esperas da sala; fora dela, o tom dos esqueletos da casa.
+const feedBone = "bg-[var(--ma-line,var(--color-surface-strong))] motion-safe:animate-pulse";
+
+// Dois cartões de post no lugar da frase "Loading...": a frase fica só para o
+// leitor de tela, num role="status".
+function FeedPostsSkeleton({ label }: { label: string }) {
+  return (
+    <div role="status" className="grid gap-3">
+      <span className="sr-only">{label}</span>
+      {[0, 1].map((item) => (
+        <div key={item} aria-hidden="true" className="grid gap-3 rounded-lg border border-[var(--color-line)] p-4 sm:p-5">
+          <div className="flex items-center gap-3">
+            <span className={`h-9 w-9 shrink-0 rounded-full ${feedBone}`} />
+            <span className={`h-3 w-1/3 rounded-sm ${feedBone}`} />
+          </div>
+          <span className={`h-3 w-4/5 rounded-sm ${feedBone}`} />
+          <span className={`h-3 w-3/5 rounded-sm ${feedBone}`} />
+        </div>
+      ))}
+    </div>
   );
 }
 

@@ -15,8 +15,14 @@
  */
 export { Button, buttonClasses } from "@/components/ui/button";
 export type { ButtonProps, ButtonSize, ButtonVariant } from "@/components/ui/button";
+export { BusyLabel } from "@/components/ui/busy-label";
+export type { BusyLabelProps } from "@/components/ui/busy-label";
 export { Card } from "@/components/ui/card";
 export type { CardProps } from "@/components/ui/card";
+// Componente de cliente ("use client" no arquivo): pode ser importado daqui
+// por outro componente de cliente; numa página de servidor, só como filho.
+export { ConfirmDialog } from "@/components/ui/confirm-dialog";
+export type { ConfirmDialogProps } from "@/components/ui/confirm-dialog";
 export { EmptyState } from "@/components/ui/empty-state";
 export type { EmptyStateProps } from "@/components/ui/empty-state";
 export { Eyebrow } from "@/components/ui/eyebrow";
@@ -25,5 +31,7 @@ export { Field } from "@/components/ui/field";
 export type { FieldA11y, FieldProps } from "@/components/ui/field";
 export { InlineAlert } from "@/components/ui/inline-alert";
 export type { InlineAlertProps } from "@/components/ui/inline-alert";
+export { ProgressBar } from "@/components/ui/progress-bar";
+export type { ProgressBarProps } from "@/components/ui/progress-bar";
 export { SectionHeader } from "@/components/ui/section-header";
 export type { SectionHeaderProps } from "@/components/ui/section-header";

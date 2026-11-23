@@ -9,11 +9,16 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Bookmark, BookmarkCheck, LayoutGrid, List, Search } from "lucide-react";
-import { startTransition, useDeferredValue, useEffect, useState } from "react";
+import { Bookmark, BookmarkCheck, ChevronDown, LayoutGrid, List, Search, SlidersHorizontal } from "lucide-react";
+import { startTransition, useDeferredValue, useEffect, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { CourseGridSkeleton } from "@/components/courses/course-grid-skeleton";
 import { CourseTile } from "@/components/courses/course-tile";
+import { EmptyState } from "@/components/ui/empty-state";
+import { InlineAlert } from "@/components/ui/inline-alert";
+import { ProgressBar } from "@/components/ui/progress-bar";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import { useInstructorNames } from "@/components/courses/use-instructor-names";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import type { CourseCard } from "@/lib/data/catalog";
@@ -59,9 +64,15 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
   const [sortKey, setSortKey] = useState<CourseSortKey>("featured");
   // Layout preference only (not URL-synced): grid is the long-standing default.
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  // So no celular (CSS abaixo de 640px): os filtros fechados atras de um botao.
+  // Abertos, eram uns 800px de cabecalho e filtros antes do primeiro curso.
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [activeEnrollments, setActiveEnrollments] = useState<Enrollment[]>([]);
   const [publishedCourses, setPublishedCourses] = useState<TeacherCourse[]>([]);
   const [publishedCoursesError, setPublishedCoursesError] = useState("");
+  // A falha de LER os favoritos (com "Try again") e a de salvar um favorito
+  // (só o aviso) ficam à parte: salvar outro não apaga a primeira.
+  const [wishlistLoadFailed, setWishlistLoadFailed] = useState(false);
   const [wishlistError, setWishlistError] = useState("");
   const [wishlistCourseIds, setWishlistCourseIds] = useState<Set<string>>(
     () => new Set(),
@@ -72,6 +83,11 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
   const [isLoadingPublishedCourses, setIsLoadingPublishedCourses] = useState(
     Boolean(getSupabaseClientConfig()),
   );
+  // "Try again" lê de novo pela mesma inscrição (sem religar); o foco vai para
+  // a seção, que fica na tela quando o aviso some.
+  const coursesSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
+  const wishlistSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
+  const sectionRef = useRef<HTMLElement>(null);
   const deferredQuery = useDeferredValue(query.toLowerCase().trim());
 
   // Keep category + search in the URL so a filtered view is shareable and
@@ -112,7 +128,7 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
       return;
     }
 
-    return subscribeToPublishedTeacherCourses(
+    const current = subscribeToPublishedTeacherCourses(
       (nextCourses) => {
         setPublishedCourses(
           nextCourses
@@ -126,6 +142,11 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
         setIsLoadingPublishedCourses(false);
       },
     );
+    coursesSubscription.current = current;
+    return () => {
+      coursesSubscription.current = null;
+      current();
+    };
   }, []);
 
   useEffect(() => {
@@ -133,16 +154,22 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
       return;
     }
 
-    return subscribeToUserWishlistCourseIds(
+    const current = subscribeToUserWishlistCourseIds(
       user.uid,
       (nextCourseIds) => {
         setWishlistCourseIds(nextCourseIds);
+        setWishlistLoadFailed(false);
         setWishlistError("");
       },
       () => {
-        setWishlistError("publicCourses.loadWishlistError");
+        setWishlistLoadFailed(true);
       },
     );
+    wishlistSubscription.current = current;
+    return () => {
+      wishlistSubscription.current = null;
+      current();
+    };
   }, [status, user]);
 
   // Continue-learning strip data. Mirrors the learn dashboard subscription
@@ -221,6 +248,10 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
   const hasAnyCourses = marketplaceCourses.length > 0;
   const isFiltering =
     activeCategory !== allCategoriesLabel || deferredQuery.length > 0;
+  // Quantos filtros estao valendo (categoria e busca), no botao "Filters" do
+  // celular: com o painel fechado, a pessoa ainda ve que a lista esta filtrada.
+  const activeFilterCount =
+    (activeCategory !== allCategoriesLabel ? 1 : 0) + (query.trim() ? 1 : 0);
 
   // Real per-category counts from the loaded courses (All = total).
   const categoryCounts = new Map<string, number>();
@@ -247,89 +278,112 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
   });
 
   return (
-    <section className="marketplace-section">
+    <section ref={sectionRef} tabIndex={-1} className="marketplace-section">
       <div className="marketplace-filter-panel">
-        <div className="marketplace-filter-list">
-          {categories.map((filter) => {
-            const isActive = activeCategory === filter;
+        <button
+          type="button"
+          aria-expanded={filtersOpen}
+          aria-controls="marketplace-filters"
+          onClick={() => setFiltersOpen((open) => !open)}
+          className="marketplace-filters-toggle"
+        >
+          <SlidersHorizontal aria-hidden="true" size={16} strokeWidth={2} />
+          <span>{t("publicCourses.filters")}</span>
+          {activeFilterCount > 0 ? (
+            <>
+              <span aria-hidden="true" className="marketplace-filters-toggle__count">{activeFilterCount}</span>
+              {" "}
+              <span className="sr-only">{t("publicCourses.filtersActive").replace("{count}", String(activeFilterCount))}</span>
+            </>
+          ) : null}
+          <ChevronDown aria-hidden="true" size={16} strokeWidth={2} className="marketplace-filters-toggle__chevron" />
+        </button>
+        <div id="marketplace-filters" className={`marketplace-filter-body${filtersOpen ? " is-open" : ""}`}>
+          <div className="marketplace-filter-list">
+            {categories.map((filter) => {
+              const isActive = activeCategory === filter;
 
-            return (
-              <button
-                key={filter}
-                type="button"
-                aria-pressed={isActive}
-                onClick={() => setActiveCategory(filter)}
-                className={`marketplace-filter-button ${
-                  isActive ? "is-active" : ""
-                }`}
+              return (
+                <button
+                  key={filter}
+                  type="button"
+                  aria-pressed={isActive}
+                  onClick={() => setActiveCategory(filter)}
+                  className={`marketplace-filter-button ${
+                    isActive ? "is-active" : ""
+                  }`}
+                >
+                  <span>{filter === allCategoriesLabel ? t("publicCourses.all") : getCourseCategoryLabel(filter, t)}</span>
+                  {/* Sem número até a lista chegar: "All courses 0" lia como loja vazia. */}
+                  {isLoadingPublishedCourses ? null : (
+                    <span className="marketplace-filter-button__count">
+                      {categoryCount(filter)}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <div className="marketplace-controls">
+            <label className="marketplace-field">
+              <span>{t("publicCourses.search")}</span>
+              <span className="marketplace-searchbox">
+                <Search aria-hidden="true" size={15} strokeWidth={2} />
+                <input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder={t("publicCourses.searchHint")}
+                />
+              </span>
+            </label>
+            <label className="marketplace-field">
+              <span>{t("publicCourses.sort")}</span>
+              <select
+                value={sortKey}
+                onChange={(event) => setSortKey(event.target.value as CourseSortKey)}
+                className="marketplace-select"
               >
-                <span>{filter === allCategoriesLabel ? t("publicCourses.all") : getCourseCategoryLabel(filter, t)}</span>
-                <span className="marketplace-filter-button__count">
-                  {categoryCount(filter)}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-        <div className="marketplace-controls">
-          <label className="marketplace-field">
-            <span>{t("publicCourses.search")}</span>
-            <span className="marketplace-searchbox">
-              <Search aria-hidden="true" size={15} strokeWidth={2} />
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder={t("publicCourses.searchHint")}
-              />
-            </span>
-          </label>
-          <label className="marketplace-field">
-            <span>{t("publicCourses.sort")}</span>
-            <select
-              value={sortKey}
-              onChange={(event) => setSortKey(event.target.value as CourseSortKey)}
-              className="marketplace-select"
-            >
-              {courseSortOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {t(option.labelKey)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="marketplace-view">
-            <span className="marketplace-view-label">{t("publicCourses.view")}</span>
-            <div
-              className="marketplace-view-toggle"
-              role="group"
-              aria-label={t("publicCourses.viewLayout")}
-            >
-              <button
-                type="button"
-                aria-pressed={viewMode === "grid"}
-                aria-label={t("publicCourses.gridView")}
-                title={t("publicCourses.gridView")}
-                onClick={() => setViewMode("grid")}
-                className={`marketplace-icon-button ${
-                  viewMode === "grid" ? "is-active" : ""
-                }`}
+                {courseSortOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {t(option.labelKey)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="marketplace-view">
+              <span className="marketplace-view-label">{t("publicCourses.view")}</span>
+              <div
+                className="marketplace-view-toggle"
+                role="group"
+                aria-label={t("publicCourses.viewLayout")}
               >
-                <LayoutGrid aria-hidden="true" size={16} strokeWidth={2} />
-                <span className="sr-only">{t("publicCourses.grid")}</span>
-              </button>
-              <button
-                type="button"
-                aria-pressed={viewMode === "list"}
-                aria-label={t("publicCourses.listView")}
-                title={t("publicCourses.listView")}
-                onClick={() => setViewMode("list")}
-                className={`marketplace-icon-button ${
-                  viewMode === "list" ? "is-active" : ""
-                }`}
-              >
-                <List aria-hidden="true" size={16} strokeWidth={2} />
-                <span className="sr-only">{t("publicCourses.list")}</span>
-              </button>
+                <button
+                  type="button"
+                  aria-pressed={viewMode === "grid"}
+                  aria-label={t("publicCourses.gridView")}
+                  title={t("publicCourses.gridView")}
+                  onClick={() => setViewMode("grid")}
+                  className={`marketplace-icon-button ${
+                    viewMode === "grid" ? "is-active" : ""
+                  }`}
+                >
+                  <LayoutGrid aria-hidden="true" size={16} strokeWidth={2} />
+                  <span className="sr-only">{t("publicCourses.grid")}</span>
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={viewMode === "list"}
+                  aria-label={t("publicCourses.listView")}
+                  title={t("publicCourses.listView")}
+                  onClick={() => setViewMode("list")}
+                  className={`marketplace-icon-button ${
+                    viewMode === "list" ? "is-active" : ""
+                  }`}
+                >
+                  <List aria-hidden="true" size={16} strokeWidth={2} />
+                  <span className="sr-only">{t("publicCourses.list")}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -363,13 +417,14 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
                     <p className="marketplace-continue-card__title">
                       {course.title}
                     </p>
-                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]">
-                      <div
-                        className="h-full rounded-full bg-[var(--color-accent)]"
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                    <p className="mt-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
+                    <ProgressBar
+                      value={progress}
+                      label={t("publicCourses.complete").replace("{count}", String(progress))}
+                      className="mt-2"
+                    />
+                    {/* A barra já diz "40% complete" ao leitor de tela: a linha
+                        visível fica calada para o número não ser lido duas vezes. */}
+                    <p aria-hidden="true" className="mt-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
                       {t("publicCourses.complete").replace("{count}", String(progress))}
                     </p>
                   </div>
@@ -386,77 +441,71 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
         </div>
       ) : null}
 
+      {/* Erro de leitura com "Try again"; o aviso só sai quando a leitura
+          volta. A falha ao salvar um favorito segue sendo só o aviso. */}
       {publishedCoursesError ? (
-        <p className="mb-5 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+        <LoadErrorAlert
+          className="mb-5"
+          focusRef={sectionRef}
+          onRetry={() => coursesSubscription.current?.reload()}
+        >
           {t(publishedCoursesError)}
-        </p>
+        </LoadErrorAlert>
+      ) : null}
+
+      {wishlistLoadFailed ? (
+        <LoadErrorAlert
+          className="mb-5"
+          focusRef={sectionRef}
+          onRetry={() => wishlistSubscription.current?.reload()}
+        >
+          {t("publicCourses.loadWishlistError")}
+        </LoadErrorAlert>
       ) : null}
 
       {wishlistError ? (
-        <p className="mb-5 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-          {t(wishlistError)}
-        </p>
+        <InlineAlert tone="error" className="mb-5">{t(wishlistError)}</InlineAlert>
       ) : null}
 
       {isLoadingPublishedCourses ? (
         <>
           <p role="status" className="sr-only">{t("publicCourses.loadingCourses")}</p>
-          <div className="marketplace-course-grid" aria-hidden="true">
-            {[0, 1, 2].map((index) => (
-              <div
-                key={index}
-                className="marketplace-card animate-pulse"
-              >
-                <div className="marketplace-card__media bg-[var(--color-surface-strong)]" />
-                <div className="space-y-3 p-5">
-                  <div className="h-3 w-24 rounded bg-[var(--color-surface-strong)]" />
-                  <div className="h-6 w-3/4 rounded bg-[var(--color-surface-strong)]" />
-                  <div className="h-16 rounded bg-[var(--color-surface-soft)]" />
-                </div>
-              </div>
-            ))}
-          </div>
+          <CourseGridSkeleton />
         </>
       ) : visibleCourses.length === 0 ? (
-        hasAnyCourses && isFiltering ? (
-          <div className="marketplace-empty">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.noMatches")}</p>
-            <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">{t("publicCourses.noSearchMatches")}</h2>
-            <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-[var(--color-ink-soft)]">{t("publicCourses.trySearch")}</p>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveCategory(allCategoriesLabel);
-                setQuery("");
-              }}
-              className="button-outline mt-5 px-4 py-2.5 text-sm"
-            >{t("publicCourses.clearFilters")}</button>
-          </div>
+        // Com a leitura em erro, o vazio mentiria ("Marketplace opening soon").
+        publishedCoursesError ? null : hasAnyCourses && isFiltering ? (
+          // O vazio da plataforma (EmptyState): o h1 serifado da página continua
+          // sendo a única manchete; antes este h2 era outra serifa de 30px.
+          <EmptyState
+            as="h2"
+            eyebrow={t("publicCourses.noMatches")}
+            title={t("publicCourses.noSearchMatches")}
+            description={t("publicCourses.trySearch")}
+            action={
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveCategory(allCategoriesLabel);
+                  setQuery("");
+                }}
+                className="button-outline px-4 py-2.5 text-sm"
+              >{t("publicCourses.clearFilters")}</button>
+            }
+          />
         ) : (
-          <div className="marketplace-empty">
-            <div className="mx-auto grid size-14 place-items-center rounded-lg bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.8}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="size-7"
-              >
-                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-              </svg>
-            </div>
-            <p className="mt-5 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.openingSoon")}</p>
-            <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)] sm:text-4xl">{t("publicCourses.firstCourses")}</h2>
-            <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-[var(--color-ink-soft)]">{t("publicCourses.openingBody")}</p>
-            <div className="mt-6 flex flex-wrap justify-center gap-3">
-              <Link href="/auth?mode=signup&path=teacher" className="button-solid px-4 py-2.5 text-sm">{t("publicCourses.startTeaching")}</Link>
-              <Link href="/for-creators" className="button-outline px-4 py-2.5 text-sm">{t("publicCourses.creatorOverview")}</Link>
-            </div>
-          </div>
+          <EmptyState
+            as="h2"
+            eyebrow={t("publicCourses.openingSoon")}
+            title={t("publicCourses.firstCourses")}
+            description={t("publicCourses.openingBody")}
+            action={
+              <>
+                <Link href="/auth?mode=signup&path=teacher" className="button-solid px-4 py-2.5 text-sm">{t("publicCourses.startTeaching")}</Link>
+                <Link href="/for-creators" className="button-outline px-4 py-2.5 text-sm">{t("publicCourses.creatorOverview")}</Link>
+              </>
+            }
+          />
         )
       ) : (
         <div

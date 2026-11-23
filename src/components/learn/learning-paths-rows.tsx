@@ -5,9 +5,11 @@ import { CheckCircle2, Lock, PlayCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import {
   CourseCover,
   CourseUnlockModal,
+  unlockCopyKeys,
 } from "@/components/learn/course-unlock-modal";
 import type { Enrollment } from "@/domain/enrollment";
 import type { LearningPath } from "@/domain/learning-path";
@@ -170,6 +172,10 @@ export function LearningPathsRows({
     <>
       {renderablePaths.map((path) => {
         const progress = computePathProgress(path.courseIds, enrollments);
+        const progressLabel = t("learn.paths.progress")
+          .replace("{completed}", String(progress.completedCount))
+          .replace("{total}", String(path.courseIds.length))
+          .replace("{percent}", String(progress.progressPercent));
 
         return (
           <section
@@ -181,7 +187,7 @@ export function LearningPathsRows({
                 <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
                   {t("learn.paths.eyebrow")}
                 </p>
-                <h2 className="display-title mt-2 text-3xl text-[var(--color-primary)]">
+                <h2 className="mt-2 text-lg font-semibold text-[var(--color-primary)]">
                   {path.title}
                 </h2>
                 {path.description ? (
@@ -191,18 +197,12 @@ export function LearningPathsRows({
                 ) : null}
               </div>
               <div className="w-full max-w-[260px]">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-primary)]">
-                  {t("learn.paths.progress")
-                    .replace("{completed}", String(progress.completedCount))
-                    .replace("{total}", String(path.courseIds.length))
-                    .replace("{percent}", String(progress.progressPercent))}
+                {/* Uma leitura só: a barra leva a frase inteira ("2/5 completed
+                    · 40%") e a linha visível fica calada para o leitor de tela. */}
+                <p aria-hidden="true" className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-primary)]">
+                  {progressLabel}
                 </p>
-                <div className="mt-2 h-2 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]">
-                  <div
-                    className="h-full rounded-full bg-[var(--color-accent)]"
-                    style={{ width: `${progress.progressPercent}%` }}
-                  />
-                </div>
+                <ProgressBar value={progress.progressPercent} label={progressLabel} className="mt-2" />
               </div>
             </div>
 
@@ -236,7 +236,7 @@ export function LearningPathsRows({
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             {t("learn.paths.instructorEyebrow")}
           </p>
-          <h2 className="display-title mt-2 text-3xl text-[var(--color-primary)]">
+          <h2 className="mt-2 text-lg font-semibold text-[var(--color-primary)]">
             {ownerNames.get(row.ownerId)
               ? t("learn.paths.instructorTitle").replace(
                   "{name}",
@@ -326,7 +326,7 @@ function CourseRowCard({
           className="button-outline mt-3 inline-flex w-full items-center justify-center gap-2 px-3 py-2 text-xs"
         >
           <Lock size={14} aria-hidden="true" />
-          {t("learn.paths.unlock")}
+          {t(unlockCopyKeys(course.priceAmountMinor).label)}
         </button>
       ) : (
         <Link

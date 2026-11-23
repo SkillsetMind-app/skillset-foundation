@@ -7,7 +7,9 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useId,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -19,7 +21,6 @@ import {
   getUserProfile,
 } from "@/lib/data/user-profiles";
 import {
-  getCurrentAuthSession,
   getSignupLegalVersions,
   listenToAuthState,
   signOutOfSkillsetMind,
@@ -32,9 +33,12 @@ import {
 } from "@/lib/legal/versions";
 import { captureFirstTouch } from "@/lib/attribution/first-touch";
 import { previewRoles, ViewAsBanner } from "@/components/admin/view-as";
+import { LegalGateContext } from "@/components/auth/legal-gate-state";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { isRole, type Role } from "@/lib/permissions";
 import { identifyUser, resetUser } from "@/lib/posthog/client";
+import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 
 type AuthContextValue = AuthSession & {
   refreshUser: () => Promise<void>;
@@ -58,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     status: "loading",
     user: null,
   });
+  const subscription = useRef<ReturnType<typeof listenToAuthState> | null>(null);
 
   // Read once during the first render rather than in an effect: an effect would
   // paint the un-previewed product first and then swap it, and this base treats
@@ -82,7 +87,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    return listenToAuthState(setSession);
+    const listener = listenToAuthState(setSession);
+    subscription.current = listener;
+    return () => {
+      subscription.current = null;
+      listener();
+    };
   }, []);
 
   // Mounted on every page, once per full load: the landing's utm_*/referrer,
@@ -107,11 +117,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [session.status, session.user]);
 
   async function refreshUser() {
-    // getUser() hits the server, so email_confirmed_at/roles reflect the latest
-    // state (the Supabase equivalent of Firebase's currentUser.reload()). Passa
-    // pelo mesmo portão de segundo fator do listener: montar a sessão aqui à
-    // mão era um caminho paralelo que voltava a marcar aal1 como logado.
-    setSession(await getCurrentAuthSession());
+    // O listener coordena tambem o snapshot: uma leitura atrasada nao pode
+    // desfazer onboarding, logout, troca de conta ou exigencia de MFA.
+    if (!subscription.current) throw new Error("Auth subscription is inactive");
+    await subscription.current.refreshUser();
   }
 
   const isRealAdmin = session.user?.roles?.includes("admin") ?? false;
@@ -147,9 +156,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isRealAdmin,
       }}
     >
-      <LegalAcceptanceGate />
-      <ViewAsBanner />
-      {children}
+      <LegalAcceptanceGate>
+        <ViewAsBanner />
+        {children}
+      </LegalAcceptanceGate>
     </AuthContext.Provider>
   );
 }
@@ -164,7 +174,7 @@ export function useAuth() {
   return context;
 }
 
-function LegalAcceptanceGate() {
+function LegalAcceptanceGate({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   const { status, user } = useAuth();
   const pathname = usePathname() ?? "";
@@ -267,6 +277,25 @@ function LegalAcceptanceGate() {
     || pathname.startsWith("/loading")
     || pathname.startsWith("/signup")
     || pathname.startsWith("/welcome");
+  const showGate = needsAcceptance && !onExemptRoute;
+
+  // A janela já cobria a página, mas o Tab saía para o sino e a conta atrás
+  // do escuro e o leitor de tela não sabia que era uma janela. O foco fica
+  // preso dentro e começa na primeira caixa de marcar (sem marcar nada). Sem
+  // Esc, sem clique fora e sem X: aceitar é obrigatório.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  // O foco começa na caixa: sem a descrição ligada, o parágrafo que explica
+  // a janela era pulado pelo leitor de tela.
+  const bodyId = useId();
+  useModalFocus(dialogRef, showGate);
+  // Os tours de boas-vindas esperam a janela (legal-gate-state.ts). Também
+  // enquanto não se sabe se ela vem: um tour aberto antes ficaria atrás dela,
+  // já marcado como visto. Só leitura; nada aqui muda quando a janela abre.
+  const tourMustWait = showGate || status === "loading" || (uid !== null && current === null);
+  useEffect(() => {
+    if (showGate) dialogRef.current?.querySelector<HTMLInputElement>('input[type="checkbox"]')?.focus();
+  }, [showGate]);
 
   async function handleAccept() {
     if (!user || !canAccept) {
@@ -295,20 +324,24 @@ function LegalAcceptanceGate() {
     }
   }
 
-  if (!needsAcceptance || onExemptRoute) {
-    return null;
-  }
-
-  return (
-    <div className="fixed inset-0 z-[85] grid place-items-center bg-[rgba(12,25,39,0.62)] px-4 backdrop-blur-sm">
-      <div className="modal-panel modal-panel-scroll w-full max-w-xl rounded-xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)]">
+  const gateWindow = showGate ? (
+    <div className="dialog-backdrop fixed inset-0 z-[85] grid place-items-center px-4">
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={bodyId}
+        className="modal-panel modal-panel-scroll w-full max-w-xl rounded-xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)] outline-none"
+      >
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">
           {t(firstAcceptance ? "legalAcceptance.firstEyebrow" : "legalAcceptance.eyebrow")}
         </p>
-        <h2 className="display-title mt-3 text-4xl text-[var(--color-primary)]">
+        <h2 id={titleId} className="display-title mt-3 text-4xl text-[var(--color-primary)]">
           {t("legalAcceptance.title")}
         </h2>
-        <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
+        <p id={bodyId} className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
           {t(firstAcceptance ? "legalAcceptance.firstBody" : "legalAcceptance.body")}
         </p>
 
@@ -325,7 +358,7 @@ function LegalAcceptanceGate() {
               {t("legalAcceptance.agreeTerms")}{" "}
               <Link
                 href="/legal/terms"
-                className="font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
+                className="font-semibold text-[var(--color-primary)]! underline-offset-4 hover:underline"
               >
                 {t("legalAcceptance.terms")}
               </Link>
@@ -344,7 +377,7 @@ function LegalAcceptanceGate() {
               {t("legalAcceptance.agreePrivacy")}{" "}
               <Link
                 href="/legal/privacy"
-                className="font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
+                className="font-semibold text-[var(--color-primary)]! underline-offset-4 hover:underline"
               >
                 {t("legalAcceptance.privacy")}
               </Link>
@@ -365,7 +398,7 @@ function LegalAcceptanceGate() {
                 {t("legalAcceptance.agreeTeacherTerms")}{" "}
                 <Link
                   href="/legal/teacher-terms"
-                  className="font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
+                  className="font-semibold text-[var(--color-primary)]! underline-offset-4 hover:underline"
                 >
                   {t("legalAcceptance.teacherTerms")}
                 </Link>
@@ -385,20 +418,27 @@ function LegalAcceptanceGate() {
         </div>
 
         {error ? (
-          <p className="mt-4 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+          <InlineAlert tone="error" className="mt-4">
             {t(error)}
-          </p>
+          </InlineAlert>
         ) : null}
 
         <button
           type="button"
           disabled={isSaving || !canAccept}
           onClick={handleAccept}
-          className="button-solid mt-5 w-full px-4 py-2.5 text-sm disabled:opacity-60"
+          className="button-solid mt-5 w-full px-4 py-2.5 text-sm"
         >
           {t(isSaving ? "legalAcceptance.saving" : "legalAcceptance.accept")}
         </button>
       </div>
     </div>
+  ) : null;
+
+  return (
+    <LegalGateContext.Provider value={tourMustWait}>
+      {gateWindow}
+      {children}
+    </LegalGateContext.Provider>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { LifeBuoy } from "lucide-react";
+import { ChevronDown, LifeBuoy } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 
@@ -100,8 +100,12 @@ const labelClass = {
   bar: "help-menu-trigger__label",
 };
 
+// Em repouso, a tinta da página (como a gaveta do celular sempre mostrou nos
+// links): a dica de 12px de cada escolha (.help-menu-choice__hint, opacity 0.8)
+// em ink-soft dava 4,02:1 na gaveta branca. Na barra escura do computador a
+// regra .platform-sidebar .platform-nav-link vence com !important.
 const choiceClass = {
-  nav: "platform-nav-link help-menu-choice-link flex min-h-11 w-full items-center rounded-md border border-transparent px-2.5 py-2 text-sm text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-strong)] hover:text-[var(--color-ink)]",
+  nav: "platform-nav-link help-menu-choice-link flex min-h-11 w-full items-center rounded-md border border-transparent px-2.5 py-2 text-sm text-[var(--color-ink)] hover:bg-[var(--color-surface-strong)] hover:text-[var(--color-ink)]",
   bar: "account-menu-item help-menu-choice-link",
 };
 
@@ -230,6 +234,16 @@ export function HelpMenu({
           <LifeBuoy aria-hidden="true" size={18} strokeWidth={1.9} className="shrink-0" />
         )}
         <span className={labelClass[variant]}>{label}</span>
+        {/* Na barra, a Ajuda abre uma lista no lugar como Sales e Promote:
+            sem a setinha ela parecia um link. */}
+        {variant === "nav" && !collapsed ? (
+          <ChevronDown
+            aria-hidden="true"
+            size={15}
+            strokeWidth={2}
+            className={`platform-nav-section-chevron ${open ? "is-open" : ""}`}
+          />
+        ) : null}
       </button>
 
       {open && !collapsed ? (

@@ -1,4 +1,4 @@
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { LoadingScreen } from "@/components/auth/loading-screen";
@@ -23,7 +23,11 @@ vi.mock("@/lib/data/user-profiles", () => ({
   getUserProfile: mocks.getUserProfile,
 }));
 
-// /loading keeps the spinner up for 1.4s before routing; wait past it.
+vi.mock("@/components/i18n/i18n-provider", () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}));
+
+// /loading keeps the spinner up for 400ms before routing; wait past it.
 const ROUTED = { timeout: 4000 };
 const GOOGLE_RETURN =
   "next=welcome&path=student&returnTo=%2Flearn%2Fcourses%2Fx";
@@ -106,6 +110,23 @@ describe("LoadingScreen after a Google sign-in", () => {
     await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith(checkout), ROUTED);
   });
 
+  // A signed-in visitor pressed a plan button on /pricing: /auth hands that
+  // choice here as the returnTo. Only a teacher with no plan opens the card.
+  const planCard = "/account/billing/upgrade?plan=pro&cycle=yearly";
+  const withPlanCard = "returnTo=%2Faccount%2Fbilling%2Fupgrade%3Fplan%3Dpro%26cycle%3Dyearly";
+  it.each([
+    ["a teacher with no plan to the card screen", { onboardingCompleted: true, roles: ["teacher"] }, planCard],
+    ["a teacher who already has a plan to the studio", { onboardingCompleted: true, roles: ["teacher"], currentPlanId: "starter" }, "/teach"],
+    ["a learner to teacher activation, with the plan", { onboardingCompleted: true, roles: ["student"] }, `/onboarding?path=teacher&${withPlanCard}`],
+    ["a new account to onboarding, with the plan", { onboardingCompleted: false, roles: ["student"] }, `/welcome?path=teacher&${withPlanCard}`],
+  ])("with a plan picked on /pricing, sends %s", async (_label, profile, expected) => {
+    mocks.searchParams = new URLSearchParams({ next: "welcome", path: "teacher", returnTo: planCard });
+    mocks.getUserProfile.mockResolvedValue(profile);
+    render(<LoadingScreen />);
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith(expected), ROUTED);
+    expect(mocks.router.replace).toHaveBeenCalledTimes(1);
+  });
+
   it("takes intent and checkout back to sign-in when the session is gone", async () => {
     const checkout = "/courses/focus/checkout?offer=LAUNCH&priceId=price-1";
     mocks.auth = { status: "unauthenticated", user: null };
@@ -115,5 +136,77 @@ describe("LoadingScreen after a Google sign-in", () => {
       "/auth?mode=signin&path=student&returnTo=%2Fcourses%2Ffocus%2Fcheckout%3Foffer%3DLAUNCH%26priceId%3Dprice-1",
     ), ROUTED);
     expect(mocks.getUserProfile).not.toHaveBeenCalled();
+  });
+});
+
+describe("LoadingScreen recovery without granting access", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.useFakeTimers();
+    mocks.searchParams = new URLSearchParams("path=teacher");
+    mocks.auth = { status: "loading", user: null };
+  });
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
+
+  it("offers retry after five seconds even when no initial auth result arrives", async () => {
+    render(<LoadingScreen />);
+    await act(async () => { await vi.advanceTimersByTimeAsync(4999); });
+    expect(screen.queryByRole("button", { name: "authFlow.loading.retry" })).toBeNull();
+    await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+    expect(screen.getByRole("button", { name: "authFlow.loading.retry" })).toBeEnabled();
+    expect(mocks.getUserProfile).not.toHaveBeenCalled();
+    expect(mocks.router.replace).not.toHaveBeenCalled();
+  });
+
+  it("offers retry immediately on a profile error without routing to a protected destination", async () => {
+    mocks.auth = { status: "authenticated", user: { uid: "u-1" } };
+    mocks.getUserProfile.mockRejectedValue(new Error("private profile failure"));
+    render(<LoadingScreen />);
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    expect(screen.getByRole("alert")).toHaveTextContent("authFlow.loading.error");
+    expect(screen.getByRole("button", { name: "authFlow.loading.retry" })).toBeEnabled();
+    expect(document.body).not.toHaveTextContent("private profile failure");
+    await act(async () => { await vi.advanceTimersByTimeAsync(6000); });
+    expect(mocks.router.replace).not.toHaveBeenCalled();
+  });
+
+  // O-18/A-14: todo login esperava 1400ms aqui mesmo com o destino pronto.
+  // Agora só o bastante para não piscar, e a frase é lida pelo leitor de tela.
+  it("routes a ready destination after 400ms, not 1400ms", async () => {
+    mocks.auth = { status: "authenticated", user: { uid: "u-1" } };
+    mocks.getUserProfile.mockResolvedValue({ onboardingCompleted: true, roles: ["teacher"] });
+    render(<LoadingScreen />);
+    expect(screen.getByRole("status")).toHaveTextContent("authFlow.loading.title");
+    // O Vitest falsifica também performance.now(): a espera é exatamente 400ms.
+    await act(async () => { await vi.advanceTimersByTimeAsync(350); });
+    expect(mocks.router.replace).not.toHaveBeenCalled();
+    await act(async () => { await vi.advanceTimersByTimeAsync(50); });
+    expect(mocks.router.replace).toHaveBeenCalledExactlyOnceWith("/teach");
+  });
+
+  it("cleans up the initial wait timer on unmount", async () => {
+    const view = render(<LoadingScreen />);
+    expect(vi.getTimerCount()).toBe(1);
+    view.unmount();
+    expect(vi.getTimerCount()).toBe(0);
+    await act(async () => { await vi.advanceTimersByTimeAsync(6000); });
+    expect(mocks.router.replace).not.toHaveBeenCalled();
+  });
+
+  it("ignores a late destination read after the session becomes MFA-pending", async () => {
+    mocks.auth = { status: "authenticated", user: { uid: "u-1" } };
+    let resolveProfile!: (value: unknown) => void;
+    mocks.getUserProfile.mockImplementation(() => new Promise((resolve) => { resolveProfile = resolve; }));
+    const view = render(<LoadingScreen />);
+    mocks.auth = { status: "mfa_required", user: null };
+    view.rerender(<LoadingScreen />);
+    await act(async () => {
+      resolveProfile({ roles: ["teacher"], onboardingCompleted: true });
+      await vi.advanceTimersByTimeAsync(1500);
+    });
+    expect(mocks.router.replace).toHaveBeenCalledExactlyOnceWith("/login?path=teacher");
   });
 });

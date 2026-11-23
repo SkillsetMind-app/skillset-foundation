@@ -42,9 +42,15 @@ const LOCALES = ["en", "es"];
 const PSYCHOLOGIST = /psychologists?\b|psic[oó]log[oa]s?\b/i;
 const HOME_AUDIENCE = /psychologists, coaches (?:&|and) personal-development professionals|psicólogos, coaches y profesionales del desarrollo personal/gi;
 const PSYCHOLOGIST_ALLOWED_PATHS = ["professionalBadge.professions.psychologist"];
+// Second owner decision (2026-11-13, CEO analysis): one small line under the
+// home headline names psychologists who TEACH, beside "Education, not therapy".
+// Exact strings, one key. "Therapists" stays out (blocked above).
+const HOME_ALSO_FOR_PATH = "home.hero.alsoFor";
+const HOME_ALSO_FOR = /^(Also for psychologists who teach\. Education, not therapy\.|También para psicólogos que enseñan\. Educación, no terapia\.)$/;
 
 function psychologistOutsideException(path: string, text: string): boolean {
   if (PSYCHOLOGIST_ALLOWED_PATHS.includes(path)) return false;
+  if (path === HOME_ALSO_FOR_PATH && HOME_ALSO_FOR.test(text)) return false;
   const rest = path.startsWith("home.") ? text.replace(HOME_AUDIENCE, "") : text;
   return PSYCHOLOGIST.test(rest);
 }
@@ -93,6 +99,10 @@ describe("interface copy names no regulated audience", () => {
     expect(psychologistOutsideException("home.hero.eyebrow", "For psychologists, coaches & personal-development professionals")).toBe(false);
     expect(psychologistOutsideException("home.hero.sub", "Para psicólogos, coaches y profesionales del desarrollo personal que ya enseñan")).toBe(false);
     expect(psychologistOutsideException("professionalBadge.professions.psychologist", "Psychologist")).toBe(false);
+    expect(psychologistOutsideException("home.hero.alsoFor", "Also for psychologists who teach. Education, not therapy.")).toBe(false);
+    expect(psychologistOutsideException("home.hero.alsoFor", "También para psicólogos que enseñan. Educación, no terapia.")).toBe(false);
+    expect(psychologistOutsideException("home.hero.alsoFor", "For psychologists who treat clients.")).toBe(true);
+    expect(psychologistOutsideException("home.hero.support", "Also for psychologists who teach. Education, not therapy.")).toBe(true);
     expect(psychologistOutsideException("home.hero.eyebrow", "For psychologists")).toBe(true);
     expect(psychologistOutsideException("home.hero.sub", "For psychologists, coaches & personal-development professionals, and for psychologists")).toBe(true);
     expect(psychologistOutsideException("pricing.title", "For psychologists, coaches & personal-development professionals")).toBe(true);

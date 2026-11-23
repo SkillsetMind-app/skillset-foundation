@@ -164,7 +164,7 @@ describe("concluir e seguir para a proxima aula", () => {
     });
 
     expect(recordLessonProgress).toHaveBeenCalledTimes(1);
-    expect(screen.queryByRole("dialog", { name: "Next lesson" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Next lesson" })).not.toBeInTheDocument();
     expect(screen.getByText("We could not update lesson progress. Please try again.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "End video" })).toBeInTheDocument();
     expect(mocks.replace).not.toHaveBeenCalled();
@@ -182,7 +182,7 @@ describe("concluir e seguir para a proxima aula", () => {
       fireEvent.click(screen.getByRole("button", { name: "End video" }));
     });
 
-    expect(screen.getByRole("dialog", { name: "Next lesson" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Next lesson" })).toBeInTheDocument();
   });
 
   it("botao com a conclusao NAO salva: nao troca de aula", async () => {
@@ -206,7 +206,7 @@ describe("concluir e seguir para a proxima aula", () => {
     });
 
     expect(mocks.replace).toHaveBeenCalledWith("/learn/courses/demo-course?lesson=l2", { scroll: false });
-    expect(screen.queryByRole("dialog", { name: "Next lesson" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Next lesson" })).not.toBeInTheDocument();
     // Curso sequencial: a proxima abre ja liberada, sem esperar o realtime
     // trazer a conclusao (o mock nao reenvia a lista).
     expect(screen.queryByRole("heading", { name: "Lesson locked" })).not.toBeInTheDocument();
@@ -228,10 +228,10 @@ describe("concluir e seguir para a proxima aula", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "End video" }));
     });
-    expect(screen.getByRole("dialog", { name: "Next lesson" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Next lesson" })).toBeInTheDocument();
 
     fireEvent.click(within(playlist()).getByRole("button", { name: /Lesson three/ }));
-    expect(screen.queryByRole("dialog", { name: "Next lesson" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Next lesson" })).not.toBeInTheDocument();
   });
 
   it("aula ja concluida: 'Next lesson' vai direto, sem salvar de novo e sem contagem", async () => {
@@ -243,7 +243,7 @@ describe("concluir e seguir para a proxima aula", () => {
 
     expect(recordLessonProgress).not.toHaveBeenCalled();
     expect(mocks.replace).toHaveBeenCalledWith("/learn/courses/demo-course?lesson=l2", { scroll: false });
-    expect(screen.queryByRole("dialog", { name: "Next lesson" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Next lesson" })).not.toBeInTheDocument();
   });
 
   it("ultima aula concluida: 'Get certificate' leva ao certificado, sem o botao morto 'Completed'", () => {
@@ -261,6 +261,23 @@ describe("concluir e seguir para a proxima aula", () => {
 
     expect(within(lessonBar()).queryByRole("link", { name: "Get certificate" })).not.toBeInTheDocument();
     expect(within(lessonBar()).getByRole("button", { name: "Completed" })).toBeDisabled();
+  });
+
+  // Drip por prazo: concluir esta nao abre a proxima. O botao dizia "Next
+  // lesson" e o clique nao fazia nada, sem dizer por que.
+  it("proxima trancada por data: o botao diz quando ela abre e fica desligado", () => {
+    const timeDrip = { ...course, dripStrategy: "time_drip_lesson", dripIntervalDays: 1 } as Course;
+    mocks.searchParams = new URLSearchParams("lesson=l1");
+    mocks.completed = [];
+    const { unmount } = render(<EnrolledCourseWorkspace course={timeDrip} />);
+    // Antes de concluir: "Mark complete", sem prometer "& next".
+    expect(within(lessonBar()).getByRole("button", { name: "Mark complete" })).toBeEnabled();
+    unmount();
+
+    mocks.completed = ["l1"];
+    render(<EnrolledCourseWorkspace course={timeDrip} />);
+    const button = within(lessonBar()).getByRole("button", { name: /^Next lesson · Unlocks / });
+    expect(button).toBeDisabled();
   });
 });
 

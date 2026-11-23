@@ -38,41 +38,82 @@ afterEach(() => {
 });
 
 describe("AccountControlDialog", () => {
-  it.each(["en", "es"] as const)("requires a reason and explicit confirmation in %s", async locale => {
+  it.each(["en", "es"] as const)("requires a choice, a reason and explicit confirmation in %s", async locale => {
     const t = (key: string) => translate(getDictionary(locale), `accountControls.${key}`);
     mount(locale);
     await screen.findByText(t("active"));
     expect(screen.getByRole("dialog", { name: t("title") })).toHaveClass("modal-panel", "modal-panel-scroll");
-    const confirm = screen.getByRole("button", { name: t("confirm") });
-    expect(confirm).toBeDisabled();
+    // Nada vem marcado: o botão pede a escolha e fica travado mesmo com motivo.
+    for (const radio of screen.getAllByRole("radio")) expect(radio).not.toBeChecked();
+    fireEvent.change(screen.getByRole("textbox", { name: t("reason") }), { target: { value: "Documented operational reason" } });
+    expect(screen.getByRole("button", { name: t("chooseAction") })).toBeDisabled();
     fireEvent.click(screen.getByRole("radio", { name: t("block") }));
+    expect(screen.getByText(t("blockImpact"))).toBeVisible();
     fireEvent.change(screen.getByRole("textbox", { name: t("reason") }), { target: { value: "   " } });
+    const confirm = screen.getByRole("button", { name: t("confirmBlock") });
     expect(confirm).toBeDisabled();
+    expect(confirm).toHaveClass("button-danger", "button-danger-solid");
     fireEvent.change(screen.getByRole("textbox", { name: t("reason") }), { target: { value: "Documented operational reason" } });
     expect(mocks.set).not.toHaveBeenCalled();
     fireEvent.click(confirm);
     await waitFor(() => expect(mocks.set).toHaveBeenCalledTimes(1));
     expect(mocks.set).toHaveBeenCalledWith("user-2", "block", "Documented operational reason");
     expect(await screen.findByText(t("saved"))).toBeVisible();
-    expect(screen.getByText(t("suspended"))).toBeVisible();
+    // Depois do bloqueio a etiqueta diz "blocked" em vermelho, como na tabela e na ficha.
+    expect(screen.getByText(t("blocked"))).toHaveClass("status-chip--danger");
+  });
+
+  it("shows a suspended account without email block as amber suspended", async () => {
+    mocks.get.mockResolvedValue({ suspended: true, blockedEmail: null, isSelf: false });
+    mount();
+    expect(await screen.findByText("Access suspended")).toHaveClass("status-chip--warning");
+  });
+
+  it("offers only the actions that change an active account and names the action on the button", async () => {
+    const onClose = mount();
+    await screen.findByText("Access enabled");
+    expect(screen.queryByRole("radio", { name: "Restore access and email registration" })).toBeNull();
+    fireEvent.click(screen.getByRole("radio", { name: "Suspend access" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Reason (required)" }), { target: { value: "Documented reason" } });
+    const confirm = screen.getByRole("button", { name: "Suspend access" });
+    expect(confirm).toHaveClass("button-danger");
+    expect(confirm).not.toHaveClass("button-danger-solid");
+    fireEvent.click(confirm);
+    await waitFor(() => expect(mocks.set).toHaveBeenCalledWith("user-2", "suspend", "Documented reason"));
+    fireEvent.click(await screen.findByRole("button", { name: "Done" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it("restores with the old-session warning and never performs a write on open", async () => {
     mocks.get.mockResolvedValue({ suspended: true, blockedEmail: "person@example.test", isSelf: false });
     mount();
-    expect(await screen.findByRole("radio", { name: "Restore access and email registration" })).toBeChecked();
+    const restore = await screen.findByRole("radio", { name: "Restore access and email registration" });
+    expect(screen.getByText("Access suspended, email blocked")).toHaveClass("status-chip--danger");
+    expect(restore).not.toBeChecked();
+    expect(screen.queryByRole("radio", { name: "Suspend access" })).toBeNull();
+    fireEvent.click(restore);
     expect(screen.getByText(/old sessions remain invalid/)).toBeVisible();
     expect(mocks.set).not.toHaveBeenCalled();
     fireEvent.change(screen.getByRole("textbox", { name: "Reason (required)" }), { target: { value: "Reviewed restriction" } });
-    fireEvent.click(screen.getByRole("button", { name: "Confirm account change" }));
+    fireEvent.click(screen.getByRole("button", { name: "Restore access" }));
     await waitFor(() => expect(mocks.set).toHaveBeenCalledWith("user-2", "restore", "Reviewed restriction"));
+  });
+
+  it("cancel closes without writing", async () => {
+    const onClose = mount();
+    await screen.findByText("Access enabled");
+    fireEvent.click(screen.getByRole("radio", { name: "Suspend access" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(mocks.set).not.toHaveBeenCalled();
   });
 
   it("does not offer a self-lockout", async () => {
     mocks.get.mockResolvedValue({ ...active, isSelf: true });
     mount();
     expect(await screen.findByText("You cannot change your own account access.")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Confirm account change" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Choose an action" })).toBeDisabled();
+    for (const radio of screen.getAllByRole("radio")) expect(radio).toBeDisabled();
     expect(screen.getByRole("textbox")).toBeDisabled();
     expect(mocks.set).not.toHaveBeenCalled();
   });
@@ -82,6 +123,7 @@ describe("AccountControlDialog", () => {
     mocks.set.mockReturnValue(new Promise(resolve => { finish = resolve; }));
     const onClose = mount();
     await screen.findByText("Access enabled");
+    fireEvent.click(screen.getByRole("radio", { name: "Suspend access" }));
     const reason = screen.getByRole("textbox");
     fireEvent.change(reason, { target: { value: "Documented reason" } });
     fireEvent.submit(reason.closest("form")!);
@@ -101,8 +143,9 @@ describe("AccountControlDialog", () => {
     mocks.set.mockRejectedValue({ message: "private provider details" });
     mount();
     await screen.findByText("Access enabled");
+    fireEvent.click(screen.getByRole("radio", { name: "Suspend access" }));
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "Documented reason" } });
-    fireEvent.click(screen.getByRole("button", { name: "Confirm account change" }));
+    fireEvent.click(screen.getByRole("button", { name: "Suspend access" }));
     expect(await screen.findByRole("alert")).not.toHaveTextContent("private provider");
     expect(screen.getByRole("textbox")).toHaveValue("Documented reason");
     expect(screen.queryByText("Account change saved and recorded in the audit log.")).not.toBeInTheDocument();

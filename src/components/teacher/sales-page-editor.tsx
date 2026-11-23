@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 
 import { PanelCard } from "@/components/teacher/course-commerce-panels";
+import { SaveStatusLine } from "@/components/teacher/save-status-line";
+import { BusyLabel } from "@/components/ui/busy-label";
 import type { DripStrategy } from "@/domain/drip-policy";
 import { DEFAULT_PLATFORM_FEE_BPS } from "@/lib/payments/rules";
 import type { TeacherCourse } from "@/domain/teacher-course";
@@ -17,7 +19,14 @@ const DEFAULT_DRIP: DripStrategy = "instant";
  * Edits the fields that drive the public product page: title, summary, outcomes.
  * Full drag-drop page builder remains P2; this covers the critical producer path.
  */
-export function SalesPageEditor({ course }: { course: TeacherCourse }) {
+export function SalesPageEditor({
+  course,
+  onDirtyChange,
+}: {
+  course: TeacherCourse;
+  /** O mesmo "Unsaved changes" da linha ao lado do Save, para o aviso de sair. */
+  onDirtyChange?: (dirty: boolean) => void;
+}) {
   const { t } = useTranslation();
   const [title, setTitle] = useState(course.title ?? "");
   const [summary, setSummary] = useState(course.summary ?? "");
@@ -27,9 +36,22 @@ export function SalesPageEditor({ course }: { course: TeacherCourse }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  // O que está na tela contra o que o servidor confirmou por último: "Saved"
+  // só vale enquanto os dois são iguais.
+  const draft = JSON.stringify([title, summary, outcomesText]);
+  const [savedDraft, setSavedDraft] = useState(draft);
+  const dirty = draft !== savedDraft;
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
 
-  async function handleSave(event: FormEvent) {
+  function handleSave(event: FormEvent) {
     event.preventDefault();
+    void save();
+  }
+
+  async function save() {
+    const sent = draft;
     setSaving(true);
     setError("");
     setNotice("");
@@ -66,6 +88,7 @@ export function SalesPageEditor({ course }: { course: TeacherCourse }) {
         membersDescription: course.membersDescription ?? null,
         communityEnabled: Boolean(course.communityEnabled),
       });
+      setSavedDraft(sent);
       setNotice("teacherSalesCopy.saved");
     } catch (saveError) {
       const reasons: Record<string, string> = {
@@ -86,54 +109,46 @@ export function SalesPageEditor({ course }: { course: TeacherCourse }) {
       description={t("teacherSalesCopy.description")}
     >
       <form className="mt-4 grid gap-4" onSubmit={handleSave}>
-        <label className="grid gap-1.5 text-sm">
-          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
+        <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
+          <span>
             {t("teacherSalesCopy.productTitle")}
           </span>
           <input
-            className="rounded-md border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)]"
+            className="field-input"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={120}
             required
           />
         </label>
-        <label className="grid gap-1.5 text-sm">
-          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
+        <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
+          <span>
             {t("teacherSalesCopy.summary")}
           </span>
           <textarea
-            className="min-h-[120px] rounded-md border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)]"
+            className="field-input min-h-[120px]"
             value={summary}
             onChange={(e) => setSummary(e.target.value)}
             maxLength={2000}
             required
           />
         </label>
-        <label className="grid gap-1.5 text-sm">
-          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
+        <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
+          <span>
             {t("teacherSalesCopy.outcomes")}
           </span>
           <textarea
-            className="min-h-[100px] rounded-md border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)]"
+            className="field-input min-h-[100px]"
             value={outcomesText}
             onChange={(e) => setOutcomesText(e.target.value)}
             placeholder={t("teacherSalesCopy.outcomesPlaceholder")}
           />
         </label>
-        {error ? (
-          <p className="text-sm text-[var(--color-danger,#b91c1c)]" role="alert">
-            {t(error)}
-          </p>
-        ) : null}
-        {notice ? (
-          <p className="text-sm text-[var(--color-ink-soft)]" role="status">
-            {t(notice)}
-          </p>
-        ) : null}
-        <div className="flex flex-wrap gap-2">
-          <button type="submit" className="button-solid px-4 py-2 text-xs" disabled={saving}>
-            {t(saving ? "teacherSalesCopy.saving" : "teacherSalesCopy.save")}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Contorno: na seção Page o único botão cheio é o "Save page" do
+              editor de blocos logo abaixo. */}
+          <button type="submit" className="button-outline px-4 py-2 text-xs" disabled={saving}>
+            <BusyLabel busy={saving} idle={t("teacherSalesCopy.save")} busyText={t("teacherSalesCopy.saving")} />
           </button>
           <a
             href={`/courses/${encodeURIComponent(course.id)}`}
@@ -143,6 +158,13 @@ export function SalesPageEditor({ course }: { course: TeacherCourse }) {
           >
             {t("teacherSalesCopy.preview")}
           </a>
+          <SaveStatusLine
+            saving={saving}
+            dirty={dirty}
+            savedText={notice ? t(notice) : undefined}
+            errorText={error ? t(error) : undefined}
+            onRetry={() => void save()}
+          />
         </div>
       </form>
     </PanelCard>

@@ -85,3 +85,35 @@ describe("níveis de cabeçalho da área do aluno", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+describe("níveis de cabeçalho da aula aberta", () => {
+  // O título da aula era h4 logo abaixo do h1 do curso, e comentários, quiz e
+  // os avisos do palco (trancada, carregando, sem mídia) eram h5: dois degraus
+  // pulados para quem navega por cabeçalho.
+  const read = (file: string) => readFileSync(join(LEARN_COMPONENTS_DIR, file), "utf8");
+
+  it("a aula é h2 e as subseções dela são h3", () => {
+    const workspace = read("enrolled-course-workspace.tsx");
+    const panel = workspace.slice(workspace.indexOf("function LessonContentPanel"));
+    expect(firstHeadingLevel(panel)).toBe(2);
+    expect(panel).not.toMatch(/<h[45][\s>]/);
+    for (const file of ["lesson-comments.tsx", "lesson-quiz.tsx"]) {
+      const source = read(file);
+      expect(firstHeadingLevel(source), file).toBe(3);
+      expect(source, file).not.toMatch(/<h[45][\s>]/);
+    }
+  });
+
+  // Sob a capa o título da aula (h2) tem 18px (text-lg); o aviso do palco
+  // logo abaixo (h3: trancada, sem mídia) tinha 20px. Um subtítulo não pode
+  // ser maior que o título dele.
+  it("o aviso do palco não é maior que o título da aula sob a capa", () => {
+    const workspace = read("enrolled-course-workspace.tsx");
+    expect(workspace).toContain('underHero ? "text-lg font-semibold"');
+    const css = readFileSync(join(process.cwd(), "src", "app", "globals.css"), "utf8");
+    const at = css.indexOf(".member-video-empty h5 {");
+    expect(at).toBeGreaterThan(-1);
+    const [, size] = css.slice(at, css.indexOf("}", at)).match(/font-size: (\d+)px;/)!;
+    expect(Number(size)).toBeLessThanOrEqual(18);
+  });
+});

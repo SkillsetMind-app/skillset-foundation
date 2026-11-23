@@ -10,8 +10,9 @@ import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import { LayoutDashboard, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 import { getPrimaryWorkspaceHref } from "@/lib/auth/routing";
 
 // "Courses" leads: it is the door for people who come here to learn. The
@@ -24,53 +25,23 @@ const navItems = [
   { href: "/help", labelKey: "nav.help" },
 ];
 
-// On the single-page landing the header scrolls to in-page sections instead
-// of navigating away. Other pages don't pass `landingNav` and keep the route
-// links above (zero behavior change off the homepage).
-type LandingNavItem =
-  | { labelKey: string; anchorId: string }
-  | { labelKey: string; href: string };
-
-type SiteNavProps = {
-  landingNav?: readonly LandingNavItem[];
-};
-
+// The same menu on every page, the home included (2026-11-13: the home used to
+// scroll to its own sections and had no "Help").
 type ResolvedNavItem = {
   key: string;
   label: string;
   target: string;
-  isAnchor: boolean;
 };
 
 function resolveNavItems(
   t: (key: string) => string,
-  hasRealCourses: boolean,
-  landingNav?: readonly LandingNavItem[],
+  marketplaceOpen: boolean,
 ): ResolvedNavItem[] {
-  if (landingNav) {
-    return landingNav.map((item) =>
-      "anchorId" in item
-        ? {
-            key: item.anchorId,
-            label: t(item.labelKey),
-            target: `#${item.anchorId}`,
-            isAnchor: true,
-          }
-        : {
-            key: item.href,
-            label: t(item.labelKey),
-            target: item.href,
-            isAnchor: false,
-          },
-    );
-  }
-
-  // Loja sem curso real publicado não ganha porta no menu.
-  return navItems.filter((item) => hasRealCourses || item.href !== "/courses").map((item) => ({
+  // Vitrine fechada (menos de 12 cursos de 5 professores) não ganha porta no menu.
+  return navItems.filter((item) => marketplaceOpen || item.href !== "/courses").map((item) => ({
     key: item.href,
     label: t(item.labelKey),
     target: item.href,
-    isAnchor: false,
   }));
 }
 
@@ -78,15 +49,24 @@ function isActiveNav(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function SiteNav({ landingNav }: SiteNavProps = {}) {
+export function SiteNav() {
   const { status, user, signOut } = useAuth();
   const { t } = useTranslation();
   const pathname = usePathname() ?? "";
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const mobileToggleRef = useRef<HTMLButtonElement>(null);
-  const resolvedNav = resolveNavItems(t, useHasRealCourses(), landingNav);
+  const headerRowRef = useRef<HTMLDivElement>(null);
+  const mobilePanelRef = useRef<HTMLDivElement>(null);
+  const resolvedNav = resolveNavItems(t, useHasRealCourses());
   const isAuthenticated = status === "authenticated" && user;
+  // Estável, para o efeito do foco não rodar de novo a cada render.
+  const focusMenuToggle = useCallback(() => mobileToggleRef.current, []);
+
+  // Menu aberto se comporta como janela: o Tab anda pelos itens e pela barra
+  // do topo (logo, X, idioma) e volta, sem cair na página escurecida atrás; ao
+  // fechar, o foco volta ao botão do menu.
+  useModalFocus(headerRowRef, mobileOpen, focusMenuToggle);
 
   useEffect(() => {
     function handleScroll() {
@@ -113,6 +93,31 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
       return;
     }
 
+    // A partir de 1280px o painel, o escuro e o X somem (xl:hidden). Se a
+    // janela cresce com o menu aberto (tablet girado, janela maximizada), o
+    // menu fecha junto: senão a página ficava travada e o Tab preso na barra,
+    // sem botão visível para soltar.
+    const desktop = window.matchMedia?.("(min-width: 1280px)");
+    if (desktop?.matches) {
+      // Sincroniza com um sistema externo (a largura da janela).
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setMobileOpen(false);
+      return;
+    }
+    function closeOnDesktop(event: MediaQueryListEvent) {
+      if (event.matches) setMobileOpen(false);
+    }
+    desktop?.addEventListener("change", closeOnDesktop);
+
+    // O foco entra no primeiro item; antes ficava no X e o Tab passava pela
+    // página de trás antes de chegar ao menu.
+    mobilePanelRef.current
+      ?.querySelector<HTMLElement>("a[href], button:not([disabled])")
+      ?.focus();
+    // A página de trás não rola por baixo do menu aberto.
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setMobileOpen(false);
@@ -123,7 +128,9 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
     document.addEventListener("keydown", handleKeyDown);
 
     return () => {
+      document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", handleKeyDown);
+      desktop?.removeEventListener("change", closeOnDesktop);
     };
   }, [mobileOpen]);
 
@@ -139,7 +146,7 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
         {t("nav.skipToContent")}
       </a>
       <header className={`site-header ${scrolled ? "scrolled" : ""}`}>
-      <div className="site-header__inner relative">
+      <div ref={headerRowRef} className="site-header__inner relative">
         <div className="hidden md:block">
           <LogoWordmark nav />
         </div>
@@ -151,18 +158,6 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
           className="site-header__links"
         >
           {resolvedNav.map((item) => {
-            if (item.isAnchor) {
-              return (
-                <a
-                  key={item.key}
-                  href={item.target}
-                  className="site-header__link"
-                >
-                  {item.label}
-                </a>
-              );
-            }
-
             const active = isActiveNav(pathname, item.target);
 
             return (
@@ -177,13 +172,17 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
             );
           })}
         </nav>
+        {/* Dois estilos só, iguais na barra e no menu do celular: a ação
+            principal em .button-solid (navy) e "Sign in" em contorno. Antes a
+            barra usava o botão dourado e o menu o navy, e na home o dourado da
+            barra ficava logo acima do dourado do hero (dois primários iguais). */}
         <div className="site-header__actions">
           {isAuthenticated ? (
             <>
               <div className="hidden lg:block">
                 <Link
                   href={getPrimaryWorkspaceHref(user)}
-                  className="btn-cta-hero items-center gap-2"
+                  className="button-solid gap-2 px-3 xl:px-4"
                 >
                   <LayoutDashboard aria-hidden="true" size={16} strokeWidth={1.9} />
                   {t("nav.dashboard")}
@@ -194,7 +193,7 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
           ) : (
             <div className="hidden items-center gap-2 sm:flex">
               <PublicEntryMenu />
-              <Link href="/auth?mode=signup" className="btn-cta-hero">
+              <Link href="/auth?mode=signup" className="button-solid px-3 xl:px-4">
                 {t("nav.getStarted")}
               </Link>
             </div>
@@ -221,34 +220,15 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
         </div>
 
         {mobileOpen ? (
-          <>
-            <button
-              type="button"
-              aria-label={t("nav.closeMenu")}
-              onClick={() => setMobileOpen(false)}
-              className="fixed inset-0 z-[44] bg-[rgba(15,39,68,0.4)] xl:hidden"
-            />
             <div
+              ref={mobilePanelRef}
               id="site-mobile-menu"
-              className="absolute inset-x-0 top-[calc(100%+8px)] z-[46] max-h-[calc(100svh-88px)] scroll-py-2 overflow-y-auto rounded-lg border border-[var(--color-line)] bg-white p-3 shadow-[0_24px_48px_rgba(15,39,68,0.16)] xl:hidden"
+              className="motion-drop-in absolute inset-x-0 top-[calc(100%+8px)] z-[46] max-h-[calc(100svh-88px)] scroll-py-2 overflow-y-auto rounded-lg border border-[var(--color-line)] bg-white p-3 shadow-[0_24px_48px_rgba(15,39,68,0.16)] xl:hidden"
             >
               <nav aria-label={t("nav.mobileNavLabel")} className="grid gap-1">
                 {resolvedNav.map((item) => {
                   const baseClass =
                     "rounded-md px-3 py-3 text-sm font-semibold transition-colors";
-
-                  if (item.isAnchor) {
-                    return (
-                      <a
-                        key={`mobile-${item.key}`}
-                        href={item.target}
-                        onClick={() => setMobileOpen(false)}
-                        className={`${baseClass} text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)]`}
-                      >
-                        {item.label}
-                      </a>
-                    );
-                  }
 
                   const active = isActiveNav(pathname, item.target);
 
@@ -261,7 +241,7 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
                       className={`${baseClass} ${
                         active
                           ? "bg-[var(--color-surface-soft)] text-[var(--color-primary)]"
-                          : "text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)]"
+                          : "text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)]"
                       }`}
                     >
                       {item.label}
@@ -298,10 +278,20 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
                 </div>
               )}
             </div>
-          </>
         ) : null}
       </div>
       </header>
+      {mobileOpen ? (
+        // O escuro fica fora do <header>: o backdrop-filter da barra prende um
+        // `fixed` dentro dela, e o escuro cobria a própria barra. Aqui ele
+        // começa abaixo do topo (logo e X nítidos) e fica sob a barra (z 39 <
+        // 40). Não é focável: o X e o Esc fecham pelo teclado.
+        <div
+          aria-hidden="true"
+          onClick={() => setMobileOpen(false)}
+          className="fixed inset-x-0 bottom-0 top-[var(--site-header-height)] z-[39] bg-[rgba(15,39,68,0.4)] xl:hidden"
+        />
+      ) : null}
       {/* A barra é fixa, logo saiu do fluxo. Esta faixa devolve a altura dela
           para a página, de uma vez só, em vez de cada rota lembrar de reservar
           um padding no topo. */}

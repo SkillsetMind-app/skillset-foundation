@@ -61,7 +61,7 @@ describe("course creation with real EN/ES dictionaries", () => {
       ["Curso", "Clases grabadas que cada persona ve a su ritmo."],
       ["Comunidad", "Un espacio de miembros donde publicas, respondes y haces encuentros en vivo. Normalmente se paga cada mes."],
       ["Evento en vivo", "Un taller o clase en una fecha fija, por Zoom o Meet."],
-      ["E-book", "Un archivo que la persona descarga: PDF, presentaciones, cuaderno de trabajo."],
+      ["Descarga digital", "Un archivo que la persona descarga: PDF, presentaciones, cuaderno de trabajo."],
     ]) {
       expect(screen.getByRole("button", { name: new RegExp(`^${label}`) })).toHaveTextContent(help);
     }

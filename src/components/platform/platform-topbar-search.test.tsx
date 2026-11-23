@@ -138,7 +138,8 @@ describe("busca na barra do topo", () => {
   });
 
   it.each([
-    ["/teach", "/teach?query=course%20name"],
+    // A busca do professor cai na lista de produtos, que le ?q= e filtra.
+    ["/teach", "/teach/builder?q=course%20name"],
     ["/courses", "/courses?q=course%20name"],
     ["/learn", "/courses?q=course%20name"],
   ])("preserves the existing search destination outside Ops: %s", (pathname, expected) => {

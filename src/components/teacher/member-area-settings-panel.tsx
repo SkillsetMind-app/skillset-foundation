@@ -1,24 +1,39 @@
 "use client";
 
-import { ExternalLink, Eye, EyeOff, Trash2, UploadCloud } from "lucide-react";
+import { ExternalLink, Eye, EyeOff, Plus, Trash2, X } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { Button, Card, Field, InlineAlert, buttonClasses } from "@/components/ui";
+import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
+import { CardPageSkeleton, CardStackSkeleton } from "@/components/teacher/builder-skeleton";
+import { SavedNote } from "@/components/teacher/save-status-line";
+import { ImageUploadField } from "@/components/teacher/image-upload-field";
+import { useConfirm } from "@/components/teacher/use-confirm";
+import { BusyLabel, Button, Card, Field, InlineAlert, buttonClasses } from "@/components/ui";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
+import type { PlanId } from "@/data/plans";
+import { planEntitlements } from "@/domain/entitlements";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import {
-  getMyMemberAreaEditor,
+  createMyMemberArea,
+  deleteMyMemberArea,
+  getMyMemberAreas,
+  isValidMemberAreaSlug,
   memberAreaCoverUrl,
   memberAreaPath,
+  memberAreaProductsOf,
   orderMemberAreaProducts,
   removeMemberAreaCover,
   saveMyMemberArea,
   saveMyMemberAreaProducts,
+  setMyMemberAreaCommunity,
   uploadMemberAreaCover,
+  type CreateMemberAreaError,
   type MemberAreaTheme,
-  type MyMemberAreaEditor,
+  type MyMemberAreaEditorArea,
+  type MyMemberAreas,
 } from "@/lib/data/member-areas";
 import { allowedAvatarTypes, isAllowedAvatarFile } from "@/lib/data/profile-media";
 import { subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
@@ -28,15 +43,23 @@ const maxName = 80;
 const maxWelcome = 2000;
 /** Teto de save_my_member_area_products: o resto segue a ordem padrão, visível. */
 const maxProducts = 500;
+/** A principal não tem id enquanto é virtual: esta é a chave dela na tela. */
+const mainKey = "main";
 
 type LoadState = "loading" | "ready" | "error";
+type Creator = { name: string; username: string | null };
 
-const fieldClass =
-  "w-full rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]";
+// O campo da casa (globals.css): a borda fina de antes sumia no cartão branco.
+const fieldClass = "field-input";
 const smallButtonClass =
-  "inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md border border-[var(--color-line)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-ink-soft)] disabled:opacity-40";
+  "inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md border border-[var(--color-line)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-ink-soft)] disabled:opacity-60";
 
-/** /teach/member-area: a área que junta todos os produtos do criador. */
+const areaKey = (area: MyMemberAreaEditorArea) => (area.slug === null ? mainKey : (area.id ?? mainKey));
+
+/**
+ * /teach/member-area: as áreas do criador. A principal junta todos os
+ * produtos; no Pro há até 2 extras, cada uma só com os produtos postos nela.
+ */
 export function MemberAreaSettingsPanel() {
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -44,38 +67,38 @@ export function MemberAreaSettingsPanel() {
 
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [retryKey, setRetryKey] = useState(0);
-  const [configured, setConfigured] = useState(false);
-  const [creator, setCreator] = useState<{ name: string; username: string | null }>({ name: "", username: null });
-  const [name, setName] = useState("");
-  const [theme, setTheme] = useState<MemberAreaTheme>("light");
-  const [coverPath, setCoverPath] = useState<string | null>(null);
-  const [savedCoverPath, setSavedCoverPath] = useState<string | null>(null);
-  const [welcome, setWelcome] = useState("");
-  const [choices, setChoices] = useState<MyMemberAreaEditor["choices"]>(new Map());
+  const [editor, setEditor] = useState<MyMemberAreas | null>(null);
+  const [creator, setCreator] = useState<Creator>({ name: "", username: null });
+  const [planId, setPlanId] = useState<PlanId>("free");
   const [courses, setCourses] = useState<TeacherCourse[] | null>(null);
   const [coursesFailed, setCoursesFailed] = useState(false);
-  const [order, setOrder] = useState<string[]>([]);
-  const [hidden, setHidden] = useState<Set<string>>(new Set());
-  const [uploading, setUploading] = useState(false);
-  const [coverError, setCoverError] = useState<"" | "invalid" | "upload">("");
-  const [saving, setSaving] = useState(false);
-  const [feedback, setFeedback] = useState<"" | "saved" | "saveError" | "productsError">("");
+  const [selected, setSelected] = useState(mainKey);
+  const [creating, setCreating] = useState(false);
+  // A assinatura da lista de produtos, para o "Try again" ler de novo sem
+  // sair e entrar outra vez no canal do tempo real.
+  const coursesRead = useRef<{ reload: () => Promise<void> } | null>(null);
+
+  async function reload(nextSelected?: string) {
+    if (!uid) return;
+    try {
+      setEditor(await getMyMemberAreas(uid));
+      if (nextSelected) setSelected(nextSelected);
+    } catch {
+      setLoadState("error");
+    }
+  }
 
   useEffect(() => {
     if (!uid) return;
     let mounted = true;
-    Promise.all([getMyMemberAreaEditor(uid), getUserProfile(uid)])
-      .then(([editor, profile]) => {
+    Promise.all([getMyMemberAreas(uid), getUserProfile(uid)])
+      .then(([next, profile]) => {
         if (!mounted) return;
         setCreator({ name: profile?.displayName ?? "", username: profile?.username ?? null });
-        setConfigured(editor.settings !== null);
-        setName(editor.settings?.name ?? "");
-        setTheme(editor.settings?.theme ?? "light");
-        setCoverPath(editor.settings?.coverPath ?? null);
-        setSavedCoverPath(editor.settings?.coverPath ?? null);
-        setWelcome(editor.settings?.welcomeText ?? "");
-        setChoices(editor.choices);
-        setHidden(new Set([...editor.choices].filter(([, choice]) => !choice.visible).map(([id]) => id)));
+        // Sem perfil, o plano mais apertado: a tela oferece menos do que o
+        // banco aceita, nunca mais.
+        setPlanId(profile?.currentPlanId ?? "free");
+        setEditor(next);
         setLoadState("ready");
       })
       .catch(() => {
@@ -88,7 +111,7 @@ export function MemberAreaSettingsPanel() {
 
   useEffect(() => {
     if (!uid) return;
-    return subscribeToTeacherCourses(
+    const subscription = subscribeToTeacherCourses(
       uid,
       (next) => {
         setCourses(next);
@@ -96,91 +119,19 @@ export function MemberAreaSettingsPanel() {
       },
       () => setCoursesFailed(true),
     );
+    coursesRead.current = subscription;
+    return () => {
+      coursesRead.current = null;
+      subscription();
+    };
   }, [uid, retryKey]);
 
-  // A ordem salva (ou a padrão); o que o criador mexer aqui vence, e produto
-  // novo entra no fim sem desfazer a ordem já arrumada.
-  const orderedCourses = useMemo(() => {
-    const base = orderMemberAreaProducts(courses ?? [], choices);
-    if (order.length === 0) return base;
-    const rank = new Map(order.map((id, index) => [id, index]));
-    return [...base].sort((a, b) => (rank.get(a.id) ?? order.length) - (rank.get(b.id) ?? order.length));
-  }, [courses, choices, order]);
-
-  function move(index: number, direction: -1 | 1) {
-    const ids = orderedCourses.map((course) => course.id);
-    const target = index + direction;
-    if (target < 0 || target >= ids.length) return;
-    [ids[index], ids[target]] = [ids[target], ids[index]];
-    setOrder(ids);
-    setFeedback("");
-  }
-
-  function toggleVisible(courseId: string) {
-    setHidden((current) => {
-      const next = new Set(current);
-      if (next.has(courseId)) next.delete(courseId);
-      else next.add(courseId);
-      return next;
-    });
-    setFeedback("");
-  }
-
-  async function handleCover(file: File | null) {
-    if (!uid || !file) return;
-    if (!isAllowedAvatarFile(file)) {
-      setCoverError("invalid");
-      return;
-    }
-    setCoverError("");
-    setUploading(true);
-    try {
-      // ponytail: capa enviada e trocada antes de salvar fica órfã no bucket.
-      // Apagar aqui arriscava apagar a que o banco ainda usa; limpar órfãs é outro trabalho.
-      const path = await uploadMemberAreaCover(uid, file);
-      setCoverPath(path);
-      setFeedback("");
-    } catch {
-      setCoverError("upload");
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!uid) return;
-    setSaving(true);
-    setFeedback("");
-    const previousCover = savedCoverPath;
-    try {
-      await saveMyMemberArea({ name, theme, coverPath, welcomeText: welcome });
-    } catch {
-      setFeedback("saveError");
-      setSaving(false);
-      return;
-    }
-    // O banco já aponta para a capa nova: a anterior pode sair, mesmo que a
-    // lista de produtos falhe logo abaixo.
-    setSavedCoverPath(coverPath);
-    setConfigured(true);
-    if (previousCover && previousCover !== coverPath) {
-      void removeMemberAreaCover(previousCover).catch(() => undefined);
-    }
-    try {
-      await saveMyMemberAreaProducts(
-        orderedCourses.slice(0, maxProducts).map((course) => ({ courseId: course.id, visible: !hidden.has(course.id) })),
-      );
-      setFeedback("saved");
-    } catch {
-      setFeedback("productsError");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  if (loadState === "loading" || !uid) {
-    return <p role="status" className="text-sm text-[var(--color-ink-soft)]">{t("teach.memberAreaEditor.loading")}</p>;
+  // Volta à espera da lista (e o "Save" trava, como antes da primeira leitura)
+  // até a leitura nova responder: nunca a lista velha no lugar do erro.
+  function retryCourses() {
+    setCourses(null);
+    setCoursesFailed(false);
+    return coursesRead.current?.reload();
   }
 
   if (loadState === "error") {
@@ -201,13 +152,404 @@ export function MemberAreaSettingsPanel() {
     );
   }
 
+  if (!uid || !editor) {
+    // A forma do cartão que vem, não uma frase solta (F-03).
+    return <CardPageSkeleton label={t("teach.memberAreaEditor.loading")} header={false} />;
+  }
+
+  // A principal conta como 1. Extra além do limite (o plano caiu) fica no ar
+  // para o aluno e travada aqui; o banco decide de verdade (member_area_editable).
+  const limit = planEntitlements[planId].quotas.memberAreas ?? 1;
+  const extras = editor.areas.slice(1);
+  const lockedIds = new Set(extras.slice(Math.max(0, limit - 1)).map((area) => area.id));
+  const area = editor.areas.find((candidate) => areaKey(candidate) === selected) ?? editor.areas[0];
+  const atLimit = editor.areas.length >= limit;
+  const areaLabel = (candidate: MyMemberAreaEditorArea) =>
+    candidate.slug === null
+      ? t("teach.memberAreaEditor.mainArea")
+      : candidate.settings?.name?.trim() || candidate.slug;
+
+  return (
+    <div className="grid gap-5">
+      <Card padding="sm" shadow={false} className="grid gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm font-semibold text-[var(--color-ink)]">{t("teach.memberAreaEditor.areas")}</p>
+          <p className="text-xs text-[var(--color-ink-soft)]">
+            {t("teach.memberAreaEditor.areasUsage")
+              .replace("{used}", () => String(editor.areas.length))
+              .replace("{limit}", () => String(limit))}
+          </p>
+        </div>
+        {/* As abas da casa (setas, Home/End). O "New area" saiu de dentro da
+            lista de abas: e um botao, nao uma aba. */}
+        <div className="flex flex-wrap items-end gap-2">
+          <HorizontalTabs
+            className="min-w-0 max-w-full"
+            tabs={editor.areas.map((candidate) => ({ value: areaKey(candidate), label: areaLabel(candidate) }))}
+            activeValue={areaKey(area)}
+            onChange={(key) => {
+              setSelected(key);
+              setCreating(false);
+            }}
+            ariaLabel={t("teach.memberAreaEditor.areas")}
+          />
+          {!atLimit ? (
+            <button
+              type="button"
+              onClick={() => setCreating(true)}
+              className="inline-flex min-h-11 items-center gap-2 rounded-md border border-dashed border-[var(--color-line)] px-3 py-2 text-sm font-semibold text-[var(--color-primary)]"
+            >
+              <Plus aria-hidden="true" size={15} />
+              {t("teach.memberAreaEditor.newArea")}
+            </button>
+          ) : null}
+        </div>
+        {atLimit ? (
+          <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
+            {limit > 1
+              ? t("teach.memberAreaEditor.areasLimitPro")
+              : t("teach.memberAreaEditor.areasLimit").replace("{limit}", () => String(limit))}
+          </p>
+        ) : null}
+        {creating && !atLimit ? (
+          <NewAreaForm
+            basePath={memberAreaPath({ username: creator.username, ownerId: uid })}
+            onCancel={() => setCreating(false)}
+            onCreated={(id) => {
+              setCreating(false);
+              void reload(id);
+            }}
+          />
+        ) : null}
+      </Card>
+
+      <MemberAreaForm
+        key={areaKey(area)}
+        uid={uid}
+        area={area}
+        editor={editor}
+        courses={courses}
+        coursesFailed={coursesFailed}
+        onRetryCourses={retryCourses}
+        creator={creator}
+        locked={area.id !== null && lockedIds.has(area.id)}
+        lockedIds={lockedIds}
+        areaLabel={areaLabel}
+        onSaved={() => reload()}
+        onDeleted={() => void reload(mainKey)}
+      />
+    </div>
+  );
+}
+
+function NewAreaForm({
+  basePath,
+  onCancel,
+  onCreated,
+}: {
+  basePath: string;
+  onCancel: () => void;
+  onCreated: (id: string) => void;
+}) {
+  const { t } = useTranslation();
+  const [name, setName] = useState("");
+  const [slug, setSlug] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<CreateMemberAreaError | "">("");
+
+  async function handleCreate() {
+    if (!isValidMemberAreaSlug(slug)) {
+      setError("slugInvalid");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      onCreated(await createMyMemberArea(name, slug));
+    } catch (caught) {
+      const reason = caught instanceof Error ? caught.message : "";
+      setError(reason === "limit" || reason === "slugInvalid" || reason === "slugTaken" ? reason : "other");
+      setBusy(false);
+    }
+  }
+
+  const errorKey = { limit: "createLimit", slugInvalid: "slugInvalid", slugTaken: "slugTaken", other: "create" } as const;
+
+  return (
+    <div className="grid gap-3 rounded-md border border-[var(--color-line)] p-3">
+      <Field id="member-area-new-name" label={t("teach.memberAreaEditor.newAreaName")}>
+        {(a11y) => (
+          <input {...a11y} value={name} maxLength={maxName} onChange={(event) => setName(event.target.value)} className={fieldClass} />
+        )}
+      </Field>
+      <Field
+        id="member-area-new-slug"
+        label={t("teach.memberAreaEditor.newAreaSlug")}
+        hint={t("teach.memberAreaEditor.newAreaSlugHelp").replace("{path}", () => `${basePath}/${slug || "..."}`)}
+      >
+        {(a11y) => (
+          <input
+            {...a11y}
+            value={slug}
+            maxLength={40}
+            autoCapitalize="none"
+            spellCheck={false}
+            onChange={(event) => {
+              setSlug(event.target.value.toLowerCase().replace(/\s+/g, "-"));
+              setError("");
+            }}
+            className={fieldClass}
+          />
+        )}
+      </Field>
+      {error ? <InlineAlert tone="error">{t(`teach.memberAreaEditor.errors.${errorKey[error]}`)}</InlineAlert> : null}
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" disabled={busy || !slug} onClick={() => void handleCreate()}>
+          <BusyLabel
+            busy={busy}
+            idle={t("teach.memberAreaEditor.create")}
+            busyText={t("teach.memberAreaEditor.creating")}
+          />
+        </Button>
+        <Button type="button" variant="outline" disabled={busy} onClick={onCancel}>
+          {t("teach.memberAreaEditor.cancel")}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** O formulário de uma área. Montado de novo a cada troca de área (key). */
+function MemberAreaForm({
+  uid,
+  area,
+  editor,
+  courses,
+  coursesFailed,
+  onRetryCourses,
+  creator,
+  locked,
+  lockedIds,
+  areaLabel,
+  onSaved,
+  onDeleted,
+}: {
+  uid: string;
+  area: MyMemberAreaEditorArea;
+  editor: MyMemberAreas;
+  courses: TeacherCourse[] | null;
+  coursesFailed: boolean;
+  onRetryCourses: () => Promise<void> | undefined;
+  creator: Creator;
+  locked: boolean;
+  lockedIds: ReadonlySet<string | null>;
+  areaLabel: (area: MyMemberAreaEditorArea) => string;
+  /** Relê as áreas: o que entrou ou saiu desta lista mudou de área. */
+  onSaved: () => Promise<void>;
+  onDeleted: () => void;
+}) {
+  const { t } = useTranslation();
+  const { ask, dialog: confirmDialog } = useConfirm();
+  const isExtra = area.slug !== null;
+  const productsRef = useRef<HTMLDivElement>(null);
+
+  const [name, setName] = useState(area.settings?.name ?? "");
+  const [theme, setTheme] = useState<MemberAreaTheme>(area.settings?.theme ?? "light");
+  const [coverPath, setCoverPath] = useState<string | null>(area.settings?.coverPath ?? null);
+  const [savedCoverPath, setSavedCoverPath] = useState<string | null>(area.settings?.coverPath ?? null);
+  const [welcome, setWelcome] = useState(area.settings?.welcomeText ?? "");
+  const [order, setOrder] = useState<string[]>([]);
+  const [hidden, setHidden] = useState<Set<string>>(
+    () => new Set([...editor.placement].filter(([, place]) => place.areaId === area.id && !place.visible).map(([id]) => id)),
+  );
+  // Só nas extras: o que entrou (veio de outra área) e o que saiu (volta para a principal).
+  const [added, setAdded] = useState<string[]>([]);
+  const [removed, setRemoved] = useState<Set<string>>(new Set());
+  // Tamanho do arquivo em envio (null = nada subindo): a nota de andamento,
+  // a mesma das capas do construtor, diz "Sending..." e o tamanho.
+  const [uploadingBytes, setUploadingBytes] = useState<number | null>(null);
+  const uploading = uploadingBytes !== null;
+  const [coverError, setCoverError] = useState<"" | "invalid" | "upload">("");
+  const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState<"" | "saved" | "saveError" | "productsError" | "communityError">("");
+  const [communityCourseId, setCommunityCourseId] = useState<string>(area.communityCourseId ?? "");
+  const [savedOnce, setSavedOnce] = useState(false);
+  const configured = area.settings !== null || savedOnce;
+  const [deleteFailed, setDeleteFailed] = useState(false);
+
+  const own = useMemo(() => memberAreaProductsOf(courses ?? [], editor, area), [courses, editor, area]);
+
+  // A ordem salva (ou a padrão); o que o criador mexer aqui vence, e produto
+  // novo entra no fim sem desfazer a ordem já arrumada.
+  const orderedCourses = useMemo(() => {
+    const addedCourses = (courses ?? []).filter((course) => added.includes(course.id) && !own.courses.includes(course));
+    const base = [
+      ...orderMemberAreaProducts(own.courses.filter((course) => !removed.has(course.id)), own.choices),
+      ...added.flatMap((id) => addedCourses.filter((course) => course.id === id)),
+    ];
+    if (order.length === 0) return base;
+    const rank = new Map(order.map((id, index) => [id, index]));
+    return [...base].sort((a, b) => (rank.get(a.id) ?? order.length) - (rank.get(b.id) ?? order.length));
+  }, [courses, own, added, removed, order]);
+
+  // O que pode vir para esta extra: produto de outra área que não esteja travada.
+  const addable = isExtra
+    ? (courses ?? []).flatMap((course) => {
+        if (orderedCourses.some((current) => current.id === course.id)) return [];
+        const place = editor.placement.get(course.id);
+        const home = editor.areas.find((candidate) => candidate.slug !== null && candidate.id === place?.areaId) ?? editor.areas[0];
+        if (home.id !== null && lockedIds.has(home.id)) return [];
+        return [{ course, home }];
+      })
+    : [];
+
+  // Só produto community publicado e com a comunidade ligada. Uma escolha que
+  // deixou de valer (despublicada, comunidade desligada) aparece e salva como nenhuma.
+  const communityProducts = (courses ?? []).filter(
+    (course) => course.productFormat === "community" && course.communityEnabled !== false && course.status === "published",
+  );
+  const chosenCommunity = communityProducts.some((course) => course.id === communityCourseId) ? communityCourseId : "";
+
+  function move(index: number, direction: -1 | 1) {
+    const ids = orderedCourses.map((course) => course.id);
+    const target = index + direction;
+    if (target < 0 || target >= ids.length) return;
+    [ids[index], ids[target]] = [ids[target], ids[index]];
+    setOrder(ids);
+    setFeedback("");
+  }
+
+  function toggleVisible(courseId: string) {
+    setHidden((current) => {
+      const next = new Set(current);
+      if (next.has(courseId)) next.delete(courseId);
+      else next.add(courseId);
+      return next;
+    });
+    setFeedback("");
+  }
+
+  function removeFromArea(courseId: string) {
+    setAdded((current) => current.filter((id) => id !== courseId));
+    setRemoved((current) => new Set(current).add(courseId));
+    setOrder((current) => current.filter((id) => id !== courseId));
+    setFeedback("");
+  }
+
+  function addToArea(courseId: string) {
+    if (!courseId) return;
+    setRemoved((current) => {
+      const next = new Set(current);
+      next.delete(courseId);
+      return next;
+    });
+    if (!own.courses.some((course) => course.id === courseId)) setAdded((current) => [...current, courseId]);
+    setFeedback("");
+  }
+
+  async function handleCover(file: File | null) {
+    if (!file) return;
+    if (!isAllowedAvatarFile(file)) {
+      setCoverError("invalid");
+      return;
+    }
+    setCoverError("");
+    setUploadingBytes(file.size);
+    try {
+      // ponytail: capa enviada e trocada antes de salvar fica órfã no bucket.
+      // Apagar aqui arriscava apagar a que o banco ainda usa; limpar órfãs é outro trabalho.
+      const path = await uploadMemberAreaCover(uid, file);
+      setCoverPath(path);
+      setFeedback("");
+    } catch {
+      setCoverError("upload");
+    } finally {
+      setUploadingBytes(null);
+    }
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    // Enter num campo não salva com a lista de produtos lendo de novo (ou
+    // falhada): a ordem gravada sairia da lista velha.
+    if (courses === null || coursesFailed) return;
+    setSaving(true);
+    setFeedback("");
+    const previousCover = savedCoverPath;
+    try {
+      await saveMyMemberArea({ name, theme, coverPath, welcomeText: welcome }, area.id);
+    } catch {
+      setFeedback("saveError");
+      setSaving(false);
+      return;
+    }
+    // O banco já aponta para a capa nova: a anterior pode sair, mesmo que a
+    // lista de produtos falhe logo abaixo.
+    setSavedCoverPath(coverPath);
+    setSavedOnce(true);
+    if (previousCover && previousCover !== coverPath) {
+      void removeMemberAreaCover(previousCover).catch(() => undefined);
+    }
+    try {
+      await saveMyMemberAreaProducts(
+        orderedCourses.slice(0, maxProducts).map((course) => ({ courseId: course.id, visible: !hidden.has(course.id) })),
+        area.id,
+      );
+    } catch {
+      setFeedback("productsError");
+      setSaving(false);
+      return;
+    }
+    let communityFailed = false;
+    try {
+      await setMyMemberAreaCommunity(chosenCommunity || null, area.id);
+    } catch {
+      communityFailed = true;
+    }
+    // Relê onde cada produto mora antes de largar o rascunho da lista.
+    await onSaved();
+    setAdded([]);
+    setRemoved(new Set());
+    setOrder([]);
+    setFeedback(communityFailed ? "communityError" : "saved");
+    setSaving(false);
+  }
+
+  async function handleDelete() {
+    if (!area.id) return;
+    setSaving(true);
+    setDeleteFailed(false);
+    try {
+      await deleteMyMemberArea(area.id);
+    } catch {
+      setDeleteFailed(true);
+      setSaving(false);
+      return;
+    }
+    if (savedCoverPath) void removeMemberAreaCover(savedCoverPath).catch(() => undefined);
+    onDeleted();
+  }
+
   const coverUrl = coverPath ? memberAreaCoverUrl(coverPath) : "";
+  // O "Save" apagado diz por quê, numa linha ligada a ele (F-12). Salvando não
+  // precisa: o próprio botão diz "Saving...".
+  const saveBlockedKey = saving
+    ? null
+    : locked
+      ? "saveBlockedLocked"
+      : uploading
+        ? "saveBlockedUploading"
+        : courses === null || coursesFailed
+          ? "saveBlockedCourses"
+          : null;
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-5">
-      {/* Travado enquanto salva: sem trocar capa nem texto no meio do envio. */}
-      <fieldset disabled={saving} className="grid min-w-0 gap-5">
+      {/* Travado enquanto salva, e de vez numa área que o plano não cobre mais. */}
+      <fieldset disabled={saving || locked} className="grid min-w-0 gap-5">
+      {locked ? <InlineAlert tone="error">{t("teach.memberAreaEditor.lockedNote")}</InlineAlert> : null}
       {!configured ? <p className="info-notice">{t("teach.memberAreaEditor.virtualNote")}</p> : null}
+      {isExtra && !locked ? <p className="info-notice">{t("teach.memberAreaEditor.extraNote")}</p> : null}
 
       <Card padding="sm" shadow={false} className="grid gap-4">
         <Field
@@ -258,59 +600,32 @@ export function MemberAreaSettingsPanel() {
           </div>
         </fieldset>
 
-        <div className="grid gap-3 sm:grid-cols-[minmax(0,16rem)_minmax(0,1fr)] sm:items-center">
-          <div className="relative grid aspect-video w-full overflow-hidden rounded-md border border-[var(--color-line)] bg-[var(--color-surface)]">
-            {coverUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={coverUrl} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <UploadCloud aria-hidden="true" size={22} className="m-auto text-[var(--color-ink-muted)]" />
-            )}
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-[var(--color-ink)]">{t("teach.memberAreaEditor.cover")}</p>
-            <p className="mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">{t("teach.memberAreaEditor.coverHelp")}</p>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <label
-                className={`relative inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border border-dashed border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-primary)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
-                  uploading ? "pointer-events-none opacity-60" : ""
-                }`}
-              >
-                <UploadCloud aria-hidden="true" size={16} />
-                {t(`teach.memberAreaEditor.${uploading ? "uploading" : coverUrl ? "replaceCover" : "uploadCover"}`)}
-                <input
-                  type="file"
-                  accept={allowedAvatarTypes.join(",")}
-                  disabled={uploading}
-                  onChange={(event) => {
-                    const file = event.target.files?.[0] ?? null;
-                    event.target.value = "";
-                    void handleCover(file);
-                  }}
-                  className="sr-only"
-                />
-              </label>
-              {coverUrl ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCoverPath(null);
-                    setFeedback("");
-                  }}
-                  className={smallButtonClass}
-                >
-                  <Trash2 aria-hidden="true" size={15} />
-                  {t("teach.memberAreaEditor.removeCover")}
-                </button>
-              ) : null}
-            </div>
-            {coverError ? (
-              <p role="alert" className="mt-2 text-xs text-[var(--color-danger-fg)]">
-                {t(`teach.memberAreaEditor.errors.${coverError === "invalid" ? "coverInvalid" : "coverUpload"}`)}
-              </p>
-            ) : null}
-          </div>
-        </div>
+        {/* A casca de imagem das capas do construtor (B-05). O envio, o limite
+            e o que se guarda seguem daqui. */}
+        <ImageUploadField
+          title={t("teach.memberAreaEditor.cover")}
+          help={t("teach.memberAreaEditor.coverHelp")}
+          preview={{ src: coverUrl, alt: "" }}
+          triggerLabel={t(`teach.memberAreaEditor.${coverUrl ? "replaceCover" : "uploadCover"}`)}
+          input={{
+            accept: allowedAvatarTypes.join(","),
+            disabled: uploading,
+            onChange: (event) => {
+              const file = event.target.files?.[0] ?? null;
+              event.target.value = "";
+              void handleCover(file);
+            },
+          }}
+          remove={{
+            label: t("teach.memberAreaEditor.removeCover"),
+            onClick: () => {
+              setCoverPath(null);
+              setFeedback("");
+            },
+          }}
+          progress={uploadingBytes === null ? null : { bytesTransferred: 0, totalBytes: uploadingBytes, percent: null, state: "running" }}
+          error={coverError ? t(`teach.memberAreaEditor.errors.${coverError === "invalid" ? "coverInvalid" : "coverUpload"}`) : undefined}
+        />
 
         <Field
           id="member-area-welcome"
@@ -333,9 +648,14 @@ export function MemberAreaSettingsPanel() {
           )}
         </Field>
       </Card>
+      </fieldset>
 
+      {/* O cartão de produtos fica fora do fieldset travado: o "Try again" da
+          leitura funciona mesmo numa área travada ou salvando. O que edita a
+          lista segue travado no fieldset de dentro. */}
       <Card tone="soft" padding="sm" shadow={false} className="grid gap-3">
-        <div>
+        {/* Fica na tela nos dois desfechos do "Try again" e recebe o foco. */}
+        <div ref={productsRef} tabIndex={-1} className="outline-none">
           <p className="text-sm font-semibold text-[var(--color-ink)]">{t("teach.memberAreaEditor.products")}</p>
           <p className="mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">{t("teach.memberAreaEditor.productsHelp")}</p>
           {orderedCourses.length > maxProducts ? (
@@ -345,11 +665,19 @@ export function MemberAreaSettingsPanel() {
           ) : null}
         </div>
         {coursesFailed ? (
-          <InlineAlert tone="error">{t("teach.memberAreaEditor.errors.courses")}</InlineAlert>
-        ) : courses === null ? (
-          <p role="status" className="text-xs text-[var(--color-ink-soft)]">{t("teach.memberAreaEditor.loading")}</p>
+          // A frase antiga mandava recarregar a página; agora o botão lê de novo.
+          <LoadErrorAlert onRetry={onRetryCourses} focusRef={productsRef}>
+            {t("creatorPanel.products.loadError")}
+          </LoadErrorAlert>
+        ) : null}
+        <fieldset disabled={saving || locked} className="grid min-w-0 gap-3 empty:hidden">
+        {coursesFailed ? null : courses === null ? (
+          // A forma das linhas de produto, não uma frase solta.
+          <CardStackSkeleton label={t("teach.memberAreaEditor.loading")} cards={2} />
         ) : orderedCourses.length === 0 ? (
-          <p className="text-xs text-[var(--color-ink-soft)]">{t("teach.memberAreaEditor.noProducts")}</p>
+          <p className="text-xs text-[var(--color-ink-soft)]">
+            {t(isExtra ? "teach.memberAreaEditor.noProductsInArea" : "teach.memberAreaEditor.noProducts")}
+          </p>
         ) : (
           <ol className="grid grid-cols-1 gap-2">
             {orderedCourses.map((course, index) => {
@@ -368,9 +696,10 @@ export function MemberAreaSettingsPanel() {
                     <span className={`block truncate text-sm font-semibold ${visible ? "text-[var(--color-ink)]" : "text-[var(--color-ink-muted)]"}`}>
                       {label}
                     </span>
-                    {course.status !== "published" ? (
-                      <span className="block text-xs text-[var(--color-ink-soft)]">{t("teach.memberAreaEditor.notPublished")}</span>
-                    ) : null}
+                    <span className="block text-xs text-[var(--color-ink-soft)]">
+                      {t(`courseCreation.types.${course.productFormat ?? "course"}.label`)}
+                      {course.status !== "published" ? ` · ${t("teach.memberAreaEditor.notPublished")}` : ""}
+                    </span>
                   </span>
                   <label className={`${smallButtonClass} cursor-pointer`}>
                     <input
@@ -402,29 +731,100 @@ export function MemberAreaSettingsPanel() {
                     >
                       ↓
                     </button>
+                    {isExtra ? (
+                      <button
+                        type="button"
+                        onClick={() => removeFromArea(course.id)}
+                        aria-label={t("teach.memberAreaEditor.removeFromArea").replace("{title}", title)}
+                        className={smallButtonClass}
+                      >
+                        <X aria-hidden="true" size={15} />
+                        {t("teach.memberAreaEditor.remove")}
+                      </button>
+                    ) : null}
                   </div>
                 </li>
               );
             })}
           </ol>
         )}
+        {isExtra && courses !== null && addable.length > 0 ? (
+          <Field
+            id="member-area-add-product"
+            label={t("teach.memberAreaEditor.addProduct")}
+            hint={t("teach.memberAreaEditor.addProductHelp")}
+          >
+            {(a11y) => (
+              <select {...a11y} value="" onChange={(event) => addToArea(event.target.value)} className={fieldClass}>
+                <option value="">{t("teach.memberAreaEditor.addProductPick")}</option>
+                {addable.map(({ course, home }) => (
+                  <option key={course.id} value={course.id}>
+                    {t("teach.memberAreaEditor.addProductOption")
+                      .replace("{title}", () => course.title.trim() || t("teacherMembers.untitled"))
+                      .replace("{area}", () => areaLabel(home))}
+                  </option>
+                ))}
+              </select>
+            )}
+          </Field>
+        ) : null}
+        </fieldset>
+      </Card>
+
+      <fieldset disabled={saving || locked} className="grid min-w-0 gap-5">
+      <Card padding="sm" shadow={false} className="grid gap-3">
+        <Field
+          id="member-area-community"
+          label={t("teach.memberAreaEditor.community")}
+          hint={t(communityProducts.length > 0 ? "teach.memberAreaEditor.communityHelp" : "teach.memberAreaEditor.communityEmpty")}
+        >
+          {(a11y) => (
+            <select
+              {...a11y}
+              value={chosenCommunity}
+              disabled={courses === null}
+              onChange={(event) => {
+                setCommunityCourseId(event.target.value);
+                setFeedback("");
+              }}
+              className={fieldClass}
+            >
+              <option value="">{t("teach.memberAreaEditor.communityNone")}</option>
+              {communityProducts.map((course) => (
+                <option key={course.id} value={course.id}>
+                  {course.title.trim() || t("teacherMembers.untitled")}
+                </option>
+              ))}
+            </select>
+          )}
+        </Field>
       </Card>
 
       </fieldset>
 
-      {feedback === "saveError" || feedback === "productsError" ? (
+      {feedback === "saveError" || feedback === "productsError" || feedback === "communityError" ? (
         <InlineAlert tone="error">
-          {t(`teach.memberAreaEditor.errors.${feedback === "saveError" ? "save" : "saveProducts"}`)}
+          {t(`teach.memberAreaEditor.errors.${
+            feedback === "saveError" ? "save" : feedback === "productsError" ? "saveProducts" : "saveCommunity"
+          }`)}
         </InlineAlert>
       ) : null}
-      {feedback === "saved" ? <p role="status" className="info-notice">{t("teach.memberAreaEditor.saved")}</p> : null}
-
+      {/* O "salvo" fica na linha dos botões (último, para não empurrar o
+          "Preview"): acima deles, nascia e empurrava o botão recém-clicado. */}
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" disabled={saving || uploading || courses === null || coursesFailed}>
-          {t(`teach.memberAreaEditor.${saving ? "saving" : "save"}`)}
+        <Button
+          type="submit"
+          disabled={locked || saving || uploading || courses === null || coursesFailed}
+          aria-describedby={saveBlockedKey ? "member-area-save-reason" : undefined}
+        >
+          <BusyLabel
+            busy={saving}
+            idle={t("teach.memberAreaEditor.save")}
+            busyText={t("teach.memberAreaEditor.saving")}
+          />
         </Button>
         <Link
-          href={memberAreaPath({ username: creator.username, ownerId: uid })}
+          href={memberAreaPath({ username: creator.username, ownerId: uid, slug: area.slug })}
           target="_blank"
           rel="noopener"
           className={buttonClasses({ variant: "outline" })}
@@ -432,8 +832,42 @@ export function MemberAreaSettingsPanel() {
           <ExternalLink aria-hidden="true" size={15} />
           {t("teach.memberAreaEditor.previewAsStudent")}
         </Link>
+        {feedback === "saved" ? <SavedNote text={t("teach.memberAreaEditor.saved")} /> : null}
+        {saveBlockedKey ? (
+          <p id="member-area-save-reason" className="basis-full text-xs text-[var(--color-ink-soft)]">
+            {t(`teach.memberAreaEditor.${saveBlockedKey}`)}
+          </p>
+        ) : null}
       </div>
       <p className="text-xs text-[var(--color-ink-soft)]">{t("teach.memberAreaEditor.previewHelp")}</p>
+
+      {isExtra && area.id ? (
+        <div className="grid justify-items-start gap-2 border-t border-[var(--color-line)] pt-4">
+          <p className="text-xs text-[var(--color-ink-soft)]">{t("teach.memberAreaEditor.deleteAreaHelp")}</p>
+          {/* Apagar era um clique duplo no mesmo botão de contorno ("Delete
+              area" virava "Yes, delete this area" no lugar). Agora pergunta
+              na janela da plataforma, dizendo o nome da área; o apagar é o
+              mesmo, e o erro continua aqui embaixo. */}
+          <Button
+            type="button"
+            variant="danger"
+            disabled={saving}
+            onClick={() => ask({
+              title: t("teach.memberAreaEditor.deleteAreaTitle"),
+              body: t("teach.memberAreaEditor.deleteAreaBody").replace("{name}", () => areaLabel(area)),
+              confirmLabel: t("teach.memberAreaEditor.deleteAreaConfirm"),
+              cancelLabel: t("teach.memberAreaEditor.deleteAreaKeep"),
+              danger: true,
+              run: handleDelete,
+            })}
+          >
+            <Trash2 aria-hidden="true" size={15} />
+            {t("teach.memberAreaEditor.deleteArea")}
+          </Button>
+          {deleteFailed ? <InlineAlert tone="error">{t("teach.memberAreaEditor.errors.delete")}</InlineAlert> : null}
+        </div>
+      ) : null}
+      {confirmDialog}
     </form>
   );
 }

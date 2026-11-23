@@ -7,12 +7,14 @@ import type { FormEvent } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { PlatformPageHeader } from "@/components/platform/platform-page-header";
 import { StatusChip } from "@/components/shared/status-chip";
+import { CardPageSkeleton } from "@/components/teacher/builder-skeleton";
 import {
   buttonClasses,
+  BusyLabel,
   Button,
   Card,
-  Eyebrow,
   Field,
   InlineAlert,
 } from "@/components/ui";
@@ -48,8 +50,8 @@ const validationErrorKeys = new Map([
   ["Use a valid https:// professional link (max 300 characters).", "invalidSecureLink"],
 ]);
 
-const inputClass =
-  "rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]";
+// A pele de todo campo da plataforma (44px, borda que aparece no branco).
+const inputClass = "field-input";
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
@@ -234,20 +236,21 @@ export function CreatorVerificationPanel() {
   };
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-6">
+    // T-01: o cabecalho ocupa a largura da pagina e alinha a esquerda com o das
+    // telas irmas; so os cartoes de baixo (o primeiro filho e o cabecalho)
+    // ficam na coluna de 768px. Antes o mx-auto centrava os dois juntos.
+    <div className="grid w-full gap-6 [&>:not(:first-child)]:max-w-3xl">
+      {/* O cabecalho das telas irmas, fora do cartao: o titulo era um 24px em
+          serifa dentro dele, com o rotulo generico "Teacher studio" em cima. O
+          selo de status vai para o lado do titulo. */}
+      <PlatformPageHeader
+        title={t(`${copy}.title`)}
+        actions={caseLoaded && verificationCase ? (
+          <StatusChip status={verificationCase.status} label={t(`${copy}.status.${verificationCase.status}`)} />
+        ) : undefined}
+      />
       <Card as="section" padding="lg">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <Eyebrow>{t(`${copy}.eyebrow`)}</Eyebrow>
-            <h1 className="display-title mt-1 text-2xl text-[var(--color-primary)]">
-              {t(`${copy}.title`)}
-            </h1>
-          </div>
-          {caseLoaded && verificationCase ? (
-            <StatusChip status={verificationCase.status} label={t(`${copy}.status.${verificationCase.status}`)} />
-          ) : null}
-        </div>
-        <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+        <p className="text-sm leading-6 text-[var(--color-ink-soft)]">
           {t(`${copy}.description`)}{" "}
           {t(`${copy}.${requireVerification ? "required" : "optional"}`)}
         </p>
@@ -272,13 +275,9 @@ export function CreatorVerificationPanel() {
         ) : null}
       </Card>
 
-      {!caseLoaded ? (
-        <Card as="section" padding="lg">
-          <p className="text-sm text-[var(--color-ink-soft)]">
-            {t(`${copy}.loading`)}
-          </p>
-        </Card>
-      ) : null}
+      {/* O cartao que vem (aprovado, em revisao ou o formulario) carregando
+          no proprio formato, em vez de um cartao com uma frase. */}
+      {!caseLoaded ? <CardPageSkeleton label={t(`${copy}.loading`)} header={false} /> : null}
 
       {caseLoaded && status === "approved" ? (
         <Card as="section" padding="lg">
@@ -496,14 +495,21 @@ export function CreatorVerificationPanel() {
               <InlineAlert tone="error">{t(`${copy}.errors.${submitError}`)}</InlineAlert>
             ) : null}
             <div>
+              {/* Duas esperas (tirar o documento, enviar): a de dentro guarda
+                  as duas na mesma célula, e a de fora guarda o rótulo de
+                  repouso. O botão fica com a largura do maior dos quatro. */}
               <Button type="submit" disabled={submitting || cleaningDocument}>
-                {t(`${copy}.${cleaningDocument
-                  ? "removingDocument"
-                  : submitting
-                  ? "submitting"
-                  : status === "needs_changes"
-                    ? "resubmit"
-                    : "submit"}`)}
+                <BusyLabel
+                  busy={submitting || cleaningDocument}
+                  idle={t(`${copy}.${status === "needs_changes" ? "resubmit" : "submit"}`)}
+                  busyText={
+                    <BusyLabel
+                      busy={cleaningDocument}
+                      idle={t(`${copy}.submitting`)}
+                      busyText={t(`${copy}.removingDocument`)}
+                    />
+                  }
+                />
               </Button>
             </div>
           </form>

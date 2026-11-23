@@ -18,6 +18,11 @@ function ChangeLanguage() {
 // "cancelar", e o proximo video nao comecava a tocar. Agora um cartao sobre o
 // video conta 5 s com "Assistir agora" e "Cancelar"; sem acao, a proxima toca.
 
+// A contagem mora so no anel (antes tambem em "NEXT LESSON IN 4S", em cima).
+function ring() {
+  return document.querySelector(".member-next-lesson__ring");
+}
+
 const lesson = {
   id: "l2",
   title: "Lesson two",
@@ -44,8 +49,8 @@ describe("NextLessonCard", () => {
     const button = screen.getByRole("button", { name: "Watch now" });
     button.focus();
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    expect(screen.getByRole("dialog", { name: "Siguiente lección" })).toBeInTheDocument();
-    expect(screen.getByText("Siguiente lección en 2 s")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Siguiente lección" })).toBeInTheDocument();
+    expect(ring()).toHaveTextContent("2");
     expect(screen.getByRole("button", { name: "Ver ahora" })).toBe(button);
     expect(button).toHaveFocus();
     act(() => { vi.advanceTimersByTime(1000); });
@@ -64,7 +69,7 @@ describe("NextLessonCard", () => {
     act(() => { vi.advanceTimersByTime(100); });
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
     expect(screen.getByRole("button", { name: "Cancelar" })).toBeInTheDocument();
-    act(() => { vi.advanceTimersByTime(149); });
+    act(() => { vi.advanceTimersByTime(79); });
     expect(onCancel).not.toHaveBeenCalled();
     act(() => { vi.advanceTimersByTime(1); });
     expect(onCancel).toHaveBeenCalledTimes(1);
@@ -75,9 +80,36 @@ describe("NextLessonCard", () => {
   it("mostra a proxima aula e a contagem de 5 s", () => {
     render(<NextLessonCard lesson={lesson} onPlay={() => {}} onCancel={() => {}} />);
 
-    expect(screen.getByRole("dialog", { name: "Next lesson" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Next lesson" })).toBeInTheDocument();
     expect(screen.getByText("Lesson two")).toBeInTheDocument();
-    expect(screen.getByText(/Next lesson in 5s/)).toBeInTheDocument();
+    expect(ring()).toHaveTextContent("5");
+    // O numero aparece uma vez so: a linha de cima diz so "Next lesson".
+    expect(screen.queryByText(/Next lesson in/)).toBeNull();
+  });
+
+  it("leitor de tela ouve o aviso UMA vez; a contagem que muda fica fora da regiao viva", () => {
+    // Antes o cartao inteiro era aria-live e o numero mudava a cada segundo:
+    // o leitor relia o cartao cinco vezes.
+    render(<NextLessonCard lesson={lesson} onPlay={() => {}} onCancel={() => {}} />);
+
+    const card = screen.getByRole("region", { name: "Next lesson" });
+    expect(card).not.toHaveAttribute("aria-live");
+    // A região viva nasce vazia e recebe o texto depois: texto que já está lá
+    // na montagem costuma não ser lido.
+    const status = screen.getByRole("status");
+    expect(status.textContent).toBe("");
+    act(() => { vi.advanceTimersByTime(50); });
+    const text = "Next lesson starts in 5 seconds: Lesson two. Choose Cancel to stay on this lesson.";
+    expect(status).toHaveTextContent(text);
+    expect(ring()).toHaveAttribute("aria-hidden", "true");
+
+    // 50ms já passaram: completa o primeiro segundo e mais dois.
+    act(() => { vi.advanceTimersByTime(950); });
+    for (let tick = 0; tick < 2; tick += 1) act(() => { vi.advanceTimersByTime(1000); });
+    // O texto anunciado nao muda com o tique; so o numero visivel muda.
+    expect(screen.getByRole("status")).toHaveTextContent(text);
+    expect(ring()).toHaveTextContent("2");
+    expect(card.querySelectorAll("[aria-live]")).toHaveLength(0);
   });
 
   it("'Cancelar' faz o cartao DESCER e so entao avisa o pai; onPlay nunca", () => {
@@ -89,11 +121,15 @@ describe("NextLessonCard", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
     // Ainda na tela, saindo: o pai so desmonta quando a animacao termina.
-    expect(screen.getByRole("dialog", { name: "Next lesson" })).toHaveClass("is-leaving");
+    expect(screen.getByRole("region", { name: "Next lesson" })).toHaveClass("is-leaving");
     expect(onCancel).not.toHaveBeenCalled();
 
     act(() => {
-      vi.advanceTimersByTime(250);
+      vi.advanceTimersByTime(179);
+    });
+    expect(onCancel).not.toHaveBeenCalled();
+    act(() => {
+      vi.advanceTimersByTime(1);
     });
     expect(onCancel).toHaveBeenCalledTimes(1);
 
@@ -108,10 +144,12 @@ describe("NextLessonCard", () => {
     render(<NextLessonCard lesson={lesson} onPlay={() => {}} onCancel={() => {}} />);
 
     // A animacao de entrada mora no CSS, na classe do cartao.
-    expect(screen.getByRole("dialog", { name: "Next lesson" })).toHaveClass(
+    expect(screen.getByRole("region", { name: "Next lesson" })).toHaveClass(
       "member-next-lesson",
     );
-    expect(screen.getByRole("dialog", { name: "Next lesson" })).not.toHaveClass("is-leaving");
+    expect(screen.getByRole("region", { name: "Next lesson" })).not.toHaveClass("is-leaving");
+    // Regiao, nao dialogo: o cartao nao prende o foco nem bloqueia o video.
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("'Assistir agora' toca na hora", () => {
@@ -135,7 +173,7 @@ describe("NextLessonCard", () => {
       });
     }
     expect(onPlay).not.toHaveBeenCalled();
-    expect(screen.getByText(/Next lesson in 1s/)).toBeInTheDocument();
+    expect(ring()).toHaveTextContent("1");
 
     act(() => {
       vi.advanceTimersByTime(1000);

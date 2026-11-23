@@ -10,7 +10,7 @@ vi.mock("next/headers", () => ({
   cookies: async () => ({ get: (name: string) => (name === LOCALE_COOKIE ? { value: state.locale } : undefined) }),
 }));
 // Há curso real publicado (sem os internos de teste)? Contrato de hasRealPublishedCourse.
-vi.mock("@/lib/data/server/public-course", () => ({ hasRealPublishedCourse: async () => state.hasCourses }));
+vi.mock("@/lib/data/server/public-course", () => ({ hasRealPublishedCourse: async () => state.hasCourses, isMarketplaceOpen: async () => false }));
 // Barra e rodapé têm testes próprios; a loja é cliente e busca no navegador.
 vi.mock("@/components/site/site-nav", () => ({ SiteNav: () => null }));
 vi.mock("@/components/site/site-footer", () => ({ SiteFooter: () => null }));

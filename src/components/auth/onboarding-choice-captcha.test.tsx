@@ -12,6 +12,10 @@ const mocks = vi.hoisted(() => ({
   resetSignals: [] as number[],
 }));
 
+vi.mock("@/components/auth/auth-provider", () => ({
+  useAuth: () => ({ refreshUser: vi.fn().mockResolvedValue(undefined) }),
+}));
+
 vi.mock("next/navigation", () => ({
   useRouter: () => mocks.router,
   useSearchParams: () => mocks.searchParams,
@@ -105,7 +109,7 @@ describe("OnboardingChoice verification resend with CAPTCHA protection on", () =
     render(<OnboardingChoice />);
     await signInUnverified();
 
-    await screen.findByText("onboarding.streamlinedTitle");
+    await screen.findByText("onboarding.streamlinedDesc");
     fireEvent.click(screen.getByRole("button", { name: "onboarding.sendVerification" }));
 
     await waitFor(() =>

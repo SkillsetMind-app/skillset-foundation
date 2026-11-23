@@ -73,6 +73,18 @@ describe("TOTP setup dialog", () => {
     expect(within(dialog).getByRole("link", { name: "open this setup link" })).toHaveAttribute("href", setup.otpauthUrl);
     expect(within(dialog).getByLabelText("Authenticator code")).toBeInTheDocument();
     expect(document.body.style.overflow).toBe("hidden");
+    // A linha do código fica como era: campo, Ativar logo ao lado (perto do
+    // campo, com o teclado numérico aberto) e Cancelar; só os botões sobem
+    // dos 12px para os 14px/44px da casa.
+    const field = within(dialog).getByLabelText("Authenticator code");
+    const cancel = within(dialog).getByRole("button", { name: "Cancel" });
+    const enable = within(dialog).getByRole("button", { name: "Turn on 2FA" });
+    const row = field.closest("form")!;
+    expect(enable.parentElement).toBe(row);
+    expect(cancel.parentElement).toBe(row);
+    expect(field.compareDocumentPosition(enable) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(enable.compareDocumentPosition(cancel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    for (const button of [cancel, enable]) expect(button).toHaveClass("text-sm", "min-h-11");
   });
 
   it("falls back to the link-and-key steps when there is no QR", async () => {
@@ -107,6 +119,39 @@ describe("TOTP setup dialog", () => {
 
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(document.activeElement).toBe(trigger);
+  });
+
+  // O X do cabeçalho é o mesmo Cancelar: fecha sem ativar e devolve o foco.
+  it("closes on the X like Cancel, without enrolling", async () => {
+    renderSection();
+    const { trigger, dialog } = await openDialog();
+
+    const close = within(dialog).getByRole("button", { name: "Close" });
+    expect(close).toHaveClass("button-icon");
+    fireEvent.click(close);
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+    expect(mocks.calls.finishTotpEnrollment).not.toHaveBeenCalled();
+  });
+
+  it("hides the X while the code is being checked, as Cancel is locked then", async () => {
+    let fail!: (reason: unknown) => void;
+    mocks.calls.finishTotpEnrollment.mockReturnValue(new Promise((_, reject) => { fail = reject; }));
+    renderSection();
+    const { dialog } = await openDialog();
+
+    fireEvent.change(within(dialog).getByLabelText("Authenticator code"), { target: { value: "000000" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Turn on 2FA" }));
+
+    expect(await within(dialog).findByRole("button", { name: "Verifying..." })).toBeDisabled();
+    expect(within(dialog).getByRole("button", { name: "Cancel" })).toBeDisabled();
+    expect(within(dialog).queryByRole("button", { name: "Close" })).toBeNull();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.getByRole("dialog")).toBe(dialog);
+
+    await act(async () => fail({ code: "invalid_otp", message: "detail" }));
+    expect(within(screen.getByRole("dialog")).getByRole("button", { name: "Close" })).toBeInTheDocument();
   });
 
   it("keeps Tab focus inside the dialog", async () => {
@@ -162,7 +207,13 @@ describe("TOTP setup dialog", () => {
     mocks.calls.unenrollTotpFactor.mockResolvedValue(undefined);
     renderSection();
 
-    fireEvent.click(await screen.findByRole("button", { name: "Turn off" }));
+    const turnOff = await screen.findByRole("button", { name: "Turn off" });
+    // A-15 / A-22: botões do sistema (44px), vermelho no que desliga; antes
+    // eram 32px feitos à mão.
+    expect(turnOff).toHaveClass("button-danger");
+    fireEvent.click(turnOff);
+    expect(screen.getByRole("button", { name: "Yes, turn off" })).toHaveClass("button-danger", "button-danger-solid");
+    expect(screen.getByRole("button", { name: "Keep it on" })).toHaveClass("button-outline");
     mocks.calls.listEnrolledTotpFactors.mockResolvedValue([]);
     await act(async () => fireEvent.click(screen.getByRole("button", { name: "Yes, turn off" })));
 

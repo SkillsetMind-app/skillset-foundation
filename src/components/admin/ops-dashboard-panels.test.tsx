@@ -16,9 +16,15 @@ describe("paineis de /ops", () => {
     );
     expect(panels.length).toBeGreaterThan(5);
 
-    const offenders = panels.filter((name) =>
-      readFileSync(join(adminDir, name), "utf8").includes("display-title"),
-    );
+    // Exceção única: a ficha da pessoa desenha o h1 DA PÁGINA, no lugar do da
+    // casca (que vai com hideHeader), porque o nome só chega no navegador
+    // (I-03). É o título da página, não uma manchete de painel: um uso, num h1.
+    const offenders = panels.filter((name) => {
+      const source = readFileSync(join(adminDir, name), "utf8");
+      const uses = source.match(/display-title/g)?.length ?? 0;
+      if (name === "ops-user-dossier.tsx") return uses !== 1 || !source.includes('<h1 className="display-title');
+      return uses > 0;
+    });
     expect(offenders).toEqual([]);
   });
 });

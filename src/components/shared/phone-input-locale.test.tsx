@@ -47,13 +47,13 @@ describe("PhoneInput locale", () => {
     expect(toggle).toHaveTextContent("US +1");
     fireEvent.click(toggle);
     for (const name of ["Estados Unidos +1", "Brasil +55", "Reino Unido +44", "Guyana +592", "M\u00e9xico +52"]) {
-      expect(screen.getByRole("button", { name })).toBeInTheDocument();
+      expect(screen.getByRole("option", { name })).toBeInTheDocument();
     }
 
     const languageButton = screen.getByRole("button", { name: "Change language" });
     fireEvent.mouseDown(languageButton);
     expect(toggle).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByRole("button", { name: "Estados Unidos +1" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Estados Unidos +1" })).not.toBeInTheDocument();
     fireEvent.click(languageButton);
     expect(screen.getByText("Phone")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Phone number")).toBe(input);
@@ -62,17 +62,17 @@ describe("PhoneInput locale", () => {
     expect(input).toHaveAccessibleDescription("Stored in international E.164 format, such as +15551234567.");
     expect(input).toHaveValue("2125551234");
     expect(toggle).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByRole("button", { name: "United States +1" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "United States +1" })).not.toBeInTheDocument();
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText("Stored in international E.164 format, such as +15551234567.")).toBeInTheDocument();
     for (const name of ["United States +1", "Brazil +55", "United Kingdom +44", "Guyana +592", "Mexico +52"]) {
-      expect(screen.getByRole("button", { name })).toBeInTheDocument();
+      expect(screen.getByRole("option", { name })).toBeInTheDocument();
     }
     expect(mocks.onChange).toHaveBeenCalledTimes(1);
     fireEvent.keyDown(document, { key: "Escape" });
     expect(toggle).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByRole("button", { name: "Brazil +55" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Brazil +55" })).not.toBeInTheDocument();
   });
 
   it("keeps explicit labels untouched across a locale switch", () => {
@@ -89,7 +89,7 @@ describe("PhoneInput locale", () => {
   it("preserves country codes, national digit truncation and blank-value behavior", () => {
     renderPhone("+5511987654321");
     fireEvent.click(screen.getByRole("button", { name: "C\u00f3digo de pa\u00eds: BR +55 (Brasil)" }));
-    fireEvent.click(screen.getByRole("button", { name: "Reino Unido +44" }));
+    fireEvent.click(screen.getByRole("option", { name: "Reino Unido +44" }));
     expect(mocks.onChange).toHaveBeenLastCalledWith("+441198765432");
     expect(screen.getByRole("button", { name: "C\u00f3digo de pa\u00eds: GB +44 (Reino Unido)" })).toHaveAttribute("aria-expanded", "false");
     const input = screen.getByRole("textbox", { name: "Tel\u00e9fono" });
@@ -97,7 +97,7 @@ describe("PhoneInput locale", () => {
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
     expect(mocks.onChange).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("button", { name: "Country code: GB +44 (United Kingdom)" }));
-    fireEvent.click(screen.getByRole("button", { name: "Guyana +592" }));
+    fireEvent.click(screen.getByRole("option", { name: "Guyana +592" }));
     expect(mocks.onChange).toHaveBeenLastCalledWith("+5921198765");
     fireEvent.change(input, { target: { value: "abc 123-45678" } });
     expect(mocks.onChange).toHaveBeenLastCalledWith("+5921234567");
@@ -105,7 +105,7 @@ describe("PhoneInput locale", () => {
     expect(mocks.onChange).toHaveBeenLastCalledWith("");
     expect(screen.getByRole("button", { name: "Country code: US +1 (United States)" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Country code: US +1 (United States)" }));
-    fireEvent.click(screen.getByRole("button", { name: "Mexico +52" }));
+    fireEvent.click(screen.getByRole("option", { name: "Mexico +52" }));
     expect(mocks.onChange).toHaveBeenLastCalledWith("");
     expect(input).toHaveValue("");
     expect(screen.getByRole("button", { name: "Country code: US +1 (United States)" })).toHaveAttribute("aria-expanded", "false");
@@ -116,7 +116,7 @@ describe("PhoneInput locale", () => {
     expect(screen.getByText("Phone")).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Phone" })).toHaveValue("5551234567");
     fireEvent.click(screen.getByRole("button", { name: "Country code: US +1 (United States)" }));
-    expect(screen.getByRole("button", { name: "United States +1" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "United States +1" })).toBeInTheDocument();
     fireEvent.mouseDown(document.body);
     expect(screen.getByRole("button", { name: "Country code: US +1 (United States)" })).toHaveAttribute("aria-expanded", "false");
     expect(mocks.onChange).not.toHaveBeenCalled();
@@ -140,6 +140,48 @@ describe("PhoneInput locale", () => {
     expect(work).toHaveValue("11987654321");
     expect(screen.getByRole("button", { name: "C\u00f3digo de pa\u00eds: US +1 (Estados Unidos)" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "C\u00f3digo de pa\u00eds: BR +55 (Brasil)" })).toBeInTheDocument();
+  });
+
+  // A lista não dizia qual país estava escolhido e só andava no Tab.
+  it("marca o país escolhido, anda nas setas e o Esc devolve o foco ao gatilho", () => {
+    render(<PhoneInput value="+5511987654321" onChange={mocks.onChange} />);
+    const toggle = screen.getByRole("button", { name: "Country code: BR +55 (Brazil)" });
+    expect(toggle).toHaveAttribute("aria-haspopup", "listbox");
+    fireEvent.click(toggle);
+    const list = screen.getByRole("listbox", { name: "Country code" });
+    expect(toggle).toHaveAttribute("aria-controls", list.id);
+    const brazil = screen.getByRole("option", { name: "Brazil +55" });
+    expect(brazil).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("option", { name: "United States +1" })).toHaveAttribute("aria-selected", "false");
+    expect(brazil).toHaveFocus();
+    fireEvent.keyDown(brazil, { key: "ArrowDown" });
+    expect(screen.getByRole("option", { name: "United Kingdom +44" })).toHaveFocus();
+    fireEvent.keyDown(document.activeElement!, { key: "End" });
+    expect(screen.getByRole("option", { name: "Mexico +52" })).toHaveFocus();
+    fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" });
+    expect(screen.getByRole("option", { name: "United States +1" })).toHaveFocus();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(toggle).toHaveFocus();
+    expect(mocks.onChange).not.toHaveBeenCalled();
+  });
+
+  // O foco começa na lista: um Tab dali caía no campo de baixo com a lista
+  // ainda aberta por cima dele.
+  it("fecha a lista quando o foco sai da caixa do telefone, não quando anda dentro dela", () => {
+    render(
+      <>
+        <PhoneInput value="+15551234567" onChange={mocks.onChange} />
+        <select aria-label="Timezone" />
+      </>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Country code: US +1 (United States)" }));
+    const option = screen.getByRole("option", { name: "United States +1" });
+    fireEvent.focusOut(option, { relatedTarget: screen.getByRole("textbox", { name: "Phone" }) });
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
+    fireEvent.focusOut(option, { relatedTarget: screen.getByRole("combobox", { name: "Timezone" }) });
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(mocks.onChange).not.toHaveBeenCalled();
   });
 
   it("preserves E.164 validation boundaries for every supported country", () => {

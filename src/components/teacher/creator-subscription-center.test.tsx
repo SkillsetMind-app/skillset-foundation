@@ -11,6 +11,12 @@ import type { PayoutLedgerEntry } from "@/domain/payout-ledger";
 import type { SubscriberProfile } from "@/lib/data/user-profiles";
 import type { TeacherCourse } from "@/domain/teacher-course";
 
+// O valor como o formatador da casa escreve (moeda do proprio valor, no idioma).
+// O espaco duro do espanhol ("99,00 BRL") vira espaco comum, como o getByText
+// normaliza o texto da tela.
+const money = (locale: string, value: number, currency: string) =>
+  new Intl.NumberFormat(locale, { style: "currency", currency }).format(value).replace(/\s/g, " ");
+
 // Referências estáveis: trocar idioma não equivale a trocar usuário/dados.
 const reads = vi.hoisted(() => ({
   user: { uid: "teacher-1" },
@@ -149,7 +155,7 @@ describe("CreatorSubscriptionCenterView", () => {
     expect(screen.getAllByText("Maria Silva").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Clinical Focus").length).toBeGreaterThan(0);
     expect(screen.getByText("1 active")).toBeInTheDocument();
-    expect(screen.getByText("BRL 99.00")).toBeInTheDocument();
+    expect(screen.getByText(money("en", 99, "BRL"))).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Search subscribers"), {
       target: { value: "does-not-match" },
@@ -170,9 +176,15 @@ describe("CreatorSubscriptionCenterView", () => {
     );
 
     fireEvent.click(screen.getByRole("tab", { name: "Renewals" }));
-    expect(screen.getByText("Renewal in-1")).toBeInTheDocument();
+    // Pelo produto e pela data; o id fica recolhido em "Details for support",
+    // selecionavel, para a Stripe e o suporte.
+    expect(screen.getByText("Clinical Focus renewal · Jul 15, 2026")).toBeInTheDocument();
+    const renewalId = screen.getByText("Renewal ID: in-1");
+    expect(renewalId).toHaveClass("select-all");
+    expect(renewalId.closest("details")).not.toHaveAttribute("open");
+    expect(renewalId.closest("details")).toHaveTextContent("Details for support");
     expect(screen.getByText(/Maria Silva/)).toBeInTheDocument();
-    expect(screen.getByText(/Gross BRL 99.00/)).toBeInTheDocument();
+    expect(screen.getByText(`Gross ${money("en", 99, "BRL")}`)).toBeInTheDocument();
   });
 
   it("marks financial metrics and renewals unavailable after a read failure", () => {
@@ -206,7 +218,8 @@ describe("jornada de assinaturas no idioma da pessoa", () => {
     mountView({ subscriptions }, "en");
     fireEvent.change(screen.getByLabelText("Search subscribers"), { target: { value: "Maria" } });
     fireEvent.change(screen.getByLabelText("Filter subscriber status"), { target: { value: "canceling" } });
-    expect(screen.getByText("BRL 99.00 + USD 100.00")).toBeVisible();
+    // Uma moeda de cada vez, sem "+" (nada soma moedas).
+    expect(screen.getByText(`${money("en", 99, "BRL")} · ${money("en", 100, "USD")}`)).toBeVisible();
     expect(screen.getByText("2 active")).toBeVisible();
     expect(screen.getByText("25%")).toBeVisible();
 
@@ -214,7 +227,7 @@ describe("jornada de assinaturas no idioma da pessoa", () => {
     expect(screen.getByLabelText("Buscar suscriptores")).toHaveValue("Maria");
     expect(screen.getByLabelText("Filtrar el estado de los suscriptores")).toHaveValue("canceling");
     expect(screen.getByRole("tab", { name: "Suscriptores" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByText("BRL 99.00 + USD 100.00")).toBeVisible();
+    expect(screen.getByText(`${money("es", 99, "BRL")} · ${money("es", 100, "USD")}`)).toBeVisible();
     expect(screen.getByText("2 activos")).toBeVisible();
     expect(screen.getByText("1 cancelación programada")).toBeVisible();
     expect(screen.getByText("25%")).toBeVisible();
@@ -223,14 +236,14 @@ describe("jornada de assinaturas no idioma da pessoa", () => {
     expect(screen.getAllByText("Se cancela 15 ago 2026")).toHaveLength(2);
 
     fireEvent.click(screen.getByRole("tab", { name: "Renovaciones" }));
-    expect(screen.getByText("Renovación in-1")).toBeVisible();
-    expect(screen.getByText(/Maria Silva \/ Clinical Focus \/ 15 jul 2026/)).toBeVisible();
-    expect(screen.getByText("Bruto BRL 99.00")).toBeVisible();
+    expect(screen.getByText("Renovación de Clinical Focus · 15 jul 2026")).toBeVisible();
+    expect(screen.getByText("Maria Silva")).toBeVisible();
+    expect(screen.getByText(`Bruto ${money("es", 99, "BRL")}`)).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Switch to English" }));
     expect(screen.getByRole("tab", { name: "Renewals" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByText("Renewal in-1")).toBeVisible();
-    expect(screen.getByText("Gross BRL 99.00")).toBeVisible();
-    expect(screen.getByText(/Maria Silva \/ Clinical Focus \/ Jul 15, 2026/)).toBeVisible();
+    expect(screen.getByText("Clinical Focus renewal · Jul 15, 2026")).toBeVisible();
+    expect(screen.getByText(`Gross ${money("en", 99, "BRL")}`)).toBeVisible();
+    expect(screen.getByText("Maria Silva")).toBeVisible();
     fireEvent.click(screen.getByRole("tab", { name: "Subscribers" }));
     expect(screen.getByLabelText("Search subscribers")).toHaveValue("Maria");
     expect(screen.getByLabelText("Filter subscriber status")).toHaveValue("canceling");
@@ -272,7 +285,7 @@ describe("jornada de assinaturas no idioma da pessoa", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Renovaciones" }));
     expect(screen.getByText(label)).toBeVisible();
     expect(container.querySelector("[data-status]")).toHaveAttribute("data-status", status);
-    expect(screen.getByText("Bruto BRL 99.00")).toBeVisible();
+    expect(screen.getByText(`Bruto ${money("es", 99, "BRL")}`)).toBeVisible();
   });
 
   it("preserva um estado futuro sem exibir uma chave de tradução", () => {
@@ -286,17 +299,20 @@ describe("jornada de assinaturas no idioma da pessoa", () => {
     mountView({ subscriptions: [{ ...subscription, interval: "year", currentPeriodEnd: null }] });
     expect(screen.getAllByText("Anual")).toHaveLength(2);
     expect(screen.getAllByText("Se renueva Fecha pendiente")).toHaveLength(2);
-    expect(screen.getByText("BRL 8.25")).toBeVisible();
+    expect(screen.getByText(money("es", 8.25, "BRL"))).toBeVisible();
     expect(screen.getByText("1 activo")).toBeVisible();
     expect(screen.getByText(/1 contrato anterior con precio basado en el historial de facturas/)).toBeVisible();
   });
 
   it("usa a máscara localizada e preserva ID e título históricos literais", () => {
-    mountView({ profiles: [], orders: [], ledgers: [{ ...ledger, id: "in-$&-{id}", createdAt: null }] });
-    expect(screen.getAllByText("Estudiante ...rner-1").length).toBeGreaterThan(0);
+    mountView({ profiles: [], orders: [], ledgers: [{ ...ledger, id: "in-$&-{id}", courseId: "course-$&-{date}", createdAt: null }] });
+    // Sem nome, a mascara sai uma vez por celula (cartao do celular e tabela),
+    // nao duas vezes na mesma celula.
+    expect(screen.getAllByText("Estudiante ...rner-1")).toHaveLength(2);
     fireEvent.click(screen.getByRole("tab", { name: "Renovaciones" }));
-    expect(screen.getByText("Renovación in-$&-{id}")).toBeVisible();
-    expect(screen.getByText("Suscriptor histórico / course-1 / Fecha pendiente")).toBeVisible();
+    expect(screen.getByText("Renovación de course-$&-{date} · Fecha pendiente")).toBeVisible();
+    expect(screen.getByText("ID de la renovación: in-$&-{id}")).toBeInTheDocument();
+    expect(screen.getByText("Suscriptor histórico")).toBeVisible();
   });
 
   it("distingue falta de produto, de assinantes, de resultados e de renovações", () => {
@@ -315,7 +331,7 @@ describe("jornada de assinaturas no idioma da pessoa", () => {
     mountView();
     fireEvent.change(screen.getByLabelText("Buscar suscriptores"), { target: { value: "missing" } });
     expect(screen.getByText("Ningún suscriptor coincide con estos filtros.")).toBeVisible();
-    expect(screen.getByText("BRL 99.00")).toBeVisible();
+    expect(screen.getByText(money("es", 99, "BRL"))).toBeVisible();
   });
 
   it.each(["loading", "error"] as const)("traduz o estado financeiro %s", (financialState) => {
@@ -341,7 +357,7 @@ describe("jornada de assinaturas no idioma da pessoa", () => {
     expect(within(metrics).getByText("2 cancelaciones programadas")).toBeVisible();
     expect(within(metrics).getByText(/2 contratos anteriores con precio basado en el historial de facturas/)).toBeVisible();
     expect(within(metrics).getByText(/2 contratos sin precio registrado/)).toBeVisible();
-    expect(within(metrics).getByText("BRL 198.00")).toBeVisible();
+    expect(within(metrics).getByText(money("es", 198, "BRL"))).toBeVisible();
   });
 });
 
@@ -419,7 +435,7 @@ describe("data do ciclo em CreatorSubscriptionCenterView", () => {
     fireEvent.change(screen.getByLabelText("Search subscribers"), { target: { value: "Maria" } });
     fireEvent.change(screen.getByLabelText("Filter subscriber status"), { target: { value: "ended" } });
     expectCycleInBothLayouts("Period end Aug 15, 2026");
-    expect(screen.getByText("BRL 99.00")).toBeVisible();
+    expect(screen.getByText(money("en", 99, "BRL"))).toBeVisible();
     expect(screen.getByText("1 active")).toBeVisible();
 
     fireEvent.click(screen.getByRole("button", { name: "Cambiar a español" }));
@@ -427,7 +443,7 @@ describe("data do ciclo em CreatorSubscriptionCenterView", () => {
     expect(screen.getByLabelText("Buscar suscriptores")).toHaveValue("Maria");
     expect(screen.getByLabelText("Filtrar el estado de los suscriptores")).toHaveValue("ended");
     expect(screen.getByRole("tab", { name: "Suscriptores" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByText("BRL 99.00")).toBeVisible();
+    expect(screen.getByText(money("es", 99, "BRL"))).toBeVisible();
     expect(screen.getByText("1 activo")).toBeVisible();
     expect(screen.getAllByText("Cancelado")).toHaveLength(2);
     expect(readCounts()).toEqual(counts);
@@ -436,7 +452,7 @@ describe("data do ciclo em CreatorSubscriptionCenterView", () => {
     expectCycleInBothLayouts("Period end Aug 15, 2026");
     expect(screen.getByLabelText("Search subscribers")).toHaveValue("Maria");
     expect(screen.getByLabelText("Filter subscriber status")).toHaveValue("ended");
-    expect(screen.getByText("BRL 99.00")).toBeVisible();
+    expect(screen.getByText(money("en", 99, "BRL"))).toBeVisible();
     expect(contracts).toEqual(originalContracts);
     expect(readCounts()).toEqual(counts);
   });
@@ -452,7 +468,7 @@ describe("troca de idioma sem novas leituras de assinaturas", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cambiar a español" }));
     expect(screen.getByLabelText("Buscar suscriptores")).toHaveValue("Maria");
     expect(screen.getByLabelText("Filtrar el estado de los suscriptores")).toHaveValue("active");
-    expect(screen.getByText("BRL 99.00")).toBeVisible();
+    expect(screen.getByText(money("es", 99, "BRL"))).toBeVisible();
     expect(readCounts()).toEqual(counts);
   });
 
@@ -471,6 +487,56 @@ describe("troca de idioma sem novas leituras de assinaturas", () => {
     expect(screen.queryByText(english)).toBeNull();
     expect(readCounts()).toEqual(counts);
     expect(screen.queryByText("Opaque fixture error: wording changed")).toBeNull();
+  });
+
+  // Erro de leitura era beco: a frase e nenhum botão, e a frase ficava na tela
+  // mesmo depois que a leitura voltava (era o "último erro" guardado).
+  it("assinantes que falham: Try again lê de novo só eles, e o aviso some quando voltam", async () => {
+    let deliver: (next: CourseSubscription[]) => void = () => {};
+    const reload = vi.fn(async () => deliver(viewProps.subscriptions));
+    reads.subscriptions.mockImplementation((_uid, next, onError) => {
+      deliver = next;
+      onError(new Error("subscriptions failed"));
+      return Object.assign(() => {}, { reload });
+    });
+    await mountCenter();
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load your subscribers.");
+    expect(screen.queryByRole("tab")).toBeNull();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    });
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getAllByText("Maria Silva").length).toBeGreaterThan(0);
+  });
+
+  it("renovações que falham: o aviso com Try again fica em cima e some com a releitura", async () => {
+    let deliver: (next: Order[]) => void = () => {};
+    const reload = vi.fn(async () => deliver(viewProps.orders));
+    reads.orders.mockImplementation((_uid, next, onError) => {
+      deliver = next;
+      onError(new Error("orders failed"));
+      return Object.assign(() => {}, { reload });
+    });
+    await mountCenter();
+    expect(screen.getByRole("alert")).toHaveTextContent("Renewal order details are temporarily unavailable.");
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    });
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("alert")).toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "Renewals" }));
+    expect(screen.getByText("Clinical Focus renewal · Jul 15, 2026")).toBeInTheDocument();
+  });
+
+  it("enquanto as renovações chegam, linhas no formato da renovação, não uma frase", () => {
+    mountView({ financialState: "loading" }, "en");
+    fireEvent.click(screen.getByRole("tab", { name: "Renewals" }));
+    const waiting = screen.getByRole("status");
+    expect(waiting).toHaveTextContent("Loading renewal history...");
+    expect(waiting.querySelectorAll("[aria-hidden=true]")).toHaveLength(3);
   });
 
   it("traduz o carregamento sem reiniciar a conexão", async () => {

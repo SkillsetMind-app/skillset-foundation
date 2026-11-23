@@ -9,6 +9,8 @@ import {
 import { getStripeClient } from "@/lib/payments/server/stripe";
 import { getUserRow } from "@/lib/payments/server/stripe-helpers";
 
+const STRIPE_FULL_DASHBOARD_URL = "https://dashboard.stripe.com/";
+
 export async function POST() {
   let response: NextResponse;
   try {
@@ -24,9 +26,16 @@ export async function POST() {
       throw new PaymentError("Set up your payout account first.", 409, "connect_required");
     }
 
-    // A Stripe so emite este link para Express. Nao recriar conta em falha.
-    const { url } = await getStripeClient().accounts.createLoginLink(user.stripe_connected_account_id);
-    response = NextResponse.json({ url });
+    // Conta com painel completo entra com o proprio login da Stripe; o link de
+    // uso unico so existe para Express. Nao recriar conta em falha.
+    const stripe = getStripeClient();
+    const account = await stripe.accounts.retrieve(user.stripe_connected_account_id);
+    if (account.controller?.stripe_dashboard?.type === "full") {
+      response = NextResponse.json({ url: STRIPE_FULL_DASHBOARD_URL });
+    } else {
+      const { url } = await stripe.accounts.createLoginLink(user.stripe_connected_account_id);
+      response = NextResponse.json({ url });
+    }
   } catch (error) {
     // O handler generico registra erros desconhecidos: nunca lhe passar dados Stripe.
     response = paymentErrorResponse(error instanceof PaymentError ? error : new PaymentError(

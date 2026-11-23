@@ -119,7 +119,9 @@ export function InlineHelp({ topic, children, href, className }: InlineHelpProps
         aria-controls={dialogId}
         aria-expanded={open}
         onClick={openHelp}
-        className="grid size-6 place-items-center rounded-full text-[var(--color-primary)] transition-colors hover:bg-[var(--color-surface-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary-light)]"
+        // O "?" fica pequeno ao lado do título, mas o alvo tem 44px: o ::after
+        // cresce 10px para cada lado sem empurrar a linha (era 24px).
+        className="relative grid size-6 place-items-center rounded-full text-[var(--color-primary)] transition-colors after:absolute after:-inset-2.5 after:content-[''] hover:bg-[var(--color-surface-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary-light)]"
       >
         <CircleHelp aria-hidden="true" size={16} strokeWidth={1.9} />
       </button>
@@ -138,7 +140,9 @@ export function InlineHelp({ topic, children, href, className }: InlineHelpProps
               }}
               className="contextual-help-dialog"
             >
-              <section className="contextual-help-panel">
+              {/* O fundo já acendia; a folha aparecia num corte seco. Entra
+                  como as outras janelas (só sem "reduzir movimento"). */}
+              <section className="contextual-help-panel motion-panel-in">
                 <header className="flex items-start justify-between gap-4 border-b border-[var(--color-line)] px-5 py-5 sm:px-6">
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-ink-muted)]">
@@ -156,7 +160,7 @@ export function InlineHelp({ topic, children, href, className }: InlineHelpProps
                     autoFocus
                     onClick={closeHelp}
                     aria-label={t("platform.help.contextual.close")}
-                    className="grid size-9 shrink-0 place-items-center rounded-full text-[var(--color-ink-muted)] transition-colors hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary-light)]"
+                    className="button-icon"
                   >
                     <X aria-hidden="true" size={18} strokeWidth={1.9} />
                   </button>

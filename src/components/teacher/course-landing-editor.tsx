@@ -15,11 +15,13 @@
  * before typing.
  */
 
-import { ChevronDown, ChevronUp, Loader2, Plus, Trash2 } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Loader2, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
+import { PanelCard } from "@/components/teacher/course-commerce-panels";
+import { Button, ConfirmDialog } from "@/components/ui";
 
 import {
   courseLandingBlockKinds,
@@ -38,6 +40,7 @@ import { removeLandingImages } from "@/lib/data/landing-images";
 import { getUserProfile } from "@/lib/data/user-profiles";
 
 import { LandingImageField } from "./landing-image-field";
+import { SaveStatusLine } from "./save-status-line";
 
 function blankBlock(kind: CourseLandingBlockKind, t: (key: string) => string): CourseLandingBlock {
   switch (kind) {
@@ -86,9 +89,10 @@ function suggestedBlocks(courseTitle: string, t: (key: string) => string): Cours
   });
 }
 
-const fieldClass =
-  "w-full rounded-md border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm text-[var(--color-ink)]";
-const labelClass = "grid gap-1.5 text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]";
+// O rótulo da casa (o mesmo do <Field>: 14px, negrito, em frase). Era a
+// etiqueta de 12px em caixa alta, que só este editor usava nos campos.
+const fieldClass = "field-input";
+const labelClass = "grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]";
 
 // Editor-only identity for a block. Position is not identity: an upload that
 // finishes after the sections moved must still land on the block that asked.
@@ -225,7 +229,7 @@ function BlockFields({
                 onClick={() =>
                   onChange({ ...block, steps: block.steps.filter((_, i) => i !== index) })
                 }
-                className="min-h-6 justify-self-start text-xs font-semibold text-[var(--color-danger-fg)]"
+                className="min-h-11 justify-self-start text-xs font-semibold text-[var(--color-danger-fg)]"
               >
                 {t("teacherLanding.fields.removeStep")}
               </button>
@@ -283,7 +287,7 @@ function BlockFields({
                 onClick={() =>
                   onChange({ ...block, quotes: block.quotes.filter((_, i) => i !== index) })
                 }
-                className="min-h-6 justify-self-start text-xs font-semibold text-[var(--color-danger-fg)]"
+                className="min-h-11 justify-self-start text-xs font-semibold text-[var(--color-danger-fg)]"
               >
                 {t("teacherLanding.fields.remove")}
               </button>
@@ -398,7 +402,14 @@ function BlockFields({
   }
 }
 
-export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
+export function CourseLandingEditor({
+  course,
+  onDirtyChange,
+}: {
+  course: TeacherCourse;
+  /** O mesmo "Unsaved changes" da linha ao lado do Save, para o aviso de sair. */
+  onDirtyChange?: (dirty: boolean) => void;
+}) {
   const { user } = useAuth();
   const { t, locale } = useTranslation();
   const uid = user?.uid ?? null;
@@ -413,6 +424,16 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  // A página na tela contra a última que o servidor confirmou (a lida ao
+  // abrir ou a última gravada): "Saved." só enquanto as duas são iguais.
+  const draft = useMemo(() => JSON.stringify({ template, blocks }), [template, blocks]);
+  const [savedDraft, setSavedDraft] = useState<string | null>(null);
+  const dirty = savedDraft !== null && draft !== savedDraft;
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
+  // Seção que pediu para sair, enquanto a pergunta está aberta.
+  const [removing, setRemoving] = useState<{ id: number; kind: CourseLandingBlockKind } | null>(null);
 
   const load = useCallback(async () => {
     const [landing, profile] = await Promise.all([
@@ -426,6 +447,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
     ]);
     setTemplate(landing.template);
     setEntries(landing.blocks.map(withId));
+    setSavedDraft(JSON.stringify({ template: landing.template, blocks: landing.blocks }));
     setPlanId(profile?.currentPlanId ?? "free");
     setLoading(false);
   }, [course.id, uid]);
@@ -485,12 +507,14 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
   }
 
   async function handleSave() {
+    const sent = draft;
     setSaving(true);
     setError("");
     setMessage("");
     try {
       const result = await saveCourseLanding(course.id, { template, blocks: trimImageUrls(blocks) });
       if (result.ok) {
+        setSavedDraft(sent);
         setMessage("teacherLanding.saved");
       } else {
         setError(landingSaveErrorKeys[result.reason] ?? "teacherLanding.errors.save");
@@ -502,43 +526,47 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
     }
   }
 
+  // A mesma moldura e o mesmo título (h3, 16px) dos outros cartões da seção
+  // Page: era um cartão branco com sombra e um h2 em letra de destaque entre
+  // dois cartões suaves, e os títulos iam h3 → h2 → h3.
   if (loading) {
     return (
-      <section className="settings-section-card">
-        <p className="flex items-center gap-2 text-sm text-[var(--color-ink-soft)]">
-          <Loader2 className="h-4 w-4 animate-spin" />
+      <PanelCard title={t("teacherLanding.title")}>
+        <p className="mt-3 flex items-center gap-2 text-sm text-[var(--color-ink-soft)]">
+          <Loader2 aria-hidden="true" className="h-4 w-4 motion-safe:animate-spin" />
           {t("teacherLanding.loading")}
         </p>
-      </section>
+      </PanelCard>
     );
   }
 
   return (
-    <section className="settings-section-card">
-      <h2 className="display-title text-2xl text-[var(--color-primary)]">
-        {t("teacherLanding.title")}
-      </h2>
-      <p className="mt-2 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-        {t("teacherLanding.description")}
-      </p>
+    <PanelCard title={t("teacherLanding.title")} description={t("teacherLanding.description")}>
 
       <div className="mt-5 grid gap-2">
         <span className={labelClass}>{t("teacherLanding.template")}</span>
-        <div className="flex flex-wrap gap-2">
+        {/* O seletor segmentado do construtor (tema da área de membros): o
+            escolhido é a pastilha clara com sombra, o check e aria-pressed,
+            não só a cor; o hover tinge o fundo sem pastilha nem check, então
+            não se confunde com o escolhido; 44px de alvo. */}
+        <div className="inline-flex w-fit flex-wrap gap-1 rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-1">
           {courseLandingTemplates.map((option) => {
             const locked = option !== "classic" && !canChooseTemplate;
+            const active = template === option;
             return (
               <button
                 key={option}
                 type="button"
                 disabled={locked}
+                aria-pressed={active}
                 onClick={() => setTemplate(option)}
-                className={`rounded-md border px-4 py-2 text-sm font-semibold disabled:opacity-50 ${
-                  template === option
-                    ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-on-primary)]"
-                    : "border-[var(--color-line)] bg-white text-[var(--color-ink)]"
+                className={`inline-flex min-h-11 items-center gap-1.5 rounded-sm px-3 py-2 text-sm font-semibold transition-colors duration-[var(--duration-base)] ease-[var(--ease-standard)] disabled:cursor-not-allowed disabled:opacity-60 ${
+                  active
+                    ? "bg-[var(--color-surface)] text-[var(--color-primary)] shadow-[var(--shadow-soft)]"
+                    : "text-[var(--color-ink-soft)] enabled:hover:bg-[var(--color-surface-strong)] enabled:hover:text-[var(--color-ink)]"
                 }`}
               >
+                {active ? <Check aria-hidden="true" size={15} strokeWidth={2.2} /> : null}
                 {t(`teacherLanding.templates.${option}`)}
                 {locked ? t("teacherLanding.paidPlans") : ""}
               </button>
@@ -576,7 +604,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
                 onClick={() => move(index, -1)}
                 disabled={index === 0}
                 aria-label={t("teacherLanding.moveUp")}
-                className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-line)] bg-white disabled:opacity-30"
+                className="button-icon border border-[var(--color-line)] bg-white"
               >
                 <ChevronUp className="h-4 w-4" />
               </button>
@@ -585,7 +613,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
                 onClick={() => move(index, 1)}
                 disabled={index === blocks.length - 1}
                 aria-label={t("teacherLanding.moveDown")}
-                className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-line)] bg-white disabled:opacity-30"
+                className="button-icon border border-[var(--color-line)] bg-white"
               >
                 <ChevronDown className="h-4 w-4" />
               </button>
@@ -596,17 +624,10 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
                   trabalho todo. */}
               <button
                 type="button"
-                onClick={() => {
-                  const confirmed = window.confirm(
-                    t("teacherLanding.confirmRemove").replace("{section}", () => t(`teacherLanding.blocks.${block.kind}`)),
-                  );
-                  if (confirmed) {
-                    setEntries((c) => c.filter((entry) => entry.id !== id));
-                  }
-                }}
+                onClick={() => setRemoving({ id, kind: block.kind })}
                 aria-label={t("teacherLanding.removeSection").replace("{section}", () => t(`teacherLanding.blocks.${block.kind}`))}
                 title={t("teacherLanding.removeSection").replace("{section}", () => t(`teacherLanding.blocks.${block.kind}`))}
-                className="ml-2 grid h-8 w-8 place-items-center rounded-md border border-[var(--color-line)] bg-white text-[var(--color-danger-fg)]"
+                className="button-icon ml-2 border border-[var(--color-line)] bg-white text-[var(--color-danger-fg)]"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -628,7 +649,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
             type="button"
             disabled={atLimit}
             onClick={() => setEntries((current) => [...current, withId(blankBlock(kind, t))])}
-            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)] disabled:opacity-40"
+            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Plus className="h-3.5 w-3.5" />
             {t(`teacherLanding.blocks.${kind}`)}
@@ -652,18 +673,34 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
       ) : null}
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving}
-          className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[var(--color-primary)] px-5 py-2.5 text-sm font-bold text-[var(--color-on-primary)] disabled:opacity-50"
-        >
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          {t(saving ? "teacherLanding.saving" : "teacherLanding.save")}
-        </button>
-        {message ? <span role="status" className="text-sm text-[var(--color-success-fg)]">{t(message)}</span> : null}
-        {error ? <span role="alert" className="text-sm text-[var(--color-danger-fg)]">{t(error)}</span> : null}
+        {/* O Button da casa (o mesmo de todo Save): era uma caixa navy feita
+            à mão, sem o subir do hover nem a sombra dos outros. */}
+        <Button onClick={handleSave} loading={saving} busyLabel={t("teacherLanding.saving")}>
+          {t("teacherLanding.save")}
+        </Button>
+        <SaveStatusLine
+          saving={saving}
+          dirty={dirty}
+          savedText={message ? t(message) : undefined}
+          errorText={error ? t(error) : undefined}
+          onRetry={() => void handleSave()}
+        />
       </div>
-    </section>
+
+      {/* A frase é a mesma do antigo window.confirm. Tirar a seção continua
+          sendo só no rascunho: nada é gravado até "Save page". */}
+      {removing ? (
+        <ConfirmDialog
+          title={t("teacherLanding.removeTitle")}
+          confirmLabel={t("teacherLanding.removeConfirmLabel")}
+          cancelLabel={t("teacherLanding.keepSection")}
+          danger
+          onConfirm={() => setEntries((c) => c.filter((entry) => entry.id !== removing.id))}
+          onClose={() => setRemoving(null)}
+        >
+          {t("teacherLanding.confirmRemove").replace("{section}", () => t(`teacherLanding.blocks.${removing.kind}`))}
+        </ConfirmDialog>
+      ) : null}
+    </PanelCard>
   );
 }

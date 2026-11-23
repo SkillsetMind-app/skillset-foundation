@@ -1,10 +1,10 @@
 import { readFileSync } from "node:fs";
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import postcss from "postcss";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { RevenueChart } from "@/components/teacher/revenue-chart";
+import { niceStep, RevenueChart } from "@/components/teacher/revenue-chart";
 
 // O que a pessoa sofria: sem venda, Relatorios mostrava a caixa "No revenue in
 // this period" encostada no canto inferior direito do grafico — em cima dos
@@ -16,10 +16,18 @@ const points = [
   { key: "2026-09-02", label: "Sep 2", grossMinor: 0 },
 ];
 
-function renderChart(totalMinor: number, totalLabel: string, chartPoints = points) {
+function renderChart(
+  totalMinor: number,
+  totalLabel: string,
+  chartPoints = points,
+  extra: { currency?: string; note?: string; unavailableLabel?: string } = {},
+) {
   return render(
     <RevenueChart
       points={chartPoints}
+      currency={extra.currency ?? "USD"}
+      note={extra.note}
+      unavailableLabel={extra.unavailableLabel}
       totalMinor={totalMinor}
       totalLabel={totalLabel}
       title="Revenue"
@@ -34,6 +42,14 @@ function renderChart(totalMinor: number, totalLabel: string, chartPoints = point
 afterEach(cleanup);
 
 describe("grafico de receita sem venda", () => {
+  // Carregando ou com erro, "sem receita" afirmaria zero: so o rotulo.
+  it("com dados indisponiveis mostra o rotulo, nunca 'sem receita'", () => {
+    renderChart(0, "$0", points, { unavailableLabel: "Unavailable" });
+
+    expect(screen.getByRole("status")).toHaveTextContent("Unavailable");
+    expect(screen.queryByText("No revenue in this period")).toBeNull();
+  });
+
   it("nao repete o total quando a caixa ja informa que nao ha receita", () => {
     renderChart(0, "$0.00");
 
@@ -66,6 +82,67 @@ describe("grafico de receita sem venda", () => {
   });
 });
 
+// Com $490, $980, $1.470 e $2.450, o eixo escrevia "$613", "$1k" para 1.225 e
+// "$2k" duas vezes, com o texto dentro do SVG (~4px no celular).
+describe("eixo do grafico de receita", () => {
+  const sales = [49000, 98000, 147000, 245000].map((grossMinor, index) => ({
+    key: `2026-0${index + 1}`,
+    label: ["Jan", "Feb", "Mar", "Apr"][index],
+    grossMinor,
+  }));
+
+  it("sobe o topo para um valor redondo e escreve cada linha uma vez, pelo formatador", () => {
+    renderChart(539000, "$5,390", sales);
+
+    const axis = ["$0", "$1K", "$2K", "$3K"];
+    for (const label of axis) expect(screen.getAllByText(label)).toHaveLength(1);
+    expect(screen.queryByText(/\$613|\$2k/)).toBeNull();
+  });
+
+  it("escreve os rotulos fora do SVG, em HTML de 12px", () => {
+    renderChart(539000, "$5,390", sales);
+
+    const chart = screen.getByRole("img", { name: "Revenue chart" });
+    expect(chart.querySelectorAll("text")).toHaveLength(0);
+    expect(screen.getByText("$1K")).toHaveClass("text-xs");
+    expect(screen.getByText("Feb")).toHaveClass("text-xs");
+    expect(chart).toHaveAttribute("preserveAspectRatio", "none");
+  });
+
+  // O eixo era USD fixo: quem vende em reais via "$" no eixo.
+  it("escreve o eixo na moeda do grafico e a linha de nota embaixo", () => {
+    renderChart(539000, "R$5,390", sales, {
+      currency: "BRL",
+      note: "Other currencies are not in this chart: $20.",
+    });
+
+    for (const label of ["R$0", "R$1K", "R$2K", "R$3K"]) {
+      expect(screen.getAllByText(label)).toHaveLength(1);
+    }
+    expect(screen.queryByText("$1K")).toBeNull();
+    expect(screen.getByText("Other currencies are not in this chart: $20.")).toBeInTheDocument();
+  });
+
+  // Linha antiga sem moeda: o Intl recusa "UNSPECIFIED"; o eixo cai no texto
+  // simples em vez de derrubar a Home.
+  it("com moeda desconhecida o eixo cai no texto simples, sem quebrar", () => {
+    renderChart(539000, "UNSPECIFIED 5390.00", sales, { currency: "UNSPECIFIED" });
+
+    expect(screen.getByRole("img", { name: "Revenue chart" })).toBeInTheDocument();
+    expect(screen.getByText("UNSPECIFIED 1000.00")).toBeInTheDocument();
+  });
+
+  it.each([
+    [612.5, 1000],
+    [375, 500],
+    [2500, 2500],
+    [5000, 5000],
+    [130, 200],
+  ])("passo redondo para %d: %d", (value, expected) => {
+    expect(niceStep(value)).toBe(expected);
+  });
+});
+
 describe("total de receita sem recortes", () => {
   const paidPoints = [
     { key: "2026-09-01", label: "Sep 1", grossMinor: 5000 },
@@ -81,35 +158,40 @@ describe("total de receita sem recortes", () => {
     renderChart(25000, "$250", paidPoints);
 
     const chart = screen.getByRole("img", { name: "Revenue chart" });
-    const [, , width, height] = chart.getAttribute("viewBox")!.split(" ").map(Number);
+    const canvas = chart.closest<HTMLElement>(".studio-chart-canvas")!;
+    const percentOf = (value: string) => Number(value.replace("%", ""));
 
-    // A etiqueta original ia de y=-20 a 4 e de x=585 a 663 em um SVG
-    // 640x240. jsdom não pinta: estes limites medem a geometria emitida;
-    // a legibilidade do texto e a quebra de linha exigem QA no navegador.
-    for (const rect of chart.querySelectorAll("rect")) {
-      const x = Number(rect.getAttribute("x"));
-      const y = Number(rect.getAttribute("y"));
-      expect.soft(x).toBeGreaterThanOrEqual(0);
-      expect.soft(y).toBeGreaterThanOrEqual(0);
-      expect.soft(x + Number(rect.getAttribute("width"))).toBeLessThanOrEqual(width!);
-      expect.soft(y + Number(rect.getAttribute("height"))).toBeLessThanOrEqual(height!);
+    // A etiqueta original ia de y=-20 a 4 e de x=585 a 663 em um SVG 640x240.
+    // Agora pontos e rotulos sao HTML posicionados em % da area do desenho:
+    // jsdom nao pinta, entao a prova e a posicao emitida (0% a 100%).
+    expect(chart.querySelectorAll("circle, text, rect")).toHaveLength(0);
+    const dots = [...canvas.querySelectorAll<HTMLElement>("span.rounded-full")];
+    expect(dots).toHaveLength(paidPoints.length);
+    for (const dot of dots) {
+      expect.soft(percentOf(dot.style.left)).toBeGreaterThanOrEqual(0);
+      expect.soft(percentOf(dot.style.left)).toBeLessThanOrEqual(100);
+      expect.soft(percentOf(dot.style.top)).toBeGreaterThanOrEqual(0);
+      expect.soft(percentOf(dot.style.top)).toBeLessThanOrEqual(100);
     }
-    for (const circle of chart.querySelectorAll("circle")) {
-      const x = Number(circle.getAttribute("cx"));
-      const y = Number(circle.getAttribute("cy"));
-      const radius = Number(circle.getAttribute("r"));
-      expect.soft(x - radius).toBeGreaterThanOrEqual(0);
-      expect.soft(y - radius).toBeGreaterThanOrEqual(0);
-      expect.soft(x + radius).toBeLessThanOrEqual(width!);
-      expect.soft(y + radius).toBeLessThanOrEqual(height!);
-    }
-    for (const label of chart.querySelectorAll("text")) {
-      expect.soft(Number(label.getAttribute("y"))).toBeGreaterThanOrEqual(0);
-      expect.soft(Number(label.getAttribute("y"))).toBeLessThanOrEqual(height!);
-    }
+    // O ultimo ponto (o pico) e o dourado.
+    expect(dots.at(-1)).toHaveClass("bg-[var(--color-accent)]");
 
-    // O total não pode ser resolvido encolhendo ou deslocando a série.
-    expect(chart.querySelector('path[stroke]')).toHaveAttribute("d", "M48,160.5 L624,18");
+    // Rotulos do eixo Y: dentro da altura e sem repetir texto.
+    const yLabels = [...canvas.querySelectorAll<HTMLElement>("span.tabular-nums")];
+    expect(yLabels.length).toBeGreaterThan(1);
+    expect(new Set(yLabels.map((label) => label.textContent)).size).toBe(yLabels.length);
+    for (const label of yLabels) {
+      expect.soft(percentOf(label.style.top)).toBeGreaterThanOrEqual(0);
+      expect.soft(percentOf(label.style.top)).toBeLessThanOrEqual(100);
+    }
+    // Rotulos do eixo X: um por ponto aqui (dois pontos), na ordem da serie.
+    expect(within(canvas).getByText("Sep 1")).toBeInTheDocument();
+    expect(within(canvas).getByText("Sep 2")).toBeInTheDocument();
+
+    // O total não pode ser resolvido encolhendo ou deslocando a série. Com o
+    // eixo escrito fora do desenho, a série ocupa a largura toda (0 a 640) e o
+    // pico (US$200, já um topo redondo) chega ao teto.
+    expect(chart.querySelector('path[stroke]')).toHaveAttribute("d", "M0,148 L640,10");
     expect(screen.getByText("$250")).toBeVisible();
   });
 

@@ -7,20 +7,33 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Target } from "lucide-react";
 
+import { CourseDetailSkeleton } from "@/components/courses/course-detail-skeleton";
 import { CourseEnrollmentCta } from "@/components/courses/course-enrollment-cta";
+import { CourseModuleDisclosure } from "@/components/courses/course-module-disclosure";
 import { CreatorCourseDetail } from "@/components/courses/creator-course-detail";
 import { JsonLd } from "@/components/seo/json-ld";
+import { SiteFooter } from "@/components/site/site-footer";
 import { SiteNav } from "@/components/site/site-nav";
-import { isInternalSmokeCourse } from "@/domain/teacher-course";
+import { formatTotalMinutes, isInternalSmokeCourse } from "@/domain/teacher-course";
 import { getCourseBySlug, getCourseSlugs } from "@/lib/data/catalog";
-import { getCourseRefAccess, getPublicCourseByRef, hasRealPublishedCourse } from "@/lib/data/server/public-course";
+import { getCourseRefAccess, getPublicCourseByRef, isMarketplaceOpen } from "@/lib/data/server/public-course";
 import { buildCourseJsonLd } from "@/lib/seo/course-jsonld";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
+// Não congela as amostras: o layout lê o cabeçalho (nonce) e a página lê o
+// cookie do idioma, então o build marca a rota como dinâmica (ƒ) e cada pedido
+// decide na hora se o endereço é de um curso real ou da amostra.
 export function generateStaticParams() {
   return getCourseSlugs().map((slug) => ({ slug }));
 }
 
+// O curso REAL vence a amostra. O endereço de um curso é o title_key (o título
+// virado slug), então um curso chamado "Effective Communication" mora em
+// /courses/effective-communication, o mesmo endereço de uma das seis amostras.
+// A amostra só aparece quando nenhum curso real responde por ele para quem
+// pede (publicado, ou rascunho que a sessão enxerga); falha de leitura
+// ("unknown") mantém a amostra. A consulta extra só acontece nos seis slugs
+// de amostra: os demais já consultavam o banco.
 export async function generateMetadata({
   params,
 }: {
@@ -28,7 +41,9 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { t } = await getServerTranslation();
   const { slug } = await params;
-  const course = getCourseBySlug(slug);
+  const published = await getPublicCourseByRef(slug);
+  const sample = published ? undefined : getCourseBySlug(slug);
+  const course = sample && (await getCourseRefAccess(slug)) !== "visible" ? sample : undefined;
 
   if (course) {
     // Amostra de demonstração: fica no ar (decisão do dono), mas mostra preço e
@@ -46,8 +61,6 @@ export async function generateMetadata({
   // a funcionar (migration 20260901120000). Antes disto, todo curso real caía no
   // literal "Course" com a mesma descrição e o mesmo logo — colar o link de
   // qualquer curso no WhatsApp produzia um card idêntico e sem identidade.
-  const published = await getPublicCourseByRef(slug);
-
   if (published) {
     return buildPageMetadata({
       title: published.title,
@@ -78,90 +91,95 @@ export default async function CourseDetailPage({
 }) {
   const { t, locale } = await getServerTranslation();
   const { slug } = await params;
-  const course = getCourseBySlug(slug);
+  // Mesma ordem do generateMetadata: o curso real primeiro, a amostra depois.
+  const published = await getPublicCourseByRef(slug);
+  const access = published ? "visible" : await getCourseRefAccess(slug);
+  const course = access === "visible" ? undefined : getCourseBySlug(slug);
 
   if (!course) {
-    const published = await getPublicCourseByRef(slug);
-
     // Curso não publicado, removido ou slug inválido respondia 200 com uma
     // página vazia: ruim para a qualidade da página de anúncio e para o
     // buscador. Aqui, ANTES de qualquer Suspense, vira 404 de verdade. O dono
     // (e o admin) continuam vendo o rascunho: a leitura usa a sessão do pedido
     // e a RLS decide. Falha de leitura ("unknown") não vira 404: um soluço do
     // banco não pode derrubar a página de um curso publicado.
-    if (!published && (await getCourseRefAccess(slug)) === "missing") {
+    if (access === "missing") {
       notFound();
     }
+
+    // Título e resumo saem daqui, do SERVER COMPONENT. Motivo concreto:
+    // CreatorCourseDetail chama useSearchParams(), então numa rota
+    // prerenderizada o Next entrega apenas o FALLBACK do Suspense no HTML e joga
+    // a subárvore inteira para o cliente. Passar os DADOS como prop para o
+    // client component não colocaria uma palavra no HTML. É por isso que
+    // buscador e scraper de link viam "Loading course..." e o card saía vazio.
+    //
+    // O que vai como prop é o ELEMENTO já desenhado aqui (`lead`), e ele entra
+    // também no fallback: com ou sem o Suspense resolvido no servidor, o HTML
+    // traz o h1, a capa e o resumo. Ele vira o topo da coluna da esquerda, e o
+    // cartão de compra começa no alto da página, ao lado da capa; antes a capa
+    // vinha sozinha acima das colunas e empurrava preço e botão para baixo da
+    // primeira tela. No celular a ordem segue: capa, título, resumo, conteúdo,
+    // cartão.
+    const lead = published ? (
+      <header id="overview" className="mb-8 scroll-mt-24">
+        {/* A capa que o cartão do marketplace já mostra. Sem capa, nada:
+            não se inventa arte. */}
+        {published.coverImageUrl ? (
+          <div className="relative mb-8 aspect-[16/9] overflow-hidden rounded-lg shadow-[var(--shadow-soft)] lg:max-w-3xl">
+            <Image
+              src={published.coverImageUrl}
+              alt={published.title}
+              fill
+              priority
+              sizes="(min-width: 1024px) 60vw, 100vw"
+              className="object-cover"
+            />
+          </div>
+        ) : null}
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
+          {published.category ? getCourseCategoryLabel(published.category, t) : t("publicCourses.course")}
+        </p>
+        <h1 className="display-title page-title mt-3 text-[var(--color-ink)]">
+          {published.title}
+        </h1>
+        {published.summary ? (
+          <p className="mt-4 max-w-2xl text-base leading-7 text-[var(--color-ink-soft)]">
+            {published.summary}
+          </p>
+        ) : null}
+        {published.lessonCount ? (
+          <p className="mt-3 text-sm text-[var(--color-ink-muted)]">
+            {t(published.lessonCount === 1 ? "publicCourses.lessonOne" : "publicCourses.lessonMany").replace("{count}", String(published.lessonCount))}
+          </p>
+        ) : null}
+      </header>
+    ) : null;
 
     return (
       <div className="page-shell">
         <SiteNav />
-        <main id="conteudo" className="mx-auto w-full max-w-7xl px-6 py-10 sm:px-8 sm:py-14">
-          {/* Título e resumo saem daqui, do SERVER COMPONENT, e não de dentro do
-              Suspense abaixo. Motivo concreto: CreatorCourseDetail chama
-              useSearchParams(), então numa rota prerenderizada o Next entrega
-              apenas o FALLBACK no HTML e joga a subárvore inteira para o
-              cliente. Passar os dados como prop para o client component não
-              colocaria uma palavra no HTML — só aceleraria o primeiro paint.
-              É por isso que buscador e scraper de link viam "Loading course..."
-              e o card saía vazio.
-
-              Aqui o texto é HTML de servidor de verdade. O componente cliente
-              segue montando por cima com o conteúdo interativo (preço, ofertas,
-              currículo, checkout), que depende de sessão e de dados que mudam. */}
-          {published ? (
-            <header id="overview" className="mb-8 scroll-mt-24">
-              {/* A capa que o cartão do marketplace já mostra. Sem capa, nada:
-                  não se inventa arte. */}
-              {published.coverImageUrl ? (
-                <div className="relative mb-8 aspect-[16/9] overflow-hidden rounded-lg shadow-[var(--shadow-soft)] lg:max-w-3xl">
-                  <Image
-                    src={published.coverImageUrl}
-                    alt={published.title}
-                    fill
-                    priority
-                    sizes="(min-width: 1024px) 60vw, 100vw"
-                    className="object-cover"
-                  />
-                </div>
-              ) : null}
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-                {published.category ? getCourseCategoryLabel(published.category, t) : t("publicCourses.course")}
-              </p>
-              <h1 className="display-title page-title mt-3 text-[var(--color-ink)]">
-                {published.title}
-              </h1>
-              {published.summary ? (
-                <p className="mt-4 max-w-2xl text-base leading-7 text-[var(--color-ink-soft)]">
-                  {published.summary}
-                </p>
-              ) : null}
-              {published.lessonCount ? (
-                <p className="mt-3 text-sm text-[var(--color-ink-muted)]">
-                  {t(published.lessonCount === 1 ? "publicCourses.lessonOne" : "publicCourses.lessonMany").replace("{count}", String(published.lessonCount))}
-                </p>
-              ) : null}
-            </header>
-          ) : null}
-
-          <Suspense
-            fallback={
-              <section className="rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
-                <p className="text-sm text-[var(--color-ink-soft)]">
-                  {t("publicCourses.loadingCourse")}
-                </p>
-              </section>
-            }
-          >
-            {/* hideHeader: o cabeçalho acima já tem título e resumo; sem isto o
+        <main id="conteudo" className="mx-auto w-full max-w-7xl px-5 py-10 sm:px-8 sm:py-14">
+          {/* O mesmo esqueleto que o cliente mostra enquanto carrega: do HTML do
+              servidor até o curso chegar, a página não troca de forma. */}
+          <Suspense fallback={<CourseDetailSkeleton label={t("publicCourses.loadingCourse")} lead={lead} />}>
+            {/* hideHeader: o `lead` já tem título e resumo; sem isto o
                 componente cliente desenhava um segundo h1 com o mesmo texto
                 logo abaixo. */}
             <CreatorCourseDetail
               courseIdOverride={slug}
               hideHeader={Boolean(published)}
+              lead={lead}
             />
           </Suspense>
         </main>
+        {/* A página com preço é a que mais precisa do rodapé: termos, política
+            de reembolso e contato. Antes ela acabava no currículo. O pb-24
+            deixa o fim dele acima da barra de compra fixa (no celular, no pé
+            da tela; no desktop, o cartão do canto quando o da coluna sai). */}
+        <div className="pb-24">
+          <SiteFooter />
+        </div>
       </div>
     );
   }
@@ -181,7 +199,7 @@ export default async function CourseDetailPage({
   const priceLabel = course.priceAmountMinor == null ? t("publicCourses.priceAnnounced")
     : new Intl.NumberFormat(locale, { style: "currency", currency: course.currency }).format(course.priceAmountMinor / 100);
   const levelKeys = { Foundation: "foundation", Professional: "professional", Advanced: "advanced" };
-  const hasRealCourses = await hasRealPublishedCourse();
+  const hasRealCourses = await isMarketplaceOpen();
 
   return (
     <div className="page-shell">
@@ -299,32 +317,46 @@ export default async function CourseDetailPage({
 
             <section id="curriculum" className="mt-8 scroll-mt-24">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.structure")}</p>
-              <div className="mt-5 grid gap-4">
-                {course.modules.map((module) => (
-                  <div key={module.id} className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4">
-                    <h3 className="text-sm font-semibold text-[var(--color-ink)]">
-                      {module.title}
-                    </h3>
-                    <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
+              {/* O mesmo currículo da página de um curso de verdade: um módulo
+                  por sanfona (o primeiro aberto), aulas e duração na linha do
+                  módulo, linhas de 44px e dados em caixa normal com " · ". */}
+              <div className="mt-5 grid gap-3">
+                {course.modules.map((module, moduleIndex) => (
+                  <CourseModuleDisclosure
+                    key={module.id}
+                    title={module.title}
+                    meta={[
+                      t(module.lessons.length === 1 ? "publicCourses.lessonOne" : "publicCourses.lessonMany")
+                        .replace("{count}", String(module.lessons.length)),
+                      // A amostra guarda a duração como texto ("12 min").
+                      formatTotalMinutes(module.lessons.map((lesson) => Number(/^(\d+) min$/.exec(lesson.duration)?.[1]))),
+                    ].filter(Boolean).join(" · ")}
+                    defaultOpen={moduleIndex === 0}
+                    headingLevel={3}
+                  >
+                    <p className="px-4 pb-3 text-sm leading-6 text-[var(--color-ink-soft)]">
                       {module.summary}
                     </p>
-                    <div className="mt-4 grid gap-2">
+                    <div className="grid gap-2 px-3 pb-3">
                       {module.lessons.map((lesson) => (
                         <div
                           key={lesson.id}
-                          className="flex items-center justify-between gap-3 rounded-md bg-white px-3 py-2 text-xs text-[var(--color-ink-soft)]"
+                          className="flex min-h-11 items-center justify-between gap-3 rounded-md bg-white px-3 py-2.5 text-sm text-[var(--color-ink-soft)]"
                         >
                           <span className="font-semibold text-[var(--color-ink)]">
                             {lesson.title}
                           </span>
-                          <span className="shrink-0 uppercase tracking-[0.16em]">
-                            {lesson.isPreview ? t("publicCourses.previewShort") : t("publicCourses.locked")} -{" "}
-                            {t(`publicCourses.lessonTypes.${lesson.type}`)} - {lesson.duration}
+                          <span className="shrink-0 text-right text-xs">
+                            {[
+                              t(`publicCourses.lessonTypes.${lesson.type}`),
+                              lesson.duration,
+                              t(lesson.isPreview ? "publicCourses.previewShort" : "publicCourses.locked"),
+                            ].filter(Boolean).join(" · ")}
                           </span>
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </CourseModuleDisclosure>
                 ))}
               </div>
             </section>
@@ -334,7 +366,9 @@ export default async function CourseDetailPage({
                 six-row <dl> alongside Category and Level — buyers had to
                 scan past four neutral rows to find what it costs. Now it
                 anchors the sidebar so the cost is the first thing you see. */}
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.access")}</p>
+            {/* "Price" em 12px, como no cartão do curso real: "Access" em 10px
+                não dizia que o número embaixo é o preço. */}
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">{t("publicCourses.priceEyebrow")}</p>
             <p className="display-title mt-1 text-4xl leading-none text-[var(--color-primary)]">
               {priceLabel}
             </p>
@@ -371,6 +405,10 @@ export default async function CourseDetailPage({
           </aside>
         </div>
       </main>
+      {/* pb-24: o rodapé termina acima da barra fixa de inscrição do celular. */}
+      <div className="pb-24 lg:pb-0">
+        <SiteFooter />
+      </div>
 
       {/* Mobile sticky enroll bar: on phones the aside lives at the bottom
           of the grid (single column), so a buyer has to scroll past every
@@ -380,7 +418,7 @@ export default async function CourseDetailPage({
       <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-3 lg:hidden">
         <div className="pointer-events-auto flex items-center gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)]/95 px-4 py-3 shadow-[0_-6px_30px_rgba(15,39,68,0.18)] backdrop-blur supports-[backdrop-filter]:bg-[var(--color-surface)]/85">
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">{t("publicCourses.access")}</p>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">{t("publicCourses.priceEyebrow")}</p>
             <p className="display-title truncate text-xl leading-none text-[var(--color-primary)]">
               {priceLabel}
             </p>

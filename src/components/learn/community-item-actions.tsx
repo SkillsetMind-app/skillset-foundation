@@ -3,6 +3,8 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { BusyLabel } from "@/components/ui/busy-label";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import type { SkillsetUser } from "@/domain/auth";
 import type { CommunityComment, CommunityPost } from "@/domain/community-post";
 import type { CommunityReportReason } from "@/domain/community-report";
@@ -233,18 +235,21 @@ export function CommunityItemActions({
         </button>
       ) : null}
       {reported ? (
-        <p role="status" className="basis-full text-xs font-semibold text-[rgb(21,128,61)]">
+        <p role="status" className="basis-full text-xs font-semibold text-[var(--color-success-fg)]">
           {t(reported === "duplicate" ? "learn.community.report.duplicate" : "learn.community.report.done")}
         </p>
       ) : null}
 
       {panel === "delete" ? (
+        // Confirmação, não erro: fica um grupo (um alerta seria lido sozinho ao
+        // abrir). O fundo é o token, que no tema escuro sobe para 18%; o 6%
+        // literal sumia no quase preto.
         <div
           id={panelId}
           role="group"
           aria-labelledby={`${panelId}-title`}
           onKeyDown={closeOnEscape}
-          className="flex basis-full flex-wrap items-center gap-2 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] p-3"
+          className="flex basis-full flex-wrap items-center gap-2 rounded-md border border-[rgba(178,34,52,0.2)] bg-[var(--color-danger-soft)] p-3"
         >
           <p id={`${panelId}-title`} className="w-full text-sm font-semibold text-[var(--color-ink)]">
             {t(confirmKey)}
@@ -253,9 +258,13 @@ export function CommunityItemActions({
             type="button"
             onClick={() => void confirmDelete()}
             disabled={busy}
-            className="button-danger min-h-11 px-3 text-sm disabled:opacity-60"
+            className="button-danger min-h-11 px-3 text-sm"
           >
-            {t(busy ? "learn.community.actions.deleting" : "learn.community.actions.deleteYes")}
+            <BusyLabel
+              busy={busy}
+              idle={t("learn.community.actions.deleteYes")}
+              busyText={t("learn.community.actions.deleting")}
+            />
           </button>
           <button
             ref={keepRef}
@@ -312,17 +321,21 @@ export function CommunityItemActions({
             >
               {t("learn.community.report.cancel")}
             </button>
-            <button type="submit" disabled={busy} className="button-solid min-h-11 px-3 text-sm disabled:opacity-60">
-              {t(busy ? "learn.community.report.sending" : "learn.community.report.send")}
+            <button type="submit" disabled={busy} className="button-solid min-h-11 px-3 text-sm">
+              <BusyLabel
+                busy={busy}
+                idle={t("learn.community.report.send")}
+                busyText={t("learn.community.report.sending")}
+              />
             </button>
           </div>
         </form>
       ) : null}
 
       {error ? (
-        <p role="alert" className="basis-full text-xs font-semibold text-[var(--color-danger-fg)]">
+        <InlineAlert tone="error" className="basis-full px-3 py-2 text-xs leading-5">
           {t(error)}
-        </p>
+        </InlineAlert>
       ) : null}
     </>
   );

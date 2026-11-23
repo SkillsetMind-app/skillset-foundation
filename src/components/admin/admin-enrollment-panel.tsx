@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { Field, InlineAlert } from "@/components/ui";
+import { BusyLabel, Button, ConfirmDialog, Field, InlineAlert } from "@/components/ui";
 import type { Enrollment } from "@/domain/enrollment";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import type { UserProfile } from "@/domain/user-profile";
@@ -15,12 +15,18 @@ import {
 } from "@/lib/data/enrollments";
 import { subscribeToPublishedTeacherCourses } from "@/lib/data/published-courses";
 
+// Nome e e-mail juntos: duas "Maria Lopez" só se separam pelo e-mail.
+function accountLabel(user: UserProfile) {
+  return user.displayName && user.email ? `${user.displayName} · ${user.email}` : user.displayName || user.email || user.uid;
+}
+
 export function AdminEnrollmentPanel() {
   const { t } = useTranslation();
   const copy = "platform.ops.enrollmentPanel";
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
   const [userId, setUserId] = useState("");
+  const [learnerFilter, setLearnerFilter] = useState("");
   const [courseId, setCourseId] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
@@ -31,6 +37,7 @@ export function AdminEnrollmentPanel() {
   const [grantedEnrollments, setGrantedEnrollments] = useState<Enrollment[]>([]);
   const [isLoadingGranted, setIsLoadingGranted] = useState(true);
   const [revokingId, setRevokingId] = useState<string | null>(null);
+  const [asking, setAsking] = useState<Enrollment | null>(null);
 
   useEffect(() => {
     return subscribeToAdminUserProfiles(
@@ -74,13 +81,38 @@ export function AdminEnrollmentPanel() {
     );
   }, []);
 
+  // O mesmo rótulo da linha da lista e da janela de revogar.
+  function learnerLabel(userId: string) {
+    const learner = users.find((user) => user.uid === userId);
+    return learner?.displayName || learner?.email || userId;
+  }
+
   const selectedCourse = useMemo(
     () => courses.find((course) => course.id === courseId) ?? null,
     [courseId, courses],
   );
 
+  // Filtro local sobre as contas que o painel já carregou: achar a pessoa
+  // digitando, em vez de rolar a lista do navegador com todas as contas
+  // (I-13). Quem já está escolhido fica na lista, senão o select perderia o valor.
+  const term = learnerFilter.trim().toLowerCase();
+  const matches = (user: UserProfile) =>
+    [user.displayName, user.email, user.uid].join(" ").toLowerCase().includes(term);
+  const learnerOptions = term ? users.filter((user) => user.uid === userId || matches(user)) : users;
+  const noLearnerMatch = term !== "" && !users.some(matches);
+  // Como o curso: a conta escolhida só vale se ainda está na lista carregada.
+  // Se ela sai (apagada, ou fora das linhas que a leitura traz), o select fica
+  // sem nada marcado e o botão não pode dar acesso a uma conta que não se vê.
+  const selectedUser = users.find((user) => user.uid === userId) ?? null;
+  // Por que o botão está cinza, dito embaixo dele (I-13). Nada enquanto as
+  // listas carregam; falha de leitura já tem o próprio aviso acima.
+  const blockedReason = isLoadingUsers || isLoadingCourses || readErrors.users || readErrors.courses ? null
+    : courses.length === 0 ? "noCourses"
+      : users.length === 0 ? "noUsers"
+        : !selectedUser || !selectedCourse ? "choose" : null;
+
   async function handleCreateEnrollment() {
-    if (!userId || !selectedCourse) {
+    if (!selectedUser || !selectedCourse) {
       setError("choose");
       return;
     }
@@ -90,7 +122,7 @@ export function AdminEnrollmentPanel() {
     setIsSaving(true);
 
     try {
-      await createAdminEnrollmentForTeacherCourse(userId, selectedCourse);
+      await createAdminEnrollmentForTeacherCourse(selectedUser.uid, selectedCourse);
       setSuccess("created");
     } catch {
       setError("create");
@@ -99,15 +131,8 @@ export function AdminEnrollmentPanel() {
     }
   }
 
+  // Roda só pelo confirmar da janela, que antes era o OK do window.confirm.
   async function handleRevoke(enrollment: Enrollment) {
-    const confirmed = window.confirm(
-      t(`${copy}.confirmRevoke`).replace("{title}", () => enrollment.courseTitle),
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
     setError("");
     setSuccess("");
     setRevokingId(enrollment.id);
@@ -143,22 +168,33 @@ export function AdminEnrollmentPanel() {
 
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         <Field id="ops-enrollment-user" label={t(`${copy}.learner`)} error={readErrors.users ? t(`${copy}.readErrors.users`) : undefined}>
-          {a11y => <select
-            {...a11y}
-            value={userId}
-            onChange={(event) => setUserId(event.target.value)}
-            disabled={isLoadingUsers || users.length === 0 || readErrors.users}
-            className="min-h-11 min-w-0 w-full rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-          >
-            <option value="">
-              {t(`${copy}.${isLoadingUsers ? "loadingUsers" : "chooseUser"}`)}
-            </option>
-            {users.map((user) => (
-              <option key={user.uid} value={user.uid}>
-                {user.displayName || user.email || user.uid}
+          {a11y => <>
+            <input
+              type="search"
+              value={learnerFilter}
+              onChange={(event) => setLearnerFilter(event.target.value)}
+              aria-label={t(`${copy}.filterLabel`)}
+              placeholder={t(`${copy}.filterPlaceholder`)}
+              disabled={isLoadingUsers || users.length === 0 || readErrors.users}
+              className="field-input min-h-11 min-w-0 disabled:cursor-not-allowed disabled:opacity-60"
+            />
+            <select
+              {...a11y}
+              value={selectedUser ? userId : ""}
+              onChange={(event) => setUserId(event.target.value)}
+              disabled={isLoadingUsers || users.length === 0 || readErrors.users}
+              className="field-input min-h-11 min-w-0 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <option value="">
+                {t(`${copy}.${isLoadingUsers ? "loadingUsers" : noLearnerMatch ? "noMatch" : "chooseUser"}`)}
               </option>
-            ))}
-          </select>}
+              {learnerOptions.map((user) => (
+                <option key={user.uid} value={user.uid}>
+                  {accountLabel(user)}
+                </option>
+              ))}
+            </select>
+          </>}
         </Field>
 
         <Field id="ops-enrollment-course" label={t(`${copy}.course`)} error={readErrors.courses ? t(`${copy}.readErrors.courses`) : undefined}>
@@ -167,7 +203,7 @@ export function AdminEnrollmentPanel() {
             value={courseId}
             onChange={(event) => setCourseId(event.target.value)}
             disabled={isLoadingCourses || courses.length === 0 || readErrors.courses}
-            className="min-h-11 min-w-0 w-full rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+            className="field-input min-h-11 min-w-0 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <option value="">
               {t(`${copy}.${isLoadingCourses ? "loadingCourses" : "chooseCourse"}`)}
@@ -187,11 +223,20 @@ export function AdminEnrollmentPanel() {
       <button
         type="button"
         onClick={handleCreateEnrollment}
-        disabled={isSaving || !userId || !selectedCourse || readErrors.users || readErrors.courses}
-        className="button-solid min-h-11 mt-6 px-4 py-2.5 text-sm disabled:opacity-60"
+        disabled={isSaving || !selectedUser || !selectedCourse || readErrors.users || readErrors.courses}
+        aria-describedby="ops-enrollment-create-hint"
+        className="button-solid min-h-11 mt-6 px-4 py-2.5 text-sm"
       >
-        {t(`${copy}.${isSaving ? "creating" : "create"}`)}
+        <BusyLabel busy={isSaving} idle={t(`${copy}.create`)} busyText={t(`${copy}.creating`)} />
       </button>
+      {/* Embaixo do botão: o que falta quando ele está cinza, ou para quem vai o
+          acesso quando está pronto, para conferir antes de clicar. */}
+      <p id="ops-enrollment-create-hint" className="mt-2 break-words text-xs text-[var(--color-ink-soft)]">
+        {blockedReason === "choose" ? t(`${copy}.errors.choose`)
+          : blockedReason ? t(`${copy}.${blockedReason}`)
+            : selectedUser && selectedCourse ? t(`${copy}.grantsTo`).replace("{person}", () => accountLabel(selectedUser))
+              : null}
+      </p>
 
       <div className="mt-8 border-t border-[var(--color-line)] pt-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -215,8 +260,6 @@ export function AdminEnrollmentPanel() {
             readErrors.grants ? null : <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">{t(`${copy}.empty`)}</p>
           ) : (
             grantedEnrollments.map((enrollment) => {
-              const learner = users.find((user) => user.uid === enrollment.userId);
-
               return (
                 <article
                   key={enrollment.id}
@@ -227,25 +270,53 @@ export function AdminEnrollmentPanel() {
                       {enrollment.courseTitle}
                     </p>
                     <p className="mt-1 break-words text-xs leading-5 text-[var(--color-ink-soft)]">
-                      {learner?.displayName || learner?.email || enrollment.userId}
+                      {learnerLabel(enrollment.userId)}
                       {" - "}
                       {t(`${copy}.${enrollment.source === "admin" ? "adminGrant" : "demoGrant"}`)}
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleRevoke(enrollment)}
+                  {/* Tirar o acesso é vermelho, como Unpublish e Reject (I-04); a
+                      pergunta antes continua a mesma. */}
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={() => setAsking(enrollment)}
                     disabled={revokingId === enrollment.id}
-                    className="button-outline min-h-11 px-4 py-2 text-xs disabled:opacity-60"
+                    className="min-h-11 px-3.5 py-2"
                   >
-                    {t(`${copy}.${revokingId === enrollment.id ? "revoking" : "revoke"}`)}
-                  </button>
+                    <BusyLabel
+                      busy={revokingId === enrollment.id}
+                      idle={t(`${copy}.revoke`)}
+                      busyText={t(`${copy}.revoking`)}
+                    />
+                  </Button>
                 </article>
               );
             })
           )}
         </div>
       </div>
+
+      {/* A frase é a mesma do antigo window.confirm; o resultado continua no
+          aviso do painel. */}
+      {asking ? (
+        <ConfirmDialog
+          title={t(`${copy}.revokeTitle`)}
+          confirmLabel={t(`${copy}.revoke`)}
+          pendingLabel={t(`${copy}.revoking`)}
+          cancelLabel={t("platform.ops.confirmDialog.cancel")}
+          danger
+          onConfirm={() => handleRevoke(asking)}
+          onClose={() => setAsking(null)}
+        >
+          <p>{t(`${copy}.confirmRevoke`).replace("{title}", () => asking.courseTitle)}</p>
+          {/* Dois estudantes no mesmo curso: sem o nome, não dá para conferir
+              quem perde o acesso. */}
+          <p className="mt-2 break-words font-semibold text-[var(--color-ink)]">
+            {t(`${copy}.revokeLearner`).replace("{person}", () => learnerLabel(asking.userId))}
+          </p>
+        </ConfirmDialog>
+      ) : null}
     </section>
   );
 }

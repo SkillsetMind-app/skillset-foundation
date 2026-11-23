@@ -1,15 +1,20 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { startTransition, useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { RefreshCw, X } from "lucide-react";
 
 import { PlansPanel } from "@/components/account/plans-panel";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
 import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
 import { ShortId } from "@/components/shared/short-id";
 import { StatusChip } from "@/components/shared/status-chip";
-import { planById, type PlanId } from "@/data/plans";
+import { EmptyState } from "@/components/ui/empty-state";
+import { InlineAlert } from "@/components/ui/inline-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
+import { plans } from "@/data/plans";
 import type { Order } from "@/domain/order";
 import type { UserProfile } from "@/domain/user-profile";
 import { subscribeToUserOrders } from "@/lib/data/orders";
@@ -17,7 +22,7 @@ import { subscribeToUserProfile } from "@/lib/data/user-profiles";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 import { hasPermission } from "@/lib/permissions";
 import { toDate } from "@/lib/format-date";
-import { openBillingPortal, requestOrderRefund } from "@/lib/payments/billing";
+import { fetchPlanBillingState, openBillingPortal, requestOrderRefund, type PlanBillingState } from "@/lib/payments/billing";
 
 const billingTabs = [
   { value: "overview", label: "Overview" },
@@ -25,6 +30,13 @@ const billingTabs = [
   { value: "payment-methods", label: "Payment methods" },
   { value: "subscriptions", label: "Subscription" },
 ];
+
+const subscriptionStatusKeys: Record<string, string> = {
+  active: "statusChip.active",
+  trialing: "teach.subscriptions.statusTrialing",
+  past_due: "teach.subscriptions.statusPastDue",
+  unpaid: "teach.subscriptions.statusUnpaid",
+};
 
 function formatMoney(amountMinor: number, currency: string, locale: string) {
   return new Intl.NumberFormat(locale, {
@@ -53,23 +65,26 @@ export function BillingTabs() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { status, user } = useAuth();
-  // The Subscription tab and the plan line are the creator's plan, which only
-  // a teacher pays for (same gate as /teach). A learner sees what they bought.
+  // Acesso do criador pode vir de concessao, sem assinatura paga.
   const canTeach = hasPermission({ roles: user?.roles }, "teacherStudio.access");
   const requestedTab = searchParams.get("tab") ?? "overview";
   const activeTab = requestedTab === "subscriptions" && !canTeach ? "overview" : requestedTab;
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  // "loading" until the first profile snapshot resolves. The Overview waits on
-  // this so it never flashes "Free subscription" from a still-null profile
-  // during the orders-vs-profile load race; "error" lets it show plan/portal as
-  // unknown instead of asserting Free when the listener fails.
+  // Perfil ausente ou ilegivel nao comprova acesso gratuito.
   const [profileStatus, setProfileStatus] = useState<
     "loading" | "ready" | "error"
   >("loading");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  // "Try again" das compras (resumo e lista vêm desta leitura): assina de novo.
+  // A limpeza do efeito desfaz a assinatura anterior antes da nova.
+  const [ordersReadAttempt, setOrdersReadAttempt] = useState(0);
+  // "Try again" do perfil (o cartão do portal no Overview): assina de novo.
+  const [profileReadAttempt, setProfileReadAttempt] = useState(0);
+  // Fica na tela nos dois desfechos e recebe o foco do "Try again".
+  const panelRef = useRef<HTMLDivElement>(null);
 
   // One real-time listener feeds the Overview and Purchases tabs, so the
   // subscription lives at the tab-shell level (it survives tab switches — only
@@ -94,11 +109,17 @@ export function BillingTabs() {
         setIsLoading(false);
       },
     );
-  }, [user]);
+  }, [user, ordersReadAttempt]);
 
-  // Profile feeds the current plan + whether a Stripe customer exists (so the
-  // portal button is only offered when it can actually open). Failure is
-  // non-fatal — the overview just falls back to the Free plan label.
+  // Volta à espera de sempre (o esqueleto), nunca a "No purchases yet" ou a
+  // valores zerados no lugar do erro, até a leitura nova responder.
+  function retryOrdersRead() {
+    setError("");
+    setIsLoading(true);
+    setOrdersReadAttempt((attempt) => attempt + 1);
+  }
+
+  // Customer permite consultar historico; nao comprova uma assinatura.
   useEffect(() => {
     if (!user) {
       return;
@@ -115,7 +136,13 @@ export function BillingTabs() {
         setProfileStatus("error");
       },
     );
-  }, [user]);
+  }, [user, profileReadAttempt]);
+
+  // Volta ao esqueleto do Overview até a leitura nova responder.
+  function retryProfileRead() {
+    setProfileStatus("loading");
+    setProfileReadAttempt((attempt) => attempt + 1);
+  }
 
   const sortedOrders = useMemo(
     () =>
@@ -145,7 +172,7 @@ export function BillingTabs() {
         onChange={handleTabChange}
         ariaLabel={t("accountBilling.sections")}
       />
-      <div className="mt-6">
+      <div ref={panelRef} tabIndex={-1} className="mt-6">
         {activeTab === "subscriptions" ? (
           <PlansPanel />
         ) : activeTab === "payment-methods" ? (
@@ -160,20 +187,27 @@ export function BillingTabs() {
             userId={user?.uid ?? null}
             isLoading={isLoading}
             error={error}
+            onRetry={retryOrdersRead}
+            retryFocusRef={panelRef}
             isSignedIn={isSignedIn}
             authResolving={authResolving}
           />
         ) : (
           <OverviewTab
             orders={sortedOrders}
+            userId={user?.uid ?? null}
             profile={profile}
             profileStatus={profileStatus}
+            onRetryProfile={retryProfileRead}
             isLoading={isLoading}
             error={error}
+            onRetry={retryOrdersRead}
+            retryFocusRef={panelRef}
             isSignedIn={isSignedIn}
             authResolving={authResolving}
             showPlan={canTeach}
             onSeePurchases={() => handleTabChange("purchases")}
+            onSeePlans={() => handleTabChange("subscriptions")}
           />
         )}
       </div>
@@ -185,6 +219,9 @@ type OrderTabProps = {
   orders: Order[];
   isLoading: boolean;
   error: string;
+  /** "Try again" do erro: assina a leitura das compras de novo. */
+  onRetry: () => void;
+  retryFocusRef: RefObject<HTMLDivElement | null>;
   isSignedIn: boolean;
   authResolving: boolean;
 };
@@ -220,25 +257,56 @@ function summarisePurchases(orders: Order[]) {
 
 function OverviewTab({
   orders,
+  userId,
   profile,
   profileStatus,
+  onRetryProfile,
   isLoading,
   error,
+  onRetry,
+  retryFocusRef,
   isSignedIn,
   authResolving,
   showPlan,
   onSeePurchases,
+  onSeePlans,
 }: OrderTabProps & {
+  userId: string | null;
   profile: UserProfile | null;
   profileStatus: "loading" | "ready" | "error";
+  onRetryProfile: () => void;
   showPlan: boolean;
   onSeePurchases: () => void;
+  onSeePlans: () => void;
 }) {
   const { t, locale } = useTranslation();
-  // Wait on the profile too, so the plan/portal block never renders a default
-  // "Free" from a not-yet-loaded profile during the orders-vs-profile race.
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  const profilePlanId = profile?.currentPlanId;
+  const profileCustomerId = profile?.stripeCustomerId;
+  const profileUpdatedAt = profile?.updatedAt;
+  const billingRequest = useMemo(() => ({
+    userId, profileStatus, profilePlanId, profileCustomerId, profileUpdatedAt, refreshVersion,
+  }), [userId, profileStatus, profilePlanId, profileCustomerId, profileUpdatedAt, refreshVersion]);
+  const [billingRead, setBillingRead] = useState<{
+    request: typeof billingRequest;
+    state: PlanBillingState | null;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!isSignedIn || !showPlan || !billingRequest.userId || billingRequest.profileStatus === "loading") return;
+    let cancelled = false;
+    fetchPlanBillingState()
+      .then((state) => {
+        if (!cancelled) setBillingRead({ request: billingRequest, state });
+      })
+      .catch(() => {
+        if (!cancelled) setBillingRead({ request: billingRequest, state: null });
+      });
+    return () => { cancelled = true; };
+  }, [isSignedIn, showPlan, billingRequest]);
+
   if (authResolving || isLoading || profileStatus === "loading") {
-    return <BillingNotice>{t("accountBilling.loadingOverview")}</BillingNotice>;
+    return <BillingSkeleton shape="overview" label={t("accountBilling.loadingOverview")} />;
   }
 
   if (!isSignedIn) {
@@ -246,16 +314,35 @@ function OverviewTab({
   }
 
   if (error) {
-    return <BillingNotice tone="error">{t(error)}</BillingNotice>;
+    return <LoadErrorAlert onRetry={onRetry} focusRef={retryFocusRef}>{t(error)}</LoadErrorAlert>;
   }
 
   const { courseCount, refundCount, spentMinor, currency } =
     summarisePurchases(orders);
-  // Profile listener failed: we don't know the plan, so show it as unknown
-  // rather than asserting "Free" (which would misstate a paying user's plan).
   const profileFailed = profileStatus === "error";
-  const planId: PlanId = profile?.currentPlanId ?? "free";
-  const planName = profileFailed ? t("accountBilling.unavailable") : planId === "free" ? t("accountPlans.withoutSubscription") : planById(planId).name;
+  // Cada leitura pertence ao snapshot do perfil; resposta antiga nao vale como atual.
+  const billing = billingRead?.request === billingRequest ? billingRead.state : undefined;
+  const subscription = billing?.subscription;
+  const accessPlanName = profileFailed || !profilePlanId
+    ? t("accountBilling.unavailable")
+    : profilePlanId === "free"
+      ? t("accountBilling.defaultAccess")
+      : plans.find((plan) => plan.id === profilePlanId)?.name ?? t("accountBilling.unavailable");
+  const planName = subscription
+    ? plans.find((plan) => plan.id === subscription.planId)?.name ?? t("accountBilling.unavailable")
+    : billing
+      ? t("accountBilling.noStripeSubscription")
+      : t(billing === null ? "accountBilling.unavailable" : "accountPlans.loading");
+  const planDetails = showPlan ? [
+    [t("accountBilling.accessPlan"), accessPlanName],
+    [t("accountBilling.subscriptionLabel"), planName],
+    ...(subscription ? [
+      [t("accountBilling.subscriptionStatus"), t(subscriptionStatusKeys[subscription.status] ?? "accountBilling.unavailable")],
+      [t("accountPlans.cycle"), t(subscription.cycle === "monthly" || subscription.cycle === "yearly"
+        ? `accountPlans.cycles.${subscription.cycle}.label`
+        : "accountBilling.unavailable")],
+    ] : []),
+  ] : [];
   const hasCustomer = Boolean(profile?.stripeCustomerId);
 
   return (
@@ -265,29 +352,51 @@ function OverviewTab({
         <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {t("accountBilling.lifetimeSpend")}
         </p>
-        <p className="display-title mt-2 text-4xl text-[var(--color-primary)]">
+        {/* O valor em letra comum (a serifa e do titulo da pagina). A frase "N
+            cursos comprados" saiu: o numero ja esta na linha logo abaixo. */}
+        <p className="mt-2 text-3xl font-bold leading-tight tabular-nums text-[var(--color-primary)]">
           {formatMoney(spentMinor, currency, locale)}
-        </p>
-        <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
-          {t(courseCount === 1 ? "accountBilling.coursePurchased" : "accountBilling.coursesPurchased").replace("{count}", () => String(courseCount))}
-          {profileFailed || !showPlan ? "" : ` · ${t("accountBilling.planSubscription").replace("{plan}", () => planName)}`}
         </p>
 
         <dl className="mt-5 grid gap-px overflow-hidden rounded-md border fine-rule bg-[var(--color-line)]">
           {[
             [t("accountBilling.coursesLabel"), String(courseCount)],
-            ...(showPlan ? [[t("accountBilling.subscriptionLabel"), planName]] : []),
+            ...planDetails,
             [t("accountBilling.refunds"), String(refundCount)],
           ].map(([label, value]) => (
             <div
               key={label}
-              className="flex items-center justify-between gap-4 bg-white px-4 py-3 text-sm"
+              className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 bg-white px-4 py-3 text-sm"
             >
               <dt className="text-[var(--color-ink-soft)]">{label}</dt>
-              <dd className="font-semibold text-[var(--color-ink)]">{value}</dd>
+              <dd className="min-w-0 break-words font-semibold text-[var(--color-ink)]">{value}</dd>
             </div>
           ))}
         </dl>
+
+        {showPlan && subscription?.cancelAtPeriodEnd ? (
+          <p className="mt-3 text-sm text-[var(--color-ink-soft)]">
+            {t("accountBilling.cancellationScheduled")}
+          </p>
+        ) : null}
+        {showPlan && billing === null ? (
+          <p role="status" className="mt-3 text-sm text-[var(--color-ink-soft)]">
+            {t("accountBilling.detailsError")}
+          </p>
+        ) : null}
+
+        {showPlan ? (
+          <button
+            type="button"
+            onClick={() => setRefreshVersion((version) => version + 1)}
+            disabled={billing === undefined}
+            aria-busy={billing === undefined}
+            className="button-outline mt-3 max-w-full gap-2 whitespace-normal px-4 py-2 text-sm"
+          >
+            <RefreshCw size={16} aria-hidden="true" className="shrink-0" />
+            {t("accountBilling.refreshStatus")}
+          </button>
+        ) : null}
 
         <button
           type="button"
@@ -306,11 +415,23 @@ function OverviewTab({
         <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
           {t("accountBilling.portalBody")}
         </p>
+        {showPlan && billing?.subscription === null ? (
+          <button type="button" onClick={onSeePlans} className="button-solid mt-3 px-4 py-2 text-sm">
+            {t("accountBilling.reviewPlans")}
+          </button>
+        ) : null}
         {hasCustomer ? (
-          <PortalButton label={t("accountBilling.openPortal")} />
+          <PortalButton label={t(showPlan
+            ? subscription ? "accountPlans.manage" : "accountBilling.billingHistory"
+            : "accountBilling.openPortal")} />
+        ) : profileFailed ? (
+          // O perfil não veio: a frase mandava atualizar a página; agora o botão lê de novo.
+          <LoadErrorAlert className="mt-3" onRetry={onRetryProfile} focusRef={retryFocusRef}>
+            {t("accountBilling.detailsLoadError")}
+          </LoadErrorAlert>
         ) : (
           <p className="mt-3 rounded-md border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
-            {t(profileFailed ? "accountBilling.detailsError" : "accountBilling.portalAfterPurchase")}
+            {t("accountBilling.portalAfterPurchase")}
           </p>
         )}
         <p className="mt-4 text-xs leading-6 text-[var(--color-ink-soft)]">
@@ -334,7 +455,7 @@ function PaymentMethodsTab({
 }) {
   const { t } = useTranslation();
   if (authResolving) {
-    return <BillingNotice>{t("accountBilling.loadingMethods")}</BillingNotice>;
+    return <BillingSkeleton shape="panel" label={t("accountBilling.loadingMethods")} />;
   }
 
   if (!isSignedIn) {
@@ -391,17 +512,12 @@ function PortalButton({ label }: { label: string }) {
         type="button"
         onClick={handleOpenPortal}
         disabled={busy}
-        className="button-outline px-4 py-2 text-sm disabled:opacity-60"
+        className="button-outline px-4 py-2 text-sm"
       >
         {busy ? t("accountBilling.openingStripe") : label}
       </button>
       {portalError ? (
-        <p
-          role="alert"
-          className="mt-3 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
-        >
-          {t(portalError)}
-        </p>
+        <InlineAlert tone="error" className="mt-3">{t(portalError)}</InlineAlert>
       ) : null}
     </div>
   );
@@ -412,6 +528,8 @@ function PurchasesTab({
   userId,
   isLoading,
   error,
+  onRetry,
+  retryFocusRef,
   isSignedIn,
   authResolving,
 }: OrderTabProps & { userId: string | null }) {
@@ -419,7 +537,7 @@ function PurchasesTab({
   const [refundFor, setRefundFor] = useState<Order | null>(null);
 
   if (authResolving) {
-    return <BillingNotice>{t("accountBilling.loadingPurchases")}</BillingNotice>;
+    return <BillingSkeleton shape="list" label={t("accountBilling.loadingPurchases")} />;
   }
 
   if (!isSignedIn) {
@@ -427,22 +545,23 @@ function PurchasesTab({
   }
 
   if (isLoading) {
-    return <BillingNotice>{t("accountBilling.loadingPurchases")}</BillingNotice>;
+    return <BillingSkeleton shape="list" label={t("accountBilling.loadingPurchases")} />;
   }
 
   if (error) {
-    return <BillingNotice tone="error">{t(error)}</BillingNotice>;
+    return <LoadErrorAlert onRetry={onRetry} focusRef={retryFocusRef}>{t(error)}</LoadErrorAlert>;
   }
 
   // Empty state ONLY when the query genuinely returned zero rows — no
   // client-side filtering hides real orders here.
   if (orders.length === 0) {
     return (
-      <BillingEmptyState
-        eyebrow={t("accountBilling.tabs.purchases")}
+      // O vazio padrao da plataforma, sem a etiqueta "EMPTY" no ambar de
+      // pendente: nada esta pendente, so nao ha compras.
+      <EmptyState
+        as="h3"
         title={t("accountBilling.noPurchases")}
-        detail={t("accountBilling.noPurchasesBody")}
-        statusLabel={t("accountBilling.empty")}
+        description={t("accountBilling.noPurchasesBody")}
       />
     );
   }
@@ -484,13 +603,16 @@ function PurchasesTab({
                 <span className="rounded-md bg-white px-3 py-1 text-sm font-bold text-[var(--color-primary)]">
                   {formatMoney(order.amountMinor, order.currency, locale)}
                 </span>
+                {/* Recibo: link de texto com alvo de 44px. Pedir reembolso é
+                    dinheiro: botão de contorno, não link dourado (o latão é
+                    só de marco, ui/button.tsx). */}
                 <div className="flex flex-wrap items-center justify-end gap-3">
                   {order.receiptUrl ? (
                     <a
                       href={order.receiptUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-xs font-semibold text-[var(--color-primary)] hover:underline"
+                      className="inline-flex min-h-11 items-center text-xs font-semibold text-[var(--color-primary)] hover:underline"
                     >
                       {t("accountBilling.receipt")} &rarr;
                     </a>
@@ -499,7 +621,7 @@ function PurchasesTab({
                     <button
                       type="button"
                       onClick={() => setRefundFor(order)}
-                      className="min-h-6 text-xs font-semibold text-[var(--color-accent-fg)] hover:underline"
+                      className="button-outline px-3 py-2 text-xs"
                     >
                       {t("accountBilling.requestRefund")}
                     </button>
@@ -548,20 +670,34 @@ function RefundModal({
   const dialogRef = useRef<HTMLDivElement>(null);
   useModalFocus(dialogRef, true);
 
+  const [busy, setBusy] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [done, setDone] = useState(false);
+
+  // Enquanto o pedido de reembolso está indo, nenhuma saída fecha a janela:
+  // o Cancelar trava e o X some; Esc e o clique fora seguem a mesma regra
+  // (antes fechavam e o resultado do pedido chegava numa janela já fechada).
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && !busy) {
         onClose();
       }
     }
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  }, [busy, onClose]);
 
-  const [busy, setBusy] = useState(false);
-  const [submitError, setSubmitError] = useState("");
-  const [done, setDone] = useState(false);
+  // A página de trás não rola enquanto a janela está aberta. Na conta quem
+  // rola é o .platform-content (fora do painel, o body).
+  useEffect(() => {
+    const scroller = document.querySelector<HTMLElement>(".platform-content") ?? document.body;
+    const previousOverflow = scroller.style.overflow;
+    scroller.style.overflow = "hidden";
+    return () => {
+      scroller.style.overflow = previousOverflow;
+    };
+  }, []);
 
   async function handleSubmit() {
     setSubmitError("");
@@ -580,28 +716,42 @@ function RefundModal({
     <div
       ref={dialogRef}
       tabIndex={-1}
-      className="fixed inset-0 z-[70] grid place-items-center bg-[rgba(7,9,13,0.55)] p-4 outline-none"
+      className="dialog-backdrop fixed inset-0 z-[70] grid place-items-center p-4 outline-none"
       role="dialog"
       aria-modal="true"
       aria-label={t("accountBilling.requestRefund")}
-      onClick={onClose}
+      onClick={busy ? undefined : onClose}
     >
       <div
-        className="modal-panel modal-panel-scroll w-full max-w-md rounded-xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)]"
+        className="dialog-panel modal-panel modal-panel-scroll relative"
         onClick={(event) => event.stopPropagation()}
       >
+        {/* O X faz o mesmo que o Cancelar (e o Concluído): some enquanto o
+            pedido de reembolso está indo, quando o Cancelar também trava. */}
+        {busy ? null : (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t("accountBilling.closeDialog")}
+            className="button-icon absolute right-3 top-3"
+          >
+            <X aria-hidden="true" size={18} />
+          </button>
+        )}
         {done ? (
           <>
-            <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-success-fg)]">
+            <div className="p-6">
+            <p className="pr-10 text-xs uppercase tracking-[0.22em] text-[var(--color-success-fg)]">
               {t("accountBilling.refundRequested")}
             </p>
-            <h2 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
+            <h2 className="display-title mt-2 pr-10 text-2xl text-[var(--color-primary)]">
               {t("accountBilling.refundReceived")}
             </h2>
             <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
               {t("accountBilling.refundFor")} <strong>{order.courseTitle}</strong> {t("accountBilling.refundSubmittedBody")}
             </p>
-            <div className="mt-6 flex justify-end">
+            </div>
+            <div className="dialog-footer">
               <button
                 type="button"
                 onClick={onClose}
@@ -613,10 +763,11 @@ function RefundModal({
           </>
         ) : (
           <>
-            <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
+            <div className="p-6">
+            <p className="pr-10 text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               {t("accountBilling.refundRequest")}
             </p>
-            <h2 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
+            <h2 className="display-title mt-2 pr-10 text-2xl text-[var(--color-primary)]">
               {t("accountBilling.requestRefund")}.
             </h2>
             <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -642,20 +793,18 @@ function RefundModal({
             </dl>
 
             {submitError ? (
-              <p
-                role="alert"
-                className="mt-4 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
-              >
-                {t(submitError)}
-              </p>
+              <InlineAlert tone="error" className="mt-4">{t(submitError)}</InlineAlert>
             ) : null}
+            </div>
 
-            <div className="mt-6 flex justify-end gap-3">
+            {/* O rodapé da casa: abaixo do sm empilha, o pedido em cima e o
+                Cancelar embaixo. */}
+            <div className="dialog-footer">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={busy}
-                className="button-outline px-4 py-2 text-sm disabled:opacity-60"
+                className="button-outline px-4 py-2 text-sm"
               >
                 {t("accountBilling.cancel")}
               </button>
@@ -663,9 +812,9 @@ function RefundModal({
                 type="button"
                 onClick={handleSubmit}
                 disabled={busy}
-                className="button-solid px-4 py-2 text-sm disabled:opacity-60"
+                className="button-solid px-4 py-2 text-sm"
               >
-                {t(busy ? "accountBilling.submitting" : "accountBilling.submitRefund")}
+                <BusyLabel busy={busy} idle={t("accountBilling.submitRefund")} busyText={t("accountBilling.submitting")} />
               </button>
             </div>
           </>
@@ -691,21 +840,8 @@ function refundErrorKey(error: unknown): string {
   return `accountBilling.refundErrors.${error instanceof Error ? keys[error.message] ?? "unknown" : "unknown"}`;
 }
 
-function BillingNotice({
-  children,
-  tone = "muted",
-}: {
-  children: React.ReactNode;
-  tone?: "muted" | "error";
-}) {
-  if (tone === "error") {
-    return (
-      <p className="rounded-lg border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-        {children}
-      </p>
-    );
-  }
-
+// Os erros de leitura usam o LoadErrorAlert (com "Try again"); aqui só o aviso neutro.
+function BillingNotice({ children }: { children: React.ReactNode }) {
   return (
     <div className="rounded-lg border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6 text-sm text-[var(--color-ink-soft)]">
       {children}
@@ -713,33 +849,50 @@ function BillingNotice({
   );
 }
 
-function BillingEmptyState({
-  eyebrow,
-  title,
-  detail,
-  statusLabel,
-}: {
-  eyebrow: string;
-  title: string;
-  detail: string;
-  statusLabel: string;
-}) {
+// F-03: cada aba carregava numa caixa tracejada de uma linha ("Loading your
+// billing overview...") que depois virava um layout bem mais alto. Agora
+// blocos no formato do que vem, no padrao do esqueleto do perfil: a frase fica
+// para o leitor de tela, os blocos nao. O pulso para no bloco global de
+// "reduzir movimento".
+const skeletonBlock = "bg-[var(--color-surface-strong)]";
+
+function BillingSkeleton({ label, shape }: { label: string; shape: "overview" | "list" | "panel" }) {
   return (
-    <div className="rounded-lg border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            {eyebrow}
-          </p>
-          <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
-            {title}
-          </h3>
-        </div>
-        <StatusChip status="pending" label={statusLabel} />
+    <div role="status">
+      <span className="sr-only">{label}</span>
+      <div aria-hidden="true" className="animate-pulse">
+        {shape === "overview" ? (
+          <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+            <div className="grid gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-5">
+              <div className={`h-3 w-2/5 rounded-sm ${skeletonBlock}`} />
+              <div className={`h-8 w-1/2 rounded-md ${skeletonBlock}`} />
+              <div className={`mt-2 h-24 rounded-md ${skeletonBlock}`} />
+              <div className={`mt-2 h-11 w-2/5 rounded-md ${skeletonBlock}`} />
+            </div>
+            <div className="grid content-start gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-5">
+              <div className={`h-3 w-3/5 rounded-sm ${skeletonBlock}`} />
+              <div className={`h-3 rounded-sm ${skeletonBlock}`} />
+              <div className={`h-3 rounded-sm ${skeletonBlock}`} />
+              <div className={`h-3 w-2/3 rounded-sm ${skeletonBlock}`} />
+              <div className={`mt-2 h-16 rounded-md ${skeletonBlock}`} />
+            </div>
+          </div>
+        ) : shape === "list" ? (
+          <div className="grid gap-3">
+            <div className={`h-4 w-28 rounded-sm ${skeletonBlock}`} />
+            {[0, 1, 2].map((row) => (
+              <div key={row} className={`h-28 rounded-lg ${skeletonBlock}`} />
+            ))}
+          </div>
+        ) : (
+          <div className="grid gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-5">
+            <div className={`h-3 w-1/4 rounded-sm ${skeletonBlock}`} />
+            <div className={`h-7 w-1/2 rounded-md ${skeletonBlock}`} />
+            <div className={`h-3 w-full max-w-2xl rounded-sm ${skeletonBlock}`} />
+            <div className={`mt-2 h-11 w-48 rounded-md ${skeletonBlock}`} />
+          </div>
+        )}
       </div>
-      <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-        {detail}
-      </p>
     </div>
   );
 }

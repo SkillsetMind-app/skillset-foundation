@@ -4,7 +4,7 @@ import { LocaleSwitcher } from "@/components/i18n/locale-switcher";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import { PrivacyChoicesButton } from "@/components/site/privacy-choices-button";
 import { BrandName } from "@/components/shared/brand-name";
-import { hasRealPublishedCourse } from "@/lib/data/server/public-course";
+import { isMarketplaceOpen } from "@/lib/data/server/public-course";
 import { getServerTranslation } from "@/lib/i18n/server";
 
 // Slim 3-column footer. /how-it-works IS listed: the standalone page exists and
@@ -49,13 +49,13 @@ const footerColumns = [
   },
 ] as const;
 
-// Sem curso real publicado, loja e diretório de instrutores saem do rodapé
-// (#471): o diretório só listaria perfis sem nada à venda.
+// Vitrine fechada (menos de 12 cursos de 5 professores), loja e diretório de
+// instrutores saem do rodapé, pela mesma regra do menu e da home.
 const hiddenWithoutRealCourses = new Set(["/courses", "/instructors"]);
 
 export async function SiteFooter() {
   // Mesma leitura da home: anônima, em cache de 5 min, e falha conta como vazia.
-  const [{ t }, hasRealCourses] = await Promise.all([getServerTranslation(), hasRealPublishedCourse()]);
+  const [{ t }, hasRealCourses] = await Promise.all([getServerTranslation(), isMarketplaceOpen()]);
 
   return (
     // Faixa de largura total com filete no topo. Antes era um cartão com sombra
@@ -76,14 +76,15 @@ export async function SiteFooter() {
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
                   {t(column.titleKey)}
                 </p>
-                {/* No celular cada link é uma linha de toque inteira (44 px); a
-                    partir de sm a lista volta a ser compacta. */}
-                <div className="mt-2 grid sm:mt-3 sm:gap-2">
+                {/* No celular e no tablet cada link é uma linha de toque inteira
+                    (44 px); só no desktop, com mouse, a lista volta a ser
+                    compacta. A partir de sm ela caía para ~20 px no tablet. */}
+                <div className="mt-2 grid lg:mt-3 lg:gap-2">
                   {column.links.filter(([, href]) => hasRealCourses || !hiddenWithoutRealCourses.has(href)).map(([labelKey, href]) => (
                     <Link
                       key={`${column.titleKey}-${href}`}
                       href={href}
-                      className="flex min-h-11 items-center text-sm font-semibold text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-primary)] sm:block sm:min-h-0"
+                      className="flex min-h-11 items-center text-sm font-semibold text-[var(--color-ink)] transition-colors hover:text-[var(--color-primary)] lg:block lg:min-h-0"
                     >
                       {t(labelKey)}
                     </Link>

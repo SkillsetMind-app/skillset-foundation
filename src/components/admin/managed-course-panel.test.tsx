@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ManagedCoursePanel } from "@/components/admin/managed-course-panel";
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
+import { CONFIRM_GUARD_MS } from "@/components/ui/confirm-dialog";
 import type { TeacherCourse } from "@/domain/teacher-course";
 
 const mocks = vi.hoisted(() => ({ subscribe: vi.fn(), remove: vi.fn(), review: vi.fn(), feature: vi.fn() }));
@@ -22,12 +23,17 @@ function deliver(courses = [course]) { act(() => mocks.subscribe.mock.calls[0][0
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Só o Date é falso: o confirmar ignora cliques nos primeiros CONFIRM_GUARD_MS.
+  vi.useFakeTimers({ toFake: ["Date"] });
+  // jsdom não tem showModal/close; o mesmo arranjo do teste da janela de conta.
+  HTMLDialogElement.prototype.showModal = function showModal() { this.setAttribute("open", ""); };
+  HTMLDialogElement.prototype.close = function close() { this.removeAttribute("open"); this.dispatchEvent(new Event("close")); };
   mocks.subscribe.mockImplementation(() => vi.fn());
   mocks.remove.mockResolvedValue(undefined);
   mocks.review.mockResolvedValue(undefined);
   mocks.feature.mockResolvedValue(undefined);
 });
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.useRealTimers(); });
 
 describe("catalog presentation and language", () => {
   it.each([0, 1, 2])("translates known counts for %i courses and preserves authored categories", count => {
@@ -64,17 +70,32 @@ describe("catalog presentation and language", () => {
     mocks.remove.mockReturnValue(new Promise<void>(resolve => { finish = resolve; }));
     render(panel());
     deliver();
-    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    // Apagar abre a mesma janela do Unpublish: vermelho cheio, Cancelar focado.
+    const trigger = screen.getByRole("button", { name: "Delete" });
+    fireEvent.click(trigger);
+    const dialog = screen.getByRole("dialog", { name: `Delete ${course.title}?` });
+    expect(dialog).toHaveClass("modal-panel");
+    expect(within(dialog).getByRole("button", { name: "Delete" })).toHaveClass("button-danger-solid");
+    expect(within(dialog).getByRole("button", { name: "Cancel" })).toHaveFocus();
     language();
-    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(screen.getByRole("dialog", { name: `¿Eliminar ${course.title}?` })).toBeInTheDocument();
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancelar" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(mocks.remove).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Eliminar" }));
-    fireEvent.click(screen.getByRole("button", { name: "Confirmar eliminación" }));
+    const confirm = within(screen.getByRole("dialog")).getByRole("button", { name: "Eliminar" });
+    vi.advanceTimersByTime(CONFIRM_GUARD_MS);
+    fireEvent.click(confirm);
+    fireEvent.click(confirm);
     expect(mocks.remove).toHaveBeenCalledWith("course-a");
+    expect(mocks.remove).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("status")).toBeNull();
-    expect(screen.getByRole("button", { name: "Eliminando..." })).toBeDisabled();
+    expect(confirm).toHaveAttribute("aria-busy", "true");
+    // O cartão trava o próprio "Eliminar" enquanto apaga, como os vizinhos.
+    expect(within(screen.getByRole("article")).getByRole("button", { name: "Eliminar" })).toBeDisabled();
     language();
     await act(async () => finish());
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.getByRole("status")).toHaveTextContent("Course permanently deleted.");
     language();
     expect(screen.getByRole("status")).toHaveTextContent("Curso eliminado de forma permanente.");
@@ -89,8 +110,45 @@ describe("catalog presentation and language", () => {
     deliver([{ ...course, status }]);
     language();
     fireEvent.click(screen.getByRole("button", { name: button }));
+    // Retirar do ar pergunta antes; publicar de novo segue direto.
+    if (status === "published") {
+      vi.advanceTimersByTime(CONFIRM_GUARD_MS);
+      fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: button }));
+    }
     expect(await screen.findByRole("status")).toHaveTextContent(/Curso/);
     expect(mocks.review).toHaveBeenCalledWith("course-a", next, note);
+    expect(mocks.review).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks before unpublishing, names the course, and cancel changes nothing", async () => {
+    let finish!: () => void;
+    mocks.review.mockReturnValue(new Promise<void>(resolve => { finish = resolve; }));
+    render(panel());
+    deliver();
+    const unpublish = screen.getByRole("button", { name: "Unpublish" });
+    expect(unpublish).toHaveClass("button-danger");
+    fireEvent.click(unpublish);
+    const dialog = screen.getByRole("dialog", { name: `Unpublish ${course.title}?` });
+    expect(dialog).toHaveClass("modal-panel");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(mocks.review).not.toHaveBeenCalled();
+    fireEvent.click(unpublish);
+    const confirm = within(screen.getByRole("dialog")).getByRole("button", { name: "Unpublish" });
+    vi.advanceTimersByTime(CONFIRM_GUARD_MS);
+    // Duplo clique: grava uma vez e a janela segue aberta, sem soltar o 2º clique no "Feature" de baixo.
+    fireEvent.click(confirm);
+    fireEvent.click(confirm);
+    expect(mocks.review).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(confirm).toHaveAttribute("aria-busy", "true");
+    // Só o botão apertado gira; os vizinhos travam com o próprio nome.
+    const card = screen.getByRole("article");
+    expect(within(card).getByRole("button", { name: "Unpublish" })).toHaveAttribute("aria-busy", "true");
+    expect(within(card).getByRole("button", { name: "Feature" })).toBeDisabled();
+    expect(within(card).getByRole("button", { name: "Feature" })).not.toHaveAttribute("aria-busy");
+    await act(async () => finish());
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(mocks.review).toHaveBeenCalledTimes(1);
   });
 
@@ -109,7 +167,8 @@ describe("catalog presentation and language", () => {
     render(panel());
     deliver();
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
-    fireEvent.click(screen.getByRole("button", { name: "Confirm delete" }));
+    vi.advanceTimersByTime(CONFIRM_GUARD_MS);
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Delete" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Courses with enrollments or orders must be unpublished instead.");
     language();
     expect(screen.getByRole("alert")).toHaveTextContent("Los cursos con inscripciones o pedidos deben retirarse de publicación.");

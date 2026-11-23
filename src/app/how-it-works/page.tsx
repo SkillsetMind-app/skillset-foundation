@@ -62,9 +62,11 @@ export default async function HowItWorksPage() {
         {steps.map((step, index) => {
           const { Icon } = step;
           return (
+            // Cartão parado: não é link, e subir no hover prometia um clique
+            // que não fazia nada.
             <article
               key={step.title}
-              className="group rounded-lg border fine-rule bg-white p-5 shadow-[var(--shadow-soft)] transition duration-[180ms] ease-out hover:-translate-y-0.5 hover:border-[rgba(26,54,93,0.18)] hover:shadow-[0_18px_36px_rgba(15,39,68,0.10)]"
+              className="rounded-lg border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]"
             >
               <div className="flex items-center justify-between">
                 <span

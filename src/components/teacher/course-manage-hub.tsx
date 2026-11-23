@@ -1,15 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronLeft, ChevronRight, Circle } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { ShortId } from "@/components/shared/short-id";
 import { StatusChip } from "@/components/shared/status-chip";
+import { BusyLabel } from "@/components/ui/busy-label";
+import { DrawnCheck } from "@/components/ui/drawn-check";
 import {
   CourseActionsMenu,
   DeleteOrArchiveCourseDialog,
@@ -19,14 +21,19 @@ import {
   PanelCard,
   TaxPanel,
 } from "@/components/teacher/course-commerce-panels";
+import { BuilderSkeleton } from "@/components/teacher/builder-skeleton";
 import { CourseShareLink } from "@/components/teacher/course-share-link";
+import { SupportDetails } from "@/components/teacher/support-details";
 import { CourseOffersPanel } from "@/components/teacher/course-offers-panel";
 import { CourseOverviewPanel, StatCard } from "@/components/teacher/course-overview-panel";
 import { ReadinessGroups } from "@/components/teacher/readiness-groups";
 import { CourseStudentRoster } from "@/components/teacher/course-student-roster";
 import { CourseLandingEditor } from "@/components/teacher/course-landing-editor";
 import { SalesPageEditor } from "@/components/teacher/sales-page-editor";
+import { useConfirm } from "@/components/teacher/use-confirm";
 import { InlineAlert } from "@/components/ui/inline-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import type { PlanId } from "@/data/plans";
 import { planById, refundWindowDays } from "@/data/plans";
 import {
@@ -36,9 +43,11 @@ import {
   quotaStatus,
 } from "@/domain/entitlements";
 import { usePublishGates } from "@/components/teacher/use-publish-gates";
+import type { CourseAsset } from "@/domain/course-asset";
 import {
   countLessonFiles,
   getCourseReadiness,
+  getLessonIdsWithMedia,
   upcomingSessionsOf,
   type CourseReadinessItem,
 } from "@/domain/course-readiness";
@@ -170,6 +179,30 @@ const allSectionIds = new Set<string>([
   ...roadmapSections.map((s) => s.id),
 ]);
 
+// O supabase-js devolve o erro do rpc como objeto (nem sempre Error): o texto
+// vem de `message` em qualquer dos dois.
+function serverMessage(cause: unknown): string {
+  const message = (cause as { message?: unknown } | null)?.message;
+  return typeof message === "string" ? message.trim() : "";
+}
+
+// A recusa do banco (set_own_course_featured) e em ingles de desenvolvedor.
+// Cada recusa conhecida vira a frase da casa que mantem o que fazer; o resto,
+// "recarregue e tente de novo": se o botao estava ligado, a tela estava velha.
+function highlightRefusalKey(detail: string): string {
+  const text = detail.toLowerCase();
+  const reason = text.includes("sign in")
+    ? "signIn"
+    : text.includes("only a published course")
+      ? "notPublished"
+      : text.includes("not included in your current plan")
+        ? "plan"
+        : /using all .* highlights/.test(text)
+          ? "quota"
+          : "other";
+  return `creatorPanel.hub.highlight.refused.${reason}`;
+}
+
 /**
  * Self-serve marketplace highlight, metered by the teacher's plan.
  *
@@ -177,7 +210,9 @@ const allSectionIds = new Set<string>([
  * second round-trip, and `featured` is read straight off the realtime course
  * row — so after the RPC lands, the subscription repaints this card. The
  * numbers here are the *display*; `set_own_course_featured` is what actually
- * enforces the quota, and its message is surfaced verbatim when it refuses.
+ * enforces the quota. Quando ela recusa, a tela diz a frase da casa com o que
+ * fazer (ver highlightRefusalKey); o texto cru do banco fica recolhido no
+ * "Details for support".
  */
 function MarketplaceHighlightPanel({
   course,
@@ -190,9 +225,9 @@ function MarketplaceHighlightPanel({
 }) {
   const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
-  // The RPC's refusal is data and is shown verbatim; our own fallback is kept
-  // as a dictionary key so it follows a locale switch while the card is open.
-  const [error, setError] = useState<{ message: string } | { key: string } | null>(null);
+  // Chave do dicionario (segue a troca de idioma com o cartao aberto) e o
+  // texto cru do servidor, que so vai para o "Details for support".
+  const [error, setError] = useState<{ key: string; detail: string } | null>(null);
 
   const featured = course.featured === true;
   const limit = effectiveLimit(planId, "featuredSlots");
@@ -225,11 +260,8 @@ function MarketplaceHighlightPanel({
     try {
       await setOwnCourseFeatured(course.id, !featured);
     } catch (toggleError) {
-      setError(
-        toggleError instanceof Error && toggleError.message
-          ? { message: toggleError.message }
-          : { key: "creatorPanel.hub.highlight.updateError" }
-      );
+      const detail = serverMessage(toggleError);
+      setError({ key: highlightRefusalKey(detail), detail });
     } finally {
       setSaving(false);
     }
@@ -258,13 +290,13 @@ function MarketplaceHighlightPanel({
           type="button"
           onClick={() => void handleToggle()}
           disabled={saving || !canToggle}
-          className={`${featured ? "button-outline" : "button-solid"} px-4 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50`}
+          className={`${featured ? "button-outline" : "button-solid"} px-4 py-2 text-xs disabled:cursor-not-allowed`}
         >
-          {saving
-            ? t("creatorPanel.hub.highlight.saving")
-            : featured
-              ? t("creatorPanel.hub.highlight.remove")
-              : t("creatorPanel.hub.highlight.add")}
+          <BusyLabel
+            busy={saving}
+            idle={featured ? t("creatorPanel.hub.highlight.remove") : t("creatorPanel.hub.highlight.add")}
+            busyText={t("creatorPanel.hub.highlight.saving")}
+          />
         </button>
       </div>
       {gateReason ? (
@@ -288,9 +320,16 @@ function MarketplaceHighlightPanel({
         </p>
       ) : null}
       {error ? (
-        <p className="mt-3 text-xs font-semibold text-[var(--color-danger-fg)]">
-          {"message" in error ? error.message : t(error.key)}
-        </p>
+        <>
+          <InlineAlert tone="error" className="mt-3" title={t("creatorPanel.hub.highlight.updateError")}>
+            {t(error.key)}
+          </InlineAlert>
+          {error.detail ? (
+            <SupportDetails className="mt-1">
+              <p className="select-all">{error.detail}</p>
+            </SupportDetails>
+          ) : null}
+        </>
       ) : null}
     </PanelCard>
   );
@@ -361,6 +400,50 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
 
   const courseLoaded = loadedCourseId === courseId;
 
+  // Manage › Page: o texto de venda e a página têm Save próprio, e sair com
+  // "Unsaved changes" perdia o que foi digitado sem uma palavra. O aviso vale
+  // para fechar ou recarregar a aba e para a navegação que ESTE painel controla
+  // (as seções e os links dele). A barra lateral não é dele e segue direto.
+  const [salesDirty, setSalesDirty] = useState(false);
+  const [landingDirty, setLandingDirty] = useState(false);
+  const pageDirty = section === "page" && (salesDirty || landingDirty);
+  const { ask, dialog: leaveDialog } = useConfirm();
+  useEffect(() => {
+    if (!pageDirty) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [pageDirty]);
+  const leavePage = (go: () => void) => {
+    if (!pageDirty) {
+      go();
+      return;
+    }
+    ask({
+      title: t("creatorEditor.builder.confirm.leaveTitle"),
+      body: t("creatorEditor.builder.confirm.leave"),
+      confirmLabel: t("creatorEditor.builder.confirm.leaveAction"),
+      cancelLabel: t("creatorEditor.builder.confirm.stay"),
+      danger: true,
+      run: go,
+    });
+  };
+  // Links do painel (voltar ao construtor, "Edit in Builder", menu do curso):
+  // a captura segura o clique antes do Link do Next e, confirmado, navega.
+  // Aba nova e clique modificado não desmontam nada e seguem direto.
+  const guardPageLinks = (event: ReactMouseEvent<HTMLElement>) => {
+    if (!pageDirty || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const anchor = (event.target as Element | null)?.closest?.("a[href]");
+    if (!(anchor instanceof HTMLAnchorElement) || (anchor.target && anchor.target !== "_self")) return;
+    const destination = new URL(anchor.href, window.location.href);
+    if (destination.origin !== window.location.origin) return;
+    event.preventDefault();
+    leavePage(() => router.push(destination.pathname + destination.search + destination.hash));
+  };
+
   useEffect(() => {
     const menu = menuRef.current;
     const viewport = menu?.closest<HTMLElement>(".platform-content");
@@ -416,22 +499,37 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
       () => {},
     );
   }, [ownerUid, courseId, productFormat]);
-  const ebookModules = productFormat === "ebook" ? course?.modules : undefined;
-  const [fileCount, setFileCount] = useState<{ courseId: string; count: number } | null>(null);
+  // A lista de arquivos, como o construtor le: o arquivo do e-book e o
+  // "conteudo em toda aula". Sem ela o Manage tirava esse item e mostrava
+  // outra porcentagem para o mesmo curso. Lida de novo a cada snapshot do
+  // curso, como era a do e-book.
+  const courseModules = course?.modules;
+  const [courseAssets, setCourseAssets] = useState<{ courseId: string; list: CourseAsset[] } | null>(null);
+  // A falha da lista era engolida, e o Manage seguia com outra porcentagem.
+  // Agora a conta espera ("—%") e a falha ganha "Try again" (B-15).
+  const [assetsFailedFor, setAssetsFailedFor] = useState<string | null>(null);
+  const readinessLineRef = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
-    if (!ebookModules) {
+    if (!courseModules) {
       return;
     }
     let cancelled = false;
     fetchCourseAssets(courseId)
-      .then((assets) => {
-        if (!cancelled) setFileCount({ courseId, count: countLessonFiles(ebookModules, assets) });
+      .then((list) => {
+        if (!cancelled) setCourseAssets({ courseId, list });
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (!cancelled) setAssetsFailedFor(courseId);
+      });
     return () => {
       cancelled = true;
     };
-  }, [courseId, ebookModules]);
+  }, [courseId, courseModules]);
+  const retryCourseAssets = () =>
+    fetchCourseAssets(courseId).then(
+      (list) => setCourseAssets({ courseId, list }),
+      () => setAssetsFailedFor(courseId),
+    );
 
   const isOwner = Boolean(course && user && course.ownerId === user.uid);
   // Server-enforced by the commerce RPCs; surfaced here so the panels can
@@ -439,11 +537,9 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   const activationBlocked = account.verificationRequired && !account.verificationApproved;
 
   if (!courseLoaded) {
-    return (
-      <section className="rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
-        <p className="text-sm text-[var(--color-ink-soft)]">{t("creatorPanel.hub.loading")}</p>
-      </section>
-    );
+    // Igual ao fallback da rota (F-03): blocos no lugar do cabeçalho, da
+    // fileira e do painel, e uma frase só para o leitor de tela.
+    return <BuilderSkeleton label={t("teacherRouteResidual.manageLoading")} />;
   }
 
   // ProtectedSurface guarantees a signed-in user here, so a null user is
@@ -464,23 +560,32 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
     );
   }
 
-  // A mesma lista que o construtor mostra no chip, na barra e no rodape, menos
-  // um item: "conteudo em toda aula" (lessonMedia) precisa da lista de arquivos,
-  // que o Manage nao carrega, entao aqui ele fica de fora e a porcentagem pode
-  // diferir da do construtor. O aviso "aulas sem conteudo" do painel cobre o
-  // mesmo caso com a mesma regra (getLessonIdsWithMedia). Antes o Manage tinha
-  // regra propria e o mesmo curso aparecia com tres porcentagens diferentes.
+  // A mesma lista do construtor, com as mesmas entradas: a lista de arquivos
+  // decide "conteudo em toda aula" (lessonMedia) e o arquivo do e-book, pela
+  // mesma regra do aviso "aulas sem conteudo" do painel. Antes o Manage tirava
+  // o lessonMedia e a porcentagem podia diferir da do construtor.
+  const assets = courseAssets?.courseId === course.id ? courseAssets.list : null;
   const readiness = getCourseReadiness(
     {
       ...course,
+      lessonIdsWithMedia: assets ? getLessonIdsWithMedia(course.modules, assets) : undefined,
       scheduledSessionCount:
         productFormat === "live_event" && sessionCount?.courseId === course.id ? sessionCount.count : undefined,
       lessonFileCount:
-        productFormat === "ebook" && fileCount?.courseId === course.id ? fileCount.count : undefined,
+        productFormat === "ebook" && assets ? countLessonFiles(course.modules, assets) : undefined,
     },
     account,
     t,
   );
+  // A linha "6 of 8 required steps done · 75% ready" e o nome da barra.
+  const readinessText = t("creatorPanel.hub.checklist.progress")
+    .replace("{done}", () => String(readiness.doneCount))
+    .replace("{total}", () => String(readiness.total))
+    .replace("{percent}", () => String(readiness.percent));
+  // Com aula no curso, a conta depende da lista de arquivos: sem ela o número
+  // sairia diferente do construtor. Até ela chegar, "—%" e nada de barra.
+  const readinessPending = !assets && course.modules.some((courseModule) => courseModule.lessons.length > 0);
+  const assetsFailed = readinessPending && assetsFailedFor === course.id;
   const pricing = getCoursePricingShape(course);
   // "Add the yearly plan" na etapa de preco chega com ?addPrice=yearly&amount=
   // (em centavos): o formulario de outro preco ja abre com o plano anual.
@@ -515,7 +620,8 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   );
 
   return (
-    <div className="grid gap-5">
+    <div className="grid gap-5" onClickCapture={guardPageLinks}>
+      {leaveDialog}
       <section className="border-b border-[var(--color-line)] bg-white pb-5">
         <Link
           href="/teach/builder"
@@ -566,8 +672,12 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
               <select
                 aria-label={t("creatorPanel.hub.header.switchCourse")}
                 value={course.id}
-                onChange={(event) => router.push(`/teach/courses/${event.target.value}/manage`)}
-                className="min-h-11 rounded-md border fine-rule bg-white px-3 py-2 text-xs font-semibold text-[var(--color-ink)]"
+                onChange={(event) => {
+                  const next = event.target.value;
+                  leavePage(() => router.push(`/teach/courses/${next}/manage`));
+                }}
+                // Até a largura da linha: um título longo não passa da tela de 375px.
+                className="field-input field-input--inline max-w-full"
               >
                 <option value={course.id}>{course.title}</option>
                 {switchableCourses.map((candidate) => (
@@ -615,8 +725,9 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
         {course.status === "inactive" ? (
           // Arquivar sem dizer o que fazer depois deixa o professor achando que
           // perdeu o curso. O chip diz o estado; esta linha diz a saida.
-          <InlineAlert tone="warning" className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span>{t("creatorPanel.hub.header.archivedNotice")}</span>
+          // Sem o flex próprio: ganha o ícone de aviso, e o link segue a frase.
+          <InlineAlert tone="warning" className="mt-4">
+            {t("creatorPanel.hub.header.archivedNotice")}{" "}
             <Link
               href={`/teach/builder?courseId=${encodeURIComponent(course.id)}&tab=review`}
               className="underline underline-offset-2"
@@ -667,7 +778,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 const row = sectionRowRef.current;
                 if (row) row.scrollBy({ left: sign * row.clientWidth, behavior: "auto" });
               }}
-              className={`absolute top-0 flex h-11 w-11 items-center justify-center text-[var(--color-primary)] disabled:opacity-30 lg:hidden ${direction === "previous" ? "left-0" : "right-0"}`}
+              className={`absolute top-0 flex h-11 w-11 items-center justify-center text-[var(--color-primary)] disabled:opacity-60 lg:hidden ${direction === "previous" ? "left-0" : "right-0"}`}
             >
               <Icon size={18} aria-hidden="true" />
             </button>
@@ -677,8 +788,10 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
               <button
                 key={item.id}
                 ref={section === item.id ? activeSectionRef : undefined}
+                // A seção aberta era só cor: o leitor de tela não sabia onde estava.
+                aria-current={section === item.id ? "page" : undefined}
                 type="button"
-                onClick={() => setSection(item.id)}
+                onClick={() => (item.id === section ? undefined : leavePage(() => setSection(item.id)))}
                 className={`min-h-11 shrink-0 whitespace-nowrap rounded-md border-b-2 px-3 py-2 text-left text-sm font-semibold transition lg:w-full lg:border-b-0 lg:border-l-2 ${
                   section === item.id
                     ? "border-[var(--color-primary)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]"
@@ -697,8 +810,9 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
               <button
                 key={item.id}
                 ref={section === item.id ? activeSectionRef : undefined}
+                aria-current={section === item.id ? "page" : undefined}
                 type="button"
-                onClick={() => setSection(item.id)}
+                onClick={() => (item.id === section ? undefined : leavePage(() => setSection(item.id)))}
                 className={`rounded-md px-3 py-2 text-left text-sm font-semibold transition ${
                   section === item.id
                     ? "bg-[var(--color-surface-soft)] text-[var(--color-primary)]"
@@ -727,47 +841,54 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
               title={t("creatorPanel.hub.checklist.title")}
               description={t(`creatorPanel.hub.status.${course.status}`)}
             >
-              <div className="mt-4 h-2 overflow-hidden rounded-full bg-[var(--color-surface-hover)]">
-                <div
-                  data-testid="publish-readiness-bar"
-                  className="h-full rounded-full bg-[var(--color-primary)] transition-all"
-                  style={{ width: `${readiness.percent}%` }}
-                />
-              </div>
-              <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
-                {t("creatorPanel.hub.checklist.progress")
-                  .replace("{done}", () => String(readiness.doneCount))
-                  .replace("{total}", () => String(readiness.total))
-                  .replace("{percent}", () => String(readiness.percent))}
+              {/* A mesma barra do construtor (a compartilhada): as duas telas
+                  desenhavam a mesma prontidão de jeitos diferentes. */}
+              {readinessPending ? (
+                // O trilho vazio guarda o lugar da barra: nada pula quando a
+                // conta chega, e nenhum número falso é anunciado.
+                <div aria-hidden="true" className="mt-4 h-1.5 rounded-full bg-[var(--color-line)]" />
+              ) : (
+                <ProgressBar value={readiness.percent} label={readinessText} className="mt-4" />
+              )}
+              {/* aria-hidden: a barra acima já diz esta frase (é o nome dela).
+                  Esperando, não há barra: a frase fica para o leitor de tela. */}
+              <p
+                ref={readinessLineRef}
+                tabIndex={-1}
+                aria-hidden={readinessPending ? undefined : "true"}
+                className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]"
+              >
+                {readinessPending ? t("creatorPanel.hub.checklist.progressPending") : readinessText}
               </p>
+              {assetsFailed ? (
+                <LoadErrorAlert className="mt-3" focusRef={readinessLineRef} onRetry={retryCourseAssets}>
+                  {t("creatorPanel.hub.checklist.assetsError")}
+                </LoadErrorAlert>
+              ) : null}
               <ReadinessGroups
                 readiness={readiness}
                 className="mt-4 grid gap-5"
                 renderItem={(item) => {
                   const editHref = readinessEditHref(item, course.id);
                   return (
-                    // Linha pronta ganha o verde suave da casa (o mesmo do
-                    // InlineAlert tone="success"): a pessoa varre a lista e ve
-                    // onde ainda falta sem ler item por item.
+                    // A mesma linha do construtor: feito = check desenhado em
+                    // verde (com "Done" para o leitor de tela), pendente =
+                    // círculo vazio. Era um "✓" digitado numa bolinha azul.
                     <li
                       key={item.id}
                       data-readiness-item={item.id}
-                      className={`flex items-start gap-3 rounded-md px-3 py-2 ${
-                        item.done ? "bg-[var(--color-success-soft)]" : ""
-                      }`}
+                      className="flex items-start gap-3 rounded-md border border-[var(--color-line)] bg-white px-4 py-3"
                     >
-                      <span
-                        aria-hidden
-                        className={`mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
-                          item.done
-                            ? "bg-[var(--color-primary)] text-[var(--color-on-primary)]"
-                            : "border fine-rule bg-white text-[var(--color-ink-muted)]"
-                        }`}
-                      >
-                        {item.done ? "✓" : ""}
-                      </span>
+                      {item.done ? (
+                        <span className="mt-0.5 text-[var(--color-success-fg)]">
+                          <DrawnCheck size={15} />
+                          <span className="sr-only">{t("creatorEditor.lesson.state.done")}: </span>
+                        </span>
+                      ) : (
+                        <Circle aria-hidden="true" size={13} strokeWidth={1.8} className="mt-1 shrink-0 text-[var(--color-ink-muted)]" />
+                      )}
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-[var(--color-ink)]">
+                        <p className={`text-sm font-semibold ${item.done ? "text-[var(--color-success-fg)]" : "text-[var(--color-ink)]"}`}>
                           {item.label}
                           {item.optional ? (
                             <span className="ml-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
@@ -1105,18 +1226,20 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
 
           {section === "page" ? (
             <div className="grid gap-4">
-              <SalesPageEditor course={course} />
+              <SalesPageEditor course={course} onDirtyChange={setSalesDirty} />
               {/* The block editor sits below the title/summary form rather than
                   replacing it: those fields also feed the marketplace card and
                   the course header, so they are not page-only copy. */}
-              <CourseLandingEditor course={course} />
+              <CourseLandingEditor course={course} onDirtyChange={setLandingDirty} />
               <PanelCard
                 title={t("creatorPanel.hub.page.title")}
                 description={t("creatorPanel.hub.page.description")}
               >
+                {/* Um botão cheio por seção: aqui é o "Save page" do editor
+                    de blocos. Abrir a página é ação secundária. */}
                 <Link
                   href={`/courses/${course.id}`}
-                  className="button-solid mt-5 inline-flex px-4 py-2 text-xs"
+                  className="button-outline mt-5 inline-flex px-4 py-2 text-xs"
                 >
                   {t("creatorPanel.hub.page.open")}
                 </Link>

@@ -1,11 +1,12 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AboutPage from "@/app/about/page";
 import ContactPage from "@/app/contact/page";
+import CreatorsPage from "@/app/for-creators/page";
 import HelpPage from "@/app/help/page";
 import NotFound from "@/app/not-found";
 
@@ -23,7 +24,7 @@ vi.mock("@/components/auth/auth-provider", () => ({
 // Server component assíncrono (lê o idioma via next/headers); não é o que
 // estes testes olham.
 vi.mock("@/components/site/site-footer", () => ({
-  SiteFooter: () => null,
+  SiteFooter: () => <footer data-testid="site-footer" />,
 }));
 
 vi.mock("@/components/help/assistant-panel", () => ({
@@ -51,7 +52,7 @@ describe("títulos do site público", () => {
     ["Help", HelpPage],
     ["404", NotFound],
   ])("%s: o h1 usa .page-title em vez de text-6xl fixo", async (_name, Page) => {
-    render(Page === NotFound ? <NotFound /> : await Page());
+    render(await Page());
 
     // 60px fixos estouravam a largura de um celular de 360px.
     const title = screen.getByRole("heading", { level: 1 });
@@ -60,13 +61,34 @@ describe("títulos do site público", () => {
   });
 });
 
+// S-25: eram seis caixas com sombra, cada uma com uma frase; viraram uma
+// lista com check num cartão só, como os itens dos cartões de preço.
+describe("/for-creators", () => {
+  it("as ferramentas são uma lista só, com os seis itens", async () => {
+    render(await CreatorsPage());
+
+    const item = screen.getByText("Course builder with modules, lessons, previews, pricing, and drip release.");
+    const list = item.closest("ul")!;
+    expect(within(list).getAllByRole("listitem")).toHaveLength(6);
+  });
+});
+
 describe("página 404", () => {
   // A loja ainda pode estar vazia: o 404 manda para a home, nunca para um
   // catálogo sem curso nem para a vitrine interna /platform.
-  it("manda para a home, não para um catálogo vazio nem para /platform", () => {
-    render(<NotFound />);
+  it("manda para a home, não para um catálogo vazio nem para /platform", async () => {
+    render(await NotFound());
 
-    expect(screen.getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual(["/"]);
+    expect(within(screen.getByRole("main")).getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual(["/"]);
+  });
+
+  // Era um cartão solto: sem menu e sem rodapé, "Go home" era a única saída.
+  it("tem a barra do site e o rodapé, como as outras páginas públicas", async () => {
+    render(await NotFound());
+
+    expect(screen.getByRole("navigation", { name: "Primary navigation" })).toBeInTheDocument();
+    expect(screen.getByTestId("site-footer")).toBeInTheDocument();
+    expect(screen.getByRole("main")).toHaveAttribute("id", "conteudo");
   });
 });
 

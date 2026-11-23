@@ -87,7 +87,7 @@ describe("professional badge uses the real interface locale", () => {
   it("localizes loading and optional instructions, accessible fields and profession options", async () => {
     mocks.subscribe.mockImplementation(() => () => {});
     const view = renderPanel();
-    expect(screen.getByText("Cargando el estado de tu verificación...")).toBeVisible();
+    expect(screen.getByRole("status")).toHaveTextContent("Cargando el estado de tu verificación...");
     await act(async () => { mocks.subscribe.mock.calls[0][1](null); });
     expect(screen.getByText(/La verificación es opcional\./)).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Solicitar insignia profesional" }));

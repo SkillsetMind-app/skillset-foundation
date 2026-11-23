@@ -246,7 +246,7 @@ export async function loadCourseProductOffers(
 }
 
 /**
- * Mints a fresh Stripe Express connected account and persists it on the user
+ * Mints a fresh Stripe connected account and persists it on the user
  * row (overwriting any existing stripe_connected_account_id). Shared by both
  * onboarding routes for the initial-create and self-heal-recreate paths, so an
  * orphaned id is replaced in exactly one place. Fund-safe to overwrite:
@@ -267,7 +267,17 @@ export async function createFreshConnectedAccount(params: {
   try {
     account = await stripe.accounts.create(
       {
-        type: "express",
+        // New creators get the full Stripe Dashboard, Stripe charges its fees
+        // to them and Stripe owns negative balances: Stripe's recommended setup
+        // for direct charges (docs.stripe.com/connect/direct-charges-fee-payer-behavior).
+        // Stripe never changes these on an existing account, so legacy Express
+        // accounts keep working as they are.
+        controller: {
+          stripe_dashboard: { type: "full" },
+          fees: { payer: "account" },
+          losses: { payments: "stripe" },
+          requirement_collection: "stripe",
+        },
         country,
         email,
         business_type: "individual",

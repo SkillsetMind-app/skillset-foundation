@@ -1,12 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check } from "lucide-react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { UpgradeModal } from "@/components/account/upgrade-modal";
+import { PeriodTabs } from "@/components/shared/period-tabs";
 import { StatusChip } from "@/components/shared/status-chip";
+import { BusyLabel } from "@/components/ui/busy-label";
+import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { InlineAlert } from "@/components/ui/inline-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import {
   formatPlanCommission,
   hasRealStripePriceIds,
@@ -33,14 +39,7 @@ type UpgradeState = {
   cycle: PlanBillingCycle;
 } | null;
 
-const billingCycles: ReadonlyArray<{
-  value: PlanBillingCycle;
-  label: string;
-  hint: string;
-}> = [
-  { value: "monthly", label: "Monthly", hint: "Pay each month" },
-  { value: "yearly", label: "Yearly", hint: "~17% off vs monthly" },
-];
+const billingCycles: readonly PlanBillingCycle[] = ["monthly", "yearly"];
 
 export function PlansPanel() {
   const { t, locale } = useTranslation();
@@ -57,6 +56,7 @@ export function PlansPanel() {
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [upgrade, setUpgrade] = useState<UpgradeState>(null);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
   // Trial eligibility and the live subscription. null until loaded, and stays
   // null if the read fails: the cards then show the no-trial terms, and the
   // checkout itself still decides (and discloses) the trial on Stripe's page.
@@ -64,6 +64,10 @@ export function PlansPanel() {
   // Keyed on the uid, not the user object: a re-fetch on every new object
   // would overwrite the state "Cancel plan" just wrote.
   const uid = user?.uid ?? null;
+  // A assinatura do perfil, para o "Try again" ler o plano de novo sem sair do
+  // canal do tempo real; a seção fica nos dois desfechos e recebe o foco.
+  const profileRead = useRef<{ reload: () => Promise<void> } | null>(null);
+  const sectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (!uid) return;
@@ -80,7 +84,7 @@ export function PlansPanel() {
 
   useEffect(() => {
     if (!user) return;
-    const unsubscribe = subscribeToUserProfile(
+    const subscription = subscribeToUserProfile(
       user.uid,
       (profile) => {
         setPlanLoadFailed(false);
@@ -93,8 +97,18 @@ export function PlansPanel() {
         setPlanLoadFailed(true);
       },
     );
-    return () => unsubscribe();
+    profileRead.current = subscription;
+    return () => {
+      profileRead.current = null;
+      subscription();
+    };
   }, [user]);
+
+  // Volta ao "Loading..." do plano até a leitura nova responder.
+  function retryPlanRead() {
+    setPlanLoadFailed(false);
+    return profileRead.current?.reload();
+  }
 
   // Two independent gates must both be green for a real upgrade:
   //   1. Price IDs configured server-side (isBillingConfigured)
@@ -123,16 +137,19 @@ export function PlansPanel() {
   const trialEligible = billing?.trialEligible === true;
   const formatDate = (iso: string | null) => (iso ? formatTrialDate(new Date(iso), locale) : "");
 
+  // past_due/unpaid are cancelled at once by the route, not at period end.
+  const cancelPrompt = !subscription
+    ? ""
+    : subscription.status === "past_due" || subscription.status === "unpaid"
+      ? t("planTrial.cancelConfirmNow")
+      : subscription.trialEnd
+        ? t("planTrial.cancelConfirmTrial").replace("{date}", () => formatDate(subscription.trialEnd))
+        : t("planTrial.cancelConfirm").replace("{date}", () => formatDate(subscription.currentPeriodEnd));
+
+  // Roda só pelo botão de confirmar do ConfirmDialog, que antes era o OK do
+  // window.confirm. O pedido em si não mudou.
   async function handleCancel() {
     if (!subscription) return;
-    // past_due/unpaid are cancelled at once by the route, not at period end.
-    const prompt =
-      subscription.status === "past_due" || subscription.status === "unpaid"
-        ? t("planTrial.cancelConfirmNow")
-        : subscription.trialEnd
-          ? t("planTrial.cancelConfirmTrial").replace("{date}", () => formatDate(subscription.trialEnd))
-          : t("planTrial.cancelConfirm").replace("{date}", () => formatDate(subscription.currentPeriodEnd));
-    if (!window.confirm(prompt)) return;
     setError(null);
     setBusyAction("cancel");
     try {
@@ -142,6 +159,10 @@ export function PlansPanel() {
       setError("planTrial.cancelError");
     } finally {
       setBusyAction(null);
+      // past_due/unpaid voltam `subscription: null`, o que desmonta a janela
+      // sem passar pelo onClose: sem isto a pergunta reabriria sozinha se uma
+      // assinatura voltasse a aparecer.
+      setConfirmingCancel(false);
     }
   }
 
@@ -165,29 +186,30 @@ export function PlansPanel() {
   }
 
   return (
-    <section className="grid gap-5">
+    <section ref={sectionRef} tabIndex={-1} className="grid gap-5 outline-none">
+      {/* Pendente = as cores de aviso da plataforma (as da faixa de status da
+          conta), no lugar da caixa rosa tracejada com titulo dourado. */}
       {!checkoutReady ? (
-        <div className="rounded-lg border border-dashed border-[rgba(178,34,52,0.32)] bg-[rgba(178,34,52,0.04)] p-4 text-sm leading-6 text-[var(--color-ink)]">
-          <p className="font-semibold text-[var(--color-accent-fg)]">
-            {t(priceIdsReady ? "accountPlans.checkoutSoon" : "accountPlans.setupPending")}
-          </p>
-          <p className="mt-1 text-[var(--color-ink-soft)]">
+        <InlineAlert
+          tone="warning"
+          title={t(priceIdsReady ? "accountPlans.checkoutSoon" : "accountPlans.setupPending")}
+        >
+          <p className="font-normal">
             {t(priceIdsReady ? "accountPlans.checkoutSoonBody" : "accountPlans.setupPendingBody")}
           </p>
-        </div>
+        </InlineAlert>
       ) : null}
 
-      {/* "CURRENT PLAN / Free" flutuava entre o cartão de abertura e o seletor
-          Mensal/Anual, sem moldura, como terceira manchete da página — e o
-          cartão Free ainda repetia "Current" no chip e "Your plan" no botão.
-          Agora é uma linha: plano atual (+ Gerenciar assinatura) à esquerda e o
-          seletor de ciclo à direita, em 13px sem caixa alta. O chip "Current"
-          no cartão basta para marcar qual é o seu. */}
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <p className="flex flex-wrap items-center gap-x-2 text-[13px] text-[var(--color-ink-soft)]">
+      {/* A assinatura num bloco próprio. Antes plano, preço, próxima cobrança,
+          fim do teste, "Manage" e "Cancel plan" eram uma frase só de 13px
+          separada por pontos, e o cancelar era um link dourado igual aos
+          outros. Agora cada dado é uma linha e as duas ações são botões de
+          44px, o de cancelar no vermelho de perigo (o latão nunca apaga). */}
+      <section className="rounded-lg border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]">
+        <p className="text-sm text-[var(--color-ink-soft)]">
           <span>
             {t("accountPlans.currentPlan")}{" "}
-            <strong className="font-bold text-[var(--color-primary)]">
+            <strong className="text-lg font-bold text-[var(--color-primary)]">
               {currentPlanId === null
                 ? planLoadFailed
                   ? t("accountBilling.unavailable")
@@ -197,92 +219,94 @@ export function PlansPanel() {
                   : (plans.find((plan) => plan.id === currentPlanId)?.name ?? t("accountBilling.unavailable"))}
             </strong>
           </span>
-          {subscription?.trialEnd && !subscription.cancelAtPeriodEnd ? (
-            <>
-              <span aria-hidden="true">·</span>
-              <span className="font-semibold text-[var(--color-ink)]">
+        </p>
+        {subscription ? (
+          <ul className="mt-4 grid gap-px overflow-hidden rounded-md border fine-rule bg-[var(--color-line)] text-sm text-[var(--color-ink)]">
+            <li className="bg-white px-4 py-2.5">
+              {t("planTrial.contractedPrice").replace("{price}", () => subscription.contractedPrice
+                ? t(subscription.contractedPrice.cycle === "yearly" ? "planTrial.pricePerYear" : "planTrial.pricePerMonth")
+                  .replace("{amount}", () => new Intl.NumberFormat(locale, { style: "currency", currency: subscription.contractedPrice!.currency })
+                    .format(subscription.contractedPrice!.amountMinor / 100))
+                : t("accountBilling.unavailable"))}
+            </li>
+            {!subscription.cancelAtPeriodEnd && ["active", "trialing"].includes(subscription.status) ? (
+              <li className="bg-white px-4 py-2.5">
+                {t("planTrial.nextPayment").replace("{amount}", () => subscription.nextPayment
+                  ? new Intl.NumberFormat(locale, { style: "currency", currency: subscription.nextPayment.currency })
+                    .format(subscription.nextPayment.amountMinor / 100)
+                  : t("accountBilling.unavailable"))}
+              </li>
+            ) : null}
+            {subscription.trialEnd && !subscription.cancelAtPeriodEnd ? (
+              <li className="bg-white px-4 py-2.5 font-semibold">
                 {t("planTrial.trialEnds").replace("{date}", () => formatDate(subscription.trialEnd))}
-              </span>
-            </>
-          ) : null}
-          {subscription?.cancelAtPeriodEnd ? (
-            <>
-              <span aria-hidden="true">·</span>
-              <span className="font-semibold text-[var(--color-ink)]">
+              </li>
+            ) : null}
+            {subscription.cancelAtPeriodEnd ? (
+              <li className="bg-white px-4 py-2.5 font-semibold">
                 {t("planTrial.endsOn").replace("{date}", () =>
                   formatDate(subscription.trialEnd ?? subscription.currentPeriodEnd))}
-              </span>
-            </>
-          ) : null}
-          {currentPlanId !== "free" ? (
-            <>
-              <span aria-hidden="true">·</span>
-              <button
-                type="button"
-                onClick={handleManage}
-                disabled={busyAction === "portal"}
-                className="font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline disabled:opacity-60"
-              >
-                {t(busyAction === "portal" ? "accountBilling.openingStripe" : "accountPlans.manage")}
-              </button>
-            </>
-          ) : null}
-          {subscription && !subscription.cancelAtPeriodEnd ? (
-            <>
-              <span aria-hidden="true">·</span>
-              {/* Online cancellation in one click + confirm: cancel at period
-                  end, which during the trial means no charge at all. */}
-              <button
-                type="button"
-                onClick={() => void handleCancel()}
+              </li>
+            ) : null}
+          </ul>
+        ) : null}
+        {currentPlanId !== "free" || (subscription && !subscription.cancelAtPeriodEnd) ? (
+          <div className="mt-4 flex flex-wrap gap-3">
+            {currentPlanId !== "free" ? (
+              <Button variant="outline" onClick={handleManage} disabled={busyAction === "portal"}>
+                <BusyLabel busy={busyAction === "portal"} idle={t("accountPlans.manage")} busyText={t("accountBilling.openingStripe")} />
+              </Button>
+            ) : null}
+            {subscription && !subscription.cancelAtPeriodEnd ? (
+              // Cancelamento online em dois passos: este botão abre a
+              // pergunta; só o "Cancel plan" de dentro dela envia o pedido
+              // (fim do período, o que no teste quer dizer cobrança zero).
+              <Button
+                variant="danger"
+                aria-haspopup="dialog"
+                onClick={() => setConfirmingCancel(true)}
                 disabled={busyAction === "cancel"}
-                className="font-semibold text-[var(--color-accent-fg)] underline-offset-4 hover:underline disabled:opacity-60"
               >
-                {t(busyAction === "cancel" ? "planTrial.cancelling" : "planTrial.cancel")}
-              </button>
+                <BusyLabel busy={busyAction === "cancel"} idle={t("planTrial.cancel")} busyText={t("planTrial.cancelling")} />
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+      </section>
+
+      {/* O desconto do anual aparece no próprio botão, como em /pricing: no
+          `title` ele só existia para quem parava o mouse em cima.
+          O seletor segmentado da casa (aria-pressed): o ciclo muda os preços
+          mostrados, é um filtro, não abas. */}
+      <div className="w-fit max-w-full">
+        <PeriodTabs
+          options={billingCycles}
+          value={cycle}
+          onChange={setCycle}
+          label={t("accountPlans.cycle")}
+          renderLabel={(option) => (
+            <>
+              {t(`accountPlans.cycles.${option}.label`)}
+              {option === "yearly" ? (
+                <>
+                  {" "}
+                  <span className="ml-1 text-[11px] font-medium opacity-80">
+                    {t("publicPages.pricing.17_off")}
+                  </span>
+                </>
+              ) : null}
             </>
-          ) : null}
-        </p>
-        <div
-          role="radiogroup"
-          aria-label={t("accountPlans.cycle")}
-          className="inline-flex w-fit gap-1 rounded-md border fine-rule bg-[var(--color-surface-soft)] p-1"
-        >
-          {billingCycles.map((option) => {
-            const active = cycle === option.value;
-            return (
-              <button
-                key={option.value}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                onClick={() => setCycle(option.value)}
-                title={t(`accountPlans.cycles.${option.value}.hint`)}
-                className={
-                  active
-                    ? "rounded-sm bg-[var(--color-primary)] px-3 py-1.5 text-[13px] font-semibold text-[var(--color-base)]"
-                    : "rounded-sm px-3 py-1.5 text-[13px] font-semibold text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-primary)]"
-                }
-              >
-                {t(`accountPlans.cycles.${option.value}.label`)}
-              </button>
-            );
-          })}
-        </div>
-      </header>
+          )}
+        />
+      </div>
       {planLoadFailed ? (
-        <p className="text-xs text-[var(--color-ink-soft)]">
+        <LoadErrorAlert onRetry={retryPlanRead} focusRef={sectionRef}>
           {t("accountPlans.planReadError")}
-        </p>
+        </LoadErrorAlert>
       ) : null}
 
       {error ? (
-        <p
-          role="alert"
-          className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
-        >
-          {t(error)}
-        </p>
+        <InlineAlert tone="error">{t(error)}</InlineAlert>
       ) : null}
 
       {/* Only the plans on offer. An Enterprise subscriber sees "Enterprise"
@@ -300,13 +324,15 @@ export function PlansPanel() {
           return (
             // Cartão em coluna flex com o botão em margin-top:auto: o Free
             // lista seis itens e os pagos três, então as alturas divergiam e
-            // os "Upgrade" não se alinhavam. Preço em Manrope 800 — a serifa
-            // fica para o marketing.
+            // os "Upgrade" não se alinhavam. Mesma hierarquia de /pricing:
+            // preço grande em serifa, comissão numa linha secundária. O plano
+            // atual ganha o anel por fora (ring), não borda de 2px, para o
+            // conteúdo não andar 1px quando vira o seu.
             <article
               key={plan.id}
               className={
                 isCurrent
-                  ? "relative flex h-full flex-col rounded-lg border-2 border-[var(--color-primary)] bg-white p-5 shadow-[0_18px_36px_rgba(15,39,68,0.10)]"
+                  ? "relative flex h-full flex-col rounded-lg border border-[var(--color-primary)] bg-white p-5 shadow-[0_18px_36px_rgba(15,39,68,0.10)] ring-1 ring-[var(--color-primary)]"
                   : "flex h-full flex-col rounded-lg border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]"
               }
             >
@@ -314,13 +340,13 @@ export function PlansPanel() {
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
                   {plan.name}
                 </p>
-                {isCurrent ? <StatusChip status="active" label={t("accountPlans.current")} /> : null}
+                {isCurrent ? <StatusChip status="active" label={t("planTrial.yourTier")} /> : null}
               </div>
               <div className="mt-3 flex items-baseline gap-1">
-                <span className="text-3xl font-extrabold tabular-nums tracking-[-0.02em] text-[var(--color-primary)]">
+                <span className="display-title text-4xl tabular-nums text-[var(--color-primary)]">
                   {formatPrice(Math.round(monthlyFigure))}
                 </span>
-                <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
+                <span className="text-sm text-[var(--color-ink-soft)]">
                   {t("accountPlans.perMonth")}
                 </span>
               </div>
@@ -329,18 +355,15 @@ export function PlansPanel() {
                   ? t("accountPlans.billedYearly").replace("{price}", () => formatPrice(plan.yearlyUsd))
                   : t("accountPlans.billedMonthly")}
               </p>
-              <p className="mt-3 text-xs text-[var(--color-ink-soft)]">
+              <p className="mt-2 flex flex-wrap items-baseline justify-between gap-x-3 text-sm text-[var(--color-ink-soft)]">
+                <span>{t("accountPlans.commission")}</span>
+                <span className="font-semibold tabular-nums text-[var(--color-ink)]">
+                  {formatPlanCommission(plan)}
+                </span>
+              </p>
+              <p className="mt-3 text-sm leading-6 text-[var(--color-ink)]">
                 {t(`publicPages.plans.${plan.id}.tagline`)}
               </p>
-
-              <div className="mt-4 rounded-md border fine-rule bg-[var(--color-surface-soft)] px-3 py-2 text-center">
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
-                  {t("accountPlans.commission")}
-                </p>
-                <p className="mt-0.5 text-2xl font-extrabold tabular-nums text-[var(--color-primary)]">
-                  {formatPlanCommission(plan)}
-                </p>
-              </div>
 
               <ul className="mt-4 grid gap-1.5 text-xs leading-5 text-[var(--color-ink-soft)]">
                 {plan.highlights.map((highlight, index) => (
@@ -363,7 +386,7 @@ export function PlansPanel() {
                   // O chip "Current" no topo do cartão já marca o plano; um
                   // botão desabilitado dizendo "Your plan" era a terceira vez.
                   <p className="text-center text-xs font-semibold text-[var(--color-ink-soft)]">
-                    {t("accountPlans.yourPlan")}
+                    {t("planTrial.currentOffer")}
                   </p>
                 ) : currentPlanId !== "free" ? (
                   // Checkout only opens the FIRST paid plan — a second session
@@ -373,9 +396,9 @@ export function PlansPanel() {
                     type="button"
                     onClick={handleManage}
                     disabled={busyAction === "portal"}
-                    className="button-outline w-full justify-center px-3 py-2 text-xs disabled:opacity-60"
+                    className="button-outline min-h-11 w-full justify-center px-4 py-2.5 text-sm"
                   >
-                    {t(busyAction === "portal" ? "accountPlans.opening" : "accountPlans.change")}
+                    <BusyLabel busy={busyAction === "portal"} idle={t("accountPlans.change")} busyText={t("accountPlans.opening")} />
                   </button>
                 ) : (
                   <>
@@ -392,13 +415,8 @@ export function PlansPanel() {
                       disabled={!canPurchase}
                       className={
                         canPurchase
-                          ? "button-solid w-full justify-center px-3 py-2 text-xs disabled:opacity-60"
-                          : "button-outline w-full justify-center px-3 py-2 text-xs disabled:opacity-60"
-                      }
-                      title={
-                        canPurchase
-                          ? undefined
-                          : t("accountPlans.unavailableHint")
+                          ? "button-solid min-h-11 w-full justify-center px-4 py-2.5 text-sm"
+                          : "button-outline min-h-11 w-full justify-center px-4 py-2.5 text-sm"
                       }
                     >
                       {!canPurchase
@@ -407,6 +425,13 @@ export function PlansPanel() {
                           ? t("planTrial.cta")
                           : t("accountPlans.upgrade").replace("{plan}", () => plan.name)}
                     </button>
+                    {/* O motivo do botão desligado ficava só no `title`, que
+                        não aparece no toque nem no teclado. */}
+                    {!canPurchase ? (
+                      <p className="mt-2 text-center text-xs leading-5 text-[var(--color-ink-soft)]">
+                        {t("accountPlans.unavailableHint")}
+                      </p>
+                    ) : null}
                   </>
                 )}
               </div>
@@ -425,6 +450,21 @@ export function PlansPanel() {
         cycle={upgrade?.cycle ?? "monthly"}
         onClose={closeUpgrade}
       />
+
+      {/* A frase é a mesma do antigo window.confirm; o que muda é a caixa. */}
+      {confirmingCancel && subscription ? (
+        <ConfirmDialog
+          title={t("planTrial.cancel")}
+          confirmLabel={t("planTrial.cancel")}
+          pendingLabel={t("planTrial.cancelling")}
+          cancelLabel={t("planTrial.keepPlan")}
+          danger
+          onConfirm={handleCancel}
+          onClose={() => setConfirmingCancel(false)}
+        >
+          {cancelPrompt}
+        </ConfirmDialog>
+      ) : null}
     </section>
   );
 }

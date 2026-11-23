@@ -1,12 +1,14 @@
 "use client";
 
 import { Inbox, Send } from "lucide-react";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { formatNotificationTime } from "@/components/account/notification-row";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { courseMessageErrorKey } from "@/components/teacher/course-student-roster";
+import { BusyLabel } from "@/components/ui/busy-label";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import type { CourseMessage } from "@/domain/course-message";
 import {
   COURSE_MESSAGE_MAX_CHARS,
@@ -28,20 +30,51 @@ export function TeacherMessagesInbox() {
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [notice, setNotice] = useState("");
+  // Mesmo molde da caixa do aluno (student-messages-inbox.tsx): ate a primeira
+  // leitura a caixa esta "carregando", nao "vazia" (antes abria em "No student
+  // messages yet" e depois trocava pelas conversas). A primeira leitura que
+  // falha vira erro com "Try again"; uma releitura que falha com a lista na
+  // tela vira so um aviso no topo.
+  const [ready, setReady] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [reloadFailed, setReloadFailed] = useState(false);
+  const subscription = useRef<{ reload: () => Promise<void> } | null>(null);
 
   useEffect(() => {
     if (!user) {
       return;
     }
 
-    return subscribeToTeacherMessages(
+    let loaded = false;
+    const current = subscribeToTeacherMessages(
       user.uid,
-      setMessages,
+      (next) => {
+        loaded = true;
+        setMessages(next);
+        setReady(true);
+        setLoadFailed(false);
+        setReloadFailed(false);
+      },
       () => {
-        setNotice("teacherMessages.loadError");
+        if (loaded) {
+          setReloadFailed(true);
+        } else {
+          setLoadFailed(true);
+        }
       },
     );
+    subscription.current = current;
+    return () => {
+      subscription.current = null;
+      current();
+    };
   }, [user]);
+
+  // "Try again" le de novo pelo mesmo canal, sem desligar e religar.
+  function retryLoad() {
+    setLoadFailed(false);
+    void subscription.current?.reload();
+  }
 
   const threads = useMemo(
     () => groupCourseMessageThreads(messages),
@@ -72,6 +105,46 @@ export function TeacherMessagesInbox() {
     }
   }
 
+  if (loadFailed) {
+    return (
+      <section className="rounded-lg border fine-rule bg-white p-5">
+        <InlineAlert tone="error">{t("teacherMessages.loadError")}</InlineAlert>
+        <button type="button" onClick={retryLoad} className="button-outline mt-4 px-4 text-sm">
+          {t("appErrors.retry")}
+        </button>
+      </section>
+    );
+  }
+
+  if (!ready) {
+    return (
+      <div aria-busy="true" className="grid gap-5 lg:grid-cols-[minmax(240px,320px)_1fr]">
+        <p className="sr-only" role="status">
+          {t("teacherMessages.loading")}
+        </p>
+        <div aria-hidden="true" className="grid content-start gap-2">
+          {[0, 1, 2].map((row) => (
+            <div key={row} className="h-[100px] animate-pulse rounded-lg bg-[var(--color-surface-strong)]" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Releitura que falhou com a lista na tela: aviso com "Try again". O aviso
+  // (e o botao, com o foco) fica ate uma leitura dar certo.
+  const reloadBanner = (className: string) =>
+    reloadFailed ? (
+      <div className={`grid gap-3 ${className}`}>
+        <InlineAlert tone="error" className="w-full text-left">
+          {t("teacherMessages.loadError")}
+        </InlineAlert>
+        <button type="button" onClick={retryLoad} className="button-outline px-4 text-sm">
+          {t("appErrors.retry")}
+        </button>
+      </div>
+    ) : null;
+
   if (threads.length === 0) {
     return (
       <section className="rounded-lg border fine-rule bg-white px-6 py-10 text-center">
@@ -86,17 +159,14 @@ export function TeacherMessagesInbox() {
         <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[var(--color-ink-soft)]">
           {t("teacherMessages.emptyDescription")}
         </p>
-        {notice ? (
-          <p className="mt-4 text-xs font-semibold text-[var(--color-primary)]">
-            {t(notice)}
-          </p>
-        ) : null}
+        {reloadBanner("mt-4 justify-items-center")}
       </section>
     );
   }
 
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(240px,320px)_1fr]">
+      {reloadBanner("justify-items-start lg:col-span-2")}
       <nav aria-label={t("teacherMessages.threads")} className="grid content-start gap-2">
         {threads.map((thread) => {
           const isActive = selectedThread?.key === thread.key;
@@ -170,7 +240,7 @@ export function TeacherMessagesInbox() {
               disabled={isSending}
               maxLength={COURSE_MESSAGE_MAX_CHARS}
               rows={3}
-              className="min-h-20 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink)] outline-none transition focus:border-[var(--color-primary)]"
+              className="field-input min-h-20"
               aria-label={t("teacherMessages.replyTo").replace("{name}", () => selectedThread.studentName)}
               placeholder={t("teacherMessages.replyTo").replace("{name}", () => selectedThread.studentName)}
             />
@@ -182,10 +252,10 @@ export function TeacherMessagesInbox() {
             <button
               type="submit"
               disabled={isSending || !draft.trim()}
-              className="button-solid inline-flex w-fit items-center gap-2 px-4 py-2.5 text-sm disabled:opacity-60"
+              className="button-solid inline-flex w-fit items-center gap-2 px-4 py-2.5 text-sm"
             >
               <Send size={15} aria-hidden="true" />
-              {t(isSending ? "teacherMessages.sending" : "teacherMessages.send")}
+              <BusyLabel busy={isSending} idle={t("teacherMessages.send")} busyText={t("teacherMessages.sending")} />
             </button>
           </form>
         </section>

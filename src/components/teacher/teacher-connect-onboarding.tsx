@@ -12,7 +12,9 @@ import {
 import { useEffect, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { Button, Card, Eyebrow, InlineAlert } from "@/components/ui";
+import { StripeFrameSkeleton } from "@/components/teacher/builder-skeleton";
+import { SupportDetails } from "@/components/teacher/support-details";
+import { BusyLabel, Button, Card, Eyebrow, InlineAlert } from "@/components/ui";
 import {
   fetchConnectAccountSessionSecret,
   isConnectNotEnabledError,
@@ -136,7 +138,7 @@ export function TeacherConnectOnboarding({
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           aria-describedby="payout-country-hint payout-country-warning"
-          className="mt-2 block min-h-11 w-full max-w-sm rounded-md border border-[var(--color-line)] bg-white px-4 text-sm outline-none focus:border-[var(--color-primary-light)]"
+          className="field-input mt-2 block max-w-sm"
         >
           {options.map(({ code, label }) => (
             <option key={code} value={code}>{label}</option>
@@ -323,8 +325,10 @@ function ConnectOnboardingFlow({
       <Card padding="none" className="p-5">
         <p role="alert" className="text-sm leading-7 text-[var(--color-ink-soft)]">
           {t(`connectOnboarding.error.${key}`)}
-          {error.status ? <> {t("activationCheckout.reference")} HTTP {error.status}</> : null}
         </p>
+        {/* O codigo da resposta e so para o suporte, recolhido; era
+            "Reference: HTTP 409" no meio da frase. */}
+        {error.status ? <SupportDetails code={error.status} className="mt-2" /> : null}
         <div className="mt-4 flex flex-wrap gap-2">
           {key === "country" && onChooseAgain ? (
             <Button onClick={onChooseAgain}>{t("connectOnboarding.chooseAnotherCountry")}</Button>
@@ -345,7 +349,7 @@ function ConnectOnboardingFlow({
     return (
       <Card tone="soft" padding="none" className="p-5">
         <Eyebrow tone="muted">{t("connectOnboarding.setup")}</Eyebrow>
-        <h4 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
+        <h4 className="mt-2 text-lg font-semibold text-[var(--color-ink)]">
           {t("connectOnboarding.unavailableTitle")}
         </h4>
         <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -373,7 +377,7 @@ function ConnectOnboardingFlow({
     return (
       <Card padding="none" className="p-5">
         <Eyebrow>{t("connectOnboarding.setup")}</Eyebrow>
-        <h4 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
+        <h4 className="mt-2 text-lg font-semibold text-[var(--color-ink)]">
           {t("connectOnboarding.hostedTitle")}
         </h4>
         <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -382,15 +386,19 @@ function ConnectOnboardingFlow({
         {error ? (
           <InlineAlert tone="error" className="mt-3">
             {t(`connectOnboarding.error.${error.key}`)}
-            {error.status ? <> {t("activationCheckout.reference")} HTTP {error.status}</> : null}
             {connectRecoveryHref(error.key) ? <Link className="ml-2 underline" href={connectRecoveryHref(error.key)!}>
               {t(`connectOnboarding.recovery.${error.key}`)}
             </Link> : null}
           </InlineAlert>
         ) : null}
+        {error?.status ? <SupportDetails code={error.status} className="mt-2" /> : null}
         <div className="mt-4">
           <Button onClick={openHostedFallback} disabled={isOpeningHosted}>
-            {t(isOpeningHosted ? "connectOnboarding.opening" : "connectOnboarding.continue")}
+            <BusyLabel
+              busy={isOpeningHosted}
+              idle={t("connectOnboarding.continue")}
+              busyText={t("connectOnboarding.opening")}
+            />
           </Button>
         </div>
       </Card>
@@ -422,14 +430,10 @@ function ConnectOnboardingFlow({
 
   if (!connect) {
     return (
-      // Card não repassa atributos ARIA, e aqui o aria-busy/aria-live é o
-      // ponto: sai como <div> com as mesmas variáveis do primitivo.
-      <div
-        className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-5 text-sm text-[var(--color-ink-soft)]"
-        aria-busy="true"
-        aria-live="polite"
-      >
-        {t("connectOnboarding.preparing")}
+      // O lugar do formulario da Stripe guardado, com esqueleto: era uma
+      // frase numa caixa baixa que pulava quando o cadastro chegava.
+      <div className="overflow-hidden rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)]">
+        <StripeFrameSkeleton label={t("connectOnboarding.preparing")} />
       </div>
     );
   }
@@ -480,19 +484,23 @@ function StripeConnectFallback({
   return (
     <div className="rounded-lg border border-[rgba(178,34,52,0.18)] bg-[rgba(178,34,52,0.04)] p-5">
       <Eyebrow>{t("connectOnboarding.fallbackEyebrow")}</Eyebrow>
-      <h4 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
+      <h4 className="mt-2 text-lg font-semibold text-[var(--color-ink)]">
         {t("connectOnboarding.fallbackTitle")}
       </h4>
       <p role="alert" className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
         {t(`connectOnboarding.error.${errorKey}`)}{" "}
         {t("connectOnboarding.fallbackBody")}
       </p>
-      {status ? <p className="mt-2 text-xs">{t("activationCheckout.reference")} HTTP {status}</p> : null}
+      {status ? <SupportDetails code={status} className="mt-2" /> : null}
       <div className="mt-4 flex flex-wrap gap-2">
         {/* Stripe's hosted page stays available for every error, as before
             translation; the recovery link is an extra way out, not a replacement. */}
         <Button onClick={onHosted} disabled={isOpeningHosted}>
-          {t(isOpeningHosted ? "connectOnboarding.opening" : "connectOnboarding.continueSecure")}
+          <BusyLabel
+            busy={isOpeningHosted}
+            idle={t("connectOnboarding.continueSecure")}
+            busyText={t("connectOnboarding.opening")}
+          />
         </Button>
         <Button variant="outline" onClick={onRetry}>
           {t("connectOnboarding.retry")}

@@ -18,7 +18,6 @@ export default async function AccountPage() {
         title={t("accountSettings.label")}
         description={t("accountSettings.description")}
         compact
-        hideHeader
       >
         <Suspense fallback={<SettingsFallback />}>
           <AccountSettingsHub />
@@ -31,7 +30,6 @@ export default async function AccountPage() {
 function SettingsFallback() {
   return (
     <div className="space-y-6" aria-hidden="true">
-      <div className="h-40 animate-pulse rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-strong)]" />
       <div className="h-64 animate-pulse rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-strong)]" />
     </div>
   );

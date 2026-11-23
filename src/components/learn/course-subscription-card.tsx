@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CalendarClock, Repeat } from "lucide-react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { BusyLabel } from "@/components/ui/busy-label";
+import { InlineAlert } from "@/components/ui/inline-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import type { CourseSubscription } from "@/domain/course-subscription";
 import { subscribeToCourseSubscription } from "@/lib/data/course-subscriptions";
 import { toDate } from "@/lib/format-date";
@@ -31,12 +34,15 @@ export function CourseSubscriptionCard({
   const [pending, setPending] = useState(false);
   const [readError, setReadError] = useState(false);
   const [actionError, setActionError] = useState<"cancelError" | "undoError" | null>(null);
+  // "Try again" da leitura: relê pela mesma inscrição; o foco fica no cartão.
+  const readSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   // Reset on subscriptionId change is handled by the parent's `key` prop
   // (it remounts this card), so the effect only subscribes — no synchronous
   // setState in the effect body (avoids cascading renders).
   useEffect(() => {
-    return subscribeToCourseSubscription(
+    const current = subscribeToCourseSubscription(
       subscriptionId,
       (next) => {
         setSubscription(next);
@@ -48,6 +54,11 @@ export function CourseSubscriptionCard({
         setReady(true);
       },
     );
+    readSubscription.current = current;
+    return () => {
+      readSubscription.current = null;
+      current();
+    };
   }, [subscriptionId]);
 
   async function handleChange(resume: boolean) {
@@ -84,7 +95,7 @@ export function CourseSubscriptionCard({
       : t(`${copy}.recurringAccess`);
 
   return (
-    <div className="member-sidebar-card">
+    <div ref={cardRef} tabIndex={-1} className="member-sidebar-card">
       <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
         {t(`${copy}.title`)}
       </p>
@@ -99,15 +110,21 @@ export function CourseSubscriptionCard({
         </h4>
       </div>
 
-      {[readError ? "loadError" : null, actionError].map((error) => error ? (
-        <p
-          key={error}
-          role="alert"
-          className="mt-3 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-danger-fg)]"
+      {readError ? (
+        <LoadErrorAlert
+          className="mt-3"
+          alertClassName="px-3 py-2"
+          focusRef={cardRef}
+          onRetry={() => readSubscription.current?.reload()}
         >
-          {t(`${copy}.${error}`)}
-        </p>
-      ) : null)}
+          {t(`${copy}.loadError`)}
+        </LoadErrorAlert>
+      ) : null}
+      {actionError ? (
+        <InlineAlert tone="error" className="mt-3 px-3 py-2">
+          {t(`${copy}.${actionError}`)}
+        </InlineAlert>
+      ) : null}
 
       {!ready ? (
         <p className="mt-3 text-sm text-[var(--color-ink-soft)]">
@@ -122,9 +139,11 @@ export function CourseSubscriptionCard({
       ) : (
         <>
           {pastDue ? (
-            <p className="mt-3 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-danger-fg)]">
+            // Aviso, não erro: é um estado da assinatura que pede ação, e não
+            // pode interromper o leitor de tela a cada vez que o cartão abre.
+            <InlineAlert tone="warning" className="mt-3 px-3 py-2">
               {t(`${copy}.paymentAttention`)}
-            </p>
+            </InlineAlert>
           ) : null}
           <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
             {cycleText}
@@ -135,18 +154,18 @@ export function CourseSubscriptionCard({
               type="button"
               disabled={pending}
               onClick={() => handleChange(true)}
-              className="button-solid mt-4 w-full px-4 py-2.5 text-sm disabled:opacity-60"
+              className="button-solid mt-4 w-full px-4 py-2.5 text-sm"
             >
-              {pending ? t(`${copy}.working`) : t(`${copy}.undo`)}
+              <BusyLabel busy={pending} idle={t(`${copy}.undo`)} busyText={t(`${copy}.working`)} />
             </button>
           ) : (
             <button
               type="button"
               disabled={pending}
               onClick={() => handleChange(false)}
-              className="button-outline mt-4 w-full px-4 py-2.5 text-sm disabled:opacity-60"
+              className="button-outline mt-4 w-full px-4 py-2.5 text-sm"
             >
-              {pending ? t(`${copy}.working`) : t(`${copy}.cancel`)}
+              <BusyLabel busy={pending} idle={t(`${copy}.cancel`)} busyText={t(`${copy}.working`)} />
             </button>
           )}
         </>

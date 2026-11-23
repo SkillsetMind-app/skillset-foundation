@@ -1,4 +1,4 @@
-import { cleanup, render, renderHook, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TeacherInboxQuestions } from "@/components/teacher/teacher-inbox-questions";
@@ -89,7 +89,8 @@ describe("Alunos: todos os produtos numa lista", () => {
     expect(rows).toHaveLength(3);
 
     const ana = rows.find((row) => within(row).queryByText("Leadership"))!;
-    expect(within(ana).getByRole("link", { name: /See in product/ })).toHaveAttribute(
+    // O proprio nome e o link (sem a parede de botoes iguais em toda linha).
+    expect(within(ana).getByRole("link", { name: /^Ana: See in product/ })).toHaveAttribute(
       "href",
       "/teach/courses/c-1/manage?section=students",
     );
@@ -122,12 +123,156 @@ describe("Alunos: todos os produtos numa lista", () => {
     expect(within(statusOf("Edu")).getByText("Expired")).toBeInTheDocument();
   });
 
+  // Antes nao havia como achar uma pessoa: era rolar a tabela inteira. A busca
+  // filtra o que ja veio (nome, e-mail, produto), sem consulta nova.
+  it("busca por nome, e-mail ou produto no que ja carregou, e diz quando nada bate", async () => {
+    mocks.getMyCourseStudents.mockResolvedValue([
+      enrollment("e-1", "c-1", "s-1", "Ana", "active"),
+      { ...enrollment("e-2", "c-2", "s-2", "Bruno", "completed"), email: "bruno@example.com" },
+    ]);
+    render(<TeacherStudentsList />);
+
+    const search = await screen.findByLabelText("Search students by name, e-mail or product");
+    const bodyRows = () => screen.getAllByRole("row").slice(1);
+    fireEvent.change(search, { target: { value: "BRUNO@" } });
+    expect(bodyRows()).toHaveLength(1);
+    expect(bodyRows()[0]).toHaveTextContent("Bruno");
+    fireEvent.change(search, { target: { value: "leader" } });
+    expect(bodyRows()).toHaveLength(1);
+    expect(bodyRows()[0]).toHaveTextContent("Ana");
+    fireEvent.change(search, { target: { value: "nobody" } });
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(screen.getByRole("status")).toHaveTextContent("No student matches this search or filter.");
+    // A contagem e de todos, nao do recorte da busca.
+    expect(screen.getByText("2 active students")).toBeInTheDocument();
+    expect(mocks.getMyCourseStudents).toHaveBeenCalledTimes(1);
+  });
+
   it("so com matriculas encerradas, a conta diz zero", async () => {
     mocks.getMyCourseStudents.mockResolvedValue([enrollment("e-1", "c-1", "s-1", "Ana", "refunded")]);
     render(<TeacherStudentsList />);
 
     expect(await screen.findByText("0 active students")).toBeInTheDocument();
-    expect(screen.getByText("Refunded")).toBeInTheDocument();
+    expect(within(screen.getAllByRole("row")[1]).getByText("Refunded")).toBeInTheDocument();
+  });
+
+  // O filtro de acesso da lista por produto, tambem so sobre o que ja veio.
+  it("filtra por acesso sem ler de novo, e a contagem continua a de todos", async () => {
+    mocks.getMyCourseStudents.mockResolvedValue([
+      enrollment("e-1", "c-1", "s-1", "Ana", "active"),
+      enrollment("e-2", "c-2", "s-2", "Bruno", "completed"),
+      enrollment("e-3", "c-1", "s-3", "Carla", "refunded"),
+    ]);
+    render(<TeacherStudentsList />);
+
+    const access = await screen.findByRole("combobox", { name: "Filter by access" });
+    const bodyRows = () => screen.getAllByRole("row").slice(1);
+    expect(bodyRows()).toHaveLength(3);
+    fireEvent.change(access, { target: { value: "refunded" } });
+    expect(bodyRows()).toHaveLength(1);
+    expect(bodyRows()[0]).toHaveTextContent("Carla");
+    fireEvent.change(access, { target: { value: "expired" } });
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(screen.getByRole("status")).toHaveTextContent("No student matches this search or filter.");
+    expect(screen.getByText("2 active students")).toBeInTheDocument();
+    expect(mocks.getMyCourseStudents).toHaveBeenCalledTimes(1);
+  });
+
+  // Antes a tabela mostrava todas as matriculas de uma vez, sem limite.
+  it("mostra 50 por vez e 'Show N more' abre as proximas, sem ler de novo", async () => {
+    mocks.getMyCourseStudents.mockResolvedValue(
+      Array.from({ length: 120 }, (_, index) => ({
+        ...enrollment(`e-${index}`, "c-1", `s-${index}`, `Aluno ${index}`, "active"),
+        enrolledAt: new Date(Date.UTC(2026, 0, 1) + index * 60_000).toISOString(),
+      })),
+    );
+    render(<TeacherStudentsList />);
+
+    expect(await screen.findByText("120 active students")).toBeInTheDocument();
+    const bodyRows = () => screen.getAllByRole("row").slice(1);
+    expect(bodyRows()).toHaveLength(50);
+    fireEvent.click(screen.getByRole("button", { name: "Show 50 more" }));
+    expect(bodyRows()).toHaveLength(100);
+    // O foco segue para a primeira linha nova, onde a leitura continua.
+    expect(bodyRows()[50]).toHaveFocus();
+    fireEvent.click(screen.getByRole("button", { name: "Show 20 more" }));
+    expect(bodyRows()).toHaveLength(120);
+    // O ultimo clique tira o botao; o foco nao cai no body.
+    expect(screen.queryByRole("button", { name: /Show \d+ more/ })).toBeNull();
+    expect(bodyRows()[100]).toHaveFocus();
+    expect(mocks.getMyCourseStudents).toHaveBeenCalledTimes(1);
+  });
+
+  // Ir e voltar no filtro (ou buscar) recomeca nas primeiras 50: antes, depois
+  // de abrir tudo, as 120 voltavam de uma vez.
+  it("filtro ou busca novos recomecam nas primeiras 50", async () => {
+    mocks.getMyCourseStudents.mockResolvedValue(
+      Array.from({ length: 120 }, (_, index) => ({
+        ...enrollment(`e-${index}`, "c-1", `s-${index}`, `Aluno ${index}`, "active"),
+        enrolledAt: new Date(Date.UTC(2026, 0, 1) + index * 60_000).toISOString(),
+      })),
+    );
+    render(<TeacherStudentsList />);
+
+    await screen.findByText("120 active students");
+    const bodyRows = () => screen.getAllByRole("row").slice(1);
+    fireEvent.click(screen.getByRole("button", { name: "Show 50 more" }));
+    fireEvent.click(screen.getByRole("button", { name: "Show 20 more" }));
+    expect(bodyRows()).toHaveLength(120);
+    const access = screen.getByRole("combobox", { name: "Filter by access" });
+    fireEvent.change(access, { target: { value: "refunded" } });
+    fireEvent.change(access, { target: { value: "all" } });
+    expect(bodyRows()).toHaveLength(50);
+    fireEvent.click(screen.getByRole("button", { name: "Show 50 more" }));
+    expect(bodyRows()).toHaveLength(100);
+    fireEvent.change(screen.getByLabelText("Search students by name, e-mail or product"), { target: { value: "Aluno" } });
+    expect(bodyRows()).toHaveLength(50);
+    expect(screen.getByRole("button", { name: "Show 50 more" })).toBeInTheDocument();
+  });
+
+  // T-18: a lista nao tinha Export. Ele leva o recorte inteiro da busca e do
+  // filtro (nao so as 50 abertas), sem ler de novo.
+  it("Export leva tudo o que a busca e o filtro acham, nao so as linhas abertas", async () => {
+    mocks.getMyCourseStudents.mockResolvedValue([
+      ...Array.from({ length: 60 }, (_, index) => ({
+        ...enrollment(`e-${index}`, "c-1", `s-${index}`, `Aluno ${index}`, "active"),
+        email: `aluno${index}@example.com`,
+      })),
+      { ...enrollment("e-x", "c-2", "s-x", "Carla", "refunded"), email: "carla@example.com" },
+    ]);
+    render(<TeacherStudentsList />);
+    await screen.findByText("60 active students");
+    fireEvent.change(screen.getByRole("combobox", { name: "Filter by access" }), { target: { value: "active" } });
+    expect(screen.getAllByRole("row").slice(1)).toHaveLength(50);
+
+    const created: HTMLAnchorElement[] = [];
+    const realCreate = document.createElement.bind(document);
+    vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
+      const element = realCreate(tag);
+      if (tag === "a") created.push(element as HTMLAnchorElement);
+      return element;
+    });
+    const blobs: string[] = [];
+    vi.stubGlobal("Blob", class {
+      constructor(parts: string[]) {
+        blobs.push(parts.join(""));
+      }
+    });
+    vi.stubGlobal("URL", { createObjectURL: () => "blob:x", revokeObjectURL: () => undefined });
+
+    fireEvent.click(screen.getByRole("button", { name: /Export/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Export as CSV" }));
+
+    const lines = blobs[0].split("\n");
+    expect(lines[0]).toBe("name,email,product,access,progressPercent,enrolledAt");
+    expect(lines).toHaveLength(61);
+    expect(blobs[0]).toContain("aluno59@example.com,Leadership,active,0,");
+    expect(blobs[0]).not.toContain("carla@example.com");
+    expect(created[0]?.download).toMatch(/^students-\d{4}-\d{2}-\d{2}\.csv$/);
+    expect(mocks.getMyCourseStudents).toHaveBeenCalledTimes(1);
+
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it("sem alunos, um estado vazio que explica", async () => {
@@ -135,6 +280,19 @@ describe("Alunos: todos os produtos numa lista", () => {
     render(<TeacherStudentsList />);
 
     expect(await screen.findByRole("heading", { name: /No students yet/ })).toBeInTheDocument();
+  });
+
+  // Falha nao e "nenhum aluno": o erro com "Try again", que pede a mesma
+  // leitura de novo.
+  it("leitura que falha mostra o erro e Try again le de novo", async () => {
+    mocks.getMyCourseStudents.mockRejectedValueOnce(new Error("down"));
+    render(<TeacherStudentsList />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("We couldn't load your students.");
+    expect(screen.queryByRole("heading", { name: /No students yet/ })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("2 active students")).toBeInTheDocument();
+    expect(mocks.getMyCourseStudents).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -159,6 +317,19 @@ describe("Caixa de entrada: perguntas que esperam pelo professor", () => {
     render(<TeacherInboxQuestions />);
 
     expect(await screen.findByText(/No questions waiting/)).toBeInTheDocument();
+  });
+
+  // Enquanto le, o cartao mostra a forma das linhas (antes ficava so o titulo);
+  // falha nao e "nada esperando": erro com "Try again".
+  it("carregando mostra a espera; falha mostra o erro e Try again le de novo", async () => {
+    mocks.getOpenCommunityQuestions.mockRejectedValueOnce(new Error("down"));
+    render(<TeacherInboxQuestions />);
+
+    expect(screen.getByRole("status")).toHaveTextContent("Loading questions...");
+    expect(await screen.findByRole("alert")).toHaveTextContent("We couldn't load the questions.");
+    expect(screen.queryByText(/No questions waiting/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findAllByRole("link", { name: /Answer/ })).toHaveLength(2);
   });
 
   // Na pagina Inbox a casca (numero da barra) e a lista pedem juntas: uma

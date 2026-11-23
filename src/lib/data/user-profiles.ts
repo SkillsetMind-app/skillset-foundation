@@ -46,24 +46,38 @@ export function subscribeToUserProfile(
   uid: string,
   callback: (profile: UserProfile | null) => void,
   onError: (error: Error) => void,
-): () => void {
+): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
 
   // Fire once with the current value (like Firestore onSnapshot), then keep the
   // caller in sync via Realtime. RLS scopes postgres_changes to the caller's
   // own row, so no cross-user leakage.
-  void supabase
-    .from("users")
-    .select("*")
-    .eq("uid", uid)
-    .maybeSingle()
-    .then(({ data, error }) => {
-      if (error) {
-        onError(error instanceof Error ? error : new Error(String(error)));
-        return;
-      }
-      callback(data ? rowToUserProfile(data) : null);
-    });
+  //
+  // So a leitura mais nova entrega: um "Try again" que volta depois de outra
+  // leitura (ou de uma linha que chegou pelo tempo real) traria o perfil velho.
+  let active = true;
+  let latestLoad = 0;
+
+  const load = () => {
+    const thisLoad = ++latestLoad;
+    return supabase
+      .from("users")
+      .select("*")
+      .eq("uid", uid)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (!active || thisLoad !== latestLoad) {
+          return;
+        }
+        if (error) {
+          onError(error instanceof Error ? error : new Error(String(error)));
+          return;
+        }
+        callback(data ? rowToUserProfile(data) : null);
+      });
+  };
+
+  void load();
 
   const channel = supabase
     .channel(`users:${uid}`)
@@ -71,6 +85,12 @@ export function subscribeToUserProfile(
       "postgres_changes",
       { event: "*", schema: "public", table: "users", filter: `uid=eq.${uid}` },
       (payload) => {
+        if (!active) {
+          return;
+        }
+        // A linha do tempo real e pelo menos tao nova quanto uma leitura que
+        // ainda esta no caminho: essa leitura nao entrega mais.
+        latestLoad += 1;
         if (payload.eventType === "DELETE") {
           callback(null);
           return;
@@ -80,9 +100,15 @@ export function subscribeToUserProfile(
     )
     .subscribe();
 
-  return () => {
-    void supabase.removeChannel(channel);
-  };
+  // `reload()` le de novo SEM mexer no canal (o "Try again" das preferencias):
+  // sem o intervalo entre sair e entrar de novo no Realtime.
+  return Object.assign(
+    () => {
+      active = false;
+      void supabase.removeChannel(channel);
+    },
+    { reload: async () => { await load(); } },
+  );
 }
 
 export async function getPublicProfile(

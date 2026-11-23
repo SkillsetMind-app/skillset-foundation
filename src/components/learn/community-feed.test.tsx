@@ -4,7 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CommunityFeed } from "@/components/learn/community-feed";
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import type { CommunityComment, CommunityPost } from "@/domain/community-post";
+import { formatEventDateTime } from "@/domain/course-event";
 import type { CommunitySpace } from "@/domain/learning";
+import type { Enrollment } from "@/domain/enrollment";
 import { createCommunityPost, createCommunityComment, createCommunityReport, deleteCommunityComment, deleteCommunityPost, setCommunityPostAcceptedAnswer, setCommunityPostPinned, subscribeToCommunityPosts } from "@/lib/data/community-posts";
 import { subscribeToEnrollment } from "@/lib/data/enrollments";
 import { setCommunityPostLike } from "@/lib/data/gamification";
@@ -215,6 +217,12 @@ function ChangeLanguage() {
   return <button onClick={() => setLocale(locale === "en" ? "es" : "en")}>Change language</button>;
 }
 
+const enrollmentFixture: Enrollment = {
+  id: "enr-1", userId: "student-1", courseId: "course-1", courseSlug: "course-1",
+  courseTitle: "Leading Teams Through Change", courseCategory: "", courseImage: "",
+  status: "active", source: "payment", progressPercent: 10, lastLessonId: null,
+};
+
 async function renderFeed(props: Partial<Parameters<typeof CommunityFeed>[0]> = {}, locale?: "en" | "es") {
   const feed = <CommunityFeed space={space} instructorName="Patrick" {...props} />;
   const view = render(locale ? <I18nProvider initialLocale={locale}><ChangeLanguage />{feed}</I18nProvider> : feed);
@@ -245,15 +253,35 @@ describe("feed da comunidade (rodada 11)", () => {
     vi.useRealTimers();
   });
 
+  // F-03: a espera tem a forma dos posts, com a frase só para o leitor de tela.
+  // C-04: o filtro no desenho do seletor segmentado (pastilha clara, não navy cheio).
+  it("espera com a forma dos posts e filtro no desenho segmentado", async () => {
+    render(<I18nProvider initialLocale="en"><CommunityFeed space={space} instructorName="Patrick" /></I18nProvider>);
+    await waitFor(() => expect(mocks.postsCallback).not.toBeNull());
+    const waiting = screen.getByText("Loading community feed...");
+    expect(waiting).toHaveClass("sr-only");
+    expect(waiting.closest("[role='status']")).not.toBeNull();
+
+    await act(async () => mocks.postsCallback?.(posts));
+    expect(screen.queryByText("Loading community feed...")).toBeNull();
+    const group = screen.getByRole("group", { name: "Filter posts" });
+    expect(group).toHaveClass("rounded-lg", "border", "bg-[var(--color-surface-soft)]", "p-1");
+    const all = within(group).getByRole("button", { name: "All" });
+    expect(all).toHaveAttribute("aria-pressed", "true");
+    expect(all).toHaveClass("bg-white", "text-[var(--color-primary)]", "shadow-[var(--shadow-soft)]");
+    expect(all.className).not.toContain("bg-[var(--color-primary)]");
+    expect(within(group).getByRole("button", { name: "Questions · 1 open" })).toHaveClass("border-transparent");
+  });
+
   it("translates filters and a literal instructor name while preserving query, focus and subscriptions", async () => {
     await renderFeed({ instructorName: "Pat $$50 $&" }, "en");
-    fireEvent.click(screen.getByRole("tab", { name: "Questions · 1 open" }));
+    fireEvent.click(screen.getByRole("button", { name: "Questions · 1 open" }));
     const search = screen.getByRole("searchbox", { name: "Search posts" });
     fireEvent.change(search, { target: { value: "portuguese" } });
     search.focus();
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    expect(screen.getByRole("tab", { name: "Preguntas · 1 abierta" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("tab", { name: "De Pat $$50 $&" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Preguntas · 1 abierta" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "De Pat $$50 $&" })).toBeInTheDocument();
     expect(screen.getByRole("searchbox", { name: "Buscar publicaciones" })).toBe(search);
     expect(search).toHaveFocus();
     expect(search).toHaveValue("portuguese");
@@ -281,9 +309,9 @@ describe("feed da comunidade (rodada 11)", () => {
     expect(question).toHaveValue("Question literal $$50 $&");
     expect(screen.getByText("Sobre la lección 3")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Publicar pregunta" }));
-    expect(screen.getByRole("button", { name: "Publicando…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Publicando..." })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    expect(screen.getByRole("button", { name: "Posting…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Posting..." })).toBeDisabled();
     expect(question).toHaveValue("Question literal $$50 $&");
     expect(createCommunityPost).toHaveBeenCalledExactlyOnceWith({
       courseSlug: space.courseSlug, category: "question", title: "Question literal $$50 $&", body: "Details $$ $&",
@@ -306,7 +334,8 @@ describe("feed da comunidade (rodada 11)", () => {
   });
 
   it.each([
-    ["Share", "Compartir", "Tu publicación", "Publicar", "discussion"],
+    // Sem botão "Share": o campo de mentira abre o mesmo formulário.
+    ["Ask the cohort or share something...", "Compartir", "Tu publicación", "Publicar", "discussion"],
     ["Post an update", "Publicar un aviso", "Tu publicación", "Publicar aviso", "announcement"],
   ])("preserves the %s draft and payload while translating", async (entry, formName, label, submit, category) => {
     await renderFeed({ canModerate: true }, "en");
@@ -319,6 +348,20 @@ describe("feed da comunidade (rodada 11)", () => {
     expect(field).toHaveValue("Original content $$50 $&");
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: submit })); });
     expect(createCommunityPost).toHaveBeenCalledWith(expect.objectContaining({ category, body: "Original content $$50 $&", title: null, lessonId: null, lessonTitle: null }));
+  });
+
+  // A lista nao e mais aria-live, o proprio post entra direto nela e o
+  // formulario fecha: sem isto, quem usa leitor de tela nao ouvia nada e o
+  // foco caia no corpo da pagina.
+  it("depois de publicar: 'Posted.' na regiao de status e o foco volta ao campo do compositor", async () => {
+    await renderFeed({}, "en");
+    fireEvent.click(screen.getByRole("button", { name: "Ask the cohort or share something..." }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Your post" }), { target: { value: "Sharing my worksheet notes." } });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Post" })); });
+
+    expect(createCommunityPost).toHaveBeenCalledWith(expect.objectContaining({ category: "discussion", body: "Sharing my worksheet notes." }));
+    expect(screen.getByRole("button", { name: "Ask the cohort or share something..." })).toHaveFocus();
+    expect(screen.getAllByRole("status").some((node) => node.textContent === "Posted.")).toBe(true);
   });
 
   it("translates a stored validation error and retains the draft without publishing", async () => {
@@ -348,13 +391,87 @@ describe("feed da comunidade (rodada 11)", () => {
   it("shows the localized access-load failure without opening the community gate", () => {
     vi.mocked(subscribeToEnrollment).mockImplementationOnce((_uid, _slug, _next, onError) => {
       onError(new Error("private cause"));
-      return vi.fn();
+      return Object.assign(vi.fn(), { reload: vi.fn(async () => undefined) });
     });
     render(<I18nProvider initialLocale="es"><CommunityFeed space={space} /></I18nProvider>);
     expect(screen.getByText("No pudimos confirmar tu acceso a la comunidad.")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Esta comunidad está vinculada a la inscripción en el curso." })).toBeInTheDocument();
     expect(subscribeToCommunityPosts).not.toHaveBeenCalled();
     expect(createCommunityPost).not.toHaveBeenCalled();
+  });
+
+  // As falhas de leitura eram becos: "Try again" relê pelo mesmo canal, sem
+  // reinscrever, e o aviso só sai quando a leitura volta.
+  it("a falha do acesso oferece Try again; quando a matrícula chega o feed abre com o foco no título", async () => {
+    let deliver: (enrollment: Enrollment | null) => void = () => {};
+    const reload = vi.fn(async () => deliver(enrollmentFixture));
+    vi.mocked(subscribeToEnrollment).mockImplementationOnce((_uid, _slug, next, onError) => {
+      deliver = next;
+      onError(new Error("private cause"));
+      return Object.assign(vi.fn(), { reload });
+    });
+    render(<I18nProvider initialLocale="en"><CommunityFeed space={space} /></I18nProvider>);
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not confirm your community access.");
+
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Try again" })));
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(subscribeToEnrollment).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(subscribeToCommunityPosts).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).toHaveAttribute("data-community-heading");
+  });
+
+  it("um Try again do acesso que falha de novo desarma o foco: a matrícula que chega depois não o puxa", async () => {
+    let deliver: (enrollment: Enrollment | null) => void = () => {};
+    let fail: (error: Error) => void = () => {};
+    const reload = vi.fn(async () => fail(new Error("still down")));
+    vi.mocked(subscribeToEnrollment).mockImplementationOnce((_uid, _slug, next, onError) => {
+      deliver = next;
+      fail = onError;
+      onError(new Error("private cause"));
+      return Object.assign(vi.fn(), { reload });
+    });
+    render(<I18nProvider initialLocale="en"><CommunityFeed space={space} /></I18nProvider>);
+
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Try again" })));
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not confirm your community access.");
+
+    act(() => deliver(enrollmentFixture));
+    expect(subscribeToCommunityPosts).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).not.toHaveAttribute("data-community-heading");
+  });
+
+  it("a falha dos posts oferece Try again sem o vazio, e os posts entram direto quando chegam", async () => {
+    let onError: (error: Error) => void = () => {};
+    const reload = vi.fn(async () => undefined);
+    vi.mocked(subscribeToCommunityPosts).mockImplementationOnce((_slug, next, fail) => {
+      mocks.postsCallback = next;
+      onError = fail;
+      return Object.assign(vi.fn(), { reload });
+    });
+    render(<I18nProvider initialLocale="en"><CommunityFeed space={space} instructorName="Patrick" /></I18nProvider>);
+    await waitFor(() => expect(mocks.postsCallback).not.toBeNull());
+    act(() => onError(new Error("offline")));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load community posts.");
+    expect(screen.queryByText("Loading community feed...")).not.toBeInTheDocument();
+    expect(screen.queryByText(/No posts yet/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(subscribeToCommunityPosts).toHaveBeenCalledTimes(1);
+
+    await act(async () => mocks.postsCallback?.(posts));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    // A primeira leitura boa entra na lista, não na pílula "N new posts".
+    expect(screen.getAllByRole("article")).toHaveLength(posts.length);
+    expect(screen.queryByRole("button", { name: /new post/ })).not.toBeInTheDocument();
+    expect(document.activeElement).toHaveAttribute("data-community-heading");
+
+    // Uma releitura do canal que falhe depois não tira os posts da tela.
+    act(() => onError(new Error("offline")));
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load community posts.");
+    expect(screen.getAllByRole("article")).toHaveLength(posts.length);
   });
 
   it("keeps an inline reply and its focused field until the pending response settles across locales", async () => {
@@ -371,7 +488,7 @@ describe("feed da comunidade (rodada 11)", () => {
     vi.mocked(createCommunityComment).mockReturnValueOnce(new Promise((done) => { resolve = done; }));
     fireEvent.click(within(card).getByRole("button", { name: "Publicar respuesta" }));
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    expect(within(card).getByRole("button", { name: "Posting…" })).toBeDisabled();
+    expect(within(card).getByRole("button", { name: "Posting..." })).toBeDisabled();
     expect(field).toHaveValue("Reply literal $$50 $&");
     expect(createCommunityComment).toHaveBeenCalledExactlyOnceWith({ postId: "open", courseSlug: space.courseSlug, body: "Reply literal $$50 $&", user: mocks.auth.user });
     await act(async () => resolve({ id: "reply-test" }));
@@ -435,14 +552,14 @@ describe("feed da comunidade (rodada 11)", () => {
     expect(cards[0]).toHaveTextContent("pinned");
     expect(cards).toHaveLength(4);
 
-    fireEvent.click(screen.getByRole("tab", { name: "Questions · 1 open" }));
+    fireEvent.click(screen.getByRole("button", { name: "Questions · 1 open" }));
     expect(screen.getAllByRole("article")).toHaveLength(2);
 
-    fireEvent.click(screen.getByRole("tab", { name: "From Patrick" }));
+    fireEvent.click(screen.getByRole("button", { name: "From Patrick" }));
     expect(screen.getAllByRole("article")).toHaveLength(1);
     expect(screen.getByRole("article")).toHaveTextContent("This week: persuasion");
 
-    fireEvent.click(screen.getByRole("tab", { name: "All" }));
+    fireEvent.click(screen.getByRole("button", { name: "All" }));
     fireEvent.change(screen.getByRole("searchbox", { name: "Search posts" }), {
       target: { value: "portuguese" },
     });
@@ -521,8 +638,13 @@ describe("feed da comunidade (rodada 11)", () => {
     });
     expect(screen.getAllByRole("article")).toHaveLength(4);
     expect(screen.queryByText("Anyone tried the worksheet?")).toBeNull();
+    // So a linha "1 new post" e anunciada; a lista nao e mais regiao viva.
+    const feedStatus = screen.getAllByRole("status").find((node) => node.textContent === "1 new post");
+    expect(feedStatus).toBeDefined();
+    expect(screen.getAllByRole("article")[0].closest("[aria-live]")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "1 new post" }));
+    expect(feedStatus?.textContent).toBe("");
     expect(screen.getAllByRole("article")).toHaveLength(5);
     expect(screen.getByText("Anyone tried the worksheet?")).toBeInTheDocument();
 
@@ -532,6 +654,59 @@ describe("feed da comunidade (rodada 11)", () => {
     });
     expect(screen.getByText("My own share.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /new post/ })).toBeNull();
+  });
+
+  // O "Like" do próprio post fica travado; antes nada dizia por quê.
+  it("o Like travado do próprio post diz o motivo; o dos outros, não", async () => {
+    await renderFeed();
+    const mine = post({ id: "mine", authorId: "student-1", authorName: "Ana Ribeiro", category: "discussion", body: "My own share." });
+    await act(async () => {
+      mocks.postsCallback?.([mine, ...posts]);
+    });
+
+    const own = within(screen.getByText("My own share.").closest("article")!).getByRole("button", { name: /^Like · \d+$/ });
+    expect(own).toBeDisabled();
+    expect(own).toHaveAccessibleDescription("You can't like your own post.");
+    // O motivo também à vista, não só para o leitor de tela.
+    expect(screen.getByText("You can't like your own post.")).not.toHaveClass("sr-only");
+    const other = within(screen.getAllByRole("article").find((card) => !card.textContent?.includes("My own share."))!).getByRole("button", { name: /^Like · \d+$/ });
+    expect(other).not.toHaveAttribute("aria-describedby");
+  });
+
+  // O vazio da lista é o EmptyState da plataforma, com h3 como os posts.
+  it("sem posts, o vazio é o EmptyState com título h3", async () => {
+    render(<CommunityFeed space={space} instructorName="Patrick" />);
+    await waitFor(() => expect(mocks.postsCallback).not.toBeNull());
+    await act(async () => {
+      mocks.postsCallback?.([]);
+      mocks.commentsCallback?.([]);
+      mocks.eventsCallback?.([]);
+      mocks.presenceCallback?.([]);
+    });
+
+    const heading = screen.getByRole("heading", { level: 3, name: "No posts yet. Ask the first question or share what you're working on." });
+    expect(heading.closest("div.border-dashed")).not.toBeNull();
+  });
+
+  // Antes: eyebrow "COMMUNITY" + h2 de 24px com o nome do curso (repetindo o
+  // h1 e a aba), "Share" fazendo o mesmo que o campo, e um cartão vazio
+  // "No live scheduled yet." sempre na lateral.
+  it("cromo enxuto: titulo so para leitor de tela, uma entrada por tarefa, sem cartao de live vazio", async () => {
+    await renderFeed({ canModerate: true });
+
+    // Escondido, mas aparece quando recebe o foco (depois de apagar o ultimo post).
+    expect(screen.getByRole("heading", { level: 2, name: "Leading Teams Through Change" })).toHaveClass("sr-only", "focus:not-sr-only");
+    expect(screen.queryByText("Community")).toBeNull();
+    expect(screen.getByRole("button", { name: "Ask the cohort or share something..." })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ask a question" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Post an update" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Share" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Next live" })).toBeNull();
+    expect(screen.queryByText("No live scheduled yet.")).toBeNull();
+    // Reacao com icone (nao emoji) e post do instrutor sem a borda colorida.
+    expect(document.body.textContent).not.toContain("👏");
+    expect(screen.getAllByRole("button", { name: /^Like · \d+$/ }).length).toBeGreaterThan(0);
+    for (const card of screen.getAllByRole("article")) expect(card.className).not.toContain("border-l-4");
   });
 
   it("lateral: 'Live in 40 min' vira 'Join' quando comeca; quem esta online; 'Say hi' so na primeira semana", async () => {
@@ -562,10 +737,20 @@ describe("feed da comunidade (rodada 11)", () => {
 
     const live = screen.getByRole("region", { name: "Next live" });
     expect(live).toHaveTextContent("Live in 40 min");
-    expect(live).toHaveTextContent("Join when it starts");
+    expect(live).toHaveTextContent("The join link appears 15 minutes before the start.");
     expect(within(live).queryByRole("link", { name: "Join" })).toBeNull();
     expect(screen.getByText(/2 online/)).toBeInTheDocument();
     expect(screen.getByText("New here? Say hi 👋")).toBeInTheDocument();
+
+    // 10 min antes ja e "comecando": o link de entrar aparece, como nas
+    // outras telas (antes so depois do inicio). Data e fuso na frase comum.
+    await act(async () => {
+      vi.setSystemTime(NOW + 30 * 60_000);
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+    const soon = screen.getByRole("region", { name: "Next live" });
+    expect(within(soon).getByRole("link", { name: "Join" })).toHaveAttribute("href", "https://zoom.us/j/1");
+    expect(soon).toHaveTextContent(formatEventDateTime(new Date(NOW + 40 * 60_000).toISOString(), "en"));
 
     await act(async () => {
       vi.setSystemTime(NOW + 41 * 60_000);
@@ -574,6 +759,38 @@ describe("feed da comunidade (rodada 11)", () => {
     expect(within(screen.getByRole("region", { name: "Next live" })).getByRole("link", { name: "Join" })).toHaveAttribute(
       "href",
       "https://zoom.us/j/1",
+    );
+  });
+
+  // Webinar as 6:00 e plantao as 7:30 (90 min depois): o cartao mostra a de
+  // inicio mais perto de agora. A mais antiga ficava "ao vivo" por 3 h e
+  // escondia a seguinte. Prazo nao e live: fica fora do cartao.
+  it.each([
+    ["7:20", 80, "Office hours", "Live in 10 min"],
+    ["6:10", 10, "Webinar", "Live now"],
+  ])("duas sessoes a 90 min, as %s: o cartao mostra a mais perto de agora", async (_label, offset, title, chip) => {
+    await renderFeed();
+    const session = (id: string, name: string, minutes: number, type = "live_class") => ({
+      id, title: name, type, status: "scheduled", startsAt: new Date(NOW + minutes * 60_000).toISOString(),
+      externalUrl: `https://zoom.us/j/${id}`,
+    });
+    await act(async () => {
+      mocks.eventsCallback?.([
+        session("webinar", "Webinar", 0),
+        session("office", "Office hours", 90),
+        session("due", "Essay due", offset + 5, "deadline"),
+      ]);
+      vi.setSystemTime(NOW + offset * 60_000);
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+
+    const live = screen.getByRole("region", { name: "Next live" });
+    expect(live).toHaveTextContent(title);
+    expect(live).toHaveTextContent(chip);
+    expect(live).not.toHaveTextContent("Essay due");
+    expect(within(live).getByRole("link", { name: "Join" })).toHaveAttribute(
+      "href",
+      title === "Webinar" ? "https://zoom.us/j/webinar" : "https://zoom.us/j/office",
     );
   });
 
@@ -594,9 +811,9 @@ describe("feed da comunidade (rodada 11)", () => {
       const live = screen.getByRole("region", { name: "Next live" });
       expect(live).toHaveTextContent("Live Q&A");
       expect(within(live).queryByRole("link")).not.toBeInTheDocument();
-      expect(live).toHaveTextContent("Session link unavailable. Contact your instructor.");
+      expect(live).toHaveTextContent("The join link has not been added yet. Contact your instructor.");
       fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-      expect(live).toHaveTextContent("El enlace de la sesión no está disponible. Contacta a tu instructor.");
+      expect(live).toHaveTextContent("Todavía no se agregó el enlace para entrar. Contacta a tu instructor.");
     },
   );
 
@@ -652,7 +869,7 @@ describe("feed da comunidade (rodada 11)", () => {
 /**
  * 11b — a gaveta da pergunta: abre por cima do feed com URL propria
  * (.../community/q/<post>), a resposta aceita em verde no topo, Esc e
- * "Back to feed" fecham (voltando ao endereco da aba), e quem pode marca
+ * o X ("Close") fecham (voltando ao endereco da aba), e quem pode marca
  * "Mark as the answer".
  */
 describe("gaveta da pergunta (11b)", () => {
@@ -703,7 +920,8 @@ describe("gaveta da pergunta (11b)", () => {
     vi.mocked(createCommunityComment).mockReturnValueOnce(new Promise((done) => { resolve = done; }));
     fireEvent.click(within(drawer).getByRole("button", { name: "Reply" }));
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    expect(within(drawer).getByRole("button", { name: "…" })).toBeDisabled();
+    // Enviando diz o que faz, em palavra, e acompanha o idioma.
+    expect(within(drawer).getByRole("button", { name: "Enviando..." })).toBeDisabled();
     expect(field).toHaveValue("Draft $$ $&");
     expect(createCommunityComment).toHaveBeenCalledExactlyOnceWith({ postId: "answered", courseSlug: space.courseSlug, body: "Draft $$ $&", user: mocks.auth.user });
     await act(async () => resolve({ id: "drawer-reply" }));
@@ -750,6 +968,8 @@ describe("gaveta da pergunta (11b)", () => {
     await renderFeed({ openPostId: "answered" });
 
     const drawer = screen.getByRole("dialog", { name: /real deadline/ });
+    // O foco entra na gaveta (tabIndex -1), nao fica no feed atras dela.
+    expect(drawer).toHaveFocus();
     const replies = within(drawer).getAllByRole("listitem");
     expect(replies[0]).toHaveTextContent("Show the constraint, not the pressure.");
     expect(replies[0]).toHaveTextContent("answer");
@@ -759,7 +979,9 @@ describe("gaveta da pergunta (11b)", () => {
     fireEvent.keyDown(document, { key: "Escape" });
     expect(mocks.push).toHaveBeenCalledWith("/learn/courses/course-1/community");
 
-    fireEvent.click(within(drawer).getByRole("button", { name: "Back to feed" }));
+    // Um fechar so: o X. O "Back to feed" duplicado saiu do cabecalho.
+    expect(within(drawer).queryByRole("button", { name: "Back to feed" })).toBeNull();
+    fireEvent.click(within(drawer).getByRole("button", { name: "Close" }));
     expect(mocks.push).toHaveBeenLastCalledWith("/learn/courses/course-1/community");
   });
 

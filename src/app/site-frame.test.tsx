@@ -124,7 +124,8 @@ describe("hero", () => {
     const { container } = render(await MarketingHero());
     const title = container.querySelector("h1");
     const copy = title?.parentElement;
-    const lead = copy?.querySelector(":scope > p");
+    // O apoio (linha de público + "Education, not therapy") é o 1º bloco depois do título.
+    const lead = copy?.querySelector(":scope > div");
 
     expect(copy?.className).toContain("flex-col");
     // `space-y-*` é margem por posição no DOM: com `order` ela sairia errada.
@@ -192,7 +193,7 @@ describe("seções de marketing viraram servidor", () => {
   });
 
   it.each([
-    ["hero", MarketingHero, "Your knowledge changes lives."],
+    ["hero", MarketingHero, "Turn your knowledge into cash through a digital business."],
     ["how it works", HowItWorksStrip, "Three steps from your method to a published program."],
     ["capabilities", CapabilitiesGrid, "Everything your program needs is already built in."],
     ["promise", PromisePreviewBand, "Six commitments. Written down. Public."],
@@ -205,6 +206,20 @@ describe("seções de marketing viraram servidor", () => {
       expect(screen.getByText(text, { exact: false })).toBeInTheDocument();
     },
   );
+
+  // S-17: cartão que não abre nada não reage ao mouse (subir e trocar a cor
+  // do ícone fazia parecer botão). A classe home-card segue: é dela que a
+  // coreografia de rolagem precisa.
+  it("os cartões de capacidades não são links e ficam parados no mouse", async () => {
+    const { container } = render(await CapabilitiesGrid());
+
+    const cards = container.querySelectorAll(".home-card > article");
+    expect(cards).toHaveLength(6);
+    for (const card of cards) {
+      expect(card.querySelector("a")).toBeNull();
+      expect(card.outerHTML).not.toMatch(/hover:/);
+    }
+  });
 
   // Herdado de marketing.test.tsx, que não consegue mais montar a seção pela
   // home (server component assíncrono). A carta continua sendo uma só.

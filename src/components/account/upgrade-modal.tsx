@@ -66,14 +66,16 @@ export function UpgradeModal({
     >
       <button
         type="button"
-        className="absolute inset-0 bg-[rgba(15,39,68,0.62)] backdrop-blur-[2px]"
+        className="dialog-backdrop absolute inset-0"
         aria-label={t("billingCheckout.close")}
         onClick={onClose}
       />
-      <div className="modal-panel relative z-[75] flex w-full max-w-5xl flex-col overflow-hidden bg-white shadow-[0_30px_80px_rgba(15,39,68,0.32)] sm:rounded-xl">
+      {/* O painel da casa do sm em diante; no celular segue em tela cheia,
+          sem canto nem borda. */}
+      <div className="dialog-panel dialog-panel--xl modal-panel relative z-[75] flex flex-col overflow-hidden max-sm:rounded-none max-sm:border-0">
         <header className="flex items-center justify-between gap-3 border-b border-[var(--color-line)] px-5 py-4 sm:px-6">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
               {t("billingCheckout.secure")}
             </p>
             <h2
@@ -86,7 +88,7 @@ export function UpgradeModal({
           <button
             type="button"
             onClick={onClose}
-            className="grid size-9 shrink-0 place-items-center rounded-md text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
+            className="button-icon"
             aria-label={t("billingCheckout.close")}
           >
             <X aria-hidden="true" size={18} strokeWidth={1.8} />

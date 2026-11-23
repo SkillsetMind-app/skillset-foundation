@@ -52,7 +52,7 @@ vi.mock("@/components/teacher/teacher-wallet-panel", () => ({
   // da pagina. O mock precisa disso para que a prova do cabecalho unico seja
   // sobre a arvore real, e nao sobre um marcador inventado.
   TeacherWalletPanel: () =>
-    createElement("section", null, createElement("h1", null, "Tus ganancias, tu configuración de pagos.")),
+    createElement("section", null, createElement("h1", null, "Tus ganancias, tu configuración de pagos")),
 }));
 
 import AccountPaymentsPage from "../account/payments/page";
@@ -83,9 +83,15 @@ describe("cabecalhos das paginas do estudio", () => {
   it.each(pages)("o cabecalho de %s existe nos dois idiomas e muda de idioma", (page) => {
     const key = `${page}Page`;
 
-    for (const field of ["eyebrow", "title", "description"]) {
+    for (const field of ["title", "description"]) {
       expect(en.teach[key][field], `en teach.${key}.${field}`).toBeTruthy();
       expect(es.teach[key][field], `es teach.${key}.${field}`).toBeTruthy();
+    }
+    // O rotulo generico "Teacher Studio" saiu do cabecalho (nao nomeava a
+    // tela nem um grupo); a chave sem uso saiu junto dos dois dicionarios.
+    if (page !== "events") {
+      expect(en.teach[key].eyebrow).toBeUndefined();
+      expect(es.teach[key].eyebrow).toBeUndefined();
     }
     expect(es.teach[key].title).not.toBe(en.teach[key].title);
     expect(es.teach[key].description).not.toBe(en.teach[key].description);
@@ -113,7 +119,7 @@ describe("pagamentos não repete o cabeçalho do painel", () => {
     // titulo da mesma tela), e a pagina nao fica sem cabecalho de nivel 1.
     const titulos = screen.getAllByRole("heading", { level: 1 });
     expect(titulos).toHaveLength(1);
-    expect(titulos[0]).toHaveTextContent("Tus ganancias, tu configuración de pagos.");
+    expect(titulos[0]).toHaveTextContent("Tus ganancias, tu configuración de pagos");
     // Nem o titulo fixo em ingles, nem o nome antigo da pagina.
     expect(screen.queryByText("Payouts & tax")).toBeNull();
     expect(screen.queryByText("Pagos e impuestos")).toBeNull();
@@ -123,8 +129,8 @@ describe("pagamentos não repete o cabeçalho do painel", () => {
 
 describe("as demais entradas do criador usam o idioma da sessão", () => {
   const routes = [
-    { name: "sales/[orderId]", page: () => TeacherSaleDetailPage({ params: Promise.resolve({ orderId: "sale-fixture" }) }), key: "saleDetailPage", title: "Detalle de la venta." },
-    { name: "storefront", page: TeacherStorefrontPage, key: "storefrontPage", title: "Tu tienda." },
+    { name: "sales/[orderId]", page: () => TeacherSaleDetailPage({ params: Promise.resolve({ orderId: "sale-fixture" }) }), key: "saleDetailPage", title: "Detalle de la venta" },
+    { name: "storefront", page: TeacherStorefrontPage, key: "storefrontPage", title: "Tu tienda" },
     { name: "subscriptions", page: TeacherSubscriptionsPage, key: "subscriptionsPage", title: "Suscripciones" },
   ];
 
@@ -133,7 +139,9 @@ describe("as demais entradas do criador usam o idioma da sessão", () => {
     render(<I18nProvider initialLocale="es">{await page()}</I18nProvider>);
 
     expect(screen.getByRole("heading", { name: title })).toBeInTheDocument();
-    expect(screen.getByText("Estudio del Profesor")).toBeInTheDocument();
+    // O rótulo genérico "Estudio del Profesor" saiu do cabeçalho: ele não
+    // nomeava a tela nem um grupo, só repetia o lado em que a pessoa está.
+    expect(screen.queryByText("Estudio del Profesor")).toBeNull();
     expect(screen.getByText(translate(getDictionary("es"), `teach.${key}.description`))).toBeInTheDocument();
     expect(screen.queryByText(translate(getDictionary("en"), `teach.${key}.description`))).not.toBeInTheDocument();
     expect(mocks.permissions).toEqual([name === "storefront" ? "teacherStudio.manageStorefront" : "teacherStudio.access"]);

@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Trophy } from "lucide-react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { LevelBadge } from "@/components/learn/level-badge";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import type {
   Leaderboard,
   LeaderboardWindow,
@@ -36,17 +38,23 @@ export function CommunityLeaderboard({
     ready: boolean;
   }>({ window: "7d", board: null, ready: false });
   const [error, setError] = useState("");
+  // "Try again": o número novo assina de novo a mesma janela.
+  const [boardAttempt, setBoardAttempt] = useState(0);
+  const sectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     return subscribeToLeaderboard(
       window,
-      (board) => setBoardState({ window, board, ready: true }),
+      (board) => {
+        setError("");
+        setBoardState({ window, board, ready: true });
+      },
       () => {
         setError("learnWave2.leaderboard.loadError");
         setBoardState({ window, board: null, ready: true });
       },
     );
-  }, [window]);
+  }, [window, boardAttempt]);
 
   const ready = boardState.ready && boardState.window === window;
   const entries =
@@ -75,7 +83,7 @@ export function CommunityLeaderboard({
     : null;
 
   return (
-    <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+    <section ref={sectionRef} tabIndex={-1} className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Trophy size={18} className="text-[var(--color-primary)]" aria-hidden />
@@ -123,12 +131,9 @@ export function CommunityLeaderboard({
                   .replace("{level}", () => number.format(progress.level + 1))}
             </p>
           </div>
-          <div
-            role="progressbar"
-            aria-valuenow={progress.percentToNext}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label={
+          <ProgressBar
+            value={progress.percentToNext}
+            label={
               progress.isMax
                 ? t("learnWave2.leaderboard.progressTop").replace("{level}", () => number.format(progress.level))
                 : t("learnWave2.leaderboard.progress")
@@ -136,22 +141,21 @@ export function CommunityLeaderboard({
                   .replace("{percent}", () => number.format(progress.percentToNext))
                   .replace("{next}", () => number.format(progress.level + 1))
             }
-            className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--color-line)]"
-          >
-            <div
-              className="h-full rounded-full bg-[var(--color-primary)] transition-[width] duration-300"
-              style={{ width: `${progress.percentToNext}%` }}
-            />
-          </div>
+            className="mt-2"
+          />
         </div>
       ) : null}
 
       <div className="mt-5 grid gap-2">
         {!ready ? (
-          <p className="text-sm text-[var(--color-ink-soft)]">
-            {t("learnWave2.leaderboard.loading")}
-          </p>
-        ) : entries.length === 0 ? (
+          // A espera com a forma das linhas do ranking, e não uma frase solta.
+          <div role="status" className="grid gap-2">
+            <span className="sr-only">{t("learnWave2.leaderboard.loading")}</span>
+            {[0, 1, 2].map((row) => (
+              <div key={row} aria-hidden="true" className="h-12 animate-pulse rounded-lg bg-[var(--color-surface-strong)]" />
+            ))}
+          </div>
+        ) : error ? null : entries.length === 0 ? (
           <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
             {t("learnWave2.leaderboard.empty")}
           </p>
@@ -199,10 +203,18 @@ export function CommunityLeaderboard({
         </div>
       ) : null}
 
+      {/* Falhou: o aviso com "Try again", no lugar da lista (que não diz "vazio"). */}
       {error ? (
-        <p role="alert" className="mt-3 text-xs font-semibold text-[var(--color-danger-fg)]">
+        <LoadErrorAlert
+          className="mt-3"
+          focusRef={sectionRef}
+          onRetry={() => {
+            setBoardState({ window, board: null, ready: false });
+            setBoardAttempt((attempt) => attempt + 1);
+          }}
+        >
           {t(error)}
-        </p>
+        </LoadErrorAlert>
       ) : null}
     </section>
   );

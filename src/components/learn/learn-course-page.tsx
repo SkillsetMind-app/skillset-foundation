@@ -46,8 +46,10 @@ export async function LearnCoursePage({
           <Suspense
             fallback={
               // The classroom's one loading state (same as the route file and
-              // the workspaces), here in the course's own --ma-* colours.
-              <ClassroomLoading label={t("learnWave2.courseLoading.title")} />
+              // the workspaces), here in the course's own --ma-* colours. O
+              // servidor não lê o endereço aqui: a mesma forma curta do
+              // arquivo de rota (loading.tsx explica a escolha).
+              <ClassroomLoading label={t("learnWave2.courseLoading.title")} short />
             }
           >
             <CreatorCourseWorkspace

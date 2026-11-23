@@ -89,6 +89,10 @@ describe("SignupForm presents only the available paths", () => {
     fireEvent.click(screen.getByRole("button", { name: "auth.signup.continue" }));
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "2");
     expect(screen.getByLabelText("auth.password")).toHaveFocus();
+    // A-10: as regras da senha estao a vista antes de digitar e sao a
+    // descricao do campo, nao parte do nome dele.
+    expect(screen.getByText("authFlow.passwordRules.title")).toBeInTheDocument();
+    expect(screen.getByLabelText("auth.password")).toHaveAccessibleDescription(/authFlow\.passwordRules\.length/);
     expect(mocks.signUpWithEmail).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "auth.signup.back" }));
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "1");
@@ -97,6 +101,27 @@ describe("SignupForm presents only the available paths", () => {
     expect(screen.getByRole("checkbox")).toBeChecked();
     expect(screen.getByRole("radio", { name: "auth.signup.roleTeach" })).toHaveAttribute("aria-checked", "true");
     expect(mocks.signUpWithEmail).not.toHaveBeenCalled();
+  });
+
+  // F-09: os pontinhos viraram a barra da casa. O leitor de tela ouve o mesmo
+  // passo, de 1 a 2, e o texto visível não é lido duas vezes.
+  it("draws the steps with the shared bar and keeps the step values", () => {
+    render(<SignupForm />);
+    const bar = () => screen.getByRole("progressbar", { name: "auth.signup.progress" });
+    expect(bar()).toHaveAttribute("aria-valuemin", "1");
+    expect(bar()).toHaveAttribute("aria-valuemax", "2");
+    expect(bar()).toHaveAttribute("aria-valuenow", "1");
+    expect(bar()).toHaveAttribute("aria-valuetext", "auth.signup.progress");
+    expect(bar()).toHaveClass("h-1.5", "rounded-full", "bg-[var(--color-line)]");
+    expect((bar().firstElementChild as HTMLElement).style.transform).toBe("translateX(-50%)");
+    expect(screen.getByText("auth.signup.progress")).toHaveAttribute("aria-hidden", "true");
+
+    fireEvent.change(screen.getByLabelText("auth.signup.fullName"), { target: { value: "Alex Rivera" } });
+    fireEvent.change(screen.getByLabelText("auth.email"), { target: { value: "alex@example.test" } });
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "auth.signup.continue" }));
+    expect(bar()).toHaveAttribute("aria-valuenow", "2");
+    expect((bar().firstElementChild as HTMLElement).style.transform).toBe("translateX(-0%)");
   });
 
   it.each([false, true])("keeps native Back non-submitting across the step change with a password draft: %s", async (hasPasswordDraft) => {
@@ -418,5 +443,97 @@ describe("SignupForm leva o curso junto para o cadastro", () => {
     expect(new URL(signin.getAttribute("href")!, "https://skillset.test").searchParams.get("returnTo")).toBe(checkout);
     expect(mocks.acceptUserTerms).not.toHaveBeenCalled();
     expect(mocks.updateUserIdentity).not.toHaveBeenCalled();
+  });
+});
+
+// O botao de um plano em /pricing chega aqui com ?plan= e ?cycle=. Antes a
+// escolha morria nesta tela e o professor escolhia o plano de novo la dentro.
+// Agora ela vira o destino (a tela de cartao) e viaja como qualquer returnTo.
+describe("SignupForm leva o plano de /pricing ate o cartao", () => {
+  const doBotao = "path=teacher&plan=starter&cycle=yearly";
+  const cartao = "%2Faccount%2Fbilling%2Fupgrade%3Fplan%3Dstarter%26cycle%3Dyearly";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.signUpWithEmail.mockResolvedValue({ user: { uid: "u-1" }, needsEmailConfirmation: false });
+    mocks.acceptUserTerms.mockResolvedValue(undefined);
+    mocks.updateUserIdentity.mockResolvedValue(undefined);
+    mocks.signInWithGoogle.mockReturnValue(new Promise(() => {}));
+  });
+
+  afterEach(() => {
+    cleanup();
+    mocks.searchParams = new URLSearchParams();
+  });
+
+  it("poe o plano no link do e-mail de confirmacao e na ida para o onboarding", async () => {
+    mocks.searchParams = new URLSearchParams(doBotao);
+    render(<SignupForm />);
+
+    submitSignup();
+
+    const paraOnboarding = `/welcome?path=teacher&returnTo=${cartao}`;
+    await waitFor(() => expect(mocks.router.push).toHaveBeenCalledWith(paraOnboarding));
+    expect(mocks.signUpWithEmail).toHaveBeenCalledWith(expect.anything(), undefined, paraOnboarding);
+  });
+
+  it("leva o plano pela volta do Google", () => {
+    mocks.searchParams = new URLSearchParams(doBotao);
+    render(<SignupForm />);
+
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: /auth\.continueWithGoogle/ }));
+
+    expect(mocks.signInWithGoogle).toHaveBeenCalledWith(`/loading?next=welcome&path=teacher&returnTo=${cartao}`);
+  });
+
+  // Trocar ensinar por aprender reescreve o endereco: o plano segue nele como
+  // returnTo, entao voltar para "ensinar" nao perde a escolha.
+  it("nao perde o plano quando a pessoa troca ensinar por aprender", () => {
+    mocks.searchParams = new URLSearchParams(doBotao);
+    render(<SignupForm />);
+
+    fireEvent.click(screen.getByRole("radio", { name: "auth.signup.roleLearn" }));
+
+    expect(mocks.router.replace).toHaveBeenCalledWith(
+      `/auth?mode=signup&path=student&returnTo=${cartao}`,
+      { scroll: false },
+    );
+  });
+
+  it("leva o plano para quem ja tem conta e prefere entrar", () => {
+    mocks.searchParams = new URLSearchParams(doBotao);
+    render(<SignupForm />);
+
+    expect(screen.getByRole("link", { name: "auth.signup.alreadyHaveAccount" })).toHaveAttribute(
+      "href",
+      `/auth?mode=signin&path=teacher&returnTo=${cartao}`,
+    );
+  });
+
+  it.each([
+    "path=teacher&plan=plus&cycle=monthly",
+    "path=teacher&plan=free&cycle=monthly",
+    "path=teacher&plan=starter&cycle=weekly",
+    "path=teacher&plan=starter",
+    "path=teacher&cycle=yearly",
+    "path=teacher&plan=https%3A%2F%2Foutro.com&cycle=monthly",
+  ])("ignora o que nao e um plano publico com ciclo valido: %s", async (query) => {
+    mocks.searchParams = new URLSearchParams(query);
+    render(<SignupForm />);
+
+    submitSignup();
+
+    await waitFor(() => expect(mocks.router.push).toHaveBeenCalledWith("/welcome?path=teacher"));
+    expect(mocks.signUpWithEmail).toHaveBeenCalledWith(expect.anything(), undefined, "/welcome?path=teacher");
+  });
+
+  it("sem plano no endereco, o cadastro de professor segue como sempre", async () => {
+    mocks.searchParams = new URLSearchParams("path=teacher");
+    render(<SignupForm />);
+
+    submitSignup();
+
+    await waitFor(() => expect(mocks.router.push).toHaveBeenCalledWith("/welcome?path=teacher"));
   });
 });

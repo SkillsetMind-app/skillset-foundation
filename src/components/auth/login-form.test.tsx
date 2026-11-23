@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { LoginForm } from "@/components/auth/login-form";
@@ -39,13 +39,72 @@ vi.mock("@/lib/auth/supabase-auth", async (importOriginal) => ({
 
 vi.mock("@/lib/data/user-profiles", () => ({ getUserProfile: vi.fn() }));
 
-import { MfaRequiredError } from "@/lib/auth/supabase-auth";
+import { MfaRequiredError, signInWithEmail } from "@/lib/auth/supabase-auth";
+import { getUserProfile } from "@/lib/data/user-profiles";
 
 function clickGoogle() {
   fireEvent.click(
     screen.getByRole("button", { name: /auth\.continueWithGoogle/ }),
   );
 }
+
+// Quem clica num plano em /pricing e ja tem conta entra por aqui: o plano vem
+// em ?plan= e ?cycle=, ou ja como returnTo (o link "ja tenho conta" do
+// cadastro). So professor sem plano abre a tela de cartao.
+describe("LoginForm com um plano escolhido em /pricing", () => {
+  const cartao = "/account/billing/upgrade?plan=starter&cycle=yearly";
+  const comCartao = "returnTo=%2Faccount%2Fbilling%2Fupgrade%3Fplan%3Dstarter%26cycle%3Dyearly";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.getPendingSecondFactor.mockResolvedValue(null);
+    mocks.signInWithGoogle.mockReturnValue(new Promise(() => {}));
+    vi.mocked(signInWithEmail).mockResolvedValue({ uid: "u-1" } as never);
+    mocks.searchParams = new URLSearchParams("path=teacher&plan=starter&cycle=yearly");
+  });
+
+  afterEach(() => {
+    cleanup();
+    mocks.searchParams = new URLSearchParams();
+  });
+
+  async function entrar(profile: Record<string, unknown>) {
+    vi.mocked(getUserProfile).mockResolvedValue(profile as never);
+    const view = render(<LoginForm />);
+    fireEvent.change(view.container.querySelector('input[type="email"]')!, { target: { value: "alex@example.test" } });
+    fireEvent.change(view.container.querySelector('input[type="password"]')!, { target: { value: "fixture-password" } });
+    fireEvent.submit(view.container.querySelector("form")!);
+    await waitFor(() => expect(mocks.router.push).toHaveBeenCalledTimes(1));
+    return mocks.router.push.mock.calls[0][0];
+  }
+
+  it.each([
+    ["professor sem plano abre o cartao", { onboardingCompleted: true, roles: ["teacher"] }, cartao],
+    ["professor que ja tem plano segue para o estudio", { onboardingCompleted: true, roles: ["teacher"], currentPlanId: "basic" }, "/loading?next=route&path=teacher"],
+    ["quem ainda nao ensina ativa o ensino levando o plano", { onboardingCompleted: true, roles: ["student"] }, `/onboarding?path=teacher&${comCartao}`],
+    ["conta sem onboarding passa por ele levando o plano", { onboardingCompleted: false, roles: ["student"] }, `/loading?next=welcome&path=teacher&${comCartao}`],
+  ])("%s", async (_caso, profile, destino) => {
+    expect(await entrar(profile)).toBe(destino);
+  });
+
+  it("quem entra pela porta de aluno nao abre o cartao", async () => {
+    mocks.searchParams = new URLSearchParams({ path: "student", returnTo: cartao });
+    expect(await entrar({ onboardingCompleted: true, roles: ["teacher"] })).toBe("/loading?next=route&path=student");
+  });
+
+  it("plano fora da lista e ignorado: entra como sempre", async () => {
+    mocks.searchParams = new URLSearchParams("path=teacher&plan=plus&cycle=yearly");
+    expect(await entrar({ onboardingCompleted: true, roles: ["teacher"] })).toBe("/loading?next=route&path=teacher");
+  });
+
+  it("leva o plano pela volta do Google", () => {
+    render(<LoginForm />);
+
+    clickGoogle();
+
+    expect(mocks.signInWithGoogle).toHaveBeenCalledWith(`/loading?next=welcome&path=teacher&${comCartao}`);
+  });
+});
 
 describe("LoginForm with Google", () => {
   beforeEach(() => {
@@ -103,6 +162,47 @@ describe("LoginForm with Google", () => {
     expect(destination.searchParams.has("next")).toBe(false);
     expect(destination.searchParams.has("external")).toBe(false);
     expect(mocks.signInWithGoogle).not.toHaveBeenCalled();
+  });
+});
+
+describe("LoginForm: campo de senha e botao de e-mail", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.getPendingSecondFactor.mockResolvedValue(null);
+    mocks.searchParams = new URLSearchParams();
+  });
+
+  afterEach(cleanup);
+
+  // A-10: com o link dentro do <label>, o leitor de tela lia o campo como
+  // "Password Forgot password?".
+  it("o campo se chama so 'Password', o link fica fora do rotulo e o olho alterna o tipo", () => {
+    render(<LoginForm />);
+
+    const field = screen.getByLabelText("auth.password");
+    expect(field).toHaveAttribute("autocomplete", "current-password");
+    expect(screen.getByRole("link", { name: "auth.forgotPassword" }).closest("label")).toBeNull();
+
+    const eye = screen.getByRole("button", { name: "auth.showPassword" });
+    fireEvent.click(eye);
+    expect(field).toHaveAttribute("type", "text");
+    // Um nome so; o estado vem do aria-pressed.
+    expect(eye).toHaveAttribute("aria-pressed", "true");
+    expect(eye).toHaveAccessibleName("auth.showPassword");
+    expect(screen.getByRole("textbox", { name: "auth.password" })).toBe(field);
+  });
+
+  // A-09: o rotulo de espera so no botao apertado; os dois seguem travados.
+  it("entrar com e-mail muda so o rotulo do botao de e-mail", async () => {
+    vi.mocked(signInWithEmail).mockReturnValue(new Promise(() => {}) as never);
+    const view = render(<LoginForm />);
+    fireEvent.change(view.container.querySelector('input[type="email"]')!, { target: { value: "alex@example.test" } });
+    fireEvent.change(screen.getByLabelText("auth.password"), { target: { value: "fixture-password" } });
+    fireEvent.submit(view.container.querySelector("form")!);
+
+    expect(await screen.findByRole("button", { name: "auth.signingIn" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /auth\.continueWithGoogle/ })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: /auth\.openingGoogle/ })).toBeNull();
   });
 });
 

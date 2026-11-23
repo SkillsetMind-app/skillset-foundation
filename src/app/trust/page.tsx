@@ -75,12 +75,14 @@ export default async function TrustPage() {
         {trustLayers.map((layer) => {
           const { Icon } = layer;
           return (
+            // Cartão parado: não é link, e subir e trocar a cor do ícone no
+            // hover prometia um clique que não fazia nada.
             <article
               key={layer.title}
-              className="group rounded-lg border fine-rule bg-white p-5 shadow-[var(--shadow-soft)] transition duration-[180ms] ease-out hover:-translate-y-0.5 hover:border-[rgba(26,54,93,0.18)] hover:shadow-[0_18px_36px_rgba(15,39,68,0.10)]"
+              className="rounded-lg border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]"
             >
               <span
-                className="grid size-11 place-items-center rounded-md bg-[var(--color-surface-soft)] text-[var(--color-primary)] transition-colors group-hover:bg-[var(--color-primary)] group-hover:text-[var(--color-base)]"
+                className="grid size-11 place-items-center rounded-md bg-[var(--color-surface-soft)] text-[var(--color-primary)]"
                 aria-hidden="true"
               >
                 <Icon size={20} strokeWidth={1.7} />

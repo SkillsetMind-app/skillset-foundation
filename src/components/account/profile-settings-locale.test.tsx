@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ProfileSettingsPanel } from "@/components/account/profile-settings-panel";
@@ -73,9 +73,11 @@ describe("profile settings locale", () => {
     let reject!: (reason: Error) => void;
     mocks.getUserProfile.mockReturnValue(new Promise((_, fail) => { reject = fail; }));
     renderProfile();
-    expect(screen.getByText("Cargando los ajustes del perfil...")).toBeInTheDocument();
+    // F-03: o título já entra; só o formulário espera, em esqueleto.
+    expect(screen.getByRole("heading", { name: "Ajustes del perfil" })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Cargando los ajustes del perfil...");
     changeLanguage();
-    expect(screen.getByText("Loading profile settings...")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Loading profile settings...");
     await act(async () => reject(new Error("Internal profile service failure")));
     expect(screen.getByRole("alert")).toHaveTextContent("We could not load your profile settings.");
     changeLanguage();
@@ -88,8 +90,9 @@ describe("profile settings locale", () => {
     let complete!: () => void;
     mocks.updateUserIdentity.mockReturnValue(new Promise<void>((resolve) => { complete = resolve; }));
     const { container } = renderProfile();
-    expect(await screen.findByRole("heading", { name: "Ajustes del perfil" })).toBeInTheDocument();
-    for (const text of ["Identidad de la cuenta", "Foto de perfil", "Credenciales", "Sin firma", "Objetivos"]) {
+    expect(await screen.findByText("Foto de perfil")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Ajustes del perfil" })).toBeInTheDocument();
+    for (const text of ["Foto de perfil", "Credenciales", "Sin firma", "Objetivos"]) {
       expect(screen.getByText(text)).toBeInTheDocument();
     }
     expect(screen.getByText(/Usa una imagen cuadrada/)).toHaveTextContent("JPG, PNG o WebP de menos de 5 MB");
@@ -119,14 +122,30 @@ describe("profile settings locale", () => {
     expect(screen.getByPlaceholderText("e.g. Professor at University of S\u00e3o Paulo")).toHaveValue("  My English credential $&  ");
     expect(screen.getByRole("combobox")).toHaveValue("Pacific/Auckland");
     expect(screen.getByRole("button", { name: "Team training" })).toHaveAttribute("aria-pressed", "true");
+    // F-04: os dois rótulos moram na mesma célula, então o botão não muda de
+    // largura ao salvar; o nome é sempre o rótulo à vista.
+    const idleSave = screen.getByRole("button", { name: "Save profile" });
+    expect(within(idleSave).getByText("Saving...")).toHaveAttribute("aria-hidden", "true");
+    expect(within(idleSave).getByText("Save profile")).not.toHaveAttribute("aria-hidden");
     fireEvent.submit(container.querySelector("form")!);
     expect(screen.getByRole("button", { name: "Saving..." })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Saving..." })).toBe(idleSave);
+    expect(within(idleSave).getByText("Save profile")).toHaveAttribute("aria-hidden", "true");
+    expect(within(idleSave).getByText("Saving...")).not.toHaveAttribute("aria-hidden");
     changeLanguage();
     expect(screen.getByRole("button", { name: "Guardando..." })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Guardar perfil" })).toBeNull();
     await act(async () => complete());
     expect(screen.getByText("Perfil actualizado.")).toBeInTheDocument();
     changeLanguage();
     expect(screen.getByText("Profile updated.")).toBeInTheDocument();
+    // F-05: o "salvo" é anunciado e mora DEPOIS do botão, na mesma linha; acima
+    // dele, nascia e empurrava o botão recém-clicado para baixo.
+    const saved = screen.getByRole("status");
+    expect(saved).toHaveTextContent("Profile updated.");
+    const save = screen.getByRole("button", { name: "Save profile" });
+    expect(save.compareDocumentPosition(saved) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(saved.parentElement).toBe(save.parentElement);
     expect(mocks.getUserProfile).toHaveBeenCalledTimes(1);
     expect(mocks.updateUserIdentity).toHaveBeenCalledExactlyOnceWith("profile-user", {
       displayName: "Ana $& Edited", username: "ana-edited", bio: profile.bio,
@@ -134,6 +153,24 @@ describe("profile settings locale", () => {
       credentials: ["My English credential $&"],
       goals: ["teach_online", "career_growth", "skill_certification", "build_community", "live_mentorship", "business_training"],
     });
+
+    // Editar de novo tira o "salvo": a frase não pode valer para texto que já
+    // não é o gravado. Nada é gravado por isso.
+    fireEvent.change(screen.getByLabelText("Public name"), { target: { value: "Ana again" } });
+    expect(screen.queryByText("Profile updated.")).toBeNull();
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(mocks.updateUserIdentity).toHaveBeenCalledTimes(1);
+  });
+
+  it("a toggled goal also clears the saved line", async () => {
+    const { container } = renderProfile();
+    await screen.findByDisplayValue(profile.displayName);
+    await act(async () => { fireEvent.submit(container.querySelector("form")!); });
+    expect(await screen.findByText("Perfil actualizado.")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Enseñar en línea" }));
+    expect(screen.queryByText("Perfil actualizado.")).toBeNull();
+    expect(mocks.updateUserIdentity).toHaveBeenCalledTimes(1);
   });
 
   it.each([
@@ -234,19 +271,22 @@ describe.each([
     expect(input.value).toBe("");
     changeLanguage();
     expect(screen.getByLabelText(enLabel)).toBe(input);
-    expect(input.closest("label")).toHaveTextContent("Uploading...");
+    // F-20: o rótulo do botão não repete o andamento; só a nota o diz.
+    expect(input.closest("label")).not.toHaveTextContent("Uploading");
     expect(screen.getByRole("status")).toHaveTextContent("Sending...");
     act(() => progress({ bytesTransferred: 1, totalBytes: 3, percent: 33, state: "running" }));
     expect(screen.getByRole("status")).toHaveTextContent("33%");
     expect(screen.getByRole("status")).toHaveTextContent("1 B of 3 B");
+    expect(screen.getByRole("status").querySelector(".upload-indeterminate-fill")).toBeNull();
     changeLanguage();
     expect(screen.getByRole("status")).toHaveTextContent("1 B de 3 B");
-    expect(input.closest("label")).toHaveTextContent("Subiendo...");
+    expect(input.closest("label")).not.toHaveTextContent("Subiendo");
     await act(async () => complete("https://media.example.test/uploaded.png"));
     expect(screen.getByText(success)).toBeInTheDocument();
     expect(input.closest("label")).toHaveTextContent(replace);
     expect(input).toBeEnabled();
-    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    // A nota de envio saiu; o único status que fica é o "salvo" ao lado do botão.
+    expect(screen.getByRole("status")).toHaveTextContent(success);
     if (upload === mocks.uploadTeacherSignature) {
       expect(screen.getByAltText("Tu firma para los certificados")).toHaveAttribute("src", "https://media.example.test/uploaded.png");
     }

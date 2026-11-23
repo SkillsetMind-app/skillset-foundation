@@ -3,12 +3,15 @@
 import { ArrowRight, Star } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import type { CSSProperties } from "react";
+import { useRouter } from "next/navigation";
+import { useRef, useTransition, type CSSProperties } from "react";
 
 import { CourseTile } from "@/components/courses/course-tile";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { SelfReportedTag, VerifiedBadge } from "@/components/shared/verified-badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import { brand } from "@/data/brand";
 import {
   isStorefrontHexColor,
@@ -39,6 +42,9 @@ export function InstructorProfileView({
   courses: CreatorCourse[] | null;
 }) {
   const { t, locale } = useTranslation();
+  const router = useRouter();
+  const [refreshing, startRefresh] = useTransition();
+  const coursesRef = useRef<HTMLElement>(null);
   const name = publicProfileName(profile)
     ?? t("publicPages.profile.fallback_name").replace("{brand}", () => brand.name);
   const showcase = profile.storefront?.showcase;
@@ -124,7 +130,7 @@ export function InstructorProfileView({
         </Link>
       ) : null}
 
-      <section data-section="courses" aria-labelledby="creator-courses-heading">
+      <section ref={coursesRef} tabIndex={-1} data-section="courses" aria-labelledby="creator-courses-heading">
         <h2
           id="creator-courses-heading"
           className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]"
@@ -132,18 +138,24 @@ export function InstructorProfileView({
           {t("publicPages.profile.courses_heading")}
         </h2>
         {courses === null ? (
-          <p className="mt-4 rounded-md border border-[var(--color-danger)] bg-[var(--color-danger-soft)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+          // Os cursos chegam do servidor: "Try again" pede a página de novo
+          // (router.refresh), sem recarregar o navegador nem perder a rolagem.
+          <LoadErrorAlert
+            className="mt-4"
+            focusRef={coursesRef}
+            busy={refreshing}
+            onRetry={() => startRefresh(() => router.refresh())}
+          >
             {t("publicPages.profile.courses_error")}
-          </p>
+          </LoadErrorAlert>
         ) : ordered.length === 0 ? (
-          <div className="mt-4 rounded-lg border border-dashed border-[var(--color-line-strong)] p-6 text-center">
-            <p className="text-sm font-bold text-[var(--color-primary)]">
-              {t("publicPages.profile.no_public_courses_yet")}
-            </p>
-            <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
-              {t("publicPages.profile.this_instructor_s_first_courses_will")}
-            </p>
-          </div>
+          // O vazio da plataforma; h3 sob o h2 "Courses".
+          <EmptyState
+            as="h3"
+            className="mt-4"
+            title={t("publicPages.profile.no_public_courses_yet")}
+            description={t("publicPages.profile.this_instructor_s_first_courses_will")}
+          />
         ) : (
           <ul className="mt-4 grid gap-3">
             {ordered.map((course) => (

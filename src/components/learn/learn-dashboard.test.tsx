@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { LearnDashboard } from "@/components/learn/learn-dashboard";
-import type { CourseEvent } from "@/domain/course-event";
+import { formatEventDateTime, type CourseEvent } from "@/domain/course-event";
 import type { Enrollment } from "@/domain/enrollment";
 import type { Course } from "@/domain/learning";
 import type { AppNotification } from "@/domain/notification";
@@ -167,6 +167,8 @@ const { mockUser, fixtures, fuse } = vi.hoisted(() => {
     realCourses: [] as Course[],
     fetchedIds: [] as string[][],
     emitEnrollments: (() => undefined) as (next: Enrollment[]) => void,
+    enrollmentsFail: false,
+    reloads: 0,
     calls: 0,
   };
 
@@ -223,11 +225,22 @@ vi.mock("@/lib/data/enrollments", () => ({
   subscribeToUserEnrollments: (
     _uid: string,
     onData: (enrollments: Enrollment[]) => void,
+    onError: (error: Error) => void,
   ) => {
     fuse();
     fixtures.emitEnrollments = onData;
-    onData(fixtures.enrollments);
-    return () => undefined;
+    const read = () => {
+      if (fixtures.enrollmentsFail) onError(new Error("offline"));
+      else onData(fixtures.enrollments);
+    };
+    read();
+    // Como o de verdade: `reload` le de novo sem mexer no canal.
+    return Object.assign(() => undefined, {
+      reload: async () => {
+        fixtures.reloads += 1;
+        read();
+      },
+    });
   },
 }));
 
@@ -273,6 +286,26 @@ describe("LearnDashboard", () => {
     fixtures.enrollments = fixtures.base;
     fixtures.realCourses = [];
     fixtures.fetchedIds = [];
+    fixtures.enrollmentsFail = false;
+    fixtures.reloads = 0;
+  });
+
+  it("se as matriculas nao carregam: erro anunciado e 'Try again' como acao principal, que le de novo", async () => {
+    fixtures.enrollmentsFail = true;
+    render(<LearnDashboard />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("We could not load your enrolled courses.");
+    const retry = screen.getByRole("button", { name: "Try again" });
+    expect(retry).toHaveClass("button-solid");
+    expect(screen.getByRole("link", { name: "Explore courses" })).toHaveClass("button-outline");
+
+    fixtures.enrollmentsFail = false;
+    await act(async () => {
+      fireEvent.click(retry);
+    });
+    expect(fixtures.reloads).toBe(1);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(await screen.findByRole("heading", { name: "My courses" })).toBeInTheDocument();
   });
 
   it("sauda uma vez so: um h1 e nenhum 'Welcome back'", async () => {
@@ -323,8 +356,8 @@ describe("LearnDashboard", () => {
     // O mesmo curso em "My courses" leva ao mesmo lugar, nao a capa.
     const card = within(screen.getByRole("region", { name: "My courses" }))
       .getByRole("heading", { level: 3, name: "Effective Communication" })
-      .closest("article") as HTMLElement;
-    expect(within(card).getByRole("link", { name: "Open" })).toHaveAttribute(
+      .closest("a") as HTMLElement;
+    expect(card).toHaveAttribute(
       "href",
       "/learn/courses/effective-communication?lesson=l4",
     );
@@ -340,11 +373,56 @@ describe("LearnDashboard", () => {
     // O cartao de "My courses" herda o destino de retomar.
     const card = within(region)
       .getByRole("heading", { level: 3, name: "Effective Communication" })
-      .closest("article") as HTMLElement;
-    expect(within(card).getByRole("link", { name: "Open" })).toHaveAttribute(
+      .closest("a") as HTMLElement;
+    expect(card).toHaveAttribute(
       "href",
       "/learn/courses/effective-communication?lesson=l4",
     );
+  });
+
+  it("o cartao inteiro e o link: sem botao 'Open', progresso dito uma vez, selo so fora do normal", async () => {
+    render(<LearnDashboard />);
+
+    const region = await screen.findByRole("region", { name: "My courses" });
+    // Antes: um botao cheio "Open" por cartao.
+    expect(within(region).queryByRole("link", { name: "Open" })).not.toBeInTheDocument();
+
+    const active = within(region)
+      .getByRole("heading", { level: 3, name: "Effective Communication" })
+      .closest("a") as HTMLElement;
+    // "50%" uma vez (o numero ao lado da barra), sem "50% COMPLETE" visivel.
+    expect(within(active).getAllByText("50%")).toHaveLength(1);
+    // Ativo e o normal: sem selo "Active"; no lugar, onde a pessoa parou.
+    expect(within(active).queryByText("Active")).not.toBeInTheDocument();
+    expect(within(active).getByText("Module 2 · Lesson 2")).toBeInTheDocument();
+
+    const done = within(region)
+      .getByRole("heading", { level: 3, name: "Brand Design Atelier" })
+      .closest("a") as HTMLElement;
+    expect(within(done).getByText("Completed")).toBeInTheDocument();
+  });
+
+  it("matricula estornada nao vira link: cartao parado com o selo do status", async () => {
+    fixtures.enrollments = [{ ...fixtures.base[0], status: "refunded" }];
+    render(<LearnDashboard />);
+
+    const region = await screen.findByRole("region", { name: "My courses" });
+    const title = within(region).getByRole("heading", { level: 3, name: "Effective Communication" });
+    expect(title.closest("a")).toBeNull();
+    expect(within(title.closest("article") as HTMLElement).getByText("Refunded")).toBeInTheDocument();
+  });
+
+  it("'What's new' vazio nao aparece e nao empurra 'My courses' para baixo", async () => {
+    const saved = fixtures.notifications;
+    fixtures.notifications = [];
+    try {
+      render(<LearnDashboard />);
+      await screen.findByRole("region", { name: "My courses" });
+      expect(screen.queryByRole("region", { name: "What's new" })).not.toBeInTheDocument();
+      expect(screen.queryByText("Nothing new yet.")).not.toBeInTheDocument();
+    } finally {
+      fixtures.notifications = saved;
+    }
   });
 
   it("um curso fora do catalogo publico ainda retoma na aula: o painel busca so os cursos da pessoa, por id, uma vez", async () => {
@@ -382,7 +460,7 @@ describe("LearnDashboard", () => {
 
     const region = await screen.findByRole("region", { name: "My courses" });
     await waitFor(() =>
-      expect(within(region).getByRole("link", { name: "Open" })).toHaveAttribute(
+      expect(within(region).getByRole("link", { name: /Private Coaching Lab/ })).toHaveAttribute(
         "href",
         "/learn/courses/course-real?lesson=r2",
       ),
@@ -401,7 +479,7 @@ describe("LearnDashboard", () => {
     render(<LearnDashboard />);
 
     const region = await screen.findByRole("region", { name: "My courses" });
-    expect(within(region).queryByRole("tab")).not.toBeInTheDocument();
+    expect(within(region).queryByRole("group", { name: "Filter courses" })).not.toBeInTheDocument();
     expect(within(region).queryByRole("searchbox")).not.toBeInTheDocument();
     for (const name of ["Effective Communication", "Brand Design Atelier"]) {
       expect(
@@ -424,7 +502,7 @@ describe("LearnDashboard", () => {
       within(region).queryByRole("heading", { level: 3, name: "Brand Design Atelier" }),
     ).not.toBeInTheDocument();
 
-    fireEvent.click(within(region).getByRole("tab", { name: "Completed" }));
+    fireEvent.click(within(region).getByRole("button", { name: "Completed" }));
 
     expect(
       within(region).getByRole("heading", { level: 3, name: "Brand Design Atelier" }),
@@ -432,8 +510,9 @@ describe("LearnDashboard", () => {
     expect(
       within(region).queryByRole("heading", { level: 3, name: "Effective Communication" }),
     ).not.toBeInTheDocument();
-    expect(within(region).getByRole("tab", { name: "Completed" })).toHaveAttribute(
-      "aria-selected",
+    // Filtro, nao abas: a escolha vai no proprio botao (aria-pressed).
+    expect(within(region).getByRole("button", { name: "Completed" })).toHaveAttribute(
+      "aria-pressed",
       "true",
     );
   });
@@ -496,7 +575,7 @@ describe("LearnDashboard", () => {
     render(<LearnDashboard />);
 
     const region = await screen.findByRole("region", { name: "My courses" });
-    expect(within(region).getByRole("link", { name: "Open" })).toHaveAttribute(
+    expect(within(region).getByRole("link", { name: /Effective Communication/ })).toHaveAttribute(
       "href",
       "/learn/courses/effective-communication",
     );
@@ -516,6 +595,11 @@ describe("LearnDashboard", () => {
     expect(
       within(news).getByRole("link", { name: /Ana replied to your post/ }),
     ).toHaveAttribute("href", "/learn/community/effective-communication?post=1");
+    // O mesmo destino do sino (notificationHref): a mensagem do professor
+    // abre a conversa, nao a sala inteira.
+    expect(
+      within(news).getByRole("link", { name: /Message from your teacher/ }),
+    ).toHaveAttribute("href", "/learn/messages?course=effective-communication");
     expect(within(news).getByText("Certificate issued")).toBeInTheDocument();
     // A quarta fica para o sino e a caixa de entrada.
     expect(within(news).queryByText("Older notification")).not.toBeInTheDocument();
@@ -540,9 +624,49 @@ describe("LearnDashboard", () => {
       const lives = await screen.findByRole("region", { name: "Próximas sesiones en vivo" });
       expect(lives).toHaveTextContent("Live Q&A");
       expect(within(lives).queryByRole("link")).not.toBeInTheDocument();
-      expect(lives).toHaveTextContent("El enlace de la sesión no está disponible. Contacta a tu instructor.");
+      expect(lives).toHaveTextContent("Todavía no se agregó el enlace para entrar. Contacta a tu instructor.");
     },
   );
+
+  // Antes a live saia do painel no minuto em que comecava, levando o "Join".
+  it("a live que esta acontecendo fica no painel, com 'Happening now' e 'Join'; a que acabou sai", async () => {
+    fixtures.events = [
+      { ...fixtures.liveEvent, id: "running", title: "Running Q&A", startsAt: new Date(Date.now() - 30 * 60_000).toISOString() },
+      { ...fixtures.liveEvent, id: "over", title: "Finished Q&A", startsAt: new Date(Date.now() - 4 * 60 * 60_000).toISOString() },
+    ];
+    render(<LearnDashboard />);
+
+    const lives = await screen.findByRole("region", { name: "Upcoming lives" });
+    expect(within(lives).getByText("Running Q&A")).toBeInTheDocument();
+    expect(within(lives).getByText("Happening now")).toBeInTheDocument();
+    expect(within(lives).getByRole("link", { name: "Join" })).toHaveAttribute("href", "https://meet.example.com/live");
+    expect(within(lives).queryByText("Finished Q&A")).not.toBeInTheDocument();
+  });
+
+  it("um prazo sem link diz que e uma data de entrega, nao 'link indisponivel'", async () => {
+    fixtures.events = [{ ...fixtures.liveEvent, type: "deadline", externalUrl: "" }];
+    render(<LearnDashboard />);
+
+    const lives = await screen.findByRole("region", { name: "Upcoming lives" });
+    expect(lives).toHaveTextContent("This is a due date, not a meeting: there is nothing to join.");
+    expect(lives).not.toHaveTextContent("The join link has not been added yet.");
+  });
+
+  // Prazo nao e live: nada de "Happening now" por 3 h depois de vencer.
+  it("um prazo com link: 'Due:' e 'Open link'; vencido, sai do painel sem 'Happening now'", async () => {
+    fixtures.events = [
+      { ...fixtures.liveEvent, id: "due", title: "Essay due", type: "deadline" },
+      { ...fixtures.liveEvent, id: "late", title: "Quiz due", type: "deadline", startsAt: new Date(Date.now() - 30 * 60_000).toISOString() },
+    ];
+    render(<LearnDashboard />);
+
+    const lives = await screen.findByRole("region", { name: "Upcoming lives" });
+    expect(within(lives).getByText(`Due: ${formatEventDateTime(fixtures.liveEvent.startsAt, "en")}`)).toBeInTheDocument();
+    expect(within(lives).getByRole("link", { name: "Open link" })).toHaveAttribute("href", "https://meet.example.com/live");
+    expect(within(lives).queryByRole("link", { name: "Join" })).not.toBeInTheDocument();
+    expect(within(lives).queryByText("Quiz due")).not.toBeInTheDocument();
+    expect(within(lives).queryByText("Happening now")).not.toBeInTheDocument();
+  });
 
   it("preserves a valid HTTP upcoming link and trims surrounding whitespace", async () => {
     fixtures.events = [{ ...fixtures.liveEvent, externalUrl: "  http://example.com/live  " }];
@@ -575,7 +699,7 @@ describe("LearnDashboard", () => {
     render(<I18nProvider initialLocale="es"><LearnDashboard /></I18nProvider>);
 
     expect(await screen.findByText(
-      new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date(fixtures.liveEvent.startsAt)),
+      formatEventDateTime(fixtures.liveEvent.startsAt, "es"),
     )).toBeInTheDocument();
   });
 

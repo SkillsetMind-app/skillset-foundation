@@ -6,8 +6,8 @@ import {
   paymentErrorResponse,
   requireUserId,
 } from "@/lib/payments/server/auth";
+import { getCourseSubscriptionCancellationContext } from "@/lib/payments/server/course-subscription-cancellation";
 import { getStripeClient } from "@/lib/payments/server/stripe";
-import { getUserRow } from "@/lib/payments/server/stripe-helpers";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
 // Learner-facing course-subscription management. Cancels at period end (the
@@ -40,60 +40,11 @@ export async function POST(request: Request) {
     await enforceRateLimit(`course_sub_cancel_${uid}`, 20, 60 * 60 * 1000);
 
     const admin = getSupabaseAdminClient();
-    const { data: enrollment } = await admin
-      .from("enrollments")
-      .select("subscription_id")
-      .eq("id", `${uid}__${courseId}`)
-      .maybeSingle();
-
-    const subscriptionId = enrollment?.subscription_id;
-    if (typeof subscriptionId !== "string" || !subscriptionId) {
-      throw new PaymentError(
-        "No course subscription is attached to your enrollment.",
-        400,
-      );
-    }
-
+    const { subscriptionId, stripeAccount } =
+      await getCourseSubscriptionCancellationContext(admin, uid, courseId);
     const stripe = getStripeClient();
-    // Direct charges: the subscription lives on the teacher's connected
-    // account, so a platform-scoped call 404s with resource_missing. Both the
-    // read and the write have to be scoped to that account.
-    // Prefer the FROZEN snapshot from this buyer's own paid order, exactly like
-    // both refund routes do. The live course/owner value can change under the
-    // learner: connect-self-heal mints a NEW connected account when the stored
-    // one is orphaned, and after that the subscription still lives on the OLD
-    // account — a live-resolved cancel would 404 with resource_missing and the
-    // learner would keep being billed every month with no way to stop it.
-    // Subscription renewals write this column too (course-subscription-sale.ts).
-    const { data: paidOrder } = await admin
-      .from("orders")
-      .select("teacher_stripe_connected_account_id")
-      .eq("user_id", uid)
-      .eq("course_id", courseId)
-      .eq("status", "paid")
-      .not("teacher_stripe_connected_account_id", "is", null)
-      .order("paid_at", { ascending: false, nullsFirst: false })
-      .limit(1)
-      .maybeSingle();
-
-    let stripeAccount = paidOrder?.teacher_stripe_connected_account_id || null;
-    if (!stripeAccount) {
-      const { data: course } = await admin
-        .from("courses")
-        .select("stripe_connected_account_id, owner_id")
-        .eq("id", courseId)
-        .maybeSingle();
-      // Mirror the checkout resolution exactly (payments/checkout/route.ts):
-      // a course row with a null account is still sellable through the owner's
-      // account, so resolving from the course alone would leave those students
-      // unable to cancel — the subscription lookup would run platform-scoped and
-      // 404 — while Stripe keeps billing them every month.
-      stripeAccount = course?.stripe_connected_account_id || null;
-      if (!stripeAccount && course?.owner_id) {
-        const owner = await getUserRow(course.owner_id);
-        stripeAccount = owner?.stripe_connected_account_id || null;
-      }
-    }
+    // Both calls use the same resolved account. A provider error must not
+    // trigger another attempt against the teacher's current account.
     const accountOptions = stripeAccount ? { stripeAccount } : undefined;
 
     // Defensive ownership check: the subscription must be a course subscription
@@ -104,8 +55,11 @@ export async function POST(request: Request) {
       accountOptions,
     );
     if (
+      subscription.id !== subscriptionId ||
       subscription.metadata?.purpose !== "course_subscription" ||
-      subscription.metadata?.userId !== uid
+      subscription.metadata?.userId !== uid ||
+      (subscription.metadata?.courseId !== undefined &&
+        subscription.metadata.courseId !== courseId)
     ) {
       throw new PaymentError(
         "This subscription is not yours to manage.",
@@ -120,17 +74,24 @@ export async function POST(request: Request) {
       accountOptions,
     );
 
-    // Reflect immediately; customer.subscription.updated re-syncs the mirror.
+    // Best-effort sync; customer.subscription.updated can reconcile the mirror.
     // The mirror row is keyed by id === the Stripe subscription id (matches
     // the reader in @/lib/data/course-subscriptions, which does
     // .eq("id", subscriptionId)).
-    await admin
-      .from("course_subscriptions")
-      .update({
-        cancel_at_period_end: !resume,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", subscriptionId);
+    try {
+      const { error: mirrorError } = await admin
+        .from("course_subscriptions")
+        .update({
+          cancel_at_period_end: updated.cancel_at_period_end,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", subscriptionId);
+      if (mirrorError) throw mirrorError;
+    } catch {
+      // Stripe already changed. Report that result, not a misleading failure;
+      // its subscription.updated webhook can reconcile the local mirror.
+      console.warn("Course subscription updated in Stripe; local mirror sync deferred.");
+    }
 
     const item = updated.items.data[0];
     const currentPeriodEnd = secondsToIso(
@@ -140,7 +101,7 @@ export async function POST(request: Request) {
     );
 
     return NextResponse.json({
-      cancelAtPeriodEnd: !resume,
+      cancelAtPeriodEnd: updated.cancel_at_period_end,
       currentPeriodEnd,
       status: updated.status,
     });

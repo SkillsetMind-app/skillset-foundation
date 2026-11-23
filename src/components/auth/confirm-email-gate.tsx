@@ -7,7 +7,10 @@ import {
   TurnstileWidget,
   isCaptchaEnabled,
 } from "@/components/auth/turnstile-widget";
+import { usePageHeading } from "@/components/auth/page-heading";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { SpinnerRing } from "@/components/shared/skillset-spinner";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { getAuthRoute, getLoadingRoute, getSafeReturnTo, type AuthPathIntent } from "@/lib/auth/routing";
 import {
   getAuthErrorMessage,
@@ -31,6 +34,25 @@ function useResendCooldown() {
     return () => window.clearTimeout(timer);
   }, [cooldown]);
   return [cooldown, () => setCooldown(RESEND_COOLDOWN_SECONDS)] as const;
+}
+
+// A linha "enviado" fica sempre montada (vazia e fora do fluxo antes do
+// envio) e so o TEXTO entra e sai: regiao viva que ja nasce cheia costuma nao
+// ser lida. O numero que corre no botao fica fora dela, entao o leitor de tela
+// nao le "59s... 58s..."; quando a espera acaba, "ja pode pedir outro" entra
+// na mesma linha.
+function ResendStatus({ sent, cooldown, message }: { sent: boolean; cooldown: number; message: string }) {
+  const { t } = useTranslation();
+  return (
+    <p role="status" className={sent ? "text-sm font-semibold text-[var(--color-primary)]" : "sr-only"}>
+      {sent ? (
+        <>
+          {message}
+          {cooldown > 0 ? null : <span className="sr-only"> {t("auth.signup.confirmResendReady")}</span>}
+        </>
+      ) : null}
+    </p>
+  );
 }
 
 // A porta "confirme seu e-mail", logo depois de criar a conta (e tambem quando
@@ -57,6 +79,9 @@ export function ConfirmEmailGate({
   onChangeEmail?: () => void;
 }) {
   const { t } = useTranslation();
+  // O titulo grande da pagina (/auth) seguia "Crie sua conta" em cima da
+  // porta de confirmar: com ela na tela, vira "Check your email".
+  usePageHeading({ titleKey: "auth.signup.checkEmailTitle" });
   const [cooldown, startCooldown] = useResendCooldown();
   const [isSending, setIsSending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -136,28 +161,34 @@ export function ConfirmEmailGate({
     }
   }
 
+  // Sem aria-live na secao inteira: o leitor de tela lia "Resend in 59s...
+  // 58s..." a cada segundo durante um minuto. So o "enviado de novo" e a
+  // espera sao anunciados. A instrucao e o titulo da pagina ("Check your
+  // email"); "Resend" deixou de ser o botao cheio, porque nao e o proximo passo.
   return (
-    <section
-      className="mt-5 grid gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-5 py-6"
-      aria-live="polite"
-    >
-      <h2 className="text-lg font-semibold text-[var(--color-ink)]">
-        {t("auth.signup.confirmTitle")}
-      </h2>
+    <section className="mt-5 grid gap-4">
       <p className="text-sm leading-6 text-[var(--color-ink-soft)]">
         {t("auth.signup.confirmSentTo")}{" "}
         <strong className="font-semibold text-[var(--color-ink)]">{email}</strong>.{" "}
         {t("auth.signup.confirmBody")}
       </p>
+      <p
+        role="status"
+        className="flex items-center gap-2.5 rounded-md bg-[var(--color-surface-soft)] px-3.5 py-3 text-sm font-semibold leading-5 text-[var(--color-ink)]"
+      >
+        {/* O anel da casa, nos mesmos 16px de antes (o "sm" tem 20px). */}
+        <SpinnerRing size="sm" className="size-4! shrink-0" />
+        {t("auth.signup.confirmWaiting")}
+      </p>
 
       <TurnstileWidget onToken={setCaptchaToken} resetSignal={captchaResetSignal} />
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="grid gap-1">
         <button
           type="button"
           onClick={() => void handleResend()}
           disabled={isSending || cooldown > 0 || captchaPending}
-          className="min-h-11 rounded-md bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold text-[var(--color-base)] disabled:opacity-60"
+          className="button-outline w-full"
         >
           {cooldown > 0
             ? t("auth.signup.confirmResendIn").replace("{seconds}", String(cooldown))
@@ -169,25 +200,23 @@ export function ConfirmEmailGate({
           <button
             type="button"
             onClick={onChangeEmail}
-            className="min-h-11 rounded-md border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--color-ink)]"
+            className="min-h-11 rounded-md px-4 text-sm font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
           >
             {t("auth.signup.confirmChangeEmail")}
           </button>
         ) : null}
       </div>
 
-      {sent ? (
-        <p className="text-xs font-semibold text-[var(--color-primary)]">{t("auth.signup.confirmResent")}</p>
-      ) : null}
+      <ResendStatus sent={sent} cooldown={cooldown} message={t("auth.signup.confirmResent")} />
       {error ? (
-        <p role="alert" className="text-xs font-semibold text-[var(--color-danger-fg)]">
+        <InlineAlert tone="error">
           {getAuthErrorMessage(error.cause, t)}
-        </p>
+        </InlineAlert>
       ) : null}
 
       <p className="text-xs leading-5 text-[var(--color-ink-muted)]">
         {t("auth.signup.confirmAlreadyDone")}{" "}
-        <Link href={getAuthRoute("signin", intent, returnTo)} className="font-semibold text-[var(--color-primary)]">
+        <Link href={getAuthRoute("signin", intent, returnTo)} className="auth-text-link font-semibold text-[var(--color-primary)]!">
           {t("auth.signup.confirmSignIn")}
         </Link>
       </p>
@@ -215,6 +244,10 @@ export function ExpiredConfirmationLink({
   onSignIn: (email: string) => void;
 }) {
   const { t } = useTranslation();
+  // Em /auth o aviso vira o titulo da pagina ("Sign in as a learner." ficava
+  // em cima dele). O titulo proprio so sai depois que a pagina ja mostra o
+  // dela: no HTML do servidor e solta, a tela segue com o seu.
+  const titleOnPage = usePageHeading({ titleKey: "auth.signup.expiredTitle" });
   const [email, setEmail] = useState("");
   const [cooldown, startCooldown] = useResendCooldown();
   const [isSending, setIsSending] = useState(false);
@@ -257,13 +290,16 @@ export function ExpiredConfirmationLink({
   }
 
   return (
+    // Sem o cartao tingido: a tela e a propria pagina, nao um quadro dentro dela.
     <form
       onSubmit={(event) => void handleSend(event)}
-      className="mt-5 grid gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-5 py-6"
+      className="mt-5 grid gap-3"
     >
-      <h2 className="text-lg font-semibold text-[var(--color-ink)]">
-        {t("auth.signup.expiredTitle")}
-      </h2>
+      {titleOnPage ? null : (
+        <h2 className="text-lg font-semibold text-[var(--color-ink)]">
+          {t("auth.signup.expiredTitle")}
+        </h2>
+      )}
       <p className="text-sm leading-6 text-[var(--color-ink-soft)]">
         {t("auth.signup.expiredBody")}
       </p>
@@ -285,7 +321,7 @@ export function ExpiredConfirmationLink({
       <button
         type="submit"
         disabled={isSending || cooldown > 0 || captchaPending}
-        className="min-h-11 rounded-md bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold text-[var(--color-base)] disabled:opacity-60"
+        className="button-solid w-full"
       >
         {cooldown > 0
           ? t("auth.signup.confirmResendIn").replace("{seconds}", String(cooldown))
@@ -294,13 +330,11 @@ export function ExpiredConfirmationLink({
             : t("auth.signup.expiredSend")}
       </button>
 
-      {sent ? (
-        <p role="status" className="text-sm font-semibold text-[var(--color-primary)]">{t("auth.signup.expiredSent")}</p>
-      ) : null}
+      <ResendStatus sent={sent} cooldown={cooldown} message={t("auth.signup.expiredSent")} />
       {error ? (
-        <p role="alert" className="text-sm font-semibold text-[var(--color-danger-fg)]">
+        <InlineAlert tone="error">
           {getAuthErrorMessage(error.cause, t)}
-        </p>
+        </InlineAlert>
       ) : null}
 
       <p className="text-sm leading-6 text-[var(--color-ink-muted)]">
@@ -308,7 +342,7 @@ export function ExpiredConfirmationLink({
         <button
           type="button"
           onClick={() => onSignIn(email.trim())}
-          className="min-h-6 font-semibold text-[var(--color-primary)]"
+          className="auth-text-link font-semibold text-[var(--color-primary)]"
         >
           {t("auth.signup.confirmSignIn")}
         </button>

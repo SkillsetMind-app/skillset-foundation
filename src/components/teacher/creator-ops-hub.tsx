@@ -7,7 +7,9 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { ExportTableButton } from "@/components/shared/export-table-button";
 import { PeriodTabs } from "@/components/shared/period-tabs";
+import { MetricCard } from "@/components/teacher/metric-card";
 import { RevenueChart } from "@/components/teacher/revenue-chart";
+import { Button, InlineAlert } from "@/components/ui";
 import {
   buildCreatorOpsSnapshot,
   type CurrencyAmount,
@@ -16,17 +18,19 @@ import {
   buildReportProductRows,
   buildRevenueSeries,
   calculateRefundRate,
+  groupPaidOrdersByCurrency,
   isWithinWindow,
   resolveReportWindow,
   type ReportPeriod,
 } from "@/domain/creator-reports";
 import { calculateCreatorSubscriptionMetrics } from "@/domain/creator-subscriptions";
-import { isPaidOrder, type Order } from "@/domain/order";
+import { isRevenueOrder, type Order } from "@/domain/order";
 import type { PayoutLedgerEntry } from "@/domain/payout-ledger";
 import type { CourseSubscription } from "@/domain/course-subscription";
 import { subscribeToTeacherCourseSubscriptions } from "@/lib/data/course-subscriptions";
 import { subscribeToTeacherOrders } from "@/lib/data/orders";
 import { subscribeToTeacherPayoutLedger } from "@/lib/data/payout-ledger";
+import { formatMoney, formatMoneyBreakdown } from "@/lib/format-money";
 
 type ReadState = "loading" | "ready" | "error";
 
@@ -40,24 +44,9 @@ const periodSubtitleKey: Record<ReportPeriod, string> = {
   all: "teach.insights.rangeAll",
 };
 
-// Chart totals stay in en-US, like the shared chart's "$...k" axis and the home
-// revenue chart; KPIs and the table follow the interface language.
-const chartMoney = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 0,
-});
-
-function money(amountMinor: number, currency: string, locale: string): string {
-  try {
-    const formatted = new Intl.NumberFormat(locale, {
-      maximumFractionDigits: 0,
-    }).format(amountMinor / 100);
-    return `${currency} ${formatted}`;
-  } catch {
-    return `${currency} ${(amountMinor / 100).toFixed(2)}`;
-  }
-}
+// Chart totals stay in en-US, like the home revenue chart; KPIs and the table
+// follow the interface language. A moeda e a do grafico (era USD fixo).
+const WHOLE = { minimumFractionDigits: 0, maximumFractionDigits: 0 };
 
 export function CreatorOpsHub() {
   const { user } = useAuth();
@@ -70,6 +59,10 @@ export function CreatorOpsHub() {
   const [subscriptionsState, setSubscriptionsState] =
     useState<ReadState>("loading");
   const [period, setPeriod] = useState<ReportPeriod>("30d");
+  // "Try again" assina de novo as mesmas tres leituras.
+  const [attempt, setAttempt] = useState(0);
+  const readFailed =
+    ordersState === "error" || ledgersState === "error" || subscriptionsState === "error";
 
   useEffect(() => {
     if (!user) return;
@@ -102,11 +95,20 @@ export function CreatorOpsHub() {
     return () => {
       for (const unsub of unsubs) unsub?.();
     };
-  }, [user]);
+  }, [user, attempt]);
 
+  function retryReads() {
+    // So o que falhou volta a "carregando"; o que ja veio fica na tela.
+    setOrdersState((state) => (state === "error" ? "loading" : state));
+    setLedgersState((state) => (state === "error" ? "loading" : state));
+    setSubscriptionsState((state) => (state === "error" ? "loading" : state));
+    setAttempt((current) => current + 1);
+  }
+
+  // Moedas lado a lado com " · " (o " + " de antes lia como soma).
   const moneyBreakdown = (values: CurrencyAmount[]): string =>
     values.length
-      ? values.map((value) => money(value.amountMinor, value.currency, locale)).join(" + ")
+      ? formatMoneyBreakdown(values, locale, null, WHOLE)
       : t("teach.reports.noActivity");
 
   const report = useMemo(() => {
@@ -115,7 +117,8 @@ export function CreatorOpsHub() {
       month: "short",
       day: "numeric",
     });
-    const paidOrders = orders.filter((order) => isPaidOrder(order.status));
+    // Pago ou com reembolso parcial (conta o que ficou com o professor).
+    const paidOrders = orders.filter(isRevenueOrder);
     // A janela sai dos pedidos pagos porque "All" precisa saber onde a loja
     // comecou; os KPIs e o grafico usam a MESMA janela, entao a linha e o
     // numero nunca contam periodos diferentes.
@@ -123,6 +126,14 @@ export function CreatorOpsHub() {
     const ordersInPeriod = orders.filter((order) =>
       isWithinWindow(order.createdAt, window),
     );
+    const paidInPeriod = paidOrders.filter((order) => isWithinWindow(order.createdAt, window));
+    // Uma moeda no grafico (a de mais pedidos com dinheiro no periodo; empate:
+    // alfabetica); as outras vao numa linha embaixo. Nada soma moedas. Sem
+    // venda no periodo, o eixo fica na unica moeda que o professor ja vendeu.
+    const currencies = groupPaidOrdersByCurrency(paidInPeriod);
+    const everSold = groupPaidOrdersByCurrency(paidOrders);
+    const chartCurrency =
+      currencies[0]?.currency ?? (everSold.length === 1 ? everSold[0].currency : "USD");
     const ledgersInPeriod = ledgers.filter((entry) =>
       isWithinWindow(entry.createdAt, window),
     );
@@ -141,19 +152,27 @@ export function CreatorOpsHub() {
         subscriptionMetrics,
       }),
       refund: calculateRefundRate(ordersInPeriod),
+      chartCurrency,
+      otherCurrencies: currencies
+        .slice(1)
+        .filter((group) => group.totalMinor !== 0)
+        .map((group) => ({ currency: group.currency, amountMinor: group.totalMinor }))
+        .sort((left, right) => right.amountMinor - left.amountMinor),
       series: buildRevenueSeries(
-        paidOrders.filter((order) => isWithinWindow(order.createdAt, window)),
+        paidInPeriod,
         window,
         (date, bucket) =>
           bucket === "month"
             ? monthFormatter.format(date)
             : dayFormatter.format(date),
+        chartCurrency,
       ),
       products: buildReportProductRows(ordersInPeriod),
     };
   }, [orders, ledgers, subscriptions, period, locale]);
 
-  const { snap, refund, series, products } = report;
+  const { snap, refund, series, products, chartCurrency, otherCurrencies } = report;
+  // A serie ja e de uma moeda so: a soma dos baldes e o total dela.
   const chartTotalMinor = series.reduce((sum, point) => sum + point.grossMinor, 0);
 
   const columns = {
@@ -180,6 +199,7 @@ export function CreatorOpsHub() {
   const tiles = [
     {
       key: "sales",
+      state: ordersState,
       label: t("teach.reports.kpiSales"),
       value: tileValue(ordersState, String(snap.salesCount)),
       detail:
@@ -189,12 +209,14 @@ export function CreatorOpsHub() {
     },
     {
       key: "net",
+      state: ledgersState,
       label: t("teach.reports.kpiNet"),
       value: tileValue(ledgersState, moneyBreakdown(snap.teacherNetByCurrency)),
       detail: t("teach.reports.kpiNetDetail"),
     },
     {
       key: "refund",
+      state: ordersState,
       label: t("teach.reports.kpiRefund"),
       value: tileValue(ordersState, `${refund.rate}%`),
       detail: t("teach.reports.kpiRefundDetail")
@@ -203,6 +225,7 @@ export function CreatorOpsHub() {
     },
     {
       key: "mrr",
+      state: subscriptionsState,
       label: t("teach.reports.kpiMrr"),
       value: tileValue(subscriptionsState, moneyBreakdown(snap.mrrByCurrency)),
       detail: t("teach.reports.kpiMrrDetail"),
@@ -221,32 +244,56 @@ export function CreatorOpsHub() {
             option === "all" ? t("teach.insights.rangeAllTab") : option
           }
         />
-        <ExportTableButton rows={exportRows} filename="skillset-reports" />
+        {/* As linhas saem dos pedidos: sem a leitura pronta, zero linhas nao
+            quer dizer "nada vendido". */}
+        <ExportTableButton
+          rows={exportRows}
+          filename="skillset-reports"
+          disabled={ordersState !== "ready"}
+          disabledReason={ordersState === "error" ? t("platform.ops.exportButton.loadFailed") : undefined}
+        />
       </div>
+
+      {/* F-11: a leitura que falhava so deixava "Unavailable" nos quadros,
+          sem aviso e sem caminho de volta alem de recarregar a pagina. */}
+      {readFailed ? (
+        <div className="grid gap-3">
+          <InlineAlert tone="error">{t("teach.reports.loadError")}</InlineAlert>
+          <Button variant="outline" className="justify-self-start" onClick={retryReads}>
+            {t("appErrors.retry")}
+          </Button>
+        </div>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {tiles.map((tile) => (
-          <article
+          <MetricCard
             key={tile.key}
-            className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-soft)]"
-          >
-            <span className="text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">
-              {tile.label}
-            </span>
-            <div className="mt-2 text-2xl font-semibold text-[var(--color-ink)]">
-              {tile.value}
-            </div>
-            <p className="mt-1 text-sm leading-5 text-[var(--color-ink-soft)]">
-              {tile.detail}
-            </p>
-          </article>
+            label={tile.label}
+            value={tile.value}
+            unavailable={tile.state !== "ready"}
+            hint={tile.detail}
+          />
         ))}
       </div>
 
       <RevenueChart
         points={series}
+        currency={chartCurrency}
+        note={
+          otherCurrencies.length
+            ? t("teach.insights.otherCurrencies").replace("{totals}", () =>
+                formatMoneyBreakdown(otherCurrencies, "en-US", null, WHOLE),
+              )
+            : undefined
+        }
         totalMinor={chartTotalMinor}
-        totalLabel={chartMoney.format(chartTotalMinor / 100)}
+        totalLabel={formatMoney(chartTotalMinor, chartCurrency, "en-US", WHOLE)}
+        unavailableLabel={
+          ordersState === "ready"
+            ? undefined
+            : t(ordersState === "error" ? "teach.reports.unavailable" : "teach.reports.loadingValue")
+        }
         title={t("teach.insights.revenue")}
         subtitle={t(periodSubtitleKey[period])}
         ariaLabel={t("teach.insights.chartAria")}
@@ -278,7 +325,7 @@ export function CreatorOpsHub() {
               <tbody>
                 {products.map((row) => (
                   <tr
-                    key={row.courseId}
+                    key={`${row.courseId}:${row.currency}`}
                     className="border-t border-[var(--color-line)] text-[var(--color-ink)]"
                   >
                     <td className="py-2 pr-4">{row.courseTitle}</td>
@@ -286,7 +333,7 @@ export function CreatorOpsHub() {
                       {row.orders}
                     </td>
                     <td className="py-2 pr-4 text-right font-semibold tabular-nums">
-                      {money(row.grossMinor, row.currency, locale)}
+                      {formatMoney(row.grossMinor, row.currency, locale, WHOLE)}
                     </td>
                     <td className="py-2 text-right tabular-nums">{row.refunds}</td>
                   </tr>

@@ -1,14 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import {
-  Layers3,
-  UploadCloud,
-  type LucideIcon,
-} from "lucide-react";
 
 import type { CourseAsset, CourseAssetKind } from "@/domain/course-asset";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { BusyLabel, Button, ConfirmDialog, InlineAlert } from "@/components/ui";
 import { getCourseAssetKindLabel } from "@/lib/i18n/course-assets";
 import {
   courseAssetAcceptTypes,
@@ -35,19 +31,16 @@ const moduleTargetKinds: CourseAssetKind[] = ["module_cover"];
 const uploadPresets: Array<{
   kind: CourseAssetKind;
   detail: string;
-  icon: LucideIcon;
 }> = [
   {
     kind: "module_cover",
     // A proporção é a do poster de modulo (2/3, object-cover):
     // sem dizer isso aqui o professor só descobria o enquadramento na área do aluno.
     detail: "creatorEditor.assets.presets.module",
-    icon: Layers3,
   },
   {
     kind: "course_cover",
     detail: "creatorEditor.assets.presets.course",
-    icon: UploadCloud,
   },
 ];
 
@@ -76,6 +69,8 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
   >(null);
   const [success, setSuccess] = useState<"uploaded" | "deleted" | null>(null);
   const [deletingAssetId, setDeletingAssetId] = useState<string | null>(null);
+  // Arquivo que pediu para ser apagado, enquanto a pergunta está aberta.
+  const [askingAsset, setAskingAsset] = useState<CourseAsset | null>(null);
   const allLessons = course.modules.flatMap((module) =>
     module.lessons.map((lesson) => ({
       ...lesson,
@@ -199,16 +194,9 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
     }
   }
 
+  // Roda só pelo confirmar da janela, que antes era o OK do window.confirm.
   async function handleDeleteAsset(asset: CourseAsset) {
     if (!isEditable) {
-      return;
-    }
-
-    const confirmed = window.confirm(
-      t("creatorEditor.lesson.deleteConfirm").replace("{fileName}", () => asset.fileName),
-    );
-
-    if (!confirmed) {
       return;
     }
 
@@ -235,7 +223,9 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             {t("creatorEditor.assets.label")}
           </p>
-          <h3 className="display-title mt-3 text-3xl text-[var(--color-primary)]">
+          {/* Título de seção da casa, não display de 30px: a biblioteca é uma
+              ferramenta embaixo do construtor, não o assunto da página. */}
+          <h3 className="mt-2 text-lg font-semibold text-[var(--color-ink)]">
             {t("creatorEditor.assets.title")}
           </h3>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
@@ -253,106 +243,72 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
       ) : null}
 
       <form className="mt-5 grid gap-3" onSubmit={handleUpload}>
-        <div className="course-upload-presets" role="list" aria-label={t("creatorEditor.assets.uploadType")}>
-          {uploadPresets.map((preset) => {
-            const Icon = preset.icon;
-            const active = preset.kind === kind;
-
-            return (
-              <button
-                key={preset.kind}
-                type="button"
-                role="listitem"
-                onClick={() => {
-                  setKind(preset.kind);
-                  setModuleId("");
-                  setSelectedFile(null);
-                  setFileInputKey((current) => current + 1);
-                  setUploadProgress(null);
-                }}
-                disabled={!isEditable || isUploading}
-                className={`course-upload-preset ${active ? "course-upload-preset--active" : ""}`}
-              >
-                <span className="course-upload-preset__icon">
-                  <Icon aria-hidden="true" size={18} strokeWidth={2} />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-sm font-bold">{getCourseAssetKindLabel(preset.kind, t)}</span>
-                  <span className="mt-1 block text-xs leading-5">
-                    {t(preset.detail)}
-                  </span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-accent-fg)]">
-            {t("creatorEditor.assets.uploadingLabel")}
-          </p>
-          <p className="mt-2 text-sm font-bold text-[var(--color-ink)]">
-            {kindLabel}
-          </p>
-          <p className="mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">
-            {activePreset ? t(activePreset.detail) : t("creatorEditor.assets.targetHelp")}{" "}
-            {t("creatorEditor.assets.imageLimit").replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))}
-          </p>
-        </div>
-
-        <select
-          aria-label={t("creatorEditor.assets.assetType")}
-          value={kind}
-          onChange={(event) => {
-            setKind(event.target.value as CourseAssetKind);
-            setSelectedFile(null);
-            setModuleId("");
-            setUploadProgress(null);
-            setFileInputKey((current) => current + 1);
-          }}
-          disabled={!isEditable || isUploading}
-          className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-        >
-          {assetKinds.map((item) => (
-            <option key={item} value={item}>
-              {getCourseAssetKindLabel(item, t)}
-            </option>
-          ))}
-        </select>
-
-        {requiresModuleTarget ? (
-          <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-            {t("creatorEditor.assets.attachModule")}
+        {/* Uma linha: tipo, módulo (na capa do módulo) e arquivo. Antes
+            eram dois cartões de tipo, uma caixa "UPLOADING" que não enviava
+            nada, o mesmo tipo de novo num select e o arquivo nativo esticado,
+            um embaixo do outro. Os campos e o envio são os mesmos. */}
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
+            {t("creatorEditor.assets.assetType")}
             <select
-              value={moduleId}
-              onChange={(event) => setModuleId(event.target.value)}
-              disabled={!isEditable || isUploading || allModules.length === 0}
-              className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+              value={kind}
+              onChange={(event) => {
+                setKind(event.target.value as CourseAssetKind);
+                setSelectedFile(null);
+                setModuleId("");
+                setUploadProgress(null);
+                setFileInputKey((current) => current + 1);
+              }}
+              disabled={!isEditable || isUploading}
+              className="field-input field-input--inline disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <option value="">
-                {allModules.length === 0 ? t("creatorEditor.assets.addModules") : t("creatorEditor.assets.chooseModule")}
-              </option>
-              {allModules.map((module) => (
-                <option key={module.id} value={module.id}>
-                  {module.title}
+              {assetKinds.map((item) => (
+                <option key={item} value={item}>
+                  {getCourseAssetKindLabel(item, t)}
                 </option>
               ))}
             </select>
           </label>
-        ) : null}
 
-        <input
-          key={fileInputKey}
-          type="file"
-          accept={courseAssetAcceptTypes[kind]}
-          aria-label={t("creatorEditor.assets.chooseFile").replace("{kind}", () => locale === "en" ? kindLabel.toLowerCase() : kindLabel)}
-          disabled={!isEditable || isUploading}
-          onChange={(event) => {
-            setSelectedFile(event.target.files?.[0] ?? null);
-            setUploadProgress(null);
-          }}
-          className="rounded-md border border-dashed border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3 text-sm text-[var(--color-ink-soft)] file:mr-4 file:rounded-md file:border-0 file:bg-white file:px-3 file:py-2 file:text-sm file:font-semibold file:text-[var(--color-primary)] disabled:opacity-60"
-        />
+          {requiresModuleTarget ? (
+            <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
+              {t("creatorEditor.assets.attachModule")}
+              <select
+                value={moduleId}
+                onChange={(event) => setModuleId(event.target.value)}
+                disabled={!isEditable || isUploading || allModules.length === 0}
+                className="field-input field-input--inline disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <option value="">
+                  {allModules.length === 0 ? t("creatorEditor.assets.addModules") : t("creatorEditor.assets.chooseModule")}
+                </option>
+                {allModules.map((module) => (
+                  <option key={module.id} value={module.id}>
+                    {module.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+
+          <input
+            key={fileInputKey}
+            type="file"
+            accept={courseAssetAcceptTypes[kind]}
+            aria-label={t("creatorEditor.assets.chooseFile").replace("{kind}", () => locale === "en" ? kindLabel.toLowerCase() : kindLabel)}
+            disabled={!isEditable || isUploading}
+            onChange={(event) => {
+              setSelectedFile(event.target.files?.[0] ?? null);
+              setUploadProgress(null);
+            }}
+            className="min-h-11 min-w-0 flex-1 basis-56 rounded-md border border-dashed border-[var(--color-line)] bg-[var(--color-surface-soft)] px-3 py-1.5 text-sm text-[var(--color-ink-soft)] file:mr-3 file:rounded-md file:border-0 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-[var(--color-primary)] disabled:opacity-60"
+          />
+        </div>
+
+        <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
+          {activePreset ? t(activePreset.detail) : t("creatorEditor.assets.targetHelp")}{" "}
+          {t("creatorEditor.assets.imageLimit").replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))}
+        </p>
 
         <label className="flex items-start gap-3 rounded-md border fine-rule bg-[var(--color-surface-soft)] p-3 text-sm leading-6 text-[var(--color-ink-soft)]">
           <input
@@ -382,32 +338,30 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
           </div>
         ) : null}
 
+        {/* Depois da opção de prévia e da miniatura: quem envia vê antes tudo o
+            que muda o envio. Rótulo fixo: o andamento é só a nota logo abaixo
+            (ela dizia "Uploading 45%" embaixo de um botão "Uploading..."). */}
+        <Button
+          type="submit"
+          loading={isUploading}
+          disabled={!isEditable || !selectedFile || (requiresModuleTarget && !moduleId)}
+          className="justify-self-start"
+        >
+          {t("creatorEditor.assets.upload")}
+        </Button>
+
         {uploadProgress ? <UploadProgressNote progress={uploadProgress} /> : null}
 
         {error ? (
-          <p role="alert" className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-            {errorMessage}
-          </p>
+          <InlineAlert tone="error">{errorMessage}</InlineAlert>
         ) : null}
 
         {success ? (
-          <p className="info-notice">
+          <p role="status" className="info-notice">
             {success === "uploaded" ? t("creatorEditor.assets.uploaded") : t("creatorEditor.lesson.success.deleted")}
           </p>
         ) : null}
 
-        <button
-          type="submit"
-          disabled={
-            !isEditable
-            || isUploading
-            || !selectedFile
-            || (requiresModuleTarget && !moduleId)
-          }
-          className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
-        >
-          {isUploading ? t("creatorEditor.members.uploading") : t("creatorEditor.assets.upload")}
-        </button>
       </form>
 
       <div className="mt-6 grid gap-4">
@@ -424,7 +378,7 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
               allLessons={allLessons}
               isEditable={isEditable}
               deletingAssetId={deletingAssetId}
-              onDelete={handleDeleteAsset}
+              onDelete={setAskingAsset}
             />
             <AssetGroup
               title={t("creatorEditor.assets.moduleGroup")}
@@ -433,7 +387,7 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
               allLessons={allLessons}
               isEditable={isEditable}
               deletingAssetId={deletingAssetId}
-              onDelete={handleDeleteAsset}
+              onDelete={setAskingAsset}
             />
             <AssetGroup
               title={t("creatorEditor.assets.lessonGroup")}
@@ -442,11 +396,26 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
               allLessons={allLessons}
               isEditable={isEditable}
               deletingAssetId={deletingAssetId}
-              onDelete={handleDeleteAsset}
+              onDelete={setAskingAsset}
             />
           </>
         )}
       </div>
+
+      {/* A frase é a mesma do antigo window.confirm; o que muda é a caixa. */}
+      {askingAsset ? (
+        <ConfirmDialog
+          title={t("creatorEditor.lesson.deleteTitle")}
+          confirmLabel={t("creatorEditor.lesson.deleteFile")}
+          pendingLabel={t("creatorEditor.lesson.deleting")}
+          cancelLabel={t("creatorEditor.lesson.keepFile")}
+          danger
+          onConfirm={() => handleDeleteAsset(askingAsset)}
+          onClose={() => setAskingAsset(null)}
+        >
+          {t("creatorEditor.lesson.deleteConfirm").replace("{fileName}", () => askingAsset.fileName)}
+        </ConfirmDialog>
+      ) : null}
     </section>
   );
 }
@@ -533,9 +502,13 @@ function AssetGroup({
                     type="button"
                     onClick={() => onDelete(asset)}
                     disabled={deletingAssetId === asset.id}
-                    className="button-danger px-3.5 py-2 text-xs disabled:opacity-60"
+                    className="button-danger px-3.5 py-2 text-xs"
                   >
-                    {deletingAssetId === asset.id ? t("creatorEditor.lesson.deleting") : t("creatorEditor.lesson.delete")}
+                    <BusyLabel
+                      busy={deletingAssetId === asset.id}
+                      idle={t("creatorEditor.lesson.delete")}
+                      busyText={t("creatorEditor.lesson.deleting")}
+                    />
                   </button>
                 </div>
               ) : null}
