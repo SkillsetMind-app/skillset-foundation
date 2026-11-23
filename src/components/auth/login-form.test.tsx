@@ -249,6 +249,20 @@ describe("LoginForm com segundo fator pendente", () => {
     ).toBeNull();
   });
 
+  // F-12: "Verify" apagado dizia nada; agora diz que falta o codigo de 6 digitos.
+  it("o Verify apagado diz que falta o codigo, e a frase sai com 6 digitos", async () => {
+    render(<LoginForm />);
+    const code = await screen.findByLabelText(/auth\.mfaCodeLabel/);
+    const verify = screen.getByRole("button", { name: "auth.verify" });
+    expect(verify).toBeDisabled();
+    expect(verify).toHaveAccessibleDescription("auth.mfaCodePrompt");
+
+    fireEvent.change(code, { target: { value: "123456" } });
+    expect(verify).toBeEnabled();
+    expect(verify).not.toHaveAttribute("aria-describedby");
+    expect(screen.queryByText("auth.mfaCodePrompt")).toBeNull();
+  });
+
   it("'usar outra conta' (botao so de texto) tem pelo menos 24px de area", async () => {
     render(<LoginForm />);
     await screen.findByLabelText(/auth\.mfaCodeLabel/);

@@ -4,6 +4,7 @@ import { RotateCw } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { InlineAlert } from "@/components/ui/inline-alert";
 
 // Cloudflare Turnstile — env-gated bot check for the auth forms (login, signup,
 // password reset). When NEXT_PUBLIC_TURNSTILE_SITE_KEY is unset the component
@@ -169,13 +170,8 @@ export function TurnstileWidget({
   if (!SITE_KEY) return null;
   if (loadFailed) {
     return (
-      <p
-        role="alert"
-        aria-live="assertive"
-        className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
-      >
-        {t(loadErrorCopy)}
-      </p>
+      // Mesmo nó na troca de idioma: o texto muda, o aviso não é lido de novo.
+      <InlineAlert tone="error">{t(loadErrorCopy)}</InlineAlert>
     );
   }
   return (
@@ -183,11 +179,11 @@ export function TurnstileWidget({
       {/* Manter o widget montado permite recuperacao sem apagar o formulario. */}
       <div ref={containerRef} className="flex justify-center" />
       {challengeFailed ? (
-        <div className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] p-3">
-          <p role="alert" className="text-sm leading-5 text-[var(--color-danger-fg)]">
-            {t("authCaptcha.challengeError")}
-          </p>
-          <button type="button" onClick={retryChallenge} className="button-outline mt-3 min-h-11 gap-2 px-3 py-2 text-sm">
+        // O aviso e, logo abaixo, o botão que o resolve (como no LoadErrorAlert);
+        // o botão fica fora da região lida, que anuncia só a frase.
+        <div className="grid gap-3">
+          <InlineAlert tone="error">{t("authCaptcha.challengeError")}</InlineAlert>
+          <button type="button" onClick={retryChallenge} className="button-outline min-h-11 gap-2 justify-self-start px-3 py-2 text-sm">
             <RotateCw size={16} aria-hidden="true" />
             {t("authCaptcha.retry")}
           </button>

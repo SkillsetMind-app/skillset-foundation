@@ -123,6 +123,21 @@ export function SignupForm() {
   const passwordReady = isStrongPassword(password);
   const passwordsMatch = password === confirmPassword;
   const showMismatch = confirmPassword.length > 0 && !passwordsMatch;
+  // Por que "Create account" está apagado (a trava é a mesma; só passa a ser
+  // dita). Senhas diferentes já têm a frase delas embaixo da confirmação: o
+  // botão aponta para ela. A verificação de segurança mostra o próprio estado.
+  const createBlockedReason = !legalAccepted
+    ? t("auth.signup.acceptTermsToCreate")
+    : !passwordReady
+      ? t("auth.signup.passwordRequirements")
+      : !passwordsMatch && !showMismatch
+        ? t("auth.signup.confirmPasswordFirst")
+        : "";
+  const createDescribedBy = createBlockedReason
+    ? "signup-create-blocked"
+    : showMismatch
+      ? "signup-password-mismatch"
+      : undefined;
   const stepLabel = t("auth.signup.progress")
     .replace("{current}", String(step))
     .replace("{total}", "2");
@@ -551,12 +566,18 @@ export function SignupForm() {
               !passwordsMatch ||
               (isCaptchaEnabled && !captchaToken)
             }
+            aria-describedby={createDescribedBy}
             className="button-solid mt-1 px-4 py-2.5 text-sm disabled:opacity-60"
           >
             {isLoading
               ? t("auth.signup.creatingAccount")
               : t("auth.signup.createAccount")}
           </button>
+          {createBlockedReason ? (
+            <p id="signup-create-blocked" className="-mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">
+              {createBlockedReason}
+            </p>
+          ) : null}
 
           <button
             key="password-back"

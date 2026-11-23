@@ -86,7 +86,7 @@ export function TeacherInboxQuestions() {
             {t("teach.inboxPage.questionsLoading")}
           </p>
           {[0, 1].map((row) => (
-            <div key={row} aria-hidden="true" className="h-16 animate-pulse rounded-md bg-[var(--color-surface-soft)]" />
+            <div key={row} aria-hidden="true" className="h-16 animate-pulse rounded-md bg-[var(--color-surface-strong)]" />
           ))}
         </div>
       ) : state.status === "error" ? (

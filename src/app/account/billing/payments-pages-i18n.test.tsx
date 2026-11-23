@@ -6,6 +6,8 @@ import BillingUpgradePage from "@/app/account/billing/upgrade/page";
 import BillingReturnPage from "@/app/account/billing/return/page";
 import TeachActivatePage from "@/app/teach/activate/page";
 import TeachActivateReturnPage from "@/app/teach/activate/return/page";
+import LoadingActivation from "@/app/teach/activate/loading";
+import LoadingActivationReturn from "@/app/teach/activate/return/loading";
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { LOCALE_COOKIE } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/dictionaries";
@@ -152,4 +154,23 @@ it.each([
   mocks.locale = "en";
   render(await TeachActivatePage({ searchParams: Promise.resolve({ courseId }) }));
   expect(mocks.activation).toHaveBeenCalledWith({ courseId: null });
+});
+
+// F-03: as duas rotas da ativacao perguntam ao banco antes de responder. Sem
+// loading.tsx o clique deixava a tela anterior parada; agora vem na hora a
+// mesma moldura (guarda, casca, titulo da pagina) com um esqueleto.
+it.each(["en", "es"] as const)("activation routes answer at once with the guarded frame and a skeleton in %s", async (locale) => {
+  mocks.locale = locale;
+  const view = render(await LoadingActivation());
+  expect(mocks.guard).toHaveBeenCalledWith(["teacherStudio.access"]);
+  expect(screen.getByRole("heading", { name: locale === "es" ? "Activa tu tienda" : "Activate your storefront" })).toBeInTheDocument();
+  expect(screen.getByRole("status")).toHaveTextContent(locale === "es" ? "Preparando el pago seguro..." : "Preparing secure checkout...");
+  view.unmount();
+
+  render(await LoadingActivationReturn());
+  expect(screen.getByRole("heading", { name: locale === "es" ? "Activación de la tienda" : "Storefront activation" })).toBeInTheDocument();
+  expect(screen.getByRole("status")).toHaveTextContent(locale === "es" ? "Estamos confirmando tu pago." : "We're confirming your payment.");
+  // Sem titulo nem botao de mentira: so os blocos, escondidos do leitor.
+  expect(screen.getAllByRole("heading")).toHaveLength(1);
+  expect(screen.queryByRole("link")).toBeNull();
 });

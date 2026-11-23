@@ -1509,7 +1509,7 @@ function LessonUploadForm({
       </p>
       {isUploading ? (
         <>
-          <progress className="h-2 w-full accent-[var(--color-ink)]" max={100} value={progressPercent ?? undefined} aria-label={t("creatorEditor.lesson.file.uploading")} />
+          <progress className="upload-progress" max={100} value={progressPercent ?? undefined} aria-label={t("creatorEditor.lesson.file.uploading")} />
           {onCancel ? (
             <button ref={cancelRef} type="button" onClick={onCancel} className="button-outline min-h-11 px-3 text-sm">
               {t("creatorEditor.lesson.file.cancel")}

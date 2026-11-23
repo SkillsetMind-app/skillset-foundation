@@ -107,6 +107,30 @@ describe("o sino antes, durante e depois da leitura", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
+  // "Mark all read" falhava calado: o catch engolia e a pessoa achava que
+  // tinha marcado. Agora o painel diz, e os avisos seguem como nao lidos.
+  it("'Mark all read' que falha diz no painel e deixa os avisos nao lidos", async () => {
+    const { markAllNotificationsAsRead } = await import("@/lib/data/notifications");
+    vi.mocked(markAllNotificationsAsRead).mockRejectedValueOnce(new Error("offline"));
+    mocks.rows = [aviso({ id: "s", type: "support_reply", link: "/support" })];
+    openBell("en");
+
+    expect(screen.queryByRole("alert")).toBeNull();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Mark all read" }));
+    });
+    expect(markAllNotificationsAsRead).toHaveBeenCalledWith("u-1", ["s"]);
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not mark your notifications as read. Try again.");
+    expect(screen.getByText("Support replied to your request")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Open notifications, 1 unread" })).toBeTruthy();
+
+    // A tentativa seguinte que da certo tira o aviso de falha.
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Mark all read" }));
+    });
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   it("abre como dialogo, leva o foco para dentro e o Esc devolve ao sino", () => {
     openBell("en");
     const bell = screen.getByRole("button", { name: "Open notifications" });

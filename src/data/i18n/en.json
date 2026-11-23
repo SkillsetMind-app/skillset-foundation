@@ -281,6 +281,7 @@
       "confirmPassword": "Confirm password",
       "confirmPasswordPlaceholder": "Re-enter your password",
       "passwordsDontMatch": "The two passwords do not match.",
+      "confirmPasswordFirst": "Type the password again to confirm it.",
       "agreePrefix": "I agree to the SkillsetMind ",
       "agreeMiddle": " and ",
       "agreeSuffix": ".",
@@ -1298,6 +1299,7 @@
       "close": "Close notifications",
       "title": "Notifications",
       "markAllRead": "Mark all read",
+      "markAllError": "We could not mark your notifications as read. Try again.",
       "filterLabel": "Filter notifications",
       "all": "All",
       "unread": "Unread",
@@ -4746,6 +4748,7 @@
       "placeholder": "new-email@example.com",
       "label": "New email address",
       "send": "Send change confirmation",
+      "typeFirst": "Type the new email address first.",
       "sent": "Verification sent to the new email. Open it to confirm the email change."
     },
     "password": {
@@ -4754,6 +4757,7 @@
       "current": "Current password",
       "next": "New password",
       "update": "Update password",
+      "currentFirst": "Enter your current password first.",
       "forgot": "Forgot your current password? We'll email a secure reset link so you can set a new one without it.",
       "sendReset": "Email me a reset link",
       "requirementsError": "Use a password that meets every requirement.",

@@ -44,6 +44,19 @@ export function UpdatePasswordForm({
   const passwordReady = isStrongPassword(password);
   const passwordsMatch = password === confirmPassword;
   const showMismatch = confirmPassword.length > 0 && !passwordsMatch;
+  // Por que "Update password" está apagado (a trava é a mesma; só passa a ser
+  // dita). Senhas diferentes já têm a frase delas embaixo da confirmação: o
+  // botão aponta para ela, em vez de repeti-la.
+  const updateBlockedReason = !passwordReady
+    ? t("auth.signup.passwordRequirements")
+    : !passwordsMatch && !showMismatch
+      ? t("auth.signup.confirmPasswordFirst")
+      : "";
+  const updateDescribedBy = updateBlockedReason
+    ? "reset-password-blocked"
+    : showMismatch
+      ? "reset-password-mismatch"
+      : undefined;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -202,10 +215,16 @@ export function UpdatePasswordForm({
         <button
           type="submit"
           disabled={isLoading || !passwordReady || !passwordsMatch}
+          aria-describedby={updateDescribedBy}
           className="button-solid mt-2 px-4 py-2.5 text-sm disabled:opacity-60"
         >
           {t(isLoading ? "authFlow.recovery.updating" : "authFlow.recovery.update")}
         </button>
+        {updateBlockedReason ? (
+          <p id="reset-password-blocked" className="-mt-2 text-xs leading-5 text-[var(--color-ink-soft)]">
+            {updateBlockedReason}
+          </p>
+        ) : null}
       </form>
     </>
   );

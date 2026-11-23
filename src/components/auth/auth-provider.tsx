@@ -35,6 +35,7 @@ import { captureFirstTouch } from "@/lib/attribution/first-touch";
 import { previewRoles, ViewAsBanner } from "@/components/admin/view-as";
 import { LegalGateContext } from "@/components/auth/legal-gate-state";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { isRole, type Role } from "@/lib/permissions";
 import { identifyUser, resetUser } from "@/lib/posthog/client";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
@@ -417,9 +418,9 @@ function LegalAcceptanceGate({ children }: { children: ReactNode }) {
         </div>
 
         {error ? (
-          <p role="alert" className="mt-4 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+          <InlineAlert tone="error" className="mt-4">
             {t(error)}
-          </p>
+          </InlineAlert>
         ) : null}
 
         <button

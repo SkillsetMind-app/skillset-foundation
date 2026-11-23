@@ -7,6 +7,7 @@ import {
   isCaptchaEnabled,
 } from "@/components/auth/turnstile-widget";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { isGoogleAuthEnabled } from "@/lib/auth/providers";
 import { scrollBehavior } from "@/lib/ui/scroll-behavior";
 import {
@@ -34,7 +35,7 @@ export function ResetPasswordForm() {
   // pressed, so on a phone it can land behind the soft keyboard or above the
   // fold. Dropping focus closes the keyboard and the callback ref pulls the
   // box into view.
-  const revealFeedback = (node: HTMLParagraphElement | null) => {
+  const revealFeedback = (node: HTMLElement | null) => {
     node?.scrollIntoView({ block: "center", behavior: scrollBehavior() });
   };
 
@@ -81,15 +82,11 @@ export function ResetPasswordForm() {
         />
       </label>
       {error ? (
-        <p
-          key={`error-${feedbackSeq}`}
-          ref={revealFeedback}
-          role="alert"
-          aria-live="assertive"
-          className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
-        >
-          {getAuthErrorMessage(error.cause, t)}
-        </p>
+        // A chave remonta a caixa a cada tentativa (o aviso volta a ser lido);
+        // o InlineAlert nao repassa ref, entao quem rola e a caixa de fora.
+        <div key={`error-${feedbackSeq}`} ref={revealFeedback}>
+          <InlineAlert tone="error">{getAuthErrorMessage(error.cause, t)}</InlineAlert>
+        </div>
       ) : null}
       {success ? (
         <p

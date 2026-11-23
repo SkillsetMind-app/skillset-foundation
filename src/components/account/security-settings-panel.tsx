@@ -64,6 +64,15 @@ export function SecuritySettingsPanel() {
   const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
   const captchaPending = isCaptchaEnabled && !captchaToken;
   const passwordReady = isStrongPassword(nextPassword);
+  // Por que os dois botões estão apagados, quando falta algo que a pessoa
+  // resolve (a trava é a mesma; só passa a ser dita). Ocupado não entra: o
+  // botão já diz "Sending..."; a verificação de segurança mostra o próprio estado.
+  const emailBlockedReason = newEmail.trim() ? "" : t("accountSecurity.email.typeFirst");
+  const passwordBlockedReason = !currentPassword
+    ? t("accountSecurity.password.currentFirst")
+    : !passwordReady
+      ? t("accountSecurity.password.requirementsError")
+      : "";
 
   async function handleSendVerification() {
     setBusy("verificationSend");
@@ -285,9 +294,15 @@ export function SecuritySettingsPanel() {
               className="justify-self-start"
               onClick={handleEmailChangeRequest}
               disabled={isBusy || !newEmail.trim()}
+              aria-describedby={emailBlockedReason ? "security-email-blocked" : undefined}
             >
               {t(busy === "email" ? "accountSecurity.sending" : "accountSecurity.email.send")}
             </Button>
+            {emailBlockedReason ? (
+              <p id="security-email-blocked" className="-mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">
+                {emailBlockedReason}
+              </p>
+            ) : null}
           </div>
           {feedbackFor("email")}
         </div>
@@ -354,9 +369,15 @@ export function SecuritySettingsPanel() {
               disabled={
                 isBusy || !currentPassword || !passwordReady || captchaPending
               }
+              aria-describedby={passwordBlockedReason ? "security-password-blocked" : undefined}
             >
               {t(busy === "password" ? "accountSecurity.updating" : "accountSecurity.password.update")}
             </Button>
+            {passwordBlockedReason ? (
+              <p id="security-password-blocked" className="-mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">
+                {passwordBlockedReason}
+              </p>
+            ) : null}
             {feedbackFor("password", "")}
             <div className="mt-1 border-t border-[var(--color-line)] pt-3">
               <p className="text-xs leading-5 text-[var(--color-ink-soft)]">

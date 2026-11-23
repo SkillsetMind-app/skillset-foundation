@@ -160,6 +160,19 @@ describe("TOTP setup dialog", () => {
     }
   });
 
+  // F-12: "Turn on 2FA" apagado dizia nada; agora diz que falta o código.
+  it("o botão apagado diz que falta o código de 6 dígitos", async () => {
+    renderSection();
+    const { dialog } = await openDialog();
+    const enable = within(dialog).getByRole("button", { name: "Turn on 2FA" });
+    expect(enable).toBeDisabled();
+    expect(enable).toHaveAccessibleDescription("Enter the 6-digit code from your authenticator app.");
+
+    fireEvent.change(within(dialog).getByLabelText("Authenticator code"), { target: { value: "123456" } });
+    expect(enable).toBeEnabled();
+    expect(enable).not.toHaveAttribute("aria-describedby");
+  });
+
   it("enrolls with the code from the dialog, then closes it and shows the factor", async () => {
     mocks.calls.finishTotpEnrollment.mockResolvedValue(undefined);
     renderSection();

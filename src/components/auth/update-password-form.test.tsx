@@ -68,6 +68,27 @@ describe("UpdatePasswordForm", () => {
     expect(confirm).toHaveAttribute("aria-describedby", warning.id);
   });
 
+  // F-12: o botao apagado diz por que, ligado a ele, e a frase some quando
+  // a trava sai. Senhas diferentes: aponta para o aviso que ja existe.
+  it("o botao apagado diz o que falta, ligado a ele", () => {
+    renderForm();
+    const update = screen.getByRole("button", { name: "Update password" });
+    expect(update).toBeDisabled();
+    expect(update).toHaveAccessibleDescription("Use a password that meets every requirement.");
+
+    fireEvent.change(screen.getByLabelText("New password"), { target: { value: newSecret } });
+    expect(update).toHaveAccessibleDescription("Type the password again to confirm it.");
+
+    const confirm = screen.getByLabelText("Confirm new password");
+    fireEvent.change(confirm, { target: { value: "different" } });
+    expect(update).toHaveAccessibleDescription("The two passwords do not match.");
+    expect(screen.getAllByText("The two passwords do not match.")).toHaveLength(1);
+
+    fireEvent.change(confirm, { target: { value: newSecret } });
+    expect(update).toBeEnabled();
+    expect(update).not.toHaveAttribute("aria-describedby");
+  });
+
   it("link vencido: o titulo diz isso, e o formulario nao aparece", () => {
     renderForm(false);
 

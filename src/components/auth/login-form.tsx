@@ -297,10 +297,17 @@ export function LoginForm() {
         <button
           type="submit"
           disabled={isLoading || mfaCode.length < 6}
+          aria-describedby={mfaCode.length < 6 ? "login-mfa-blocked" : undefined}
           className="button-solid mt-2 px-4 py-2.5 text-sm disabled:opacity-60"
         >
           {isLoading ? t("auth.verifying") : t("auth.verify")}
         </button>
+        {/* Por que "Verify" está apagado: o código ainda não tem 6 dígitos. */}
+        {mfaCode.length < 6 ? (
+          <p id="login-mfa-blocked" className="-mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">
+            {t("auth.mfaCodePrompt")}
+          </p>
+        ) : null}
         <button
           type="button"
           disabled={isLoading}

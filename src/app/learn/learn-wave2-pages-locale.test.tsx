@@ -8,6 +8,7 @@ import LearnWishlistPage from "@/app/learn/wishlist/page";
 import LearnCredentialsPage from "@/app/learn/credentials/page";
 import LearnMessagesPage from "@/app/learn/messages/page";
 import LoadingCourse from "@/app/learn/courses/[slug]/loading";
+import LoadingMemberArea from "@/app/learn/areas/[criador]/loading";
 import WelcomePage, { generateMetadata } from "@/app/welcome/page";
 import OnboardingPage from "@/app/onboarding/page";
 import { LearnCoursePage } from "@/components/learn/learn-course-page";
@@ -91,6 +92,17 @@ describe("learner routes read the real locale cookie", () => {
   // Abrir um curso passava por ate quatro telas de espera diferentes — a da
   // rota pintada de escuro (os cursos nascem claros), a do Suspense, um cartao
   // branco e o esqueleto da sala. A da rota e a do Suspense agora sao a MESMA.
+  // F-03: a area de membros busca a marca no servidor antes de responder; sem
+  // loading.tsx o clique deixava a tela anterior parada ate a resposta.
+  it("the members-area routes answer at once with the classroom's neutral wait", async () => {
+    const view = render(await LoadingMemberArea());
+    expect(screen.getByRole("status")).toHaveTextContent("Cargando el área de miembros...");
+    expect(view.container.querySelector("[aria-busy='true']")).not.toBeNull();
+    mocks.locale = "en";
+    view.rerender(await LoadingMemberArea());
+    expect(screen.getByRole("status")).toHaveTextContent("Loading the members area...");
+  });
+
   it("shows one loading state: the route file and the published-course Suspense fallback match", async () => {
     const view = render(await LoadingCourse());
     expect(screen.getByRole("status")).toHaveTextContent("Cargando curso...");

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { CardListSkeleton } from "@/components/shared/page-skeletons";
 import { EmptyState } from "@/components/ui/empty-state";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import type { SkillsetUser } from "@/domain/auth";
@@ -159,11 +160,8 @@ export function LearnEventsHub() {
   );
 
   if (isLoadingEnrollments || isLoadingEvents) {
-    return frame(
-      <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-        <p className="text-sm text-[var(--color-ink-soft)]">{t("learnWave2.eventsHub.loading")}</p>
-      </section>
-    );
+    // O título "Upcoming" e dois cartões, no lugar da frase solta num cartão.
+    return frame(<CardListSkeleton label={t("learnWave2.eventsHub.loading")} head="title" />);
   }
 
   // Lê de novo o que falhou pelos mesmos canais (sem religar). Até a resposta
