@@ -398,7 +398,7 @@
     "errorSelectGoal": "Select at least one goal so SkillsetMind can shape your workspace.",
     "errorSessionNotReady": "Your session is not ready. Sign in again to finish setup.",
     "errorFinish": "Could not finish onboarding. Please try again.",
-    "errorProfileLoad": "Could not load your profile. You can still complete setup."
+    "errorProfileLoadRetry": "We could not load your profile. Try again to continue."
   },
   "account": {
     "openMenu": "Open account menu",
@@ -1882,7 +1882,6 @@
       "previewHelp": "The student view shows the last saved version.",
       "errors": {
         "load": "We could not load your members area. Please try again.",
-        "courses": "We could not load your products. Reload the page to try again.",
         "save": "We could not save your members area. Please try again.",
         "saveProducts": "Name, theme, cover and welcome text were saved, but the product order was not. Please save again.",
         "coverInvalid": "Use a JPG, PNG or WebP image under 5 MB.",
@@ -2286,7 +2285,6 @@
         "removeHero": "Remove storefront hero image",
         "upload": "Upload",
         "replace": "Replace",
-        "remove": "Remove",
         "errors": {
           "invalid": "Use a {requirements} image.",
           "upload": "We could not upload this image. Please try again."
@@ -5762,7 +5760,6 @@
       "missing": "Certificate not available.",
       "missingDetail": "This certificate could not be found on your account, or it has not been issued yet. Issue it from your credentials page first.",
       "error": "We could not load this certificate.",
-      "errorDetail": "Something went wrong loading the credential. Refresh the page or try again from your credentials list.",
       "errorRetryDetail": "Something went wrong loading the credential. Try again, or open it from your credentials list.",
       "metadataTitle": "Certificate",
       "metadataDescription": "View and print your SkillsetMind Verified certificate."

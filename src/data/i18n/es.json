@@ -398,7 +398,7 @@
     "errorSelectGoal": "Selecciona al menos un objetivo para que SkillsetMind dé forma a tu espacio.",
     "errorSessionNotReady": "Tu sesión no está lista. Inicia sesión de nuevo para terminar la configuración.",
     "errorFinish": "No se pudo finalizar el onboarding. Inténtalo de nuevo.",
-    "errorProfileLoad": "No se pudo cargar tu perfil. Aún puedes completar la configuración."
+    "errorProfileLoadRetry": "No pudimos cargar tu perfil. Inténtalo de nuevo para continuar."
   },
   "account": {
     "openMenu": "Abrir menú de cuenta",
@@ -1882,7 +1882,6 @@
       "previewHelp": "La vista de estudiante muestra la última versión guardada.",
       "errors": {
         "load": "No pudimos cargar tu área de miembros. Inténtalo de nuevo.",
-        "courses": "No pudimos cargar tus productos. Recarga la página para intentarlo de nuevo.",
         "save": "No pudimos guardar tu área de miembros. Inténtalo de nuevo.",
         "saveProducts": "Se guardaron el nombre, el tema, la portada y la bienvenida, pero no el orden de los productos. Guarda de nuevo.",
         "coverInvalid": "Usa una imagen JPG, PNG o WebP de menos de 5 MB.",
@@ -2286,7 +2285,6 @@
         "removeHero": "Eliminar imagen de portada de la tienda",
         "upload": "Subir",
         "replace": "Reemplazar",
-        "remove": "Eliminar",
         "errors": {
           "invalid": "Usa una imagen {requirements}.",
           "upload": "No pudimos subir esta imagen. Inténtalo de nuevo."
@@ -5762,7 +5760,6 @@
       "missing": "Certificado no disponible.",
       "missingDetail": "No se encontró este certificado en tu cuenta o todavía no se ha emitido. Emítelo primero desde tu página de credenciales.",
       "error": "No pudimos cargar este certificado.",
-      "errorDetail": "Ocurrió un error al cargar la credencial. Actualiza la página o inténtalo de nuevo desde tu lista de credenciales.",
       "errorRetryDetail": "Ocurrió un error al cargar la credencial. Inténtalo de nuevo o ábrela desde tu lista de credenciales.",
       "metadataTitle": "Certificado",
       "metadataDescription": "Consulta e imprime tu certificado SkillsetMind Verified."

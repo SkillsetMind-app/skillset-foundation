@@ -200,6 +200,30 @@ describe("ProfileSettingsPanel - leitura que falha", () => {
     expect(screen.queryByText("We could not load your profile settings.")).toBeNull();
   });
 
+  it("o \"Try again\" que dá certo não traz de volta um erro de antes da falha", async () => {
+    const avatarError = "Use a JPG, PNG, or WebP under 5 MB profile image.";
+    mocks.getUserProfile.mockResolvedValueOnce({ displayName: "Ana", roles: ["student"] });
+    const { rerender } = render(<ProfileSettingsPanel />);
+    const input = await screen.findByLabelText<HTMLInputElement>("Upload profile photo");
+    fireEvent.change(input, { target: { files: [new File(["x"], "notes.txt", { type: "text/plain" })] } });
+    expect(screen.getByText(avatarError)).toBeInTheDocument();
+
+    // A sessão entrega a pessoa de novo (objeto novo) e essa releitura falha.
+    const previousUser = mocks.user;
+    mocks.user = { ...previousUser };
+    mocks.getUserProfile
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValueOnce({ displayName: "Ana", roles: ["student"] });
+    try {
+      rerender(<ProfileSettingsPanel />);
+      fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
+      expect(await screen.findByLabelText("Public name")).toHaveValue("Ana");
+      expect(screen.queryByText(avatarError)).toBeNull();
+    } finally {
+      mocks.user = previousUser;
+    }
+  });
+
   it("erro que não é de leitura não ganha \"Try again\"", async () => {
     mocks.getUserProfile.mockResolvedValue({ displayName: "Ana", roles: ["student"] });
     render(<ProfileSettingsPanel />);

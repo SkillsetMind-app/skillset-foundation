@@ -89,6 +89,16 @@ export function CreatorCourseWorkspace({
   const isLoadingCourse = Boolean(
     canOpenCourse && (!courseState.ready || courseState.key !== courseId),
   );
+  // O pedido de foco do "Try again" vale para UMA abertura: a sala o lê ao
+  // montar. Quando ela fecha (espera, erro, sem acesso), o pedido acaba; uma
+  // reabertura sem "Try again" não puxa o foco para o título de novo. Ajuste
+  // no render, com o valor anterior guardado (sem setState em efeito).
+  const classroomOpen = canOpenCourse && course !== null;
+  const [classroomWasOpen, setClassroomWasOpen] = useState(false);
+  if (classroomOpen !== classroomWasOpen) {
+    setClassroomWasOpen(classroomOpen);
+    if (!classroomOpen) setFocusClassroom(false);
+  }
   const router = useRouter();
   // Once the paid enrollment has opened the course, the checkout marker has
   // done its job. Left in the URL it rode along into lesson links, bookmarks
