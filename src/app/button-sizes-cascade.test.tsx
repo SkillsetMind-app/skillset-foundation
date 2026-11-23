@@ -331,6 +331,9 @@ describe("botão desligado (C-11)", () => {
     // No escuro, a borda de repouso do tema escuro, não a do claro.
     ["button-danger", { "data-theme": "dark" }, "border-color"],
     ["button-outline", { "data-theme": "dark" }, "border-color"],
+    // O rótulo do contorno: o :hover troca para o navy escuro com !important.
+    ["button-outline", undefined, "color"],
+    ["button-outline", { "data-theme": "dark" }, "color"],
     ["button-danger button-danger-solid", undefined, "background"],
     // Área de membros: as regras do escopo pesam mais que a central.
     ["button-solid", member, "background"],
@@ -356,6 +359,12 @@ describe("botão desligado (C-11)", () => {
     expect(resolveHover(css, button, "box-shadow")).toBe("none");
     expect(resolveHover(css, button, "transform")).toBe("none");
   });
+
+  it("o botão só de ícone desligado tem o cursor de bloqueado e os 60%", () => {
+    const button = disabled("button-icon");
+    expect(resolve(css, button, "cursor")).toBe("not-allowed");
+    expect(resolve(css, button, "opacity")).toBe("0.6");
+  });
 });
 
 // C-05: 44px em todo campo, a altura do botão ao lado; mas um min-h-* do JSX
@@ -380,8 +389,9 @@ describe("tempo das transições (C-09)", () => {
       "var(--default-transition-timing-function)",
     );
     expect(resolve(css, document.documentElement, "--default-transition-duration")).toBe("var(--duration-base)");
+    // A curva fica a do Tailwind (movimento do site público aprovado assim).
     expect(resolve(css, document.documentElement, "--default-transition-timing-function")).toBe(
-      "var(--ease-standard)",
+      "cubic-bezier(0.4, 0, 0.2, 1)",
     );
   });
 });

@@ -15,7 +15,10 @@ const variants = [
   "button-solid-light",
   "button-outline-light",
 ];
-const rule = `:is(${variants.map((variant) => `.${variant}`).join(", ")}):is(:disabled, [aria-disabled="true"]) {`;
+// O .button-icon (botão só de ícone) também entra na regra central: cursor de
+// bloqueado e os mesmos 60%. Fica fora de `variants` porque mora em camada e
+// tem regra de repouso própria (testada na cascata).
+const rule = `:is(${[...variants, "button-icon"].map((variant) => `.${variant}`).join(", ")}):is(:disabled, [aria-disabled="true"]) {`;
 
 describe("botao desligado nao reage ao mouse nem ao clique", () => {
   it("fica parado, sem sombra e com o cursor de bloqueado", () => {
@@ -99,7 +102,7 @@ describe("botao desligado nao reage ao mouse nem ao clique", () => {
       )
       .map((entry) => join(entry.parentPath, entry.name));
     const both =
-      /["'`](?=[^"'`]*\bbutton-(?:solid|outline|accent|danger)\b)(?=[^"'`]*\b(?:aria-)?disabled:opacity-\d+)[^"'`]*["'`]/g;
+      /["'`](?=[^"'`]*\bbutton-(?:solid|outline|accent|danger|icon)\b)(?=[^"'`]*\b(?:aria-)?disabled:opacity-\d+)[^"'`]*["'`]/g;
     const violations: string[] = [];
     expect(files.length).toBeGreaterThan(0);
     for (const file of files) {

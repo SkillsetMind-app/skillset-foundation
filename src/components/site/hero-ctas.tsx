@@ -48,7 +48,7 @@ export function HeroCtas() {
           aria-hidden="true"
           size={16}
           strokeWidth={2}
-          className="transition-transform group-hover:translate-x-0.5"
+          className="transition-transform duration-200 group-hover:translate-x-0.5"
         />
       </Link>
       <Link href="/pricing" className="button-outline-light">

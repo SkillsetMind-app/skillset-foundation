@@ -606,7 +606,7 @@ export function CourseLandingEditor({
                 onClick={() => move(index, -1)}
                 disabled={index === 0}
                 aria-label={t("teacherLanding.moveUp")}
-                className="button-icon border border-[var(--color-line)] bg-white disabled:opacity-30"
+                className="button-icon border border-[var(--color-line)] bg-white"
               >
                 <ChevronUp className="h-4 w-4" />
               </button>
@@ -615,7 +615,7 @@ export function CourseLandingEditor({
                 onClick={() => move(index, 1)}
                 disabled={index === blocks.length - 1}
                 aria-label={t("teacherLanding.moveDown")}
-                className="button-icon border border-[var(--color-line)] bg-white disabled:opacity-30"
+                className="button-icon border border-[var(--color-line)] bg-white"
               >
                 <ChevronDown className="h-4 w-4" />
               </button>

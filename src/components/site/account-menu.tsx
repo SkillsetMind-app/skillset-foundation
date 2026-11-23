@@ -222,7 +222,7 @@ export function AccountMenu({ onSignOut, user, branded = false }: AccountMenuPro
           aria-hidden="true"
           size={12}
           strokeWidth={1.8}
-          className={isOpen ? "rotate-180 transition-transform" : "transition-transform"}
+          className={isOpen ? "rotate-180 transition-transform duration-200" : "transition-transform duration-200"}
         />
       </button>
 

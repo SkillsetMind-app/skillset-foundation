@@ -252,11 +252,11 @@
   --radius-2xl: 16px;
   --radius-3xl: 16px;
   --radius-4xl: 16px;
-  /* Toda utility transition-* sem duração própria anda no tempo da casa. Sem
-     isto valiam os 150ms e a curva do Tailwind, e o controle feito à mão
-     terminava antes, noutra curva, do botão do sistema ao lado. */
+  /* Toda utility transition-* sem duração própria anda no tempo da casa
+     (eram os 150ms do Tailwind, e o controle feito à mão terminava antes do
+     botão do sistema ao lado). A curva das utilities fica a do Tailwind, de
+     propósito: o movimento do site público foi aprovado assim. */
   --default-transition-duration: var(--duration-base);
-  --default-transition-timing-function: var(--ease-standard);
 }
 
 @theme inline {
@@ -1760,7 +1760,7 @@ p {
    que faz esta regra valer. A opacidade era escrita em cada chamada, com cinco
    valores (30 a 70%); agora é uma só, daqui, e vence a utility da chamada
    (regra fora de camada). */
-:is(.button-solid, .button-outline, .button-accent, .button-danger, .button-solid-light, .button-outline-light):is(:disabled, [aria-disabled="true"]) {
+:is(.button-solid, .button-outline, .button-accent, .button-danger, .button-solid-light, .button-outline-light, .button-icon):is(:disabled, [aria-disabled="true"]) {
   cursor: not-allowed;
   opacity: 0.6;
   transform: none;
@@ -1778,6 +1778,8 @@ p {
 .button-outline:is(:disabled, [aria-disabled="true"]) {
   border-color: var(--color-line-strong);
   background: var(--color-surface);
+  /* O :hover troca o rótulo para o navy escuro com !important. */
+  color: var(--color-primary) !important;
 }
 
 [data-theme="dark"] .button-outline:is(:disabled, [aria-disabled="true"]) {

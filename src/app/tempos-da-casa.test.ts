@@ -19,10 +19,19 @@ function block(selector: string): string {
 }
 
 describe("tempos da casa", () => {
-  it("toda utility transition-* sem duração usa os tokens", () => {
+  it("toda utility transition-* sem duração usa o tempo da casa", () => {
     const theme = block("@theme");
     expect(theme).toContain("--default-transition-duration: var(--duration-base);");
-    expect(theme).toContain("--default-transition-timing-function: var(--ease-standard);");
+    // A curva das utilities fica a do Tailwind, de propósito: o movimento do
+    // site público (hover da home, do rodapé, das setas) foi aprovado assim.
+    expect(theme).not.toContain("--default-transition-timing-function");
+  });
+
+  // O movimento da home foi aprovado como está (#576). Uma troca de tokens
+  // não pode encurtá-lo sem ninguém ver.
+  it("a entrada do hero e a foto da vitrine guardam o tempo e a curva aprovados", () => {
+    expect(block(".hero-copy-rise")).toContain("animation: hero-copy-rise 620ms cubic-bezier(0.2, 0.6, 0.2, 1) both;");
+    expect(block(".marketplace-card__media img")).toContain("transform 500ms cubic-bezier(0.2, 0.6, 0.2, 1)");
   });
 
   it.each([

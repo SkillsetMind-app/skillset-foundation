@@ -2329,7 +2329,7 @@ export function CourseBuilderStudio() {
                   disabled={!isEditable || lessonIndex === 0}
                   aria-label={t("creatorEditor.builder.curriculum.up")}
                   title={t("creatorEditor.builder.curriculum.up")}
-                  className="grid size-11 shrink-0 place-items-center rounded-md text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-soft)] disabled:opacity-60"
+                  className="grid size-11 shrink-0 place-items-center rounded-md text-[var(--color-ink-soft)] enabled:hover:bg-[var(--color-surface-soft)] disabled:opacity-60"
                 >
                   <ArrowUp aria-hidden="true" size={16} strokeWidth={2} />
                 </button>
@@ -2342,7 +2342,7 @@ export function CourseBuilderStudio() {
                   }
                   aria-label={t("creatorEditor.builder.curriculum.down")}
                   title={t("creatorEditor.builder.curriculum.down")}
-                  className="grid size-11 shrink-0 place-items-center rounded-md text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-soft)] disabled:opacity-60"
+                  className="grid size-11 shrink-0 place-items-center rounded-md text-[var(--color-ink-soft)] enabled:hover:bg-[var(--color-surface-soft)] disabled:opacity-60"
                 >
                   <ArrowDown aria-hidden="true" size={16} strokeWidth={2} />
                 </button>
