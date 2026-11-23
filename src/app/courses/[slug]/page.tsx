@@ -355,7 +355,9 @@ export default async function CourseDetailPage({
                 six-row <dl> alongside Category and Level — buyers had to
                 scan past four neutral rows to find what it costs. Now it
                 anchors the sidebar so the cost is the first thing you see. */}
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.access")}</p>
+            {/* "Price" em 12px, como no cartão do curso real: "Access" em 10px
+                não dizia que o número embaixo é o preço. */}
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">{t("publicCourses.priceEyebrow")}</p>
             <p className="display-title mt-1 text-4xl leading-none text-[var(--color-primary)]">
               {priceLabel}
             </p>
@@ -405,7 +407,7 @@ export default async function CourseDetailPage({
       <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-3 lg:hidden">
         <div className="pointer-events-auto flex items-center gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)]/95 px-4 py-3 shadow-[0_-6px_30px_rgba(15,39,68,0.18)] backdrop-blur supports-[backdrop-filter]:bg-[var(--color-surface)]/85">
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">{t("publicCourses.access")}</p>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">{t("publicCourses.priceEyebrow")}</p>
             <p className="display-title truncate text-xl leading-none text-[var(--color-primary)]">
               {priceLabel}
             </p>
