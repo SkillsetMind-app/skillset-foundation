@@ -1667,10 +1667,16 @@ describe("CreatorCourseDetail: preço que falha e quem vende", () => {
   });
 
   // S-04: com o preço falhando, a barra mostra o traço do cartão (e não
-  // "Pricing unavailable" em letra de título) e não oferece "Enroll" sem
-  // preço. O aviso com "Try again" é o do cartão.
-  it("com a leitura do preço falhando, a barra de compra mostra só o traço, sem botão", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, json: async () => ({ error: "unavailable" }) })));
+  // "Pricing unavailable" em letra de título) e, no lugar do "Enroll" sem
+  // preço, o mesmo "Try again" do aviso do cartão: no celular o cartão fica
+  // no fim da página, depois do currículo inteiro.
+  it("com a leitura do preço falhando, a barra de compra mostra o traço e o 'Try again' do cartão", async () => {
+    let answerRetry: (response: unknown) => void = () => {};
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ error: "unavailable" }) })
+      .mockImplementationOnce(() => new Promise((resolve) => { answerRetry = resolve; }));
+    vi.stubGlobal("fetch", fetchMock);
+    const offerReads = () => fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/offers")).length;
     const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
     const card = await waitFor(() => {
       const found = container.querySelector<HTMLElement>("#enroll-card");
@@ -1684,7 +1690,27 @@ describe("CreatorCourseDetail: preço que falha e quem vende", () => {
     expect(bar).not.toBeNull();
     expect(within(bar).getByText("—")).toHaveAttribute("aria-hidden", "true");
     expect(within(bar).getByText("Pricing unavailable")).toHaveClass("sr-only");
-    expect(bar.querySelector("a, button")).toBeNull();
+    expect(bar.querySelector("a")).toBeNull();
+    const retry = within(bar).getByRole("button", { name: "Try again" });
+    // A mesma altura de 44px do "Enroll": a barra não encolhe neste estado.
+    expect(retry).toHaveClass("min-h-11");
+    expect(offerReads()).toBe(1);
+
+    fireEvent.click(retry);
+    fireEvent.click(within(bar).getByRole("button", { name: "Trying again..." }));
+
+    // Uma releitura só, e a barra espera com o botão travado.
+    expect(offerReads()).toBe(2);
+    expect(within(bar).getByRole("button", { name: "Trying again..." })).toHaveAttribute("aria-busy", "true");
+    expect(within(bar).getByText("Loading pricing...")).toHaveClass("sr-only");
+
+    await act(async () => answerRetry({ ok: true, json: async () => ({ offers: [] }) }));
+
+    expect(await within(bar).findByText("$149.00")).toBeInTheDocument();
+    expect(within(bar).getByRole("link", { name: "Enroll" })).toHaveAttribute("href", "#enroll-card");
+    expect(within(bar).queryByRole("button")).toBeNull();
+    expect(within(card).queryByRole("alert")).not.toBeInTheDocument();
+    expect(offerReads()).toBe(2);
   });
 });
 

@@ -14,6 +14,7 @@ import { BunnyVideoPlayer } from "@/components/courses/bunny-video-player";
 import { renderCourseDetailSkeleton } from "@/components/courses/course-detail-skeleton";
 import { CourseModuleDisclosure } from "@/components/courses/course-module-disclosure";
 import { CourseUnlockModal } from "@/components/learn/course-unlock-modal";
+import { Button } from "@/components/ui/button";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import {
@@ -209,6 +210,8 @@ export function CreatorCourseDetail({
   const enrollCardObserver = useRef<IntersectionObserver | null>(null);
   // O cartão também recebe o foco do "Try again" do preço (fica nos dois desfechos).
   const enrollCardRef = useRef<HTMLElement | null>(null);
+  // A barra flutuante recebe o foco do "Try again" dela (fica nos dois desfechos).
+  const buyBarRef = useRef<HTMLDivElement>(null);
   const watchEnrollCard = useCallback((node: HTMLElement | null) => {
     enrollCardRef.current = node;
     enrollCardObserver.current?.disconnect();
@@ -381,6 +384,11 @@ export function CreatorCourseDetail({
 
     return () => controller.abort();
   }, [course?.status, resolvedCourseId, offerReadAttempt]);
+  // Um "Try again" só, o do aviso do cartão e o da barra flutuante.
+  function retryOfferRead() {
+    setOfferLoadError("");
+    setOfferReadAttempt((attempt) => attempt + 1);
+  }
 
   // Evento ao vivo: a data da sessao, no fuso de quem ensina. Fica guardada
   // com o id do curso, entao uma resposta velha nunca aparece em outro.
@@ -499,6 +507,8 @@ export function CreatorCourseDetail({
   const pricingReady = offersLoaded && !offerLoadError;
   // O preço ainda está a caminho (não falhou): o cartão guarda o lugar dele.
   const pricePending = !pricingReady && !offerLoadError;
+  // A releitura pedida pelo "Try again" ainda corre: a barra mostra a espera.
+  const offerRetrying = offerReadAttempt > 0 && pricePending;
   const courseIsFree =
     resolvedPrice?.paymentType === "free" || resolvedPrice?.amountMinor === 0;
   const subscriptionInterval =
@@ -1226,10 +1236,7 @@ export function CreatorCourseDetail({
           <LoadErrorAlert
             className="mt-5"
             focusRef={enrollCardRef}
-            onRetry={() => {
-              setOfferLoadError("");
-              setOfferReadAttempt((attempt) => attempt + 1);
-            }}
+            onRetry={retryOfferRead}
           >
             {t(offerLoadError)}
           </LoadErrorAlert>
@@ -1451,7 +1458,7 @@ export function CreatorCourseDetail({
           : enrollCardInView ? "hidden" : "lg:inset-x-auto lg:right-6 lg:bottom-6 lg:w-[24rem] lg:px-0 lg:pb-0"
       }`}
     >
-      <div className="pointer-events-auto flex items-center gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)]/95 px-4 py-3 shadow-[0_-6px_30px_rgba(15,39,68,0.18)] backdrop-blur supports-[backdrop-filter]:bg-[var(--color-surface)]/85">
+      <div ref={buyBarRef} tabIndex={-1} className="pointer-events-auto flex items-center gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)]/95 px-4 py-3 shadow-[0_-6px_30px_rgba(15,39,68,0.18)] backdrop-blur supports-[backdrop-filter]:bg-[var(--color-surface)]/85">
         <div className="min-w-0 flex-1">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">{t("publicCourses.priceEyebrow")}</p>
           <p className="display-title truncate text-xl leading-none text-[var(--color-primary)]">
@@ -1464,7 +1471,7 @@ export function CreatorCourseDetail({
               </>
             ) : offerLoadError ? (
               // Falhou: o traço do cartão, e não "Pricing unavailable" em
-              // letra de título. O aviso com "Try again" mora no cartão.
+              // letra de título.
               <>
                 <span aria-hidden="true" className="text-[var(--color-ink-muted)]">—</span>
                 <span className="sr-only">{priceLabel}</span>
@@ -1477,7 +1484,23 @@ export function CreatorCourseDetail({
             href={classroomHref}
             className="button-solid inline-flex min-h-11 shrink-0 items-center px-3.5 py-2 text-xs"
           >{t("publicCourses.continueLearning")}</Link>
-        ) : offerLoadError ? null : (
+        ) : offerLoadError || offerRetrying ? (
+          // Sem preço não há "Enroll": o mesmo "Try again" do aviso do
+          // cartão, que no celular fica no fim da página, depois do
+          // currículo. O foco vai antes para a barra, que fica nos dois
+          // desfechos (o botão trava na espera e vira "Enroll" se der certo).
+          <Button
+            variant="outline"
+            loading={offerRetrying}
+            onClick={() => {
+              buyBarRef.current?.focus();
+              retryOfferRead();
+            }}
+            className="shrink-0 px-3.5 py-2 text-xs"
+          >
+            {t(offerRetrying ? "appErrors.retrying" : "appErrors.retry")}
+          </Button>
+        ) : (
           <Link
             href="#enroll-card"
             className="button-solid inline-flex min-h-11 shrink-0 items-center px-3.5 py-2 text-xs"
