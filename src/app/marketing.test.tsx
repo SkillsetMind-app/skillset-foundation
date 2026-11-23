@@ -39,6 +39,11 @@ vi.mock("@/components/site/how-it-works-strip", () => ({ HowItWorksStrip: () => 
 vi.mock("@/components/site/capabilities-grid", () => ({ CapabilitiesGrid: () => null }));
 vi.mock("@/components/site/promise-preview-band", () => ({ PromisePreviewBand: () => null }));
 vi.mock("@/components/site/for-creators-band", () => ({ ForCreatorsBand: () => null }));
+// A faixa de fatos também é servidor; o conteúdo dela é conferido em
+// home-facts-band.test.tsx. Aqui ela só marca o lugar, para a ordem.
+vi.mock("@/components/site/home-facts-band", () => ({ HomeFactsBand: () => <div data-testid="facts-band" /> }));
+// As perguntas frequentes idem (home-faq.test.tsx); o lugar delas é o #faq.
+vi.mock("@/components/site/home-faq", () => ({ HomeFaq: () => null }));
 vi.mock("@/components/site/featured-courses", () => ({ FeaturedCourses: () => <div data-testid="marketplace" /> }));
 
 beforeEach(() => {
@@ -136,6 +141,20 @@ describe("marketing home", () => {
     ]) {
       expect(within(card).getByText(text)).toBeInTheDocument();
     }
+  });
+
+  // A ordem dos blocos dentro do <main> (o topo está simulado e não aparece):
+  // a faixa de fatos vem logo depois do topo e antes do "How it works"; as
+  // perguntas frequentes, entre a Promessa e a faixa final.
+  it("keeps the home blocks in order: facts band after the hero, FAQ after the Promise", async () => {
+    const { container } = await renderHome();
+
+    const blocks = [...container.querySelector("main")!.children].map(
+      (block) => block.id || block.getAttribute("data-testid"),
+    );
+    expect(blocks).toEqual(["facts-band", "how-it-works", "real-course", "capabilities", "promise", "faq", "for-creators"]);
+    // A âncora pousa abaixo da barra fixa, como as outras seções.
+    expect(container.querySelector("#faq")).toHaveClass("scroll-mt-28");
   });
 
   // Acessibilidade basica: um landmark <main> por pagina, alvo do "Skip to

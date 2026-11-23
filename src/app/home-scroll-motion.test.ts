@@ -358,6 +358,7 @@ describe("home: cenas do computador", () => {
       "motion-scroll-curtain",
       "motion-scroll-assemble",
       "motion-scroll-settle",
+      "motion-scroll-fact",
     ]) {
       const properties = [...keyframesBody(name).matchAll(/^\s*([a-z-]+):/gm)].map((match) => match[1]);
       expect(properties.length, name).toBeGreaterThan(0);
@@ -377,6 +378,46 @@ describe("home: cenas do computador", () => {
     expect(read("src/app/page.tsx")).toMatch(/id="how-it-works" className="home-how /);
     expect(read("src/components/site/how-it-works-strip.tsx")).toContain('className="home-how__panel ');
     expect(read("src/components/site/promise-preview-band.tsx")).toContain('className="home-promise ');
+  });
+
+  // M6: a faixa de fatos entra nos dois tamanhos (fora do bloco das cenas),
+  // um número depois do outro, só com opacidade e 12px. Fora das travas não
+  // existe regra nenhuma para ela: parada e inteira.
+  it("faixa de fatos: escada leve atrás das travas, inteira antes de 75% da tela", () => {
+    const hits = [...css.matchAll(/\.home-facts/g)];
+    expect(hits.length).toBe(4);
+    for (const hit of hits) {
+      expect(hit.index! > supportsStart && hit.index! < supportsEnd, "fato fora do @supports").toBe(true);
+      expect(insideScenes(hit.index!), "fato preso ao bloco das cenas").toBe(false);
+    }
+
+    const rule = (selector: string) => {
+      const at = css.indexOf(`${selector} {`, supportsStart);
+      expect(at, selector).toBeGreaterThan(-1);
+      return css.slice(at, css.indexOf("}", at));
+    };
+    const base = rule(".home-scroll .home-facts__item");
+    expect(base).toContain("animation: motion-scroll-fact 1ms var(--ease-standard) both;");
+    expect(base).toContain("animation-timeline: view();");
+
+    // Trechos em svh a partir do topo do fato entrando pela borda de baixo:
+    // começos em ordem e cada fim antes de o topo chegar a 75% da tela.
+    const ranges = [1, 2, 3, 4].map((n) => {
+      const body = n === 1 ? base : rule(`.home-scroll .home-facts__item:nth-child(${n})`);
+      const [, from, to] = body.match(/animation-range: cover (\d+)(?:%|svh) cover (\d+)svh;/)!;
+      return [Number(from), Number(to)] as const;
+    });
+    for (let i = 1; i < ranges.length; i += 1) {
+      expect(ranges[i][0]).toBeGreaterThan(ranges[i - 1][0]);
+    }
+    for (const [from, to] of ranges) {
+      expect(to).toBeGreaterThan(from);
+      expect(to).toBeLessThanOrEqual(25);
+    }
+
+    const frames = keyframesBody("motion-scroll-fact");
+    expect(frames).toContain("opacity: 0;");
+    expect(frames).toContain("transform: translateY(12px);");
   });
 
   it("nenhum ancestral da home corta a rolagem (o sticky precisa disso)", () => {
