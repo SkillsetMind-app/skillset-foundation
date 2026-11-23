@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import { AuthFrame } from "@/components/auth/auth-frame";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { isFramedPlatformRoute, opensInPlatformShell } from "@/components/platform/platform-routes";
 import { PlatformShellSkeleton } from "@/components/shared/page-skeletons";
 import { SkillsetSpinner } from "@/components/shared/skillset-spinner";
 import { getAuthRoute } from "@/lib/auth/routing";
@@ -109,27 +110,11 @@ export function ProtectedSurface({ permissions, contactWhenSignedOut = false, ch
   return children;
 }
 
-// Que espera mostrar, só pelo endereço (nunca por dado da pessoa). As áreas que
-// abrem dentro da PlatformShell ganham a forma dela; rota fora da lista, o anel.
-const SHELL_AREAS = ["/teach", "/learn", "/account", "/ops", "/support"];
-// Dentro dessas áreas, as telas com outra casca: a sala de aula e a área de
-// membros (MemberAreaShell), a prévia do curso no construtor (MemberAreaShell)
-// e o certificado para imprimir (sem casca).
-const OTHER_SHELLS = ["/learn/courses/", "/learn/areas/", "/learn/credentials/", "/teach/builder/"];
-// As telas de pagar plano ficam na largura toda, como na PlatformShell.
-const UNFRAMED_ACCOUNT = ["/account/billing/upgrade", "/account/billing/return", "/account/plans"];
-
+// Que espera mostrar, só pelo endereço (nunca por dado da pessoa): as regras
+// moram em platform-routes.ts, as mesmas que a PlatformShell lê. Rota fora da
+// lista fica com o anel.
 function shellWaitFor(pathname: string) {
-  const under = (prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`);
-  if (!SHELL_AREAS.some(under) || OTHER_SHELLS.some((prefix) => pathname.startsWith(prefix))) {
-    return null;
-  }
-  // A mesma coluna de 1280px da PlatformShell (`framed` em platform-shell.tsx),
-  // conferida rota a rota contra ela em espera-com-a-forma-da-casca.test.tsx.
-  const framed = (under("/teach") && !under("/teach/builder"))
-    || under("/learn")
-    || (under("/account") && !UNFRAMED_ACCOUNT.some((prefix) => pathname.startsWith(prefix)));
-  return { framed };
+  return opensInPlatformShell(pathname) ? { framed: isFramedPlatformRoute(pathname) } : null;
 }
 
 // A barra recolhida é lida como a PlatformShell lê: o cookie que o layout leu

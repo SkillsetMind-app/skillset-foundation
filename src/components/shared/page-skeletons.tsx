@@ -67,7 +67,9 @@ export function PlatformShellSkeleton({
                   role="status"
                   className={["space-y-6", framed ? "mx-auto w-full min-[1440px]:max-w-7xl" : ""].join(" ")}
                 >
-                  <span className="sr-only">{label}</span>
+                  {/* O anel tinha a frase num h1 à vista: quem anda pelos
+                      títulos com o leitor de tela continua achando um. */}
+                  <h1 className="sr-only">{label}</h1>
                   <div aria-hidden="true" className="border-b border-[var(--color-line)] pb-5 pt-2 motion-safe:animate-pulse">
                     <div className={`h-9 w-72 max-w-full ${bone}`} />
                   </div>

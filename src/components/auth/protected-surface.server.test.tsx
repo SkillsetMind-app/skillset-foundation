@@ -41,6 +41,8 @@ describe("ProtectedSurface no servidor", () => {
     expect(collapsed).toContain("platform-grid platform-grid--collapsed");
     expect(collapsed).toContain("sidebar-collapsed");
     expect(collapsed.match(/role="status"/g)).toHaveLength(1);
+    expect(collapsed.match(/<h1[ >]/g)).toHaveLength(1);
+    expect(collapsed).toContain('<h1 class="sr-only">authFlow.loading.title</h1>');
     expect(collapsed).not.toContain("conteudo protegido");
     expect(collapsed).not.toMatch(/<a |<button/);
 

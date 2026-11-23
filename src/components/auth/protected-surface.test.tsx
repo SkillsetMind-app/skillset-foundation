@@ -175,6 +175,11 @@ describe("ProtectedSurface — a espera tem a forma do que vem", () => {
     expect(screen.getAllByRole("status")).toHaveLength(1);
     expect(screen.getByRole("status")).toHaveTextContent("authFlow.loading.title");
     expect(container.textContent).toBe("authFlow.loading.title");
+    // Quem anda pelos titulos acha o mesmo h1 do anel, so que sem aparecer.
+    expect(screen.getAllByRole("heading")).toHaveLength(1);
+    const heading = screen.getByRole("heading", { level: 1, name: "authFlow.loading.title" });
+    expect(heading).toHaveClass("sr-only");
+    expect(screen.getByRole("status")).toContainElement(heading);
     // Nada que o teclado alcance.
     expect(container.querySelectorAll("a, button, input, select, textarea, [tabindex]")).toHaveLength(0);
     expect(screen.queryAllByRole("link")).toHaveLength(0);
