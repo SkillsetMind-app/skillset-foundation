@@ -16,11 +16,16 @@ function block(selector: string): string {
 
 describe("a barra de progresso da sala", () => {
   // Concluir uma aula reescrevia a largura de uma vez: a barra SALTAVA para a
-  // marca nova e o unico sinal de "isso contou" passava batido.
-  it("anima a largura em vez de saltar para a marca nova", () => {
-    expect(block(".member-classroom-head__progress > span")).toMatch(
-      /transition: width \d+ms/,
-    );
+  // marca nova e o unico sinal de "isso contou" passava batido. Hoje a barra do
+  // topo e a ProgressBar da casa (F-09), que desliza ate a marca nova por
+  // transform, so para quem nao pediu menos movimento.
+  it("desliza ate a marca nova em vez de saltar", () => {
+    const workspace = readFileSync(join(process.cwd(), "src/components/learn/enrolled-course-workspace.tsx"), "utf8");
+    expect(workspace).toMatch(/<ProgressBar\s[\s\S]{0,300}?className="member-classroom-head__progress"/);
+    const bar = readFileSync(join(process.cwd(), "src/components/ui/progress-bar.tsx"), "utf8");
+    expect(bar).toContain("motion-safe:transition-transform");
+    // A regra de largura feita a mao saiu com a barra antiga.
+    expect(css).not.toContain(".member-classroom-head__progress > span");
   });
 });
 

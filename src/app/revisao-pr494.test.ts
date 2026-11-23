@@ -62,9 +62,14 @@ describe("C3: latao fora de erro, aviso e exclusao", () => {
   const errorSites: [string, string, string?][] = [
     // Virou InlineAlert de erro (F-07), que pinta o texto em danger-fg.
     ["components/teacher/activation-checkout-panel.tsx", 'className="m-6"', 'tone="error"'],
-    ["components/account/embedded-checkout-panel.tsx", 'role="alert" className="p-6 text-sm'],
-    // Virou InlineAlert de erro, que pinta o texto em danger-fg (ui.test.tsx).
-    ["components/learn/community-leaderboard.tsx", '<InlineAlert tone="error" className="mt-3', 'tone="error"'],
+    // O erro do checkout embutido virou o InlineAlert de erro (F-07), dentro
+    // da mesma moldura p-6 (a linha abaixo confere a moldura).
+    ["components/account/embedded-checkout-panel.tsx", '<InlineAlert tone="error" title={t("activationCheckout.errorTitle")}', 'tone="error"'],
+    ["components/account/embedded-checkout-panel.tsx", '<div className="p-6 text-sm">', 'className="p-6 text-sm"'],
+    // Virou LoadErrorAlert (F-11: com "Try again"), que sempre desenha o
+    // InlineAlert de erro, conferido na linha seguinte.
+    ["components/learn/community-leaderboard.tsx", "<LoadErrorAlert", "<LoadErrorAlert"],
+    ["components/ui/load-error-alert.tsx", '<InlineAlert tone="error"', 'tone="error"'],
     ["components/certificates/certificate-verification-panel.tsx", '<h2 className="text-lg font-semibold'],
   ];
 

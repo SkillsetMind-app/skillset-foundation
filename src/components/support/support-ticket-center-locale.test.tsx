@@ -106,6 +106,20 @@ describe("support with the shipped dictionaries", () => {
     expect(screen.queryByText("Private transport detail")).toBeNull();
   });
 
+  // F-11: a leitura que falha tem saída na lista, e a lista não diz "nenhum".
+  it("a read failure offers Try again in the list, which reads again", async () => {
+    render(center());
+    act(() => mocks.subscribe.mock.calls[0][2](new Error("offline")));
+    expect(screen.queryByText("No support tickets yet.")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(mocks.subscribe).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole("status")).toHaveTextContent("Loading tickets...");
+    act(() => mocks.subscribe.mock.calls[1][1]([]));
+    expect(await screen.findByText("No support tickets yet.")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   it("retains the draft and localizes an existing creation failure", async () => {
     mocks.create.mockRejectedValue(new Error("Private transport detail"));
     render(center());
