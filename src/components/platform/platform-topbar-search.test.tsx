@@ -183,8 +183,11 @@ describe("busca na barra do topo", () => {
     const toggle = screen.getByRole("button", { name: "Open search" });
     const field = screen.getByRole("searchbox", { name: "Search your studio" });
     fireEvent.click(toggle);
-    fireEvent.keyDown(field, { key: "Escape" });
+    fireEvent.change(field, { target: { value: "anxiety" } });
+    // O Esc so fecha a faixa: o padrao do navegador (apagar o campo) e cancelado.
+    expect(fireEvent.keyDown(field, { key: "Escape" })).toBe(false);
 
+    expect(field).toHaveValue("anxiety");
     expect(field.closest("label")).toHaveAttribute("data-open", "false");
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     expect(toggle).toHaveFocus();

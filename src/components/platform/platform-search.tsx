@@ -73,7 +73,10 @@ export function PlatformSearch({
       // No celular a faixa abre por cima do título da página: ficava aberta
       // sobre os resultados até a pessoa achar o ícone de novo.
       onDismiss?.("submit");
-    } else if (event.key === "Escape") {
+    } else if (event.key === "Escape" && open) {
+      // Sem isto o navegador também apaga o texto do campo no mesmo Esc, e a
+      // faixa reabria vazia sobre uma lista ainda filtrada.
+      event.preventDefault();
       onDismiss?.("escape");
     }
   }
@@ -103,9 +106,8 @@ export function PlatformSearch({
         aria-label={placeholder}
         onKeyDown={handleKeyDown}
       />
-      {/* Atalho de teclado não é dica para quem está no toque. O `!` vence a
-          regra `.platform-topbar-search span`, que fica fora das camadas. */}
-      {shortcutLabel ? <span aria-hidden="true" className="pointer-coarse:hidden!">{shortcutLabel}</span> : null}
+      {/* Atalho de teclado não é dica para quem está no toque. */}
+      {shortcutLabel ? <span aria-hidden="true" className="pointer-coarse:hidden">{shortcutLabel}</span> : null}
     </label>
   );
 }
