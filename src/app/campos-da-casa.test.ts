@@ -17,7 +17,10 @@ function tagAround(source: string, needle: string) {
   const at = source.indexOf(needle);
   expect(at, `trecho nao encontrado: ${needle}`).toBeGreaterThan(-1);
   expect(source.indexOf(needle, at + 1), `trecho repetido: ${needle}`).toBe(-1);
-  const start = source.lastIndexOf("<", at);
+  return tagAt(source, source.lastIndexOf("<", at));
+}
+
+function tagAt(source: string, start: number) {
   let depth = 0;
   let end = start;
   for (; end < source.length; end += 1) {
@@ -82,7 +85,52 @@ const fields: [file: string, needle: string][] = [
   ["learn/student-messages-inbox.tsx", 'id="student-message-draft"'],
   ["learn/lesson-comments.tsx", 'placeholder={t("learn.classroom.lessonComments.prompt")}'],
   ["certificates/certificate-verification-panel.tsx", 'aria-label={t("learnWave2.verification.codeLabel")}'],
+  // O construtor do curso e o começo do curso novo.
+  ["teacher/course-builder-studio.tsx", "chooseFreePreviewLesson(event.target.value)"],
+  ["teacher/course-builder-studio.tsx", "updateModuleTitle(module.id, event.target.value)"],
+  ["teacher/course-builder-studio.tsx", "updateModuleSummary(module.id, event.target.value)"],
+  ["teacher/course-builder-studio.tsx", 'aria-describedby={error?.code === "lessonTitle"'],
+  ["teacher/course-builder-studio.tsx", "setTitle(event.target.value)"],
+  ["teacher/course-builder-studio.tsx", "setSummary(event.target.value)"],
+  ["teacher/course-builder-studio.tsx", 'placeholder={t("creatorEditor.builder.details.outcomePlaceholder")}'],
+  ["teacher/course-builder-studio.tsx", 'id="builder-price"'],
+  ["teacher/course-builder-studio.tsx", 'id="builder-installments"'],
+  ["teacher/course-builder-studio.tsx", "setYearlyAmount(event.target.value)"],
+  ["teacher/course-builder-studio.tsx", "setModuleTitle(event.target.value)"],
+  ["teacher/course-builder-studio.tsx", "setModuleSummary(event.target.value)"],
+  ["teacher/course-builder-studio.tsx", "setDripStrategy(event.target.value as DripStrategy)"],
+  ["teacher/course-builder-studio.tsx", "setDripIntervalDays(event.target.value)"],
+  ["teacher/course-builder-studio.tsx", "onTitleChange(event.target.value)"],
+  ["teacher/course-builder-studio.tsx", "onSubtitleChange(event.target.value)"],
+  ["teacher/course-builder-studio.tsx", "onDescriptionChange(event.target.value)"],
+  ["teacher/create-course-start.tsx", "setTitle(event.target.value)"],
+  ["teacher/create-course-start.tsx", "setEventDate(event.target.value)"],
+  ["teacher/create-course-start.tsx", "setEventTime(event.target.value)"],
+  ["teacher/create-course-start.tsx", "setEventLink(event.target.value)"],
+  ["teacher/create-course-start.tsx", "setSummary(event.target.value)"],
 ];
+
+// Nesses três arquivos, os campos que ficam com pele própria de propósito.
+// Qualquer outro campo com a borda fina à mão derruba o teste de baixo.
+const ownSkin: [file: string, needle: string, reason: string][] = [
+  [
+    "teacher/course-builder-studio.tsx",
+    "title: event.target.value,",
+    "título da aula na linha do currículo: editado no lugar, em negrito, ao lado de botões de 44px",
+  ],
+  [
+    "teacher/course-builder-studio.tsx",
+    'value={moveTargets[lesson.id] ?? ""}',
+    "mover para outro módulo: seletor de 12px na fileira de botões de 44px da aula",
+  ],
+  [
+    "teacher/lesson-content-modal.tsx",
+    "defaultValue={title}",
+    "nome do material: dentro de .lesson-modal-assets, que tem regras próprias no globals.css",
+  ],
+];
+
+const lineOf = (source: string, at: number) => source.slice(0, at).split("\n").length;
 
 describe("C-05: campos no .field-input da casa", () => {
   it.each(fields)("%s: o campo de %s usa a pele da casa e tem nome", (file, needle) => {
@@ -104,6 +152,47 @@ describe("C-05: campos no .field-input da casa", () => {
   // do .field-input (que fica fora de camada, daí o `!`).
   it("data e hora do estúdio de eventos ficam maiores", () => {
     expect(read("teacher/teacher-event-studio.tsx")).toContain('const whenFieldClass = "field-input min-h-12 text-base!";');
+  });
+
+  it.each(["teacher/course-builder-studio.tsx", "teacher/create-course-start.tsx", "teacher/lesson-content-modal.tsx"])(
+    "%s: nenhum campo com a pele à mão fora das exceções",
+    (file) => {
+      const source = read(file);
+      const expected = ownSkin
+        .filter(([owner]) => owner === file)
+        .map(([, needle]) => lineOf(source, tagAround(source, needle).start));
+      const handSkinned: number[] = [];
+      for (const match of source.matchAll(/<(?:input|select|textarea)\b/g)) {
+        const classes = /className="([^"]*)"/.exec(tagAt(source, match.index).tag)?.[1] ?? "";
+        if (/\bbg-white\b|border-\[var\(--color-(?:line|field-border)\)\]/.test(classes)) {
+          handSkinned.push(lineOf(source, match.index));
+        }
+      }
+      expect(handSkinned, file).toEqual(expected.sort((a, b) => a - b));
+    },
+  );
+
+  // O campo de dias da liberação é estreito (80px): o `width: 100%` do
+  // .field-input fica fora de camada e venceria o w-20 sem o `!`.
+  it("o campo de dias da liberação continua estreito", () => {
+    expect(read("teacher/course-builder-studio.tsx")).toContain(
+      'className="field-input w-20! text-center disabled:cursor-not-allowed disabled:opacity-60"',
+    );
+  });
+
+  // O .field-input descansa no cinza claro e não tem regra de :disabled: sem o
+  // par da casa (o mesmo do seletor de moeda), um campo travado parece livre.
+  // Por ora vale para o construtor e o começo do curso.
+  const builderFields = fields.filter(([file]) =>
+    ["teacher/course-builder-studio.tsx", "teacher/create-course-start.tsx"].includes(file),
+  );
+  it.each(builderFields)("%s: o campo de %s, se trava, fica apagado", (file, needle) => {
+    const source = read(file);
+    const { tag } = tagAround(source, needle);
+    if (!/\sdisabled[=\s>]/.test(tag)) return;
+    const classes = classOf(source, tag);
+    expect(classes, tag).toContain("disabled:cursor-not-allowed");
+    expect(classes, tag).toContain("disabled:opacity-60");
   });
 
   // O rótulo do editor da página de venda era a etiqueta de 12px em caixa

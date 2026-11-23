@@ -330,7 +330,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
                   minLength={3}
                   maxLength={120}
                   placeholder={t("courseCreation.titlePlaceholder")}
-                  className="min-h-11 rounded-md border border-[var(--color-field-border)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                  className="field-input"
                 />
               </label>
 
@@ -343,7 +343,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
                       min={today}
                       value={eventDate}
                       onChange={(event) => setEventDate(event.target.value)}
-                      className="min-h-11 rounded-md border border-[var(--color-field-border)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                      className="field-input"
                     />
                   </label>
                   <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
@@ -352,7 +352,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
                       type="time"
                       value={eventTime}
                       onChange={(event) => setEventTime(event.target.value)}
-                      className="min-h-11 rounded-md border border-[var(--color-field-border)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                      className="field-input"
                     />
                   </label>
                   <div className="grid gap-2 sm:col-span-2">
@@ -365,7 +365,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
                         onChange={(event) => setEventLink(event.target.value)}
                         placeholder="https://"
                         aria-describedby="create-course-link-help"
-                        className="min-h-11 rounded-md border border-[var(--color-field-border)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                        className="field-input"
                       />
                     </label>
                     <span id="create-course-link-help" className="text-xs text-[var(--color-ink-muted)]">
@@ -384,7 +384,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
                   maxLength={1200}
                   rows={4}
                   placeholder={t("courseCreation.promisePlaceholder")}
-                  className="resize-none rounded-md border border-[var(--color-field-border)] bg-white px-3.5 py-2.5 text-sm font-normal leading-6 outline-none focus:border-[var(--color-primary-light)]"
+                  className="field-input resize-none"
                 />
                 <span className="text-xs font-normal text-[var(--color-ink-muted)]">
                   {t("courseCreation.characterCount").replace("{count}", () => String(summary.trim().length))}
