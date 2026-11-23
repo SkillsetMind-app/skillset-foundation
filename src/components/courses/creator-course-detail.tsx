@@ -582,8 +582,15 @@ export function CreatorCourseDetail({
   if (requestedOfferId) returnParams.set("offerId", requestedOfferId);
   if (requestedOfferCode) returnParams.set("offer", requestedOfferCode);
   if (requestedPriceId) returnParams.set("priceId", requestedPriceId);
-  const returnTo = `${coursePath}${returnParams.size ? `?${returnParams}` : ""}`;
-  const signupHref = `/auth?mode=signup&returnTo=${encodeURIComponent(returnTo)}`;
+  const returnQuery = returnParams.size ? `?${returnParams}` : "";
+  // Entrar (e a compra sem login) volta para ESTA pagina: quem ja tem o curso
+  // so ve "Continue learning" aqui, porque o checkout nao le a matricula.
+  const returnTo = `${coursePath}${returnQuery}`;
+  // Criar conta volta ao CHECKOUT, com a mesma oferta: conta nova nunca tem o
+  // curso, e depois do e-mail e da entrevista o cartao de pagar (ou de entrar
+  // gratis) e a primeira coisa da tela, e nao o topo da pagina de venda.
+  const checkoutReturnTo = `/courses/${encodeURIComponent(courseRef)}/checkout${returnQuery}`;
+  const signupHref = `/auth?mode=signup&returnTo=${encodeURIComponent(checkoutReturnTo)}`;
   const enrollLabel = courseIsFree
     ? t("publicCourses.enrollFree")
     : pricingReady && hasPaidPrice
@@ -1241,7 +1248,7 @@ export function CreatorCourseDetail({
                     }
                     autoComplete="off"
                     placeholder={t("publicCourses.optional")}
-                    className="mt-2 w-full rounded-md border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)]"
+                    className="field-input mt-2"
                   />
                 </label>
               ) : (

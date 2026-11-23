@@ -140,9 +140,14 @@ function wait(ms: number) {
 // Decidido uma vez ao carregar, nunca a partir da resposta dada aqui: senao a
 // pergunta sumiria da lista no instante em que fosse respondida. "Voltar" ate
 // ela a traz de volta (goBack).
-function getVisibleQuestions(
+//
+// `hasReturnTo`: o aluno tem para onde voltar (ex.: o checkout do curso que ia
+// comprar). Ai o interesse vira opcional, para seguir e pagar sem responder.
+// So o ramo do aluno le isso; o do professor nao muda.
+export function getVisibleQuestions(
   answers: OnboardingAnswers,
   pathKnown = false,
+  hasReturnTo = false,
 ): QuestionDefinition[] {
   const isTeacher = answers.path === "teacher";
 
@@ -167,7 +172,7 @@ function getVisibleQuestions(
     : [
         { id: "profile", required: true },
         { id: "path", required: true },
-        { id: "primaryGoal", required: true },
+        { id: "primaryGoal", required: !hasReturnTo },
         { id: "sourceOfDiscovery", required: false },
       ];
 
@@ -265,6 +270,9 @@ export function OnboardingWizard() {
   // O curso de onde a pessoa veio, se veio de algum. Passa pelo mesmo filtro do
   // login: so caminho interno, nunca URL de outro dominio.
   const returnTo = useMemo(() => getSafeReturnTo(searchParams), [searchParams]);
+  // O plano de /pricing nao conta: o aluno que chega com ele termina em /learn,
+  // entao nao tem para onde voltar e o interesse segue obrigatorio.
+  const hasReturnTo = Boolean(returnTo) && !getPlanCheckoutReturnTo(returnTo);
   const [answers, setAnswers] = useState<OnboardingAnswers>(() => ({
     ...(pathIntent ? { path: pathIntent } : {}),
   }));
@@ -301,8 +309,8 @@ export function OnboardingWizard() {
   }, [isComplete]);
 
   const questions = useMemo(
-    () => getVisibleQuestions(answers, pathKnown),
-    [answers, pathKnown],
+    () => getVisibleQuestions(answers, pathKnown, hasReturnTo),
+    [answers, pathKnown, hasReturnTo],
   );
   const activeQuestion = questions[Math.min(currentIndex, questions.length - 1)];
 
@@ -337,7 +345,7 @@ export function OnboardingWizard() {
             : {}),
         };
         const knownPath = Boolean(savedAnswers.path);
-        const nextQuestions = getVisibleQuestions(savedAnswers, knownPath);
+        const nextQuestions = getVisibleQuestions(savedAnswers, knownPath, hasReturnTo);
 
         setPathKnown(knownPath);
         setAnswers(savedAnswers);
@@ -359,7 +367,7 @@ export function OnboardingWizard() {
     return () => {
       mounted = false;
     };
-  }, [pathIntent, returnTo, router, status, user]);
+  }, [hasReturnTo, pathIntent, returnTo, router, status, user]);
 
   useEffect(() => {
     function handleKeydown(event: KeyboardEvent) {
@@ -442,7 +450,7 @@ export function OnboardingWizard() {
   // chegou por um ?path= errado consegue trocar. A pergunta volta exatamente no
   // indice em que esta, entao o passo atual vira ela e a numeracao segue certa.
   function goBack() {
-    const pathIndex = getVisibleQuestions(answers).findIndex(
+    const pathIndex = getVisibleQuestions(answers, false, hasReturnTo).findIndex(
       (question) => question.id === "path",
     );
     if (pathKnown && currentIndex === pathIndex) {
@@ -453,7 +461,7 @@ export function OnboardingWizard() {
   }
 
   function advance(nextAnswers = answers, from = currentIndex) {
-    const nextQuestions = getVisibleQuestions(nextAnswers, pathKnown);
+    const nextQuestions = getVisibleQuestions(nextAnswers, pathKnown, hasReturnTo);
     setCurrentIndex((index) =>
       index === from ? Math.min(index + 1, nextQuestions.length - 1) : index,
     );
