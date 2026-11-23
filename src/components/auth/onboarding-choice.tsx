@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { usePageHeading } from "@/components/auth/page-heading";
@@ -14,7 +14,9 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import { SkillsetSpinner } from "@/components/shared/skillset-spinner";
 import { BusyLabel } from "@/components/ui/busy-label";
 import { InlineAlert } from "@/components/ui/inline-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import { ProgressBar } from "@/components/ui/progress-bar";
+import type { SkillsetUser } from "@/domain/auth";
 import type { OnboardingAnswers, UserGoal } from "@/domain/user-profile";
 import { CONNECT_PAYOUT_COUNTRIES, isConnectPayoutCountry } from "@/lib/payments/connect-countries";
 import {
@@ -160,6 +162,105 @@ export function OnboardingChoice() {
   // recebimento elegivel nao da para vender.
   const [askPayoutCountry, setAskPayoutCountry] = useState(true);
   const [askEmailVerification, setAskEmailVerification] = useState(true);
+  // O "Try again" da leitura do perfil relê SÓ o perfil (getUserProfile, um
+  // select), com a última pessoa que a sessão entregou. Reinscrever a sessão
+  // (o contador nas dependências do efeito, como em outras telas) rodaria de
+  // novo o resolveProfile do supabase-auth, que grava: claim_my_course_grants
+  // e, faltando a linha, cria o perfil.
+  const authedUserRef = useRef<SkillsetUser | null>(null);
+  // Cada leitura ganha um número; só a mais nova escreve na tela. Uma resposta
+  // atrasada (o "Try again" e uma leitura nova da sessão ao mesmo tempo) não
+  // passa por cima da mais recente.
+  const loadGeneration = useRef(0);
+  // O aviso de leitura vive no mesmo lugar e pelo mesmo tempo que o erro de
+  // hoje (sai no próximo clique que limpa o erro); só ele ganha "Try again".
+  const [readError, setReadError] = useState("");
+  const showReadError = error !== "" && error === readError;
+  // O título da página (o h1 acima desta tela) fica à vista na espera e depois
+  // dela: recebe o foco do "Try again", que some com a espera.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const pageHeadingRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!showReadError) return;
+    const heading = rootRef.current?.parentElement?.querySelector<HTMLElement>("h1") ?? null;
+    if (heading) heading.tabIndex = -1;
+    pageHeadingRef.current = heading;
+  }, [showReadError]);
+
+  async function loadProfile(authedUser: SkillsetUser, afterRetry = false) {
+    const generation = ++loadGeneration.current;
+    try {
+      const profile = await getUserProfile(authedUser.uid);
+      if (generation !== loadGeneration.current) return;
+      setDisplayName(profile?.displayName ?? authedUser.displayName ?? "");
+      setUsername(profile?.username ?? "");
+      setBio(profile?.bio ?? "");
+      setTimezone(
+        profile?.timezone ??
+          Intl.DateTimeFormat().resolvedOptions().timeZone ??
+          "America/New_York",
+      );
+      setGoals(profile?.goals ?? []);
+      setOnboardingAnswers(profile?.onboardingAnswers ?? {});
+      setAnswersLoaded(true);
+      setPayoutCountry(profile?.onboardingAnswers?.payoutCountry ?? "");
+      setAskPayoutCountry(!isConnectPayoutCountry(profile?.onboardingAnswers?.payoutCountry));
+      setTeacherTermsAccepted(Boolean(profile?.teacherTermsAcceptedAt));
+
+      const intendedRole = pathIntent ?? "student";
+      const intendedPath = paths.find((path) =>
+        path.roles.some((role) => role === intendedRole),
+      );
+      const existingPath = profile?.onboardingCompleted
+        ? paths.find((path) =>
+            path.roles.every((role) => profile?.roles.includes(role)),
+          )
+        : null;
+
+      // Quem terminou como aluno tambem ativa o ensino sem repetir o cadastro.
+      const finishedWizardAsTeacher =
+        pathIntent === "teacher" &&
+        Boolean(profile?.onboardingCompleted) &&
+        !(profile?.roles ?? []).includes("teacher");
+
+      if (finishedWizardAsTeacher) {
+        const teacherPath = paths.find((path) => {
+          const roles = path.roles as readonly Role[];
+          return roles.includes("teacher") && !roles.includes("student");
+        });
+        setStreamlinedTeacherActivation(true);
+        setSelectedPath(teacherPath ?? null);
+        // Seed a default goal so the existing finish guard
+        // (goals.length === 0) does not block activation. The wizard's
+        // category answers use a different taxonomy.
+        if (!profile?.goals || profile.goals.length === 0) {
+          setGoals(["teach_online"]);
+        }
+      } else if (intendedPath || existingPath) {
+        setSelectedPath(intendedPath ?? existingPath ?? null);
+      }
+      if (afterRetry) pageHeadingRef.current?.focus();
+    } catch {
+      if (generation !== loadGeneration.current) return;
+      const message = t("onboarding.errorProfileLoad");
+      setError(message);
+      setReadError(message);
+    } finally {
+      if (generation === loadGeneration.current) setIsBootstrapping(false);
+    }
+  }
+
+  // Volta à espera da entrada (nada clicável) e relê o perfil uma vez. Só é
+  // alcançável no passo 0: qualquer "Continue" limpa o aviso antes de avançar.
+  function retryLoad() {
+    const authedUser = authedUserRef.current;
+    if (!authedUser) return;
+    setError("");
+    setReadError("");
+    setIsBootstrapping(true);
+    return loadProfile(authedUser, true);
+  }
 
   useEffect(() => {
     // Supabase re-fires onAuthStateChange on TOKEN_REFRESHED / USER_UPDATED —
@@ -181,6 +282,7 @@ export function OnboardingChoice() {
       }
 
       const authedUser = session.user;
+      authedUserRef.current = authedUser;
       setUid(authedUser.uid);
       setEmailVerified(authedUser.emailVerified);
 
@@ -192,64 +294,9 @@ export function OnboardingChoice() {
       setDisplayName(authedUser.displayName ?? "");
       setAskEmailVerification(!authedUser.emailVerified);
 
-      void (async () => {
-        try {
-          const profile = await getUserProfile(authedUser.uid);
-          setDisplayName(profile?.displayName ?? authedUser.displayName ?? "");
-          setUsername(profile?.username ?? "");
-          setBio(profile?.bio ?? "");
-          setTimezone(
-            profile?.timezone ??
-              Intl.DateTimeFormat().resolvedOptions().timeZone ??
-              "America/New_York",
-          );
-          setGoals(profile?.goals ?? []);
-          setOnboardingAnswers(profile?.onboardingAnswers ?? {});
-          setAnswersLoaded(true);
-          setPayoutCountry(profile?.onboardingAnswers?.payoutCountry ?? "");
-          setAskPayoutCountry(!isConnectPayoutCountry(profile?.onboardingAnswers?.payoutCountry));
-          setTeacherTermsAccepted(Boolean(profile?.teacherTermsAcceptedAt));
-
-          const intendedRole = pathIntent ?? "student";
-          const intendedPath = paths.find((path) =>
-            path.roles.some((role) => role === intendedRole),
-          );
-          const existingPath = profile?.onboardingCompleted
-            ? paths.find((path) =>
-                path.roles.every((role) => profile?.roles.includes(role)),
-              )
-            : null;
-
-          // Quem terminou como aluno tambem ativa o ensino sem repetir o cadastro.
-          const finishedWizardAsTeacher =
-            pathIntent === "teacher" &&
-            Boolean(profile?.onboardingCompleted) &&
-            !(profile?.roles ?? []).includes("teacher");
-
-          if (finishedWizardAsTeacher) {
-            const teacherPath = paths.find((path) => {
-              const roles = path.roles as readonly Role[];
-              return roles.includes("teacher") && !roles.includes("student");
-            });
-            setStreamlinedTeacherActivation(true);
-            setSelectedPath(teacherPath ?? null);
-            // Seed a default goal so the existing finish guard
-            // (goals.length === 0) does not block activation. The wizard's
-            // category answers use a different taxonomy.
-            if (!profile?.goals || profile.goals.length === 0) {
-              setGoals(["teach_online"]);
-            }
-          } else if (intendedPath || existingPath) {
-            setSelectedPath(intendedPath ?? existingPath ?? null);
-          }
-        } catch {
-          setError(t("onboarding.errorProfileLoad"));
-        } finally {
-          setIsBootstrapping(false);
-        }
-      })();
+      void loadProfile(authedUser);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- t is stable per locale; re-subscribing auth on locale change would drop state
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t is stable per locale and loadProfile only reads pathIntent and t; re-subscribing auth on locale change would drop state
   }, [pathIntent, router]);
 
   const safeTimezoneOptions = useMemo(() => {
@@ -544,6 +591,18 @@ export function OnboardingChoice() {
       : null,
   );
 
+  // Só a falha de LEITURA do perfil ganha "Try again"; os outros erros desta
+  // tela (validar, verificar e-mail, ativar) seguem com o aviso de sempre.
+  const errorAlert = showReadError ? (
+    <LoadErrorAlert onRetry={retryLoad} focusRef={pageHeadingRef}>
+      {error}
+    </LoadErrorAlert>
+  ) : error ? (
+    <InlineAlert tone="error">
+      {error}
+    </InlineAlert>
+  ) : null;
+
   if (isBootstrapping) {
     // O mesmo giro e a mesma frase do fallback de /onboarding, que vem logo
     // antes: antes eram duas esperas seguidas com cara e texto diferentes.
@@ -560,7 +619,7 @@ export function OnboardingChoice() {
         : "";
 
     return (
-      <div className="mt-6 grid gap-5">
+      <div ref={rootRef} className="mt-6 grid gap-5">
         {/* O titulo e a descricao moram no topo da pagina (o cartao que os
             repetia saiu); solta, sem a pagina, a tela mostra a descricao. */}
         {headingOnPage ? null : (
@@ -593,11 +652,7 @@ export function OnboardingChoice() {
         </label>
         <p className="text-xs leading-5 text-[var(--color-ink-soft)]">{streamlinedProfileNotice}</p>
 
-        {error ? (
-          <InlineAlert tone="error">
-            {error}
-          </InlineAlert>
-        ) : null}
+        {errorAlert}
 
         {/* Um botao forte so ("Activate teaching"); pular vira texto discreto,
             no mesmo lugar e com o mesmo destino. */}
@@ -642,7 +697,7 @@ export function OnboardingChoice() {
     .replace("{total}", String(stepLabels.length));
 
   return (
-    <div className="mt-5 grid gap-4">
+    <div ref={rootRef} className="mt-5 grid gap-4">
       <div className="grid gap-2">
         <div className="flex items-center justify-between text-xs font-semibold">
           <span className="uppercase tracking-[0.16em] text-[var(--color-primary)]">
@@ -800,11 +855,7 @@ export function OnboardingChoice() {
         </div>
       ) : null}
 
-      {error ? (
-        <InlineAlert tone="error">
-          {error}
-        </InlineAlert>
-      ) : null}
+      {errorAlert}
 
       <div className="flex flex-wrap gap-3">
         {step > 0 ? (
