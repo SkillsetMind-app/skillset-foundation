@@ -10,9 +10,10 @@ const mocks = vi.hoisted(() => ({
   subscribe: vi.fn(),
   unsubscribe: vi.fn(),
   refresh: vi.fn(),
+  push: vi.fn(),
 }));
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh, push: mocks.push }) }));
 vi.mock("@/lib/supabase/config", () => ({
   getSupabaseClientConfig: () => mocks.connected ? { url: "https://fixture.invalid" } : null,
 }));
@@ -101,42 +102,78 @@ describe("localized preview entry without reconnecting the course", () => {
   // salvando o mesmo curso. Aberta pelo construtor, a aba fecha.
   describe("leaving the preview", () => {
     const course = { id: "course-1", ownerId: "teacher-1", title: "Curso", summary: "", category: "Leadership", status: "draft" as const, modules: [], lessonCount: 0 };
+    const exitHref = "/teach/builder?courseId=course-1&tab=members";
 
-    function exitClick(opener: unknown, closes: boolean) {
-      mocks.subscribe.mockImplementation((_id, onCourse) => { onCourse(course); return mocks.unsubscribe; });
+    function builderTab(overrides: { closed?: boolean; pathname?: string; search?: string; crossOrigin?: boolean } = {}) {
+      const location = { origin: window.location.origin, pathname: overrides.pathname ?? "/teach/builder", search: overrides.search ?? "?courseId=course-1&tab=pricing" };
+      return {
+        closed: overrides.closed ?? false,
+        focus: vi.fn(),
+        get location() {
+          if (overrides.crossOrigin) throw new DOMException("Blocked a frame", "SecurityError");
+          return location;
+        },
+      };
+    }
+
+    // A aba de origem fica guardada no módulo (sobrevive à troca de aba da
+    // prévia): cada caso carrega o módulo de novo, com o seu opener.
+    async function exitClick(opener: unknown, { closes = true }: { closes?: boolean } = {}) {
+      vi.resetModules();
+      Object.defineProperty(window, "opener", { configurable: true, writable: true, value: opener });
+      Object.defineProperty(window, "closed", { configurable: true, writable: true, value: false });
       const close = vi.spyOn(window, "close").mockImplementation(() => {
-        if (closes) Object.defineProperty(window, "closed", { configurable: true, value: true });
+        if (closes) Object.defineProperty(window, "closed", { configurable: true, writable: true, value: true });
       });
-      Object.defineProperty(window, "opener", { configurable: true, value: opener });
-      Object.defineProperty(window, "closed", { configurable: true, value: false });
-      renderPreview();
+      mocks.subscribe.mockImplementation((_id, onCourse) => { onCourse(course); return mocks.unsubscribe; });
+      const { I18nProvider: Provider } = await import("@/components/i18n/i18n-provider");
+      const { CoursePreviewShell: Shell } = await import("@/components/teacher/course-preview-shell");
+      render(<Provider initialLocale="en"><Shell courseId="course-1" tab="materials" /></Provider>);
+      // Montou: a referência foi guardada e window.opener zerado (tabnabbing).
+      const openerAfterMount = window.opener;
       const click = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 });
       screen.getByRole("link", { name: "Fixture exit" }).dispatchEvent(click);
-      return { close, prevented: click.defaultPrevented };
+      return { close, prevented: click.defaultPrevented, openerAfterMount };
     }
 
     afterEach(() => {
       vi.restoreAllMocks();
-      Object.defineProperty(window, "opener", { configurable: true, value: null });
-      Object.defineProperty(window, "closed", { configurable: true, value: false });
+      vi.useRealTimers();
+      Object.defineProperty(window, "opener", { configurable: true, writable: true, value: null });
+      Object.defineProperty(window, "closed", { configurable: true, writable: true, value: false });
     });
 
-    it("closes the tab the builder opened, without navigating it", () => {
-      const { close, prevented } = exitClick({}, true);
+    it("closes the tab when this course's builder is still open in the tab that opened it", async () => {
+      const tab = builderTab();
+      const { close, prevented, openerAfterMount } = await exitClick(tab);
+      expect(openerAfterMount).toBeNull();
       expect(close).toHaveBeenCalledOnce();
+      expect(tab.focus).toHaveBeenCalledOnce();
       expect(prevented).toBe(true);
+      expect(mocks.push).not.toHaveBeenCalled();
     });
 
-    it("opened directly (no opener): follows the link to this course's builder", () => {
-      const { close, prevented } = exitClick(null, false);
+    it.each([
+      ["opened directly (no opener)", null],
+      ["the builder tab was closed", builderTab({ closed: true })],
+      ["the builder tab moved to another course", builderTab({ search: "?courseId=course-2" })],
+      ["the builder tab moved to another screen", builderTab({ pathname: "/teach" })],
+      ["the opener is on another origin", builderTab({ crossOrigin: true })],
+    ])("%s: does not close, follows the link to this course's builder", async (_label, opener) => {
+      const { close, prevented, openerAfterMount } = await exitClick(opener);
+      expect(openerAfterMount).toBeNull();
       expect(close).not.toHaveBeenCalled();
       expect(prevented).toBe(false);
     });
 
-    it("if the browser refuses to close, the link still goes to the builder", () => {
-      const { close, prevented } = exitClick({}, false);
+    it("if the browser refuses to close, the tab goes to the builder after a moment", async () => {
+      vi.useFakeTimers({ toFake: ["setTimeout"] });
+      const { close, prevented } = await exitClick(builderTab(), { closes: false });
       expect(close).toHaveBeenCalledOnce();
-      expect(prevented).toBe(false);
+      expect(prevented).toBe(true);
+      expect(mocks.push).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(200);
+      expect(mocks.push).toHaveBeenCalledExactlyOnceWith(exitHref);
     });
   });
 

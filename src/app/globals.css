@@ -815,7 +815,6 @@ p {
    glyph/text stays var(--color-primary) and reads ~7.7:1 on surface-soft. */
 [data-theme="dark"] .account-settings-tab__icon,
 [data-theme="dark"] .settings-info-row__icon,
-[data-theme="dark"] .course-upload-preset__icon,
 [data-theme="dark"] .studio-action-card__icon,
 [data-theme="dark"] .settings-pill--neutral {
   background: var(--color-surface-soft);
@@ -835,7 +834,6 @@ p {
    text to ~1:1 in dark. Use an elevated dark surface for the hover highlight
    instead (text stays readable; matches the row/card resting surface). */
 [data-theme="dark"] .account-settings-tab:hover,
-[data-theme="dark"] .course-upload-preset:hover,
 [data-theme="dark"] .studio-course-row:hover,
 [data-theme="dark"] .studio-action-card:hover {
   background: var(--color-surface-strong);
@@ -2602,73 +2600,6 @@ html[data-view-as] .site-header {
   .course-upload-panel {
     padding: 1.5rem;
   }
-}
-
-.course-upload-presets {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0.75rem;
-}
-
-@media (min-width: 768px) {
-  .course-upload-presets {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.course-upload-preset {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: start;
-  gap: 0.75rem;
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface-soft);
-  padding: 1rem;
-  color: var(--color-ink-soft);
-  text-align: left;
-  transition:
-    transform 180ms ease,
-    background 180ms ease,
-    border-color 180ms ease,
-    box-shadow 180ms ease;
-}
-
-.course-upload-preset:hover {
-  transform: translateY(-1px);
-  border-color: rgba(26, 54, 93, 0.22);
-  background: #ffffff;
-  color: var(--color-ink);
-  box-shadow: var(--shadow-soft);
-}
-
-.course-upload-preset--active {
-  border-color: rgba(26, 54, 93, 0.34);
-  background: var(--color-primary);
-  color: var(--color-base);
-  box-shadow: 0 16px 32px rgba(26, 54, 93, 0.16);
-}
-
-.course-upload-preset--active span:last-child span:last-child {
-  color: rgba(255, 255, 255, 0.76);
-}
-
-/* A1-cont-2: same inversion as .account-settings-tab--active — the preset's
-   --color-primary fill goes light blue in dark, so this muted-white sub-label
-   fails (~1.9:1). Match the parent's --color-base dark ink (8.8:1). Dark-scoped. */
-[data-theme="dark"] .course-upload-preset--active span:last-child span:last-child {
-  color: var(--color-base);
-}
-
-.course-upload-preset__icon {
-  display: grid;
-  width: 38px;
-  height: 38px;
-  place-items: center;
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-md);
-  background: #ffffff;
-  color: var(--color-primary);
 }
 
 @media (width < 1024px) {
@@ -5241,7 +5172,10 @@ body:has([aria-label="Course categories"])
    (member-area-shell.tsx, sticky top 0: 44px dos botões + 24 de respiro + 1 de
    borda = 69px), não em top 0, onde ficaria atrás dela. Era um cartão comum:
    depois de rolar, nada dizia que era uma prévia. Sticky guarda o próprio
-   lugar, então em repouso não cobre nada. Uma linha fina: 44px + 8 + 8. */
+   lugar, então em repouso não cobre nada. Uma linha fina: 44px + 8 + 8.
+   69px e z 30 ficam escritos: a barra do topo não tem variável de altura
+   (o 92px da lista de aulas abaixo sai da mesma conta) e a escala --z-* começa
+   em 50, acima dela (z-40), que a faixa não pode cobrir. */
 .member-preview-banner {
   position: sticky;
   top: 69px;
@@ -8069,12 +8003,17 @@ button:hover > .dash-card,
   /* No celular os cinco passos empilhados (~270px) empurravam o primeiro
      campo para ~800 px do topo: viram uma faixa que rola de lado, com a etapa
      aberta no meio (course-builder-studio.tsx) e a borda direita esmaecida
-     enquanto houver etapa escondida, como as abas da sala. O respiro de baixo
-     guarda o traço da etapa aberta (bottom -0.25rem), que a rolagem cortaria. */
+     enquanto houver etapa escondida, como as abas da sala. A rolagem corta o
+     que passa da borda: 5px de respiro guardam o anel de foco (2px + 3px de
+     afastamento) e o traço da etapa aberta (bottom -0.25rem); a margem
+     negativa devolve o alinhamento com o resto da página. O foco pelo Tab
+     para fora dos 48px esmaecidos da borda (scroll-padding). */
   .course-builder-steps {
     display: flex;
     overflow-x: auto;
-    padding-bottom: 6px;
+    margin-inline: -5px;
+    padding: 5px 5px 6px;
+    scroll-padding-inline: 48px;
     scrollbar-width: none;
   }
 

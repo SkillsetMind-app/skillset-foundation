@@ -4400,8 +4400,6 @@
       "help": "Sube las portadas de este curso y sus módulos. Para los vídeos, materiales y miniaturas de cada lección, abre el editor de lecciones desde la pestaña Contenido.",
       "count": "{count} archivos subidos",
       "coverSet": "La portada del curso ya está añadida. Sube otra para cambiarla.",
-      "uploadType": "Tipo de subida",
-      "uploadingLabel": "Archivo que vas a subir",
       "targetHelp": "Elige el destino y el archivo antes de subirlo.",
       "imageLimit": "Imagen de hasta {limit}.",
       "assetType": "Tipo de archivo",
@@ -6291,7 +6289,6 @@
     },
     "upload": {
       "button": "Subir imagen",
-      "uploading": "Subiendo...",
       "rules": "JPG, PNG o WebP, de hasta {limit}.",
       "orLink": "O pega un enlace",
       "previewAlt": "Vista previa de {label}",

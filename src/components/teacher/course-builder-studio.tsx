@@ -965,8 +965,15 @@ export function CourseBuilderStudio() {
   // De que curso é a lista na tela: uma releitura que falha não apaga a lista
   // boa do MESMO curso (a regra de toda lista); de outro curso, apaga.
   const offersCourseRef = useRef<string | null>(null);
+  // Com a lista na tela, o "Try again" não tira o aviso enquanto lê: ele fica,
+  // com o botão em espera, até a resposta. Sem lista, volta o esqueleto.
+  const [offersRetrying, setOffersRetrying] = useState(false);
   const retryOffers = () => {
-    setOffersFailed(false);
+    if (checkoutOffers) {
+      setOffersRetrying(true);
+    } else {
+      setOffersFailed(false);
+    }
     setOffersAttempt((current) => current + 1);
   };
   useEffect(() => {
@@ -988,6 +995,7 @@ export function CourseBuilderStudio() {
             offersCourseRef.current = courseId;
             setCheckoutOffers(data.offers.map((offer) => ({ ...offer, courseId })));
             setOffersFailed(false);
+            setOffersRetrying(false);
           }
         })
         .catch(() => {
@@ -996,6 +1004,7 @@ export function CourseBuilderStudio() {
             // certos na tela. So a tela muda: o checkout le o preco no servidor.
             if (offersCourseRef.current !== courseId) setCheckoutOffers(null);
             setOffersFailed(true);
+            setOffersRetrying(false);
           }
         });
     };
@@ -3222,8 +3231,9 @@ export function CourseBuilderStudio() {
           </Link>
           {/* rel="opener": a prévia sabe que veio daqui, e o "Exit preview"
               fecha a aba em vez de abrir um segundo construtor nela
-              (course-preview-shell.tsx). Mesma origem: a prévia não ganha
-              acesso que já não tivesse. */}
+              (course-preview-shell.tsx). A prévia guarda esta aba e zera
+              window.opener ao montar: página de outra origem aberta depois
+              naquela aba não alcança esta. */}
           <Link
             href={`/teach/builder/${courseId}/preview`}
             target="_blank"
@@ -3662,6 +3672,7 @@ export function CourseBuilderStudio() {
                 className="mb-4"
                 text={t("creatorEditor.builder.pricing.offersRefreshFailed")}
                 onRetry={retryOffers}
+                busy={offersRetrying}
               />
             ) : null}
             {!checkoutOffers ? (

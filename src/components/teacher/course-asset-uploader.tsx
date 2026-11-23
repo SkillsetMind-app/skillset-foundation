@@ -241,7 +241,7 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
       ) : null}
 
       <form className="mt-5 grid gap-3" onSubmit={handleUpload}>
-        {/* Uma linha: tipo, módulo (na capa do módulo), arquivo e enviar. Antes
+        {/* Uma linha: tipo, módulo (na capa do módulo) e arquivo. Antes
             eram dois cartões de tipo, uma caixa "UPLOADING" que não enviava
             nada, o mesmo tipo de novo num select e o arquivo nativo esticado,
             um embaixo do outro. Os campos e o envio são os mesmos. */}
@@ -301,16 +301,6 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
             }}
             className="min-h-11 min-w-0 flex-1 basis-56 rounded-md border border-dashed border-[var(--color-line)] bg-[var(--color-surface-soft)] px-3 py-1.5 text-sm text-[var(--color-ink-soft)] file:mr-3 file:rounded-md file:border-0 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-[var(--color-primary)] disabled:opacity-50"
           />
-
-          {/* Rótulo fixo: o andamento é só a nota logo abaixo (ela dizia
-              "Uploading 45%" embaixo de um botão "Uploading..."). */}
-          <Button
-            type="submit"
-            loading={isUploading}
-            disabled={!isEditable || !selectedFile || (requiresModuleTarget && !moduleId)}
-          >
-            {t("creatorEditor.assets.upload")}
-          </Button>
         </div>
 
         <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
@@ -345,6 +335,18 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
             </span>
           </div>
         ) : null}
+
+        {/* Depois da opção de prévia e da miniatura: quem envia vê antes tudo o
+            que muda o envio. Rótulo fixo: o andamento é só a nota logo abaixo
+            (ela dizia "Uploading 45%" embaixo de um botão "Uploading..."). */}
+        <Button
+          type="submit"
+          loading={isUploading}
+          disabled={!isEditable || !selectedFile || (requiresModuleTarget && !moduleId)}
+          className="justify-self-start"
+        >
+          {t("creatorEditor.assets.upload")}
+        </Button>
 
         {uploadProgress ? <UploadProgressNote progress={uploadProgress} /> : null}
 

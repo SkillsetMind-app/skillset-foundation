@@ -4400,8 +4400,6 @@
       "help": "Upload covers for this course and its modules. For per-lesson videos, materials, and thumbnails, open the Lesson Studio from the Curriculum tab.",
       "count": "{count} uploaded",
       "coverSet": "Course cover is set. Upload another course cover to replace it.",
-      "uploadType": "Upload type",
-      "uploadingLabel": "Uploading",
       "targetHelp": "Choose the target and file before uploading.",
       "imageLimit": "Image up to {limit}.",
       "assetType": "Asset type",
@@ -6291,7 +6289,6 @@
     },
     "upload": {
       "button": "Upload image",
-      "uploading": "Uploading...",
       "rules": "JPG, PNG or WebP, up to {limit}.",
       "orLink": "Or paste a link",
       "previewAlt": "Preview of {label}",

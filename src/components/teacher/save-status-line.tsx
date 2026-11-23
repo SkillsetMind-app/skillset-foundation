@@ -10,13 +10,24 @@ import { Button, InlineAlert } from "@/components/ui";
  * "Try again" que repete o MESMO pedido. Antes o erro saía no cinza do sucesso
  * e a pessoa não tinha o que clicar além de recarregar a página.
  */
-export function RetryAlert({ text, onRetry, className = "" }: { text: string; onRetry?: () => void; className?: string }) {
+export function RetryAlert({
+  text,
+  onRetry,
+  busy = false,
+  className = "",
+}: {
+  text: string;
+  onRetry?: () => void;
+  /** Tentando de novo: o aviso fica, e o botão mostra a espera. */
+  busy?: boolean;
+  className?: string;
+}) {
   const { t } = useTranslation();
   return (
     <div className={`grid justify-items-start gap-2 ${className}`}>
       <InlineAlert tone="error">{text}</InlineAlert>
       {onRetry ? (
-        <Button variant="outline" onClick={onRetry}>
+        <Button variant="outline" loading={busy} onClick={onRetry}>
           {t("saveStatus.retry")}
         </Button>
       ) : null}
