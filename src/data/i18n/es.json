@@ -4284,7 +4284,6 @@
         "optional": "Opcional",
         "checksHelp": "SkillsetMind verifica al profesional. Los requisitos del producto, del precio y de los cobros se comprueban antes de abrir el enlace del marketplace.",
         "finish": "Completa los requisitos de publicación para lanzar el curso.",
-        "fixPrice": "Corrige el precio en Precios para publicar.",
         "fixIn": "Ir a {step}",
         "openLesson": "Abrir la lección",
         "live": "Este producto ya está publicado. Los cambios guardados no necesitan publicarse de nuevo.",

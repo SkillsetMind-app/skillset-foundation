@@ -3118,16 +3118,7 @@ export function CourseBuilderStudio() {
     };
   }
 
-  // A frase ao lado do Publish apagado. Antes só dependia da lista: com a lista
-  // pronta e o preço digitado inválido o botão apagava calado.
-  const publishReasonKey = isLive || success === "published"
-    ? null
-    : !readyToPublish
-      ? "finish"
-      : !priceFieldIsValid
-        ? "fixPrice"
-        : null;
-  const showPublishReason = publishReasonKey !== null;
+  const showPublishReason = !(readyToPublish || isLive || success === "published");
   const publishButton = isLive ? (
     <p className="text-sm font-semibold text-[var(--color-ink-soft)]">
       {t("creatorEditor.builder.publish.live")}
@@ -4420,7 +4411,7 @@ export function CourseBuilderStudio() {
             <div className="flex w-full flex-wrap items-center justify-end gap-3 sm:w-auto">
               {showPublishReason ? (
                 <span id="builder-publish-reason" className="text-xs font-semibold text-[var(--color-ink-soft)]">
-                  {t(`creatorEditor.builder.publish.${publishReasonKey}`)}
+                  {t("creatorEditor.builder.publish.finish")}
                 </span>
               ) : null}
               {success === "published" ? null : publishButton}

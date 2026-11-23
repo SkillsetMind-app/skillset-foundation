@@ -4284,7 +4284,6 @@
         "optional": "Optional",
         "checksHelp": "SkillsetMind gates the professional, not each course. Product, pricing, and payout checks run before the marketplace link opens.",
         "finish": "Finish the publication checks to go live.",
-        "fixPrice": "Fix the price in Pricing to publish.",
         "fixIn": "Go to {step}",
         "openLesson": "Open the lesson",
         "live": "This product is already live. Saved changes don't need a new publish.",
