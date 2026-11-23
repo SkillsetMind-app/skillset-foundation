@@ -143,7 +143,8 @@ describe("agenda de eventos no padrao da casa", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "New session" }));
 
-    expect(screen.getByLabelText("Date and time")).toBeInTheDocument();
+    expect(screen.getByLabelText("Date")).toBeInTheDocument();
+    expect(screen.getByLabelText("Time")).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Course" })).toBeInTheDocument();
   });
 
@@ -161,7 +162,7 @@ describe("agenda de eventos no padrao da casa", () => {
     expect(trigger).toHaveAttribute("aria-expanded", "false");
     fireEvent.click(trigger);
     const panel = document.getElementById(trigger.getAttribute("aria-controls")!);
-    expect(panel).toContainElement(screen.getByLabelText("Date and time"));
+    expect(panel).toContainElement(screen.getByLabelText("Date"));
     expect(panel).toHaveClass("border-b");
     expect(trigger).toHaveAttribute("aria-expanded", "true");
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
@@ -179,7 +180,29 @@ describe("agenda de eventos no padrao da casa", () => {
 
     expect(tile("Still ahead on the agenda").getByText("2")).toBeInTheDocument();
     expect(tile("Already happened").getByText("1")).toBeInTheDocument();
-    expect(tile("Called off — everyone who RSVP'd saw it").getByText("1")).toBeInTheDocument();
+    // A frase antiga prometia que quem confirmou "viu" o cancelamento; hoje a
+    // sessao cancelada so some da lista do aluno.
+    expect(tile("Called off — removed from learners' lists").getByText("1")).toBeInTheDocument();
+  });
+
+  // A leitura vem da mais antiga para a mais nova; no passado, o que importa
+  // e a sessao mais recente. Em "All", as que vem (a proxima no topo) e depois
+  // as que passaram (a mais recente primeiro).
+  it("Past mostra a mais recente primeiro; All poe a proxima no topo e depois o passado", () => {
+    mocks.events = [
+      makeEvent({ id: "old", title: "Two days ago", startsAt: new Date(Date.now() - 48 * HOUR).toISOString() }),
+      makeEvent({ id: "recent", title: "Yesterday", startsAt: new Date(Date.now() - 24 * HOUR).toISOString() }),
+      makeEvent({ id: "soon", title: "Tomorrow", startsAt: new Date(Date.now() + 24 * HOUR).toISOString() }),
+      makeEvent({ id: "later", title: "In two days", startsAt: new Date(Date.now() + 48 * HOUR).toISOString() }),
+    ];
+    renderStudio();
+    const titles = () => screen.getAllByRole("heading", { level: 4 }).map((heading) => heading.textContent);
+
+    expect(titles()).toEqual(["Tomorrow", "In two days"]);
+    fireEvent.change(screen.getByLabelText("Filter sessions"), { target: { value: "past" } });
+    expect(titles()).toEqual(["Yesterday", "Two days ago"]);
+    fireEvent.change(screen.getByLabelText("Filter sessions"), { target: { value: "all" } });
+    expect(titles()).toEqual(["Tomorrow", "In two days", "Yesterday", "Two days ago"]);
   });
 
   it("a moldura (filtro, busca, exportar) e a contagem dizem de que recorte a lista fala", () => {
@@ -224,6 +247,6 @@ describe("agenda de eventos no padrao da casa", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Schedule a session" }));
 
-    expect(screen.getByLabelText("Date and time")).toBeInTheDocument();
+    expect(screen.getByLabelText("Date")).toBeInTheDocument();
   });
 });

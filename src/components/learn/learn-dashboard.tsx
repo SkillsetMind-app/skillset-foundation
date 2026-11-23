@@ -27,7 +27,7 @@ import {
   getRemainingMinutesFrom,
   getResumeCourseLesson,
 } from "@/domain/lesson-progress";
-import type { AppNotification } from "@/domain/notification";
+import { notificationHref, type AppNotification } from "@/domain/notification";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { getCourseBySlug } from "@/lib/data/catalog";
 import { subscribeToCourseEvents } from "@/lib/data/course-events";
@@ -604,7 +604,7 @@ export function LearnDashboard() {
                 <li key={notification.id}>
                   {notification.link ? (
                     <Link
-                      href={notification.link}
+                      href={notificationHref(notification) ?? notification.link}
                       className="block rounded-md transition hover:bg-[var(--color-surface-soft)]"
                     >
                       <NotificationRow notification={notification} />
