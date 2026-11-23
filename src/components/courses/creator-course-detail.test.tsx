@@ -1977,3 +1977,83 @@ describe("CreatorCourseDetail: a leitura que falha tem 'Try again'", () => {
     expect(within(card).queryByRole("alert")).not.toBeInTheDocument();
   });
 });
+
+// A leitura da matrícula que não responde nem falha não prende a compra: em 4 s
+// o botão de pagar volta (como numa falha). E a resposta atrasada de outra
+// pessoa não mexe no botão de quem está na página agora.
+describe("CreatorCourseDetail: o prazo da leitura da matrícula no checkout", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "student-1" };
+    enrollmentState.deliverLater = true;
+  });
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+    enrollmentState.current = null;
+    enrollmentState.deliverLater = false;
+  });
+
+  it("sem resposta em 4 s, o botão de pagar volta, como numa falha", async () => {
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
+    await screen.findByText("$149.00");
+    expect(screen.getByRole("button", { name: "Enroll" })).toBeDisabled();
+
+    act(() => vi.advanceTimersByTime(3_000));
+    expect(screen.getByRole("button", { name: "Enroll" })).toBeDisabled();
+    act(() => vi.advanceTimersByTime(1_000));
+    const pay = screen.getByRole("button", { name: "Enroll — $149.00" });
+    expect(pay).toBeEnabled();
+    fireEvent.click(pay);
+    expect(startCourseCheckout).toHaveBeenCalledWith("course-1", {});
+  });
+
+  it("a resposta em 1 s vale, e o prazo não muda nada depois", async () => {
+    const armed = vi.spyOn(window, "setTimeout");
+    const disarmed = vi.spyOn(window, "clearTimeout");
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
+    await screen.findByText("$149.00");
+    const index = armed.mock.calls.findIndex(([, delay]) => delay === 4_000);
+    expect(index).toBeGreaterThan(-1);
+    const deadline = armed.mock.results[index].value;
+    act(() => vi.advanceTimersByTime(1_000));
+    act(() => enrollmentState.onNext?.({ status: "active" }));
+
+    expect(screen.getByRole("link", { name: "Continue learning" })).toBeInTheDocument();
+    // O prazo foi desarmado com a resposta, antes de vencer.
+    expect(disarmed).toHaveBeenCalledWith(deadline);
+    act(() => vi.advanceTimersByTime(5_000));
+    expect(screen.getByRole("link", { name: "Continue learning" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Enroll/ })).not.toBeInTheDocument();
+    armed.mockRestore();
+    disarmed.mockRestore();
+  });
+
+  it("desmontar não deixa prazo pendente", async () => {
+    const view = render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
+    await screen.findByText("$149.00");
+    expect(vi.getTimerCount()).toBeGreaterThan(0);
+    view.unmount();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("trocou a pessoa com a 1ª leitura no ar: a resposta velha não mexe na de agora", async () => {
+    const old: { next: ((enrollment: unknown) => void) | null } = { next: null };
+    vi.mocked(subscribeToEnrollment).mockImplementationOnce((_uid, _courseId, onNext) => {
+      old.next = onNext as (enrollment: unknown) => void;
+      return Object.assign(() => {}, { reload: async () => {} });
+    });
+    const view = render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
+    await screen.findByText("$149.00");
+
+    fixtures.auth.user = { uid: "student-2" };
+    view.rerender(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
+    expect(subscribeToEnrollment).toHaveBeenLastCalledWith("student-2", "course-1", expect.any(Function), expect.any(Function));
+    act(() => enrollmentState.onNext?.(null));
+    expect(screen.getByRole("button", { name: "Enroll — $149.00" })).toBeEnabled();
+
+    act(() => old.next?.({ status: "active" }));
+    expect(screen.getByRole("button", { name: "Enroll — $149.00" })).toBeEnabled();
+    expect(screen.queryByRole("link", { name: "Continue learning" })).not.toBeInTheDocument();
+  });
+});

@@ -113,6 +113,10 @@ const checkoutMessageKeys: Partial<Record<number, Record<string, string>>> = {
   },
 };
 
+// Quanto a página de compra espera a leitura da matrícula antes de oferecer o
+// botão de pagar a quem entrou (ela costuma responder em menos de 1 s).
+const ENROLLMENT_READ_TIMEOUT_MS = 4_000;
+
 function getCheckoutErrorKey(error: unknown): string {
   if (error instanceof PaymentRequestError) {
     if (error.status === 401 && error.code === "unauthenticated") {
@@ -245,16 +249,36 @@ export function CreatorCourseDetail({
       return;
     }
     const key = `${viewerUid}__${enrollmentCourseId}`;
-    return subscribeToEnrollment(
+    // Desligado, nada mais: a resposta atrasada de outra pessoa (ou de outro
+    // curso) não pode reescrever a chave de agora e travar o botão de novo.
+    let live = true;
+    // Leitura que não responde nem falha: passado o prazo, vale como falha (o
+    // botão de pagar volta; o servidor recusa quem já tem). A compra nunca
+    // fica presa num "Enroll" apagado até recarregar a página.
+    const timeout = window.setTimeout(() => {
+      if (live) setEnrollmentAnsweredKey(key);
+    }, ENROLLMENT_READ_TIMEOUT_MS);
+    const unsubscribe = subscribeToEnrollment(
       viewerUid,
       enrollmentCourseId,
       (enrollment) => {
+        if (!live) return;
+        window.clearTimeout(timeout);
         setViewerEnrollmentKey(enrollment && canOpenEnrollment(enrollment.status) ? key : null);
         setEnrollmentAnsweredKey(key);
       },
       // Falhou: fica como era (o botão de pagar; o servidor recusa quem já tem).
-      () => setEnrollmentAnsweredKey(key),
+      () => {
+        if (!live) return;
+        window.clearTimeout(timeout);
+        setEnrollmentAnsweredKey(key);
+      },
     );
+    return () => {
+      live = false;
+      window.clearTimeout(timeout);
+      unsubscribe();
+    };
   }, [hasBackendConfig, viewerUid, enrollmentCourseId]);
   const [offerLoadError, setOfferLoadError] = useState("");
   const [offerState, setOfferState] = useState<{

@@ -66,6 +66,8 @@ export function CourseReviewPanel({
   // sem ela, as estrelas e o texto podem não ser a resenha já salva.
   const [loadFailed, setLoadFailed] = useState(false);
   const [reviewAttempt, setReviewAttempt] = useState(0);
+  // O aviso fica, com o botão ocupado, até a releitura responder.
+  const [reviewRetrying, setReviewRetrying] = useState(false);
   const panelRef = useRef<HTMLElement>(null);
   const progressMissing = requiresProgress && progressPercent < 50;
   const canReview = !previewMode && !progressMissing && Boolean(user);
@@ -81,6 +83,7 @@ export function CourseReviewPanel({
       (review) => {
         setExistingReview(review);
         setLoadFailed(false);
+        setReviewRetrying(false);
         if (review) {
           setRating(review.rating);
           setBody(review.body ?? "");
@@ -88,6 +91,7 @@ export function CourseReviewPanel({
       },
       () => {
         setLoadFailed(true);
+        setReviewRetrying(false);
       },
     );
   }, [courseId, previewMode, user, reviewAttempt]);
@@ -131,8 +135,9 @@ export function CourseReviewPanel({
         <LoadErrorAlert
           className="mt-5"
           focusRef={panelRef}
+          busy={reviewRetrying}
           onRetry={() => {
-            setLoadFailed(false);
+            setReviewRetrying(true);
             setReviewAttempt((attempt) => attempt + 1);
           }}
         >
