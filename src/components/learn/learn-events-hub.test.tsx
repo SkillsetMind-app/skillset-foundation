@@ -43,6 +43,9 @@ const mocks = vi.hoisted(() => {
     rsvp: null as { status: "attending" | "not_attending" } | null,
     // Os eventos que abriram um canal de presenca.
     rsvpEvents: [] as string[],
+    // A opcao com que a agenda le as sessoes.
+    options: undefined as unknown,
+    enrollments: null as Enrollment[] | null,
   };
 });
 
@@ -59,13 +62,19 @@ vi.mock("@/components/auth/auth-provider", () => ({
 
 vi.mock("@/lib/data/enrollments", () => ({
   subscribeToUserEnrollments: (_uid: string, onData: (rows: Enrollment[]) => void) => {
-    onData([mocks.enrollment]);
+    onData(mocks.enrollments ?? [mocks.enrollment]);
     return () => undefined;
   },
 }));
 
 vi.mock("@/lib/data/course-events", () => ({
-  subscribeToCourseEvents: (_slug: string, onData: (events: CourseEvent[]) => void) => {
+  subscribeToCourseEvents: (
+    _slug: string,
+    onData: (events: CourseEvent[]) => void,
+    _onError: unknown,
+    options?: unknown,
+  ) => {
+    mocks.options = options;
     // Em ordem de inicio, como a fonte devolve.
     onData([...mocks.events].sort((a, b) => a.startsAt.localeCompare(b.startsAt)));
     return () => undefined;
@@ -115,6 +124,11 @@ describe("LearnEventsHub", () => {
       expect(within(past).queryByRole("link", { name: "Join external session" })).not.toBeInTheDocument();
       // Nem um canal de presenca por cartao passado.
       expect(mocks.rsvpEvents).not.toContain("old");
+      // A que passou diz "Held" (antes "Scheduled"); a que esta rolando, "Happening now".
+      expect(within(past).getByText("Held")).toBeInTheDocument();
+      expect(within(past).queryByText("Scheduled")).not.toBeInTheDocument();
+      const running = screen.getByRole("heading", { name: "Running session" }).closest("article") as HTMLElement;
+      expect(within(running).getByText("Happening now")).toBeInTheDocument();
     } finally {
       mocks.events = saved;
     }
@@ -156,6 +170,148 @@ describe("LearnEventsHub", () => {
       expect(screen.getByRole("button", { name: "I will attend" })).toHaveAttribute("aria-pressed", "true");
     } finally {
       mocks.events = saved;
+    }
+  });
+
+  it("a cancelada aparece marcada, com a hora riscada, sem link nem presenca; depois de 7 dias some", () => {
+    const saved = mocks.events;
+    const hour = 3_600_000;
+    const startsAt = new Date(Date.now() + 24 * hour).toISOString();
+    mocks.events = [
+      { ...mocks.base, id: "cancelled", title: "Cancelled session", status: "cancelled", startsAt },
+      { ...mocks.base, id: "gone", title: "Old cancelled", status: "cancelled", startsAt: new Date(Date.now() - 8 * 24 * hour).toISOString() },
+    ];
+    mocks.rsvpEvents = [];
+    try {
+      render(<LearnEventsHub />);
+
+      expect(mocks.options).toEqual({ includeCancelled: true });
+      const card = screen.getByRole("heading", { name: "Cancelled session" }).closest("article") as HTMLElement;
+      expect(within(card).getByText("Cancelled")).toBeInTheDocument();
+      expect(card.querySelector("s")).toHaveTextContent(formatEventDateTime(startsAt, "en"));
+      expect(within(card).queryByRole("link")).not.toBeInTheDocument();
+      expect(within(card).queryByRole("button")).not.toBeInTheDocument();
+      expect(mocks.rsvpEvents).not.toContain("cancelled");
+      expect(screen.queryByText("Old cancelled")).not.toBeInTheDocument();
+    } finally {
+      mocks.events = saved;
+    }
+  });
+
+  it("'Updated' com a data quando a sessao mudou depois de criada; o prazo sem link diz que nao e reuniao", () => {
+    const saved = mocks.events;
+    const startsAt = new Date(Date.now() + 48 * 3_600_000).toISOString();
+    mocks.events = [
+      {
+        ...mocks.base, id: "moved", title: "Moved session", startsAt,
+        createdAt: "2026-11-01T10:00:00.000Z", updatedAt: "2026-11-02T10:00:00.000Z",
+      },
+      { ...mocks.base, id: "due", title: "Essay due", type: "deadline", externalUrl: "", startsAt },
+    ];
+    try {
+      render(<LearnEventsHub />);
+
+      const moved = screen.getByRole("heading", { name: "Moved session" }).closest("article") as HTMLElement;
+      expect(within(moved).getByText(`Updated ${formatEventDateTime("2026-11-02T10:00:00.000Z", "en")}`)).toBeInTheDocument();
+      const due = screen.getByRole("heading", { name: "Essay due" }).closest("article") as HTMLElement;
+      expect(within(due).getByText("This is a due date, not a meeting: there is nothing to join.")).toBeInTheDocument();
+      expect(within(due).queryByText(/Updated/)).not.toBeInTheDocument();
+      expect(within(due).queryByRole("link", { name: "Join external session" })).not.toBeInTheDocument();
+    } finally {
+      mocks.events = saved;
+    }
+  });
+
+  it("depois do 'I will attend': a hora no fuso de quem le e o calendario (Google e .ics)", async () => {
+    const saved = mocks.events;
+    const startsAt = new Date(Date.now() + 48 * 3_600_000).toISOString();
+    mocks.events = [{ ...mocks.base, id: "next", title: "Next session", startsAt }];
+    const original = { create: URL.createObjectURL, revoke: URL.revokeObjectURL };
+    const createObjectURL = vi.fn<(blob: Blob) => string>(() => "blob:ics");
+    const revokeObjectURL = vi.fn();
+    URL.createObjectURL = createObjectURL;
+    URL.revokeObjectURL = revokeObjectURL;
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    try {
+      render(<LearnEventsHub />);
+      // Antes de responder, nada de calendario.
+      expect(screen.queryByRole("link", { name: "Add to Google Calendar" })).not.toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "I will attend" }));
+      });
+      expect(screen.getByText(`You're going: ${formatEventDateTime(startsAt, "en")}`)).toBeInTheDocument();
+      const google = screen.getByRole("link", { name: "Add to Google Calendar" });
+      expect(google.getAttribute("href")).toMatch(/^https:\/\/calendar\.google\.com\/calendar\/render\?action=TEMPLATE&/);
+      expect(google).toHaveAttribute("target", "_blank");
+      expect(screen.getByText("The calendar entry lasts 60 minutes: the session has no set end time.")).toBeInTheDocument();
+
+      // O endereço do arquivo só é revogado 1 s depois (no iPad o download
+      // começa depois do clique). Relógio falso: nenhum timer fica pendente.
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      fireEvent.click(screen.getByRole("button", { name: "Download calendar file (.ics)" }));
+      expect(click).toHaveBeenCalledOnce();
+      expect(revokeObjectURL).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(1000);
+      expect(revokeObjectURL).toHaveBeenCalledWith("blob:ics");
+      vi.useRealTimers();
+      const blob = createObjectURL.mock.calls[0][0];
+      expect(blob.type).toBe("text/calendar;charset=utf-8");
+      const text = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.readAsText(blob);
+      });
+      expect(text).toContain("UID:course-event-next@skillsetmind.com");
+      expect(text).toContain("URL:https://meet.example.com/live");
+    } finally {
+      vi.useRealTimers();
+      mocks.events = saved;
+      URL.createObjectURL = original.create;
+      URL.revokeObjectURL = original.revoke;
+      click.mockRestore();
+    }
+  });
+
+  // Prazo nao e reuniao: "Due:" e "Open link"; vencido vai para "Past" na
+  // hora (nao 3 h depois) e diz "Due date passed", nunca "Happening now".
+  it("um prazo: data de entrega e 'Open link'; vencido, em Past como 'Due date passed'", () => {
+    const saved = mocks.events;
+    const startsAt = new Date(Date.now() + 48 * 3_600_000).toISOString();
+    mocks.events = [
+      { ...mocks.base, id: "due", title: "Essay due", type: "deadline", startsAt },
+      { ...mocks.base, id: "late", title: "Quiz due", type: "deadline", startsAt: new Date(Date.now() - 30 * 60_000).toISOString() },
+    ];
+    try {
+      render(<LearnEventsHub />);
+
+      const due = screen.getByRole("heading", { name: "Essay due" }).closest("article") as HTMLElement;
+      expect(within(due).getByText(`Due: ${formatEventDateTime(startsAt, "en")}`)).toBeInTheDocument();
+      expect(within(due).getByRole("link", { name: "Open link" })).toHaveAttribute("href", "https://meet.example.com/live");
+      expect(within(due).queryByRole("link", { name: "Join external session" })).not.toBeInTheDocument();
+
+      const late = screen.getByRole("heading", { name: "Quiz due" }).closest("article") as HTMLElement;
+      expect(late.closest("details")).not.toBeNull();
+      expect(within(late).getByText("Due date passed")).toBeInTheDocument();
+      expect(screen.queryByText("Happening now")).not.toBeInTheDocument();
+    } finally {
+      mocks.events = saved;
+    }
+  });
+
+  it("matricula que terminou: diz que o acesso acabou, nao 'nenhuma sessao marcada'", () => {
+    const saved = mocks.events;
+    mocks.events = [];
+    mocks.enrollments = [{ ...mocks.enrollment, status: "refunded" }];
+    try {
+      render(<LearnEventsHub />);
+
+      expect(screen.getByRole("heading", { level: 2, name: "Your course access ended." })).toBeInTheDocument();
+      expect(screen.getByText("Sessions from Demo course no longer appear here because your access ended.")).toBeInTheDocument();
+      expect(screen.queryByText("No live sessions are scheduled yet.")).not.toBeInTheDocument();
+    } finally {
+      mocks.events = saved;
+      mocks.enrollments = null;
     }
   });
 });

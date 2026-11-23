@@ -6,17 +6,21 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { EventCalendarActions, noJoinLinkKey, useNow } from "@/components/learn/live-session-parts";
 import { CardListSkeleton } from "@/components/shared/page-skeletons";
 import { EmptyState } from "@/components/ui/empty-state";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import type { SkillsetUser } from "@/domain/auth";
 import {
   formatEventDateTime,
+  getEventLiveState,
+  getEventUpdatedAt,
+  isCancelledEventShown,
   type CourseEvent,
   type CourseEventRsvp,
   type CourseEventRsvpStatus,
 } from "@/domain/course-event";
-import type { Enrollment } from "@/domain/enrollment";
+import { canOpenEnrollment, type Enrollment } from "@/domain/enrollment";
 import { getSafeExternalUrl } from "@/domain/external-url";
 import {
   saveCourseEventRsvp,
@@ -27,12 +31,12 @@ import { subscribeToUserEnrollments } from "@/lib/data/enrollments";
 
 type EventBuckets = Record<string, CourseEvent[]>;
 
-// A sessão não tem hora de fim; a mesma janela de "ao vivo" da comunidade.
-const LIVE_RUNNING_WINDOW_MS = 3 * 3_600_000;
-
 export function LearnEventsHub() {
   const { t } = useTranslation();
   const { user } = useAuth();
+  // A janela "ao vivo" de course-event.ts com um relógio que anda: a sessão
+  // passa para "Past" e a cancelada sai depois de 7 dias sem recarregar.
+  const now = useNow();
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [eventBuckets, setEventBuckets] = useState<EventBuckets>({});
   const [loadedSlugs, setLoadedSlugs] = useState<string[]>([]);
@@ -105,6 +109,8 @@ export function LearnEventsHub() {
               : [...currentSlugs, courseSlug],
           );
         },
+        // A cancelada aparece marcada, em vez de sumir sem rastro.
+        { includeCancelled: true },
       );
       subscriptions.set(courseSlug, current);
       return () => {
@@ -124,27 +130,33 @@ export function LearnEventsHub() {
     () =>
       currentCourseSlugs
         .flatMap((courseSlug) => eventBuckets[courseSlug] ?? [])
+        .filter((event) => event.status !== "cancelled" || isCancelledEventShown(event.startsAt, now))
         .sort((left, right) => left.startsAt.localeCompare(right.startsAt)),
-    [currentCourseSlugs, eventBuckets],
+    [currentCourseSlugs, eventBuckets, now],
   );
   // As próximas primeiro; as que já passaram ficam numa parte "Past" fechada,
   // da mais recente para a mais antiga. Antes a lista abria pela sessão mais
-  // antiga, que já tinha acontecido. A sessão não tem hora de fim: até 3h
-  // depois do início ela ainda pode estar rolando e fica em "Upcoming", com o
-  // link de entrar à mão (a mesma janela do cartão de live da comunidade).
+  // antiga, que já tinha acontecido. Enquanto está ao vivo (a janela comum de
+  // course-event.ts) a sessão fica em "Upcoming", com o link de entrar à mão.
   // Data inválida ("Date pending") também fica em "Upcoming", no fim.
   const { upcoming, past } = useMemo(() => {
-    // Leitura do relógio só para exibir; ficar defasado é inofensivo.
-    // eslint-disable-next-line react-hooks/purity
-    const cutoff = Date.now() - LIVE_RUNNING_WINDOW_MS;
     const split = { upcoming: [] as CourseEvent[], past: [] as CourseEvent[] };
     for (const event of events) {
-      const startsAt = Date.parse(event.startsAt);
-      (Number.isFinite(startsAt) && startsAt < cutoff ? split.past : split.upcoming).push(event);
+      // O prazo passa para "Past" na hora em que vence, não 3 h depois.
+      (getEventLiveState(event.startsAt, now, event.type) === "over" ? split.past : split.upcoming).push(event);
     }
     split.past.reverse();
     return split;
-  }, [events]);
+  }, [events, now]);
+  // Matrícula vencida ou reembolsada: o banco deixa de entregar as sessões
+  // daquele curso, e a agenda dizia "nenhuma sessão marcada". As matrículas já
+  // estão aqui: dá para dizer que o acesso terminou, sem leitura nova.
+  const endedCourses = Array.from(
+    new Set(enrollments.filter((enrollment) => !canOpenEnrollment(enrollment.status)).map((enrollment) => enrollment.courseTitle)),
+  );
+  const accessEndedLine = endedCourses.length > 0
+    ? t("learnWave2.eventsHub.accessEnded").replace("{courses}", () => endedCourses.join(", "))
+    : "";
   const isLoadingEvents =
     currentCourseSlugs.length > 0
     && currentCourseSlugs.some((courseSlug) => !loadedSlugs.includes(courseSlug));
@@ -208,19 +220,27 @@ export function LearnEventsHub() {
     );
   }
 
+  const accessEndedNote = accessEndedLine ? (
+    <p className="text-sm leading-6 text-[var(--color-ink-soft)]">{accessEndedLine}</p>
+  ) : null;
+
   if (events.length === 0) {
+    // Todas as matrículas terminaram: o título diz isso, não "nenhuma sessão".
+    const allEnded = enrollments.every((enrollment) => !canOpenEnrollment(enrollment.status));
     return frame(
       <EmptyState
         as="h2"
         eyebrow={t("learnWave2.eventsHub.schedule")}
-        title={t("learnWave2.eventsHub.noSessions")}
-        description={t("learnWave2.eventsHub.noSessionsDetail")}
+        title={t(allEnded ? "learnWave2.eventsHub.accessEndedTitle" : "learnWave2.eventsHub.noSessions")}
+        description={allEnded ? accessEndedLine : t("learnWave2.eventsHub.noSessionsDetail")}
+        action={allEnded ? undefined : accessEndedNote}
       />
     );
   }
 
   return frame(
     <div className="grid gap-6">
+      {accessEndedNote}
       <section aria-labelledby="events-upcoming-title" className="grid gap-4">
         <h2 id="events-upcoming-title" className="text-lg font-semibold text-[var(--color-primary)]">
           {t("creatorPanel.events.filter.upcoming")}
@@ -228,7 +248,7 @@ export function LearnEventsHub() {
         {upcoming.length > 0 ? (
           <div className="grid gap-4 lg:grid-cols-2">
             {upcoming.map((event) => (
-              <LearnerEventCard key={event.id} currentUser={user} event={event} />
+              <LearnerEventCard key={event.id} currentUser={user} event={event} now={now} />
             ))}
           </div>
         ) : (
@@ -252,7 +272,7 @@ export function LearnEventsHub() {
           </summary>
           <div className="grid gap-4 px-4 pb-4 lg:grid-cols-2">
             {past.map((event) => (
-              <LearnerEventCard key={event.id} currentUser={user} event={event} isPast />
+              <LearnerEventCard key={event.id} currentUser={user} event={event} now={now} isPast />
             ))}
           </div>
         </details>
@@ -264,13 +284,22 @@ export function LearnEventsHub() {
 function LearnerEventCard({
   currentUser,
   event,
+  now,
   isPast = false,
 }: {
   currentUser: SkillsetUser | null;
   event: CourseEvent;
+  now: number;
   isPast?: boolean;
 }) {
   const { t, locale } = useTranslation();
+  // Cancelada: marcada, a hora original riscada, sem link e sem presença (o
+  // banco nem aceita mudar a resposta de uma sessão cancelada).
+  const isCancelled = event.status === "cancelled";
+  const isClosed = isPast || isCancelled;
+  // Prazo não é reunião: "Due: <data>", "Open link" e, vencido, "Due date
+  // passed" (nunca "Happening now" nem "Join").
+  const isDeadline = event.type === "deadline";
   const [rsvp, setRsvp] = useState<CourseEventRsvp | null>(null);
   const [isLoadingRsvp, setIsLoadingRsvp] = useState(true);
   // Qual resposta está sendo salva: o "Saving..." aparece no botão tocado
@@ -284,8 +313,9 @@ function LearnerEventCard({
   const [rsvpError, setRsvpError] = useState("");
 
   useEffect(() => {
-    // Sessão que já passou não mostra presença: não abre um canal por cartão.
-    if (!currentUser || isPast) {
+    // Sessão que já passou ou cancelada não mostra presença: não abre um
+    // canal por cartão.
+    if (!currentUser || isClosed) {
       return;
     }
 
@@ -302,7 +332,7 @@ function LearnerEventCard({
         setIsLoadingRsvp(false);
       },
     );
-  }, [currentUser, event.id, isPast]);
+  }, [currentUser, event.id, isClosed]);
 
   async function handleRsvp(status: CourseEventRsvpStatus) {
     if (!currentUser) {
@@ -328,6 +358,16 @@ function LearnerEventCard({
   }
 
   const safeJoinUrl = getSafeExternalUrl(event.externalUrl);
+  const when = formatEventDateTime(event.startsAt, locale, t("platform.events.datePending"));
+  // Nada marca a sessão como "completed": a que já passou dizia "Scheduled".
+  const statusKey = isCancelled
+    ? "creatorPanel.events.status.cancelled"
+    : isPast
+      ? isDeadline ? "learnWave2.eventsHub.duePassed" : "learnWave2.eventsHub.held"
+      : getEventLiveState(event.startsAt, now, event.type) === "live"
+        ? "learnWave2.agenda.now"
+        : "creatorPanel.events.status.scheduled";
+  const updatedAt = isCancelled ? null : getEventUpdatedAt(event);
 
   return (
     <article className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
@@ -340,15 +380,32 @@ function LearnerEventCard({
             {event.title}
           </h3>
         </div>
-        <span className="shrink-0 rounded-md bg-[var(--color-surface-soft)] px-2 py-1 text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--color-primary)]">
-          {t(`creatorPanel.events.status.${event.status}`)}
+        <span
+          className={`shrink-0 rounded-md px-2 py-1 text-[11px] font-bold uppercase tracking-[0.06em] ${
+            isCancelled
+              ? "bg-[var(--color-danger-soft)] text-[var(--color-danger-fg)]"
+              : "bg-[var(--color-surface-soft)] text-[var(--color-primary)]"
+          }`}
+        >
+          {t(statusKey)}
         </span>
       </div>
       <p className="mt-3 text-sm text-[var(--color-ink-soft)]">
         <span className="font-semibold text-[var(--color-ink)]">{event.courseTitle}</span>
         {" · "}
-        <span>{formatEventDateTime(event.startsAt, locale, t("platform.events.datePending"))}</span>
+        {isCancelled ? (
+          <s>{when}</s>
+        ) : (
+          <span>{isDeadline ? t("platform.events.dueBy").replace("{when}", () => when) : when}</span>
+        )}
       </p>
+      {updatedAt ? (
+        <p className="mt-1 text-xs font-semibold text-[var(--color-ink-soft)]">
+          {t("learnWave2.eventsHub.updated").replace("{date}", () =>
+            formatEventDateTime(updatedAt, locale, t("platform.events.datePending")),
+          )}
+        </p>
+      ) : null}
       {event.description ? (
         <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
           {event.description}
@@ -358,8 +415,8 @@ function LearnerEventCard({
       {/* Presença: seletor de duas opções, a escolhida cheia e com o tique
           (aria-pressed). Antes os dois botões tinham a mesma cara qualquer que
           fosse a resposta, e ela só aparecia num quadro de texto acima. Sessão
-          que já passou não pede presença. */}
-      {isPast ? null : (
+          que já passou ou cancelada não pede presença. */}
+      {isClosed ? null : (
         <div role="group" aria-label={t("learnWave2.eventsHub.attendance")} className="mt-5">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
             {t("learnWave2.eventsHub.attendance")}
@@ -398,22 +455,33 @@ function LearnerEventCard({
               {t(rsvpError)}
             </InlineAlert>
           ) : null}
+          {/* Depois do "I will attend", um próximo passo: a hora no fuso de
+              quem lê e o calendário (antes o botão só ficava marcado). */}
+          {chosenStatus === "attending" ? (
+            <div className="mt-4 grid gap-3">
+              <p className="text-sm font-semibold text-[var(--color-ink)]">
+                {t("learnWave2.eventsHub.going").replace("{when}", () => when)}
+              </p>
+              <EventCalendarActions event={event} joinUrl={safeJoinUrl} />
+            </div>
+          ) : null}
         </div>
       )}
 
-      {/* Sessão que já passou: sem "Join" (nem o aviso de link que falta). */}
-      {isPast ? null : safeJoinUrl ? (
+      {/* Sessão que já passou ou cancelada: sem "Join" (nem o aviso de link
+          que falta). */}
+      {isClosed ? null : safeJoinUrl ? (
         <a
           href={safeJoinUrl}
           target="_blank"
           rel="noreferrer noopener"
           className="button-solid mt-5 inline-flex px-4 py-2.5 text-sm"
         >
-          {t("learnWave2.eventsHub.join")}
+          {t(isDeadline ? "platform.events.openLink" : "learnWave2.eventsHub.join")}
         </a>
       ) : (
         <p className="mt-5 text-sm text-[var(--color-ink-soft)]">
-          {t("learnWave2.eventsHub.noLink")}
+          {t(noJoinLinkKey(event.type))}
         </p>
       )}
     </article>

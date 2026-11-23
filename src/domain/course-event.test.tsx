@@ -1,11 +1,20 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildEventIcs,
+  buildGoogleCalendarUrl,
+  CALENDAR_EVENT_MINUTES,
   describeTimeZone,
+  EVENT_LIVE_WINDOW_MS,
+  EVENT_STARTING_SOON_MS,
   formatEventDateTime,
   formatEventTimeInZones,
+  getEventLiveState,
+  getEventUpdatedAt,
+  isCancelledEventShown,
   isEventLinkAcceptable,
   isValidExternalEventUrl,
+  pickClosestEvent,
   US_PREVIEW_TIME_ZONES,
   withLinkScheme,
 } from "@/domain/course-event";
@@ -172,5 +181,150 @@ describe("link da sessao", () => {
     expect(withLinkScheme("http://192.168.0.10/room")).toBe("http://192.168.0.10/room");
     expect(withLinkScheme("javascript:alert(1)")).toBe("javascript:alert(1)");
     expect(withLinkScheme("   ")).toBe("");
+  });
+});
+
+// Tudo em UTC e com `now` explícito: nada depende do fuso nem do relógio da máquina.
+const START = "2026-11-25T21:00:00.000Z";
+const at = (minutes: number) => Date.parse(START) + minutes * 60_000;
+
+describe("janela ao vivo (uma regra para as quatro telas)", () => {
+  it("upcoming até 15 min antes, startingSoon até o início, live por 3 h, depois over", () => {
+    expect(getEventLiveState(START, at(-16))).toBe("upcoming");
+    expect(getEventLiveState(START, at(-15))).toBe("startingSoon");
+    expect(getEventLiveState(START, at(-1))).toBe("startingSoon");
+    expect(getEventLiveState(START, at(0))).toBe("live");
+    expect(getEventLiveState(START, at(179))).toBe("live");
+    expect(getEventLiveState(START, at(180))).toBe("over");
+    expect(EVENT_STARTING_SOON_MS).toBe(15 * 60_000);
+    expect(EVENT_LIVE_WINDOW_MS).toBe(3 * 3_600_000);
+  });
+
+  it("data inválida fica na lista ('Date pending'), não some", () => {
+    expect(getEventLiveState("not a date", at(0))).toBe("upcoming");
+    expect(getEventLiveState("not a date", at(0), "deadline")).toBe("upcoming");
+  });
+
+  it("prazo nunca fica 'começando' nem 'ao vivo': vale até vencer e depois passou", () => {
+    expect(getEventLiveState(START, at(-10), "deadline")).toBe("upcoming");
+    expect(getEventLiveState(START, at(-1), "deadline")).toBe("upcoming");
+    expect(getEventLiveState(START, at(0), "deadline")).toBe("over");
+    expect(getEventLiveState(START, at(30), "deadline")).toBe("over");
+    // Os outros tipos seguem a janela de sempre.
+    expect(getEventLiveState(START, at(30), "webinar")).toBe("live");
+  });
+
+  it("entre duas sessões a 90 min, a de início mais perto de agora; no empate, a que não começou", () => {
+    const webinar = { id: "webinar", startsAt: START };
+    const office = { id: "office", startsAt: new Date(at(90)).toISOString() };
+    // 7:20 com o webinar às 6:00: o plantão das 7:30 (10 min), não o webinar (80 min).
+    expect(pickClosestEvent([webinar, office], at(80))).toBe(office);
+    // 6:10: o webinar que começou há 10 min.
+    expect(pickClosestEvent([webinar, office], at(10))).toBe(webinar);
+    // Empate (45 min de cada lado): a que ainda vai começar.
+    expect(pickClosestEvent([webinar, office], at(45))).toBe(office);
+    expect(pickClosestEvent([office, webinar], at(45))).toBe(office);
+    expect(pickClosestEvent([{ id: "x", startsAt: "not a date" }], at(0))).toBeNull();
+    expect(pickClosestEvent([], at(0))).toBeNull();
+  });
+
+  it("a cancelada fica à vista por 7 dias depois da hora marcada", () => {
+    expect(isCancelledEventShown(START, at(-60))).toBe(true);
+    expect(isCancelledEventShown(START, at(7 * 24 * 60 - 1))).toBe(true);
+    expect(isCancelledEventShown(START, at(7 * 24 * 60))).toBe(false);
+    expect(isCancelledEventShown("not a date", at(0))).toBe(false);
+  });
+
+  it("'Updated' só quando a sessão mudou mais de 1 min depois de criada", () => {
+    expect(getEventUpdatedAt({ createdAt: START, updatedAt: START })).toBeNull();
+    expect(getEventUpdatedAt({ createdAt: START, updatedAt: new Date(at(1)).toISOString() })).toBeNull();
+    expect(getEventUpdatedAt({ createdAt: START, updatedAt: "2026-11-26T09:00:00.000Z" })).toBe("2026-11-26T09:00:00.000Z");
+    expect(getEventUpdatedAt({ createdAt: undefined, updatedAt: "2026-11-26T09:00:00.000Z" })).toBeNull();
+    expect(getEventUpdatedAt({ createdAt: START, updatedAt: null })).toBeNull();
+  });
+});
+
+describe("adicionar ao calendário", () => {
+  const event = {
+    id: "ev-42",
+    title: "Liderança; ação, \"Q&A\"",
+    description: "Linha 1\nLinha 2",
+    courseTitle: "Curso, avançado",
+    startsAt: START,
+  };
+  const link = "https://zoom.us/j/123?pwd=a,b";
+
+  it("Google: link TEMPLATE com início e fim em UTC (60 min) e o link de entrar", () => {
+    const url = new URL(buildGoogleCalendarUrl(event, link)!);
+    expect(`${url.origin}${url.pathname}`).toBe("https://calendar.google.com/calendar/render");
+    expect(url.searchParams.get("action")).toBe("TEMPLATE");
+    expect(url.searchParams.get("text")).toBe(event.title);
+    expect(url.searchParams.get("dates")).toBe("20261125T210000Z/20261125T220000Z");
+    expect(url.searchParams.get("details")).toBe(`Curso, avançado\n\nLinha 1\nLinha 2\n\n${link}`);
+    expect(url.searchParams.get("location")).toBe(link);
+    expect(CALENDAR_EVENT_MINUTES).toBe(60);
+  });
+
+  it("Google sem link: nem location nem link na descrição; data inválida não gera link", () => {
+    const url = new URL(buildGoogleCalendarUrl(event, null)!);
+    expect(url.searchParams.has("location")).toBe(false);
+    expect(url.searchParams.get("details")).not.toContain("https://");
+    expect(buildGoogleCalendarUrl({ ...event, startsAt: "not a date" }, link)).toBeNull();
+  });
+
+  it(".ics: CRLF, UTC com Z, UID estável e texto escapado; acentos intactos", () => {
+    const ics = buildEventIcs(event, link, Date.parse("2026-11-20T12:00:00.000Z"))!;
+    expect(ics.endsWith("\r\n")).toBe(true);
+    expect(ics.replace(/\r\n/g, "")).not.toContain("\n");
+    const lines = ics.replace(/\r\n /g, "").split("\r\n");
+    expect(lines).toContain("BEGIN:VCALENDAR");
+    expect(lines).toContain("UID:course-event-ev-42@skillsetmind.com");
+    expect(lines).toContain("DTSTAMP:20261120T120000Z");
+    expect(lines).toContain("DTSTART:20261125T210000Z");
+    expect(lines).toContain("DTEND:20261125T220000Z");
+    expect(lines).toContain("SUMMARY:Liderança\\; ação\\, \"Q&A\"");
+    expect(lines).toContain(`DESCRIPTION:Curso\\, avançado\\n\\nLinha 1\\nLinha 2\\n\\n${link.replace(",", "\\,")}`);
+    expect(lines).toContain(`URL:${link}`);
+    // O mesmo arquivo baixado de novo tem o mesmo UID.
+    expect(buildEventIcs(event, link, Date.now())).toContain("UID:course-event-ev-42@skillsetmind.com");
+  });
+
+  it(".ics sem link não leva URL; linha longa dobra em até 75 bytes sem partir acento", () => {
+    const long = { ...event, title: "Sessão é ótima ".repeat(10) };
+    const ics = buildEventIcs(long, null, at(0))!;
+    expect(ics).not.toContain("URL:");
+    for (const line of ics.split("\r\n")) {
+      expect(new TextEncoder().encode(line).length).toBeLessThanOrEqual(75);
+    }
+    const summary = ics.replace(/\r\n /g, "").split("\r\n").find((line) => line.startsWith("SUMMARY:"));
+    expect(summary).toBe(`SUMMARY:${long.title}`);
+    expect(buildEventIcs({ ...event, startsAt: "" }, null, at(0))).toBeNull();
+  });
+
+  it("um link com quebra de linha escondida não vira propriedade nova", () => {
+    const ics = buildEventIcs(event, "https://zoom.us/j/1\nATTACH:evil", at(0))!;
+    expect(ics).not.toMatch(/\r\nATTACH:/);
+  });
+
+  it("um CR sozinho no texto vira \\n, não quebra a linha do arquivo", () => {
+    const ics = buildEventIcs({ ...event, title: "Parte 1\rATTACH:evil" }, null, at(0))!;
+    expect(ics.replace(/\r\n/g, "")).not.toContain("\r");
+    expect(ics.replace(/\r\n /g, "").split("\r\n")).toContain("SUMMARY:Parte 1\\nATTACH:evil");
+  });
+
+  // Remarcada e baixada de novo: o mesmo UID com SEQUENCE maior troca a
+  // entrada do calendário em vez de criar outra.
+  it("SEQUENCE cresce a cada edição e LAST-MODIFIED traz a última mudança; nunca editada, 0", () => {
+    const lines = (input: typeof event & { createdAt?: unknown; updatedAt?: unknown }) =>
+      buildEventIcs(input, null, at(0))!.split("\r\n");
+    const created = "2026-11-01T10:00:00.000Z";
+    expect(lines({ ...event, createdAt: created, updatedAt: created })).toContain("SEQUENCE:0");
+    const once = lines({ ...event, createdAt: created, updatedAt: "2026-11-01T11:00:00.000Z" });
+    expect(once).toContain("SEQUENCE:3600");
+    expect(once).toContain("LAST-MODIFIED:20261101T110000Z");
+    const twice = lines({ ...event, createdAt: created, updatedAt: "2026-11-02T10:00:00.000Z" });
+    expect(twice).toContain("SEQUENCE:86400");
+    expect(lines(event)).toContain("SEQUENCE:0");
+    expect(lines(event).some((line) => line.startsWith("LAST-MODIFIED:"))).toBe(false);
   });
 });

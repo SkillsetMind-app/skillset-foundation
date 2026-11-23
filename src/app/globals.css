@@ -6521,6 +6521,12 @@ html:has(#member-lesson-player) {
   padding-inline-start: 0;
 }
 
+/* A faixa "ao vivo" (live-session-parts.tsx) entre as abas e o painel: o
+   mesmo recuo dos painéis e o mesmo respiro que as abas deixam embaixo. */
+.member-classroom[data-members-theme] > .member-live-strip {
+  margin: 0 24px 18px;
+}
+
 .member-classroom[data-members-theme] [class*="border-[var(--color-line)]"],
 .member-classroom[data-members-theme] .fine-rule {
   border-color: var(--ma-line) !important;
@@ -6954,6 +6960,10 @@ html:has(#member-lesson-player) {
 
   .member-classroom[data-members-theme] > .member-classroom-body {
     padding: 0 14px 14px;
+  }
+
+  .member-classroom[data-members-theme] > .member-live-strip {
+    margin-inline: 14px;
   }
 
   .member-classroom[data-members-theme] > .member-preview-banner {
