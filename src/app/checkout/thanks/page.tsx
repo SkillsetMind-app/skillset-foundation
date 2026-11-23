@@ -6,7 +6,7 @@ import { Mail } from "lucide-react";
 
 import { PaymentReturnCard } from "@/components/account/payment-return-card";
 import { GuestAccessLink } from "@/components/courses/guest-access-link";
-import { SiteNav } from "@/components/site/site-nav";
+import { CheckoutHeader } from "@/components/site/checkout-header";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { maskEmail } from "@/lib/payments/guest-checkout";
 import {
@@ -44,7 +44,9 @@ export default async function CheckoutThanksPage({ searchParams }: PageProps) {
 
   return (
     <div className="page-shell">
-      <SiteNav />
+      {/* O mesmo cabeçalho da página de compra: quem acabou de pagar continua
+          no mesmo lugar, e o próximo passo é o e-mail, não o menu do site. */}
+      <CheckoutHeader secureLabel={t("publicCourses.checkoutSecure")} skipLabel={t("nav.skipToContent")} />
       <main id="conteudo" className="mx-auto w-full max-w-xl px-6 py-10 sm:px-8 sm:py-14">
         {/* O mesmo cartão das outras telas de depois do pagamento (plano e
             taxa de ativação), com as mesmas frases e links de antes. Aqui não
