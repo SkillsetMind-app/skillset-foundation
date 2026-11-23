@@ -974,6 +974,31 @@ describe("LessonContentModal — video tab", () => {
     expect(done).toBeEnabled();
   });
 
+  // O Delete da lista de arquivos fica SEM o par empilhado: a regra fora de
+  // camada `.lesson-modal-assets span` (globals.css) faria de cada span um
+  // bloco cinza e maiúsculo, empilhando as duas faces. Só converter depois de
+  // escopar essa regra.
+  it("o Delete da lista de arquivos troca o rotulo sem span, nos dois estados", async () => {
+    currentAssets = [videoAsset()];
+    let finish!: () => void;
+    deleteCourseAsset.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
+    renderModal();
+    const list = document.querySelector(".lesson-modal-assets") as HTMLElement;
+    const remove = within(list).getByRole("button", { name: "Delete" });
+    expect(remove.querySelector("span")).toBeNull();
+    expect(remove.textContent).toBe("Delete");
+
+    fireEvent.click(remove);
+    clickConfirm(screen.getByRole("dialog", { name: "Delete this file?" }), "Delete file");
+
+    const busy = await within(list).findByRole("button", { name: "Deleting..." });
+    expect(busy).toBeDisabled();
+    expect(busy.querySelector("span")).toBeNull();
+    expect(busy.textContent).toBe("Deleting...");
+
+    await act(async () => { finish(); });
+  });
+
   it("o foco vai para Cancelar quando o envio comeca e volta ao campo quando ele e cancelado", async () => {
     bunnyConfig.isBunnyConfigured = true;
     const { CourseAssetUploadCancelled } = await import("@/lib/data/course-assets");

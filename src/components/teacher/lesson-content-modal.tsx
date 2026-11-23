@@ -1610,11 +1610,7 @@ function LessonUploadForm({
         aria-describedby={needsFile ? needsFileId : undefined}
         className="button-solid min-h-11 px-4 py-2.5 text-sm"
       >
-        <BusyLabel
-          busy={isUploading}
-          idle={t("creatorEditor.lesson.file.upload")}
-          busyText={t("creatorEditor.lesson.file.uploading")}
-        />
+        {t(`creatorEditor.lesson.file.${isUploading ? "uploading" : "upload"}`)}
       </button>
       <label>
         <span>{getCourseAssetKindLabel(uploadKind, t)}</span>
@@ -1785,11 +1781,11 @@ function LessonAssetList({
                 disabled={deletingAssetId === asset.id}
                 className="button-danger px-3.5 py-2 text-xs"
               >
-                <BusyLabel
-                  busy={deletingAssetId === asset.id}
-                  idle={t("creatorEditor.lesson.delete")}
-                  busyText={t("creatorEditor.lesson.deleting")}
-                />
+                {/* Sem BusyLabel de propósito: a regra fora de camada
+                    `.lesson-modal-assets span` (globals.css) pinta todo span
+                    daqui de bloco cinza e maiúsculo, e as duas faces
+                    empilhariam. Converter só depois de escopar essa regra. */}
+                {t(`creatorEditor.lesson.${deletingAssetId === asset.id ? "deleting" : "delete"}`)}
               </button>
             ) : null}
           </div>

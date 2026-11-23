@@ -310,11 +310,12 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
                 variant="outline"
                 disabled={working || !target}
                 loading={busy === "translate"}
-                busyLabel={t("creatorEditor.lesson.ai.translating")}
                 onClick={() => void run("translate", { from: source.language, to: target }, "translate",
                   t("creatorEditor.lesson.ai.translated"))}
               >
-                {t("creatorEditor.lesson.ai.translate")}
+                {/* Como o "Generate captions": reservar spinner e
+                    "Translating..." espremeria o seletor de idioma ao lado. */}
+                {busy === "translate" ? t("creatorEditor.lesson.ai.translating") : t("creatorEditor.lesson.ai.translate")}
               </Button>
             </div>
           ) : null}
