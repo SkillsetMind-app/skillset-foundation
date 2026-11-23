@@ -401,7 +401,7 @@ describe("OnboardingChoice: \"Try again\" da leitura do perfil", () => {
 
   it("na troca de conta o \"Try again\" nao le o id da conta anterior", async () => {
     mocks.searchParams = activation;
-    const { resolve } = await failFirstRead();
+    const { reject } = await failFirstRead();
     // A sessao troca de conta: primeiro "loading", depois a outra pessoa.
     await act(async () => emit({ status: "loading", user: null }));
     await act(async () => {
@@ -410,11 +410,17 @@ describe("OnboardingChoice: \"Try again\" da leitura do perfil", () => {
     expect(mocks.getUserProfile).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("alert")).toHaveTextContent("onboarding.errorProfileLoadRetry");
 
+    // A conta nova e lida pela propria troca, com o id dela. Se essa leitura
+    // falha, o "Try again" rele a conta nova.
     await act(async () => emit({ status: "authenticated", user: { ...authedUser, uid: "learner-2" } }));
-    fireEvent.click(screen.getByRole("button", { name: "appErrors.retry" }));
     expect(mocks.getUserProfile).toHaveBeenCalledTimes(2);
     expect(mocks.getUserProfile).toHaveBeenLastCalledWith("learner-2");
-    await act(async () => resolve(null));
+    await act(async () => reject(new Error("offline")));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "appErrors.retry" }));
+    });
+    expect(mocks.getUserProfile).toHaveBeenCalledTimes(3);
+    expect(mocks.getUserProfile).toHaveBeenLastCalledWith("learner-2");
   });
 
   it("releitura que falha de novo: o aviso volta, com o botao", async () => {
@@ -523,5 +529,208 @@ describe("OnboardingChoice: \"Try again\" da leitura do perfil", () => {
     });
     expect(screen.getByRole("alert")).toHaveTextContent("onboarding.errorFinish");
     expect(screen.queryByRole("button", { name: "appErrors.retry" })).toBeNull();
+  });
+});
+
+describe("OnboardingChoice: conta trocada em outra aba", () => {
+  // Saiu e entrou com outra conta em outra aba, com esta tela aberta: a mesma
+  // inscricao recebe "loading" e depois a outra pessoa.
+  const otherUser = { uid: "learner-2", displayName: "Bea", emailVerified: true };
+  const otherProfile = {
+    ...learnerProfile, displayName: "Bea Lima", username: "bea", bio: "Designer",
+    timezone: "Europe/London", goals: ["build_community"],
+  };
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  async function switchAccount() {
+    await act(async () => emit({ status: "loading", user: null }));
+    await act(async () => emit({ status: "authenticated", user: otherUser }));
+  }
+
+  // So leituras: nenhuma gravacao, nenhuma navegacao, nenhuma inscricao nova.
+  function expectNoWrites() {
+    expect(mocks.listenToAuthState).toHaveBeenCalledTimes(1);
+    expect(mocks.updateOnboardingAnswers).not.toHaveBeenCalled();
+    expect(mocks.completeUserOnboarding).not.toHaveBeenCalled();
+    expect(mocks.refreshUser).not.toHaveBeenCalled();
+    expect(mocks.router.push).not.toHaveBeenCalled();
+  }
+
+  it("rele o perfil da conta nova uma vez e volta ao passo 0 com os valores dela", async () => {
+    mocks.getUserProfile.mockResolvedValueOnce(learnerProfile).mockResolvedValueOnce(otherProfile);
+    mountOnPage();
+    await act(async () => emit({ status: "authenticated", user: authedUser }));
+    fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
+    fireEvent.change(screen.getByPlaceholderText("onboarding.bioPlaceholder"), {
+      target: { value: "Bio digitada na conta anterior" },
+    });
+
+    await switchAccount();
+    expect(mocks.getUserProfile).toHaveBeenCalledTimes(2);
+    expect(mocks.getUserProfile).toHaveBeenLastCalledWith("learner-2");
+    expect(screen.getByText("onboarding.stepPath")).toBeInTheDocument();
+    expect(screen.queryByLabelText("onboarding.publicName")).toBeNull();
+    expect(pathButton("onboarding.pathLearnTitle")).toHaveClass(selected);
+
+    fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
+    expect(screen.getByLabelText("onboarding.publicName")).toHaveValue("Bea Lima");
+    expect(screen.getByPlaceholderText("onboarding.usernamePlaceholder")).toHaveValue("bea");
+    expect(screen.getByPlaceholderText("onboarding.bioPlaceholder")).toHaveValue("Designer");
+    expect(screen.getByLabelText("onboarding.timezone")).toHaveValue("Europe/London");
+    fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
+    expect(pathButton("onboarding.goalCommunityLabel")).toHaveClass(selected);
+    expect(pathButton("onboarding.goalCareerLabel")).not.toHaveClass(selected);
+    expectNoWrites();
+  });
+
+  it("da ativacao curta de uma conta para uma conta nova sem perfil: o cadastro limpo", async () => {
+    mocks.searchParams = new URLSearchParams("path=teacher");
+    mocks.getUserProfile.mockResolvedValueOnce(learnerProfile).mockResolvedValueOnce(null);
+    mountOnPage();
+    await act(async () => emit({ status: "authenticated", user: authedUser }));
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("onboarding.streamlinedTitle");
+    fireEvent.change(screen.getByLabelText("connectOnboarding.countryLabel"), { target: { value: "US" } });
+    fireEvent.click(screen.getByRole("checkbox"));
+
+    await switchAccount();
+    expect(mocks.getUserProfile).toHaveBeenCalledTimes(2);
+    expect(mocks.getUserProfile).toHaveBeenLastCalledWith("learner-2");
+    // A tela de um professor novo numa carga limpa: o cadastro de 3 passos.
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("page.title");
+    expect(screen.queryByRole("button", { name: "onboarding.activateTeaching" })).toBeNull();
+    expect(pathButton("onboarding.pathTeachTitle")).toHaveClass(selected);
+    expect(screen.getByLabelText("connectOnboarding.countryLabel")).toHaveValue("");
+    expect(screen.getByRole("checkbox")).not.toBeChecked();
+
+    fireEvent.change(screen.getByLabelText("connectOnboarding.countryLabel"), { target: { value: "CA" } });
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
+    expect(screen.getByLabelText("onboarding.publicName")).toHaveValue("Bea");
+    expect(screen.getByPlaceholderText("onboarding.usernamePlaceholder")).toHaveValue("");
+    expect(screen.getByPlaceholderText("onboarding.bioPlaceholder")).toHaveValue("");
+    expect(screen.getByLabelText("onboarding.timezone")).toHaveValue(timezone);
+    expectNoWrites();
+  });
+
+  it("depois da troca, concluir grava na conta nova so com os valores dela", async () => {
+    mocks.searchParams = new URLSearchParams("path=teacher");
+    mocks.getUserProfile.mockResolvedValueOnce(teacherProfile).mockResolvedValueOnce(null);
+    mountOnPage();
+    await act(async () => emit({ status: "authenticated", user: authedUser }));
+    // A conta anterior tinha pais, termos aceitos e respostas salvas.
+    expect(screen.getByLabelText("connectOnboarding.countryLabel")).toHaveValue("US");
+
+    await switchAccount();
+    fireEvent.change(screen.getByLabelText("connectOnboarding.countryLabel"), { target: { value: "CA" } });
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
+    fireEvent.change(screen.getByPlaceholderText("onboarding.usernamePlaceholder"), { target: { value: "bea" } });
+    fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
+    fireEvent.click(screen.getByText("onboarding.goalTeachLabel"));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "onboarding.finishSetup" }));
+    });
+
+    expect(mocks.updateOnboardingAnswers).toHaveBeenCalledExactlyOnceWith({
+      uid: "learner-2", answers: { payoutCountry: "CA" },
+    });
+    expect(mocks.completeUserOnboarding).toHaveBeenCalledExactlyOnceWith({
+      uid: "learner-2", roles: ["teacher"], acceptTeacherTerms: true,
+      identity: { displayName: "Bea", username: "bea", bio: "", timezone, goals: ["teach_online"] },
+    });
+    expect(mocks.refreshUser).toHaveBeenCalledTimes(1);
+    expect(mocks.router.push).toHaveBeenCalledExactlyOnceWith("/teach");
+    expect(mocks.getUserProfile).toHaveBeenCalledTimes(2);
+  });
+
+  // Sem a volta do answersLoaded a false na troca, o "perfil lido" da conta
+  // anterior deixaria o Continue e o Finish passarem e gravarem por cima das
+  // respostas salvas da conta nova.
+  it("leitura da conta nova que falha: o Continue nao sai do passo 0 nem grava", async () => {
+    mocks.getUserProfile.mockResolvedValueOnce(learnerProfile).mockRejectedValueOnce(new Error("offline"));
+    mountOnPage();
+    await act(async () => emit({ status: "authenticated", user: authedUser }));
+
+    await switchAccount();
+    expect(mocks.getUserProfile).toHaveBeenLastCalledWith("learner-2");
+    expect(screen.getByRole("alert")).toHaveTextContent("onboarding.errorProfileLoadRetry");
+
+    fireEvent.click(pathButton("onboarding.pathTeachTitle"));
+    fireEvent.change(screen.getByLabelText("connectOnboarding.countryLabel"), { target: { value: "US" } });
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
+
+    // Continua no passo 0: sem os campos do passo 1 e sem o "Finish" do 2.
+    expect(screen.queryByLabelText("onboarding.publicName")).toBeNull();
+    expect(screen.queryByRole("button", { name: "onboarding.finishSetup" })).toBeNull();
+    expect(screen.getByRole("alert")).toHaveTextContent("onboarding.errorProfileLoadRetry");
+    expect(screen.getByRole("button", { name: "appErrors.retry" })).toBeEnabled();
+    expect(mocks.getUserProfile).toHaveBeenCalledTimes(2);
+    expectNoWrites();
+  });
+
+  it("a mesma conta de novo, com \"loading\" no meio: nao rele nem apaga o que foi digitado", async () => {
+    mocks.getUserProfile.mockResolvedValueOnce(learnerProfile);
+    mountOnPage();
+    await act(async () => emit({ status: "authenticated", user: authedUser }));
+    fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
+    const bio = screen.getByPlaceholderText("onboarding.bioPlaceholder");
+    fireEvent.change(bio, { target: { value: "Bio digitada agora" } });
+
+    await act(async () => emit({ status: "loading", user: null }));
+    await act(async () => {
+      emit({ status: "authenticated", user: authedUser });
+      emit({ status: "authenticated", user: { ...authedUser, displayName: "Outro" } });
+    });
+    expectOnlyTheRead(1);
+    expect(screen.getByPlaceholderText("onboarding.bioPlaceholder")).toBe(bio);
+    expect(bio).toHaveValue("Bio digitada agora");
+    expect(screen.getByLabelText("onboarding.publicName")).toHaveValue("Patrick Simon");
+    expect(mocks.router.push).not.toHaveBeenCalled();
+  });
+
+  it("saida sem entrar com outra conta: vai para /login como hoje; a mesma conta depois nao rele", async () => {
+    mocks.getUserProfile.mockResolvedValueOnce(learnerProfile);
+    mountOnPage();
+    await act(async () => emit({ status: "authenticated", user: authedUser }));
+    await act(async () => emit({ status: "unauthenticated", user: null }));
+    expect(mocks.router.push).toHaveBeenCalledExactlyOnceWith("/login");
+    expectOnlyTheRead(1);
+
+    await act(async () => emit({ status: "authenticated", user: authedUser }));
+    expectOnlyTheRead(1);
+    expect(mocks.router.push).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ["antes", true],
+    ["depois", false],
+  ])("troca com a leitura da conta anterior no ar: a resposta dela, chegando %s da nova, e ignorada", async (_quando, previousFirst) => {
+    let resolvePrevious!: (profile: unknown) => void;
+    let resolveNext!: (profile: unknown) => void;
+    mocks.getUserProfile
+      .mockReturnValueOnce(new Promise((done) => { resolvePrevious = done; }))
+      .mockReturnValueOnce(new Promise((done) => { resolveNext = done; }));
+    mountOnPage();
+    await act(async () => emit({ status: "authenticated", user: authedUser }));
+    await switchAccount();
+    expect(mocks.getUserProfile).toHaveBeenCalledTimes(2);
+    expect(mocks.getUserProfile).toHaveBeenNthCalledWith(1, "learner-1");
+    expect(mocks.getUserProfile).toHaveBeenNthCalledWith(2, "learner-2");
+
+    if (previousFirst) {
+      // A resposta da anterior nao tira a tela da espera.
+      await act(async () => resolvePrevious(learnerProfile));
+      expect(screen.getByRole("status")).toHaveTextContent("authFlow.loading.title");
+      expect(screen.queryAllByRole("button")).toHaveLength(0);
+    }
+    await act(async () => resolveNext(otherProfile));
+    if (!previousFirst) await act(async () => resolvePrevious(learnerProfile));
+
+    fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
+    expect(screen.getByLabelText("onboarding.publicName")).toHaveValue("Bea Lima");
+    expect(screen.getByPlaceholderText("onboarding.usernamePlaceholder")).toHaveValue("bea");
+    expect(screen.getByPlaceholderText("onboarding.bioPlaceholder")).toHaveValue("Designer");
+    expectNoWrites();
   });
 });

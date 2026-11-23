@@ -114,6 +114,29 @@ const timezoneOptions = [
   "Africa/Johannesburg",
 ];
 
+// O que a tela guarda da conta, como começa numa montagem limpa. Volta a isto
+// quando a sessão passa a ser de outra conta (showCleanEntry): nada do que veio
+// da anterior, lido ou digitado, fica para a nova.
+const cleanEntry = {
+  step: 0,
+  selectedPath: null as (typeof paths)[number] | null,
+  displayName: "",
+  username: "",
+  bio: "",
+  timezone: "America/New_York",
+  goals: [] as UserGoal[],
+  onboardingAnswers: {} as OnboardingAnswers,
+  answersLoaded: false,
+  payoutCountry: "",
+  teacherTermsAccepted: false,
+  verificationMessage: "",
+  error: "",
+  readError: "",
+  streamlinedTeacherActivation: false,
+  askPayoutCountry: true,
+  askEmailVerification: true,
+};
+
 export function OnboardingChoice() {
   const router = useRouter();
   const { refreshUser } = useAuth();
@@ -129,39 +152,41 @@ export function OnboardingChoice() {
     () => getPlanCheckoutReturnTo(searchParams.get("returnTo")),
     [searchParams],
   );
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(cleanEntry.step);
   const [uid, setUid] = useState<string | null>(null);
-  const [selectedPath, setSelectedPath] = useState<(typeof paths)[number] | null>(null);
-  const [displayName, setDisplayName] = useState("");
-  const [username, setUsername] = useState("");
-  const [bio, setBio] = useState("");
-  const [timezone, setTimezone] = useState("America/New_York");
-  const [goals, setGoals] = useState<UserGoal[]>([]);
-  const [onboardingAnswers, setOnboardingAnswers] = useState<OnboardingAnswers>({});
-  const [answersLoaded, setAnswersLoaded] = useState(false);
-  const [payoutCountry, setPayoutCountry] = useState("");
-  const [teacherTermsAccepted, setTeacherTermsAccepted] = useState(false);
+  const [selectedPath, setSelectedPath] = useState<(typeof paths)[number] | null>(cleanEntry.selectedPath);
+  const [displayName, setDisplayName] = useState(cleanEntry.displayName);
+  const [username, setUsername] = useState(cleanEntry.username);
+  const [bio, setBio] = useState(cleanEntry.bio);
+  const [timezone, setTimezone] = useState(cleanEntry.timezone);
+  const [goals, setGoals] = useState<UserGoal[]>(cleanEntry.goals);
+  const [onboardingAnswers, setOnboardingAnswers] = useState<OnboardingAnswers>(cleanEntry.onboardingAnswers);
+  // Fica false até uma leitura do perfil responder. Volta a false só na troca
+  // de conta (showCleanEntry), junto com a espera da entrada.
+  const [answersLoaded, setAnswersLoaded] = useState(cleanEntry.answersLoaded);
+  const [payoutCountry, setPayoutCountry] = useState(cleanEntry.payoutCountry);
+  const [teacherTermsAccepted, setTeacherTermsAccepted] = useState(cleanEntry.teacherTermsAccepted);
   const [emailVerified, setEmailVerified] = useState(false);
-  const [verificationMessage, setVerificationMessage] = useState("");
+  const [verificationMessage, setVerificationMessage] = useState(cleanEntry.verificationMessage);
   const [isSendingVerification, setIsSendingVerification] = useState(false);
   // The verification resend is CAPTCHA-guarded like sign-up. Same widget as the
   // auth forms: with no site key it renders nothing and the token stays "".
   const [captchaToken, setCaptchaToken] = useState("");
   const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
   const captchaPending = isCaptchaEnabled && !captchaToken;
-  const [error, setError] = useState("");
+  const [error, setError] = useState(cleanEntry.error);
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   // Quem ja terminou o cadastro nao repete perfil/objetivos na ativacao.
   const [streamlinedTeacherActivation, setStreamlinedTeacherActivation] =
-    useState(false);
+    useState(cleanEntry.streamlinedTeacherActivation);
   // Na ativacao curta so aparece o que falta. Decidido uma vez, com o que veio
   // salvo: senao o campo do pais sumia no instante em que a pessoa escolhia, e
   // o cartao do e-mail some junto com o "verificado" que ela acabou de ver.
   // "Outro pais" continua aparecendo, por causa do aviso de que sem conta de
   // recebimento elegivel nao da para vender.
-  const [askPayoutCountry, setAskPayoutCountry] = useState(true);
-  const [askEmailVerification, setAskEmailVerification] = useState(true);
+  const [askPayoutCountry, setAskPayoutCountry] = useState(cleanEntry.askPayoutCountry);
+  const [askEmailVerification, setAskEmailVerification] = useState(cleanEntry.askEmailVerification);
   // O "Try again" da leitura do perfil relê SÓ o perfil (getUserProfile, um
   // select), com a última pessoa que a sessão entregou. Reinscrever a sessão
   // (o contador nas dependências do efeito, como em outras telas) rodaria de
@@ -174,7 +199,7 @@ export function OnboardingChoice() {
   const loadGeneration = useRef(0);
   // O aviso de leitura vive no mesmo lugar e pelo mesmo tempo que o erro de
   // hoje (sai no próximo clique que limpa o erro); só ele ganha "Try again".
-  const [readError, setReadError] = useState("");
+  const [readError, setReadError] = useState(cleanEntry.readError);
   const showReadError = error !== "" && error === readError;
   // O título da página (o h1 acima desta tela) fica à vista na espera e depois
   // dela: recebe o foco do "Try again", que some com a espera.
@@ -270,14 +295,43 @@ export function OnboardingChoice() {
     return loadProfile(authedUser, true);
   }
 
+  // A sessão passou a ser de outra conta: a tela volta à de uma montagem
+  // limpa, na espera da entrada (nada clicável), até a leitura do perfil da
+  // conta nova responder. Não grava nada.
+  function showCleanEntry() {
+    setIsBootstrapping(true);
+    setStep(cleanEntry.step);
+    setSelectedPath(cleanEntry.selectedPath);
+    setDisplayName(cleanEntry.displayName);
+    setUsername(cleanEntry.username);
+    setBio(cleanEntry.bio);
+    setTimezone(cleanEntry.timezone);
+    setGoals(cleanEntry.goals);
+    setOnboardingAnswers(cleanEntry.onboardingAnswers);
+    setAnswersLoaded(cleanEntry.answersLoaded);
+    setPayoutCountry(cleanEntry.payoutCountry);
+    setTeacherTermsAccepted(cleanEntry.teacherTermsAccepted);
+    setVerificationMessage(cleanEntry.verificationMessage);
+    setError(cleanEntry.error);
+    setReadError(cleanEntry.readError);
+    setStreamlinedTeacherActivation(cleanEntry.streamlinedTeacherActivation);
+    setAskPayoutCountry(cleanEntry.askPayoutCountry);
+    setAskEmailVerification(cleanEntry.askEmailVerification);
+  }
+
   useEffect(() => {
     // Supabase re-fires onAuthStateChange on TOKEN_REFRESHED / USER_UPDATED —
     // the hourly refresh, a tab regaining focus, the email-verification round
     // trip this very screen triggers. uid and emailVerified are server truth
     // and have to stay fresh, but re-seeding the form on those events throws
-    // away everything typed since. Seed once per subscription; a pathIntent
-    // change re-runs the effect and seeds again.
-    let seeded = false;
+    // away everything typed since. Seed once per account per subscription; a
+    // pathIntent change re-runs the effect and seeds again.
+    // Guarda DE QUEM é o perfil semeado, não um booleano: a mesma conta de novo
+    // (renovação, foco, INITIAL_SESSION e depois SIGNED_IN, um "loading" no
+    // meio) não relê nem apaga nada. Outra conta (saiu e entrou com outra em
+    // outra aba) relê: senão o Finish gravaria na conta nova o que a tela
+    // trouxe da anterior.
+    let seededUid: string | null = null;
 
     return listenToAuthState((session) => {
       // Fora de "authenticated" (troca de conta, saída, segundo fator) não há
@@ -300,17 +354,18 @@ export function OnboardingChoice() {
       setUid(authedUser.uid);
       setEmailVerified(authedUser.emailVerified);
 
-      if (seeded) {
+      if (seededUid === authedUser.uid) {
         return;
       }
-      seeded = true;
+      if (seededUid !== null) showCleanEntry();
+      seededUid = authedUser.uid;
 
       setDisplayName(authedUser.displayName ?? "");
       setAskEmailVerification(!authedUser.emailVerified);
 
       void loadProfile(authedUser);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- t is stable per locale and loadProfile only reads pathIntent and t; re-subscribing auth on locale change would drop state
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t is stable per locale, loadProfile only reads pathIntent and t, showCleanEntry only calls setters; re-subscribing auth on locale change would drop state
   }, [pathIntent, router]);
 
   const safeTimezoneOptions = useMemo(() => {
