@@ -1600,7 +1600,9 @@ export function CourseBuilderStudio() {
     // passo, marcar a prévia depois do upload deixava a loja com
     // "Video unavailable" e nenhum aviso no estúdio.
     void syncLessonPreviewAssets(course.id, next).catch(() => {
-      // Falha aqui não pode derrubar o builder; o publish revalida.
+      // Falha aqui não pode derrubar o builder. Nada mais refaz esta
+      // sincronia (o publish não a chama): a amostra fica em "Video
+      // unavailable" até o professor escolhê-la de novo, e nada mais depende dela.
     });
   }
 
