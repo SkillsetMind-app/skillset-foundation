@@ -255,10 +255,12 @@ export function EmbeddedCheckoutPanel({
           {t("billingCheckout.processing")}
         </p>
         {/* A frase da renovacao chega junto com a resposta do servidor: o
-            lugar dela fica guardado (tres linhas) enquanto isso, para o resumo
-            nao crescer e empurrar o cartao quando ela aparece. */}
+            lugar dela fica guardado (quatro linhas) enquanto isso, para o resumo
+            nao crescer e empurrar o cartao quando ela aparece. Medido na fonte
+            do site a 12px/20px: com teste gratis, 3 a 4 linhas em ingles e 4
+            em espanhol nas larguras de celular; tres linhas deixavam pular. */}
         {error ? null : (
-          <p className="mt-2 min-h-[3.75rem] text-xs font-semibold leading-5 text-[var(--color-ink)]">
+          <p className="mt-2 min-h-[5rem] text-xs font-semibold leading-5 text-[var(--color-ink)]">
             {trialDays !== null ? (
               planDisclosure({ t, locale, plan, cycle, trial: trialDays > 0 })
             ) : (
