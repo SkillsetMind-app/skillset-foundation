@@ -90,6 +90,11 @@ describe("MemberAreaHomeView", () => {
     expect(card.getAttribute("href")).toBe("/learn/areas/%40eton/community");
     expect(card.textContent).toContain("Talk with everyone learning with Eton Simon.");
     expect(within(screen.getByRole("region", { name: "My products" })).getByRole("link").textContent).toContain("Course");
+    // "Open the community" é texto de 14px: pede o destaque legível do curso,
+    // não o fundo de botão (2,9:1 num curso escuro).
+    const open = within(card).getByText("Open the community");
+    expect(open).toHaveClass("text-[var(--ma-accent-ink)]");
+    expect(open).not.toHaveClass("text-[var(--ma-accent)]");
   });
 
   it("abre a área mesmo se a comunidade falhar", async () => {

@@ -216,7 +216,9 @@ export function MemberAreaHomeView({
                 {t("learn.memberArea.communityBody").replace("{name}", () => area.creatorName ?? areaName)}
               </span>
             </span>
-            <span className="ml-auto hidden shrink-0 text-sm font-semibold text-[var(--ma-accent)] sm:inline">
+            {/* Texto de 14px: --ma-accent é fundo de botão (2,9:1 num curso
+                escuro); o texto de destaque legível é --ma-accent-ink. */}
+            <span className="ml-auto hidden shrink-0 text-sm font-semibold text-[var(--ma-accent-ink)] sm:inline">
               {t("learn.memberArea.communityOpen")}
             </span>
           </Link>
