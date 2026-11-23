@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { LearnDashboard } from "@/components/learn/learn-dashboard";
-import type { CourseEvent } from "@/domain/course-event";
+import { formatEventDateTime, type CourseEvent } from "@/domain/course-event";
 import type { Enrollment } from "@/domain/enrollment";
 import type { Course } from "@/domain/learning";
 import type { AppNotification } from "@/domain/notification";
@@ -595,6 +595,11 @@ describe("LearnDashboard", () => {
     expect(
       within(news).getByRole("link", { name: /Ana replied to your post/ }),
     ).toHaveAttribute("href", "/learn/community/effective-communication?post=1");
+    // O mesmo destino do sino (notificationHref): a mensagem do professor
+    // abre a conversa, nao a sala inteira.
+    expect(
+      within(news).getByRole("link", { name: /Message from your teacher/ }),
+    ).toHaveAttribute("href", "/learn/messages?course=effective-communication");
     expect(within(news).getByText("Certificate issued")).toBeInTheDocument();
     // A quarta fica para o sino e a caixa de entrada.
     expect(within(news).queryByText("Older notification")).not.toBeInTheDocument();
@@ -654,7 +659,7 @@ describe("LearnDashboard", () => {
     render(<I18nProvider initialLocale="es"><LearnDashboard /></I18nProvider>);
 
     expect(await screen.findByText(
-      new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date(fixtures.liveEvent.startsAt)),
+      formatEventDateTime(fixtures.liveEvent.startsAt, "es"),
     )).toBeInTheDocument();
   });
 

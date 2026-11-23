@@ -10,7 +10,7 @@ import { LearnEventsHub } from "@/components/learn/learn-events-hub";
 import { LearnerWishlist } from "@/components/learn/learner-wishlist";
 import { CommunityLeaderboard } from "@/components/learn/community-leaderboard";
 import type { Enrollment } from "@/domain/enrollment";
-import type { CourseEvent, CourseEventRsvp } from "@/domain/course-event";
+import { formatEventDateTime, type CourseEvent, type CourseEventRsvp } from "@/domain/course-event";
 import type { CourseMessage } from "@/domain/course-message";
 import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 
@@ -409,7 +409,7 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     expect(screen.getByRole("heading", { name: event.title })).toBeVisible();
     expect(screen.getByText("Clase en vivo")).toBeVisible();
     expect(screen.getByText("Programada")).toBeVisible();
-    expect(screen.getByText(new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date(event.startsAt)))).toBeVisible();
+    expect(screen.getByText(formatEventDateTime(event.startsAt, "es"))).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Asistiré" }));
     expect(mocks.saveRsvp).toHaveBeenCalledWith({ eventId: event.id, courseSlug: event.courseSlug, status: "attending", user: mocks.user });
     expect(screen.getByRole("button", { name: "Guardando..." })).toBeDisabled();
