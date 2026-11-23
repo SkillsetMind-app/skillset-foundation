@@ -115,10 +115,45 @@ describe("ganhos: bloco da conta de pagamentos", () => {
     mount();
     await act(async () => {});
     const connect = document.getElementById("stripe-connect")!;
-    const waiting = within(connect).getByRole("status");
-    expect(waiting).toHaveTextContent("Checking your payout account...");
-    expect(waiting.querySelectorAll(".animate-pulse").length).toBeGreaterThan(2);
+    const skeleton = connect.querySelector("[data-skeleton=connect]")!;
+    expect(skeleton).toHaveAttribute("aria-hidden", "true");
+    expect(skeleton.querySelectorAll(".animate-pulse").length).toBeGreaterThan(2);
+    expect(within(connect).queryByRole("status")).toBeNull();
     expect(screen.queryByTestId("stripe-onboarding")).toBeNull();
+  });
+
+  // O bloco da conta e o extrato esperam juntos na primeira visita: eram dois
+  // avisos falando ao mesmo tempo. Um so, da pagina, e ele se cala quando chega.
+  it("na primeira visita ha um aviso de espera so, e ele se cala quando tudo chega", async () => {
+    mocks.profile.mode = "pending";
+    mocks.ledger.mode = "pending";
+    mount();
+    await act(async () => {});
+    const waiting = screen.getAllByRole("status");
+    expect(waiting).toHaveLength(1);
+    expect(waiting[0]).toHaveTextContent("Loading your earnings and payout account...");
+
+    await act(async () => {
+      mocks.onProfile?.({});
+      mocks.onLedger?.([]);
+    });
+    expect(screen.getAllByRole("status")).toEqual(waiting);
+    expect(waiting[0]).toHaveTextContent(/^$/);
+  });
+
+  it("a renovacao do login (outro objeto, mesmo id) nao rele os produtos", async () => {
+    const view = mount();
+    await act(async () => {});
+    expect(mocks.inbox).toHaveBeenCalledTimes(1);
+    const user = mocks.user;
+    mocks.user = { uid: user.uid };
+    try {
+      view.rerender(<I18nProvider initialLocale="en"><TeacherWalletPanel /></I18nProvider>);
+      await act(async () => {});
+      expect(mocks.inbox).toHaveBeenCalledTimes(1);
+    } finally {
+      mocks.user = user;
+    }
   });
 
   it("perfil que falha: um aviso so, no bloco, com Try again que le de novo", async () => {
@@ -134,8 +169,11 @@ describe("ganhos: bloco da conta de pagamentos", () => {
     expect(screen.getAllByText("Unavailable").length).toBeGreaterThan(0);
     expect(screen.queryByTestId("stripe-onboarding")).toBeNull();
 
+    // "Try again" so le o perfil de novo: nao chama a Stripe.
+    const stripeCalls = mocks.refresh.mock.calls.length;
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(mocks.reloadProfile).toHaveBeenCalledTimes(1);
+    expect(mocks.refresh).toHaveBeenCalledTimes(stripeCalls);
     await act(async () => {
       mocks.onProfile?.({});
     });
@@ -169,9 +207,11 @@ describe("ganhos: extrato", () => {
     mount();
     await act(async () => {});
     const statements = screen.getByRole("heading", { level: 2, name: "Recent earnings record." }).closest("section")!;
-    const waiting = within(statements).getByRole("status");
-    expect(waiting).toHaveTextContent("Loading your earnings record...");
-    expect(waiting.querySelectorAll("[aria-hidden=true]")).toHaveLength(3);
+    const skeleton = statements.querySelector("[data-skeleton=statement]")!;
+    expect(skeleton).toHaveAttribute("aria-hidden", "true");
+    expect(skeleton.children).toHaveLength(3);
+    expect(within(statements).queryByRole("status")).toBeNull();
+    expect(screen.getByRole("status")).toHaveTextContent("Loading your earnings and payout account...");
   });
 
   it("cada linha diz o produto e o codigo curto do pedido, sem o id do pagamento", async () => {
@@ -206,8 +246,10 @@ describe("ganhos: extrato", () => {
     expect(statements).toContainElement(alerts[0]);
     expect(screen.queryByText("$0.00")).toBeNull();
 
+    const stripeCalls = mocks.refresh.mock.calls.length;
     fireEvent.click(within(statements).getByRole("button", { name: "Try again" }));
     expect(mocks.reloadLedger).toHaveBeenCalledTimes(1);
+    expect(mocks.refresh).toHaveBeenCalledTimes(stripeCalls);
     await act(async () => {
       mocks.onLedger?.([entry]);
     });

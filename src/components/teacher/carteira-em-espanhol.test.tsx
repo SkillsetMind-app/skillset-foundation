@@ -94,10 +94,11 @@ vi.mock("@/components/teacher/teacher-connect-onboarding", () => ({
 
 afterEach(cleanup);
 
-// Os literais que a tela mostrava antes deste PR. Se algum voltar, a prova cai.
+// Os literais da tela em ingles (os de hoje e os que ja sairam). Se algum
+// aparecer com a tela em espanhol, a prova cai.
 const INGLES_ANTIGO = [
   "Payouts & tax",
-  "Your earnings, your payout setup.",
+  "Your earnings, your payout setup",
   "Payout schedule",
   "Stripe issues your tax forms",
   "Creator net estimate",
@@ -122,7 +123,7 @@ const INGLES_ANTIGO = [
   "Recent earnings record.",
   "Export after first payout",
   "Tax center",
-  "Order ord-1",
+  "Order #ORD-1",
   "Payment pay-1",
   "Recorded",
 ];
@@ -141,6 +142,19 @@ describe("carteira do professor em espanhol", () => {
         `texto antigo: ${literal}`,
       ).toHaveLength(0);
     }
+  });
+
+  // A lista acima so prova algo se a tela em ingles mostra esses textos hoje:
+  // o titulo e a linha do extrato mudaram neste pacote, e a lista mudou junto.
+  it("os literais da lista aparecem na tela em ingles", () => {
+    render(
+      <I18nProvider initialLocale="en">
+        <TeacherWalletPanel />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByRole("heading", { level: 1, name: "Your earnings, your payout setup" })).toBeInTheDocument();
+    expect(screen.getByText("Order #ORD-1")).toBeInTheDocument();
   });
 
   it("mostra o cabecalho, o saldo, o estado da Stripe e os tiles em espanhol", () => {

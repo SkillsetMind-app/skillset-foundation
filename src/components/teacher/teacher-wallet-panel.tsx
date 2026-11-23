@@ -66,6 +66,7 @@ const bone = "animate-pulse rounded-md bg-[var(--color-surface-strong)]";
 
 export function TeacherWalletPanel() {
   const { user } = useAuth();
+  const uid = user?.uid;
   const { locale, t } = useTranslation();
   // `t` fica fora das dependencias dos efeitos: com ele la, um provider que
   // devolva funcao nova por render reinscreve tudo em laco (a suite do CI
@@ -138,12 +139,14 @@ export function TeacherWalletPanel() {
   // produtos nesta pagina (o numero da Caixa de entrada); loadTeacherInbox junta
   // pedidos simultaneos, entao a linha ganha o nome sem leitura nova. Falhou, a
   // linha fica com o codigo curto do pedido, como em Vendas.
+  // Pelo id, nao pelo objeto: a renovacao do login entrega outro `user` com o
+  // mesmo id, e isso nao pode disparar as tres consultas da Caixa de novo.
   useEffect(() => {
-    if (!user) {
+    if (!uid) {
       return;
     }
     let alive = true;
-    loadTeacherInbox(user.uid).then(
+    loadTeacherInbox(uid).then(
       ({ courses }) => {
         if (alive) setCourseTitles(new Map(courses.map((course) => [course.id, course.title])));
       },
@@ -152,7 +155,7 @@ export function TeacherWalletPanel() {
     return () => {
       alive = false;
     };
-  }, [user]);
+  }, [uid]);
 
   function handleOnboardingComplete() {
     void refreshStripeStatus();
@@ -306,6 +309,12 @@ export function TeacherWalletPanel() {
           duas caixas feitas a mao, mudas, e a vermelha some no tema escuro. */}
       {notice ? <InlineAlert tone={notice.tone}>{notice.text}</InlineAlert> : null}
       {error ? <InlineAlert tone="error">{error}</InlineAlert> : null}
+      {/* UM aviso de espera para a pagina inteira, sempre montado (para o
+          leitor de tela ouvir a troca): o bloco da conta e o extrato esperam
+          ao mesmo tempo, e dois avisos falavam juntos. Os esqueletos sao mudos. */}
+      <p role="status" className="sr-only">
+        {isLoading || ledgerState === "loading" ? t("teach.earnings.pageLoading") : ""}
+      </p>
       {/* Veio do Publish do construtor: pagamentos prontos, o caminho de volta
           para publicar e um botao, nao a barra lateral. */}
       {ready && returnTo ? (
@@ -522,12 +531,11 @@ export function TeacherWalletPanel() {
             {isLoading ? (
               // A forma do primeiro passo (o pais da conta e o botao), no
               // lugar de um bloco vazio em que o formulario caia depois.
-              <div role="status" className="grid gap-3">
-                <span className="sr-only">{t("teach.earnings.connectLoading")}</span>
-                <div aria-hidden="true" className={`h-4 w-48 ${bone}`} />
-                <div aria-hidden="true" className={`h-11 w-full max-w-sm ${bone}`} />
-                <div aria-hidden="true" className={`h-4 w-full max-w-md ${bone}`} />
-                <div aria-hidden="true" className={`mt-1 h-11 w-56 max-w-full ${bone}`} />
+              <div aria-hidden="true" data-skeleton="connect" className="grid gap-3">
+                <div className={`h-4 w-48 ${bone}`} />
+                <div className={`h-11 w-full max-w-sm ${bone}`} />
+                <div className={`h-4 w-full max-w-md ${bone}`} />
+                <div className={`mt-1 h-11 w-56 max-w-full ${bone}`} />
               </div>
             ) : !profile ? (
               <LoadErrorAlert
@@ -570,12 +578,10 @@ export function TeacherWalletPanel() {
           {ledgerState === "loading" ? (
             // Linhas no formato do extrato (data, produto, situacao, valor),
             // no lugar de uma frase numa caixa que depois virava a lista.
-            <div role="status" className="divide-y divide-[var(--color-line)]">
-              <span className="sr-only">{t("teach.earnings.ledgerLoading")}</span>
+            <div aria-hidden="true" data-skeleton="statement" className="divide-y divide-[var(--color-line)]">
               {[0, 1, 2].map((row) => (
                 <div
                   key={row}
-                  aria-hidden="true"
                   className="grid gap-3 bg-white p-4 md:grid-cols-[140px_1fr_150px_120px_auto] md:items-center"
                 >
                   <div className={`h-3 w-20 ${bone}`} />

@@ -25,7 +25,7 @@ vi.mock("@/lib/supabase/client", () => ({
     from: (table: string) => {
       const query: unknown[][] = [["from", table]];
       const builder: Record<string, unknown> = {};
-      for (const method of ["select", "eq", "in", "order", "limit", "maybeSingle"]) {
+      for (const method of ["select", "eq", "in", "order", "limit", "range", "maybeSingle"]) {
         builder[method] = (...args: unknown[]) => {
           query.push([method, ...args]);
           return builder;
@@ -55,7 +55,8 @@ vi.mock("@/lib/supabase/client", () => ({
 
 const { subscribeToUserWishlist } = await import("@/lib/data/wishlist");
 const { subscribeToPublishedTeacherCourses } = await import("@/lib/data/published-courses");
-const { subscribeToCourseSubscription } = await import("@/lib/data/course-subscriptions");
+const { subscribeToCourseSubscription, subscribeToTeacherCourseSubscriptions } = await import("@/lib/data/course-subscriptions");
+const { subscribeToTeacherPayoutLedger } = await import("@/lib/data/payout-ledger");
 const { subscribeToCommunityPosts } = await import("@/lib/data/community-posts");
 const { subscribeToEnrollment } = await import("@/lib/data/enrollments");
 const { subscribeToCompletedLessons } = await import("@/lib/data/lesson-progress");
@@ -323,6 +324,87 @@ describe("reload() das inscrições do aluno e do site", () => {
     const retry = subscription.reload();
     await reads(2);
     subscription();
+    fake.reads[1].answer({ data: item.answer("tarde"), error: null });
+    await expect(retry).resolves.toBeUndefined();
+    expect(callback).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledOnce();
+    expect(fake.removeChannel).toHaveBeenCalledOnce();
+  });
+});
+
+// Ganhos e Assinaturas: as duas leituras do professor ganharam `reload` (o
+// "Try again"). Elas leem em páginas e, ao desligar, já não entregavam nada,
+// nem a leitura inicial; e a releitura do canal só entrega a mais nova. Por
+// isso ficam fora da lista acima, com as provas que valem para elas.
+type TeacherCase = {
+  name: string;
+  subscribe: (callback: (value: unknown) => void, onError: (error: Error) => void) => Subscription;
+  table: string;
+  answer: (id: string) => unknown;
+};
+
+const teacherCases: TeacherCase[] = [
+  {
+    name: "subscribeToTeacherPayoutLedger",
+    subscribe: (callback, onError) => subscribeToTeacherPayoutLedger("t-1", callback as never, onError),
+    table: "payout_ledger",
+    answer: (id) => [{ id, teacher_id: "t-1", course_id: "c-1", order_id: id, currency: "USD", status: "settled" }],
+  },
+  {
+    name: "subscribeToTeacherCourseSubscriptions",
+    subscribe: (callback, onError) => subscribeToTeacherCourseSubscriptions("t-1", callback as never, onError),
+    table: "course_subscriptions",
+    answer: (id) => [{ id, user_id: "u-1", teacher_id: "t-1", course_id: "c-1", status: "active" }],
+  },
+];
+
+// A consulta de main, chamada por chamada (a primeira página de 500).
+const teacherQuery = (table: string) => [
+  ["from", table], ["select", "*"], ["eq", "teacher_id", "t-1"],
+  ["order", "created_at", { ascending: true }], ["order", "id", { ascending: true }], ["range", 0, 499],
+];
+
+async function startTeacher(item: TeacherCase) {
+  fake.reads = [];
+  fake.channels = [];
+  fake.removeChannel.mockClear();
+  const callback = vi.fn();
+  const onError = vi.fn();
+  const subscription = item.subscribe(callback, onError);
+  await reads(1);
+  fake.reads[0].answer({ data: null, error: new Error("offline") });
+  await vi.waitFor(() => expect(onError).toHaveBeenCalledOnce());
+  return { callback, onError, subscription };
+}
+
+describe("reload() das leituras do professor (Ganhos e Assinaturas)", () => {
+  it.each(teacherCases)("$name: o reload repete a mesma consulta, no mesmo canal, e entrega uma vez", async (item) => {
+    const { callback, onError, subscription } = await startTeacher(item);
+    expect(fake.reads[0].query).toEqual(teacherQuery(item.table));
+    expect(fake.channels).toHaveLength(1);
+    expect(fake.channels[0]).toMatchObject({
+      name: `${item.table}:teacher:t-1`,
+      kind: "postgres_changes",
+      filter: { event: "*", schema: "public", table: item.table, filter: "teacher_id=eq.t-1" },
+    });
+
+    const retry = subscription.reload();
+    await reads(2);
+    expect(fake.reads[1].query).toEqual(teacherQuery(item.table));
+    fake.reads[1].answer({ data: item.answer("de-novo"), error: null });
+    await expect(retry).resolves.toBeUndefined();
+    expect(callback).toHaveBeenCalledOnce();
+    expect((callback.mock.calls[0][0] as Array<{ id: string }>).map((row) => row.id)).toEqual(["de-novo"]);
+    expect(onError).toHaveBeenCalledOnce();
+    expect(fake.channels).toHaveLength(1);
+    expect(fake.removeChannel).not.toHaveBeenCalled();
+  });
+
+  it.each(teacherCases)("$name: o reload depois de desligar não entrega nada", async (item) => {
+    const { callback, onError, subscription } = await startTeacher(item);
+    subscription();
+    const retry = subscription.reload();
+    await reads(2);
     fake.reads[1].answer({ data: item.answer("tarde"), error: null });
     await expect(retry).resolves.toBeUndefined();
     expect(callback).not.toHaveBeenCalled();
