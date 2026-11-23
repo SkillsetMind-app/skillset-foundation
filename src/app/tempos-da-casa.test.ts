@@ -4,11 +4,12 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 // O contrato de movimento tem três tempos (120, 180 e 280ms) e uma curva. O
-// que sobrava fora dele (150, 160, 200, 220, 500, 620ms) fazia controles
-// vizinhos andarem em ritmos diferentes. Ficam de fora, de propósito, os
-// tempos que outro teste já fixa (cabeçalho do site em site-frame, seções em
-// reveal-without-js) e a escala do apertar (onda-d-motion). jsdom não anima
-// nada: o que se prova aqui é a REGRA do CSS.
+// que sobrava fora dele (150, 160, 200, 220ms) nos controles da plataforma
+// fazia vizinhos andarem em ritmos diferentes. Ficam de fora, de propósito: o
+// movimento da home aprovado no #576 (entrada do hero, cartão e foto da
+// vitrine), os tempos que outro teste já fixa (cabeçalho do site em
+// site-frame, seções em reveal-without-js) e a escala do apertar
+// (onda-d-motion). jsdom não anima nada: o que se prova aqui é a REGRA do CSS.
 const css = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
 
 function block(selector: string): string {
@@ -29,9 +30,6 @@ describe("tempos da casa", () => {
     ".platform-nav-section-chevron",
     ".dash-card",
     ".studio-payout-chip",
-    ".marketplace-card",
-    ".marketplace-card__media img",
-    ".hero-copy-rise",
   ])("%s anda nos tokens, sem milissegundo solto", (selector) => {
     const body = block(selector);
     expect(body).toMatch(/var\(--duration-(base|slow)\) var\(--ease-standard\)/);

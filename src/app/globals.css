@@ -1080,7 +1080,7 @@ p {
 
 @media (prefers-reduced-motion: no-preference) {
   .hero-copy-rise {
-    animation: hero-copy-rise var(--duration-slow) var(--ease-standard) both;
+    animation: hero-copy-rise 620ms cubic-bezier(0.2, 0.6, 0.2, 1) both;
   }
 }
 
@@ -9376,9 +9376,9 @@ button:hover > .dash-card,
   background: var(--color-surface);
   box-shadow: var(--shadow-soft);
   transition:
-    transform var(--duration-base) var(--ease-standard),
-    border-color var(--duration-base) var(--ease-standard),
-    box-shadow var(--duration-base) var(--ease-standard);
+    transform 220ms cubic-bezier(0.2, 0.6, 0.2, 1),
+    border-color 180ms ease,
+    box-shadow 220ms ease;
 }
 
 .marketplace-card:hover {
@@ -9520,8 +9520,8 @@ button:hover > .dash-card,
 
 .marketplace-card__media img {
   transition:
-    transform var(--duration-slow) var(--ease-standard),
-    filter var(--duration-base) var(--ease-standard);
+    transform 500ms cubic-bezier(0.2, 0.6, 0.2, 1),
+    filter 220ms ease;
 }
 
 .marketplace-card:hover .marketplace-card__media img {
