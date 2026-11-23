@@ -133,8 +133,10 @@ export function ProfileSettingsPanel() {
     };
   }, [user, loadAttempt]);
 
-  // Volta à espera de sempre (o esqueleto) até a leitura nova responder.
+  // Volta à espera de sempre (o esqueleto) até a leitura nova responder. Limpa
+  // também o erro de antes da falha (foto, salvar): ele voltaria com o formulário.
   function retryLoad() {
+    setError("");
     setLoadFailed(false);
     setIsLoading(true);
     setLoadAttempt((attempt) => attempt + 1);

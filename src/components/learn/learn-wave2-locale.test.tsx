@@ -327,6 +327,12 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     expect(title).toHaveAttribute("data-focus-title", "true");
     expect(mocks.enrollment).toHaveBeenCalledTimes(2);
     expect(mocks.course).toHaveBeenCalledTimes(1);
+
+    // A sala fecha (a matrícula deixa de abrir) e reabre sem "Try again": o
+    // pedido de foco já foi usado e não volta.
+    act(() => { mocks.enrollment.mock.calls[1][2]({ ...enrollment, status: "expired" }); });
+    act(() => { mocks.enrollment.mock.calls[1][2](enrollment); });
+    expect(screen.getByRole("heading", { name: enrollment.courseTitle })).toHaveAttribute("data-focus-title", "false");
   });
 
   it("falha ao ler o curso: \"Try again\" refaz só a leitura do curso e abre a sala", async () => {
