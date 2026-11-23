@@ -119,6 +119,10 @@ describe("localized preview entry without reconnecting the course", () => {
     // A aba de origem fica guardada no módulo (sobrevive à troca de aba da
     // prévia): cada caso carrega o módulo de novo, com o seu opener.
     async function exitClick(opener: unknown, { closes = true }: { closes?: boolean } = {}) {
+      // Relógio simulado em TODO caso: o clique agenda um setTimeout de 150 ms
+      // que lê window.closed. Com relógio real, o de um caso disparava no meio
+      // do seguinte (o afterEach já devolveu closed=false) e chamava o push.
+      vi.useFakeTimers({ toFake: ["setTimeout"] });
       vi.resetModules();
       Object.defineProperty(window, "opener", { configurable: true, writable: true, value: opener });
       Object.defineProperty(window, "closed", { configurable: true, writable: true, value: false });
@@ -167,7 +171,6 @@ describe("localized preview entry without reconnecting the course", () => {
     });
 
     it("if the browser refuses to close, the tab goes to the builder after a moment", async () => {
-      vi.useFakeTimers({ toFake: ["setTimeout"] });
       const { close, prevented } = await exitClick(builderTab(), { closes: false });
       expect(close).toHaveBeenCalledOnce();
       expect(prevented).toBe(true);
