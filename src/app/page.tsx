@@ -29,6 +29,24 @@ export async function generateMetadata() {
 const SHOWCASE_COURSE_ID = "1a280dc6-acce-4f1f-9e95-56df095131ae";
 const SHOWCASE_COURSE_PATH = `/courses/${SHOWCASE_COURSE_ID}`;
 
+// A leitura do curso usa o cliente da sessão, que não tem prazo próprio: um
+// banco lento seguraria a home inteira. Mesmo prazo da checagem da vitrine
+// (1,5 s); passou dele, vale null e fica o cartão de texto. ponytail: a
+// leitura não é cancelada, só deixa de ser esperada.
+const SHOWCASE_READ_BUDGET_MS = 1_500;
+
+async function readShowcaseCourse() {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const budget = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), SHOWCASE_READ_BUDGET_MS);
+  });
+  try {
+    return await Promise.race([getPublicCourseByRef(SHOWCASE_COURSE_ID), budget]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export default async function Home() {
   // Vitrine fechada (menos de 12 cursos de 5 professores): a faixa "The
   // marketplace" dá lugar a um cartão que leva a UM curso real. O menu é o
@@ -36,9 +54,9 @@ export default async function Home() {
   const marketplaceOpen = await isMarketplaceOpen();
   const { t } = await getServerTranslation();
   // A capa de verdade do curso, a mesma da página dele: a home quase não tinha
-  // imagem. Leitura que falha, curso fora do ar ou sem capa: o cartão de texto
-  // de sempre, sem quadro vazio no lugar da foto.
-  const showcase = marketplaceOpen ? null : await getPublicCourseByRef(SHOWCASE_COURSE_ID);
+  // imagem. Leitura que falha ou passa do prazo, curso fora do ar ou sem capa:
+  // o cartão de texto de sempre, sem quadro vazio no lugar da foto.
+  const showcase = marketplaceOpen ? null : await readShowcaseCourse();
   const cover = showcase?.coverImageUrl ? { src: showcase.coverImageUrl, alt: showcase.title } : null;
 
   const courseCopy = (
@@ -80,25 +98,28 @@ export default async function Home() {
         ) : (
           <section id="real-course" className="home-feature mx-auto w-full max-w-7xl px-5 sm:px-8">
             {cover ? (
-              // Celular: capa em cima (16:9, largura toda) e o texto embaixo.
-              // Do md para cima: capa à esquerda (45%) e o texto centrado à
-              // direita; a capa estica até a altura do texto (object-cover).
-              // O zoom lento no mouse é o da foto dos cartões da vitrine
-              // (.marketplace-card__media img: 500ms, mesma curva, 1.045).
+              // Celular e tablet: capa em cima (16:9, largura toda) e o texto
+              // embaixo. As duas colunas só começam no lg: entre 768 e 1023 o
+              // texto ficava bem mais alto que a capa. Do lg para cima a capa
+              // fica à esquerda (45%), com margem e cantos próprios, e capa e
+              // texto ficam centrados na altura: a capa é sempre 16:9, nunca
+              // estica nem corta para acompanhar o texto. O zoom lento no
+              // mouse é o da foto da vitrine (.marketplace-card__media img:
+              // 500ms, mesma curva, 1.045).
               <Link
                 href={SHOWCASE_COURSE_PATH}
-                className="group flex flex-col overflow-hidden rounded-lg border fine-rule bg-white shadow-[var(--shadow-soft)] transition hover:border-[var(--color-primary)] md:flex-row"
+                className="group flex flex-col overflow-hidden rounded-lg border fine-rule bg-white shadow-[var(--shadow-soft)] transition hover:border-[var(--color-primary)] lg:flex-row lg:items-center"
               >
-                <span className="relative block aspect-[16/9] overflow-hidden md:w-[45%] md:shrink-0">
+                <span className="relative block aspect-[16/9] overflow-hidden lg:m-6 lg:w-[45%] lg:shrink-0 lg:rounded-md">
                   <Image
                     src={cover.src}
                     alt={cover.alt}
                     fill
-                    sizes="(min-width: 1280px) 548px, (min-width: 768px) 45vw, 100vw"
+                    sizes="(min-width: 1280px) 548px, (min-width: 1024px) 45vw, 100vw"
                     className="object-cover transition-transform duration-500 ease-[cubic-bezier(0.2,0.6,0.2,1)] motion-safe:group-hover:scale-[1.045]"
                   />
                 </span>
-                <span className="flex flex-col justify-center gap-4 p-6 sm:p-8 lg:p-10">
+                <span className="flex flex-col justify-center gap-4 p-6 sm:p-8 lg:p-10 lg:pl-4">
                   {courseCopy}
                   {courseCta}
                 </span>

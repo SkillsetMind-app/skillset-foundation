@@ -124,6 +124,32 @@ describe("marketing home", () => {
     expect(within(card).getByText("Open the course")).toBeInTheDocument();
   });
 
+  // Banco lento: a home não espera a leitura do curso além de 1,5 s (o mesmo
+  // prazo da checagem da vitrine) e sai com o cartão de texto.
+  it("does not wait on a slow course read: after 1.5 s it renders the text-only card", async () => {
+    vi.useFakeTimers();
+    try {
+      readCourse.mockImplementationOnce(() => new Promise<PublicCourseSummary | null>(() => {}));
+      let settled = false;
+      const page = Home().then((element) => {
+        settled = true;
+        return element;
+      });
+      await vi.waitFor(() => expect(readCourse).toHaveBeenCalled());
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(500);
+      expect(settled).toBe(true);
+      render(<RealCoursesProvider value={false}>{await page}</RealCoursesProvider>);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    const card = screen.getByRole("link", { name: /See a real course on SkillsetMind/ });
+    expect(within(card).queryByRole("img")).not.toBeInTheDocument();
+    expect(within(card).getByText("Open the course")).toBeInTheDocument();
+  });
+
   // Sem capa, ou leitura que falhou: o cartão de texto de antes, sem quadro de
   // imagem vazio.
   it.each([

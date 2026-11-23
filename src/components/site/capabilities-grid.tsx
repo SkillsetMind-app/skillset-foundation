@@ -37,14 +37,14 @@ export async function CapabilitiesGrid() {
 
   return (
     <section className="mx-auto w-full max-w-7xl px-5 py-16 sm:px-8 sm:py-20 lg:py-24">
-      {/* Mesma escala de título e de texto das outras seções da home: 36px
-          a 64px (largo, para caber em duas linhas) e texto de 17/18px na cor
-          cheia. */}
+      {/* Mesma escala de título e de texto das outras seções da home: 32px
+          a 52px, sempre abaixo do título do topo (largo, para caber em duas
+          linhas), e texto de 17/18px na cor cheia. */}
       <RevealSection className="home-heading max-w-4xl">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {t("home.capabilities.kicker")}
         </p>
-        <h2 className="display-title mt-3 text-[clamp(2.25rem,5vw,4rem)] leading-[1.05] text-[var(--color-primary)]">
+        <h2 className="display-title mt-3 text-[clamp(2rem,4.2vw,3.25rem)] leading-[1.05] text-[var(--color-primary)]">
           {t("home.capabilities.title")}
         </h2>
         <p className="mt-4 max-w-xl text-[1.0625rem] leading-[1.6] text-[var(--color-ink)] md:text-lg">

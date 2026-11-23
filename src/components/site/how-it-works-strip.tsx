@@ -39,19 +39,19 @@ export async function HowItWorksStrip() {
 
   return (
     <section className="home-how__panel mx-auto w-full max-w-7xl px-5 py-16 sm:px-8 sm:py-20 lg:py-24">
-      {/* Título de seção maior (36px no celular a 64px a partir de 1280) e
-          mais largo (max-w-4xl): com a coluna antiga ele quebrava em três
-          linhas e o painel preso do computador não caberia abaixo da barra.
-          O lg:mt-8 dos passos devolve ao painel a altura que o título ganhou. */}
+      {/* Título de seção maior, de 32px no celular a 52px, sempre abaixo do
+          título do topo (clamp(2.3rem, 4.6vw, 3.6rem)) em qualquer largura.
+          Mais largo (max-w-4xl) para ficar em duas linhas: o painel preso do
+          computador precisa caber abaixo da barra. */}
       <RevealSection className="home-heading max-w-4xl">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {t("home.how.kicker")}
         </p>
-        <h2 className="display-title mt-3 text-[clamp(2.25rem,5vw,4rem)] leading-[1.05] text-[var(--color-primary)]">
+        <h2 className="display-title mt-3 text-[clamp(2rem,4.2vw,3.25rem)] leading-[1.05] text-[var(--color-primary)]">
           {t("home.how.title")}
         </h2>
       </RevealSection>
-      <div className="home-steps mt-10 grid gap-8 sm:mt-12 lg:mt-8 lg:grid-cols-3">
+      <div className="home-steps mt-10 grid gap-8 sm:mt-12 lg:grid-cols-3">
         {steps.map((step) => {
           const { Icon } = step;
           return (

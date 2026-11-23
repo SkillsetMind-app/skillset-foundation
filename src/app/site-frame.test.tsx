@@ -207,6 +207,29 @@ describe("seções de marketing viraram servidor", () => {
     },
   );
 
+  // Hierarquia: título de seção nunca maior que o título do topo, em nenhuma
+  // largura, e pelo menos 0.25rem menor no celular. Lê o clamp() de cada
+  // arquivo e compara de 320 a 1920px (1rem = 16px).
+  it("os títulos de seção ficam abaixo do título do topo em qualquer largura", () => {
+    const clampOf = (path: string, tag: string) => {
+      const match = readSource(path).match(
+        new RegExp(`<${tag} className="[^"]*text-\\[clamp\\(([\\d.]+)rem,([\\d.]+)vw,([\\d.]+)rem\\)\\]`),
+      );
+      expect(match, `${path}: clamp do <${tag}> não encontrado`).not.toBeNull();
+      const [min, vw, max] = match!.slice(1).map(Number);
+      return (width: number) => Math.min(Math.max(min * 16, (vw * width) / 100), max * 16);
+    };
+    const hero = clampOf("src/components/site/marketing-hero.tsx", "h1");
+    for (const file of ["how-it-works-strip", "capabilities-grid", "promise-preview-band", "for-creators-band"]) {
+      const section = clampOf(`src/components/site/${file}.tsx`, "h2");
+      for (let width = 320; width <= 1920; width += 8) {
+        expect(section(width), `${file} em ${width}px`).toBeLessThan(hero(width));
+        if (width < 768) expect(hero(width) - section(width), `${file} em ${width}px`).toBeGreaterThanOrEqual(4);
+      }
+      expect(hero(1920) - section(1920), file).toBeGreaterThanOrEqual(0.35 * 16 - 0.01);
+    }
+  });
+
   // S-17: cartão que não abre nada não reage ao mouse (subir e trocar a cor
   // do ícone fazia parecer botão). A classe home-card segue: é dela que a
   // coreografia de rolagem precisa.
