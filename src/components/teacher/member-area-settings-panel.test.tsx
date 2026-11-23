@@ -371,6 +371,36 @@ describe("MemberAreaSettingsPanel", () => {
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
   });
 
+  it("numa área travada pelo plano, o \"Try again\" da lista continua clicável", async () => {
+    // Plano Free: a extra passa do limite e o formulário dela fica travado.
+    mocks.getUserProfile.mockResolvedValue({ displayName: "Eton Simon", username: "eton", currentPlanId: "free" });
+    mocks.getMyMemberAreas.mockResolvedValue(editorOf([virtualMain, {
+      id: "area-2", slug: "vip", settings: { name: "VIP", theme: "light", coverPath: null, welcomeText: null }, communityCourseId: null,
+    }]));
+    const reload = vi.fn();
+    mocks.subscribeToTeacherCourses.mockImplementation(
+      (_uid: string, callback: (value: unknown) => void, onError: (error: Error) => void) => {
+        onError(new Error("offline"));
+        reload.mockImplementation(async () => callback(courses));
+        return Object.assign(() => undefined, { reload });
+      },
+    );
+    renderPanel();
+    fireEvent.click(await screen.findByRole("tab", { name: "VIP" }));
+    expect(await screen.findByText(/your current plan does not include it/)).toBeTruthy();
+    expect(screen.getByLabelText("Area name")).toBeDisabled();
+    const retry = screen.getByRole("button", { name: "Try again" });
+    expect(retry).toBeEnabled();
+    fireEvent.click(retry);
+    await waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    // O que edita a lista (e a comunidade) segue travado na área travada.
+    await screen.findByText("No products in this area yet. Add one below.");
+    const selects = screen.getAllByRole("combobox");
+    expect(selects.length).toBeGreaterThan(1);
+    for (const select of selects) expect(select).toBeDisabled();
+  });
+
   it("erro de salvar não ganha \"Try again\"", async () => {
     mocks.saveMyMemberArea.mockRejectedValue(new Error("boom"));
     renderPanel();

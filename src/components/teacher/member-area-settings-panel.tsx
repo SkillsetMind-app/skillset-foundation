@@ -648,7 +648,11 @@ function MemberAreaForm({
           )}
         </Field>
       </Card>
+      </fieldset>
 
+      {/* O cartão de produtos fica fora do fieldset travado: o "Try again" da
+          leitura funciona mesmo numa área travada ou salvando. O que edita a
+          lista segue travado no fieldset de dentro. */}
       <Card tone="soft" padding="sm" shadow={false} className="grid gap-3">
         {/* Fica na tela nos dois desfechos do "Try again" e recebe o foco. */}
         <div ref={productsRef} tabIndex={-1} className="outline-none">
@@ -665,7 +669,9 @@ function MemberAreaForm({
           <LoadErrorAlert onRetry={onRetryCourses} focusRef={productsRef}>
             {t("creatorPanel.products.loadError")}
           </LoadErrorAlert>
-        ) : courses === null ? (
+        ) : null}
+        <fieldset disabled={saving || locked} className="grid min-w-0 gap-3 empty:hidden">
+        {coursesFailed ? null : courses === null ? (
           // A forma das linhas de produto, não uma frase solta.
           <CardStackSkeleton label={t("teach.memberAreaEditor.loading")} cards={2} />
         ) : orderedCourses.length === 0 ? (
@@ -762,8 +768,10 @@ function MemberAreaForm({
             )}
           </Field>
         ) : null}
+        </fieldset>
       </Card>
 
+      <fieldset disabled={saving || locked} className="grid min-w-0 gap-5">
       <Card padding="sm" shadow={false} className="grid gap-3">
         <Field
           id="member-area-community"
