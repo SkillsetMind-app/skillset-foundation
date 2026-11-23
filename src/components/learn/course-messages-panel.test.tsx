@@ -113,6 +113,21 @@ describe("private course messages in the current locale", () => {
     expect(subscribeToCourseThread).toHaveBeenCalledTimes(1);
   });
 
+  // F-11: a falha da leitura tem saída, no lugar da conversa, e o rascunho fica.
+  it("Try again reads the thread again and keeps the draft", () => {
+    vi.mocked(subscribeToCourseThread).mockImplementationOnce((_course, _student, _next, error) => {
+      error(new Error("offline"));
+      return vi.fn();
+    });
+    renderMessages(false, "en");
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "Unsent" } });
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+
+    expect(subscribeToCourseThread).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByRole("textbox")).toHaveValue("Unsent");
+  });
+
   // O historico surgia de repente acima do formulario: ate a primeira leitura,
   // linhas de espera no lugar dele, com um aviso so para o leitor de tela.
   it("shows a wait state where the thread will appear, until the first read", () => {

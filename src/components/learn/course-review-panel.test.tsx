@@ -144,4 +144,21 @@ describe("CourseReviewPanel locale and state", () => {
     expect(subscribeToUserCourseReview).toHaveBeenCalledTimes(1);
     expect(submitCourseReview).not.toHaveBeenCalled();
   });
+
+  // F-11: a falha da leitura tem saída; a resenha salva chega e preenche o formulário.
+  it("Try again reads the saved review again", () => {
+    vi.mocked(subscribeToUserCourseReview).mockImplementationOnce((_courseId, _userId, _onNext, onError) => {
+      onError(new Error("offline"));
+      return vi.fn();
+    });
+    mocks.review = { rating: 3, body: "Solid course" } as CourseReview;
+    renderReview({}, "en");
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load your course review.");
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(subscribeToUserCourseReview).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByDisplayValue("Solid course")).toBeInTheDocument();
+    expect(submitCourseReview).not.toHaveBeenCalled();
+  });
 });

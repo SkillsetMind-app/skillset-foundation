@@ -488,6 +488,22 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     expect(mocks.leaderboard).toHaveBeenCalledTimes(2);
   });
 
+  // F-03 / F-11: a espera tem a forma das linhas; a falha não diz "vazio" e tem saída.
+  it("leaderboard waits with row shapes, and a failed read offers Try again", () => {
+    let fail!: (error: Error) => void;
+    mocks.leaderboard.mockImplementationOnce((_window, _next, onError) => { fail = onError; return () => {}; });
+    show(<CommunityLeaderboard currentUserStats={null} />);
+    expect(screen.getByRole("status")).toHaveTextContent("Cargando clasificación...");
+
+    act(() => fail(new Error("offline")));
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.queryByText(/Todavía no hay puntos/)).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Intentar de nuevo" }));
+    expect(mocks.leaderboard).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   it.each([
     ["community", "La comunidad se abre después de matricularte."],
     ["events", "Los eventos se abren después de matricularte."],

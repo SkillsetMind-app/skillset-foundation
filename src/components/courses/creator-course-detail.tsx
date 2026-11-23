@@ -15,6 +15,7 @@ import { renderCourseDetailSkeleton } from "@/components/courses/course-detail-s
 import { CourseModuleDisclosure } from "@/components/courses/course-module-disclosure";
 import { CourseUnlockModal } from "@/components/learn/course-unlock-modal";
 import { InlineAlert } from "@/components/ui/inline-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import {
   CourseInstructorCard,
   CourseReviewsSection,
@@ -202,7 +203,10 @@ export function CreatorCourseDetail({
   // Ref de callback: o cartão só nasce depois que o curso carrega.
   const [enrollCardInView, setEnrollCardInView] = useState<boolean | null>(null);
   const enrollCardObserver = useRef<IntersectionObserver | null>(null);
+  // O cartão também recebe o foco do "Try again" do preço (fica nos dois desfechos).
+  const enrollCardRef = useRef<HTMLElement | null>(null);
   const watchEnrollCard = useCallback((node: HTMLElement | null) => {
+    enrollCardRef.current = node;
     enrollCardObserver.current?.disconnect();
     enrollCardObserver.current = null;
     if (!node || checkoutOnly || typeof IntersectionObserver === "undefined") return;
@@ -266,6 +270,9 @@ export function CreatorCourseDetail({
     content: LessonContent | null;
   }>({ key: null, content: null });
 
+  // "Try again" do erro de leitura: a assinatura não relê sozinha, então o
+  // número novo assina de novo. O aviso fica na tela até a resposta chegar.
+  const [courseReadAttempt, setCourseReadAttempt] = useState(0);
   useEffect(() => {
     if (!courseRef || !hasBackendConfig) {
       return;
@@ -275,6 +282,7 @@ export function CreatorCourseDetail({
       courseRef,
       (nextCourse) => {
         setCourse(nextCourse);
+        setError("");
         setIsLoading(false);
       },
       () => {
@@ -282,7 +290,7 @@ export function CreatorCourseDetail({
         setIsLoading(false);
       },
     );
-  }, [courseRef, hasBackendConfig]);
+  }, [courseRef, hasBackendConfig, courseReadAttempt]);
 
   // Resolved primary key — empty until the course row loads.
   const resolvedCourseId = course?.id ?? "";
@@ -319,6 +327,9 @@ export function CreatorCourseDetail({
     };
   }, [checkoutOnly, resolvedCourseId, hasBackendConfig, freePreviewLessonId]);
 
+  // "Try again" do preço: limpa o erro (o cartão volta à espera de sempre, sem
+  // preço nem botão de pagar) e lê as ofertas de novo.
+  const [offerReadAttempt, setOfferReadAttempt] = useState(0);
   useEffect(() => {
     if (!resolvedCourseId || !isCoursePubliclySellable(course?.status)) {
       return;
@@ -345,7 +356,7 @@ export function CreatorCourseDetail({
       });
 
     return () => controller.abort();
-  }, [course?.status, resolvedCourseId]);
+  }, [course?.status, resolvedCourseId, offerReadAttempt]);
 
   // Evento ao vivo: a data da sessao, no fuso de quem ensina. Fica guardada
   // com o id do curso, entao uma resposta velha nunca aparece em outro.
@@ -392,7 +403,7 @@ export function CreatorCourseDetail({
     );
   }
 
-  if (isLoading) {
+  if (isLoading && !error) {
     // Carregar não é erro: o esqueleto da página, sem título nem saída.
     // Chamado como função, e não como <CourseDetailSkeleton />: a árvore sai
     // com a mesma forma do retorno abaixo, e o `lead` (capa e h1 do servidor)
@@ -405,7 +416,23 @@ export function CreatorCourseDetail({
   }
 
   if (error) {
-    return <CourseDetailState title={t("publicCourses.unavailable")} detail={t(error)} nested={hideHeader} lead={lead} />;
+    // Rede ruim não é fim de caminho: o aviso com "Try again", que lê o curso de
+    // novo; nada de preço ou botão de pagar até a leitura dar certo.
+    return (
+      <CourseDetailState
+        title={t("publicCourses.unavailable")}
+        detail={t(error)}
+        nested={hideHeader}
+        lead={lead}
+        retry={{
+          busy: isLoading,
+          onRetry: () => {
+            setIsLoading(true);
+            setCourseReadAttempt((attempt) => attempt + 1);
+          },
+        }}
+      />
+    );
   }
 
   if (!course) {
@@ -1171,10 +1198,19 @@ export function CreatorCourseDetail({
           <InlineAlert tone="error" className="mt-5">{t(checkoutError)}</InlineAlert>
         ) : null}
 
-        {offerLoadError || (pricingReady && hasExplicitOffer && !resolvedPrice) ? (
-          <InlineAlert tone="error" className="mt-5">
-            {offerLoadError ? t(offerLoadError) : t("publicCourses.selectedOfferUnavailable")}
-          </InlineAlert>
+        {offerLoadError ? (
+          <LoadErrorAlert
+            className="mt-5"
+            focusRef={enrollCardRef}
+            onRetry={() => {
+              setOfferLoadError("");
+              setOfferReadAttempt((attempt) => attempt + 1);
+            }}
+          >
+            {t(offerLoadError)}
+          </LoadErrorAlert>
+        ) : pricingReady && hasExplicitOffer && !resolvedPrice ? (
+          <InlineAlert tone="error" className="mt-5">{t("publicCourses.selectedOfferUnavailable")}</InlineAlert>
         ) : null}
 
         {guestCheckoutOn ? (
@@ -1448,6 +1484,7 @@ function CourseDetailState({
   action,
   nested = false,
   lead = null,
+  retry,
 }: {
   title: string;
   detail: string;
@@ -1456,9 +1493,12 @@ function CourseDetailState({
   nested?: boolean;
   /** O cabeçalho do servidor (o único h1) segue no alto, acima do aviso. */
   lead?: ReactNode;
+  /** Erro de leitura: o aviso ganha "Try again", e a saída vira link discreto. */
+  retry?: { onRetry: () => void; busy: boolean };
 }) {
   const { t } = useTranslation();
   const hasRealCourses = useHasRealCourses();
+  const sectionRef = useRef<HTMLElement>(null);
   const resolvedAction = action ?? (hasRealCourses
     ? { label: t("publicCourses.openMarketplace"), href: "/courses" }
     : { label: t("publicPages.notFound.home"), href: "/" });
@@ -1468,19 +1508,35 @@ function CourseDetailState({
   return (
     <>
     {lead}
-    <section className="rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
+    <section ref={sectionRef} tabIndex={retry ? -1 : undefined} className="rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
       <Heading className="display-title text-4xl text-[var(--color-ink)]">
         {title}
       </Heading>
-      <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-        {detail}
-      </p>
-      <Link
-        href={resolvedAction.href}
-        className="button-solid mt-6 inline-flex px-5 py-2.5 text-sm"
-      >
-        {resolvedAction.label}
-      </Link>
+      {retry ? (
+        <>
+          <LoadErrorAlert className="mt-4 max-w-2xl" focusRef={sectionRef} onRetry={retry.onRetry} busy={retry.busy}>
+            {detail}
+          </LoadErrorAlert>
+          <Link
+            href={resolvedAction.href}
+            className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-[var(--color-primary)]! underline-offset-4 hover:underline"
+          >
+            {resolvedAction.label}
+          </Link>
+        </>
+      ) : (
+        <>
+          <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
+            {detail}
+          </p>
+          <Link
+            href={resolvedAction.href}
+            className="button-solid mt-6 inline-flex px-5 py-2.5 text-sm"
+          >
+            {resolvedAction.label}
+          </Link>
+        </>
+      )}
     </section>
     </>
   );

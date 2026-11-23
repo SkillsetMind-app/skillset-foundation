@@ -24,6 +24,8 @@ const fixtures = vi.hoisted(() => ({
   holdCourse: false,
   // O último onNext da assinatura do curso, para entregar o curso mais tarde.
   courseNext: null as ((course: TeacherCourse) => void) | null,
+  // O último onError da assinatura do curso, para simular a rede que cai.
+  courseError: null as ((error: Error) => void) | null,
   // As chaves públicas (payments.checkout): ligadas, salvo no teste que as desliga.
   flagsOn: true,
   router: { push: vi.fn(), replace: vi.fn() },
@@ -94,9 +96,11 @@ vi.mock("@/lib/data/published-courses", () => ({
   subscribeToViewableTeacherCourse: (
     _ref: string,
     onNext: (course: TeacherCourse) => void,
+    onError: (error: Error) => void,
   ) => {
     fixtures.subscriptions += 1;
     fixtures.courseNext = onNext;
+    fixtures.courseError = onError;
     if (!fixtures.holdCourse) onNext(fixtures.course);
     return () => {};
   },
@@ -1912,5 +1916,64 @@ describe("CreatorCourseDetail: a página de compra reconhece quem já tem o curs
     expect(screen.queryByRole("link", { name: "Continue learning" })).not.toBeInTheDocument();
     fireEvent.click(pay);
     expect(startCourseCheckout).toHaveBeenCalledWith("course-1", {});
+  });
+});
+
+// F-11: com a rede ruim, a leitura que falha tem saída na própria página
+// ("Try again" lê de novo), e nunca mostra preço ou botão de pagar inventados.
+describe("CreatorCourseDetail: a leitura que falha tem 'Try again'", () => {
+  it.each([false, true])("o curso não carregou: aviso, 'Try again' que assina de novo, e a loja como link (compra: %s)", async (checkoutOnly) => {
+    fixtures.holdCourse = true;
+    render(<RealCoursesProvider value><CreatorCourseDetail courseIdOverride="course-1" hideHeader checkoutOnly={checkoutOnly} /></RealCoursesProvider>);
+    act(() => fixtures.courseError?.(new Error("offline")));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load this course right now.");
+    expect(screen.getByRole("link", { name: "Open marketplace" })).toHaveAttribute("href", "/courses");
+    expect(screen.queryByText("$149.00")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Enroll/ })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(fixtures.subscriptions).toBe(2);
+    // O aviso fica até a resposta, com o botão ocupado.
+    expect(screen.getByRole("button", { name: "Trying again..." })).toHaveAttribute("aria-busy", "true");
+
+    act(() => fixtures.courseNext?.(fixtures.course));
+    expect((await screen.findAllByText("$149.00")).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("a releitura que falha de novo devolve o aviso, sem botão de pagar", async () => {
+    fixtures.holdCourse = true;
+    render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+    act(() => fixtures.courseError?.(new Error("offline")));
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    act(() => fixtures.courseError?.(new Error("offline")));
+
+    expect(await screen.findByRole("button", { name: "Try again" })).toBeEnabled();
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load this course right now.");
+    expect(screen.queryByRole("button", { name: /Enroll/ })).not.toBeInTheDocument();
+  });
+
+  it("o preço não carregou: 'Try again' no cartão lê as ofertas de novo, e o preço chega", async () => {
+    fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ error: "unavailable" }) })
+      .mockResolvedValue({ ok: true, json: async () => ({ offers: [] }) });
+    vi.stubGlobal("fetch", fetchMock);
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+    const card = await waitFor(() => {
+      const found = container.querySelector<HTMLElement>("#enroll-card");
+      expect(found).not.toBeNull();
+      return found!;
+    });
+
+    expect(await within(card).findByRole("alert")).toHaveTextContent("Offers are temporarily unavailable.");
+    expect(within(card).queryByText("$149.00")).not.toBeInTheDocument();
+    expect(within(card).getByRole("button", { name: "Checkout not available yet" })).toBeDisabled();
+
+    fireEvent.click(within(card).getByRole("button", { name: "Try again" }));
+    expect(await within(card).findByRole("button", { name: "Enroll — $149.00" })).toBeEnabled();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(within(card).queryByRole("alert")).not.toBeInTheDocument();
   });
 });
