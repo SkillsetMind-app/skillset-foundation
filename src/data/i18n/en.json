@@ -502,7 +502,8 @@
       "planPrice": "{monthly}/month or {yearly}/year",
       "planFee": "{fee} per sale",
       "planFeeZero": "0% commission",
-      "plansNote": "14-day free trial, card required. Card processing by Stripe still applies."
+      "plansNote": "14-day free trial, card required. Card processing by Stripe still applies.",
+      "photoAlt": "A woman recording a lesson at her desk at home"
     },
     "realCourse": {
       "kicker": "A real course",
@@ -521,6 +522,11 @@
     },
     "faq": {
       "more": "More on this in the Help center"
+    },
+    "who": {
+      "coachAlt": "A coach in a video session at her kitchen table",
+      "teacherAlt": "A retired teacher explaining an idea at a small whiteboard",
+      "educatorAlt": "An educator reading a workbook in an armchair"
     }
   },
   "platform": {

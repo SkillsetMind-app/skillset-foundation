@@ -425,4 +425,54 @@ describe("home: cenas do computador", () => {
     expect(shell).toContain("overflow-x: clip;");
     expect(shell).not.toMatch(/overflow(?:-[xy])?: (?:hidden|auto|scroll)/);
   });
+
+  // Fotos da home: a faixa "para quem é" e a foto da faixa final só se mexem
+  // no computador, num bloco de 1024px depois de todas as outras regras. No
+  // celular e no tablet nada delas anda.
+  it("fotos da home: movimento só no computador, e a foto final assenta antes do título", () => {
+    const [start, end] = blockRange("@media (min-width: 1024px) {", css.indexOf("12. Fotos da home"));
+    expect(start).toBeGreaterThan(scenesEnd);
+    expect(end).toBeLessThan(supportsEnd);
+    for (const needle of [/\.home-who/g, /\.home-creators__photo/g]) {
+      const hits = [...css.matchAll(needle)];
+      expect(hits.length, String(needle)).toBeGreaterThan(0);
+      for (const hit of hits) {
+        expect(hit.index! > start && hit.index! < end, `${needle} fora do bloco do computador`).toBe(true);
+      }
+    }
+
+    const rule = (selector: string) => {
+      const at = css.indexOf(`${selector} {`, start);
+      expect(at, selector).toBeGreaterThan(-1);
+      expect(at, selector).toBeLessThan(end);
+      return css.slice(at, css.indexOf("}", at));
+    };
+    const range = (body: string) =>
+      body.match(/animation-range: cover (\d+)(?:%|svh) cover (\d+)svh;/)!.slice(1).map(Number);
+
+    // A faixa de ponta a ponta não cresce; a foto recua até assentar, e o
+    // título só começa com a foto 3/4 do caminho andado.
+    expect(rule(".home-scroll .home-creators")).toContain("animation: none;");
+    const photo = rule(".home-scroll .home-creators__photo img");
+    expect(photo).toContain("animation: motion-scroll-settle 1ms var(--ease-standard) both;");
+    expect(photo).toContain("animation-timeline: --home-creators;");
+    const [, photoEnd] = range(photo);
+    const [leadFrom, leadTo] = range(rule(".home-scroll .home-creators__lead"));
+    expect(leadFrom / photoEnd).toBeGreaterThanOrEqual(0.75);
+    expect(leadTo).toBeGreaterThan(photoEnd);
+
+    // Os três retratos: em escada, só opacidade e 12px, inteiros antes de o
+    // topo passar de 75% da tela.
+    expect(rule(".home-scroll .home-who__photo")).toContain("animation: motion-scroll-fact 1ms var(--ease-standard) both;");
+    const portraits = [
+      rule(".home-scroll .home-who__photo"),
+      rule(".home-scroll .home-who__photo:nth-child(2)"),
+      rule(".home-scroll .home-who__photo:nth-child(3)"),
+    ].map(range);
+    for (let i = 1; i < portraits.length; i += 1) expect(portraits[i][0]).toBeGreaterThan(portraits[i - 1][0]);
+    for (const [from, to] of portraits) {
+      expect(to).toBeGreaterThan(from);
+      expect(to).toBeLessThanOrEqual(25);
+    }
+  });
 });

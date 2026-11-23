@@ -7,6 +7,7 @@ import { FeaturedCourses } from "@/components/site/featured-courses";
 import { ForCreatorsBand } from "@/components/site/for-creators-band";
 import { HomeFactsBand } from "@/components/site/home-facts-band";
 import { HomeFaq } from "@/components/site/home-faq";
+import { HomeWhoFor } from "@/components/site/home-who-for";
 import { HowItWorksStrip } from "@/components/site/how-it-works-strip";
 import { MarketingHero } from "@/components/site/marketing-hero";
 import { PromisePreviewBand } from "@/components/site/promise-preview-band";
@@ -126,6 +127,9 @@ export default async function Home() {
         <section id="capabilities" className="scroll-mt-28">
           <CapabilitiesGrid />
         </section>
+        {/* Para quem é: o público que o site já nomeia, com três retratos.
+            Sem âncora, como a faixa de fatos: não é destino de menu. */}
+        <HomeWhoFor />
         <section id="promise" className="scroll-mt-28">
           <PromisePreviewBand />
         </section>

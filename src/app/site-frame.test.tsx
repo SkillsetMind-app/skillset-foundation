@@ -186,6 +186,7 @@ describe("seções de marketing viraram servidor", () => {
     "src/components/site/for-creators-band.tsx",
     "src/components/site/home-facts-band.tsx",
     "src/components/site/home-faq.tsx",
+    "src/components/site/home-who-for.tsx",
   ])("%s não é mais componente de cliente", (path) => {
     const source = readSource(path);
 
@@ -222,7 +223,7 @@ describe("seções de marketing viraram servidor", () => {
       return (width: number) => Math.min(Math.max(min * 16, (vw * width) / 100), max * 16);
     };
     const hero = clampOf("src/components/site/marketing-hero.tsx", "h1");
-    for (const file of ["how-it-works-strip", "capabilities-grid", "promise-preview-band", "home-faq", "for-creators-band"]) {
+    for (const file of ["how-it-works-strip", "capabilities-grid", "promise-preview-band", "home-faq", "home-who-for", "for-creators-band"]) {
       const section = clampOf(`src/components/site/${file}.tsx`, "h2");
       for (let width = 320; width <= 1920; width += 8) {
         expect(section(width), `${file} em ${width}px`).toBeLessThan(hero(width));

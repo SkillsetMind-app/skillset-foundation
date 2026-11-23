@@ -1978,6 +1978,46 @@ p {
     .home-scroll .home-facts__item:nth-child(4) {
       animation-range: cover 9svh cover 21svh;
     }
+
+    /* 12. Fotos da home, só no computador (no celular e no tablet ficam
+       paradas; só os títulos entram, como em todas as seções). */
+    @media (min-width: 1024px) {
+      /* "Para quem é": os três retratos aparecem e sobem 12px, um depois do
+         outro (os mesmos quadros da escada dos números), todos inteiros
+         antes de o topo passar de 76% da tela. */
+      .home-scroll .home-who__photo {
+        animation: motion-scroll-fact 1ms var(--ease-standard) both;
+        animation-timeline: view();
+        animation-range: cover 0% cover 14svh;
+      }
+
+      .home-scroll .home-who__photo:nth-child(2) {
+        animation-range: cover 5svh cover 19svh;
+      }
+
+      .home-scroll .home-who__photo:nth-child(3) {
+        animation-range: cover 10svh cover 24svh;
+      }
+
+      /* Faixa final de ponta a ponta: a faixa não cresce mais para o lugar
+         (cresceria de uma borda à outra); quem se mexe é a foto, que recua
+         devagar até assentar enquanto a faixa entra, até cobrir um terço da
+         tela. O título sobe quando a foto já quase assentou e fica inteiro
+         antes de chegar a 75% da tela, mesmo em 1024x720. */
+      .home-scroll .home-creators {
+        animation: none;
+      }
+
+      .home-scroll .home-creators__photo img {
+        animation: motion-scroll-settle 1ms var(--ease-standard) both;
+        animation-timeline: --home-creators;
+        animation-range: cover 0% cover 32svh;
+      }
+
+      .home-scroll .home-creators__lead {
+        animation-range: cover 24svh cover 36svh;
+      }
+    }
   }
 }
 
