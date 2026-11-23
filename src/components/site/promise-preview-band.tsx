@@ -25,7 +25,7 @@ export async function PromisePreviewBand() {
   ];
 
   return (
-    <section className="bg-[var(--color-surface-soft)] px-5 py-16 sm:px-8 sm:py-20 lg:py-24">
+    <section className="home-promise bg-[var(--color-surface-soft)] px-5 py-16 sm:px-8 sm:py-20 lg:py-24">
       <div className="mx-auto w-full max-w-7xl">
         <RevealSection>
           <div className="grid items-center gap-8 lg:grid-cols-[1fr_0.8fr]">

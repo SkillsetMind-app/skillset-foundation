@@ -1225,6 +1225,139 @@ p {
   }
 }
 
+/* Cenas da home no computador (bloco "Cenas" no fim do @supports abaixo).
+   O passo a passo preso: cada passo tem UM jogo de quadros para a opacidade
+   e um para o tamanho do ícone e do número, com a mesma régua (contain da
+   faixa alta). 1 = ativo, 0.55 = calmo; no fim os três voltam inteiros, para
+   a seção ler normal a quem volta de baixo. Entre um passo e outro, o
+   seguinte acende antes de o anterior apagar: sempre há um passo inteiro. */
+@keyframes motion-scroll-step-first {
+  0%,
+  30%,
+  92%,
+  100% {
+    opacity: 1;
+  }
+
+  36%,
+  84% {
+    opacity: 0.55;
+  }
+}
+
+@keyframes motion-scroll-step-second {
+  0%,
+  24%,
+  69%,
+  84% {
+    opacity: 0.55;
+  }
+
+  30%,
+  63%,
+  92%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes motion-scroll-step-third {
+  0%,
+  57% {
+    opacity: 0.55;
+  }
+
+  63%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes motion-scroll-mark-first {
+  0%,
+  30%,
+  92%,
+  100% {
+    transform: none;
+  }
+
+  36%,
+  84% {
+    transform: scale(0.84);
+  }
+}
+
+@keyframes motion-scroll-mark-second {
+  0%,
+  24%,
+  69%,
+  84% {
+    transform: scale(0.84);
+  }
+
+  30%,
+  63%,
+  92%,
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes motion-scroll-mark-third {
+  0%,
+  57% {
+    transform: scale(0.84);
+  }
+
+  63%,
+  100% {
+    transform: none;
+  }
+}
+
+/* A cortina da promessa: uma elipse ancorada no meio da borda de baixo da
+   faixa. Em 1 ela cobre a faixa inteira (cantos incluídos); em 0.86 já cobre
+   todo o conteúdo, e só os cantos de cima ainda mostram a borda curva. */
+@keyframes motion-scroll-curtain {
+  0% {
+    transform: scale(0.5);
+  }
+
+  29% {
+    transform: scale(0.86);
+  }
+
+  100% {
+    transform: none;
+  }
+}
+
+/* O desdobrar dos cartões com profundidade: cada coluna parte de uma
+   distância (--home-depth) e todas assentam juntas. */
+@keyframes motion-scroll-assemble {
+  from {
+    opacity: 0;
+    transform: perspective(900px) translateY(calc(3rem + var(--home-depth, 0px))) rotateX(12deg) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* A foto do curso assenta no quadro. Usada sem o preenchimento de depois
+   (fill backwards): acabada a entrada, o transform volta a ser do :hover. */
+@keyframes motion-scroll-settle {
+  from {
+    transform: scale(1.06);
+  }
+
+  to {
+    transform: none;
+  }
+}
+
 /* Sem suporte ou com movimento reduzido a barra de leitura não existe. */
 .home-scroll-progress {
   display: none;
@@ -1493,6 +1626,232 @@ p {
 
       .home-scroll .home-step:nth-child(3) .home-step__line::before {
         animation-range: cover 44% cover 56%;
+      }
+    }
+
+    /* 10. Cenas: só em tela de computador. No celular, com movimento
+       reduzido ou sem suporte, nada aqui existe: sem faixa alta, sem
+       cortina, sem texto escondido, e a página tem a mesma altura de antes.
+       Tudo que trava a tela ou pinta a cortina mora só neste bloco. A partir
+       de 1280 de largura bastam 640 de altura; entre 1024 e 1279 as colunas
+       dos passos são estreitas (o passo 3 em espanhol passa de 7 linhas) e o
+       painel preso só cabe abaixo da barra a partir de 720 de altura. */
+    @media (min-width: 1280px) and (min-height: 640px), (min-width: 1024px) and (min-height: 720px) {
+      /* Cena 1: "How it works" preso. A seção da página vira uma faixa alta
+         (uma tela + 3 × 40% de tela) e o conteúdo gruda logo abaixo da barra
+         enquanto ela passa. A régua desconta a barra (inset), então contain
+         0% é o instante em que a tela trava e contain 100% o que ela solta:
+         120% de tela de rolagem a mais, nada além. A âncora pousa no começo
+         da faixa: título à vista e o passo 1 aceso. */
+      .home-scroll .home-how {
+        height: calc(220svh - var(--site-header-height));
+        scroll-margin-top: var(--site-header-height);
+        view-timeline: --home-how block;
+        view-timeline-inset: var(--site-header-height) 0px;
+      }
+
+      .home-scroll .home-how__panel {
+        position: sticky;
+        top: var(--site-header-height);
+        display: flex;
+        min-height: calc(100svh - var(--site-header-height));
+        flex-direction: column;
+        justify-content: center;
+        padding-block: 1.5rem;
+      }
+
+      /* Os passos acendem um de cada vez: 1 até 30%, 2 de 30% a 63%, 3 de
+         63% ao fim; de 84% a 92% os três voltam inteiros e a tela solta em
+         100%. Cada propriedade tem dono único (opacidade no passo, tamanho
+         no ícone e no número), então nada briga. */
+      .home-scroll .home-step:nth-child(1) {
+        animation: motion-scroll-step-first 1ms ease-in-out both;
+        animation-timeline: --home-how;
+        animation-range: contain 0% contain 100%;
+      }
+
+      .home-scroll .home-step:nth-child(2) {
+        animation: motion-scroll-step-second 1ms ease-in-out both;
+        animation-timeline: --home-how;
+        animation-range: contain 0% contain 100%;
+      }
+
+      .home-scroll .home-step:nth-child(3) {
+        animation: motion-scroll-step-third 1ms ease-in-out both;
+        animation-timeline: --home-how;
+        animation-range: contain 0% contain 100%;
+      }
+
+      .home-scroll .home-step:nth-child(1) .home-step__icon,
+      .home-scroll .home-step:nth-child(1) .home-step__number {
+        animation: motion-scroll-mark-first 1ms ease-in-out both;
+        animation-timeline: --home-how;
+        animation-range: contain 0% contain 100%;
+      }
+
+      .home-scroll .home-step:nth-child(2) .home-step__icon,
+      .home-scroll .home-step:nth-child(2) .home-step__number {
+        animation: motion-scroll-mark-second 1ms ease-in-out both;
+        animation-timeline: --home-how;
+        animation-range: contain 0% contain 100%;
+      }
+
+      .home-scroll .home-step:nth-child(3) .home-step__icon,
+      .home-scroll .home-step:nth-child(3) .home-step__number {
+        animation: motion-scroll-mark-third 1ms ease-in-out both;
+        animation-timeline: --home-how;
+        animation-range: contain 0% contain 100%;
+      }
+
+      /* O número encolhe para o lado do ícone, sem abrir buraco entre os dois. */
+      .home-scroll .home-step__number {
+        transform-origin: 0 50%;
+      }
+
+      /* A linha dourada no topo dos três passos vira a barra de progresso
+         da cena: cada trecho enche enquanto o seu passo está aceso. */
+      .home-scroll .home-step__line::before {
+        animation-timeline: --home-how;
+      }
+
+      .home-scroll .home-step:nth-child(1) .home-step__line::before {
+        animation-range: contain 0% contain 28%;
+      }
+
+      .home-scroll .home-step:nth-child(2) .home-step__line::before {
+        animation-range: contain 30% contain 61%;
+      }
+
+      .home-scroll .home-step:nth-child(3) .home-step__line::before {
+        animation-range: contain 63% contain 90%;
+      }
+
+      /* Cena 2: a cortina da promessa. A faixa perde o fundo claro e uma
+         elipse da cor da marca cresce do meio da borda de baixo: a página
+         "vira" azul com a borda curva. A régua é a da própria faixa, em
+         altura de tela: a cortina cobre o conteúdo quando o topo da faixa
+         está a 87% da tela e os cantos por volta de 70%; a escala termina
+         com o topo a 55% (o pedido é cobrir tudo antes dos 35%).
+         Só depois disso o texto (15-27), a carta (19-31) e as cláusulas
+         sobem, nessa ordem; todos inteiros antes de chegar a 75% da tela.
+         Cores de tokens: no tema claro azul com texto claro; no escuro a
+         cortina é a superfície da faixa e o texto fica o de sempre. */
+      .home-scroll .home-promise {
+        --home-curtain: var(--color-primary);
+        --home-curtain-ink: var(--color-on-primary);
+        --home-curtain-ink-soft: color-mix(in srgb, var(--color-on-primary) 80%, transparent);
+        --home-curtain-kicker: var(--color-accent-soft);
+        --home-curtain-ring: var(--color-accent);
+        position: relative;
+        isolation: isolate;
+        overflow: clip;
+        background-color: transparent;
+        view-timeline: --home-curtain block;
+      }
+
+      [data-theme="dark"] .home-scroll .home-promise {
+        --home-curtain: var(--color-surface-soft);
+        --home-curtain-ink: var(--color-primary);
+        --home-curtain-ink-soft: var(--color-ink-soft);
+        --home-curtain-kicker: var(--color-accent-fg);
+        --home-curtain-ring: var(--color-primary-light);
+      }
+
+      /* 240% x 240% da faixa, centro na borda de baixo: em escala 1 cobre os
+         quatro cantos com folga, em qualquer proporção de tela. A faixa corta
+         o que passa dela (overflow clip), sem rolagem de lado. */
+      .home-scroll .home-promise::before {
+        content: "";
+        position: absolute;
+        z-index: -1;
+        top: -20%;
+        left: -70%;
+        width: 240%;
+        height: 240%;
+        border-radius: 50%;
+        background: var(--home-curtain);
+        pointer-events: none;
+        animation: motion-scroll-curtain 1ms linear both;
+        animation-timeline: --home-curtain;
+        animation-range: cover 0% cover 45svh;
+      }
+
+      /* Sobe, sem andar de lado por cima do texto. O anel de foco troca para
+         latão: azul sobre azul sumia. */
+      .home-scroll .home-promise__text {
+        --focus-ring: var(--home-curtain-ring);
+        animation: motion-scroll-rise 1ms var(--ease-standard) both;
+        animation-timeline: --home-curtain;
+        animation-range: cover 15svh cover 27svh;
+      }
+
+      .home-scroll .home-promise__text > * {
+        color: var(--home-curtain-ink-soft);
+      }
+
+      .home-scroll .home-promise__text > h2 {
+        color: var(--home-curtain-ink);
+      }
+
+      .home-scroll .home-promise__text > p:first-child {
+        color: var(--home-curtain-kicker);
+      }
+
+      .home-scroll .home-promise__text:has(:focus-visible) {
+        animation: none;
+      }
+
+      /* A carta corta os cantos com clip, não hidden: assim ela não vira
+         área de rolagem e cada cláusula mede a própria posição na tela. A
+         escada sai da própria posição de cada uma, de cima para baixo. */
+      .home-scroll .home-promise__charter {
+        overflow: clip;
+        animation: motion-scroll-rise 1ms var(--ease-standard) both;
+        animation-timeline: --home-curtain;
+        animation-range: cover 19svh cover 31svh;
+      }
+
+      .home-scroll .home-promise__clause:nth-child(n) {
+        animation-timeline: view();
+        animation-range: cover 4svh cover 16svh;
+      }
+
+      /* Cena 3: profundidade. As colunas da grade partem de distâncias
+         diferentes e assentam juntas, inteiras, com o topo a 74% da tela. */
+      .home-scroll .home-card:nth-child(n) {
+        animation: motion-scroll-assemble 1ms var(--ease-standard) both;
+        animation-timeline: view();
+        animation-range: entry 0% cover 26svh;
+      }
+
+      @media (max-width: 1279.98px) {
+        .home-scroll .home-card:nth-child(2n) {
+          --home-depth: 22px;
+        }
+      }
+
+      @media (min-width: 1280px) {
+        .home-scroll .home-card:nth-child(3n + 2) {
+          --home-depth: 18px;
+        }
+
+        .home-scroll .home-card:nth-child(3n) {
+          --home-depth: 36px;
+        }
+      }
+
+      /* A foto de cada curso da vitrine assenta no quadro até o cartão
+         chegar ao meio da tela. A régua é do item da lista: o quadro e o
+         cartão cortam o que passa deles (overflow hidden), e view() dentro
+         deles mediria o quadro, não a tela. */
+      .home-scroll .marketplace-course-grid > li {
+        view-timeline: --home-course block;
+      }
+
+      .home-scroll .marketplace-course-grid > li .marketplace-card__media > img {
+        animation: motion-scroll-settle 1ms var(--ease-standard) backwards;
+        animation-timeline: --home-course;
+        animation-range: entry 0% cover 50%;
       }
     }
   }

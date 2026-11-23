@@ -43,7 +43,7 @@ export default async function Home() {
       {/* Um <main> por página, alvo do "Skip to content" da barra. */}
       <main id="conteudo">
         <MarketingHero />
-        <section id="how-it-works" className="scroll-mt-28">
+        <section id="how-it-works" className="home-how scroll-mt-28">
           <HowItWorksStrip />
         </section>
         {marketplaceOpen ? (
