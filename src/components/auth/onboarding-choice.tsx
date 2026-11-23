@@ -324,8 +324,8 @@ export function OnboardingChoice() {
     // the hourly refresh, a tab regaining focus, the email-verification round
     // trip this very screen triggers. uid and emailVerified are server truth
     // and have to stay fresh, but re-seeding the form on those events throws
-    // away everything typed since. Seed once per subscription; a pathIntent
-    // change re-runs the effect and seeds again.
+    // away everything typed since. Seed once per account per subscription; a
+    // pathIntent change re-runs the effect and seeds again.
     // Guarda DE QUEM é o perfil semeado, não um booleano: a mesma conta de novo
     // (renovação, foco, INITIAL_SESSION e depois SIGNED_IN, um "loading" no
     // meio) não relê nem apaga nada. Outra conta (saiu e entrou com outra em

@@ -643,6 +643,32 @@ describe("OnboardingChoice: conta trocada em outra aba", () => {
     expect(mocks.getUserProfile).toHaveBeenCalledTimes(2);
   });
 
+  // Sem a volta do answersLoaded a false na troca, o "perfil lido" da conta
+  // anterior deixaria o Continue e o Finish passarem e gravarem por cima das
+  // respostas salvas da conta nova.
+  it("leitura da conta nova que falha: o Continue nao sai do passo 0 nem grava", async () => {
+    mocks.getUserProfile.mockResolvedValueOnce(learnerProfile).mockRejectedValueOnce(new Error("offline"));
+    mountOnPage();
+    await act(async () => emit({ status: "authenticated", user: authedUser }));
+
+    await switchAccount();
+    expect(mocks.getUserProfile).toHaveBeenLastCalledWith("learner-2");
+    expect(screen.getByRole("alert")).toHaveTextContent("onboarding.errorProfileLoadRetry");
+
+    fireEvent.click(pathButton("onboarding.pathTeachTitle"));
+    fireEvent.change(screen.getByLabelText("connectOnboarding.countryLabel"), { target: { value: "US" } });
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
+
+    // Continua no passo 0: sem os campos do passo 1 e sem o "Finish" do 2.
+    expect(screen.queryByLabelText("onboarding.publicName")).toBeNull();
+    expect(screen.queryByRole("button", { name: "onboarding.finishSetup" })).toBeNull();
+    expect(screen.getByRole("alert")).toHaveTextContent("onboarding.errorProfileLoadRetry");
+    expect(screen.getByRole("button", { name: "appErrors.retry" })).toBeEnabled();
+    expect(mocks.getUserProfile).toHaveBeenCalledTimes(2);
+    expectNoWrites();
+  });
+
   it("a mesma conta de novo, com \"loading\" no meio: nao rele nem apaga o que foi digitado", async () => {
     mocks.getUserProfile.mockResolvedValueOnce(learnerProfile);
     mountOnPage();
