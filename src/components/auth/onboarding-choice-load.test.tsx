@@ -469,6 +469,28 @@ describe("OnboardingChoice: \"Try again\" da leitura do perfil", () => {
     expect(screen.queryByRole("button", { name: "appErrors.retry" })).toBeNull();
   });
 
+  it("\"Try again\" que falha de novo: o Continue nao avanca e nada e gravado", async () => {
+    mocks.searchParams = activation;
+    const { reject } = await failFirstRead();
+    fireEvent.click(screen.getByRole("button", { name: "appErrors.retry" }));
+    await act(async () => reject(new Error("offline")));
+    expect(screen.getByRole("alert")).toHaveTextContent("onboarding.errorProfileLoadRetry");
+
+    fireEvent.click(pathButton("onboarding.pathTeachTitle"));
+    fireEvent.change(screen.getByLabelText("connectOnboarding.countryLabel"), { target: { value: "US" } });
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
+    fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
+
+    // Continua no passo 0: sem os campos do passo 1 e sem o "Finish" do 2.
+    expect(screen.queryByLabelText("onboarding.publicName")).toBeNull();
+    expect(screen.queryByRole("button", { name: "onboarding.finishSetup" })).toBeNull();
+    expect(screen.getByRole("alert")).toHaveTextContent("onboarding.errorProfileLoadRetry");
+    expect(screen.getByRole("button", { name: "appErrors.retry" })).toBeEnabled();
+    expectOnlyTheRead(2);
+    expect(mocks.router.push).not.toHaveBeenCalled();
+  });
+
   it("erro que nao e de leitura nao ganha \"Try again\": o que toma o lugar do aviso", async () => {
     mocks.searchParams = activation;
     mocks.getUserProfile.mockRejectedValueOnce(new Error("offline"));
