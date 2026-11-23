@@ -21,7 +21,7 @@ vi.mock("@/lib/i18n/server", () => ({
 vi.mock("@/components/i18n/i18n-provider", () => ({
   useTranslation: () => ({ locale: state.locale, t: (key: string) => translate(getDictionary(state.locale), key) }),
 }));
-vi.mock("@/components/site/site-nav", () => ({ SiteNav: () => null }));
+vi.mock("@/components/site/checkout-header", () => ({ CheckoutHeader: ({ secureLabel }: { secureLabel: string }) => <header data-testid="checkout-header">{secureLabel}</header> }));
 
 import Page, { generateMetadata } from "./page";
 
@@ -48,6 +48,12 @@ describe("guest checkout thank-you page", () => {
     const metadata = await generateMetadata();
     expect(metadata.robots).toEqual({ index: false, follow: false });
     expect(metadata.title).toContain("Check your email");
+  });
+
+  it("keeps the checkout header, not the site menu", async () => {
+    render(await Page({}));
+    expect(screen.getByTestId("checkout-header")).toHaveTextContent("Secure checkout");
+    expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
   });
 
   it("does not exist while guest checkout is off", async () => {

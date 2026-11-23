@@ -14,9 +14,18 @@ vi.mock("@/components/auth/auth-provider", () => ({
 }));
 
 // Vitrine aberta (12 cursos reais de 5 professores)? É o contrato de
-// isMarketplaceOpen. Começa fechada: é o estado de hoje.
-const state = vi.hoisted(() => ({ open: false }));
-vi.mock("@/lib/data/server/public-course", () => ({ isMarketplaceOpen: async () => state.open }));
+// isMarketplaceOpen. Começa fechada: é o estado de hoje. Título e capa do
+// cartão "See a real course" vêm de getShowcaseCourseCover (null = leitura
+// falhou ou passou do prazo; o prazo em si é testado em public-course.test).
+type ShowcaseCover = { title: string; coverImageUrl: string | null };
+const state = vi.hoisted(() => ({ open: false, course: null as ShowcaseCover | null }));
+const readCourse = vi.hoisted(() =>
+  vi.fn<(id: string) => Promise<ShowcaseCover | null>>(async () => state.course),
+);
+vi.mock("@/lib/data/server/public-course", () => ({
+  isMarketplaceOpen: async () => state.open,
+  getShowcaseCourseCover: readCourse,
+}));
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined }) }));
 
 // O rodapé e as cinco seções de marketing são server components assíncronos:
@@ -30,11 +39,21 @@ vi.mock("@/components/site/how-it-works-strip", () => ({ HowItWorksStrip: () => 
 vi.mock("@/components/site/capabilities-grid", () => ({ CapabilitiesGrid: () => null }));
 vi.mock("@/components/site/promise-preview-band", () => ({ PromisePreviewBand: () => null }));
 vi.mock("@/components/site/for-creators-band", () => ({ ForCreatorsBand: () => null }));
+// A faixa de fatos também é servidor; o conteúdo dela é conferido em
+// home-facts-band.test.tsx. Aqui ela só marca o lugar, para a ordem.
+vi.mock("@/components/site/home-facts-band", () => ({ HomeFactsBand: () => <div data-testid="facts-band" /> }));
+// As perguntas frequentes idem (home-faq.test.tsx); o lugar delas é o #faq.
+vi.mock("@/components/site/home-faq", () => ({ HomeFaq: () => null }));
 vi.mock("@/components/site/featured-courses", () => ({ FeaturedCourses: () => <div data-testid="marketplace" /> }));
 
 beforeEach(() => {
   state.open = false;
+  state.course = null;
+  readCourse.mockClear();
 });
+
+const COVER = "https://example.supabase.co/storage/v1/object/public/covers/ei-mastery.jpg";
+const showcase: ShowcaseCover = { title: "Emotional Intelligence Mastery", coverImageUrl: COVER };
 afterEach(cleanup);
 
 // O layout raiz passa a mesma resposta ao cabeçalho pelo provedor.
@@ -81,6 +100,61 @@ describe("marketing home", () => {
     expect(screen.getByTestId("marketplace")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /See a real course/ })).not.toBeInTheDocument();
     expect(headerLinks()[0]).toEqual(["Courses", "/courses"]);
+    // Vitrine aberta: o cartão do curso real não existe, a leitura não acontece.
+    expect(readCourse).not.toHaveBeenCalled();
+  });
+
+  // A capa de verdade do curso dentro do mesmo link, com o título do curso
+  // como texto alternativo (não é frase nova do dicionário).
+  it("shows the real course cover inside the card link, with the course title as alt", async () => {
+    state.course = showcase;
+    await renderHome();
+
+    expect(readCourse).toHaveBeenCalledWith("1a280dc6-acce-4f1f-9e95-56df095131ae");
+    const card = screen.getByRole("link", { name: /See a real course on SkillsetMind/ });
+    expect(card).toHaveAttribute("href", "/courses/1a280dc6-acce-4f1f-9e95-56df095131ae");
+    const cover = within(card).getByRole("img", { name: "Emotional Intelligence Mastery" });
+    expect(cover).toHaveAttribute("src", expect.stringContaining(encodeURIComponent(COVER)));
+    // Abaixo da dobra: carrega preguiçoso, sem prioridade sobre o topo.
+    expect(cover).toHaveAttribute("loading", "lazy");
+    expect(within(card).getByText("Open the course")).toBeInTheDocument();
+  });
+
+  // Sem capa, ou leitura que falhou ou passou do prazo (null): o cartão de
+  // texto de antes, sem quadro de imagem vazio.
+  it.each([
+    ["the course has no cover", { ...showcase, coverImageUrl: null }],
+    ["the read fails or times out", null],
+  ])("keeps the text-only card when %s", async (_case, course) => {
+    state.course = course;
+    await renderHome();
+
+    const card = screen.getByRole("link", { name: /See a real course on SkillsetMind/ });
+    expect(card).toHaveAttribute("href", "/courses/1a280dc6-acce-4f1f-9e95-56df095131ae");
+    expect(within(card).queryByRole("img")).not.toBeInTheDocument();
+    expect(card.querySelector(".aspect-\\[16\\/9\\]")).toBeNull();
+    for (const text of [
+      "A real course",
+      "See a real course on SkillsetMind",
+      "Open a published course the way a buyer sees it: the sales page, the lessons and the preview lesson.",
+      "Open the course",
+    ]) {
+      expect(within(card).getByText(text)).toBeInTheDocument();
+    }
+  });
+
+  // A ordem dos blocos dentro do <main> (o topo está simulado e não aparece):
+  // a faixa de fatos vem logo depois do topo e antes do "How it works"; as
+  // perguntas frequentes, entre a Promessa e a faixa final.
+  it("keeps the home blocks in order: facts band after the hero, FAQ after the Promise", async () => {
+    const { container } = await renderHome();
+
+    const blocks = [...container.querySelector("main")!.children].map(
+      (block) => block.id || block.getAttribute("data-testid"),
+    );
+    expect(blocks).toEqual(["facts-band", "how-it-works", "real-course", "capabilities", "promise", "faq", "for-creators"]);
+    // A âncora pousa abaixo da barra fixa, como as outras seções.
+    expect(container.querySelector("#faq")).toHaveClass("scroll-mt-28");
   });
 
   // Acessibilidade basica: um landmark <main> por pagina, alvo do "Skip to
