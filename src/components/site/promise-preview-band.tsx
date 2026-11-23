@@ -33,15 +33,18 @@ export async function PromisePreviewBand() {
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
                 {t("home.promise.kicker")}
               </p>
-              <h2 className="display-title mt-3 text-4xl leading-tight text-[var(--color-primary)] sm:text-5xl">
+              {/* Título e texto na escala das outras seções. A cor vale para a
+                  faixa clara; com a cortina azul do computador o globals.css
+                  troca as duas pelos tons claros dela (só o tamanho muda lá). */}
+              <h2 className="display-title mt-3 text-[clamp(2.25rem,5vw,4rem)] leading-[1.05] text-[var(--color-primary)]">
                 {t("home.promise.title")}
               </h2>
-              <p className="mt-4 max-w-xl text-sm leading-7 text-[var(--color-ink-soft)]">
+              <p className="mt-4 max-w-xl text-[1.0625rem] leading-[1.6] text-[var(--color-ink)] md:text-lg">
                 {t("home.promise.sub")}
               </p>
               <Link
                 href="/promise"
-                className="button-outline mt-6 px-4 py-2.5 text-sm"
+                className="button-outline mt-6 min-h-12 px-4 py-2.5 text-sm"
               >
                 {t("home.promise.readFull")}
               </Link>

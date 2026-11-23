@@ -49,7 +49,7 @@ export default async function Home() {
       <span className="display-title mt-2 block text-2xl text-[var(--color-primary)] sm:text-3xl">
         {t("home.realCourse.title")}
       </span>
-      <span className="mt-2 block max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
+      <span className="mt-2 block max-w-2xl text-[1.0625rem] leading-[1.6] text-[var(--color-ink)] md:text-lg">
         {t("home.realCourse.body")}
       </span>
     </span>
