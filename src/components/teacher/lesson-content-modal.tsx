@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
   type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
   type Ref,
 } from "react";
@@ -809,6 +810,28 @@ export function LessonContentModal({
 
   const isPage = variant === "page";
 
+  // Abas da WAI-ARIA: setas, Home e End só levam o foco (com volta); abrir a
+  // aba é no Enter, no Espaço ou no clique. Trocar de aba limpa o arquivo
+  // escolhido e ainda não enviado (resetUploadState): passar pela barra com as
+  // setas não pode apagar a escolha do professor.
+  function handleTabKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>) {
+    const tabs = Array.from(
+      event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]:not(:disabled)') ?? [],
+    );
+    const index = tabs.indexOf(event.currentTarget);
+    const jump: Record<string, number> = { ArrowRight: index + 1, ArrowLeft: index - 1, Home: 0, End: tabs.length - 1 };
+    if (index === -1 || !(event.key in jump)) return;
+    event.preventDefault();
+    tabs[(jump[event.key] + tabs.length) % tabs.length]?.focus();
+  }
+
+  // Sem a barra (só os arquivos), o painel não é de aba nenhuma.
+  function tabPanelProps(value: LessonModalTab) {
+    return filesOnly
+      ? {}
+      : { role: "tabpanel", id: `lesson-modal-panel-${value}`, "aria-labelledby": `lesson-modal-tab-${value}` };
+  }
+
   // Sair pela trilha passa pelo mesmo cuidado de fechar: envio no ar segura, o
   // link digitado vai antes, e link recusado ou nao confirmado segura na tela.
   function guardLeave(event: ReactMouseEvent<HTMLAnchorElement>) {
@@ -874,7 +897,7 @@ export function LessonContentModal({
         )}
 
         {filesOnly ? null : (
-        <nav className="lesson-modal__tabs" aria-label={t("creatorEditor.lesson.setup")}>
+        <div role="tablist" className="lesson-modal__tabs" aria-label={t("creatorEditor.lesson.setup")}>
           {lessonModalTabs.map((item) => {
             const Icon = item.icon;
             const active = tab === item.value;
@@ -905,10 +928,16 @@ export function LessonContentModal({
               <button
                 key={item.value}
                 type="button"
-                aria-current={active ? "page" : undefined}
+                role="tab"
+                id={`lesson-modal-tab-${item.value}`}
+                aria-selected={active}
+                // Só a aba aberta tem painel na tela; o Tab entra na barra por ela.
+                aria-controls={active ? `lesson-modal-panel-${item.value}` : undefined}
+                tabIndex={active ? 0 : -1}
                 className={active ? "is-active" : ""}
                 disabled={isUploading}
                 onClick={() => handleTabChange(item.value)}
+                onKeyDown={handleTabKeyDown}
               >
                 <Icon aria-hidden="true" size={14} />
                 {t(`creatorEditor.lesson.tabs.${item.value}`)}
@@ -922,7 +951,7 @@ export function LessonContentModal({
               </button>
             );
           })}
-        </nav>
+        </div>
         )}
 
         <div className="lesson-modal__body">
@@ -945,7 +974,7 @@ export function LessonContentModal({
           </div>
           )}
           {tab === "video" ? (
-            <div className="grid gap-5">
+            <div className="grid gap-5" {...tabPanelProps("video")}>
 
               <LessonVideoSourcePicker
                 key={linkReplaced}
@@ -1182,7 +1211,7 @@ export function LessonContentModal({
           ) : null}
 
           {tab === "description" ? (
-            <div className="grid gap-4">
+            <div className="grid gap-4" {...tabPanelProps("description")}>
               <label className="lesson-modal-field">
                 <span>{t("creatorEditor.lesson.title")}</span>
                 <input
@@ -1276,7 +1305,7 @@ export function LessonContentModal({
           ) : null}
 
           {tab === "materials" ? (
-            <div className="grid gap-5">
+            <div className="grid gap-5" {...tabPanelProps("materials")}>
               <div className="lesson-modal-note">
                 <FileText aria-hidden="true" size={17} />
                 <p>
@@ -1319,28 +1348,31 @@ export function LessonContentModal({
           ) : null}
 
           {tab === "settings" ? (
-            <div className="grid gap-5">
-              <div className="lesson-modal-setting">
-                <div>
+            <div className="grid gap-5" {...tabPanelProps("settings")}>
+              {/* A linha inteira é a chave, como na Conta: antes só o alvo de
+                  44px em volta do trilho respondia e o texto ao lado não. O
+                  trilho é a .settings-toggle da casa; role="switch" diz
+                  ligada/desligada (o aria-pressed dizia "apertado"). */}
+              <button
+                type="button"
+                role="switch"
+                aria-checked={isFreePreview}
+                aria-label={t("creatorEditor.lesson.freePreviewLabel")}
+                aria-describedby="lesson-modal-free-preview-help"
+                onClick={onSetFreePreview}
+                disabled={!isEditable}
+                className="lesson-modal-setting"
+              >
+                <span>
                   <strong>{t("creatorEditor.lesson.freePreview")}</strong>
-                  <p>{t("creatorEditor.lesson.freePreviewHelp")}</p>
-                </div>
-                {/* A chave da Conta e da comunidade do construtor (.settings-toggle)
-                    num alvo de 44px. Esta era outra, feita à mão (48x26, botão
-                    pulando por `left`): duas chaves de desenho e ritmo diferentes. */}
-                <button
-                  type="button"
-                  onClick={onSetFreePreview}
-                  disabled={!isEditable}
-                  aria-pressed={isFreePreview}
-                  aria-label={t("creatorEditor.lesson.freePreviewLabel")}
-                  className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center self-start rounded-md disabled:cursor-not-allowed disabled:opacity-60 lg:self-auto"
-                >
-                  <span aria-hidden="true" className={`settings-toggle ${isFreePreview ? "settings-toggle--on" : ""}`}>
-                    <span />
+                  <span id="lesson-modal-free-preview-help" className="lesson-modal-setting__help">
+                    {t("creatorEditor.lesson.freePreviewHelp")}
                   </span>
-                </button>
-              </div>
+                </span>
+                <span aria-hidden="true" className={`settings-toggle ${isFreePreview ? "settings-toggle--on" : ""}`}>
+                  <span />
+                </span>
+              </button>
               {/* So a estrategia "time_drip_custom" le os dias por aula
                   (src/domain/drip-policy.ts); nas outras o campo nao faz nada. */}
               {dripStrategy === "time_drip_custom" ? (

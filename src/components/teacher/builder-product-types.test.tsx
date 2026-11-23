@@ -239,7 +239,7 @@ describe("e-book: so o arquivo", () => {
     expect(await screen.findByRole("heading", { name: "File to download" })).toBeInTheDocument();
     expect(screen.queryByText("Add your first module")).toBeNull();
     expect(screen.queryByRole("button", { name: /Add module/i })).toBeNull();
-    expect(screen.queryByRole("navigation", { name: /Lesson setup/i })).toBeNull();
+    expect(screen.queryByRole("tablist", { name: /Lesson setup/i })).toBeNull();
     expect(screen.queryByText("Workbook")).toBeNull();
     expect(screen.queryByText(/1 module/i)).toBeNull();
   });
@@ -252,7 +252,7 @@ describe("e-book: so o arquivo", () => {
     renderBuilder("content");
 
     expect(await screen.findByRole("heading", { name: "File to download" })).toBeInTheDocument();
-    expect(screen.queryByRole("navigation", { name: /Lesson setup/i })).toBeNull();
+    expect(screen.queryByRole("tablist", { name: /Lesson setup/i })).toBeNull();
     expect(screen.queryByText("Workbook")).toBeNull();
   });
 

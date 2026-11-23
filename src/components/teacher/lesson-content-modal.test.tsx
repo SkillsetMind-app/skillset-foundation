@@ -133,6 +133,7 @@ function renderModal(
 
   const onUpdateLesson = vi.fn();
   const onClose = vi.fn();
+  const onSetFreePreview = vi.fn();
 
   const modal = (nextLesson: TeacherLesson, onChange: (patch: Partial<TeacherLesson>) => void = onUpdateLesson) => (
     <LessonContentModal
@@ -145,7 +146,7 @@ function renderModal(
       isFreePreview={isFreePreview}
       dripStrategy={dripStrategy}
       onClose={onClose}
-      onSetFreePreview={vi.fn()}
+      onSetFreePreview={onSetFreePreview}
       onUpdateLesson={onChange}
     />
   );
@@ -160,7 +161,7 @@ function renderModal(
     <I18nProvider initialLocale="en"><ChangeLanguage /><EditableModal /></I18nProvider>
   ) : modal(lesson));
 
-  return { onClose, onUpdateLesson, lesson, unmount: view.unmount, rerenderLesson: (patch: Partial<TeacherLesson>) => view.rerender(modal({ ...lesson, ...patch })) };
+  return { onClose, onUpdateLesson, onSetFreePreview, lesson, unmount: view.unmount, rerenderLesson: (patch: Partial<TeacherLesson>) => view.rerender(modal({ ...lesson, ...patch })) };
 }
 
 function chooseVideoFile(name = "aula.mp4") {
@@ -183,19 +184,83 @@ describe("LessonContentModal — dias de espera", () => {
 
   it("esconde os dias de espera quando a estrategia do curso nao os usa", () => {
     renderModal({ dripDelayDays: 7 }, "Módulo 1", false, "instant");
-    fireEvent.click(screen.getByRole("button", { name: /^Settings/ }));
-    const toggle = screen.getByRole("button", { name: "Use this lesson as the free preview" });
+    fireEvent.click(screen.getByRole("tab", { name: /^Settings/ }));
+    const toggle = screen.getByRole("switch", { name: "Use this lesson as the free preview" });
     expect(toggle).toBeInTheDocument();
-    // B-22: a mesma chave da Conta e da comunidade, num alvo de 44px.
-    expect(toggle).toHaveClass("min-h-11", "min-w-11");
+    // B-22 / C-13: a mesma chave da Conta, e a linha inteira (com o texto) é o
+    // controle, então o alvo passa dos 44px.
+    expect(toggle).toHaveClass("lesson-modal-setting");
+    expect(toggle).toHaveTextContent("Free preview");
+    expect(toggle).toHaveAccessibleDescription(/Make this lesson visible before purchase/);
     expect(toggle.querySelector(".settings-toggle")).not.toBeNull();
     expect(screen.queryByDisplayValue("7")).not.toBeInTheDocument();
   });
 
   it("mostra os dias de espera na liberacao por aula", () => {
     renderModal({ dripDelayDays: 7 }, "Módulo 1", false, "time_drip_custom");
-    fireEvent.click(screen.getByRole("button", { name: /^Settings/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Settings/ }));
     expect(screen.getByDisplayValue("7")).toBeInTheDocument();
+  });
+});
+
+// C-04: eram botoes com aria-current e sem setas. C-13: so o trilho da chave
+// respondia; o texto ao lado nao.
+describe("LessonContentModal — abas e chave da previa", () => {
+  beforeEach(() => {
+    currentAssets = [];
+    vi.clearAllMocks();
+  });
+
+  it("a barra e um tablist: so a aba aberta entra no Tab e o painel diz de qual aba e", () => {
+    renderModal();
+    const tabs = within(screen.getByRole("tablist", { name: "Lesson setup" })).getAllByRole("tab");
+    expect(tabs).toHaveLength(4);
+    const [video, ...others] = tabs;
+    expect(video).toHaveAttribute("aria-selected", "true");
+    expect(video).toHaveAttribute("tabindex", "0");
+    for (const tab of others) {
+      expect(tab).toHaveAttribute("aria-selected", "false");
+      expect(tab).toHaveAttribute("tabindex", "-1");
+    }
+    const panel = screen.getByRole("tabpanel");
+    expect(video).toHaveAttribute("aria-controls", panel.id);
+    expect(panel).toHaveAttribute("aria-labelledby", video.id);
+  });
+
+  it("setas, Home e End levam o foco sem abrir a aba nem perder o arquivo escolhido", () => {
+    renderModal();
+    chooseVideoFile();
+    const [video, description, materials, settings] = within(screen.getByRole("tablist")).getAllByRole("tab");
+    act(() => video.focus());
+    fireEvent.keyDown(video, { key: "ArrowRight" });
+    expect(description).toHaveFocus();
+    fireEvent.keyDown(description, { key: "End" });
+    expect(settings).toHaveFocus();
+    fireEvent.keyDown(settings, { key: "ArrowRight" });
+    expect(video).toHaveFocus();
+    fireEvent.keyDown(video, { key: "ArrowLeft" });
+    expect(settings).toHaveFocus();
+    fireEvent.keyDown(settings, { key: "Home" });
+    expect(video).toHaveFocus();
+    // Passar pela barra nao trocou de aba: o video escolhido continua la.
+    expect(video).toHaveAttribute("aria-selected", "true");
+    expect(video.querySelector(".lesson-modal__tab-dot")).toHaveAttribute("data-tone", "busy");
+
+    fireEvent.click(materials);
+    expect(materials).toHaveAttribute("aria-selected", "true");
+    expect(materials).toHaveAttribute("tabindex", "0");
+    expect(screen.getByRole("tabpanel")).toHaveAttribute("aria-labelledby", materials.id);
+  });
+
+  it("tocar no texto da previa gratis liga a chave, como na Conta", () => {
+    const { onSetFreePreview } = renderModal();
+    fireEvent.click(screen.getByRole("tab", { name: /^Settings/ }));
+    const toggle = screen.getByRole("switch", { name: "Use this lesson as the free preview" });
+    expect(toggle).toHaveAttribute("aria-checked", "false");
+    expect(toggle).not.toHaveAttribute("aria-pressed");
+    fireEvent.click(within(toggle).getByText("Free preview"));
+    fireEvent.click(within(toggle).getByText(/Make this lesson visible before purchase/));
+    expect(onSetFreePreview).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -208,7 +273,7 @@ describe("LessonContentModal — envio sem arquivo", () => {
 
   it("o Upload file apagado diz que falta o arquivo, e a frase sai quando ele vem", () => {
     renderModal({}, "Módulo 1", true);
-    fireEvent.click(screen.getByRole("button", { name: /^Materials/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Materials/ }));
     const upload = screen.getByRole("button", { name: "Upload file" });
     expect(upload).toBeDisabled();
     expect(upload).toHaveAccessibleDescription("Choose a file first, then upload it.");
@@ -232,7 +297,7 @@ describe("LessonContentModal — descricao", () => {
 
   it("a descricao grava no texto protegido e a nota publica antiga fica recolhida", () => {
     const { onUpdateLesson } = renderModal({ description: "old", contentText: null });
-    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
 
     const oldNote = screen
       .getByText(oldNoteLabel)
@@ -253,7 +318,7 @@ describe("LessonContentModal — descricao", () => {
 
   it("a nota antiga continua editavel e some quando a aula nao tem nota", () => {
     const { onUpdateLesson, unmount } = renderModal({ description: "old", contentText: "corpo" });
-    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
 
     expect(screen.getByPlaceholderText("Explain what the student is about to learn and why it matters.")).toHaveValue("corpo");
     fireEvent.change(
@@ -264,7 +329,7 @@ describe("LessonContentModal — descricao", () => {
     unmount();
 
     renderModal({ description: "", contentText: "corpo" });
-    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
     expect(screen.queryByText(oldNoteLabel)).not.toBeInTheDocument();
   });
 
@@ -272,7 +337,7 @@ describe("LessonContentModal — descricao", () => {
   // conseguia redigitar nem desfazer, e o autosave gravava "".
   it("apagar a nota antiga nao some com o campo", () => {
     const { onUpdateLesson } = renderModal({ description: "old", contentText: null }, "Módulo 1", true);
-    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
     const note = () => screen.queryByRole("textbox", { name: oldNoteLabel, hidden: true });
 
     fireEvent.change(note() as HTMLElement, { target: { value: "" } });
@@ -285,13 +350,13 @@ describe("LessonContentModal — descricao", () => {
   // O texto da aula de previa gratis e lido por qualquer um na pagina do curso.
   it("na aula de previa gratis a ajuda avisa que o texto e publico", () => {
     const { unmount } = renderModal({}, "Módulo 1", false, "instant", true);
-    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
     expect(screen.getByText(/anyone can read this text on the course page/)).toBeInTheDocument();
     expect(screen.queryByText(/for enrolled students/)).not.toBeInTheDocument();
     unmount();
 
     renderModal();
-    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
     expect(screen.getByText(/for enrolled students/)).toBeInTheDocument();
   });
 });
@@ -468,8 +533,8 @@ describe("LessonContentModal — um video por aula", () => {
     fireEvent.click(screen.getByRole("button", { name: "Remove old link" }));
     clickConfirm(screen.getByRole("dialog", { name: "Remove this link?" }), "Remove old link");
     expect(screen.getByRole("status")).toHaveTextContent("Old link removed.");
-    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
-    fireEvent.click(screen.getByRole("button", { name: /^Video/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Video/ }));
     expect(screen.getByRole("status")).toBeEmptyDOMElement();
   });
 
@@ -648,8 +713,8 @@ describe("LessonContentModal — um video por aula", () => {
     subscribeOutcome = "fail";
     const { onUpdateLesson } = renderModal();
     fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
-    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
-    fireEvent.click(screen.getByRole("button", { name: /^Video/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Video/ }));
 
     expect(linkField()).toHaveAttribute("readonly");
     expect(screen.getByText("We could not load lesson assets.")).toBeInTheDocument();
@@ -791,7 +856,7 @@ describe("LessonContentModal — video tab", () => {
     expect(form.compareDocumentPosition(screen.getByRole("button", { name: "Replace with link" })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(onUpdateLesson).not.toHaveBeenCalled();
     expect(uploadCourseAsset).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: /^Video/ })).toHaveTextContent("Selected");
+    expect(screen.getByRole("tab", { name: /^Video/ })).toHaveTextContent("Selected");
 
     fireEvent.error(preview);
     expect(screen.getByText("This browser cannot preview this file. You can still upload it.")).toBeInTheDocument();
@@ -836,7 +901,7 @@ describe("LessonContentModal — video tab", () => {
     uploadCourseAsset.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
     renderModal();
     chooseVideoFile("minha aula.mp4");
-    const videoTab = screen.getByRole("button", { name: /^Video/ });
+    const videoTab = screen.getByRole("tab", { name: /^Video/ });
     // Meio cheio (forma, nao so cor) e a palavra no title para quem usa mouse.
     expect(videoTab.querySelector(".lesson-modal__tab-dot")).toHaveAttribute("data-tone", "busy");
     expect(videoTab.querySelector(".lesson-modal__tab-dot")).toHaveAttribute("title", "Selected");
@@ -917,7 +982,7 @@ describe("LessonContentModal — video tab", () => {
     "a aba Settings mostra se a aula e previa gratis (%s)",
     (isFreePreview, label, tone) => {
       renderModal({}, "Módulo 1", false, "instant", isFreePreview);
-      const settings = screen.getByRole("button", { name: /^Settings/ });
+      const settings = screen.getByRole("tab", { name: /^Settings/ });
       // O leitor de tela ouve o estado junto com o nome da aba.
       expect(settings).toHaveAccessibleName(new RegExp(`${label}$`));
       const mark = settings.querySelector(".lesson-modal__tab-dot");
@@ -1001,12 +1066,12 @@ describe("LessonContentModal — video tab", () => {
       });
       const url = "https://youtu.be/author-link";
       const { onUpdateLesson } = renderModal({ externalUrl: url }, "Módulo $& integral", true);
-      fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+      fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
       fireEvent.change(screen.getByLabelText("Lesson title"), { target: { value: "Título $& íntegro" } });
       fireEvent.change(screen.getByPlaceholderText("Explain what the student is about to learn and why it matters."), {
         target: { value: "Descrição autoral — não traduzir" },
       });
-      fireEvent.click(screen.getByRole("button", { name: /^Video/ }));
+      fireEvent.click(screen.getByRole("tab", { name: /^Video/ }));
       // A aula tem link do YouTube: a aba abre no link, e o envio e uma troca explicita.
       fireEvent.click(screen.getByRole("button", { name: "Replace with upload" }));
       const file = chooseVideoFile("Aula $& — ação.mp4");
@@ -1023,7 +1088,7 @@ describe("LessonContentModal — video tab", () => {
       // O link salvo nunca foi tocado pela troca nem pelo envio.
       expect(onUpdateLesson).not.toHaveBeenCalledWith(expect.objectContaining({ externalUrl: expect.anything() }));
       for (const name of [/^Video/, /^Descripción/, /^Materiales/, /^Ajustes/]) {
-        expect(screen.getByRole("button", { name })).toBeDisabled();
+        expect(screen.getByRole("tab", { name })).toBeDisabled();
       }
       expect(onUpdateLesson).toHaveBeenCalledTimes(updatesBeforeLanguage);
       expect(subscribed).toHaveBeenCalledOnce();
@@ -1040,7 +1105,7 @@ describe("LessonContentModal — video tab", () => {
       } else {
         await act(async () => { emitAssets([videoAsset()]); finish(); });
       }
-      await waitFor(() => expect(screen.getByRole("button", { name: /^Descripción/ })).toBeEnabled());
+      await waitFor(() => expect(screen.getByRole("tab", { name: /^Descripción/ })).toBeEnabled());
       if (outcome === "failure") {
         expect(screen.getByText(/Demasiadas subidas en la última hora/)).toBeInTheDocument();
       } else if (outcome === "success") {
@@ -1053,7 +1118,7 @@ describe("LessonContentModal — video tab", () => {
       fireEvent.click(screen.getByRole("button", { name: "Change language" }));
       if (outcome === "failure") expect(screen.getByText(/Too many uploads in the last hour/)).toBeInTheDocument();
       if (outcome === "success") expect(screen.getByText("File uploaded to this lesson.")).toBeInTheDocument();
-      fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+      fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
       expect(screen.getByLabelText("Lesson title")).toHaveValue("Título $& íntegro");
       expect(screen.getByDisplayValue("Descrição autoral — não traduzir")).toBeInTheDocument();
       expect(subscribed).toHaveBeenCalledOnce();
@@ -1086,7 +1151,7 @@ describe("LessonContentModal — video tab", () => {
     });
     try {
       renderModal({}, "Módulo 1", true);
-      fireEvent.click(screen.getByRole("button", { name: /^Materials/ }));
+      fireEvent.click(screen.getByRole("tab", { name: /^Materials/ }));
       expect(screen.queryByText("apostila.pdf")).not.toBeInTheDocument();
       fireEvent.change(screen.getByLabelText("Lesson material"), {
         target: { files: [new File(["pdf"], "apostila.pdf", { type: "application/pdf" })] },
@@ -1105,17 +1170,17 @@ describe("LessonContentModal — video tab", () => {
       downloadUrl: "https://example.supabase.co/storage/v1/object/public/public-media/thumbnail.png",
     })];
     const { onUpdateLesson } = renderModal({ type: "external_embed", durationMinutes: 12, dripDelayDays: 7 }, "Módulo $& {lessonIndex}", true, "time_drip_custom");
-    fireEvent.click(screen.getByRole("button", { name: /^Settings/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Settings/ }));
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    expect(screen.getByRole("button", { name: /^Ajustes/ })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("tab", { name: /^Ajustes/ })).toHaveAttribute("aria-selected", "true");
     expect(screen.queryByLabelText("Tipo de lección")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Duración en minutos")).not.toBeInTheDocument();
     expect(screen.getByDisplayValue("7")).toBeInTheDocument();
     expect(screen.getByText("Módulo 1 - Módulo $& {lessonIndex} / Lección 1")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Usar esta lección como vista previa gratuita" })).toHaveAttribute("aria-pressed", "false");
-    fireEvent.click(screen.getByRole("button", { name: /^Descripción/ }));
+    expect(screen.getByRole("switch", { name: "Usar esta lección como vista previa gratuita" })).toHaveAttribute("aria-checked", "false");
+    fireEvent.click(screen.getByRole("tab", { name: /^Descripción/ }));
     expect(screen.getByRole("img", { name: "Miniatura de la lección: Miniatura $&.png" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /^Materiales/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Materiales/ }));
     expect(screen.getByLabelText("Material de la lección")).toBeInTheDocument();
     expect(screen.getByText("Todavía no hay materiales complementarios.")).toBeInTheDocument();
     expect(onUpdateLesson).not.toHaveBeenCalled();
@@ -1148,7 +1213,7 @@ describe("LessonContentModal — video tab", () => {
         .toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     }
 
-    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
     expect(dialog).toHaveAccessibleName(title);
     expect(body).toContainElement(screen.getByRole("heading", { name: title }));
     expect(screen.getByRole("button", { name: "Done" })).toBeInTheDocument();
@@ -1257,7 +1322,7 @@ describe("LessonContentModal — video tab", () => {
   it("shows the uploaded thumbnail beside lesson details, not release settings", () => {
     currentAssets = [videoAsset({ kind: "lesson_thumbnail", contentType: "image/png", fileName: "thumbnail.png", downloadUrl: "https://example.supabase.co/storage/v1/object/public/public-media/thumbnail.png" })];
     renderModal();
-    fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
     expect(screen.getByRole("img", { name: "Lesson thumbnail: thumbnail.png" })).toHaveAttribute("src", currentAssets[0].downloadUrl);
   });
 
@@ -1287,10 +1352,10 @@ describe("LessonContentModal — video tab", () => {
       const progress = await screen.findByText(/^50% - /);
 
       for (const name of [/^Video/, /^Description/, /^Materials/, /^Settings/]) {
-        fireEvent.click(screen.getByRole("button", { name }));
+        fireEvent.click(screen.getByRole("tab", { name }));
         expect(progress).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Cancel upload" })).toBeEnabled();
-        expect(screen.getByRole("button", { name })).toBeDisabled();
+        expect(screen.getByRole("tab", { name })).toBeDisabled();
       }
 
       if (outcome === "cancel") {
@@ -1302,7 +1367,7 @@ describe("LessonContentModal — video tab", () => {
         finish();
       }
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: /^Description/ })).toBeEnabled();
+        expect(screen.getByRole("tab", { name: /^Description/ })).toBeEnabled();
       });
       expect(screen.queryByRole("button", { name: "Cancel upload" })).not.toBeInTheDocument();
       if (outcome === "success") {
@@ -1310,7 +1375,7 @@ describe("LessonContentModal — video tab", () => {
       } else {
         expect(onUpdateLesson).not.toHaveBeenCalled();
       }
-      fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
+      fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
       expect(screen.getByLabelText("Lesson title")).toBeInTheDocument();
     },
   );

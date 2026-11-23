@@ -148,7 +148,7 @@ export function ConfirmDialog({
         if (!pendingRef.current) dialogRef.current?.close();
       }}
       onClose={onClose}
-      className="modal-panel modal-panel-scroll m-auto w-[calc(100%_-_2rem)] max-w-md rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] p-0 text-[var(--color-ink)] shadow-[var(--shadow-strong)]"
+      className="dialog-panel modal-panel modal-panel-scroll m-auto w-[calc(100%_-_2rem)] text-[var(--color-ink)]"
     >
       <div className="grid gap-2 p-6">
         {eyebrow ? (
@@ -173,9 +173,9 @@ export function ConfirmDialog({
           </InlineAlert>
         ) : null}
       </div>
-      {/* No celular os botões empilham com o de confirmar em cima; do sm em
-          diante ficam à direita, o seguro primeiro. */}
-      <div className="flex flex-col-reverse gap-3 border-t border-[var(--color-line)] px-6 py-4 sm:flex-row sm:justify-end">
+      {/* O rodapé da casa: no celular os botões empilham com o de confirmar
+          em cima; dos 480px em diante ficam à direita, o seguro primeiro. */}
+      <div className="dialog-footer">
         {acknowledge ? null : (
           <Button
             variant="outline"

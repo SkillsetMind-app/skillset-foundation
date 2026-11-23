@@ -426,6 +426,55 @@ dialog.modal-panel::backdrop {
   }
 }
 
+/* Painel e rodapé únicos das janelas centradas. Havia três sombras de painel,
+   larguras soltas e seis jeitos de pôr os botões (à direita sem filete, em
+   linha de formulário, empilhados só em algumas). Agora: uma sombra, um canto,
+   quatro larguras; o rodapé tem filete em cima, ações à direita com a
+   principal por último e, abaixo de 480px, empilha na largura toda com a
+   principal em cima (column-reverse). O fundo é o token de superfície (no
+   escuro, o mesmo do bg-white). Em camada: a janela que precisa de outra
+   coisa num tamanho (o checkout em tela cheia no celular) muda por utility. */
+@layer components {
+  .dialog-panel {
+    width: 100%;
+    max-width: 28rem;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-xl);
+    background: var(--color-surface);
+    padding: 0;
+    box-shadow: var(--shadow-strong);
+  }
+
+  .dialog-panel--md {
+    max-width: 36rem;
+  }
+
+  .dialog-panel--lg {
+    max-width: 48rem;
+  }
+
+  .dialog-panel--xl {
+    max-width: 64rem;
+  }
+
+  .dialog-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    border-top: 1px solid var(--color-line);
+    padding: 1rem 1.5rem;
+  }
+
+  @media (width < 480px) {
+    .dialog-footer {
+      flex-direction: column-reverse;
+      align-items: stretch;
+    }
+  }
+}
+
 /* Botão só de ícone: alvo de 44px, ícone no centro, canto de 8px (redondo é
    de avatar e de chave). Havia seis tamanhos, de 24 a 44px, e os pequenos
    escapavam do dedo. O anel de foco é o global de `button:focus-visible`.
@@ -4387,6 +4436,15 @@ body:has([aria-label="Course categories"])
   font-size: 1.5rem;
 }
 
+/* O estudio como janela entra como as outras (o fundo ja acende pelo
+   .dialog-backdrop): sobe 8px em 180ms. Aparecia num corte seco. Na pagina
+   ele nao flutua, entao nao anima. */
+@media (prefers-reduced-motion: no-preference) {
+  .lesson-modal:not(.lesson-modal--page) {
+    animation: motion-panel-in var(--duration-base) var(--ease-standard) backwards;
+  }
+}
+
 .lesson-modal__trail {
   display: flex;
   flex-wrap: wrap;
@@ -5017,6 +5075,30 @@ body:has([aria-label="Course categories"])
   border-radius: var(--radius-lg);
   background: #ffffff;
   padding: 1rem;
+  /* A linha é o botão da chave (lesson-content-modal): o texto também liga. */
+  width: 100%;
+  text-align: left;
+  transition: border-color var(--duration-base) var(--ease-standard);
+}
+
+.lesson-modal-setting:hover:not(:disabled) {
+  border-color: var(--color-line-strong);
+}
+
+/* Desligada (curso sem edição): só o trilho apaga, como antes; o texto segue
+   legível. A regra do [role="switch"] punha a mãozinha mesmo desligada. */
+.lesson-modal-setting:disabled {
+  cursor: not-allowed;
+}
+
+.lesson-modal-setting:disabled .settings-toggle {
+  opacity: 0.6;
+}
+
+/* Abaixo de 1024px a linha vira coluna, e o flex-basis de 46px do trilho
+   passaria a ser a ALTURA: ficava um círculo. */
+.lesson-modal-setting > .settings-toggle {
+  flex: none;
 }
 
 .lesson-modal-setting strong {
@@ -5024,7 +5106,8 @@ body:has([aria-label="Course categories"])
   font-size: 0.9375rem;
 }
 
-.lesson-modal-setting p {
+.lesson-modal-setting__help {
+  display: block;
   margin-top: 0.35rem;
   color: var(--color-ink-soft);
   font-size: 0.8125rem;
