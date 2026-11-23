@@ -6,6 +6,7 @@ import { CapabilitiesGrid } from "@/components/site/capabilities-grid";
 import { FeaturedCourses } from "@/components/site/featured-courses";
 import { ForCreatorsBand } from "@/components/site/for-creators-band";
 import { HomeFactsBand } from "@/components/site/home-facts-band";
+import { HomeFaq } from "@/components/site/home-faq";
 import { HowItWorksStrip } from "@/components/site/how-it-works-strip";
 import { MarketingHero } from "@/components/site/marketing-hero";
 import { PromisePreviewBand } from "@/components/site/promise-preview-band";
@@ -127,6 +128,10 @@ export default async function Home() {
         </section>
         <section id="promise" className="scroll-mt-28">
           <PromisePreviewBand />
+        </section>
+        {/* Perguntas frequentes, com as respostas da central de ajuda. */}
+        <section id="faq" className="scroll-mt-28">
+          <HomeFaq />
         </section>
         <section id="for-creators" className="scroll-mt-28">
           <ForCreatorsBand />

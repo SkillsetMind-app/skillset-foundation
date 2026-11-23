@@ -517,6 +517,9 @@
       "feeLock": "Months of fee-lock on your plan",
       "commitmentsCount": "6",
       "commitments": "Written commitments to every creator"
+    },
+    "faq": {
+      "more": "More on this in the Help center"
     }
   },
   "platform": {

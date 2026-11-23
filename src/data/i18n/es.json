@@ -517,6 +517,9 @@
       "feeLock": "Meses de tarifa fija en tu plan",
       "commitmentsCount": "6",
       "commitments": "Compromisos por escrito con cada creador"
+    },
+    "faq": {
+      "more": "Más sobre esto en el Centro de ayuda"
     }
   },
   "platform": {
