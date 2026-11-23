@@ -123,6 +123,8 @@ describe("TeacherEventStudio", () => {
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(agenda.reload).toHaveBeenCalledTimes(1);
     expect(screen.getByText("Loading scheduled sessions...")).toBeInTheDocument();
+    // A espera tem a forma dos cartoes de sessao, nao uma frase num cartao.
+    expect(screen.getByText("Loading scheduled sessions...").closest('[role="status"]')).toHaveAttribute("data-skeleton", "cards");
   });
 
   // Releitura que falha com a agenda na tela: as sessoes ficam, o aviso sobe e
@@ -248,6 +250,8 @@ describe("TeacherEventStudio", () => {
     const course = screen.getByRole("combobox", { name: "Course" });
     expect(course).toHaveValue("");
     expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+    // Desligado diz por que (F-12).
+    expect(screen.getByRole("button", { name: "Continue" })).toHaveAccessibleDescription("Choose an available course");
     fillWhen("2027-03-14", "15:30");
     const form = course.closest("form");
     if (!form) throw new Error("Event form not found");
@@ -315,6 +319,9 @@ describe("TeacherEventStudio", () => {
     render(<TeacherEventStudio />);
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
     expect(screen.getByRole("combobox", { name: "Course" })).toBeDisabled();
+    expect(screen.getByRole("combobox", { name: "Course" })).toHaveAccessibleDescription(
+      "The course of a scheduled session can't be changed.",
+    );
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     expect(screen.getByLabelText("Session title")).toHaveValue("Existing session");
     fireEvent.click(screen.getByRole("button", { name: "Update session" }));

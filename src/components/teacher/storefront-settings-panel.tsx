@@ -493,11 +493,30 @@ export function StorefrontSettingsPanel() {
   }
 
   if (isLoading) {
+    // A forma da tela (título, prévia da vitrine, campos) no lugar da frase
+    // solta, que depois virava a tela inteira de uma vez. A frase fica para o
+    // leitor de tela.
+    const bone = "rounded-md bg-[var(--color-surface-strong)]";
     return (
-      <section className="settings-section-card" aria-busy="true">
-        <p role="status" className="text-sm text-[var(--color-ink-soft)]">
-          {t("teach.storefrontEditor.loading")}
-        </p>
+      <section className="settings-section-card">
+        <div role="status" data-skeleton="storefront">
+          <span className="sr-only">{t("teach.storefrontEditor.loading")}</span>
+          <div aria-hidden="true" className="grid animate-pulse gap-6">
+            <div className="grid gap-2">
+              <div className={`h-6 w-48 ${bone}`} />
+              <div className={`h-4 w-full max-w-xl ${bone}`} />
+            </div>
+            <div className={`h-32 ${bone}`} />
+            <div className="grid gap-4 rounded-lg border border-[var(--color-line)] p-4">
+              {[0, 1, 2].map((item) => (
+                <div key={item} className="grid gap-2">
+                  <div className={`h-3 w-28 ${bone}`} />
+                  <div className={`h-11 ${bone}`} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </section>
     );
   }
@@ -649,7 +668,7 @@ export function StorefrontSettingsPanel() {
                   onChange={(event) => setAccentColor(event.target.value)}
                   placeholder="#183a5e"
                   spellCheck={false}
-                  className="min-w-0 flex-1 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                  className="field-input min-w-0 flex-1"
                 />
               </div>
             )}
@@ -687,7 +706,7 @@ export function StorefrontSettingsPanel() {
                 onChange={(event) =>
                   setThemePreset(event.target.value as StorefrontThemePreset)
                 }
-                className="rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                className="field-input"
               >
                 {storefrontThemePresets.map((preset) => (
                   <option key={preset} value={preset}>
@@ -708,7 +727,7 @@ export function StorefrontSettingsPanel() {
                   rows={2}
                   maxLength={maxStorefrontTaglineLength}
                   placeholder={t("teach.storefrontEditor.taglinePlaceholder")}
-                  className="resize-none rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                  className="field-input resize-none"
                 />
                 <span className="text-xs font-normal text-[var(--color-ink-soft)]">
                   {t("teach.storefrontEditor.characters")
@@ -731,9 +750,13 @@ export function StorefrontSettingsPanel() {
           </div>
 
           {courseLoadState === "loading" ? (
-            <p role="status" className="text-xs leading-5 text-[var(--color-ink-soft)]">
-              {t("publicCourses.loadingCourses")}
-            </p>
+            // Duas linhas no lugar das linhas de curso, em vez da frase solta.
+            <div role="status" className="grid gap-2">
+              <span className="sr-only">{t("publicCourses.loadingCourses")}</span>
+              {[0, 1].map((item) => (
+                <div key={item} aria-hidden="true" className="h-16 animate-pulse rounded-md bg-[var(--color-surface-strong)]" />
+              ))}
+            </div>
           ) : courseLoadState === "error" ? (
             <div>
               <InlineAlert tone="error">{t("teach.storefrontEditor.errors.courses")}</InlineAlert>

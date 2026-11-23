@@ -7,10 +7,17 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { StatusChip } from "@/components/shared/status-chip";
 import { TableSkeleton } from "@/components/teacher/builder-skeleton";
-import { EmptyState, InlineAlert } from "@/components/ui";
+import { Button, EmptyState, InlineAlert } from "@/components/ui";
 import { SpotArt } from "@/components/ui/spot-art";
 import { getMyCourseStudents, type CourseStudent } from "@/lib/data/enrollments";
 import { getMyCourseSummaries } from "@/lib/data/teacher-courses";
+
+// A leitura ja traz todas as matriculas; a tela mostra 50 por vez, como Vendas.
+const PAGE = 50;
+
+// Os mesmos recortes de acesso da lista por produto (course-student-roster).
+const statusFilters = ["all", "active", "completed", "refunded", "revoked", "expired"] as const;
+type StatusFilter = (typeof statusFilters)[number];
 
 type State =
   | { status: "loading" }
@@ -26,6 +33,8 @@ export function TeacherStudentsList() {
   const { t, locale } = useTranslation();
   const [state, setState] = useState<State>({ status: "loading" });
   const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<StatusFilter>("all");
+  const [visibleCount, setVisibleCount] = useState(PAGE);
   // "Try again" pede a mesma leitura de novo (antes a saida era recarregar a
   // pagina inteira).
   const [attempt, setAttempt] = useState(0);
@@ -61,7 +70,8 @@ export function TeacherStudentsList() {
   }, [uid, attempt]);
 
   if (state.status === "loading") {
-    return <TableSkeleton label={t("teach.studentsPage.loading")} />;
+    // Busca + filtro de acesso: a mesma fileira que vem depois.
+    return <TableSkeleton label={t("teach.studentsPage.loading")} controls={2} />;
   }
 
   if (state.status === "error") {
@@ -97,14 +107,17 @@ export function TeacherStudentsList() {
   const people = new Set(
     state.students.filter((student) => isActiveEnrollment(student.status)).map((student) => student.uid),
   ).size;
-  // Busca so no que ja veio (sem consulta nova): com 300 alunos, achar um
-  // nome era rolar 300 linhas.
+  // Busca e filtro so no que ja veio (sem consulta nova): com 300 alunos,
+  // achar um nome era rolar 300 linhas.
   const needle = search.trim().toLowerCase();
-  const visible = needle
-    ? state.students.filter((student) =>
-        `${student.displayName} ${student.email} ${student.courseTitle}`.toLowerCase().includes(needle),
-      )
-    : state.students;
+  const matches = state.students.filter(
+    (student) =>
+      (status === "all" || student.status === status) &&
+      (!needle ||
+        `${student.displayName} ${student.email} ${student.courseTitle}`.toLowerCase().includes(needle)),
+  );
+  const visible = matches.slice(0, visibleCount);
+  const hiddenCount = matches.length - visible.length;
 
   return (
     <section className="rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
@@ -125,6 +138,21 @@ export function TeacherStudentsList() {
           placeholder={t("teach.studentsPage.searchPlaceholder")}
           className="field-input field-input--inline min-w-[12rem] flex-1 sm:max-w-72"
         />
+        <label htmlFor="students-status" className="sr-only">
+          {t("courseRoster.accessFilter")}
+        </label>
+        <select
+          id="students-status"
+          value={status}
+          onChange={(event) => setStatus(event.target.value as StatusFilter)}
+          className="field-input field-input--inline"
+        >
+          {statusFilters.map((option) => (
+            <option key={option} value={option}>
+              {t(option === "all" ? "courseRoster.accessAll" : `courseRoster.${option}`)}
+            </option>
+          ))}
+        </select>
       </div>
       {visible.length === 0 ? (
         <p role="status" className="mt-4 text-sm leading-6 text-[var(--color-ink-soft)]">
@@ -190,6 +218,11 @@ export function TeacherStudentsList() {
         </table>
       </div>
       )}
+      {hiddenCount > 0 ? (
+        <Button variant="outline" className="mt-4" onClick={() => setVisibleCount((count) => count + PAGE)}>
+          {t("teach.studentsPage.showMore").replace("{count}", () => String(Math.min(hiddenCount, PAGE)))}
+        </Button>
+      ) : null}
     </section>
   );
 }

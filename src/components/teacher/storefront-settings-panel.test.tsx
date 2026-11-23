@@ -543,6 +543,9 @@ describe("StorefrontSettingsPanel", () => {
 
       const { container } = renderWithLocale();
       expect(screen.getByText("Loading storefront settings...")).toBeInTheDocument();
+      // T-07: a forma da tela (prévia e campos), não uma frase solta.
+      expect(screen.getByText("Loading storefront settings...").closest('[role="status"]'))
+        .toHaveAttribute("data-skeleton", "storefront");
       expectNoStorefrontActions();
       fireEvent.click(screen.getByRole("button", { name: "Use ES" }));
       expect(screen.getByText("Cargando la configuración de la tienda...")).toBeInTheDocument();

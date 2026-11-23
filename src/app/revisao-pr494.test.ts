@@ -60,7 +60,8 @@ describe("C3: latao fora de erro, aviso e exclusao", () => {
   const dangerText = "text-[var(--color-danger-fg)]";
   // Terceiro item: o que a tag precisa ter, quando não é a classe direta.
   const errorSites: [string, string, string?][] = [
-    ["components/teacher/activation-checkout-panel.tsx", 'role="alert" className="p-6 text-sm'],
+    // Virou InlineAlert de erro (F-07), que pinta o texto em danger-fg.
+    ["components/teacher/activation-checkout-panel.tsx", 'className="m-6"', 'tone="error"'],
     ["components/account/embedded-checkout-panel.tsx", 'role="alert" className="p-6 text-sm'],
     // Virou InlineAlert de erro, que pinta o texto em danger-fg (ui.test.tsx).
     ["components/learn/community-leaderboard.tsx", '<InlineAlert tone="error" className="mt-3', 'tone="error"'],

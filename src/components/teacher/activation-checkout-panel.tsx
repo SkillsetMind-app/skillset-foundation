@@ -13,7 +13,7 @@ import { rememberActivationReturnCourse } from "@/components/teacher/activation-
 import { StripeFrameSkeleton } from "@/components/teacher/builder-skeleton";
 import { SupportDetails } from "@/components/teacher/support-details";
 import { BrandName } from "@/components/shared/brand-name";
-import { Card, Eyebrow, buttonClasses } from "@/components/ui";
+import { Card, Eyebrow, InlineAlert, buttonClasses } from "@/components/ui";
 import { activationFeeUsd, formatPlanCommission, planById } from "@/data/plans";
 import { formatUsdWhole } from "@/data/platform";
 import { createActivationCheckoutClientSecret } from "@/lib/payments/activation";
@@ -145,16 +145,18 @@ export function ActivationCheckoutPanel({ courseId = null }: { courseId?: string
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
       <Card padding="none" className="overflow-hidden">
+        {/* F-07: a caixa de erro da casa (ícone, fundo que aparece no tema
+            escuro, anúncio). Só a casca mudou: textos, condições e destinos
+            são os mesmos. */}
         {error ? (
-          <div role="alert" className="p-6 text-sm text-[var(--color-danger-fg)]">
-            <p className="font-semibold">
-              {error.verificationRequired
-                ? t("creatorPanel.activationGate.verificationTitle")
-                : error.key === "alreadyActive"
-                  ? t("activationCheckout.alreadyActiveTitle")
-                  : t("activationCheckout.errorTitle")}
-            </p>
-            <p className="mt-2 text-[var(--color-ink-soft)]">
+          <InlineAlert tone="error" className="m-6"
+            title={error.verificationRequired
+              ? t("creatorPanel.activationGate.verificationTitle")
+              : error.key === "alreadyActive"
+                ? t("activationCheckout.alreadyActiveTitle")
+                : t("activationCheckout.errorTitle")}
+          >
+            <p className="mt-2 font-normal text-[var(--color-ink-soft)]">
               {error.verificationRequired
                 ? t("creatorPanel.activationGate.verificationBody")
                 : t(`activationCheckout.error.${error.key}`)}
@@ -169,7 +171,7 @@ export function ActivationCheckoutPanel({ courseId = null }: { courseId?: string
                   ? t("activationCheckout.backToCourseStudio")
                   : t("activationCheckout.backToStudio")}
             </Link>
-          </div>
+          </InlineAlert>
         ) : !options ? (
           <StripeFrameSkeleton label={t("activationCheckout.preparing")} />
         ) : (

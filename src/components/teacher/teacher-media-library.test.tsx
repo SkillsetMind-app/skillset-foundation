@@ -96,6 +96,8 @@ describe("TeacherMediaLibrary", () => {
     render(<TeacherMediaLibrary />);
 
     expect(screen.getByRole("status")).toHaveTextContent("Loading this course's files...");
+    // T-07: cartões no formato do arquivo, não uma frase num cartão.
+    expect(screen.getByRole("status")).toHaveAttribute("data-skeleton", "cards");
     expect(screen.queryByText("Upload from the builder.")).toBeNull();
 
     act(() => state.emitAssets([]));

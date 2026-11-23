@@ -142,7 +142,7 @@ describe("Alunos: todos os produtos numa lista", () => {
     expect(bodyRows()[0]).toHaveTextContent("Ana");
     fireEvent.change(search, { target: { value: "nobody" } });
     expect(screen.queryByRole("table")).toBeNull();
-    expect(screen.getByRole("status")).toHaveTextContent("No student matches this search.");
+    expect(screen.getByRole("status")).toHaveTextContent("No student matches this search or filter.");
     // A contagem e de todos, nao do recorte da busca.
     expect(screen.getByText("2 active students")).toBeInTheDocument();
     expect(mocks.getMyCourseStudents).toHaveBeenCalledTimes(1);
@@ -153,7 +153,50 @@ describe("Alunos: todos os produtos numa lista", () => {
     render(<TeacherStudentsList />);
 
     expect(await screen.findByText("0 active students")).toBeInTheDocument();
-    expect(screen.getByText("Refunded")).toBeInTheDocument();
+    expect(within(screen.getAllByRole("row")[1]).getByText("Refunded")).toBeInTheDocument();
+  });
+
+  // O filtro de acesso da lista por produto, tambem so sobre o que ja veio.
+  it("filtra por acesso sem ler de novo, e a contagem continua a de todos", async () => {
+    mocks.getMyCourseStudents.mockResolvedValue([
+      enrollment("e-1", "c-1", "s-1", "Ana", "active"),
+      enrollment("e-2", "c-2", "s-2", "Bruno", "completed"),
+      enrollment("e-3", "c-1", "s-3", "Carla", "refunded"),
+    ]);
+    render(<TeacherStudentsList />);
+
+    const access = await screen.findByRole("combobox", { name: "Filter by access" });
+    const bodyRows = () => screen.getAllByRole("row").slice(1);
+    expect(bodyRows()).toHaveLength(3);
+    fireEvent.change(access, { target: { value: "refunded" } });
+    expect(bodyRows()).toHaveLength(1);
+    expect(bodyRows()[0]).toHaveTextContent("Carla");
+    fireEvent.change(access, { target: { value: "expired" } });
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(screen.getByRole("status")).toHaveTextContent("No student matches this search or filter.");
+    expect(screen.getByText("2 active students")).toBeInTheDocument();
+    expect(mocks.getMyCourseStudents).toHaveBeenCalledTimes(1);
+  });
+
+  // Antes a tabela mostrava todas as matriculas de uma vez, sem limite.
+  it("mostra 50 por vez e 'Show N more' abre as proximas, sem ler de novo", async () => {
+    mocks.getMyCourseStudents.mockResolvedValue(
+      Array.from({ length: 120 }, (_, index) => ({
+        ...enrollment(`e-${index}`, "c-1", `s-${index}`, `Aluno ${index}`, "active"),
+        enrolledAt: new Date(Date.UTC(2026, 0, 1) + index * 60_000).toISOString(),
+      })),
+    );
+    render(<TeacherStudentsList />);
+
+    expect(await screen.findByText("120 active students")).toBeInTheDocument();
+    const bodyRows = () => screen.getAllByRole("row").slice(1);
+    expect(bodyRows()).toHaveLength(50);
+    fireEvent.click(screen.getByRole("button", { name: "Show 50 more" }));
+    expect(bodyRows()).toHaveLength(100);
+    fireEvent.click(screen.getByRole("button", { name: "Show 20 more" }));
+    expect(bodyRows()).toHaveLength(120);
+    expect(screen.queryByRole("button", { name: /Show \d+ more/ })).toBeNull();
+    expect(mocks.getMyCourseStudents).toHaveBeenCalledTimes(1);
   });
 
   it("sem alunos, um estado vazio que explica", async () => {

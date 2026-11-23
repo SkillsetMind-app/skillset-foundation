@@ -194,7 +194,9 @@ export function ExportTableButton({
   }
 
   return (
-    <div className={cn("relative", className)}>
+    // O motivo fica AO LADO do botão (e quebra para baixo se faltar espaço):
+    // embaixo, a caixa crescia e desalinhava o botão da fileira de filtros.
+    <div className={cn("relative flex flex-wrap items-center gap-x-2 gap-y-1", className)}>
       <button
         ref={triggerRef}
         id={`${menuId}-trigger`}
@@ -206,15 +208,14 @@ export function ExportTableButton({
         aria-expanded={isMenuOpen}
         aria-controls={isMenuOpen ? menuId : undefined}
         aria-describedby={reason ? `${menuId}-reason` : undefined}
-        title={reason}
       >
         <Download aria-hidden="true" size={14} strokeWidth={1.9} />
         {t("platform.ops.exportButton.export")}
       </button>
-      {/* Desligado sem dizer por que: agora o leitor de tela ouve o motivo
-          (e o mouse ve no title). */}
+      {/* T-15: o motivo de estar desligado era só title e leitor de tela, e no
+          toque não aparecia. Agora é uma linha visível, ligada ao botão. */}
       {reason ? (
-        <span id={`${menuId}-reason`} className="sr-only">
+        <span id={`${menuId}-reason`} className="text-xs leading-5 text-[var(--color-ink-soft)]">
           {reason}
         </span>
       ) : null}
