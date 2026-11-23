@@ -217,6 +217,12 @@ describe("Overview de /ops", () => {
     await settle();
     const period = screen.getByRole("navigation", { name: "Period" });
     expect(within(period).getByRole("link", { name: "30 days" })).toHaveAttribute("aria-current", "page");
+    // O link escolhido tem fundo azul-marinho: a cor do texto precisa do `!`
+    // para vencer `a { color: inherit }` (fora de camada) e não sumir no fundo.
+    expect(within(period).getByRole("link", { name: "30 days" }).className).toContain(
+      "text-[var(--color-on-primary)]!",
+    );
+    expect(within(period).getByRole("link", { name: "Today" }).className).not.toContain("color-on-primary");
     expect(within(period).getByRole("link", { name: "Today" })).toHaveAttribute("href", "/ops?tab=overview&period=today");
     expect(tile("Signups")).toHaveTextContent("vs previous 30 days");
     const expected = new Date(resolveOverviewWindow("30d").previousStart).toISOString();
