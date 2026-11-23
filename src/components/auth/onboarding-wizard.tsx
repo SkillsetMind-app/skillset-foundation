@@ -140,9 +140,14 @@ function wait(ms: number) {
 // Decidido uma vez ao carregar, nunca a partir da resposta dada aqui: senao a
 // pergunta sumiria da lista no instante em que fosse respondida. "Voltar" ate
 // ela a traz de volta (goBack).
-function getVisibleQuestions(
+//
+// `hasReturnTo`: o aluno tem para onde voltar (ex.: o checkout do curso que ia
+// comprar). Ai o interesse vira opcional, para seguir e pagar sem responder.
+// So o ramo do aluno le isso; o do professor nao muda.
+export function getVisibleQuestions(
   answers: OnboardingAnswers,
   pathKnown = false,
+  hasReturnTo = false,
 ): QuestionDefinition[] {
   const isTeacher = answers.path === "teacher";
 
@@ -167,7 +172,7 @@ function getVisibleQuestions(
     : [
         { id: "profile", required: true },
         { id: "path", required: true },
-        { id: "primaryGoal", required: true },
+        { id: "primaryGoal", required: !hasReturnTo },
         { id: "sourceOfDiscovery", required: false },
       ];
 
@@ -301,8 +306,8 @@ export function OnboardingWizard() {
   }, [isComplete]);
 
   const questions = useMemo(
-    () => getVisibleQuestions(answers, pathKnown),
-    [answers, pathKnown],
+    () => getVisibleQuestions(answers, pathKnown, Boolean(returnTo)),
+    [answers, pathKnown, returnTo],
   );
   const activeQuestion = questions[Math.min(currentIndex, questions.length - 1)];
 
@@ -337,7 +342,7 @@ export function OnboardingWizard() {
             : {}),
         };
         const knownPath = Boolean(savedAnswers.path);
-        const nextQuestions = getVisibleQuestions(savedAnswers, knownPath);
+        const nextQuestions = getVisibleQuestions(savedAnswers, knownPath, Boolean(returnTo));
 
         setPathKnown(knownPath);
         setAnswers(savedAnswers);

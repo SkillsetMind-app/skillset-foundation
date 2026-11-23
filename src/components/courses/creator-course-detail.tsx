@@ -582,7 +582,11 @@ export function CreatorCourseDetail({
   if (requestedOfferId) returnParams.set("offerId", requestedOfferId);
   if (requestedOfferCode) returnParams.set("offer", requestedOfferCode);
   if (requestedPriceId) returnParams.set("priceId", requestedPriceId);
-  const returnTo = `${coursePath}${returnParams.size ? `?${returnParams}` : ""}`;
+  // Visitante que pediu para comprar volta ao CHECKOUT deste curso, com a mesma
+  // oferta, e nao ao topo da pagina de venda: depois de criar a conta,
+  // confirmar o e-mail e responder a entrevista, o cartao de pagar (ou de
+  // entrar no curso gratis) e a primeira coisa da tela.
+  const returnTo = `/courses/${encodeURIComponent(courseRef)}/checkout${returnParams.size ? `?${returnParams}` : ""}`;
   const signupHref = `/auth?mode=signup&returnTo=${encodeURIComponent(returnTo)}`;
   const enrollLabel = courseIsFree
     ? t("publicCourses.enrollFree")
@@ -1176,8 +1180,8 @@ export function CreatorCourseDetail({
           />
         ) : authStatus !== "authenticated" ? (
           // Visitante: o botao principal diz o que ele faz e quanto custa, e
-          // leva a criar conta. `returnTo` traz a pessoa de volta a ESTE curso
-          // depois de entrar, em vez de deixa-la na home.
+          // leva a criar conta. `returnTo` traz a pessoa de volta ao checkout
+          // DESTE curso depois de entrar, em vez de deixa-la na home.
           <div className="mt-6 grid gap-3">
             <Link
               href={signupHref}
@@ -1241,7 +1245,7 @@ export function CreatorCourseDetail({
                     }
                     autoComplete="off"
                     placeholder={t("publicCourses.optional")}
-                    className="mt-2 w-full rounded-md border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)]"
+                    className="field-input mt-2"
                   />
                 </label>
               ) : (

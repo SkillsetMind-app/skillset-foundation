@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { OnboardingWizard } from "@/components/auth/onboarding-wizard";
+import { getVisibleQuestions, OnboardingWizard } from "@/components/auth/onboarding-wizard";
 import type { SkillsetUser } from "@/domain/auth";
 
 /**
@@ -704,5 +704,93 @@ describe("H3: pais declarado do professor", () => {
     fireEvent.keyDown(select, { key: "Enter" });
     expect(screen.getByLabelText("Country of your bank account")).toHaveValue("CA");
     expect(mocks.updateOnboardingAnswers).not.toHaveBeenCalled();
+  });
+});
+
+// O-09: quem criou a conta no meio de uma compra vai pagar, nao responder
+// "o que quer aprender". Com destino, o interesse do aluno vira opcional; sem
+// destino, e o professor em qualquer caso, nada muda.
+describe("boas-vindas: o comprador segue para o checkout sem responder o interesse", () => {
+  const checkout = "/courses/focus/checkout?offer=LAUNCH";
+  const plano = "/account/billing/upgrade?plan=pro&cycle=monthly";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.profile = { displayName: "Patrick Simon", phoneNumber: null, onboardingAnswers: {} };
+    mocks.getUserProfile.mockImplementation(() => Promise.resolve(mocks.profile));
+    mocks.updateOnboardingAnswers.mockResolvedValue(undefined);
+    mocks.updateUserIdentity.mockResolvedValue(undefined);
+  });
+
+  afterEach(cleanup);
+
+  it("aluno vindo do checkout pode pular o interesse e termina no checkout", async () => {
+    mocks.searchParams = new URLSearchParams({ path: "student", returnTo: checkout });
+    render(<OnboardingWizard />);
+    await screen.findByText("First, tell us who you are.");
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    expect(await screen.findByText("What do you want to learn first?")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Skip for now" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    expect(await screen.findByText("Where did you hear about SkillsetMind?")).toBeInTheDocument();
+    expect(screen.queryByText("Answer this question before continuing.")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    await waitFor(
+      () => expect(mocks.router.replace).toHaveBeenCalledWith(checkout),
+      { timeout: 4000 },
+    );
+  });
+
+  it("aluno sem destino continua tendo de responder o interesse", async () => {
+    mocks.searchParams = new URLSearchParams({ path: "student" });
+    mocks.profile.onboardingAnswers = { profileConfirmed: true, path: "student" };
+    render(<OnboardingWizard />);
+
+    expect(await screen.findByText("What do you want to learn first?")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Skip for now" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(screen.getByText("Answer this question before continuing.")).toBeInTheDocument();
+    expect(screen.queryByText("Where did you hear about SkillsetMind?")).toBeNull();
+  });
+
+  it.each([
+    ["sem destino", null],
+    ["com o checkout de um curso", checkout],
+    ["com o plano de /pricing", plano],
+  ])("professor %s: o programa continua obrigatorio, na mesma posicao", async (_label, returnTo) => {
+    mocks.searchParams = new URLSearchParams({ path: "teacher", ...(returnTo ? { returnTo } : {}) });
+    mocks.profile = {
+      displayName: "Patrick Simon",
+      phoneNumber: "+1 555 123 4567",
+      onboardingAnswers: { profileConfirmed: true, path: "teacher", profession: "Coach" },
+    };
+    render(<OnboardingWizard />);
+
+    expect(await screen.findByText("What kind of program will you publish?")).toBeInTheDocument();
+    expect(screen.getByText("Question 3 of 8")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Skip for now" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(screen.getByText("Answer this question before continuing.")).toBeInTheDocument();
+    expect(mocks.updateOnboardingAnswers).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])("ramo do professor identico com e sem destino (papel ja conhecido: %s)", (pathKnown) => {
+    for (const alreadySold of [undefined, "no", "yes"] as const) {
+      const answers = { path: "teacher" as const, alreadySold };
+      expect(getVisibleQuestions(answers, pathKnown, true)).toEqual(getVisibleQuestions(answers, pathKnown, false));
+    }
+  });
+
+  it("ramo do aluno: com destino, so o interesse muda, e so de obrigatorio para opcional", () => {
+    const semDestino = getVisibleQuestions({ path: "student" }, true, false);
+    const comDestino = getVisibleQuestions({ path: "student" }, true, true);
+
+    expect(semDestino.find((question) => question.id === "primaryGoal")?.required).toBe(true);
+    expect(comDestino).toEqual(
+      semDestino.map((question) => (question.id === "primaryGoal" ? { ...question, required: false } : question)),
+    );
   });
 });
