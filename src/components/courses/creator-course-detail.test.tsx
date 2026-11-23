@@ -319,6 +319,26 @@ describe("CreatorCourseDetail: enquanto carrega", () => {
     expect(screen.getByTestId("landing-blocks")).toHaveAttribute("data-price", "$149.00");
   });
 
+  // Com o preço carregado, "Offer unavailable" e "Pricing pending" ainda são
+  // frases de estado: o bloco também fica sem a linha do preço. Grátis e preço
+  // de verdade (único ou assinatura) seguem como antes.
+  it.each([
+    ["oferta do link que não existe mais", () => { fixtures.query = "offer=MISSING"; withOffers(); }, "Offer unavailable", null],
+    ["preço que não se resolve", () => { fixtures.course.priceAmountMinor = -1; }, "Pricing pending", null],
+    ["curso gratuito", () => { fixtures.course.priceAmountMinor = 0; }, "Free", "Free"],
+    ["pagamento único", () => {}, "$149.00", "$149.00"],
+    ["assinatura", () => { Object.assign(fixtures.course, { paymentType: "subscription_monthly" }); }, "$149.00 / month", "$149.00 / month"],
+  ])("%s: o cartão diz \"%s\" e o bloco recebe %s", async (_caso, arrange, cardPrice, blockPrice) => {
+    arrange();
+    render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+    await screen.findAllByText(cardPrice);
+    if (blockPrice === null) {
+      expect(screen.getByTestId("landing-blocks")).not.toHaveAttribute("data-price");
+    } else {
+      expect(screen.getByTestId("landing-blocks")).toHaveAttribute("data-price", blockPrice);
+    }
+  });
+
   // Com a compra desligada o botão não diz "Enroll" para virar o aviso depois.
   it("com a compra desligada, o aviso vem direto, sem o rótulo de espera", async () => {
     fixtures.flagsOn = false;
