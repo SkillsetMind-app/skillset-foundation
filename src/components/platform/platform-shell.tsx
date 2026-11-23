@@ -8,6 +8,7 @@ import { MobileSidebarDrawer } from "@/components/platform/mobile-sidebar-drawer
 import { PlatformHeader } from "@/components/platform/platform-header";
 import { PlatformNav, resolveContext } from "@/components/platform/platform-nav";
 import { PlatformPageHeader } from "@/components/platform/platform-page-header";
+import { isFramedPlatformRoute } from "@/components/platform/platform-routes";
 import { SidebarToggle } from "@/components/platform/sidebar-toggle";
 import { StatusBanner } from "@/components/platform/status-banner";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
@@ -65,21 +66,9 @@ export function PlatformShell({
   // Pelo endereco, nao pelo papel: a largura ja vem certa no HTML do servidor,
   // sem esperar o login carregar (a coluna nao muda de largura na tela).
   const teachRoute = pathname === "/teach" || pathname.startsWith("/teach/");
-  // O construtor usa a largura toda, decidido pelo endereco tambem: pela
-  // classe do editor carregado, o esqueleto (e o erro, e a tela sem curso)
-  // saia na coluna de 1280px e a pagina pulava para a largura toda depois.
-  const builderRoute = pathname === "/teach/builder" || pathname.startsWith("/teach/builder/");
-  // A mesma coluna na conta (Ganhos abre pela barra do professor) e nas listas
-  // do aluno. Fora dela, de proposito: a sala de aula (largura toda por
-  // desenho), a area de membros e as telas de pagar plano (checkout, volta do
-  // checkout e a escolha do plano), que ficam como estavam.
-  const learnListRoute = (pathname === "/learn" || pathname.startsWith("/learn/"))
-    && !pathname.startsWith("/learn/courses/") && !pathname.startsWith("/learn/areas/");
-  const checkoutRoute = pathname.startsWith("/account/billing/upgrade")
-    || pathname.startsWith("/account/billing/return")
-    || pathname.startsWith("/account/plans");
-  const accountRoute = (pathname === "/account" || pathname.startsWith("/account/")) && !checkoutRoute;
-  const framed = (teachRoute && !builderRoute) || accountRoute || learnListRoute;
+  // Que telas ganham a coluna de 1280px: a regra mora em platform-routes.ts,
+  // que a espera da guarda de login também lê.
+  const framed = isFramedPlatformRoute(pathname);
 
   return (
     <ThemeProvider>

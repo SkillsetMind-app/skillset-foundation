@@ -7,9 +7,12 @@ import type { ReactNode } from "react";
 import { AuthFrame } from "@/components/auth/auth-frame";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { isFramedPlatformRoute, opensInPlatformShell } from "@/components/platform/platform-routes";
+import { PlatformShellSkeleton } from "@/components/shared/page-skeletons";
 import { SkillsetSpinner } from "@/components/shared/skillset-spinner";
 import { getAuthRoute } from "@/lib/auth/routing";
 import { hasAnyPermission, type Permission } from "@/lib/permissions";
+import { useSidebarState } from "@/lib/ui/sidebar-state";
 
 type ProtectedSurfaceProps = {
   permissions: readonly Permission[];
@@ -24,9 +27,16 @@ export function ProtectedSurface({ permissions, contactWhenSignedOut = false, ch
   const pathname = usePathname() ?? "";
 
   if (status === "loading") {
-    // A mesma frase de /loading e /welcome: logo depois de entrar, esta tela
-    // vem colada nelas e tem de parecer a mesma espera.
-    return <SkillsetSpinner title={t("authFlow.loading.title")} />;
+    // Esta espera só aparece na carga inteira da página (atualizar, aba nova,
+    // link de e-mail) e é o que o servidor manda: vindo de /loading ou de
+    // /welcome a sessão já resolveu antes da troca de rota (o AuthProvider
+    // mora no layout raiz e sobrevive a ela), e a página abre direto. Por
+    // isso, nas telas da plataforma, a espera tem a forma da casca que vem, e
+    // não o anel: a página é a melhor ponte para a página. No resto, o anel.
+    // A frase é a mesma de sempre, para o leitor de tela.
+    const label = t("authFlow.loading.title");
+    const shell = shellWaitFor(pathname);
+    return shell ? <ShellWait label={label} framed={shell.framed} /> : <SkillsetSpinner title={label} />;
   }
 
   if (status === "mfa_required" || !user) {
@@ -98,6 +108,21 @@ export function ProtectedSurface({ permissions, contactWhenSignedOut = false, ch
   }
 
   return children;
+}
+
+// Que espera mostrar, só pelo endereço (nunca por dado da pessoa): as regras
+// moram em platform-routes.ts, as mesmas que a PlatformShell lê. Rota fora da
+// lista fica com o anel.
+function shellWaitFor(pathname: string) {
+  return opensInPlatformShell(pathname) ? { framed: isFramedPlatformRoute(pathname) } : null;
+}
+
+// A barra recolhida é lida como a PlatformShell lê: o cookie que o layout leu
+// no servidor vale no HTML e na hidratação (sem window na renderização), então
+// a largura da coluna não muda quando a casca de verdade entra.
+function ShellWait({ label, framed }: { label: string; framed: boolean }) {
+  const { isCollapsed, isAuto } = useSidebarState();
+  return <PlatformShellSkeleton label={label} collapsed={isCollapsed} auto={isAuto} framed={framed} />;
 }
 
 function AccessPanel({
