@@ -29,6 +29,10 @@ vi.mock("next/navigation", () => ({ notFound: mocks.notFound }));
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // clearAllMocks não desfaz o mockResolvedValue do teste anterior: sem estes
+  // padrões, um curso publicado de outro teste respondia pelo slug da amostra.
+  mocks.getPublicCourseByRef.mockResolvedValue(null);
+  mocks.getCourseRefAccess.mockResolvedValue("missing");
 });
 
 // O componente cliente de verdade abre assinatura no Supabase; aqui só
@@ -203,7 +207,7 @@ describe("rótulo do preço da página de amostra", () => {
       expect(eyebrow).toHaveClass("text-xs", "uppercase");
       expect(eyebrow).not.toHaveClass("text-[10px]");
     }
-    expect(screen.queryByText(es("publicCourses.access"))).toBeNull();
+    expect(screen.queryByText("Acceso")).toBeNull();
   });
 });
 
@@ -247,6 +251,91 @@ describe("indexação da página de curso", () => {
   it("curso interno de teste não é indexado", async () => {
     mocks.getPublicCourseByRef.mockResolvedValue({ ...published, title: "[QA] Curso de teste interno" });
     expect((await metadataFor("qa-curso-de-teste-interno")).robots).toMatchObject({ index: false });
+  });
+});
+
+// O endereço de um curso real é o título virado slug: um professor que chama o
+// curso de "Effective Communication" ganha /courses/effective-communication, o
+// mesmo endereço de uma das amostras. O curso real tem de vencer.
+describe("curso real no endereço de uma amostra", () => {
+  const SAMPLE_SLUG = "effective-communication";
+  const SAMPLE_SUMMARY = "A practical communication pathway for professionals who want stronger confidence and clearer influence.";
+  const real: PublicCourseSummary = {
+    ...published,
+    id: "course-real-1",
+    urlSlug: SAMPLE_SLUG,
+    title: "Effective Communication",
+    summary: "The teacher's own course on difficult conversations.",
+  };
+  const renderAt = async () => render(await CourseDetailPage({ params: Promise.resolve({ slug: SAMPLE_SLUG }) }));
+  const metadataAt = () => generateMetadata({ params: Promise.resolve({ slug: SAMPLE_SLUG }) });
+
+  it("curso publicado: a página e o metadata são do curso, não da amostra", async () => {
+    mocks.getPublicCourseByRef.mockResolvedValue(real);
+
+    const { container } = await renderAt();
+
+    const title = screen.getByRole("heading", { level: 1, name: "Effective Communication" });
+    expect(screen.getByTestId("client-detail")).toContainElement(title);
+    expect(screen.getByText("The teacher's own course on difficult conversations.")).toBeInTheDocument();
+    expect(screen.queryByText(SAMPLE_SUMMARY)).toBeNull();
+    // Nada da amostra: nem o cartão de preço dela, nem o currículo estático.
+    expect(container.querySelector("#enroll-card")).toBeNull();
+    expect(container.querySelector("#curriculum")).toBeNull();
+    expect(mocks.getPublicCourseByRef).toHaveBeenCalledWith(SAMPLE_SLUG);
+    expect(mocks.getCourseRefAccess).not.toHaveBeenCalled();
+
+    const metadata = await metadataAt();
+    expect(metadata.description).toBe("The teacher's own course on difficult conversations.");
+    expect(metadata.robots).toMatchObject({ index: true });
+    expect(metadata.alternates?.canonical).toContain(`/courses/${SAMPLE_SLUG}`);
+  });
+
+  it("sem curso real: a amostra de sempre, fora do índice", async () => {
+    const { container } = await renderAt();
+
+    expect(screen.getByRole("heading", { level: 1, name: "Effective Communication" })).not.toHaveClass("page-title");
+    expect(screen.getByText(SAMPLE_SUMMARY)).toBeInTheDocument();
+    expect(container.querySelector("#enroll-card")).not.toBeNull();
+    expect(screen.queryByTestId("client-detail")).toBeNull();
+    expect(mocks.getCourseRefAccess).toHaveBeenCalledWith(SAMPLE_SLUG);
+    expect(mocks.notFound).not.toHaveBeenCalled();
+
+    const metadata = await metadataAt();
+    expect(metadata.description).toBe(SAMPLE_SUMMARY);
+    expect(metadata.robots).toMatchObject({ index: false });
+  });
+
+  it("rascunho do dono nesse endereço: o dono vê o rascunho, como em qualquer outro endereço", async () => {
+    mocks.getCourseRefAccess.mockResolvedValue("visible");
+
+    await renderAt();
+
+    expect(screen.getByText("client header shown")).toBeInTheDocument();
+    expect(screen.queryByText(SAMPLE_SUMMARY)).toBeNull();
+    expect(mocks.notFound).not.toHaveBeenCalled();
+
+    const metadata = await metadataAt();
+    expect(metadata.description).not.toBe(SAMPLE_SUMMARY);
+  });
+
+  it("falha de leitura: a amostra continua no ar, sem 404", async () => {
+    mocks.getCourseRefAccess.mockResolvedValue("unknown");
+
+    await renderAt();
+
+    expect(screen.getByText(SAMPLE_SUMMARY)).toBeInTheDocument();
+    expect(screen.queryByTestId("client-detail")).toBeNull();
+    expect(mocks.notFound).not.toHaveBeenCalled();
+    expect((await metadataAt()).robots).toMatchObject({ index: false });
+  });
+
+  it("endereço que não é amostra nem curso continua 404, e o metadata não consulta o acesso", async () => {
+    await expect(renderPage("nem-amostra-nem-curso")).rejects.toThrow("NEXT_NOT_FOUND");
+
+    mocks.getCourseRefAccess.mockClear();
+    await generateMetadata({ params: Promise.resolve({ slug: "nem-amostra-nem-curso" }) });
+    expect(mocks.getCourseRefAccess).not.toHaveBeenCalled();
   });
 });
 
