@@ -282,7 +282,9 @@ describe("OnboardingChoice: a carga normal (caracterizacao)", () => {
     expect(mocks.router.push).toHaveBeenCalledExactlyOnceWith("/teach");
   });
 
-  it("leitura que falha: o cadastro continua usavel, com o aviso de sempre", async () => {
+  // Mudanca deliberada, so do estado de leitura falhada: antes o "Continue"
+  // tirava o aviso e abria os passos 1 e 2 sem o perfil lido.
+  it("leitura que falha: o aviso com \"Try again\", e o Continue nao sai do passo 0", async () => {
     mocks.searchParams = new URLSearchParams("path=teacher");
     mocks.getUserProfile.mockRejectedValue(new Error("offline"));
     mountOnPage();
@@ -293,10 +295,11 @@ describe("OnboardingChoice: a carga normal (caracterizacao)", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("page.title");
     expect(screen.getByRole("button", { name: "onboarding.continue" })).toBeEnabled();
     expect(mocks.router.push).not.toHaveBeenCalled();
-    // O aviso sai no proximo clique, como qualquer erro desta tela.
     fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
-    expect(screen.queryByText("onboarding.errorProfileLoadRetry")).toBeNull();
-    expect(screen.getByRole("alert")).toHaveTextContent("onboarding.errorChoosePath");
+    expect(screen.getByRole("alert")).toHaveTextContent("onboarding.errorProfileLoadRetry");
+    expect(screen.getByRole("button", { name: "appErrors.retry" })).toBeEnabled();
+    expect(pathButton("onboarding.pathTeachTitle")).toBeInTheDocument();
+    expect(screen.queryByLabelText("onboarding.publicName")).toBeNull();
   });
 });
 
@@ -468,10 +471,21 @@ describe("OnboardingChoice: \"Try again\" da leitura do perfil", () => {
 
   it("erro que nao e de leitura nao ganha \"Try again\": o que toma o lugar do aviso", async () => {
     mocks.searchParams = activation;
-    await failFirstRead();
-    fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
-    expect(screen.getByRole("alert")).toHaveTextContent("onboarding.errorChoosePath");
+    mocks.getUserProfile.mockRejectedValueOnce(new Error("offline"));
+    mocks.sendSkillsetEmailVerification.mockRejectedValueOnce(new Error("offline"));
+    mountOnPage();
+    await act(async () => emit({ status: "authenticated", user: { ...authedUser, emailVerified: false } }));
+    fireEvent.click(pathButton("onboarding.pathTeachTitle"));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "onboarding.sendVerification" }));
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent("onboarding.verificationSendError");
     expect(screen.queryByRole("button", { name: "appErrors.retry" })).toBeNull();
+
+    // Sem o perfil lido, o Continue traz de volta o aviso de leitura, com o botao.
+    fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("onboarding.errorProfileLoadRetry");
+    expect(screen.getByRole("button", { name: "appErrors.retry" })).toBeEnabled();
   });
 
   it("erro que nao e de leitura nao ganha \"Try again\": ativar que falha", async () => {

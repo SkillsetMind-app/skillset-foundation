@@ -258,9 +258,9 @@ export function OnboardingChoice() {
 
   // Volta à espera da entrada (nada clicável) e relê o perfil uma vez. O passo
   // não muda, como em toda leitura desta tela. O aviso costuma estar no passo
-  // 0 (o "Continue" o limpa, e o "Finish" sem perfil lido volta para lá), mas
-  // uma releitura que falha depois de o caminho do endereço mudar o mostra no
-  // passo em que a pessoa está.
+  // 0 (sem perfil lido, nem o "Continue" nem o "Finish" saem dele), mas uma
+  // releitura que falha depois de o caminho do endereço mudar, com o perfil
+  // já lido antes, o mostra no passo em que a pessoa está.
   function retryLoad() {
     const authedUser = authedUserRef.current;
     if (!authedUser) return;
@@ -478,8 +478,26 @@ export function OnboardingChoice() {
     }
   }
 
+  // Sem o perfil lido, a pessoa fica no passo 0 com o aviso de leitura e o
+  // "Try again".
+  function holdUntilProfileRead() {
+    const message = t("onboarding.errorProfileLoadRetry");
+    setStep(0);
+    setError(message);
+    setReadError(message);
+  }
+
   function handleNext() {
     setError("");
+
+    // Perfil nunca lido com sucesso: ninguém preenche os passos 1 e 2 antes
+    // de uma leitura que dá certo (o "Try again" bem-sucedido os reescreveria
+    // com o perfil guardado, e concluir gravaria por cima dele). Com o perfil
+    // lido, o "Continue" segue igual.
+    if (step === 0 && !answersLoaded) {
+      holdUntilProfileRead();
+      return;
+    }
 
     if (step === 0 && selectedPathIncludesTeacher && !payoutCountryAnswered) {
       setError(t("onboarding.payoutCountryRequired"));
@@ -516,12 +534,10 @@ export function OnboardingChoice() {
     // guardado (papeis, nome, @, bio, fuso e objetivos) com o que esta na tela.
     // Volta ao passo 0 com o aviso de leitura e o "Try again". Quem e novo nao
     // cai aqui: qualquer leitura que responde, ate vazia (sem linha ou com a
-    // linha recem-criada), marca answersLoaded antes de a tela aparecer.
+    // linha recem-criada), marca answersLoaded antes de a tela aparecer. Com a
+    // trava do "Continue" acima, esta e a segunda trava.
     if (!answersLoaded) {
-      const message = t("onboarding.errorProfileLoadRetry");
-      setStep(0);
-      setError(message);
-      setReadError(message);
+      holdUntilProfileRead();
       return;
     }
 

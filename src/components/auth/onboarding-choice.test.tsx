@@ -281,8 +281,9 @@ describe("H3: pais na ativacao do professor", () => {
 
   // Sem a leitura do perfil, concluir gravava por cima do perfil guardado
   // (papeis, nome, @, bio, fuso e objetivos) com o que estava na tela. Agora
-  // nada e gravado: volta ao passo 0, com o aviso de leitura e o "Try again".
-  it("leitura do perfil falhou: concluir nao grava nada e volta ao passo 0 com Try again", async () => {
+  // nada e gravado e ninguem passa do passo 0: o "Continue" deixa o aviso de
+  // leitura e o "Try again" no lugar.
+  it("leitura do perfil falhou: Continue nao sai do passo 0 e nada e gravado", async () => {
     mocks.getUserProfile.mockRejectedValueOnce(new Error("offline"));
     await mount();
     expect(screen.getByText("onboarding.errorProfileLoadRetry")).toBeInTheDocument();
@@ -290,15 +291,9 @@ describe("H3: pais na ativacao do professor", () => {
     fireEvent.change(screen.getByLabelText("connectOnboarding.countryLabel"), { target: { value: "CA" } });
     fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
-    // O aviso sai no Continue, como sempre.
-    expect(screen.queryByText("onboarding.errorProfileLoadRetry")).toBeNull();
-    fireEvent.change(screen.getByPlaceholderText("onboarding.usernamePlaceholder"), { target: { value: "patrick" } });
-    fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
-    fireEvent.click(screen.getByText("onboarding.goalTeachLabel"));
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "onboarding.finishSetup" }));
-    });
 
+    expect(screen.queryByPlaceholderText("onboarding.usernamePlaceholder")).toBeNull();
+    expect(screen.queryByRole("button", { name: "onboarding.finishSetup" })).toBeNull();
     expect(mocks.updateOnboardingAnswers).not.toHaveBeenCalled();
     expect(mocks.completeUserOnboarding).not.toHaveBeenCalled();
     expect(mocks.refreshUser).not.toHaveBeenCalled();
