@@ -21,7 +21,11 @@ describe("sections are visible without JavaScript", () => {
 
     expect(baseRule).not.toContain("opacity: 0");
     expect(baseRule).toContain("opacity 300ms");
-    expect(css).toContain("html.js .reveal-on-view:not(.reveal-on-view--in)");
+    // Nem antes da hidratação: o html.js sozinho não esconde mais nada. Só a
+    // seção que o useRevealOnView armou (montada, abaixo da tela) começa
+    // escondida; o comportamento está em reveal-section.test.tsx.
+    expect(css).toContain("html.js .reveal-on-view--armed:not(.reveal-on-view--in)");
+    expect(css).not.toMatch(/html\.js \.reveal-on-view:not\(\.reveal-on-view--in\)\s*\{/);
   });
 
   it("stamps html.js from the inline head script", () => {

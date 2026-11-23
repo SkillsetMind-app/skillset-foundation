@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AboutPage from "@/app/about/page";
 import ContactPage from "@/app/contact/page";
+import CreatorsPage from "@/app/for-creators/page";
 import HelpPage from "@/app/help/page";
 import NotFound from "@/app/not-found";
 
@@ -57,6 +58,18 @@ describe("títulos do site público", () => {
     const title = screen.getByRole("heading", { level: 1 });
     expect(title).toHaveClass("page-title");
     expect(title.className).not.toMatch(/text-(5|6)xl/);
+  });
+});
+
+// S-25: eram seis caixas com sombra, cada uma com uma frase; viraram uma
+// lista com check num cartão só, como os itens dos cartões de preço.
+describe("/for-creators", () => {
+  it("as ferramentas são uma lista só, com os seis itens", async () => {
+    render(await CreatorsPage());
+
+    const item = screen.getByText("Course builder with modules, lessons, previews, pricing, and drip release.");
+    const list = item.closest("ul")!;
+    expect(within(list).getAllByRole("listitem")).toHaveLength(6);
   });
 });
 

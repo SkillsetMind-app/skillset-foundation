@@ -50,7 +50,8 @@ it("refreshes pricing language without resetting the selected cycle or expanded 
   expect(screen.getByText("¿Qué ocurre si cambio a un plan inferior o cancelo?").closest("details")).toHaveAttribute("open");
   expect(screen.getByRole("region", { name: "Comparación de planes" })).toHaveTextContent("$9/mes");
   expect(screen.getByRole("columnheader", { name: "Comisión de la plataforma" })).toBeInTheDocument();
-  expect(screen.getByText("4.9% + $0.30 por venta")).toBeInTheDocument();
+  // A taxa por venda é dita uma vez por cartão, na linha abaixo do preço.
+  expect(screen.getByRole("region", { name: "Comparación de planes" })).toHaveTextContent("4.9% + $0.30 por venta");
   // One link per billing cycle; CSS shows the one for the selected cycle.
   expect(screen.getAllByRole("link", { name: "Empieza tu prueba gratis de 14 días — Pro" })).toHaveLength(2);
   expect(screen.getByRole("region", { name: "Comparación de planes" })).toHaveTextContent("Se renueva automáticamente hasta que canceles.");

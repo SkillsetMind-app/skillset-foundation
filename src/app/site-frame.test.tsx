@@ -207,6 +207,20 @@ describe("seções de marketing viraram servidor", () => {
     },
   );
 
+  // S-17: cartão que não abre nada não reage ao mouse (subir e trocar a cor
+  // do ícone fazia parecer botão). A classe home-card segue: é dela que a
+  // coreografia de rolagem precisa.
+  it("os cartões de capacidades não são links e ficam parados no mouse", async () => {
+    const { container } = render(await CapabilitiesGrid());
+
+    const cards = container.querySelectorAll(".home-card > article");
+    expect(cards).toHaveLength(6);
+    for (const card of cards) {
+      expect(card.querySelector("a")).toBeNull();
+      expect(card.outerHTML).not.toMatch(/hover:/);
+    }
+  });
+
   // Herdado de marketing.test.tsx, que não consegue mais montar a seção pela
   // home (server component assíncrono). A carta continua sendo uma só.
   it("a promessa continua sendo uma carta só, em qualquer tela", async () => {

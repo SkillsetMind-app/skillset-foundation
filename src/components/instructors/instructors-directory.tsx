@@ -184,15 +184,21 @@ function InstructorCard({ profile }: { profile: PublicProfile }) {
   const credentials = profile.credentials.slice(0, 2);
 
   return (
-    <article className="flex min-h-64 flex-col rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
+    // O cartão inteiro leva ao perfil: o nome é o único link e o ::after do
+    // .marketplace-card__link cobre o cartão (o desenho do cartão de curso).
+    // Antes só o "View profile" pequeno era clicável e o cartão não reagia.
+    <article className="motion-hover-lift relative flex min-h-64 flex-col rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)] focus-within:border-[var(--color-line-strong)] hover:border-[var(--color-line-strong)] hover:shadow-[var(--shadow-strong)] motion-safe:transition-transform">
       <div className="flex items-center gap-3">
         <UserAvatar name={name} photoURL={profile.photoURL} size="lg" />
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-0.5">
             <h3 className="truncate text-base font-bold text-[var(--color-ink)]">
-              {name}
+              <Link href={instructorPagePath(profile.uid, profile.username)} className="marketplace-card__link">
+                {name}
+              </Link>
             </h3>
-            {profile.verification ? <VerifiedBadge compact verification={profile.verification} /> : null}
+            {/* Acima da camada do link: o selo abre a própria explicação. */}
+            {profile.verification ? <VerifiedBadge compact verification={profile.verification} className="z-[2]" /> : null}
           </div>
           {profile.username ? (
             <p className="mt-1 truncate text-xs font-semibold text-[var(--color-ink-soft)]">
@@ -226,12 +232,14 @@ function InstructorCard({ profile }: { profile: PublicProfile }) {
         </ul>
       ) : null}
 
-      <Link
-        href={instructorPagePath(profile.uid, profile.username)}
-        className="mt-auto inline-flex items-center gap-2 pt-5 text-sm font-bold text-[var(--color-primary)] underline-offset-4 hover:underline"
+      {/* Continua escrito, agora como parte do cartão clicável (o link é o
+          nome); escondido do leitor de tela para não repetir o destino. */}
+      <span
+        aria-hidden="true"
+        className="mt-auto inline-flex items-center gap-2 pt-5 text-sm font-bold text-[var(--color-primary)]"
       >
         {t("publicPages.directory.view_profile")}<ArrowRight aria-hidden="true" size={15} strokeWidth={1.9} />
-      </Link>
+      </span>
     </article>
   );
 }

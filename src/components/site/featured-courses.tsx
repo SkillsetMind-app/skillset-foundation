@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { CourseGridSkeleton } from "@/components/courses/course-grid-skeleton";
 import { CourseTile } from "@/components/courses/course-tile";
 import { useInstructorNames } from "@/components/courses/use-instructor-names";
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -28,6 +29,10 @@ const FEATURED_LIMIT = 6;
 export function FeaturedCourses() {
   const { t } = useTranslation();
   const [featuredCourses, setFeaturedCourses] = useState<CourseCard[]>([]);
+  // Até a primeira resposta do catálogo: os cartões chegavam de uma vez e
+  // empurravam a página 2 a 3 telas para baixo. Sem Supabase configurado a
+  // lista nunca chega, então nem começa carregando.
+  const [loading, setLoading] = useState(() => getSupabaseClientConfig() !== null);
   const instructors = useInstructorNames(
     featuredCourses.map((course) => course.ownerId),
   );
@@ -46,11 +51,13 @@ export function FeaturedCourses() {
             "featured",
           ).slice(0, FEATURED_LIMIT),
         );
+        setLoading(false);
       },
       // ponytail: the homepage band stays silent on error — /courses owns the
       // "couldn't load" message. A landing page must never show a red banner.
       () => {
         setFeaturedCourses([]);
+        setLoading(false);
       },
     );
   }, []);
@@ -84,8 +91,18 @@ export function FeaturedCourses() {
           </Link>
         </div>
 
-        {featuredCourses.length === 0 ? null : (
-        <ul className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {/* O mesmo molde de cartão do catálogo, na mesma grade (2 colunas a
+            partir de 640px, 3 a partir de 1024px): o curso nasce no lugar do
+            esqueleto. Só uma fileira (1, 2 ou 3 cartões conforme a largura):
+            com menos cursos que esqueletos a faixa encolheria para cima ao
+            chegar; assim ela só cresce para baixo. O !important vence o
+            display do .marketplace-card, que fica fora de camada. */}
+        {loading ? (
+          <div className="mt-10 max-sm:[&_.marketplace-card:nth-child(n+2)]:hidden! max-lg:[&_.marketplace-card:nth-child(n+3)]:hidden!">
+            <CourseGridSkeleton count={3} />
+          </div>
+        ) : featuredCourses.length === 0 ? null : (
+        <ul className="marketplace-course-grid mt-10">
           {featuredCourses.map((course) => (
             <li key={course.slug}>
               <CourseTile
