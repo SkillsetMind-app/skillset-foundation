@@ -1315,16 +1315,25 @@ p {
   }
 }
 
-/* A cortina da promessa: uma elipse ancorada no meio da borda de baixo da
-   faixa. Em 1 ela cobre a faixa inteira (cantos incluídos); em 0.86 já cobre
-   todo o conteúdo, e só os cantos de cima ainda mostram a borda curva. */
+/* A cortina da promessa: um arco que nasce embaixo e sobe dentro da faixa.
+   Sobe depressa enquanto ainda está fora da tela (até 36%), cobre todo o
+   conteúdo por volta de 50% e daí sobe devagar, com a borda curva à vista,
+   até encostar no topo da faixa em 85% (1/1.08). Em 1 cobre os cantos. */
 @keyframes motion-scroll-curtain {
   0% {
-    transform: scale(0.5);
+    transform: scale(0.12);
   }
 
-  29% {
-    transform: scale(0.86);
+  36% {
+    transform: scale(0.8);
+  }
+
+  51% {
+    transform: scale(0.856);
+  }
+
+  85% {
+    transform: scale(0.926);
   }
 
   100% {
@@ -1726,16 +1735,18 @@ p {
         animation-range: contain 63% contain 90%;
       }
 
-      /* Cena 2: a cortina da promessa. A faixa perde o fundo claro e uma
-         elipse da cor da marca cresce do meio da borda de baixo: a página
-         "vira" azul com a borda curva. A régua é a da própria faixa, em
-         altura de tela: a cortina cobre o conteúdo quando o topo da faixa
-         está a 87% da tela e os cantos por volta de 70%; a escala termina
-         com o topo a 55% (o pedido é cobrir tudo antes dos 35%).
-         Só depois disso o texto (15-27), a carta (19-31) e as cláusulas
-         sobem, nessa ordem; todos inteiros antes de chegar a 75% da tela.
-         Cores de tokens: no tema claro azul com texto claro; no escuro a
-         cortina é a superfície da faixa e o texto fica o de sempre. */
+      /* Cena 2: a cortina da promessa. A faixa perde o fundo claro e um arco
+         da cor da marca nasce no meio da borda de baixo e sobe dentro dela,
+         como um sol nascendo. A régua é a da própria faixa, em altura de
+         tela: o trecho vai do topo da faixa no fundo da tela (0) ao topo a
+         45% da tela (55svh). O arco cobre a coluna de texto com o topo da
+         faixa a ~82% e a carta a ~74%; a borda curva fica à vista até o topo
+         a ~53% (85% do trecho) e os cantos fecham antes dos 48%. Cada bloco
+         de texto só aparece depois de coberto, de cima para baixo: sobretítulo
+         21-28, título 23-30, parágrafo 25-32, botão 27-34, carta 28-35 e as
+         cláusulas pela própria posição; todos inteiros antes de chegar a 75%
+         da tela. Cores de tokens: no tema claro azul com texto claro; no
+         escuro a cortina é a superfície da faixa e o texto fica o de sempre. */
       .home-scroll .home-promise {
         --home-curtain: var(--color-primary);
         --home-curtain-ink: var(--color-on-primary);
@@ -1757,63 +1768,85 @@ p {
         --home-curtain-ring: var(--color-primary-light);
       }
 
-      /* 240% x 240% da faixa, centro na borda de baixo: em escala 1 cobre os
-         quatro cantos com folga, em qualquer proporção de tela. A faixa corta
+      /* Elipse de 320% x 216% da faixa, centro no meio da borda de baixo:
+         raio de pé 108% da altura (passa o topo em escala 1/1.08) e raio
+         deitado 160% da largura, então o arco é suave e as colunas dos lados
+         são cobertas quase junto com o meio; em escala 1 ainda cobre os
+         cantos (a 50% da largura o arco está a 102% da altura). A faixa corta
          o que passa dela (overflow clip), sem rolagem de lado. */
       .home-scroll .home-promise::before {
         content: "";
         position: absolute;
         z-index: -1;
-        top: -20%;
-        left: -70%;
-        width: 240%;
-        height: 240%;
+        top: -8%;
+        left: -110%;
+        width: 320%;
+        height: 216%;
         border-radius: 50%;
         background: var(--home-curtain);
         pointer-events: none;
         animation: motion-scroll-curtain 1ms linear both;
         animation-timeline: --home-curtain;
-        animation-range: cover 0% cover 45svh;
+        animation-range: cover 0% cover 55svh;
       }
 
-      /* Sobe, sem andar de lado por cima do texto. O anel de foco troca para
+      /* A coluna de texto não anda inteira: cada bloco sobe no seu tempo,
+         sem andar de lado por cima do texto. O anel de foco troca para
          latão: azul sobre azul sumia. */
       .home-scroll .home-promise__text {
         --focus-ring: var(--home-curtain-ring);
-        animation: motion-scroll-rise 1ms var(--ease-standard) both;
-        animation-timeline: --home-curtain;
-        animation-range: cover 15svh cover 27svh;
+        animation: none;
       }
 
       .home-scroll .home-promise__text > * {
         color: var(--home-curtain-ink-soft);
+        animation: motion-scroll-rise 1ms var(--ease-standard) both;
+        animation-timeline: --home-curtain;
+        animation-range: cover 21svh cover 28svh;
       }
 
       .home-scroll .home-promise__text > h2 {
         color: var(--home-curtain-ink);
+        animation-range: cover 23svh cover 30svh;
+      }
+
+      .home-scroll .home-promise__text > h2 + p {
+        animation-range: cover 25svh cover 32svh;
+      }
+
+      /* O botão sobe só com o preenchimento de antes (backwards): acabada a
+         entrada, o transform volta a ser do :hover e do :active dele. */
+      .home-scroll .home-promise__text > a {
+        animation: motion-scroll-rise 1ms var(--ease-standard) backwards;
+        animation-timeline: --home-curtain;
+        animation-range: cover 27svh cover 34svh;
       }
 
       .home-scroll .home-promise__text > p:first-child {
         color: var(--home-curtain-kicker);
       }
 
-      .home-scroll .home-promise__text:has(:focus-visible) {
+      /* Com o foco do teclado na faixa, nada dela fica apagado. */
+      .home-scroll .home-promise:has(:focus-visible) .home-promise__text > * {
         animation: none;
       }
 
       /* A carta corta os cantos com clip, não hidden: assim ela não vira
          área de rolagem e cada cláusula mede a própria posição na tela. A
-         escada sai da própria posição de cada uma, de cima para baixo. */
+         carta é branca e lê em qualquer fundo, mas só entra depois que o arco
+         passou a borda de cima dela, para não boiar na página clara. A
+         escada das cláusulas sai da posição de cada uma, de cima para baixo,
+         e começa depois da carta. */
       .home-scroll .home-promise__charter {
         overflow: clip;
         animation: motion-scroll-rise 1ms var(--ease-standard) both;
         animation-timeline: --home-curtain;
-        animation-range: cover 19svh cover 31svh;
+        animation-range: cover 28svh cover 35svh;
       }
 
       .home-scroll .home-promise__clause:nth-child(n) {
         animation-timeline: view();
-        animation-range: cover 4svh cover 16svh;
+        animation-range: cover 8svh cover 18svh;
       }
 
       /* Cena 3: profundidade. As colunas da grade partem de distâncias

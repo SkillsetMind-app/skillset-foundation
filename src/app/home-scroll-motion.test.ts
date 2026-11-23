@@ -120,6 +120,59 @@ function keyframesBody(name: string): string {
   return css.slice(at, css.indexOf("\n}", at));
 }
 
+/** cubic-bezier(0.2, 0.6, 0.2, 1), a --ease-standard. */
+function easeStandard(x: number): number {
+  if (x <= 0) return 0;
+  if (x >= 1) return 1;
+  const bezier = (t: number, p1: number, p2: number) =>
+    3 * (1 - t) ** 2 * t * p1 + 3 * (1 - t) * t * t * p2 + t ** 3;
+  let [lo, hi] = [0, 1];
+  for (let i = 0; i < 50; i += 1) {
+    const mid = (lo + hi) / 2;
+    if (bezier(mid, 0.2, 0.2) < x) lo = mid;
+    else hi = mid;
+  }
+  return bezier((lo + hi) / 2, 0.6, 1);
+}
+
+/** A cortina lida do CSS: geometria da elipse, escala por trecho e regua. */
+function curtainModel() {
+  const rule = sceneRule(".home-scroll .home-promise::before");
+  const percent = (property: string) =>
+    Number(rule.match(new RegExp(`\\s${property}: (-?[\\d.]+)%;`))![1]) / 100;
+  const [width, height] = [percent("width"), percent("height")];
+  const stops = [
+    ...keyframesBody("motion-scroll-curtain").matchAll(
+      /(\d+)% \{\s*transform: (?:scale\(([\d.]+)\)|none);/g,
+    ),
+  ].map(([, at, scale]) => [Number(at) / 100, scale ? Number(scale) : 1] as const);
+  const stretch = Number(rule.match(/animation-range: cover 0% cover (\d+)svh;/)![1]) / 100;
+  const scaleAt = (u: number) => {
+    if (u <= stops[0][0]) return stops[0][1];
+    for (let i = 1; i < stops.length; i += 1) {
+      const [u0, s0] = stops[i - 1];
+      const [u1, s1] = stops[i];
+      if (u <= u1) return s0 + ((s1 - s0) * (u - u0)) / (u1 - u0);
+    }
+    return stops[stops.length - 1][1];
+  };
+  return {
+    kh: width / 2,
+    kv: height / 2,
+    top: percent("top"),
+    left: percent("left"),
+    stretch,
+    scaleAt,
+    /** y (px abaixo do topo da faixa) da borda do arco em dx, com o topo da faixa subido `o` telas. */
+    edgeAt(dx: number, o: number, bandWidth: number, bandHeight: number) {
+      const s = scaleAt(o / stretch);
+      const a = (width / 2) * bandWidth * s;
+      if (Math.abs(dx) >= a) return bandHeight;
+      return bandHeight - (height / 2) * bandHeight * s * Math.sqrt(1 - (dx / a) ** 2);
+    },
+  };
+}
+
 describe("home: cenas do computador", () => {
   it("o bloco de tamanho mora dentro do @supports, depois do bloco de 1024", () => {
     expect(scenesStart).toBeGreaterThan(css.indexOf("@media (min-width: 1024px) {", supportsStart));
@@ -208,27 +261,81 @@ describe("home: cenas do computador", () => {
     expect(curtain).toContain('content: "";');
     expect(curtain).toContain("pointer-events: none;");
     expect(curtain).toContain("background: var(--home-curtain);");
-    expect(curtain).toContain("animation-range: cover 0% cover 45svh;");
   });
 
-  it("cena 2: o texto so sobe depois que a cortina cobre o conteudo, e nunca fica apagado com foco", () => {
-    // A cortina cobre o conteudo em 29% do trecho de 45svh (~13svh); texto,
-    // carta e clausulas comecam depois, nessa ordem.
-    const curtainBody = keyframesBody("motion-scroll-curtain");
-    expect(curtainBody).toMatch(/29% \{\s*transform: scale\(0\.86\);/);
-    const start = (selector: string) =>
-      Number(sceneRule(selector).match(/animation-range: cover (\d+)svh/)![1]);
-    expect(start(".home-scroll .home-promise__text")).toBeGreaterThan(45 * 0.29);
-    expect(start(".home-scroll .home-promise__charter")).toBeGreaterThan(
-      start(".home-scroll .home-promise__text"),
-    );
-    // Inteiros antes dos 75% da tela: o fim do trecho fica abaixo de 25svh
-    // da propria regua mais o recuo de cima da faixa (96px).
-    expect(sceneRule(".home-scroll .home-promise__clause:nth-child(n)")).toContain(
-      "animation-range: cover 4svh cover 16svh;",
-    );
-    expect(sceneRule(".home-scroll .home-promise__text:has(:focus-visible)")).toContain(
-      "animation: none;",
+  it("cena 2: o arco nasce no meio da borda de baixo, cobre os cantos em 1 e nao corta reto antes de 85%", () => {
+    const arc = curtainModel();
+    // Centro da elipse no meio da borda de baixo da faixa.
+    expect(arc.left + arc.kh).toBeCloseTo(0.5, 5);
+    expect(arc.top + arc.kv).toBeCloseTo(1, 5);
+    // Em escala 1 o arco passa dos cantos de cima (a 50% da largura).
+    expect(arc.kv * Math.sqrt(1 - (0.5 / arc.kh) ** 2)).toBeGreaterThan(1);
+    // Trecho: do topo da faixa no fundo da tela ao topo a 45% da tela.
+    expect(arc.stretch).toBe(0.55);
+    expect(arc.scaleAt(0)).toBeLessThanOrEqual(0.15);
+    expect(arc.scaleAt(1)).toBe(1);
+    for (let u = 0; u < 0.84; u += 0.01) {
+      expect(arc.kv * arc.scaleAt(u), `topo cortado reto em ${u.toFixed(2)}`).toBeLessThan(1);
+    }
+  });
+
+  it("cena 2: cada bloco de texto so aparece coberto, em ordem, e fica inteiro antes de 75% da tela", () => {
+    const arc = curtainModel();
+    const range = (selector: string) => {
+      const [, from, to] = sceneRule(selector).match(/animation-range: cover (\d+)svh cover (\d+)svh;/)!;
+      return [Number(from) / 100, Number(to) / 100] as const;
+    };
+    // Recuos medidos a partir do topo da faixa (estimados no layout de 1024
+    // e de 1280+): sobretitulo, titulo, paragrafo e botao; a carta a 96px,
+    // com o primeiro texto dela a 124px.
+    const blocks = [
+      { selector: ".home-scroll .home-promise__text > *", offset: 0 },
+      { selector: ".home-scroll .home-promise__text > h2", offset: 28 },
+      { selector: ".home-scroll .home-promise__text > h2 + p", offset: 164 },
+      { selector: ".home-scroll .home-promise__text > a", offset: 244 },
+    ].map((block) => ({ ...block, range: range(block.selector) }));
+    const charter = range(".home-scroll .home-promise__charter");
+
+    const starts = [...blocks.map((block) => block.range[0]), charter[0]];
+    expect([...starts].sort((a, b) => a - b)).toEqual(starts);
+    expect(new Set(starts).size).toBe(starts.length);
+
+    for (const { width, half, eyebrow } of [
+      { width: 1024, half: 480, eyebrow: 171 },
+      { width: 1440, half: 608, eyebrow: 185 },
+    ]) {
+      for (const bandHeight of [620, 660, 720]) {
+        for (const vh of [720, 900, 1080, 1200]) {
+          const where = `${width}x${vh}, faixa ${bandHeight}px`;
+          for (const block of blocks) {
+            const y = eyebrow + block.offset;
+            const [from, to] = block.range;
+            // Texto claro so com a cortina por tras (canto esquerdo da coluna).
+            expect(arc.edgeAt(-half, from, width, bandHeight), `${block.selector} sem cortina, ${where}`)
+              .toBeLessThanOrEqual(y);
+            // Inteiro quando o topo dele chega a 75% da tela.
+            const deadline = 0.25 + y / vh;
+            expect(easeStandard((deadline - from) / (to - from)), `${block.selector} apagado, ${where}`)
+              .toBeGreaterThanOrEqual(0.95);
+          }
+          // A carta so entra com a borda de cima dela (canto direito) coberta.
+          expect(arc.edgeAt(half, charter[0], width, bandHeight), `carta boiando, ${where}`).toBeLessThanOrEqual(96);
+          const deadline = 0.25 + 124 / vh;
+          expect(easeStandard((deadline - charter[0]) / (charter[1] - charter[0])), `carta apagada, ${where}`)
+            .toBeGreaterThanOrEqual(0.95);
+          // A primeira clausula (285px) comeca depois da carta.
+          const [clauseFrom] = range(".home-scroll .home-promise__clause:nth-child(n)");
+          expect(clauseFrom + 285 / vh).toBeGreaterThan(charter[0]);
+        }
+      }
+    }
+
+    expect(
+      sceneRule(".home-scroll .home-promise:has(:focus-visible) .home-promise__text > *"),
+    ).toContain("animation: none;");
+    // O botao larga o transform no fim da entrada: o :hover dele volta a valer.
+    expect(sceneRule(".home-scroll .home-promise__text > a")).toContain(
+      "animation: motion-scroll-rise 1ms var(--ease-standard) backwards;",
     );
   });
 
