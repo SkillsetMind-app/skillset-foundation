@@ -2457,7 +2457,7 @@
       "continue": "Continue",
       "back": "Back",
       "typeLabel": "Session type",
-      "timeZoneLine": "Time zone: {zone} (from this computer)",
+      "timeZoneLine": "Time zone: {zone}, from this computer",
       "usPreview": "In US time zones: {times}",
       "titleLabel": "Session title",
       "titlePlaceholder": "Example: Leadership clinic with live Q&A",

@@ -186,8 +186,9 @@ describe("agenda de eventos no padrao da casa", () => {
   });
 
   // A leitura vem da mais antiga para a mais nova; no passado, o que importa
-  // e a sessao mais recente.
-  it("Past e All mostram a sessao mais recente primeiro; Upcoming segue pela proxima", () => {
+  // e a sessao mais recente. Em "All", as que vem (a proxima no topo) e depois
+  // as que passaram (a mais recente primeiro).
+  it("Past mostra a mais recente primeiro; All poe a proxima no topo e depois o passado", () => {
     mocks.events = [
       makeEvent({ id: "old", title: "Two days ago", startsAt: new Date(Date.now() - 48 * HOUR).toISOString() }),
       makeEvent({ id: "recent", title: "Yesterday", startsAt: new Date(Date.now() - 24 * HOUR).toISOString() }),
@@ -201,7 +202,7 @@ describe("agenda de eventos no padrao da casa", () => {
     fireEvent.change(screen.getByLabelText("Filter sessions"), { target: { value: "past" } });
     expect(titles()).toEqual(["Yesterday", "Two days ago"]);
     fireEvent.change(screen.getByLabelText("Filter sessions"), { target: { value: "all" } });
-    expect(titles()).toEqual(["In two days", "Tomorrow", "Yesterday", "Two days ago"]);
+    expect(titles()).toEqual(["Tomorrow", "In two days", "Yesterday", "Two days ago"]);
   });
 
   it("a moldura (filtro, busca, exportar) e a contagem dizem de que recorte a lista fala", () => {

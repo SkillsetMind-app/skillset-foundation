@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { LearnDashboard } from "@/components/learn/learn-dashboard";
-import type { CourseEvent } from "@/domain/course-event";
+import { formatEventDateTime, type CourseEvent } from "@/domain/course-event";
 import type { Enrollment } from "@/domain/enrollment";
 import type { Course } from "@/domain/learning";
 import type { AppNotification } from "@/domain/notification";
@@ -659,7 +659,7 @@ describe("LearnDashboard", () => {
     render(<I18nProvider initialLocale="es"><LearnDashboard /></I18nProvider>);
 
     expect(await screen.findByText(
-      new Intl.DateTimeFormat("es", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "longGeneric" }).format(new Date(fixtures.liveEvent.startsAt)),
+      formatEventDateTime(fixtures.liveEvent.startsAt, "es"),
     )).toBeInTheDocument();
   });
 

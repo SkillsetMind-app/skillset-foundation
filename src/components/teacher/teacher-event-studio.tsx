@@ -11,6 +11,7 @@ import { ExportTableButton } from "@/components/shared/export-table-button";
 import { MetricCard } from "@/components/teacher/metric-card";
 import { ConfirmDialog, EmptyState, InlineAlert } from "@/components/ui";
 import {
+  describeTimeZone,
   formatEventDateTime,
   formatEventTimeInZones,
   isEventLinkAcceptable,
@@ -79,14 +80,14 @@ function toLocalDateAndTime(date: Date): [string, string] {
   return [local.slice(0, 10), local.slice(11, 16)];
 }
 
-// A cidade do fuso do computador ("America/New_York" vira "New York"). E o
-// fuso que `new Date(...)` usa para ler o que a pessoa digita. No servidor fica
-// vazio: o render do servidor nao sabe o fuso de quem abre a pagina.
+// O fuso do computador ("America/Chicago"): e o que `new Date(...)` usa para
+// ler o que a pessoa digita. No servidor fica vazio: o render do servidor nao
+// sabe o fuso de quem abre a pagina.
 const noSubscription = () => () => {};
-function useComputerZoneCity(): string {
+function useComputerZone(): string {
   return useSyncExternalStore(
     noSubscription,
-    () => Intl.DateTimeFormat().resolvedOptions().timeZone?.split("/").pop()?.replace(/_/g, " ") ?? "",
+    () => Intl.DateTimeFormat().resolvedOptions().timeZone ?? "",
     () => "",
   );
 }
@@ -123,7 +124,12 @@ export function TeacherEventStudio() {
   // Como a sessao editada estava: data passada so trava se a pessoa mudou a
   // data, e descricao que ja era vazia (sessao criada junto com o produto)
   // nao obriga a escrever 12 letras so para acrescentar o link.
-  const [editingBase, setEditingBase] = useState<{ startsAt: string; descriptionWasEmpty: boolean } | null>(null);
+  // `storedStartsAt`: o instante gravado, devolvido intacto quando a data nao
+  // mudou. Reler o valor local trocava a hora na hora repetida de novembro
+  // (1:30 AM PST virava 1:30 AM PDT, uma hora antes).
+  const [editingBase, setEditingBase] = useState<
+    { startsAt: string; storedStartsAt: string; descriptionWasEmpty: boolean } | null
+  >(null);
   const [actioningEventId, setActioningEventId] = useState<string | null>(null);
   // Pergunta aberta (cancelar ou excluir) e o aviso de que deu certo: antes a
   // sessao sumia ou mudava de estado sem nenhuma frase dizendo o que houve.
@@ -137,7 +143,7 @@ export function TeacherEventStudio() {
   const reportGoing = useCallback((eventId: string, count: number) => {
     setGoingByEvent((current) => (current[eventId] === count ? current : { ...current, [eventId]: count }));
   }, []);
-  const zoneCity = useComputerZoneCity();
+  const computerZone = useComputerZone();
   // O formulario e um pedido, nao a pagina. Quem chega pelo fluxo de criacao de
   // produto (`?newEvent=1`, create-course-start.tsx) ja pediu, e so para essa
   // pessoa ele nasce aberto.
@@ -253,9 +259,17 @@ export function TeacherEventStudio() {
       return `${event.title} ${event.courseTitle}`.toLowerCase().includes(needle);
     });
 
-    // A leitura vem da mais antiga para a mais nova. Em "Past" e "All" a
-    // sessao que interessa e a mais recente: ela vem primeiro.
-    return filter === "past" || filter === "all" ? matching.reverse() : matching;
+    // A leitura vem da mais antiga para a mais nova. "Past": a mais recente
+    // primeiro. "All": as que vem, da proxima em diante, e depois as que
+    // passaram, da mais recente para tras. Data ilegivel fica com as que vem.
+    if (filter === "past") {
+      return matching.reverse();
+    }
+    if (filter === "all") {
+      const isPast = (event: CourseEvent) => new Date(event.startsAt).getTime() < now;
+      return [...matching.filter((event) => !isPast(event)), ...matching.filter(isPast).reverse()];
+    }
+    return matching;
   }, [events, filter, now, search]);
 
   const exportRows = useMemo(
@@ -311,7 +325,11 @@ export function TeacherEventStudio() {
     setEditingEventId(mode === "edit" ? event.id : null);
     setEditingBase(
       mode === "edit"
-        ? { startsAt: date && time ? `${date}T${time}` : "", descriptionWasEmpty: !event.description.trim() }
+        ? {
+            startsAt: date && time ? `${date}T${time}` : "",
+            storedStartsAt: event.startsAt,
+            descriptionWasEmpty: !event.description.trim(),
+          }
         : null,
     );
     setCourseId(event.courseId);
@@ -378,7 +396,7 @@ export function TeacherEventStudio() {
           title,
           description,
           type,
-          startsAt: new Date(startsAt).toISOString(),
+          startsAt: editingBase && !dateChanged ? editingBase.storedStartsAt : new Date(startsAt).toISOString(),
           externalUrl: link,
         });
         closeForm();
@@ -498,6 +516,7 @@ export function TeacherEventStudio() {
   const [today] = toLocalDateAndTime(new Date(now));
   const usPreview = formatEventTimeInZones(startsAt, locale, US_PREVIEW_TIME_ZONES);
   const descriptionOptional = Boolean(editingBase?.descriptionWasEmpty);
+  const zoneLabel = computerZone ? describeTimeZone(computerZone, locale, now) : "";
   const fieldClass =
     "rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]";
   // Data e hora maiores que os outros campos: e o que a pessoa mais precisa ler.
@@ -679,7 +698,7 @@ export function TeacherEventStudio() {
                 {/* De quem e a hora: a do computador, que e o fuso que
                     `new Date(...)` usa para ler o que foi digitado. */}
                 <p id="event-zone-line" className="text-sm text-[var(--color-ink-soft)] sm:col-span-2">
-                  {zoneCity ? t(`${copy}.timeZoneLine`).replace("{zone}", () => zoneCity) : null}
+                  {zoneLabel ? t(`${copy}.timeZoneLine`).replace("{zone}", () => zoneLabel) : null}
                 </p>
                 {dateError ? (
                   <div id="event-when-error" className="sm:col-span-2">
@@ -689,7 +708,7 @@ export function TeacherEventStudio() {
               </div>
               </> : <>
               <p className="break-words text-sm text-[var(--color-ink-soft)]">
-                {selectedCourse?.title} · {t(`${copy}.type.${type}`)} · {formatEventDateTime(startsAt, locale, t("platform.events.datePending"))}
+                {selectedCourse?.title} · {t(`${copy}.type.${type}`)} · {formatEventDateTime(startsAt, locale, t("platform.events.datePending"), undefined, now)}
               </p>
               {/* Alunos em varios fusos dos EUA: a professora ve, antes de
                   salvar, a hora de cada um. */}
@@ -710,15 +729,19 @@ export function TeacherEventStudio() {
                 />
               </label>
 
-              {/* type="url": o celular abre o teclado de endereco. Ao sair do
-                  campo, "zoom.us/j/1" ganha o https:// que faltava. Prazo nao
-                  e reuniao: so ele pode ficar sem link. */}
+              {/* inputMode="url": o celular abre o teclado de endereco. Sem
+                  type="url": a validacao do navegador barrava "zoom.us/j/1"
+                  (Enter, ou o toque no iOS que nao tira o foco) antes do
+                  https:// do envio. Ao sair do campo ele ja entra. Prazo nao e
+                  reuniao: so ele pode ficar sem link. */}
               <div className="grid gap-2">
                 <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
                   {t(`${copy}.urlLabel`)}
                   <input
-                    type="url"
                     inputMode="url"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                     value={externalUrl}
                     onChange={(event) => setExternalUrl(event.target.value)}
                     onBlur={() => setExternalUrl(withLinkScheme(externalUrl))}
@@ -887,7 +910,7 @@ export function TeacherEventStudio() {
                   {event.courseTitle}
                 </p>
                 <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
-                  {formatEventDateTime(event.startsAt, locale, t("platform.events.datePending"))}
+                  {formatEventDateTime(event.startsAt, locale, t("platform.events.datePending"), undefined, now)}
                 </p>
                 <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
                   {event.description}

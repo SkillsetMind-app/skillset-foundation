@@ -79,6 +79,7 @@ export function notificationBody(
   notification: Pick<AppNotification, "type" | "body">,
   locale: string,
   timeZone?: string,
+  now?: number,
 ): string {
   const match = notification.type === "live_event" ? LIVE_BODY.exec(notification.body) : null;
   const month = match ? PG_MONTHS.indexOf(match[2]) : -1;
@@ -87,7 +88,7 @@ export function notificationBody(
   }
   const [, product, , day, year, hour, minute] = match;
   const instant = new Date(Date.UTC(Number(year), month, Number(day), Number(hour), Number(minute)));
-  return `${product} — ${formatEventDateTime(instant.toISOString(), locale, notification.body, timeZone)}`;
+  return `${product} — ${formatEventDateTime(instant.toISOString(), locale, notification.body, timeZone, now)}`;
 }
 
 // Titulos antigos gravados em ingles pelo banco (send_course_message). A

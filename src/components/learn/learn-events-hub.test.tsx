@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { LearnEventsHub } from "@/components/learn/learn-events-hub";
-import type { CourseEvent } from "@/domain/course-event";
+import { formatEventDateTime, type CourseEvent } from "@/domain/course-event";
 import type { Enrollment } from "@/domain/enrollment";
 
 // O MESMO usuario em todo render: a inscricao das matriculas depende de
@@ -85,7 +85,7 @@ describe("LearnEventsHub", () => {
     render(<I18nProvider initialLocale="es"><LearnEventsHub /></I18nProvider>);
 
     expect(await screen.findByText(
-      new Intl.DateTimeFormat("es", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "longGeneric" }).format(new Date(mocks.startsAt)),
+      formatEventDateTime(mocks.startsAt, "es"),
     )).toBeInTheDocument();
     expect(screen.getByText("Fecha pendiente")).toBeInTheDocument();
   });

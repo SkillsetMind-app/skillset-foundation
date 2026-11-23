@@ -46,19 +46,24 @@ describe("aviso de sessao marcada no idioma e no fuso de quem le", () => {
   const plain = (text: string) => text.replace(/\s+/g, " ");
   const stored = { type: "live_event" as const, body: "Mindful leadership — Nov 26, 2026 at 00:00 UTC" };
 
+  // "Agora" fixo: o ano so aparece quando nao e o de agora.
+  const in2026 = Date.UTC(2026, 10, 22, 12);
+
   it("reescreve a data do texto com a frase das outras telas", () => {
-    expect(plain(notificationBody(stored, "en", "America/Los_Angeles"))).toBe(
+    expect(plain(notificationBody(stored, "en", "America/Los_Angeles", in2026))).toBe(
       "Mindful leadership — Wed, Nov 25, 4:00 PM PT",
     );
-    expect(plain(notificationBody(stored, "es", "America/Los_Angeles"))).toBe(
+    expect(plain(notificationBody(stored, "es", "America/Los_Angeles", in2026))).toBe(
       "Mindful leadership — mié, 25 nov, 16:00 hora del Pacífico",
     );
-    // Dia com zero na frente (o banco escreve "Nov 05") e produto com travessao.
+    // Dia com zero na frente (o banco escreve "Mar 05"), produto com travessao
+    // e outro ano.
     expect(plain(notificationBody(
       { type: "live_event", body: "Calm — a course — Mar 05, 2027 at 15:30 UTC" },
       "en",
       "America/New_York",
-    ))).toBe("Calm — a course — Fri, Mar 5, 10:30 AM ET");
+      in2026,
+    ))).toBe("Calm — a course — Fri, Mar 5, 2027, 10:30 AM ET");
   });
 
   it("texto que nao bate com o formato do banco aparece como esta", () => {

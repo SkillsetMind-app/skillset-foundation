@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  describeTimeZone,
   formatEventDateTime,
   formatEventTimeInZones,
   isEventLinkAcceptable,
@@ -49,18 +50,56 @@ describe("formatEventDateTime", () => {
   // nenhuma tela dizia de quem era a hora. Fuso e idioma passados aqui: o
   // resultado nao depende do relogio da maquina do CI.
   const sevenPmNewYork = "2026-11-26T00:00:00.000Z";
+  const in2026 = Date.UTC(2026, 10, 22, 12);
+  const in2027 = Date.UTC(2027, 1, 10, 12);
 
   it("escreve dia da semana e o fuso de quem le, em ingles e em espanhol", () => {
-    expect(plain(formatEventDateTime(sevenPmNewYork, "en", "Date pending", "America/Los_Angeles"))).toBe(
+    expect(plain(formatEventDateTime(sevenPmNewYork, "en", "Date pending", "America/Los_Angeles", in2026))).toBe(
       "Wed, Nov 25, 4:00 PM PT",
     );
-    expect(plain(formatEventDateTime(sevenPmNewYork, "en", "Date pending", "America/New_York"))).toBe(
+    expect(plain(formatEventDateTime(sevenPmNewYork, "en", "Date pending", "America/New_York", in2026))).toBe(
       "Wed, Nov 25, 7:00 PM ET",
     );
     // Espanhol: o nome longo, nunca "GMT-8".
-    const spanish = formatEventDateTime(sevenPmNewYork, "es", "Fecha pendiente", "America/Los_Angeles");
+    const spanish = formatEventDateTime(sevenPmNewYork, "es", "Fecha pendiente", "America/Los_Angeles", in2026);
     expect(plain(spanish)).toBe("mié, 25 nov, 16:00 hora del Pacífico");
     expect(spanish).not.toMatch(/GMT/);
+  });
+
+  // "Past" e "All" mostravam a sessao do ano passado sem o ano.
+  it("o ano entra so quando nao e o ano de agora, no fuso de quem le", () => {
+    expect(plain(formatEventDateTime(sevenPmNewYork, "en", "Date pending", "America/Los_Angeles", in2027))).toBe(
+      "Wed, Nov 25, 2026, 4:00 PM PT",
+    );
+    expect(plain(formatEventDateTime(sevenPmNewYork, "es", "Fecha pendiente", "America/Los_Angeles", in2027))).toBe(
+      "mié, 25 nov 2026, 16:00 hora del Pacífico",
+    );
+    // Virada do ano: 31/dez as 11 PM em Los Angeles ja e 2027 em UTC. Conta o
+    // ano de quem le.
+    expect(plain(formatEventDateTime("2027-01-01T07:00:00.000Z", "en", "Date pending", "America/Los_Angeles", in2026))).toBe(
+      "Thu, Dec 31, 11:00 PM PT",
+    );
+  });
+
+  // Motor sem os nomes genericos: a frase sai com o "short", sem apagar a tela.
+  it("sem shortGeneric/longGeneric no motor, cai no nome curto", () => {
+    const Real = Intl.DateTimeFormat;
+    function WithoutGeneric(locale?: string | string[], options?: Intl.DateTimeFormatOptions) {
+      if (options?.timeZoneName === "shortGeneric" || options?.timeZoneName === "longGeneric") {
+        throw new RangeError("timeZoneName must be short or long");
+      }
+      return new Real(locale, options);
+    }
+    Object.defineProperty(Intl, "DateTimeFormat", { configurable: true, writable: true, value: WithoutGeneric });
+    try {
+      expect(plain(formatEventDateTime(sevenPmNewYork, "en", "Date pending", "America/Los_Angeles", in2026))).toBe(
+        "Wed, Nov 25, 4:00 PM PST",
+      );
+      expect(formatEventTimeInZones(sevenPmNewYork, "en", ["America/New_York"]).map(plain)).toEqual(["7:00 PM EST"]);
+      expect(describeTimeZone("America/Chicago", "en", in2026)).toBe("Central Standard Time (Chicago)");
+    } finally {
+      Object.defineProperty(Intl, "DateTimeFormat", { configurable: true, writable: true, value: Real });
+    }
   });
 
   it("accepts the classroom locale and fallback while keeping existing defaults", () => {
@@ -70,6 +109,25 @@ describe("formatEventDateTime", () => {
   it("degrades to a placeholder instead of printing Invalid Date", () => {
     expect(formatEventDateTime("")).toBe("Date pending");
     expect(formatEventDateTime("not a date")).toBe("Date pending");
+  });
+});
+
+describe("describeTimeZone", () => {
+  const at = Date.UTC(2026, 10, 22, 12);
+
+  // So a cidade do id enganava: quem mora em Dallas lia "Chicago".
+  it("o nome do fuso em palavras, com a cidade entre parenteses", () => {
+    expect(describeTimeZone("America/Chicago", "en", at)).toBe("Central Time (Chicago)");
+    expect(describeTimeZone("America/Chicago", "es", at)).toBe("hora central (Chicago)");
+    expect(describeTimeZone("America/New_York", "en", at)).toBe("Eastern Time (New York)");
+  });
+
+  // "Etc/GMT+5" e cinco horas ANTES de Greenwich: o id tem o sinal invertido.
+  it("Etc/* e zonas sem cidade ficam so com o nome do formatador", () => {
+    const etc = describeTimeZone("Etc/GMT+5", "en", at);
+    expect(etc).not.toMatch(/Etc|GMT\+5/);
+    expect(etc).toMatch(/05/);
+    expect(describeTimeZone("UTC", "en", at)).not.toMatch(/\(/);
   });
 });
 

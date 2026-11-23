@@ -2457,7 +2457,7 @@
       "continue": "Continuar",
       "back": "Atrás",
       "typeLabel": "Tipo de sesión",
-      "timeZoneLine": "Zona horaria: {zone} (la de este equipo)",
+      "timeZoneLine": "Zona horaria: {zone}, la de este equipo",
       "usPreview": "En las zonas horarias de EE. UU.: {times}",
       "titleLabel": "Título de la sesión",
       "titlePlaceholder": "Ejemplo: Clínica de liderazgo con preguntas en vivo",

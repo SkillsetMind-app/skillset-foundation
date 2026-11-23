@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { TeacherEventStudio } from "@/components/teacher/teacher-event-studio";
 import { CONFIRM_GUARD_MS } from "@/components/ui/confirm-dialog";
-import { formatEventTimeInZones, US_PREVIEW_TIME_ZONES, type CourseEvent } from "@/domain/course-event";
+import { formatEventDateTime, formatEventTimeInZones, US_PREVIEW_TIME_ZONES, type CourseEvent } from "@/domain/course-event";
 import {
   cancelCourseEvent,
   createCourseEvent,
@@ -352,7 +352,7 @@ describe("TeacherEventStudio", () => {
     render(<I18nProvider initialLocale="es"><TeacherEventStudio /></I18nProvider>);
 
     expect(await screen.findByText(
-      new Intl.DateTimeFormat("es", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "longGeneric" }).format(new Date(startsAt)),
+      formatEventDateTime(startsAt, "es"),
     )).toBeInTheDocument();
     expect(screen.getByText("Fecha pendiente")).toBeInTheDocument();
   });
@@ -364,13 +364,16 @@ describe("TeacherEventStudio", () => {
     const zone = vi.spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions").mockImplementation(function (
       this: Intl.DateTimeFormat,
     ) {
-      return { ...real.call(this), timeZone: "America/New_York" };
+      return { ...real.call(this), timeZone: "America/Chicago" };
     });
     render(<TeacherEventStudio />);
 
-    expect(screen.getByText("Time zone: New York (from this computer)")).toBeInTheDocument();
-    expect(screen.getByLabelText("Date")).toHaveAccessibleDescription("Time zone: New York (from this computer)");
-    expect(screen.getByLabelText("Time")).toHaveAccessibleDescription("Time zone: New York (from this computer)");
+    // O nome do fuso, com a cidade do id so entre parenteses: quem mora em
+    // Dallas nao le "Chicago" como se fosse o lugar dela.
+    const line = "Time zone: Central Time (Chicago), from this computer";
+    expect(screen.getByText(line)).toBeInTheDocument();
+    expect(screen.getByLabelText("Date")).toHaveAccessibleDescription(line);
+    expect(screen.getByLabelText("Time")).toHaveAccessibleDescription(line);
     // Campos maiores, com o teclado certo de cada um.
     expect(screen.getByLabelText("Date")).toHaveAttribute("type", "date");
     expect(screen.getByLabelText("Time")).toHaveAttribute("type", "time");
@@ -437,8 +440,13 @@ describe("TeacherEventStudio", () => {
     fillWhen("2027-03-14", "15:30");
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     const link = screen.getByLabelText("External class link");
-    expect(link).toHaveAttribute("type", "url");
+    // Sem type="url": a validacao do navegador barraria "zoom.us/j/123" antes
+    // do https:// do envio. O teclado de endereco vem do inputmode.
+    expect(link).not.toHaveAttribute("type", "url");
     expect(link).toHaveAttribute("inputmode", "url");
+    expect(link).toHaveAttribute("autocapitalize", "none");
+    expect(link).toHaveAttribute("autocorrect", "off");
+    expect(link).toHaveAttribute("spellcheck", "false");
     fireEvent.change(link, { target: { value: "zoom.us/j/123" } });
     fireEvent.blur(link);
     expect(link).toHaveValue("https://zoom.us/j/123");
@@ -446,6 +454,20 @@ describe("TeacherEventStudio", () => {
     fireEvent.change(screen.getByLabelText("Session description"), { target: { value: "Practical exercises together." } });
     fireEvent.click(screen.getByRole("button", { name: "Schedule session" }));
     await waitFor(() => expect(createCourseEvent).toHaveBeenCalledWith(expect.objectContaining({ externalUrl: "https://zoom.us/j/123" })));
+  });
+
+  // Enter no campo (ou o toque no iOS que nao tira o foco) envia sem blur: o
+  // https:// entra no envio mesmo assim.
+  it("link sem esquema enviado com Enter, sem sair do campo, grava com https://", async () => {
+    render(<TeacherEventStudio />);
+    fillWhen("2027-03-14", "15:30");
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.change(screen.getByLabelText("Session title"), { target: { value: "Live workshop" } });
+    fireEvent.change(screen.getByLabelText("Session description"), { target: { value: "Practical exercises together." } });
+    const link = screen.getByLabelText("External class link");
+    fireEvent.change(link, { target: { value: "zoom.us/j/456" } });
+    fireEvent.submit(link.closest("form")!);
+    await waitFor(() => expect(createCourseEvent).toHaveBeenCalledWith(expect.objectContaining({ externalUrl: "https://zoom.us/j/456" })));
   });
 
   // A sessao criada junto com o produto nasce com descricao vazia: a
@@ -672,5 +694,35 @@ describe("TeacherEventStudio", () => {
       expect(screen.queryByRole("status")).not.toBeInTheDocument();
       expect(deleteCourseEvent).toHaveBeenCalledOnce();
     });
+  });
+
+  // A hora repetida de novembro: 09:30Z em 1/nov/2026 e 1:30 AM PST em Los
+  // Angeles, e "01:30" relido vira 1:30 AM PDT (08:30Z). Editar so o titulo
+  // salvava a sessao uma hora antes. Fica por ultimo no arquivo: o fuso do
+  // processo muda.
+  it("editar sem mexer na data devolve o instante gravado, mesmo na hora repetida de novembro", async () => {
+    vi.stubEnv("TZ", "America/Los_Angeles");
+    try {
+      expect(new Date("2026-11-01T09:30:00.000Z").getTimezoneOffset()).toBe(480);
+      agenda.params = "";
+      agenda.events = [{
+        id: "event-dst", courseId: "course-1", courseSlug: "course-1", courseTitle: "Existing course",
+        ownerId: "teacher-1", title: "Early bird", description: "A very early session.",
+        type: "live_class", status: "scheduled", startsAt: "2026-11-01T09:30:00.000Z",
+        externalUrl: "https://meet.example.com/live", recordingAssetId: null,
+      }];
+      render(<TeacherEventStudio />);
+      fireEvent.change(screen.getByLabelText("Filter sessions"), { target: { value: "all" } });
+      fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+      expect(screen.getByLabelText("Time")).toHaveValue("01:30");
+      fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+      fireEvent.change(screen.getByLabelText("Session title"), { target: { value: "Early bird club" } });
+      fireEvent.click(screen.getByRole("button", { name: "Update session" }));
+      await waitFor(() => expect(updateCourseEvent).toHaveBeenCalledWith("event-dst", expect.objectContaining({
+        title: "Early bird club", startsAt: "2026-11-01T09:30:00.000Z",
+      })));
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });
