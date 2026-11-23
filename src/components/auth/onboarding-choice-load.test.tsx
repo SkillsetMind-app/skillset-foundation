@@ -217,6 +217,68 @@ describe("OnboardingChoice: a carga normal (caracterizacao)", () => {
     expect(mocks.router.push).toHaveBeenCalledExactlyOnceWith(plan);
   });
 
+  // Cadastro novo de ponta a ponta. A leitura que volta vazia (sem linha, ou a
+  // linha recem-criada pelo gatilho do cadastro) conclui como sempre: mesmas
+  // chamadas, mesmo conteudo, mesmo destino.
+  const freshRow = {
+    uid: "learner-1", email: "patrick@example.com", displayName: null, username: null, bio: null,
+    timezone: null, roles: ["student"], onboardingCompleted: false,
+  };
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  async function fillWizardAndFinish(goalKey: string) {
+    fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
+    fireEvent.change(screen.getByPlaceholderText("onboarding.usernamePlaceholder"), { target: { value: "patrick" } });
+    fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
+    fireEvent.click(screen.getByText(goalKey));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "onboarding.finishSetup" }));
+    });
+  }
+
+  it.each([
+    ["sem linha", null],
+    ["linha recem-criada", freshRow],
+  ])("aluno novo (%s) conclui o cadastro e vai para /learn", async (_caso, profile) => {
+    mocks.getUserProfile.mockResolvedValue(profile);
+    mountOnPage();
+    await act(async () => emit({ status: "authenticated", user: authedUser }));
+    await fillWizardAndFinish("onboarding.goalCareerLabel");
+
+    expect(mocks.updateOnboardingAnswers).not.toHaveBeenCalled();
+    expect(mocks.completeUserOnboarding).toHaveBeenCalledExactlyOnceWith({
+      uid: "learner-1", roles: ["student"], acceptTeacherTerms: false,
+      identity: { displayName: "Patrick", username: "patrick", bio: "", timezone, goals: ["career_growth"] },
+    });
+    expect(mocks.refreshUser).toHaveBeenCalledTimes(1);
+    expect(mocks.router.push).toHaveBeenCalledExactlyOnceWith("/learn");
+    expect(mocks.getUserProfile).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ["sem linha", null],
+    ["linha recem-criada", freshRow],
+  ])("professor novo (%s) conclui o cadastro e vai para /teach", async (_caso, profile) => {
+    mocks.searchParams = new URLSearchParams("path=teacher");
+    mocks.getUserProfile.mockResolvedValue(profile);
+    mountOnPage();
+    await act(async () => emit({ status: "authenticated", user: authedUser }));
+    fireEvent.change(screen.getByLabelText("connectOnboarding.countryLabel"), { target: { value: "US" } });
+    fireEvent.click(screen.getByRole("checkbox"));
+    await fillWizardAndFinish("onboarding.goalTeachLabel");
+
+    expect(mocks.updateOnboardingAnswers).toHaveBeenCalledExactlyOnceWith({
+      uid: "learner-1", answers: { payoutCountry: "US" },
+    });
+    expect(mocks.completeUserOnboarding).toHaveBeenCalledExactlyOnceWith({
+      uid: "learner-1", roles: ["teacher"], acceptTeacherTerms: true,
+      identity: { displayName: "Patrick", username: "patrick", bio: "", timezone, goals: ["teach_online"] },
+    });
+    expect(mocks.updateOnboardingAnswers.mock.invocationCallOrder[0])
+      .toBeLessThan(mocks.completeUserOnboarding.mock.invocationCallOrder[0]);
+    expect(mocks.refreshUser).toHaveBeenCalledTimes(1);
+    expect(mocks.router.push).toHaveBeenCalledExactlyOnceWith("/teach");
+  });
+
   it("leitura que falha: o cadastro continua usavel, com o aviso de sempre", async () => {
     mocks.searchParams = new URLSearchParams("path=teacher");
     mocks.getUserProfile.mockRejectedValue(new Error("offline"));
@@ -299,6 +361,32 @@ describe("OnboardingChoice: \"Try again\" da leitura do perfil", () => {
     await act(async () => resolve(null));
     expect(container.children[1].outerHTML).toBe(clean.html);
     expectOnlyTheRead(2);
+  });
+
+  it("depois de um \"Try again\" que da certo, o cadastro conclui e grava uma vez", async () => {
+    mocks.searchParams = activation;
+    const { resolve } = await failFirstRead();
+    fireEvent.click(screen.getByRole("button", { name: "appErrors.retry" }));
+    await act(async () => resolve(null));
+
+    fireEvent.change(screen.getByLabelText("connectOnboarding.countryLabel"), { target: { value: "US" } });
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
+    fireEvent.change(screen.getByPlaceholderText("onboarding.usernamePlaceholder"), { target: { value: "patrick" } });
+    fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
+    fireEvent.click(screen.getByText("onboarding.goalTeachLabel"));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "onboarding.finishSetup" }));
+    });
+
+    expect(mocks.updateOnboardingAnswers).toHaveBeenCalledExactlyOnceWith({
+      uid: "learner-1", answers: { payoutCountry: "US" },
+    });
+    expect(mocks.completeUserOnboarding).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      uid: "learner-1", roles: ["teacher"], acceptTeacherTerms: true,
+    }));
+    expect(mocks.router.push).toHaveBeenCalledExactlyOnceWith("/teach");
+    expect(mocks.getUserProfile).toHaveBeenCalledTimes(2);
   });
 
   it("releitura que falha de novo: o aviso volta, com o botao", async () => {

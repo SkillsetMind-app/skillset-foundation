@@ -279,7 +279,10 @@ describe("H3: pais na ativacao do professor", () => {
     await waitFor(() => expect(mocks.router.push).toHaveBeenCalledWith("/teach"));
   });
 
-  it("leitura do perfil falhou: conclui a ativacao sem gravar o pais por cima das respostas", async () => {
+  // Sem a leitura do perfil, concluir gravava por cima do perfil guardado
+  // (papeis, nome, @, bio, fuso e objetivos) com o que estava na tela. Agora
+  // nada e gravado: volta ao passo 0, com o aviso de leitura e o "Try again".
+  it("leitura do perfil falhou: concluir nao grava nada e volta ao passo 0 com Try again", async () => {
     mocks.getUserProfile.mockRejectedValueOnce(new Error("offline"));
     await mount();
     expect(screen.getByText("onboarding.errorProfileLoad")).toBeInTheDocument();
@@ -287,15 +290,22 @@ describe("H3: pais na ativacao do professor", () => {
     fireEvent.change(screen.getByLabelText("connectOnboarding.countryLabel"), { target: { value: "CA" } });
     fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
+    // O aviso sai no Continue, como sempre.
+    expect(screen.queryByText("onboarding.errorProfileLoad")).toBeNull();
     fireEvent.change(screen.getByPlaceholderText("onboarding.usernamePlaceholder"), { target: { value: "patrick" } });
     fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
     fireEvent.click(screen.getByText("onboarding.goalTeachLabel"));
-    fireEvent.click(screen.getByRole("button", { name: "onboarding.finishSetup" }));
-    await waitFor(() => expect(mocks.router.push).toHaveBeenCalledWith("/teach"));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "onboarding.finishSetup" }));
+    });
+
     expect(mocks.updateOnboardingAnswers).not.toHaveBeenCalled();
-    expect(mocks.completeUserOnboarding).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
-      uid: "learner-1", roles: ["teacher"], acceptTeacherTerms: true,
-    }));
+    expect(mocks.completeUserOnboarding).not.toHaveBeenCalled();
+    expect(mocks.refreshUser).not.toHaveBeenCalled();
+    expect(mocks.router.push).not.toHaveBeenCalled();
+    expect(screen.getByText("onboarding.pathTeachTitle")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("onboarding.errorProfileLoad");
+    expect(screen.getByRole("button", { name: "appErrors.retry" })).toBeEnabled();
   });
 
   it.each(["teacher", "student"])("fluxo direto %s mostra e grava pais somente para professor", async (path) => {

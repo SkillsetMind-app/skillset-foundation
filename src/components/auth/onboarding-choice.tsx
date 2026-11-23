@@ -498,6 +498,19 @@ export function OnboardingChoice() {
   async function handleFinish() {
     setError("");
 
+    // Perfil nunca lido com sucesso: concluir gravaria por cima do perfil
+    // guardado (papeis, nome, @, bio, fuso e objetivos) com o que esta na tela.
+    // Volta ao passo 0 com o aviso de leitura e o "Try again". Quem e novo nao
+    // cai aqui: qualquer leitura que responde, ate vazia (sem linha ou com a
+    // linha recem-criada), marca answersLoaded antes de a tela aparecer.
+    if (!answersLoaded) {
+      const message = t("onboarding.errorProfileLoad");
+      setStep(0);
+      setError(message);
+      setReadError(message);
+      return;
+    }
+
     if (!uid || !selectedPath) {
       setError(t("onboarding.errorSessionNotReady"));
       return;
@@ -544,8 +557,7 @@ export function OnboardingChoice() {
 
     try {
       // Sem a leitura do perfil, gravar so o pais apagaria as outras respostas.
-      // O pais e so declarado: a carteira e o servidor decidem, entao a
-      // ativacao segue sem ele.
+      // A trava do topo ja barra esse caso; esta fica como segunda trava.
       if (selectedPathIncludesTeacher && answersLoaded) {
         await updateOnboardingAnswers({
           uid,
