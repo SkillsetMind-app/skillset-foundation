@@ -41,6 +41,7 @@ import {
   VideoWatermark,
 } from "@/components/learn/watermarked-video-player";
 import { ProtectedAssetPreview } from "@/components/shared/protected-asset-preview";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { MilestoneSeal, useJustDone } from "@/components/ui/drawn-check";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { LoadErrorAlert } from "@/components/ui/load-error-alert";
@@ -1594,24 +1595,35 @@ export function EnrolledCourseWorkspace({
                 }
                 className="button-solid flex-1 px-4 py-2.5 text-sm sm:flex-none"
               >
-                {previewMode
-                  ? t("creatorEditor.preview.only")
-                  : selectedLessonUnlockState
-                      && !selectedLessonUnlockState.unlocked
-                    ? t("learn.classroom.lesson.locked")
-                    : activeLessonId === selectedLesson.id
-                      ? t("learn.classroom.workspace.saving")
-                      : completedLessonIds.includes(selectedLesson.id)
-                        ? nextInOrder
-                          ? nextOpensAt
-                            // "Next lesson · Unlocks Nov 24, 2026": a mesma frase
-                            // da playlist, dita de qual aula se trata.
-                            ? `${t("learn.classroom.nextLesson.title")} · ${t("learn.classroom.lesson.unlocks").replace("{date}", () => formatUnlockDate(nextOpensAt, locale))}`
-                            : t("learn.classroom.nextLesson.title")
-                          : t("learn.classroom.curriculum.completed")
-                        : nextInOrder && !nextOpensAt
-                          ? t("learn.classroom.workspace.completeAndNext")
-                          : t("learn.classroom.workspace.complete")}
+                {/* "Saving..." só vale fora do preview e com a aula aberta,
+                    como antes; os dois rótulos na mesma célula, o botão não
+                    muda de largura ao concluir. */}
+                <BusyLabel
+                  busy={
+                    !previewMode
+                    && !(selectedLessonUnlockState && !selectedLessonUnlockState.unlocked)
+                    && activeLessonId === selectedLesson.id
+                  }
+                  idle={
+                    previewMode
+                      ? t("creatorEditor.preview.only")
+                      : selectedLessonUnlockState
+                          && !selectedLessonUnlockState.unlocked
+                        ? t("learn.classroom.lesson.locked")
+                        : completedLessonIds.includes(selectedLesson.id)
+                          ? nextInOrder
+                            ? nextOpensAt
+                              // "Next lesson · Unlocks Nov 24, 2026": a mesma frase
+                              // da playlist, dita de qual aula se trata.
+                              ? `${t("learn.classroom.nextLesson.title")} · ${t("learn.classroom.lesson.unlocks").replace("{date}", () => formatUnlockDate(nextOpensAt, locale))}`
+                              : t("learn.classroom.nextLesson.title")
+                            : t("learn.classroom.curriculum.completed")
+                          : nextInOrder && !nextOpensAt
+                            ? t("learn.classroom.workspace.completeAndNext")
+                            : t("learn.classroom.workspace.complete")
+                  }
+                  busyText={t("learn.classroom.workspace.saving")}
+                />
               </button>
               )}
             </div>

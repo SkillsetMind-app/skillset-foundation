@@ -12,6 +12,7 @@ import { StatusChip } from "@/components/shared/status-chip";
 import { CardPageSkeleton } from "@/components/teacher/builder-skeleton";
 import {
   buttonClasses,
+  BusyLabel,
   Button,
   Card,
   Field,
@@ -494,14 +495,21 @@ export function CreatorVerificationPanel() {
               <InlineAlert tone="error">{t(`${copy}.errors.${submitError}`)}</InlineAlert>
             ) : null}
             <div>
+              {/* Duas esperas (tirar o documento, enviar): a de dentro guarda
+                  as duas na mesma célula, e a de fora guarda o rótulo de
+                  repouso. O botão fica com a largura do maior dos quatro. */}
               <Button type="submit" disabled={submitting || cleaningDocument}>
-                {t(`${copy}.${cleaningDocument
-                  ? "removingDocument"
-                  : submitting
-                  ? "submitting"
-                  : status === "needs_changes"
-                    ? "resubmit"
-                    : "submit"}`)}
+                <BusyLabel
+                  busy={submitting || cleaningDocument}
+                  idle={t(`${copy}.${status === "needs_changes" ? "resubmit" : "submit"}`)}
+                  busyText={
+                    <BusyLabel
+                      busy={cleaningDocument}
+                      idle={t(`${copy}.submitting`)}
+                      busyText={t(`${copy}.removingDocument`)}
+                    />
+                  }
+                />
               </Button>
             </div>
           </form>

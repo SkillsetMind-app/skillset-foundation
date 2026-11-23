@@ -5,6 +5,7 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 
 import { PanelCard } from "@/components/teacher/course-commerce-panels";
 import { SaveStatusLine } from "@/components/teacher/save-status-line";
+import { BusyLabel } from "@/components/ui/busy-label";
 import type { DripStrategy } from "@/domain/drip-policy";
 import { DEFAULT_PLATFORM_FEE_BPS } from "@/lib/payments/rules";
 import type { TeacherCourse } from "@/domain/teacher-course";
@@ -147,7 +148,7 @@ export function SalesPageEditor({
           {/* Contorno: na seção Page o único botão cheio é o "Save page" do
               editor de blocos logo abaixo. */}
           <button type="submit" className="button-outline px-4 py-2 text-xs" disabled={saving}>
-            {t(saving ? "teacherSalesCopy.saving" : "teacherSalesCopy.save")}
+            <BusyLabel busy={saving} idle={t("teacherSalesCopy.save")} busyText={t("teacherSalesCopy.saving")} />
           </button>
           <a
             href={`/courses/${encodeURIComponent(course.id)}`}

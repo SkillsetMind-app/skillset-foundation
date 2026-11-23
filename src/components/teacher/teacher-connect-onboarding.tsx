@@ -14,7 +14,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { StripeFrameSkeleton } from "@/components/teacher/builder-skeleton";
 import { SupportDetails } from "@/components/teacher/support-details";
-import { Button, Card, Eyebrow, InlineAlert } from "@/components/ui";
+import { BusyLabel, Button, Card, Eyebrow, InlineAlert } from "@/components/ui";
 import {
   fetchConnectAccountSessionSecret,
   isConnectNotEnabledError,
@@ -394,7 +394,11 @@ function ConnectOnboardingFlow({
         {error?.status ? <SupportDetails code={error.status} className="mt-2" /> : null}
         <div className="mt-4">
           <Button onClick={openHostedFallback} disabled={isOpeningHosted}>
-            {t(isOpeningHosted ? "connectOnboarding.opening" : "connectOnboarding.continue")}
+            <BusyLabel
+              busy={isOpeningHosted}
+              idle={t("connectOnboarding.continue")}
+              busyText={t("connectOnboarding.opening")}
+            />
           </Button>
         </div>
       </Card>
@@ -492,7 +496,11 @@ function StripeConnectFallback({
         {/* Stripe's hosted page stays available for every error, as before
             translation; the recovery link is an extra way out, not a replacement. */}
         <Button onClick={onHosted} disabled={isOpeningHosted}>
-          {t(isOpeningHosted ? "connectOnboarding.opening" : "connectOnboarding.continueSecure")}
+          <BusyLabel
+            busy={isOpeningHosted}
+            idle={t("connectOnboarding.continueSecure")}
+            busyText={t("connectOnboarding.opening")}
+          />
         </Button>
         <Button variant="outline" onClick={onRetry}>
           {t("connectOnboarding.retry")}

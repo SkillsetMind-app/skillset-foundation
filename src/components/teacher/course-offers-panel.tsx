@@ -7,6 +7,7 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import { CourseShareLink } from "@/components/teacher/course-share-link";
 import { CurrencySelect } from "@/components/teacher/currency-select";
 import { SavedNote } from "@/components/teacher/save-status-line";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import { isActivationRequiredError } from "@/domain/creator-verification";
@@ -452,9 +453,11 @@ export function CourseOffersPanel({
               disabled={saving || loading}
               className="button-solid px-5 py-2.5 text-xs"
             >
-              {saving
-                ? t("creatorPanel.offers.submitting")
-                : t("creatorPanel.offers.submit")}
+              <BusyLabel
+                busy={saving}
+                idle={t("creatorPanel.offers.submit")}
+                busyText={t("creatorPanel.offers.submitting")}
+              />
             </button>
           </div>
         </form>

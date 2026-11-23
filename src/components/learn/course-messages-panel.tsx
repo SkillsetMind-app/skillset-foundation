@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import type { CourseMessage } from "@/domain/course-message";
@@ -209,7 +210,11 @@ export function CourseMessagesPanel({
           className="button-solid inline-flex w-fit items-center gap-2 px-4 py-2.5 text-sm"
         >
           <Send size={15} aria-hidden="true" />
-          {t(isSending ? "learn.classroom.messages.sending" : "learn.classroom.messages.send")}
+          <BusyLabel
+            busy={isSending}
+            idle={t("learn.classroom.messages.send")}
+            busyText={t("learn.classroom.messages.sending")}
+          />
         </button>
       </form>
     </section>

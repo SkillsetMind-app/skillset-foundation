@@ -15,6 +15,8 @@
  */
 export { Button, buttonClasses } from "@/components/ui/button";
 export type { ButtonProps, ButtonSize, ButtonVariant } from "@/components/ui/button";
+export { BusyLabel } from "@/components/ui/busy-label";
+export type { BusyLabelProps } from "@/components/ui/busy-label";
 export { Card } from "@/components/ui/card";
 export type { CardProps } from "@/components/ui/card";
 // Componente de cliente ("use client" no arquivo): pode ser importado daqui

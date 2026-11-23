@@ -454,14 +454,15 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
                 variant="accent"
                 size="lg"
                 loading={isSaving}
+                busyLabel={t("courseCreation.creating")}
                 disabled={!canSubmit}
                 aria-describedby={
                   submitBlockers.length > 0 ? "create-course-blockers" : undefined
                 }
                 className="w-full sm:w-auto"
               >
-                {isSaving ? t("courseCreation.creating") : t("courseCreation.create")}
-                {isSaving ? null : <ArrowRight aria-hidden="true" size={15} strokeWidth={1.9} />}
+                {t("courseCreation.create")}
+                <ArrowRight aria-hidden="true" size={15} strokeWidth={1.9} />
               </Button>
             </div>
           </div>

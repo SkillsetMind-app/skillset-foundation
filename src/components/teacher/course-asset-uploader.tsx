@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import type { CourseAsset, CourseAssetKind } from "@/domain/course-asset";
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { Button, ConfirmDialog, InlineAlert } from "@/components/ui";
+import { BusyLabel, Button, ConfirmDialog, InlineAlert } from "@/components/ui";
 import { getCourseAssetKindLabel } from "@/lib/i18n/course-assets";
 import {
   courseAssetAcceptTypes,
@@ -504,7 +504,11 @@ function AssetGroup({
                     disabled={deletingAssetId === asset.id}
                     className="button-danger px-3.5 py-2 text-xs"
                   >
-                    {deletingAssetId === asset.id ? t("creatorEditor.lesson.deleting") : t("creatorEditor.lesson.delete")}
+                    <BusyLabel
+                      busy={deletingAssetId === asset.id}
+                      idle={t("creatorEditor.lesson.delete")}
+                      busyText={t("creatorEditor.lesson.deleting")}
+                    />
                   </button>
                 </div>
               ) : null}

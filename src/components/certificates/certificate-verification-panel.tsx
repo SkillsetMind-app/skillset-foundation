@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { useHasRealCourses } from "@/components/site/real-courses";
 import { useSearchParams } from "next/navigation";
@@ -73,7 +74,11 @@ export function CertificateVerificationPanel() {
           disabled={isChecking}
           className="button-solid px-4 py-2.5 text-sm"
         >
-          {isChecking ? t("learnWave2.verification.checking") : t("learnWave2.verification.verify")}
+          <BusyLabel
+            busy={isChecking}
+            idle={t("learnWave2.verification.verify")}
+            busyText={t("learnWave2.verification.checking")}
+          />
         </button>
       </form>
 

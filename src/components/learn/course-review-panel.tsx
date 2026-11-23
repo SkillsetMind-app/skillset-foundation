@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import type { CourseReview } from "@/domain/course-review";
@@ -193,11 +194,11 @@ export function CourseReviewPanel({
             disabled={!canReview || isSaving}
             className="button-solid w-fit px-4 py-2.5 text-sm"
           >
-            {isSaving
-              ? t("learn.classroom.review.saving")
-              : existingReview
-                ? t("learn.classroom.review.update")
-                : t("learn.classroom.review.submit")}
+            <BusyLabel
+              busy={isSaving}
+              idle={existingReview ? t("learn.classroom.review.update") : t("learn.classroom.review.submit")}
+              busyText={t("learn.classroom.review.saving")}
+            />
           </button>
           <span role="status" className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--color-success-fg)]">
             {saved ? (

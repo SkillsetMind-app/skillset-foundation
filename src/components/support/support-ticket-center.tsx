@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { StatusChip } from "@/components/shared/status-chip";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import {
@@ -156,7 +157,7 @@ export function SupportTicketCenter() {
             disabled={isSubmitting}
             className="button-solid px-4 py-2.5 text-sm sm:justify-self-start"
           >
-            {t(`${copy}.${isSubmitting ? "creating" : "create"}`)}
+            <BusyLabel busy={isSubmitting} idle={t(`${copy}.create`)} busyText={t(`${copy}.creating`)} />
           </button>
         </form>
       </section>

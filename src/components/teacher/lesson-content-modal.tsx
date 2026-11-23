@@ -33,6 +33,7 @@ import {
 } from "@/components/teacher/lesson-video-source-picker";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { Button } from "@/components/ui/button";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { BunnyVideoPlayer } from "@/components/courses/bunny-video-player";
 import { TrustedEmbedPlayer } from "@/components/learn/trusted-embed-player";
 import { ProtectedAssetPreview } from "@/components/shared/protected-asset-preview";
@@ -1448,9 +1449,11 @@ export function LessonContentModal({
           >
             {/* "Done" era tambem o estado da aba Description; na pagina o botao
                 diz para onde leva. */}
-            {isUploading
-              ? t("creatorEditor.lesson.file.uploading")
-              : t(isPage ? "creatorEditor.lesson.backToModule" : "creatorEditor.lesson.state.done")}
+            <BusyLabel
+              busy={isUploading}
+              idle={t(isPage ? "creatorEditor.lesson.backToModule" : "creatorEditor.lesson.state.done")}
+              busyText={t("creatorEditor.lesson.file.uploading")}
+            />
           </button>
         </footer>
         )}
@@ -1607,7 +1610,11 @@ function LessonUploadForm({
         aria-describedby={needsFile ? needsFileId : undefined}
         className="button-solid min-h-11 px-4 py-2.5 text-sm"
       >
-        {t(`creatorEditor.lesson.file.${isUploading ? "uploading" : "upload"}`)}
+        <BusyLabel
+          busy={isUploading}
+          idle={t("creatorEditor.lesson.file.upload")}
+          busyText={t("creatorEditor.lesson.file.uploading")}
+        />
       </button>
       <label>
         <span>{getCourseAssetKindLabel(uploadKind, t)}</span>
@@ -1778,7 +1785,11 @@ function LessonAssetList({
                 disabled={deletingAssetId === asset.id}
                 className="button-danger px-3.5 py-2 text-xs"
               >
-                {t(`creatorEditor.lesson.${deletingAssetId === asset.id ? "deleting" : "delete"}`)}
+                <BusyLabel
+                  busy={deletingAssetId === asset.id}
+                  idle={t("creatorEditor.lesson.delete")}
+                  busyText={t("creatorEditor.lesson.deleting")}
+                />
               </button>
             ) : null}
           </div>

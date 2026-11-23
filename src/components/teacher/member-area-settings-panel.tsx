@@ -11,7 +11,7 @@ import { CardPageSkeleton } from "@/components/teacher/builder-skeleton";
 import { SavedNote } from "@/components/teacher/save-status-line";
 import { UploadProgressNote } from "@/components/teacher/upload-progress-note";
 import { useConfirm } from "@/components/teacher/use-confirm";
-import { Button, Card, Field, InlineAlert, buttonClasses } from "@/components/ui";
+import { BusyLabel, Button, Card, Field, InlineAlert, buttonClasses } from "@/components/ui";
 import type { PlanId } from "@/data/plans";
 import { planEntitlements } from "@/domain/entitlements";
 import type { TeacherCourse } from "@/domain/teacher-course";
@@ -287,7 +287,11 @@ function NewAreaForm({
       {error ? <InlineAlert tone="error">{t(`teach.memberAreaEditor.errors.${errorKey[error]}`)}</InlineAlert> : null}
       <div className="flex flex-wrap gap-2">
         <Button type="button" disabled={busy || !slug} onClick={() => void handleCreate()}>
-          {t(`teach.memberAreaEditor.${busy ? "creating" : "create"}`)}
+          <BusyLabel
+            busy={busy}
+            idle={t("teach.memberAreaEditor.create")}
+            busyText={t("teach.memberAreaEditor.creating")}
+          />
         </Button>
         <Button type="button" variant="outline" disabled={busy} onClick={onCancel}>
           {t("teach.memberAreaEditor.cancel")}
@@ -811,7 +815,11 @@ function MemberAreaForm({
           disabled={locked || saving || uploading || courses === null || coursesFailed}
           aria-describedby={saveBlockedKey ? "member-area-save-reason" : undefined}
         >
-          {t(`teach.memberAreaEditor.${saving ? "saving" : "save"}`)}
+          <BusyLabel
+            busy={saving}
+            idle={t("teach.memberAreaEditor.save")}
+            busyText={t("teach.memberAreaEditor.saving")}
+          />
         </Button>
         <Link
           href={memberAreaPath({ username: creator.username, ownerId: uid, slug: area.slug })}

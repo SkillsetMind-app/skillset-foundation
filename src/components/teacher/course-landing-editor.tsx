@@ -677,8 +677,8 @@ export function CourseLandingEditor({
       <div className="mt-5 flex flex-wrap items-center gap-3">
         {/* O Button da casa (o mesmo de todo Save): era uma caixa navy feita
             à mão, sem o subir do hover nem a sombra dos outros. */}
-        <Button onClick={handleSave} loading={saving}>
-          {t(saving ? "teacherLanding.saving" : "teacherLanding.save")}
+        <Button onClick={handleSave} loading={saving} busyLabel={t("teacherLanding.saving")}>
+          {t("teacherLanding.save")}
         </Button>
         <SaveStatusLine
           saving={saving}

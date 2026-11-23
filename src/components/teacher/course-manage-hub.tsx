@@ -10,6 +10,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { ShortId } from "@/components/shared/short-id";
 import { StatusChip } from "@/components/shared/status-chip";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { DrawnCheck } from "@/components/ui/drawn-check";
 import {
   CourseActionsMenu,
@@ -291,11 +292,11 @@ function MarketplaceHighlightPanel({
           disabled={saving || !canToggle}
           className={`${featured ? "button-outline" : "button-solid"} px-4 py-2 text-xs disabled:cursor-not-allowed`}
         >
-          {saving
-            ? t("creatorPanel.hub.highlight.saving")
-            : featured
-              ? t("creatorPanel.hub.highlight.remove")
-              : t("creatorPanel.hub.highlight.add")}
+          <BusyLabel
+            busy={saving}
+            idle={featured ? t("creatorPanel.hub.highlight.remove") : t("creatorPanel.hub.highlight.add")}
+            busyText={t("creatorPanel.hub.highlight.saving")}
+          />
         </button>
       </div>
       {gateReason ? (

@@ -7,6 +7,7 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import { CardListSkeleton } from "@/components/shared/page-skeletons";
 import { useAuth } from "@/components/auth/auth-provider";
 import { PeriodTabs } from "@/components/shared/period-tabs";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { EmptyState } from "@/components/ui/empty-state";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { ProgressBar } from "@/components/ui/progress-bar";
@@ -355,7 +356,11 @@ function CredentialCard({ candidate }: { candidate: CredentialCandidate }) {
               disabled={isIssuing}
               className="button-solid px-4 py-2.5 text-sm"
             >
-              {isIssuing ? t("learnWave2.credentials.issuing") : t("learnWave2.credentials.confirm")}
+              <BusyLabel
+                busy={isIssuing}
+                idle={t("learnWave2.credentials.confirm")}
+                busyText={t("learnWave2.credentials.issuing")}
+              />
             </button>
             <button
               type="button"

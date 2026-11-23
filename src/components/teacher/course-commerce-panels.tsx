@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 
 import { SavedNote } from "@/components/teacher/save-status-line";
-import { Button, Card, Field, InlineAlert } from "@/components/ui";
+import { BusyLabel, Button, Card, Field, InlineAlert } from "@/components/ui";
 import type {
   CourseCommerceSettings,
   CourseCoupon,
@@ -311,7 +311,7 @@ export function CouponsPanel({
         </Field>
         <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
           <Button type="submit" disabled={saving}>
-            {saving ? t("courseCommerce.creating") : t("courseCommerce.create")}
+            <BusyLabel busy={saving} idle={t("courseCommerce.create")} busyText={t("courseCommerce.creating")} />
           </Button>
           {notice && !error ? <SavedNote text={t(notice)} /> : null}
         </div>
@@ -362,9 +362,10 @@ export function CouponsPanel({
                         variant="danger"
                         size="sm"
                         loading={removingId === coupon.id}
+                        busyLabel={t("courseCommerce.removing")}
                         onClick={() => void handleRemove(coupon)}
                       >
-                        {removingId === coupon.id ? t("courseCommerce.removing") : t("courseCommerce.confirmRemove")}
+                        {t("courseCommerce.confirmRemove")}
                       </Button>
                       <Button
                         variant="outline"
@@ -510,7 +511,7 @@ export function TaxPanel({ courseId }: { courseId: string }) {
         </Field>
         <div className="flex flex-wrap items-center gap-3">
           <Button type="submit" disabled={saving || !settingsLoaded}>
-            {saving ? t("courseCommerce.saving") : t("courseCommerce.save")}
+            <BusyLabel busy={saving} idle={t("courseCommerce.save")} busyText={t("courseCommerce.saving")} />
           </Button>
           {notice && !error ? <SavedNote text={t(notice)} /> : null}
         </div>

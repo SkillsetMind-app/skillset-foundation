@@ -5,6 +5,7 @@ import { startTransition, useEffect, useMemo, useRef, useState, type RefObject }
 import { RefreshCw, X } from "lucide-react";
 
 import { PlansPanel } from "@/components/account/plans-panel";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
 import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
@@ -797,7 +798,7 @@ function RefundModal({
                 disabled={busy}
                 className="button-solid px-4 py-2 text-sm"
               >
-                {t(busy ? "accountBilling.submitting" : "accountBilling.submitRefund")}
+                <BusyLabel busy={busy} idle={t("accountBilling.submitRefund")} busyText={t("accountBilling.submitting")} />
               </button>
             </div>
           </>

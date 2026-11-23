@@ -950,6 +950,30 @@ describe("LessonContentModal — video tab", () => {
     expect(screen.getByLabelText("Lesson video")).toHaveFocus();
   });
 
+  // F-04: o botão do rodapé diz "Uploading..." enquanto o arquivo sobe, mas
+  // os dois rótulos ficam na mesma célula: a largura não muda, e o nome é
+  // sempre o que está à vista.
+  it("o botao do rodape diz Uploading... durante o envio sem trocar de largura", async () => {
+    let finish!: () => void;
+    uploadCourseAsset.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
+    renderModal();
+    const footer = document.querySelector(".lesson-modal__footer") as HTMLElement;
+    const done = within(footer).getByRole("button", { name: "Done" });
+    expect(within(done).getByText("Uploading...")).toHaveAttribute("aria-hidden", "true");
+    chooseVideoFile();
+    fireEvent.click(screen.getByRole("button", { name: "Upload file" }));
+
+    const busy = await within(footer).findByRole("button", { name: "Uploading..." });
+    expect(busy).toBe(done);
+    expect(busy).toBeDisabled();
+    expect(within(busy).getByText("Done")).toHaveAttribute("aria-hidden", "true");
+    expect(within(footer).queryByRole("button", { name: "Done" })).toBeNull();
+
+    await act(async () => { finish(); });
+    expect(within(footer).getByRole("button", { name: "Done" })).toBe(done);
+    expect(done).toBeEnabled();
+  });
+
   it("o foco vai para Cancelar quando o envio comeca e volta ao campo quando ele e cancelado", async () => {
     bunnyConfig.isBunnyConfigured = true;
     const { CourseAssetUploadCancelled } = await import("@/lib/data/course-assets");

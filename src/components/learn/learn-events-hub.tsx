@@ -8,6 +8,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { EventCalendarActions, noJoinLinkKey, useNow } from "@/components/learn/live-session-parts";
 import { CardListSkeleton } from "@/components/shared/page-skeletons";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { EmptyState } from "@/components/ui/empty-state";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import type { SkillsetUser } from "@/domain/auth";
@@ -443,9 +444,11 @@ function LearnerEventCard({
                   } gap-1.5 px-3.5 text-sm font-semibold disabled:opacity-60`}
                 >
                   {chosen ? <Check aria-hidden="true" size={15} /> : null}
-                  {savingStatus === status
-                    ? t("learnWave2.eventsHub.saving")
-                    : t(status === "attending" ? "learnWave2.eventsHub.attend" : "learnWave2.eventsHub.notAttend")}
+                  <BusyLabel
+                    busy={savingStatus === status}
+                    idle={t(status === "attending" ? "learnWave2.eventsHub.attend" : "learnWave2.eventsHub.notAttend")}
+                    busyText={t("learnWave2.eventsHub.saving")}
+                  />
                 </button>
               );
             })}

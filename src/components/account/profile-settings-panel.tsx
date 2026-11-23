@@ -33,6 +33,7 @@ import {
 } from "@/lib/data/profile-media";
 import { SavedNote } from "@/components/teacher/save-status-line";
 import { UploadProgressNote } from "@/components/teacher/upload-progress-note";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { InlineAlert } from "@/components/ui/inline-alert";
 
 const goalOptions = [
@@ -560,7 +561,7 @@ export function ProfileSettingsPanel() {
             disabled={isSaving}
             className="button-solid px-4 py-2.5 text-sm"
           >
-            {isSaving ? t("accountProfile.saving") : t("accountProfile.save")}
+            <BusyLabel busy={isSaving} idle={t("accountProfile.save")} busyText={t("accountProfile.saving")} />
           </button>
           {success ? <SavedNote text={t(success)} /> : null}
         </div>
