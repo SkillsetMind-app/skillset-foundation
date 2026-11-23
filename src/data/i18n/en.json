@@ -4040,7 +4040,6 @@
       "notFoundHelp": "The course may have been deleted or your session may need refresh.",
       "mode": "Preview mode",
       "back": "Back to the course builder",
-      "serverLoading": "Loading course preview...",
       "banner": "Preview mode - this is how students will see your course.",
       "exit": "Exit preview",
       "only": "Preview only",

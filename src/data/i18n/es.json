@@ -4040,7 +4040,6 @@
       "notFoundHelp": "Es posible que el curso se haya eliminado o que debas actualizar la sesión.",
       "mode": "Modo de vista previa",
       "back": "Volver al editor del curso",
-      "serverLoading": "Cargando vista previa del curso...",
       "banner": "Modo de vista previa: así verán tus alumnos el curso.",
       "exit": "Salir de la vista previa",
       "only": "Solo vista previa",
