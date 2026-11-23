@@ -33,7 +33,9 @@ async function renderBand(locale: string) {
 
 describe("faixa de fatos da home", () => {
   // Exatamente os quatro fatos escolhidos, nesta ordem, com a legenda de cada
-  // um. A legenda do teste é a da /for-creators, reaproveitada sem mudar.
+  // um. A legenda do teste continua o número, em minúscula ("14" + "day free
+  // trial, card required"); a da /for-creators tem "D" maiúsculo porque lá a
+  // legenda é toda em caixa alta.
   it.each(dictionaries)("em %s mostra só os quatro fatos, com as legendas do dicionário", async (locale, dict) => {
     const { container, pairs } = await renderBand(locale);
 
@@ -41,7 +43,7 @@ describe("faixa de fatos da home", () => {
       ["30", dict.home.facts.currencies],
       [dict.home.facts.feeLockMonths, dict.home.facts.feeLock],
       [dict.home.facts.commitmentsCount, dict.home.facts.commitments],
-      ["14", dict.publicPages.creators.to_start],
+      ["14", dict.home.facts.trial],
     ]);
     // Lista de definição de verdade: cada fato é um <div> com um <dt> e um <dd>.
     expect(container.querySelectorAll("dl > div > dt")).toHaveLength(4);
@@ -96,14 +98,35 @@ describe("faixa de fatos da home", () => {
     // 24 meses: a cláusula 01 da Promessa, na home e na /promise.
     expect(dict.home.promise.clause1).toContain(`${months} ${word.months}`);
     expect(dict.publicPages.promise.fee_lock_for_24_months).toContain(`${months} ${word.months}`);
+    // O que fica travado é o que a Promessa 01 trava, a comissão e a tarifa
+    // por venda, e não o preço do plano (que pode subir): a legenda não fala
+    // de plano.
+    const lock = dict.publicPages.promise.the_commission_rate_of_the_plan;
+    if (locale === "en") {
+      expect(lock).toMatch(new RegExp(`commission and the fixed per-sale fee .*locked for ${months} months`));
+      expect(lock).toMatch(/even if SkillsetMind raises plan pricing later/);
+      expect(dict.home.facts.feeLock).toMatch(/commission and per-sale fee stay locked/);
+    } else {
+      expect(lock).toMatch(new RegExp(`comisión y la tarifa fija por venta .*fijas durante ${months} meses`));
+      expect(dict.home.facts.feeLock).toMatch(/comisión y la tarifa por venta fijas/);
+    }
+    expect(dict.home.facts.feeLock).not.toMatch(/\bplan/i);
     // 6 compromissos: as cláusulas da carta e a frase que as conta.
     const clauses = Object.keys(dict.home.promise).filter((key) => /^clause\d+$/.test(key));
     expect(clauses).toHaveLength(Number(commitments));
     expect(dict.home.promise.cardSub).toMatch(word.six);
-    // 14 dias: sempre "14-day free trial", como no resto do site.
-    expect(dict.home.creators.plansNote).toMatch(
-      locale === "en" ? `${days}-day free trial` : new RegExp(`prueba gratis de ${days} días`, "i"),
-    );
+    // 14 dias: sempre "14-day free trial", como no resto do site. Número e
+    // legenda juntos dão a frase da faixa final da home ("14-day free trial,
+    // card required."); a legenda começa em minúscula porque continua o número.
+    const trial = dict.home.facts.trial;
+    expect(trial[0]).toBe(trial[0].toLowerCase());
+    if (locale === "en") {
+      expect(dict.home.creators.plansNote.startsWith(`${days}-${trial}.`)).toBe(true);
+    } else {
+      expect(dict.home.creators.plansNote).toMatch(new RegExp(`^Prueba gratis de ${days} días, con tarjeta\\.`));
+      expect(trial).toMatch(/prueba gratis/);
+      expect(trial.endsWith(", con tarjeta")).toBe(true);
+    }
   });
 
   // A faixa existe no lugar dos números de receita e de alunos da concorrência:

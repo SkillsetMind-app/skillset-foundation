@@ -514,9 +514,10 @@
       "title": "SkillsetMind at a glance",
       "currencies": "Currencies at checkout, via Stripe",
       "feeLockMonths": "24",
-      "feeLock": "Months of fee-lock on your plan",
+      "feeLock": "Months your commission and per-sale fee stay locked",
       "commitmentsCount": "6",
-      "commitments": "Written commitments to every creator"
+      "commitments": "Written commitments to every creator",
+      "trial": "day free trial, card required"
     },
     "faq": {
       "more": "More on this in the Help center"

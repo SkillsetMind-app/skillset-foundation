@@ -4,11 +4,14 @@ import { supportedStripeCurrencies } from "@/lib/payments/currencies";
 
 // Faixa de fatos logo abaixo do topo, no lugar dos números de receita, alunos
 // e países que a concorrência mostra. Só entra o que já é verdade e já está
-// escrito no site: as 30 moedas do checkout, a tarifa fixa de 24 meses da
-// Promessa, os seis compromissos dela e o 14-day free trial. Nada aqui fala de
-// ganho. Onde o número mora no código (moedas, dias do teste) ele vem de lá,
-// para a faixa não descolar do produto; a legenda do teste é a mesma da
-// /for-creators. Os números são estáticos: o movimento (aparecer e subir 12px,
+// escrito no site: as 30 moedas do checkout, os 24 meses da Promessa 01, os
+// seis compromissos dela e o 14-day free trial. Nada aqui fala de ganho. A
+// Promessa 01 trava a comissão e a tarifa por venda, não o preço do plano: a
+// legenda diz exatamente isso, para não parecer falsa no dia em que os planos
+// mudarem de preço. Onde o número mora no código (moedas, dias do teste) ele
+// vem de lá, para a faixa não descolar do produto. A legenda do teste começa
+// em minúscula, porque continua o número: "14" + "day free trial, card
+// required" se lê "14-day free trial". Os números são estáticos: o movimento (aparecer e subir 12px,
 // um depois do outro) existe só no globals.css, atrás das mesmas travas da
 // coreografia da home, e fora delas a faixa fica parada e inteira.
 export async function HomeFactsBand() {
@@ -17,7 +20,7 @@ export async function HomeFactsBand() {
     { figure: String(supportedStripeCurrencies.length), label: t("home.facts.currencies") },
     { figure: t("home.facts.feeLockMonths"), label: t("home.facts.feeLock") },
     { figure: t("home.facts.commitmentsCount"), label: t("home.facts.commitments") },
-    { figure: String(PLAN_TRIAL_DAYS), label: t("publicPages.creators.to_start") },
+    { figure: String(PLAN_TRIAL_DAYS), label: t("home.facts.trial") },
   ];
 
   return (

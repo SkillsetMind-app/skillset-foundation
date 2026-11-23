@@ -29,7 +29,7 @@ export async function HomeFaq() {
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {t("footer.helpCenter")}
         </p>
-        <h2 className="display-title mt-3 text-[clamp(2rem,4.2vw,3.25rem)] leading-[1.05] text-[var(--color-primary)]">
+        <h2 className="display-title mt-3 text-[clamp(2.25rem,4.2vw,3.25rem)] leading-[1.05] text-[var(--color-primary)]">
           {t("publicPages.pricing.common_questions")}
         </h2>
       </RevealSection>

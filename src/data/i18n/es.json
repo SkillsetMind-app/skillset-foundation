@@ -514,9 +514,10 @@
       "title": "SkillsetMind de un vistazo",
       "currencies": "Monedas en el checkout, vía Stripe",
       "feeLockMonths": "24",
-      "feeLock": "Meses de tarifa fija en tu plan",
+      "feeLock": "Meses con la comisión y la tarifa por venta fijas",
       "commitmentsCount": "6",
-      "commitments": "Compromisos por escrito con cada creador"
+      "commitments": "Compromisos por escrito con cada creador",
+      "trial": "días de prueba gratis, con tarjeta"
     },
     "faq": {
       "more": "Más sobre esto en el Centro de ayuda"
