@@ -816,17 +816,18 @@ describe("permanent checkout", () => {
     expect(startCourseCheckout).not.toHaveBeenCalled();
   });
 
-  // Da página de venda (false) ou do checkout (true), a volta é sempre o
-  // checkout, com a oferta e o preço; nunca o `returnTo` que veio no endereço.
-  it.each([false, true])("keeps offer and price through signup and signin, back to the checkout (checkout %s)", async (checkoutOnly) => {
+  // Criar conta volta sempre ao checkout; entrar volta à página onde a pessoa
+  // estava. Os dois com a oferta e o preço, nunca o `returnTo` do endereço.
+  it.each([false, true])("keeps offer and price through signup (to the checkout) and signin (to this page) (checkout %s)", async (checkoutOnly) => {
     fixtures.query = "offer=LAUNCH&priceId=price-1&checkout=cancelled&returnTo=https://evil.example";
     withOffers();
     render(<CreatorCourseDetail courseIdOverride="focus-slug" checkoutOnly={checkoutOnly} />);
     const enroll = await screen.findByRole("link", { name: /Enroll — \$49.00/ });
-    const destination = "/courses/focus-slug/checkout?offer=LAUNCH&priceId=price-1";
-    expect(new URL(enroll.getAttribute("href")!, "https://test.local").searchParams.get("returnTo")).toBe(destination);
+    expect(new URL(enroll.getAttribute("href")!, "https://test.local").searchParams.get("returnTo"))
+      .toBe("/courses/focus-slug/checkout?offer=LAUNCH&priceId=price-1");
     const signin = screen.getByRole("link", { name: /Sign in/ });
-    expect(new URL(signin.getAttribute("href")!, "https://test.local").searchParams.get("returnTo")).toBe(destination);
+    expect(new URL(signin.getAttribute("href")!, "https://test.local").searchParams.get("returnTo"))
+      .toBe(`/courses/focus-slug${checkoutOnly ? "/checkout" : ""}?offer=LAUNCH&priceId=price-1`);
   });
 
   it("keeps the decision by the price: no detail list, no way back to the catalog, trust marks by the button", async () => {
@@ -1710,40 +1711,81 @@ describe("CreatorCourseDetail: um módulo por sanfona", () => {
   });
 });
 
-// O-09: quem pede para comprar sem conta volta ao checkout do curso, com a
-// oferta, e nao ao topo da pagina de venda. A-11: o cupom e o campo da casa.
-describe("CreatorCourseDetail: o visitante volta ao checkout depois de entrar", () => {
+// O-09: quem CRIA CONTA para comprar volta ao checkout do curso, com a oferta,
+// e nao ao topo da pagina de venda. Quem ENTRA (e a compra sem login) volta a
+// esta pagina, como antes. A-11: o cupom e o campo da casa.
+describe("CreatorCourseDetail: o visitante que cria conta volta ao checkout", () => {
   const returnOf = (link: HTMLElement) =>
     new URL(link.getAttribute("href")!, "https://test.local").searchParams.get("returnTo");
 
-  it("curso pago, sem oferta: criar conta e entrar voltam ao checkout", async () => {
+  it("curso pago, sem oferta: criar conta volta ao checkout; entrar, a esta pagina", async () => {
     render(<CreatorCourseDetail courseIdOverride="course-1" />);
     const enroll = await screen.findByRole("link", { name: "Enroll — $149.00" });
 
-    expect(enroll.getAttribute("href")).toMatch(/^\/auth\?mode=signup&/);
-    expect(returnOf(enroll)).toBe("/courses/course-1/checkout");
-    const signin = screen.getByRole("link", { name: "Sign in" });
-    expect(signin.getAttribute("href")).toMatch(/^\/auth\?mode=signin&/);
-    expect(returnOf(signin)).toBe("/courses/course-1/checkout");
+    expect(enroll).toHaveAttribute("href", "/auth?mode=signup&returnTo=%2Fcourses%2Fcourse-1%2Fcheckout");
+    expect(screen.getByRole("link", { name: "Sign in" }))
+      .toHaveAttribute("href", "/auth?mode=signin&returnTo=%2Fcourses%2Fcourse-1");
   });
 
-  it("curso pago com ?offer=: a oferta vai junto para o checkout", async () => {
+  it("curso pago com ?offer=: a oferta vai junto nos dois", async () => {
     fixtures.query = "offer=LAUNCH";
     withOffers();
     render(<CreatorCourseDetail courseIdOverride="focus-slug" />);
     const enroll = await screen.findByRole("link", { name: "Enroll — $49.00" });
 
     expect(returnOf(enroll)).toBe("/courses/focus-slug/checkout?offer=LAUNCH");
-    expect(returnOf(screen.getByRole("link", { name: "Sign in" }))).toBe("/courses/focus-slug/checkout?offer=LAUNCH");
+    expect(returnOf(screen.getByRole("link", { name: "Sign in" }))).toBe("/courses/focus-slug?offer=LAUNCH");
   });
 
-  it("curso gratis: a mesma volta, para o cartao de entrar gratis do checkout", async () => {
+  it("curso gratis: criar conta volta ao cartao de entrar gratis do checkout; entrar, a esta pagina", async () => {
     Object.assign(fixtures.course, { paymentType: "free", priceAmountMinor: 0 });
     render(<CreatorCourseDetail courseIdOverride="course-1" />);
     const enroll = await screen.findByRole("link", { name: "Enroll free" });
 
     expect(returnOf(enroll)).toBe("/courses/course-1/checkout");
-    expect(returnOf(screen.getByRole("link", { name: "Sign in" }))).toBe("/courses/course-1/checkout");
+    expect(returnOf(screen.getByRole("link", { name: "Sign in" }))).toBe("/courses/course-1");
+  });
+
+  // Por que entrar NAO vai ao checkout: quem ja tem o curso e entra pelo
+  // cartao so ve "Continue learning" na pagina de venda. O checkout nao le a
+  // matricula, e la a pessoa veria o botao de pagar de novo.
+  it("quem ja tem o curso e entra pelo cartao volta onde ve 'Continue learning'", async () => {
+    const view = render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    const signin = await screen.findByRole("link", { name: "Sign in" });
+    expect(returnOf(signin)).toBe("/courses/course-1");
+    view.unmount();
+
+    fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "student-1" };
+    enrollmentState.current = { status: "active" };
+    try {
+      render(<CreatorCourseDetail courseIdOverride="course-1" />);
+      expect((await screen.findAllByRole("link", { name: "Continue learning" })).length).toBeGreaterThan(0);
+      cleanup();
+      vi.mocked(subscribeToEnrollment).mockClear();
+
+      render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
+      expect(await screen.findByRole("button", { name: "Enroll — $149.00" })).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "Continue learning" })).not.toBeInTheDocument();
+      expect(subscribeToEnrollment).not.toHaveBeenCalled();
+    } finally {
+      enrollmentState.current = null;
+    }
+  });
+
+  it("a compra sem login (desligada hoje) leva o mesmo destino de antes", async () => {
+    vi.stubEnv("NEXT_PUBLIC_GUEST_CHECKOUT_ENABLED", "true");
+    vi.stubEnv("NEXT_PUBLIC_TURNSTILE_SITE_KEY", "site-key");
+    try {
+      render(<CreatorCourseDetail courseIdOverride="course-1" />);
+      await screen.findByRole("button", { name: "Enroll — $149.00" });
+
+      expect(screen.getByRole("link", { name: "Sign in" }))
+        .toHaveAttribute("href", `/login?returnTo=${encodeURIComponent("/courses/course-1")}`);
+      fireEvent.click(screen.getByRole("button", { name: "Continue with Google" }));
+      expect(signInWithGoogle).toHaveBeenCalledWith(getLoadingRoute("welcome", null, "/courses/course-1"));
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("a barra do celular continua levando ao cartao, cujo link volta ao checkout", async () => {

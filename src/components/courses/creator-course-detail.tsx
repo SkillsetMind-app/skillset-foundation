@@ -582,12 +582,15 @@ export function CreatorCourseDetail({
   if (requestedOfferId) returnParams.set("offerId", requestedOfferId);
   if (requestedOfferCode) returnParams.set("offer", requestedOfferCode);
   if (requestedPriceId) returnParams.set("priceId", requestedPriceId);
-  // Visitante que pediu para comprar volta ao CHECKOUT deste curso, com a mesma
-  // oferta, e nao ao topo da pagina de venda: depois de criar a conta,
-  // confirmar o e-mail e responder a entrevista, o cartao de pagar (ou de
-  // entrar no curso gratis) e a primeira coisa da tela.
-  const returnTo = `/courses/${encodeURIComponent(courseRef)}/checkout${returnParams.size ? `?${returnParams}` : ""}`;
-  const signupHref = `/auth?mode=signup&returnTo=${encodeURIComponent(returnTo)}`;
+  const returnQuery = returnParams.size ? `?${returnParams}` : "";
+  // Entrar (e a compra sem login) volta para ESTA pagina: quem ja tem o curso
+  // so ve "Continue learning" aqui, porque o checkout nao le a matricula.
+  const returnTo = `${coursePath}${returnQuery}`;
+  // Criar conta volta ao CHECKOUT, com a mesma oferta: conta nova nunca tem o
+  // curso, e depois do e-mail e da entrevista o cartao de pagar (ou de entrar
+  // gratis) e a primeira coisa da tela, e nao o topo da pagina de venda.
+  const checkoutReturnTo = `/courses/${encodeURIComponent(courseRef)}/checkout${returnQuery}`;
+  const signupHref = `/auth?mode=signup&returnTo=${encodeURIComponent(checkoutReturnTo)}`;
   const enrollLabel = courseIsFree
     ? t("publicCourses.enrollFree")
     : pricingReady && hasPaidPrice
@@ -1180,8 +1183,8 @@ export function CreatorCourseDetail({
           />
         ) : authStatus !== "authenticated" ? (
           // Visitante: o botao principal diz o que ele faz e quanto custa, e
-          // leva a criar conta. `returnTo` traz a pessoa de volta ao checkout
-          // DESTE curso depois de entrar, em vez de deixa-la na home.
+          // leva a criar conta. `returnTo` traz a pessoa de volta a ESTE curso
+          // depois de entrar, em vez de deixa-la na home.
           <div className="mt-6 grid gap-3">
             <Link
               href={signupHref}

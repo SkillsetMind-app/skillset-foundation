@@ -744,8 +744,13 @@ describe("boas-vindas: o comprador segue para o checkout sem responder o interes
     );
   });
 
-  it("aluno sem destino continua tendo de responder o interesse", async () => {
-    mocks.searchParams = new URLSearchParams({ path: "student" });
+  // O plano de /pricing nao e destino para o aluno (ele termina em /learn):
+  // o interesse segue obrigatorio, como hoje.
+  it.each([
+    ["sem destino", null],
+    ["com o plano de /pricing", plano],
+  ])("aluno %s continua tendo de responder o interesse", async (_label, returnTo) => {
+    mocks.searchParams = new URLSearchParams({ path: "student", ...(returnTo ? { returnTo } : {}) });
     mocks.profile.onboardingAnswers = { profileConfirmed: true, path: "student" };
     render(<OnboardingWizard />);
 
