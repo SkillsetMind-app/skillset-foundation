@@ -119,6 +119,9 @@ describe("OnboardingChoice: a carga normal (caracterizacao)", () => {
     await act(async () => resolve(null));
     expect(screen.queryByText("authFlow.loading.title")).toBeNull();
     expect(screen.getByRole("button", { name: "onboarding.continue" })).toBeInTheDocument();
+    // A carga normal nao mexe no titulo da pagina nem no foco.
+    expect(screen.getByRole("heading", { level: 1 })).not.toHaveAttribute("tabindex");
+    expect(document.body).toHaveFocus();
 
     // Eventos seguintes da sessao (renovacao do token, foco na aba) nao releem.
     await act(async () => {
@@ -332,8 +335,12 @@ describe("OnboardingChoice: \"Try again\" da leitura do perfil", () => {
     const { container, resolve } = await failFirstRead();
     const heading = screen.getByRole("heading", { level: 1 });
     const retry = screen.getByRole("button", { name: "appErrors.retry" });
-    fireEvent.click(retry);
-    fireEvent.click(retry);
+    // Os dois cliques antes de a tela redesenhar (o botao ainda esta la): quem
+    // segura o segundo e a trava do proprio LoadErrorAlert, nao o botao sumir.
+    act(() => {
+      retry.click();
+      retry.click();
+    });
 
     // A espera da entrada: nada para ativar, e o foco no titulo, que fica.
     expect(screen.getByRole("status")).toHaveTextContent("authFlow.loading.title");
