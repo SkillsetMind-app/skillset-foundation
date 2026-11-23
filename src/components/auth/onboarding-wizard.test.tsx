@@ -952,6 +952,56 @@ describe("boas-vindas: 'Continue' esperando e a leitura que falhou na chegada", 
     expect(mocks.updateUserIdentity).not.toHaveBeenCalled();
   });
 
+  // A espera do "Try again" ainda não tem as respostas salvas: um Enter ali
+  // gravava o estado velho (nome digitado, respostas vazias) por cima delas.
+  it("Enter na espera do 'Try again' não grava nada; com a entrevista de volta, o foco vai ao título e Enter segue", async () => {
+    mocks.getUserProfile.mockRejectedValueOnce(new Error("offline"));
+    render(<OnboardingWizard />);
+    await screen.findByRole("alert");
+    fireEvent.change(screen.getByLabelText("Full name"), { target: { value: "Patrick Simon" } });
+
+    let finishRead!: () => void;
+    mocks.getUserProfile.mockReturnValueOnce(new Promise((resolve) => { finishRead = () => resolve(mocks.profile); }));
+    const retry = screen.getByRole("button", { name: "Try again" });
+    retry.focus();
+    // Enter num botão é do próprio botão: o navegador o vira clique.
+    fireEvent.keyDown(retry, { key: "Enter" });
+    fireEvent.click(retry);
+    expect(await screen.findByText("Opening SkillsetMind...")).toBeInTheDocument();
+
+    // Um segundo Enter (ou a tecla presa) com a leitura ainda correndo.
+    fireEvent.keyDown(document.body, { key: "Enter" });
+    fireEvent.keyDown(document.body, { key: "Enter" });
+    await act(async () => {});
+    expect(mocks.updateUserIdentity).not.toHaveBeenCalled();
+    expect(mocks.updateOnboardingAnswers).not.toHaveBeenCalled();
+
+    await act(async () => finishRead());
+    const title = await screen.findByText("First, tell us who you are.");
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(document.activeElement).toBe(title.closest("#onboarding-question-title"));
+
+    // De volta, Enter segue como antes.
+    fireEvent.keyDown(document.body, { key: "Enter" });
+    await waitFor(() => expect(mocks.updateUserIdentity).toHaveBeenCalledTimes(1));
+    expect(mocks.getUserProfile).toHaveBeenCalledTimes(2);
+  });
+
+  it("Enter na espera da chegada não grava nem deixa aviso velho", async () => {
+    let finishRead!: () => void;
+    mocks.getUserProfile.mockReturnValueOnce(new Promise((resolve) => { finishRead = () => resolve(mocks.profile); }));
+    render(<OnboardingWizard />);
+    expect(screen.getByText("Opening SkillsetMind...")).toBeInTheDocument();
+
+    fireEvent.keyDown(document.body, { key: "Enter" });
+    await act(async () => finishRead());
+
+    expect(await screen.findByText("First, tell us who you are.")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(mocks.updateUserIdentity).not.toHaveBeenCalled();
+    expect(mocks.updateOnboardingAnswers).not.toHaveBeenCalled();
+  });
+
   it("falha de salvar não ganha 'Try again'", async () => {
     mocks.updateUserIdentity.mockRejectedValueOnce(new Error("offline"));
     render(<OnboardingWizard />);
