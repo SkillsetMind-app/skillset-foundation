@@ -175,7 +175,24 @@ describe("C-05: campos no .field-input da casa", () => {
   // O campo de dias da liberação é estreito (80px): o `width: 100%` do
   // .field-input fica fora de camada e venceria o w-20 sem o `!`.
   it("o campo de dias da liberação continua estreito", () => {
-    expect(read("teacher/course-builder-studio.tsx")).toContain('className="field-input w-20! text-center"');
+    expect(read("teacher/course-builder-studio.tsx")).toContain(
+      'className="field-input w-20! text-center disabled:cursor-not-allowed disabled:opacity-60"',
+    );
+  });
+
+  // O .field-input descansa no cinza claro e não tem regra de :disabled: sem o
+  // par da casa (o mesmo do seletor de moeda), um campo travado parece livre.
+  // Por ora vale para o construtor e o começo do curso.
+  const builderFields = fields.filter(([file]) =>
+    ["teacher/course-builder-studio.tsx", "teacher/create-course-start.tsx"].includes(file),
+  );
+  it.each(builderFields)("%s: o campo de %s, se trava, fica apagado", (file, needle) => {
+    const source = read(file);
+    const { tag } = tagAround(source, needle);
+    if (!/\sdisabled[=\s>]/.test(tag)) return;
+    const classes = classOf(source, tag);
+    expect(classes, tag).toContain("disabled:cursor-not-allowed");
+    expect(classes, tag).toContain("disabled:opacity-60");
   });
 
   // O rótulo do editor da página de venda era a etiqueta de 12px em caixa

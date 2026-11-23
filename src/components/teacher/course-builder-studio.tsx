@@ -1321,7 +1321,7 @@ export function CourseBuilderStudio() {
         onChange={(event) => chooseFreePreviewLesson(event.target.value)}
         disabled={!isEditable || allLessons.length === 0}
         aria-describedby={previewNeedsLesson ? "builder-preview-needs-lesson" : undefined}
-        className="field-input"
+        className="field-input disabled:cursor-not-allowed disabled:opacity-60"
       >
         <option value="">{t("creatorEditor.builder.pricing.noPreview")}</option>
         {allLessons.map((lesson) => (
@@ -2208,7 +2208,7 @@ export function CourseBuilderStudio() {
                 value={module.title}
                 onChange={(event) => updateModuleTitle(module.id, event.target.value)}
                 disabled={!isEditable}
-                className="field-input"
+                className="field-input disabled:cursor-not-allowed disabled:opacity-60"
               />
             </label>
             <label className="grid content-start gap-2 text-sm font-semibold text-[var(--color-ink)]">
@@ -2220,7 +2220,7 @@ export function CourseBuilderStudio() {
                 rows={3}
                 aria-label={t("creatorEditor.builder.curriculum.moduleDescriptionNumber").replace("{index}", () => String(moduleIndex + 1))}
                 placeholder={t("creatorEditor.builder.curriculum.moduleDescriptionPlaceholder")}
-                className="field-input w-full resize-none"
+                className="field-input w-full resize-none disabled:cursor-not-allowed disabled:opacity-60"
               />
             </label>
             {/* A rota confere o dono por uma aula JÁ SALVA do módulo. */}
@@ -2523,7 +2523,7 @@ export function CourseBuilderStudio() {
               aria-invalid={error?.code === "lessonTitle" || undefined}
               aria-describedby={error?.code === "lessonTitle" ? `lesson-title-error-${module.id}` : undefined}
               placeholder={t("creatorEditor.builder.curriculum.lessonTitle")}
-              className="field-input min-w-0"
+              className="field-input min-w-0 disabled:cursor-not-allowed disabled:opacity-60"
             />
             {/* Como no formulario do modulo: o aviso sai aqui, nao no rodape. */}
             {error?.code === "lessonTitle" ? (
@@ -3484,7 +3484,7 @@ export function CourseBuilderStudio() {
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               disabled={!isEditable}
-              className="field-input"
+              className="field-input disabled:cursor-not-allowed disabled:opacity-60"
             />
           </label>
           <div className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
@@ -3509,7 +3509,7 @@ export function CourseBuilderStudio() {
               onChange={(event) => setSummary(event.target.value)}
               disabled={!isEditable}
               rows={4}
-              className="field-input resize-none"
+              className="field-input resize-none disabled:cursor-not-allowed disabled:opacity-60"
             />
             <span
               className={`inline-flex items-center gap-1.5 text-xs font-semibold ${
@@ -3559,7 +3559,7 @@ export function CourseBuilderStudio() {
                       maxLength={120}
                       aria-label={t("creatorEditor.builder.details.outcomeLabel").replace("{index}", () => String(index + 1))}
                       placeholder={t("creatorEditor.builder.details.outcomePlaceholder")}
-                      className="field-input min-w-0 flex-1"
+                      className="field-input min-w-0 flex-1 disabled:cursor-not-allowed disabled:opacity-60"
                     />
                     {isEditable ? (
                       <button
@@ -3694,7 +3694,7 @@ export function CourseBuilderStudio() {
         {activeTab === "pricing" ? (
           <div
             id="builder-sec-pricing"
-            className={`${panelIn} scroll-mt-24 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4`}
+            className={`${panelIn} scroll-mt-24 rounded-lg border fine-rule bg-white p-4`}
           >
             {checkoutOffers && offersFailed ? (
               <RetryAlert
@@ -3821,7 +3821,7 @@ export function CourseBuilderStudio() {
                       aria-invalid={priceFieldError || undefined}
                       aria-describedby={priceFieldError ? "builder-price-error" : undefined}
                       placeholder={t("creatorEditor.builder.pricing.pricePlaceholder")}
-                      className="field-input min-w-0"
+                      className="field-input min-w-0 disabled:cursor-not-allowed disabled:opacity-60"
                     />
                   </label>
                   {/* Fora do label: dentro dele a frase entraria no nome do campo. */}
@@ -3892,7 +3892,7 @@ export function CourseBuilderStudio() {
                             disabled={!isEditable}
                             aria-invalid={installmentsFieldError || undefined}
                             aria-describedby={installmentsFieldError ? "builder-installments-error" : undefined}
-                            className="field-input"
+                            className="field-input disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             {splitCountOptions.map((count) => (
                               <option key={count} value={String(count)}>
@@ -3936,7 +3936,7 @@ export function CourseBuilderStudio() {
                             disabled={!isEditable}
                             inputMode="decimal"
                             placeholder={t("creatorEditor.builder.pricing.pricePlaceholder")}
-                            className="field-input min-w-0"
+                            className="field-input min-w-0 disabled:cursor-not-allowed disabled:opacity-60"
                           />
                         </label>
                         {yearlySaving !== null ? (
@@ -4024,7 +4024,7 @@ export function CourseBuilderStudio() {
 
             {isModuleFormOpen ? (
               <form
-                className="mt-4 grid gap-3 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"
+                className="mt-4 grid gap-3 rounded-lg border fine-rule bg-white p-4"
                 onSubmit={handleAddModule}
               >
                 <h5 className="text-sm font-semibold text-[var(--color-ink)]">
@@ -4041,7 +4041,7 @@ export function CourseBuilderStudio() {
                   disabled={!isEditable}
                   aria-label={t("creatorEditor.builder.curriculum.moduleTitle")}
                   placeholder={t("creatorEditor.builder.curriculum.moduleTitlePlaceholder")}
-                  className="field-input min-w-0 flex-1"
+                  className="field-input min-w-0 flex-1 disabled:cursor-not-allowed disabled:opacity-60"
                 />
                 <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
                   {t("creatorEditor.builder.curriculum.moduleDescription")}
@@ -4052,7 +4052,7 @@ export function CourseBuilderStudio() {
                     rows={2}
                     aria-label={t("creatorEditor.builder.curriculum.moduleDescription")}
                     placeholder={t("creatorEditor.builder.curriculum.moduleDescriptionExample")}
-                    className="field-input mt-3 w-full resize-none"
+                    className="field-input mt-3 w-full resize-none disabled:cursor-not-allowed disabled:opacity-60"
                   />
                 </label>
                 {moduleError ? (
@@ -4235,7 +4235,7 @@ export function CourseBuilderStudio() {
                       setDripStrategy(event.target.value as DripStrategy)
                     }
                     disabled={!isEditable}
-                    className="field-input"
+                    className="field-input disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {dripStrategies.map((item) => (
                       <option key={item.value} value={item.value}>
@@ -4254,7 +4254,7 @@ export function CourseBuilderStudio() {
                       onChange={(event) => setDripIntervalDays(event.target.value)}
                       disabled={!isEditable}
                       inputMode="numeric"
-                      className="field-input w-20! text-center"
+                      className="field-input w-20! text-center disabled:cursor-not-allowed disabled:opacity-60"
                     />
                   </label>
                 ) : null}
@@ -5019,7 +5019,7 @@ function MembersAreaTab({
             disabled={!isEditable}
             maxLength={80}
             placeholder={course.title || t("creatorEditor.members.titlePlaceholder")}
-            className="field-input"
+            className="field-input disabled:cursor-not-allowed disabled:opacity-60"
           />
           <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
             {t("creatorEditor.members.titleHelp").replace("{length}", () => String(title.length))}
@@ -5034,7 +5034,7 @@ function MembersAreaTab({
             disabled={!isEditable}
             maxLength={160}
             placeholder={t("creatorEditor.members.subtitlePlaceholder")}
-            className="field-input"
+            className="field-input disabled:cursor-not-allowed disabled:opacity-60"
           />
           <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
             {t("creatorEditor.members.subtitleHelp").replace("{length}", () => String(subtitle.length))}
@@ -5050,7 +5050,7 @@ function MembersAreaTab({
             maxLength={2000}
             rows={4}
             placeholder={t("creatorEditor.members.descriptionPlaceholder")}
-            className="field-input resize-none"
+            className="field-input resize-none disabled:cursor-not-allowed disabled:opacity-60"
           />
           <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
             {description.length}/2000
