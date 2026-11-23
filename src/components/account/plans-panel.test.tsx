@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PlansPanel } from "@/components/account/plans-panel";
 import { CONFIRM_GUARD_MS } from "@/components/ui/confirm-dialog";
+import { subscribeToUserProfile } from "@/lib/data/user-profiles";
 
 // Na pagina de Planos o plano atual era dito tres vezes ("CURRENT PLAN / Free"
 // flutuando como terceira manchete, o chip "Current" no cartao e o botao "Your
@@ -330,5 +331,55 @@ describe("a pagina de Planos", () => {
     // remocao cita so o comeco dela.
     expect(page).not.toContain("Choose the plan that fits your course business.");
     expect(page).not.toContain("platform-hero-card");
+  });
+});
+
+describe("PlansPanel - plano que não carrega", () => {
+  const defaultProfile = vi.mocked(subscribeToUserProfile).getMockImplementation()!;
+  afterEach(() => {
+    vi.mocked(subscribeToUserProfile).mockImplementation(defaultProfile);
+  });
+
+  it("ganha \"Try again\", que lê o perfil de novo uma vez só e mostra o plano", async () => {
+    let failing = true;
+    const reload = vi.fn();
+    vi.mocked(subscribeToUserProfile).mockImplementation((_uid, onNext, onError) => {
+      if (failing) onError(new Error("offline"));
+      else onNext({ currentPlanId: "starter" } as never);
+      return Object.assign(vi.fn(), {
+        reload: async () => {
+          reload();
+          failing = false;
+          onNext({ currentPlanId: "starter" } as never);
+        },
+      });
+    });
+    render(<PlansPanel />);
+    expect(await screen.findByText(/We could not read your plan\./)).toBeInTheDocument();
+    const retry = screen.getByRole("button", { name: "Try again" });
+    fireEvent.click(retry);
+    fireEvent.click(retry);
+    await waitFor(() => expect(screen.queryByText(/We could not read your plan\./)).toBeNull());
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+  });
+
+  it("erro de cancelar não ganha \"Try again\"", async () => {
+    state.planId = "pro";
+    state.billing = {
+      trialEligible: false,
+      subscription: {
+        planId: "pro", cycle: "monthly", status: "active", trialEnd: null,
+        currentPeriodEnd: "2026-11-03T12:00:00.000Z", cancelAtPeriodEnd: false,
+      },
+    };
+    state.cancel.mockRejectedValue(new Error("boom"));
+    vi.useFakeTimers({ toFake: ["Date"] });
+    render(<PlansPanel />);
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel plan" }));
+    vi.advanceTimersByTime(CONFIRM_GUARD_MS);
+    fireEvent.click(within(screen.getByRole("dialog", { name: "Cancel plan" })).getByRole("button", { name: "Cancel plan" }));
+    expect(await screen.findByText("We couldn't cancel the plan. Try again, or use Manage subscription.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
   });
 });
