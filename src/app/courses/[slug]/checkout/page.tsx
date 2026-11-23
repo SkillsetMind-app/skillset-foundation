@@ -81,7 +81,7 @@ export default async function CourseCheckoutPage({ params }: PageProps) {
               ) : null}
               <Link
                 href={`/courses/${encodeURIComponent(course.urlSlug)}`}
-                className="mt-3 hidden min-h-11 items-center text-sm font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline lg:inline-flex"
+                className="mt-3 hidden min-h-11 items-center text-sm font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline sm:inline-flex"
               >
                 {t("publicCourses.checkoutCourseDetails")}
               </Link>
