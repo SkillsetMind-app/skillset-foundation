@@ -395,8 +395,14 @@ export function LessonContentModal({
     }
   }
   const assetsRetry = loadErrorMessage ? (
-    <Button variant="outline" className="justify-self-start" loading={retryingAssets} onClick={() => void retryAssets()}>
-      {t(retryingAssets ? "appErrors.retrying" : "appErrors.retry")}
+    <Button
+      variant="outline"
+      className="justify-self-start"
+      loading={retryingAssets}
+      busyLabel={t("appErrors.retrying")}
+      onClick={() => void retryAssets()}
+    >
+      {t("appErrors.retry")}
     </Button>
   ) : null;
 
@@ -1703,7 +1709,7 @@ function LessonAssetList({
             ) : null}
             {onRename ? (
               <label className="grid gap-1">
-                <span>{t("creatorEditor.lesson.files.titleLabel")}</span>
+                <span className="lesson-modal-assets__meta">{t("creatorEditor.lesson.files.titleLabel")}</span>
                 <input
                   // A chave muda quando o nome gravado muda: depois de salvar,
                   // o campo mostra o que está no banco (aparado).
@@ -1727,8 +1733,8 @@ function LessonAssetList({
             ) : (
               <strong>{title}</strong>
             )}
-            {/* Fora do label (senão entraria no nome do campo) e em <p>: o
-                span desta lista é caixa alta e cinza. */}
+            {/* Fora do label (senão entraria no nome do campo) e em <p>: a
+                linha de detalhe desta lista é caixa alta e cinza. */}
             {renameNotice?.assetId === asset.id ? (
               <p
                 role={renameNotice.failed ? "alert" : "status"}
@@ -1737,11 +1743,11 @@ function LessonAssetList({
                 {renameNotice.failed ? getLessonErrorMessage({ kind: "save" }, t) : t("creatorEditor.lesson.success.renamed")}
               </p>
             ) : null}
-            <span>
+            <span className="lesson-modal-assets__meta">
               {getCourseAssetKindLabel(asset.kind, t)} - {formatCourseAssetSize(asset.size)}
             </span>
             {onRename && title !== asset.fileName ? (
-              <span>{t("creatorEditor.lesson.files.originalName").replace("{fileName}", () => asset.fileName)}</span>
+              <span className="lesson-modal-assets__meta">{t("creatorEditor.lesson.files.originalName").replace("{fileName}", () => asset.fileName)}</span>
             ) : null}
           </div>
           <div className="flex items-center gap-3">
@@ -1781,11 +1787,14 @@ function LessonAssetList({
                 disabled={deletingAssetId === asset.id}
                 className="button-danger px-3.5 py-2 text-xs"
               >
-                {/* Sem BusyLabel de propósito: a regra fora de camada
-                    `.lesson-modal-assets span` (globals.css) pinta todo span
-                    daqui de bloco cinza e maiúsculo, e as duas faces
-                    empilhariam. Converter só depois de escopar essa regra. */}
-                {t(`creatorEditor.lesson.${deletingAssetId === asset.id ? "deleting" : "delete"}`)}
+                {/* O cinza maiúsculo da lista mora em .lesson-modal-assets__meta
+                    (globals.css), não em todo span daqui: as duas faces ficam
+                    na mesma célula. */}
+                <BusyLabel
+                  busy={deletingAssetId === asset.id}
+                  idle={t("creatorEditor.lesson.delete")}
+                  busyText={t("creatorEditor.lesson.deleting")}
+                />
               </button>
             ) : null}
           </div>

@@ -89,6 +89,8 @@ describe("account request presentation and canonical actions", () => {
     }
     expect(mocks.resolve).toHaveBeenCalledWith(request.id, status, "admin-$$-$&");
     expect(within(screen.getByRole("article")).getByRole("button", { name: label })).toHaveAttribute("aria-busy", "true");
+    // O mesmo nome nas duas faces; a do anel já guardava o lugar em repouso.
+    expect(within(screen.getByRole("article")).getByRole("button", { name: label }).querySelectorAll('[class*="grid-area"]')).toHaveLength(2);
     // A janela de confirmação só fecha quando a gravação termina.
     if (status !== "processing") expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText("Pendiente")).toBeInTheDocument();

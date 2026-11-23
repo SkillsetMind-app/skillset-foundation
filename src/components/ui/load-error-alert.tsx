@@ -26,7 +26,8 @@ export type LoadErrorAlertProps = {
  * era recarregar a página no navegador. (O RetryAlert do professor é outro:
  * repete um salvamento, não uma leitura.)
  *
- * O botão trava enquanto a releitura corre (aria-busy, "Trying again...").
+ * O botão trava enquanto a releitura corre (aria-busy, "Trying again...", na
+ * mesma largura do "Try again").
  * Travado ele perde o foco, e some quando a leitura dá certo: por isso o foco
  * vai antes para `focusRef`, senão caía no <body>.
  */
@@ -63,8 +64,14 @@ export function LoadErrorAlert({
   return (
     <div className={cn("grid gap-3", className)}>
       <InlineAlert tone="error" className={alertClassName}>{children}</InlineAlert>
-      <Button variant="outline" className="justify-self-start" loading={locked} onClick={() => void retry()}>
-        {t(locked ? "appErrors.retrying" : "appErrors.retry")}
+      <Button
+        variant="outline"
+        className="justify-self-start"
+        loading={locked}
+        busyLabel={t("appErrors.retrying")}
+        onClick={() => void retry()}
+      >
+        {t("appErrors.retry")}
       </Button>
     </div>
   );

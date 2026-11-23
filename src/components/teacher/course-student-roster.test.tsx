@@ -130,6 +130,9 @@ describe("CourseStudentRosterView", () => {
 
     rerender(<CourseStudentRosterView state="error" students={[]} courseId="course-1" onRetry={onRetry} retrying />);
     expect(screen.getByRole("button", { name: "Try again" })).toBeDisabled();
+    // O mesmo nome nas duas faces; o anel entra no lugar já guardado.
+    expect(screen.getByRole("button", { name: "Try again" })).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("button", { name: "Try again" }).querySelectorAll('[class*="grid-area"]')).toHaveLength(2);
   });
 
   it("sums the class up before the table so the numbers are not counted by hand", () => {

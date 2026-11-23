@@ -160,6 +160,7 @@ export function CommunityModerationQueue() {
                     size="sm"
                     disabled={activeReportId === report.id || report.status === status}
                     loading={activeReportId === report.id && activeStatus === status}
+                    busyLabel={t(`statusChip.${status}`)}
                     onClick={() => handleStatusChange(report, status)}
                     className="min-h-11 px-3 py-2"
                   >

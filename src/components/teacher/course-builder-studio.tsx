@@ -3267,10 +3267,13 @@ export function CourseBuilderStudio() {
             <span className="sr-only"> {t("account.opensNewTab")}</span>
           </Link>
           {/* Contorno, nao navy: o curso ja salva sozinho e o selo ao lado diz
-              o estado. O rotulo nao vira "Saving..." (o selo ja diz). */}
+              o estado. O rotulo nao vira "Saving..." (o selo ja diz): a face
+              da espera repete o "Save draft" com o anel, e o lugar do anel
+              fica guardado, entao o botao nao empurra Manage e Preview. */}
           <Button
             variant="outline"
             loading={isSaving}
+            busyLabel={t("creatorEditor.builder.navigation.save")}
             onClick={() => {
               setErrorSlot("hero");
               void saveDraft();

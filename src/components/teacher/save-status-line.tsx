@@ -27,7 +27,8 @@ export function RetryAlert({
     <div className={`grid justify-items-start gap-2 ${className}`}>
       <InlineAlert tone="error">{text}</InlineAlert>
       {onRetry ? (
-        <Button variant="outline" loading={busy} onClick={onRetry}>
+        // O mesmo "Try again" nas duas faces; só o anel entra, no lugar já guardado.
+        <Button variant="outline" loading={busy} busyLabel={t("saveStatus.retry")} onClick={onRetry}>
           {t("saveStatus.retry")}
         </Button>
       ) : null}

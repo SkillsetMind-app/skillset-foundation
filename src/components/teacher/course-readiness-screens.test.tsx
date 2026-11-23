@@ -554,6 +554,27 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(await screen.findByRole("button", { name: "Publish product" })).toBe(idle);
   });
 
+  // O "Save draft" do topo não vira "Saving..." (o selo ao lado já diz): só o
+  // anel entra, no lugar que a face da espera já guardava, então o botão não
+  // empurra Manage e Preview. O nome é o mesmo nos dois estados.
+  it("Save draft keeps the ring's place and its name while saving", async () => {
+    let finishSave = () => {};
+    vi.mocked(updateTeacherCourseBuilder).mockImplementationOnce(() => new Promise<void>((resolve) => { finishSave = resolve; }));
+    renderBuilder();
+    await screen.findByRole("heading", { name: mocks.course.title });
+    const save = screen.getByRole("button", { name: "Save draft" });
+    expect(save.querySelectorAll('[class*="grid-area"]')).toHaveLength(2);
+    fireEvent.click(save);
+
+    await waitFor(() => expect(save).toHaveAttribute("aria-busy", "true"));
+    expect(screen.getByRole("button", { name: "Save draft" })).toBe(save);
+    expect(save).toBeDisabled();
+
+    await act(async () => finishSave());
+    await waitFor(() => expect(save).not.toHaveAttribute("aria-busy"));
+    expect(screen.getByRole("button", { name: "Save draft" })).toBe(save);
+  });
+
   // Os tipos novos tem recusas proprias no servidor: cada uma diz o que falta,
   // em vez do generico "try again".
   it.each([

@@ -135,6 +135,21 @@ describe("TeacherCourseStudio — lista de produtos", () => {
     expect(mocks.subscribeCalls).toBe(1);
   });
 
+  // A releitura que falha de novo: o botão espera com o anel no lugar que a
+  // face da espera já guardava, com o mesmo nome, e volta ao repouso.
+  it("Try again keeps its name and the ring's place while it reads again", async () => {
+    mocks.failNextReads = 2;
+    render(<TeacherCourseStudio />);
+    const retry = await screen.findByRole("button", { name: "Try again" });
+    expect(retry.querySelectorAll('[class*="grid-area"]')).toHaveLength(2);
+
+    fireEvent.click(retry);
+    expect(screen.getByRole("button", { name: "Try again" })).toBe(retry);
+    expect(retry).toHaveAttribute("aria-busy", "true");
+    await waitFor(() => expect(retry).not.toHaveAttribute("aria-busy"));
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load your products.");
+  });
+
   // A busca do topo do professor ("Search your products") recarregava a Home
   // igual. Agora cai aqui com ?q= e a lista ja chega filtrada; uma busca nova
   // com a lista aberta troca o filtro sem remontar a tela.

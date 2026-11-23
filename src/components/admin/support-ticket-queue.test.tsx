@@ -32,6 +32,13 @@ function queue(query = "") {
 function deliver(rows = tickets) {
   act(() => mocks.subscribe.mock.calls[0][0](rows));
 }
+// O texto à vista: a face escondida do BusyLabel (aria-hidden) fica de fora.
+const hidden = 'script, style, [aria-hidden="true"]';
+function shown(element: Element) {
+  const copy = element.cloneNode(true) as Element;
+  copy.querySelectorAll('[aria-hidden="true"]').forEach((node) => node.remove());
+  return copy.textContent;
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -84,7 +91,7 @@ describe("support queue search, states and language", () => {
     expect(screen.getByRole("textbox", { name: "Respuesta al usuario" })).toHaveValue("  Resposta autoral preservada.  ");
     expect(screen.getByText("Curso")).toBeInTheDocument();
     // A etiqueta e o botão travado do status atual, no lugar de sempre.
-    expect(screen.getAllByText("Abierto")).toHaveLength(2);
+    expect(screen.getAllByText("Abierto", { ignore: hidden })).toHaveLength(2);
     mocks.reply.mockRejectedValueOnce(new Error("Internal operation detail"));
     fireEvent.click(screen.getByRole("button", { name: "Enviar respuesta y resolver" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("No pudimos enviar esta respuesta.");
@@ -117,6 +124,8 @@ describe("support queue search, states and language", () => {
     fireEvent.click(screen.getByRole("button", { name: "En revisión" }));
     // Só o status apertado gira; o nome dele não vira "Actualizando..." (I-08).
     expect(screen.getByRole("button", { name: "En revisión" })).toHaveAttribute("aria-busy", "true");
+    // O mesmo nome nas duas faces; a do anel já guardava o lugar em repouso.
+    expect(screen.getByRole("button", { name: "En revisión" }).querySelectorAll('[class*="grid-area"]')).toHaveLength(2);
     expect(screen.getAllByRole("button").filter((button) => button.getAttribute("aria-busy") === "true")).toHaveLength(1);
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Estado del ticket actualizado."));
     expect(mocks.update).toHaveBeenCalledTimes(2);
@@ -126,7 +135,7 @@ describe("support queue search, states and language", () => {
     render(queue());
     deliver();
     const [open, resolved] = screen.getAllByRole("article");
-    const moves = (card: HTMLElement) => within(within(card).getByRole("group", { name: "Move to" })).getAllByRole("button").map((button) => [button.textContent, (button as HTMLButtonElement).disabled]);
+    const moves = (card: HTMLElement) => within(within(card).getByRole("group", { name: "Move to" })).getAllByRole("button").map((button) => [shown(button), (button as HTMLButtonElement).disabled]);
     expect(moves(open)).toEqual([["Open", true], ["In review", false], ["Resolved", false]]);
     expect(moves(resolved)).toEqual([["Open", false], ["In review", false], ["Resolved", true]]);
     expect(screen.queryAllByRole("textbox")).toHaveLength(0);
@@ -146,7 +155,7 @@ describe("support queue search, states and language", () => {
   it("does not swap a status button's meaning after the ticket moves (I-09)", async () => {
     render(queue("Alpha"));
     deliver();
-    const slots = () => within(screen.getByRole("group", { name: "Move to" })).getAllByRole("button").map((button) => [button.textContent, (button as HTMLButtonElement).disabled]);
+    const slots = () => within(screen.getByRole("group", { name: "Move to" })).getAllByRole("button").map((button) => [shown(button), (button as HTMLButtonElement).disabled]);
     fireEvent.click(screen.getByRole("button", { name: "In review" }));
     await screen.findByRole("status");
     expect(mocks.update).toHaveBeenCalledWith("ticket-a", "in_review");

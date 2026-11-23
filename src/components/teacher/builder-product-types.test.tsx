@@ -555,6 +555,8 @@ describe("como as pessoas vao pagar", () => {
       fireEvent.click(screen.getByRole("button", { name: "Try again" }));
       expect(screen.getByText("Couldn't refresh your prices. These are the last ones loaded.")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Try again" })).toHaveAttribute("aria-busy", "true");
+      // O RetryAlert guarda o lugar do anel: o mesmo nome nas duas faces.
+      expect(screen.getByRole("button", { name: "Try again" }).querySelectorAll('[class*="grid-area"]')).toHaveLength(2);
       await act(async () => answer({ ok: true, json: async () => ({ offers: [main] }) }));
       await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
       expect(screen.getByText(/^Your page charges \$97 \(One payment\)\./)).toBeInTheDocument();

@@ -383,6 +383,8 @@ describe("CourseAssetUploader", () => {
     // Rótulo fixo: o botão não vira "Uploading..."; o andamento é só a nota.
     expect(screen.getByRole("button", { name: "Upload asset" })).toHaveAttribute("aria-busy", "true");
     expect(screen.queryByText("Uploading...")).toBeNull();
+    // O anel entra no lugar que a face da espera já guardava: mesma largura.
+    expect(screen.getByRole("button", { name: "Upload asset" }).querySelectorAll('[class*="grid-area"]')).toHaveLength(2);
   });
 
   // Falhou depois de começar: o progresso antigo não pode ficar na tela ao

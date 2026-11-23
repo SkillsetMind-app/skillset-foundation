@@ -65,6 +65,8 @@ describe("MemberAreaCommunityView", () => {
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     const busy = screen.getByRole("button", { name: "Trying again..." });
     expect(busy).toBeDisabled();
+    // "Try again" e "Trying again..." na mesma célula: o botão não muda de largura.
+    expect(busy.querySelectorAll('[class*="grid-area"]')).toHaveLength(2);
     expect(screen.getByRole("alert")).toBeInTheDocument();
 
     expect(await screen.findByRole("heading", { level: 1, name: "Eton Circle" })).toBeTruthy();
