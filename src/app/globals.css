@@ -7046,6 +7046,11 @@ html:has(#member-lesson-player) {
     0 10px 22px rgba(0, 0, 0, 0.16) !important;
 }
 
+/* O item traz também as classes da gaveta do celular (before:top-1/2
+   before:-translate-y-1/2), que no Tailwind 4 usam a propriedade
+   `translate`. Com `transform: translateY(-50%)` aqui os dois somavam e o
+   filete subia 9px, acima do quadradinho do ícone. Uma propriedade só: a
+   mesma `translate`, que esta regra (sem camada) vence. */
 .platform-sidebar .platform-nav-active::before {
   content: "";
   position: absolute;
@@ -7055,7 +7060,8 @@ html:has(#member-lesson-player) {
   height: 18px;
   border-radius: 999px;
   background: var(--color-accent);
-  transform: translateY(-50%);
+  translate: 0 -50%;
+  transform: none;
 }
 
 .platform-sidebar .platform-nav-active .platform-sidebar-label {

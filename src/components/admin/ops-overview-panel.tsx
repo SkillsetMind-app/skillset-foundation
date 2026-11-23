@@ -175,7 +175,10 @@ export function OpsOverviewPanel({ counts }: { counts: OpsQueueCounts }) {
                 : undefined}
               className={`inline-flex min-h-11 items-center rounded-none px-3 text-sm font-semibold ${
                 option === period
-                  ? "bg-[var(--color-primary)] text-[var(--color-on-primary)]"
+                  // O `!` é preciso: `a { color: inherit }` do globals.css está
+                  // fora de camada e vence a classe de cor num link. Sem ele o
+                  // período escolhido era texto azul-marinho sobre azul-marinho.
+                  ? "bg-[var(--color-primary)] text-[var(--color-on-primary)]!"
                   : "text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
               }`}
             >
