@@ -2,7 +2,7 @@
 
 import { AlertTriangle, CalendarClock, Receipt, Search, Users } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -10,7 +10,8 @@ import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
 import { StatusChip } from "@/components/shared/status-chip";
 import { MetricCard } from "@/components/teacher/metric-card";
 import { SupportDetails } from "@/components/teacher/support-details";
-import { buttonClasses, InlineAlert } from "@/components/ui";
+import { buttonClasses } from "@/components/ui";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import type { CourseSubscription } from "@/domain/course-subscription";
 import {
   buildCreatorRenewalHistory,
@@ -34,7 +35,10 @@ import { countLabel, type Translate } from "@/lib/i18n/count-label";
 
 type SubscriberFilter = "all" | "active" | "attention" | "canceling" | "ended";
 type ReadState = "loading" | "ready" | "error";
+type ReadName = "subscriptions" | "courses" | "orders" | "ledgers";
 const copy = "teach.subscriptions";
+// O osso dos esqueletos da casa (surface-strong), pulsando so ele.
+const bone = "animate-pulse rounded-md bg-[var(--color-surface-strong)]";
 
 export function CreatorSubscriptionCenter() {
   const { user } = useAuth();
@@ -48,11 +52,15 @@ export function CreatorSubscriptionCenter() {
   const [failed, setFailed] = useState({ subscriptions: false, courses: false });
   const [ordersState, setOrdersState] = useState<ReadState>("loading");
   const [ledgersState, setLedgersState] = useState<ReadState>("loading");
-  const [errorKey, setErrorKey] = useState<string | null>(null);
+  // Cada leitura guarda o proprio reload: o "Try again" le de novo so as que
+  // falharam, sem mexer no canal do tempo real.
+  const reads = useRef<Partial<Record<ReadName, { reload?: () => Promise<void> }>>>({});
+  // Fica na tela nos dois desfechos (erro ou lista) e recebe o foco do clique.
+  const frameRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!user) return;
-    return subscribeToTeacherCourseSubscriptions(
+    const read = subscribeToTeacherCourseSubscriptions(
       user.uid,
       (next) => {
         setSubscriptions(next);
@@ -60,16 +68,17 @@ export function CreatorSubscriptionCenter() {
         setLoaded((current) => ({ ...current, subscriptions: true }));
       },
       () => {
-        setErrorKey(`${copy}.subscribersError`);
         setFailed((current) => ({ ...current, subscriptions: true }));
         setLoaded((current) => ({ ...current, subscriptions: true }));
       },
     );
+    reads.current.subscriptions = read;
+    return read;
   }, [user]);
 
   useEffect(() => {
     if (!user) return;
-    return subscribeToTeacherCourses(
+    const read = subscribeToTeacherCourses(
       user.uid,
       (next) => {
         setCourses(next);
@@ -77,16 +86,17 @@ export function CreatorSubscriptionCenter() {
         setLoaded((current) => ({ ...current, courses: true }));
       },
       () => {
-        setErrorKey(`${copy}.productsError`);
         setFailed((current) => ({ ...current, courses: true }));
         setLoaded((current) => ({ ...current, courses: true }));
       },
     );
+    reads.current.courses = read;
+    return read;
   }, [user]);
 
   useEffect(() => {
     if (!user) return;
-    return subscribeToTeacherOrders(
+    const read = subscribeToTeacherOrders(
       user.uid,
       (next) => {
         setOrders(next);
@@ -94,14 +104,15 @@ export function CreatorSubscriptionCenter() {
       },
       () => {
         setOrdersState("error");
-        setErrorKey(`${copy}.ordersError`);
       },
     );
+    reads.current.orders = read;
+    return read;
   }, [user]);
 
   useEffect(() => {
     if (!user) return;
-    return subscribeToTeacherPayoutLedger(
+    const read = subscribeToTeacherPayoutLedger(
       user.uid,
       (next) => {
         setLedgers(next);
@@ -109,9 +120,10 @@ export function CreatorSubscriptionCenter() {
       },
       () => {
         setLedgersState("error");
-        setErrorKey(`${copy}.ledgersError`);
       },
     );
+    reads.current.ledgers = read;
+    return read;
   }, [user]);
 
   useEffect(() => {
@@ -131,17 +143,27 @@ export function CreatorSubscriptionCenter() {
     };
   }, [user, subscriptions]);
 
-  if (!loaded.subscriptions || !loaded.courses) {
-    return <SubscriptionCenterLoading />;
-  }
-
-  if (failed.subscriptions || failed.courses) {
-    return (
-      <InlineAlert tone="error">
-        {t(errorKey || `${copy}.reportingError`)}
-      </InlineAlert>
-    );
-  }
+  // A frase sai do estado de cada leitura, nao de um "ultimo erro" guardado:
+  // guardado, ele ficava na tela depois que a releitura dava certo.
+  const failedReads: ReadName[] = [
+    ...(failed.subscriptions ? ["subscriptions" as const] : []),
+    ...(failed.courses ? ["courses" as const] : []),
+    ...(ordersState === "error" ? ["orders" as const] : []),
+    ...(ledgersState === "error" ? ["ledgers" as const] : []),
+  ];
+  const errorKeys: Record<ReadName, string> = {
+    subscriptions: `${copy}.subscribersError`,
+    courses: `${copy}.productsError`,
+    orders: `${copy}.ordersError`,
+    ledgers: `${copy}.ledgersError`,
+  };
+  const retryFailed = () =>
+    Promise.all(failedReads.map((name) => reads.current[name]?.reload?.()));
+  const loadError = failedReads.length ? (
+    <LoadErrorAlert focusRef={frameRef} onRetry={retryFailed} className="mb-5">
+      {t(errorKeys[failedReads[0]])}
+    </LoadErrorAlert>
+  ) : null;
 
   const financialState: ReadState =
     ordersState === "error" || ledgersState === "error"
@@ -151,21 +173,26 @@ export function CreatorSubscriptionCenter() {
         : "loading";
 
   return (
-    <>
-      {errorKey ? (
-        <InlineAlert tone="error" className="mb-5">
-          {t(errorKey)}
-        </InlineAlert>
-      ) : null}
-      <CreatorSubscriptionCenterView
-        subscriptions={subscriptions}
-        courses={courses}
-        orders={orders}
-        ledgers={ledgers}
-        profiles={profiles}
-        financialState={financialState}
-      />
-    </>
+    <div ref={frameRef} tabIndex={-1}>
+      {!loaded.subscriptions || !loaded.courses ? (
+        <SubscriptionCenterLoading />
+      ) : failed.subscriptions || failed.courses ? (
+        // Sem assinantes ou sem produtos nao ha o que mostrar: so o aviso.
+        loadError
+      ) : (
+        <>
+          {loadError}
+          <CreatorSubscriptionCenterView
+            subscriptions={subscriptions}
+            courses={courses}
+            orders={orders}
+            ledgers={ledgers}
+            profiles={profiles}
+            financialState={financialState}
+          />
+        </>
+      )}
+    </div>
   );
 }
 
@@ -423,9 +450,27 @@ export function CreatorSubscriptionCenterView({
         ) : (
           <div className="mt-5 grid gap-0">
             {financialState === "loading" ? (
-              <p className="border-y border-[var(--color-line)] py-8 text-center text-sm text-[var(--color-ink-soft)]">
-                {t(`${copy}.renewalsLoading`)}
-              </p>
+              // Linhas no formato da renovacao (produto e data, quem pagou,
+              // situacao e valor), no lugar de uma frase que depois virava a lista.
+              <div role="status">
+                <span className="sr-only">{t(`${copy}.renewalsLoading`)}</span>
+                {[0, 1, 2].map((row) => (
+                  <div
+                    key={row}
+                    aria-hidden="true"
+                    className="flex flex-col justify-between gap-3 border-b border-[var(--color-line)] py-4 sm:flex-row sm:items-center"
+                  >
+                    <div className="grid gap-2">
+                      <div className={`h-4 w-56 max-w-full ${bone}`} />
+                      <div className={`h-3 w-32 ${bone}`} />
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className={`h-6 w-20 ${bone}`} />
+                      <div className={`h-4 w-24 ${bone}`} />
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : financialState === "error" ? (
               <p className="border-y border-[var(--color-line)] py-8 text-center text-sm text-[var(--color-ink-soft)]">
                 {t(`${copy}.renewalsError`)}

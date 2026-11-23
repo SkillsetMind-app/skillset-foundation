@@ -16,8 +16,8 @@ export default async function AccountPaymentsPage() {
       {/* Sem `description`: as quatro frases que ficavam aqui empurravam o
           primeiro numero para baixo de tres paragrafos. O texto vive agora no
           "Learn more" recolhido do painel, em EN/ES.
-          `hideHeader`: o painel ja abre com "EARNINGS" + "Your earnings,
-          your payout setup." — o titulo da casca repetia isso uma terceira vez,
+          `hideHeader`: o painel ja abre com o cabecalho das telas irmas ("Your
+          earnings, your payout setup") — o titulo da casca repetia isso,
           e em ingles fixo mesmo com a sessao em espanhol (QA visual em
           producao, 08/09). Quem carrega o <h1> da pagina agora e o painel; a
           casca ainda exige `title`, entao ele vem do dicionario. */}

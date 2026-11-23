@@ -22,6 +22,8 @@ describe("F-07: as últimas caixas vermelhas à mão viraram o aviso da casa", (
     "components/auth/turnstile-widget.tsx",
     "components/certificates/certificate-verification-panel.tsx",
     "components/support/support-ticket-center.tsx",
+    // Ganhos: a caixa do topo e a frase vermelha do bloco da conta.
+    "components/teacher/teacher-wallet-panel.tsx",
   ])("%s usa o InlineAlert de erro", (file) => {
     const source = read(file);
     expect(source).not.toContain(handRedBox);
@@ -99,6 +101,9 @@ describe("F-19: um tom só nos blocos de espera", () => {
     "app/learn/messages/page.tsx",
     "components/learn/student-messages-inbox.tsx",
     "components/instructors/instructors-directory.tsx",
+    // O extrato de Ganhos, o bloco da conta e as renovações esperavam com uma frase.
+    "components/teacher/teacher-wallet-panel.tsx",
+    "components/teacher/creator-subscription-center.tsx",
   ])("%s pinta o osso em surface-strong", (file) => {
     const source = read(file);
     expect(source).not.toMatch(/animate-pulse[^"]*bg-\[var\(--color-surface-soft\)\]/);

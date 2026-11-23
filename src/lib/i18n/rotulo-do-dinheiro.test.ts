@@ -44,7 +44,9 @@ describe("um nome so para a pagina do dinheiro", () => {
     expect(page).toContain('privatePageMetadata("platform.nav.earnings")');
     expect(page).toContain('title={t("platform.nav.earnings")}');
 
-    for (const file of ["src/components/site/account-menu.tsx", "src/components/teacher/teacher-wallet-panel.tsx"]) {
+    // O painel de Ganhos nao repete mais o nome em cima do titulo (era o rotulo
+    // generico das telas irmas); o nome segue na barra, no menu e na aba.
+    for (const file of ["src/components/site/account-menu.tsx"]) {
       expect(readFileSync(file, "utf8"), file).toContain('t("platform.nav.earnings")');
     }
   });
