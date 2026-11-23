@@ -389,6 +389,24 @@ describe("OnboardingChoice: \"Try again\" da leitura do perfil", () => {
     expect(mocks.getUserProfile).toHaveBeenCalledTimes(2);
   });
 
+  it("na troca de conta o \"Try again\" nao le o id da conta anterior", async () => {
+    mocks.searchParams = activation;
+    const { resolve } = await failFirstRead();
+    // A sessao troca de conta: primeiro "loading", depois a outra pessoa.
+    await act(async () => emit({ status: "loading", user: null }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "appErrors.retry" }));
+    });
+    expect(mocks.getUserProfile).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("alert")).toHaveTextContent("onboarding.errorProfileLoad");
+
+    await act(async () => emit({ status: "authenticated", user: { ...authedUser, uid: "learner-2" } }));
+    fireEvent.click(screen.getByRole("button", { name: "appErrors.retry" }));
+    expect(mocks.getUserProfile).toHaveBeenCalledTimes(2);
+    expect(mocks.getUserProfile).toHaveBeenLastCalledWith("learner-2");
+    await act(async () => resolve(null));
+  });
+
   it("releitura que falha de novo: o aviso volta, com o botao", async () => {
     mocks.searchParams = activation;
     const { reject } = await failFirstRead();

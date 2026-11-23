@@ -272,6 +272,12 @@ export function OnboardingChoice() {
     let seeded = false;
 
     return listenToAuthState((session) => {
+      // Fora de "authenticated" (troca de conta, saída, segundo fator) não há
+      // pessoa para reler: um "Try again" nessa hora leria o id da anterior.
+      if (session.status !== "authenticated" || !session.user) {
+        authedUserRef.current = null;
+      }
+
       if (session.status === "loading") {
         return;
       }
