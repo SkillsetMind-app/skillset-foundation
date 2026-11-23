@@ -39,7 +39,8 @@ describe("C2: botoes sem .button-* mantem o piso de 44px (min-h-11)", () => {
     // feito à mão que sobrou ali é o do modelo da página, também com 44px.
     ["components/teacher/course-landing-editor.tsx", "inline-flex min-h-11 items-center gap-1.5 rounded-sm px-3 py-2"],
     ["components/teacher/course-landing-editor.tsx", "mt-3 min-h-11 justify-self-start"],
-    ["components/teacher/landing-image-field.tsx", "inline-flex min-h-11 w-fit items-center gap-2 rounded-md border"],
+    // Os botões do campo de imagem moram na casca única (B-05).
+    ["components/teacher/image-upload-field.tsx", "inline-flex min-h-11 w-fit items-center gap-2 rounded-md border"],
   ];
 
   it.each(sites)("%s tem min-h-11 em %s", (file, snippet) => {
@@ -47,7 +48,7 @@ describe("C2: botoes sem .button-* mantem o piso de 44px (min-h-11)", () => {
   });
 
   it("os dois botoes do campo de imagem tem min-h-11", () => {
-    const hits = read("components/teacher/landing-image-field.tsx").match(/min-h-11 w-fit/g);
+    const hits = read("components/teacher/image-upload-field.tsx").match(/min-h-11 w-fit/g);
     expect(hits).toHaveLength(2);
   });
 

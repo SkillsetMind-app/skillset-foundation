@@ -126,6 +126,8 @@ describe("capa do módulo: 2:3 comprimida no navegador", () => {
 
   it("sobe a imagem comprimida em WebP, como capa do módulo", async () => {
     const input = await moduleCoverInput();
+    // A casca única (B-05) recebe o accept da capa do módulo como era.
+    expect(input).toHaveAttribute("accept", "image/*");
     choose(input, new File(["foto grande"], "capa.png", { type: "image/png" }));
 
     await waitFor(() => expect(uploadCourseAsset).toHaveBeenCalledTimes(1));

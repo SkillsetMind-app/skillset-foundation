@@ -106,7 +106,7 @@ export function CourseAccessPanel({ courseId, onChange }: { courseId: string; on
       <div className="min-w-0 flex-1 basis-60">
         <label htmlFor={inputId} className="mb-2 block text-sm font-semibold text-[var(--color-ink)]">{t("courseAccess.email")}</label>
         <input id={inputId} type="email" required maxLength={254} value={email} onChange={(event) => setEmail(event.target.value)} disabled={busy}
-          className="min-h-11 w-full min-w-0 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]" />
+          className="field-input min-w-0 disabled:cursor-not-allowed disabled:opacity-60" />
       </div>
       <Button type="submit" disabled={busy || !loaded || !email.trim()}>{t("courseAccess.grant")}</Button>
     </form>

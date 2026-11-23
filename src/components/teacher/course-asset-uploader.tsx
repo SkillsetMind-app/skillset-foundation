@@ -260,7 +260,7 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
                 setFileInputKey((current) => current + 1);
               }}
               disabled={!isEditable || isUploading}
-              className="min-h-11 rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+              className="field-input field-input--inline disabled:cursor-not-allowed disabled:opacity-60"
             >
               {assetKinds.map((item) => (
                 <option key={item} value={item}>
@@ -277,7 +277,7 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
                 value={moduleId}
                 onChange={(event) => setModuleId(event.target.value)}
                 disabled={!isEditable || isUploading || allModules.length === 0}
-                className="min-h-11 rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                className="field-input field-input--inline disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <option value="">
                   {allModules.length === 0 ? t("creatorEditor.assets.addModules") : t("creatorEditor.assets.chooseModule")}

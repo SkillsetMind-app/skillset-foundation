@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 
@@ -173,8 +173,13 @@ describe("ES-09 editors with the shipped dictionaries", () => {
     }
     expect(screen.getByText("URL de la imagen de fondo")).toBeInTheDocument();
     expect(screen.getByText("URL de tu foto")).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Subir imagen" })).toHaveLength(2);
+    // O botão de imagem é o rótulo do campo de arquivo da casca única (B-05).
+    expect(screen.getAllByLabelText("Subir imagen")).toHaveLength(2);
     expect(screen.getAllByLabelText("O pega un enlace")).toHaveLength(2);
+    // Cada link colado mora no grupo com o nome da própria imagem.
+    for (const image of ["URL de la imagen de fondo", "URL de tu foto"]) {
+      expect(within(screen.getByRole("group", { name: image })).getAllByLabelText("O pega un enlace")).toHaveLength(1);
+    }
     expect(screen.getAllByRole("button", { name: "Subir" })).toHaveLength(7);
     expect(screen.getByText(/Atención: esta página usa/)).toHaveTextContent("therapist");
     fireEvent.click(screen.getByRole("button", { name: "Eliminar sección Sobre ti" }));

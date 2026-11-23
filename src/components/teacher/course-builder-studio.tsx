@@ -27,7 +27,6 @@ import {
   Sun,
   Ticket,
   Trash2,
-  UploadCloud,
   X,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -112,7 +111,7 @@ import {
 } from "@/lib/data/course-assets";
 import { compressImage, MAX_SOURCE_IMAGE_BYTES } from "@/lib/media/compress-image";
 import { ReadinessGroups } from "@/components/teacher/readiness-groups";
-import { UploadProgressNote } from "@/components/teacher/upload-progress-note";
+import { ImageUploadField } from "@/components/teacher/image-upload-field";
 import { Button, buttonClasses, EmptyState, InlineAlert, ProgressBar } from "@/components/ui";
 import { DrawnCheck, MilestoneSeal, useJustDone } from "@/components/ui/drawn-check";
 import { SpotArt } from "@/components/ui/spot-art";
@@ -4843,84 +4842,32 @@ function CourseCoverField({
   }
 
   return (
-    <section className="grid gap-3 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-            {t("courseMedia.assetKinds.course_cover")}
-          </p>
-          <p className="mt-1 max-w-xl text-xs leading-5 text-[var(--color-ink-soft)]">
-            {t("creatorEditor.builder.cover.help").replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))}
-          </p>
-        </div>
-        {course.coverImageUrl ? (
-          <span className="inline-flex items-center gap-1 rounded-chip bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-primary)]">
-            <CheckCircle2 size={12} aria-hidden /> {t("creatorEditor.members.coverSet")}
-          </span>
-        ) : null}
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-[200px_1fr] sm:items-start">
-        <div className="relative aspect-video overflow-hidden rounded-md border border-[var(--color-line)] bg-white">
-          {course.coverImageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={course.coverImageUrl}
-              alt={t("creatorEditor.builder.cover.alt").replace("{title}", () => course.title || t("creatorEditor.builder.cover.course"))}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-[var(--color-ink-soft)]">
-              <ImageIcon size={22} aria-hidden />
-              <span className="text-[11px] font-semibold uppercase tracking-[0.12em]">
-                {t("creatorEditor.members.noCover")}
-              </span>
-            </div>
-          )}
-        </div>
-
-        <div className="grid content-start gap-2">
-          <label
-            className={`inline-flex w-fit items-center gap-2 rounded-md border border-dashed border-[var(--color-line)] bg-white px-4 py-3 text-sm font-semibold text-[var(--color-primary)] transition-colors duration-[var(--duration-base)] ease-[var(--ease-standard)] hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
-              !isEditable || isUploading
-                ? "pointer-events-none opacity-60"
-                : "cursor-pointer"
-            }`}
-          >
-            <UploadCloud size={16} aria-hidden />
-            {/* Rotulo fixo: o estado do envio e so a nota logo abaixo (ela dizia
-                "Uploading 45%" embaixo de um botao "Uploading..."). */}
-            {course.coverImageUrl
-              ? t("creatorEditor.members.replaceCover")
-              : t("creatorEditor.members.uploadCover")}
-            <input
-              key={fileInputKey}
-              type="file"
-              accept={courseAssetAcceptTypes.course_cover}
-              disabled={!isEditable || isUploading}
-              onChange={handleFile}
-              className="sr-only"
-            />
-          </label>
-
-          {progress ? <UploadProgressNote progress={progress} /> : null}
-
-          {error ? (
-            <InlineAlert tone="error" className="px-3 py-2 text-xs">
-              {error.kind === "invalid-image"
-                ? t("creatorEditor.members.invalidImage").replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))
-                : getCourseAssetUploadErrorMessage(error.cause, supabaseUploadLimitBytes, t)}
-            </InlineAlert>
-          ) : null}
-
-          {!course.coverImageUrl && !error && !progress ? (
-            <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
-              {t("creatorEditor.builder.cover.emptyHelp")}
-            </p>
-          ) : null}
-        </div>
-      </div>
-    </section>
+    <ImageUploadField
+      className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"
+      title={t("courseMedia.assetKinds.course_cover")}
+      help={t("creatorEditor.builder.cover.help").replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))}
+      preview={{
+        src: course.coverImageUrl,
+        alt: t("creatorEditor.builder.cover.alt").replace("{title}", () => course.title || t("creatorEditor.builder.cover.course")),
+        emptyLabel: t("creatorEditor.members.noCover"),
+      }}
+      triggerLabel={course.coverImageUrl ? t("creatorEditor.members.replaceCover") : t("creatorEditor.members.uploadCover")}
+      input={{
+        resetKey: fileInputKey,
+        accept: courseAssetAcceptTypes.course_cover,
+        disabled: !isEditable || isUploading,
+        onChange: handleFile,
+      }}
+      progress={progress}
+      error={
+        error === null
+          ? undefined
+          : error.kind === "invalid-image"
+            ? t("creatorEditor.members.invalidImage").replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))
+            : getCourseAssetUploadErrorMessage(error.cause, supabaseUploadLimitBytes, t)
+      }
+      note={course.coverImageUrl ? undefined : t("creatorEditor.builder.cover.emptyHelp")}
+    />
   );
 }
 
@@ -5249,89 +5196,36 @@ function MembersCoverField({
   }
 
   return (
-    <section aria-label={title} className={moduleId ? "grid min-w-0 content-start gap-3" : "grid gap-3 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-            {title}
-          </p>
-          <p className="mt-1 max-w-xl text-xs leading-5 text-[var(--color-ink-soft)]">
-            {t(moduleId ? "creatorEditor.assets.presets.module" : "creatorEditor.members.coverHelp").replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))}
-          </p>
-        </div>
-        {coverUrl ? (
-          <span className="inline-flex items-center gap-1 rounded-chip bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-primary)]">
-            <CheckCircle2 size={12} aria-hidden /> {t("creatorEditor.members.coverSet")}
-          </span>
-        ) : null}
-      </div>
-
-      <div className={moduleId ? "grid min-w-0 gap-3" : "grid gap-3 sm:grid-cols-[200px_1fr] sm:items-start"}>
-        <div className={`relative overflow-hidden rounded-md border border-[var(--color-line)] bg-white ${moduleId ? "aspect-[2/3] w-32" : "aspect-video"}`}>
-          {coverUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- members cover is an arbitrary CourseAsset URL
-            <img
-              src={coverUrl}
-              alt={moduleId ? title : t("creatorEditor.members.coverAlt").replace("{courseTitle}", () => course.title || t("publicCourses.course"))}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-[var(--color-ink-soft)]">
-              <ImageIcon size={22} aria-hidden />
-              <span className="text-[11px] font-semibold uppercase tracking-[0.12em]">
-                {t("creatorEditor.members.noCover")}
-              </span>
-            </div>
-          )}
-        </div>
-
-        <div className="grid content-start gap-2">
-          <label
-            className={`inline-flex w-fit items-center gap-2 rounded-md border border-dashed border-[var(--color-line)] bg-white px-4 py-3 text-sm font-semibold text-[var(--color-primary)] transition-colors duration-[var(--duration-base)] ease-[var(--ease-standard)] hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
-              !isEditable || isUploading
-                ? "pointer-events-none opacity-60"
-                : "cursor-pointer"
-            }`}
-          >
-            <UploadCloud size={16} aria-hidden />
-            {/* Rotulo fixo; o estado do envio e so a nota logo abaixo. */}
-            {coverUrl
-              ? t("creatorEditor.members.replaceCover")
-              : t("creatorEditor.members.uploadCover")}
-            <input
-              key={fileInputKey}
-              type="file"
-              accept={courseAssetAcceptTypes[kind]}
-              aria-label={moduleId ? t("courseMedia.assetKinds.module_cover") : undefined}
-              disabled={!isEditable || isUploading}
-              onChange={handleFile}
-              className="sr-only"
-            />
-          </label>
-
-          {coverUrl && onRemove && isEditable && !isUploading ? (
-            <button
-              type="button"
-              onClick={onRemove}
-              className="min-h-11 w-fit text-xs font-semibold text-[var(--color-danger-fg)] underline-offset-2 hover:underline"
-            >
-              {t("creatorEditor.members.removeCover")}
-            </button>
-          ) : null}
-
-          {progress ? <UploadProgressNote progress={progress} /> : null}
-
-          {error ? (
-            <InlineAlert tone="error" className="px-3 py-2 text-xs">
-              {error.kind === "too-large"
-                ? t("creatorEditor.members.coverTooLarge")
-                : error.kind === "invalid-image"
-                  ? t("creatorEditor.members.invalidImage").replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))
-                  : getCourseAssetUploadErrorMessage(error.cause, supabaseUploadLimitBytes, t)}
-            </InlineAlert>
-          ) : null}
-        </div>
-      </div>
-    </section>
+    <ImageUploadField
+      // Na página do módulo a capa mora numa coluna, sem moldura própria.
+      className={moduleId ? undefined : "rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"}
+      title={title}
+      help={t(moduleId ? "creatorEditor.assets.presets.module" : "creatorEditor.members.coverHelp").replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))}
+      preview={{
+        src: coverUrl,
+        alt: moduleId ? title : t("creatorEditor.members.coverAlt").replace("{courseTitle}", () => course.title || t("publicCourses.course")),
+        portrait: Boolean(moduleId),
+        emptyLabel: t("creatorEditor.members.noCover"),
+      }}
+      triggerLabel={coverUrl ? t("creatorEditor.members.replaceCover") : t("creatorEditor.members.uploadCover")}
+      input={{
+        resetKey: fileInputKey,
+        accept: courseAssetAcceptTypes[kind],
+        "aria-label": moduleId ? t("courseMedia.assetKinds.module_cover") : undefined,
+        disabled: !isEditable || isUploading,
+        onChange: handleFile,
+      }}
+      remove={onRemove && isEditable ? { label: t("creatorEditor.members.removeCover"), onClick: onRemove } : undefined}
+      progress={progress}
+      error={
+        error === null
+          ? undefined
+          : error.kind === "too-large"
+            ? t("creatorEditor.members.coverTooLarge")
+            : error.kind === "invalid-image"
+              ? t("creatorEditor.members.invalidImage").replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))
+              : getCourseAssetUploadErrorMessage(error.cause, supabaseUploadLimitBytes, t)
+      }
+    />
   );
 }

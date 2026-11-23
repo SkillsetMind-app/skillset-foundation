@@ -6972,6 +6972,19 @@ html:has(#member-lesson-player) {
   color: var(--ma-ink-muted);
 }
 
+/* O campo da casa dentro da sala segue o tema do CURSO, como a regra acima.
+   Com a plataforma escura, o fundo `!important` e a borda de foco do
+   [data-theme="dark"] .field-input venciam a sala: num curso claro, a caixa
+   de mensagem e a de avaliação ficavam no tom da plataforma. Só o fundo
+   precisa do `!important` (o do escuro também tem); a borda vence por peso. */
+.member-classroom[data-members-theme] .field-input,
+.member-classroom[data-members-theme] .field-input:focus,
+.member-classroom[data-members-theme] .field-input:focus-visible {
+  border-color: var(--ma-line);
+  background: var(--ma-surface) !important;
+  color: var(--ma-ink);
+}
+
 /* Sombra navy da casa, não um brilho vermelho: o vermelho fixo ficava sob o
    botão mesmo quando a cor do curso é verde ou azul, e o contrato só aceita
    sombra navy. */

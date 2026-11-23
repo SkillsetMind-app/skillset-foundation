@@ -676,7 +676,8 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                   const next = event.target.value;
                   leavePage(() => router.push(`/teach/courses/${next}/manage`));
                 }}
-                className="min-h-11 rounded-md border fine-rule bg-white px-3 py-2 text-xs font-semibold text-[var(--color-ink)]"
+                // Até a largura da linha: um título longo não passa da tela de 375px.
+                className="field-input field-input--inline max-w-full"
               >
                 <option value={course.id}>{course.title}</option>
                 {switchableCourses.map((candidate) => (

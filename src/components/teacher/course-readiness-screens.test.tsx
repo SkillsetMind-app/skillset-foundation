@@ -669,6 +669,19 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(subscribeToTeacherCourse).toHaveBeenCalledOnce();
   });
 
+  // B-05: a capa do curso usa a casca única; o accept e o teto seguem os dela.
+  it("keeps the course-cover accept and refuses a file over the upload limit before sending", async () => {
+    renderBuilder();
+    await screen.findByRole("heading", { name: mocks.course.title });
+    const input = screen.getByLabelText("Upload cover");
+    expect(input).toHaveAttribute("accept", "image/*");
+    const big = new File(["x"], "capa.png", { type: "image/png" });
+    Object.defineProperty(big, "size", { value: 600 * 1024 * 1024 });
+    fireEvent.change(input, { target: { files: [big] } });
+    expect(screen.getByText(/Use an image file under/).closest('[role="alert"]')).not.toBeNull();
+    expect(uploadCourseAsset).not.toHaveBeenCalled();
+  });
+
   it("uses the current language when leaving a dirty draft and keeps new-tab preview exempt", async () => {
     const { container } = renderBuilder();
     await screen.findByRole("heading", { name: mocks.course.title });
@@ -1118,6 +1131,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
       fireEvent.change(screen.getByRole("textbox", { name: new RegExp(`^${label}`) }), { target: { value } });
     }
     fireEvent.click(screen.getByRole("button", { name: "Dark" }));
+    expect(screen.getByLabelText("Upload cover")).toHaveAttribute("accept", "image/*");
     fireEvent.change(screen.getByLabelText("Upload cover"), { target: { files: [new File(["no"], "invalid.txt", { type: "text/plain" })] } });
     expect(screen.getByText(/Use an image file under/)).toBeInTheDocument();
     const subscriptions = vi.mocked(subscribeToTeacherCourse).mock.calls.length;
@@ -1182,10 +1196,11 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     await act(async () => fireEvent.change(screen.getByLabelText("Upload cover"), { target: { files: [new File(["image"], "cover.png", { type: "image/png" })] } }));
     act(() => emitAssets([{ id: "new-cover", courseId: "course-1", ownerId: "teacher-1", kind: "members_cover", fileName: "cover.png", contentType: "image/png", size: 5, storagePath: "fixture/cover.png", downloadUrl: "/fixture-cover.png", isPreview: false, lessonId: null }]));
     expect(screen.getByRole("img", { name: `${authorTitle} members cover` })).toHaveAttribute("src", "/fixture-cover.png");
-    expect(screen.getByText("Cover set")).toBeInTheDocument();
+    // Sem o selo "Cover set" (B-05): a prévia e o "Replace cover" dizem que há capa.
+    expect(screen.getByLabelText("Replace cover")).toHaveAttribute("type", "file");
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
     expect(screen.getByRole("img", { name: `Portada del área de miembros de ${authorTitle}` })).toHaveAttribute("src", "/fixture-cover.png");
-    expect(screen.getByText("Portada añadida")).toBeInTheDocument();
+    expect(screen.getByLabelText("Cambiar portada")).toHaveAttribute("type", "file");
     fireEvent.click(screen.getByRole("button", { name: "Quitar portada" }));
     expect(screen.queryByRole("img", { name: `Portada del área de miembros de ${authorTitle}` })).not.toBeInTheDocument();
     expect(screen.getByText("Aún no hay portada")).toBeInTheDocument();

@@ -520,8 +520,9 @@ export function TeacherEventStudio() {
   const zoneLabel = computerZone ? describeTimeZone(computerZone, locale, now) : "";
   const fieldClass = "field-input";
   // Data e hora maiores que os outros campos: e o que a pessoa mais precisa ler.
-  const whenFieldClass =
-    "min-h-12 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-base font-normal outline-none focus:border-[var(--color-primary-light)]";
+  // O campo da casa com 48px e 16px; o `!` vence o 14px do .field-input, que
+  // fica fora de camada.
+  const whenFieldClass = "field-input min-h-12 text-base!";
   const whenDescribedBy = ["event-zone-line", dateError ? "event-when-error" : ""].join(" ").trim();
 
   return (

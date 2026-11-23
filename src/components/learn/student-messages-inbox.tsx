@@ -256,7 +256,7 @@ export function StudentMessagesInbox() {
                   disabled={isSending}
                   maxLength={COURSE_MESSAGE_MAX_CHARS}
                   rows={3}
-                  className="min-h-20 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink)] outline-none transition focus:border-[var(--color-primary)]"
+                  className="field-input min-h-20"
                   placeholder={t("learnWave2.messages.placeholder")}
                 />
                 {notice ? (
