@@ -441,6 +441,24 @@ describe("OnboardingChoice: \"Try again\" da leitura do perfil", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("page.title");
   });
 
+  it("uma leitura seguinte que da certo tira o aviso de leitura que ficou", async () => {
+    mocks.searchParams = activation;
+    const { rerender } = await failFirstRead();
+    mocks.getUserProfile.mockReset();
+    mocks.getUserProfile.mockResolvedValueOnce(null);
+    mocks.searchParams = new URLSearchParams("path=student");
+    rerender(
+      <PageHeadingProvider>
+        <h1><PageHeadingText part="title" fallback="page.title" /></h1>
+        <OnboardingChoice />
+      </PageHeadingProvider>,
+    );
+    await act(async () => emit({ status: "authenticated", user: authedUser }));
+    expect(mocks.getUserProfile).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByRole("button", { name: "appErrors.retry" })).toBeNull();
+  });
+
   it("erro que nao e de leitura nao ganha \"Try again\": o que toma o lugar do aviso", async () => {
     mocks.searchParams = activation;
     await failFirstRead();

@@ -240,6 +240,11 @@ export function OnboardingChoice() {
       } else if (intendedPath || existingPath) {
         setSelectedPath(intendedPath ?? existingPath ?? null);
       }
+      // Uma leitura que deu certo tira o aviso de uma leitura anterior que
+      // falhou (outro caminho no endereço relê); os outros erros ficam.
+      const readMessage = t("onboarding.errorProfileLoad");
+      setError((current) => (current === readMessage ? "" : current));
+      setReadError("");
       if (afterRetry) pageHeadingRef.current?.focus();
     } catch {
       if (generation !== loadGeneration.current) return;
@@ -251,8 +256,11 @@ export function OnboardingChoice() {
     }
   }
 
-  // Volta à espera da entrada (nada clicável) e relê o perfil uma vez. Só é
-  // alcançável no passo 0: qualquer "Continue" limpa o aviso antes de avançar.
+  // Volta à espera da entrada (nada clicável) e relê o perfil uma vez. O passo
+  // não muda, como em toda leitura desta tela. O aviso costuma estar no passo
+  // 0 (o "Continue" o limpa, e o "Finish" sem perfil lido volta para lá), mas
+  // uma releitura que falha depois de o caminho do endereço mudar o mostra no
+  // passo em que a pessoa está.
   function retryLoad() {
     const authedUser = authedUserRef.current;
     if (!authedUser) return;
