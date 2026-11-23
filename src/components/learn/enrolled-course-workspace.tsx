@@ -789,7 +789,7 @@ export function EnrolledCourseWorkspace({
   const upcomingEvents = liveState.events.filter((event) =>
     event.status === "cancelled"
       ? isCancelledEventShown(event.startsAt, liveState.now)
-      : getEventLiveState(event.startsAt, liveState.now) !== "over",
+      : getEventLiveState(event.startsAt, liveState.now, event.type) !== "over",
   );
 
   // LESSON_STARTED — fires when the learner navigates to a lesson card.
@@ -1783,7 +1783,7 @@ function CourseEventsAgenda({
   const clock = useNow();
   const panelRef = useRef<HTMLElement>(null);
   const upcoming = listed.filter(
-    (event) => event.status === "cancelled" || getEventLiveState(event.startsAt, clock) !== "over",
+    (event) => event.status === "cancelled" || getEventLiveState(event.startsAt, clock, event.type) !== "over",
   );
 
   // now = 0: a primeira leitura ainda não voltou. Não dá para dizer "nenhuma".
@@ -1831,12 +1831,16 @@ function CourseEventsAgenda({
       </div>
       <ul className="mt-4 grid gap-3">
         {upcoming.map((event) => {
-          const state = getEventLiveState(event.startsAt, clock);
+          // Prazo nunca fica "ao vivo" nem "Join now" (getEventLiveState):
+          // aparece como data de entrega, com "Open link".
+          const isDeadline = event.type === "deadline";
+          const state = getEventLiveState(event.startsAt, clock, event.type);
           const isLiveNow = state === "live";
           // De 15 min antes em diante, o botão de entrar ganha destaque.
           const isJoinTime = isLiveNow || state === "startingSoon";
           const isCancelled = event.status === "cancelled";
-          const when = formatEventDateTime(event.startsAt, locale, t("platform.events.datePending"));
+          const date = formatEventDateTime(event.startsAt, locale, t("platform.events.datePending"));
+          const when = isDeadline ? t("platform.events.dueBy").replace("{when}", () => date) : date;
           const updatedAt = isCancelled ? null : getEventUpdatedAt(event);
           const joinUrl = isValidExternalEventUrl(event.externalUrl)
             ? event.externalUrl
@@ -1883,7 +1887,7 @@ function CourseEventsAgenda({
                   className={`${isJoinTime ? "button-accent" : "button-outline"} inline-flex items-center gap-2 px-5 py-2.5 text-sm`}
                 >
                   <PlayCircle size={16} aria-hidden />
-                  {isJoinTime ? t("learnWave2.agenda.join") : t("learnWave2.agenda.open")}
+                  {t(isDeadline ? "platform.events.openLink" : isJoinTime ? "learnWave2.agenda.join" : "learnWave2.agenda.open")}
                 </a>
               ) : (
                 <span className="text-xs font-semibold text-[var(--color-ink-soft)]">

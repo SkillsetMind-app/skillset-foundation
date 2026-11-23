@@ -9,6 +9,7 @@ import {
   buildGoogleCalendarUrl,
   CALENDAR_EVENT_MINUTES,
   getEventLiveState,
+  pickClosestEvent,
   type CourseEvent,
   type CourseEventType,
 } from "@/domain/course-event";
@@ -41,7 +42,8 @@ function downloadText(content: string, filename: string, type: string) {
   document.body.append(anchor);
   anchor.click();
   anchor.remove();
-  URL.revokeObjectURL(url);
+  // No iPad o download começa depois do clique: revogar na hora cancelava.
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 /** "Add to Google Calendar" e "Download .ics". `joinUrl` só para quem pode ver o link. */
@@ -94,11 +96,16 @@ export function EventCalendarActions({ event, joinUrl }: { event: CourseEvent; j
 export function ClassroomLiveStrip({ events }: { events: CourseEvent[] }) {
   const { t } = useTranslation();
   const now = useNow();
-  const session = events.find((event) => {
-    if (event.status !== "scheduled" || event.type === "deadline") return false;
-    const state = getEventLiveState(event.startsAt, now);
-    return state === "startingSoon" || state === "live";
-  });
+  // Duas sessões perto uma da outra: a de início mais perto de agora (a das
+  // 7:30 às 7:20, não o webinar das 6 que ainda conta como "ao vivo").
+  const session = pickClosestEvent(
+    events.filter((event) => {
+      if (event.status !== "scheduled" || event.type === "deadline") return false;
+      const state = getEventLiveState(event.startsAt, now);
+      return state === "startingSoon" || state === "live";
+    }),
+    now,
+  );
   const live = session ? getEventLiveState(session.startsAt, now) === "live" : false;
   // O título por último: um "{count}" dentro dele fica literal.
   const minutes = session ? Math.max(1, Math.ceil((Date.parse(session.startsAt) - now) / 60_000)) : 0;
@@ -120,10 +127,13 @@ export function ClassroomLiveStrip({ events }: { events: CourseEvent[] }) {
             <span className="min-w-0">{visible}</span>
           </p>
           {joinUrl ? (
+            // O título visível fica fora da árvore de acessibilidade: o nome do
+            // link leva o título, senão o leitor de tela ouvia só "Join".
             <a
               href={joinUrl}
               target="_blank"
               rel="noopener noreferrer"
+              aria-label={t("learnWave2.agenda.stripJoinLabel").replace("{title}", () => session.title)}
               className="button-solid inline-flex items-center px-4 text-sm"
             >
               {t("learnWave2.agenda.stripJoin")}

@@ -580,8 +580,9 @@ describe("TeacherEventStudio", () => {
       {
         trigger: "Cancel session", title: "Cancel this session?", confirm: "Cancel session", action: cancelCourseEvent,
         // A frase diz o que e verdade: o aluno ve a sessao marcada como
-        // cancelada por uma semana, e ninguem e avisado sozinho.
-        sentence: "Cancel \"Live $& session\"? Learners see it marked as cancelled in their agenda for a week. They are not notified automatically, so let them know.", notice: "Session cancelled.",
+        // cancelada, na agenda e na aba da sala, ate uma semana depois da data,
+        // e ninguem e avisado sozinho.
+        sentence: "Cancel \"Live $& session\"? Learners see it marked as cancelled in their live sessions agenda and in the course's Live sessions tab until a week after its date. They are not notified automatically, so let them know.", notice: "Session cancelled.",
       },
       {
         trigger: "Delete", title: "Delete this session?", confirm: "Delete session", action: deleteCourseEvent,

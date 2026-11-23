@@ -1293,7 +1293,9 @@
     "events": {
       "datePending": "Date pending",
       "linkUnavailable": "The join link has not been added yet. Contact your instructor.",
-      "deadlineNoLink": "This is a due date, not a meeting: there is nothing to join."
+      "deadlineNoLink": "This is a due date, not a meeting: there is nothing to join.",
+      "dueBy": "Due: {when}",
+      "openLink": "Open link"
     },
     "notifications": {
       "open": "Open notifications",
@@ -1781,7 +1783,7 @@
         "inMinutes": "Live in {count} min",
         "inHours": "Live in {count} h",
         "join": "Join",
-        "joinLater": "Join when it starts"
+        "joinLater": "The join link appears {minutes} minutes before the start."
       },
       "drawer": {
         "close": "Close",
@@ -2487,7 +2489,7 @@
       "tiles": {
         "upcomingHint": "Still ahead on the agenda",
         "pastHint": "Already happened",
-        "cancelledHint": "Called off — learners see it marked as cancelled for a week"
+        "cancelledHint": "Called off — learners see it marked as cancelled until a week after its date"
       },
       "emptyTitle": "No sessions in this view.",
       "emptyBody": "Nothing matches this filter and search. Schedule one and every learner enrolled in the course finds it in their own agenda.",
@@ -2510,7 +2512,7 @@
       "cancelSession": "Cancel session",
       "working": "Working...",
       "delete": "Delete",
-      "confirmCancel": "Cancel \"{title}\"? Learners see it marked as cancelled in their agenda for a week. They are not notified automatically, so let them know.",
+      "confirmCancel": "Cancel \"{title}\"? Learners see it marked as cancelled in their live sessions agenda and in the course's Live sessions tab until a week after its date. They are not notified automatically, so let them know.",
       "confirmDelete": "Permanently delete \"{title}\"? This cannot be undone.",
       "deleteGoing": "{count} people said they will attend. Deleting erases their answers and nobody is notified. Cancel session keeps the record instead.",
       "deleteGoingOne": "1 person said they will attend. Deleting erases the answer and nobody is notified. Cancel session keeps the record instead.",
@@ -5846,6 +5848,7 @@
       "attending": "Going",
       "not_attending": "Not going",
       "held": "Held",
+      "duePassed": "Due date passed",
       "going": "You're going: {when}",
       "updated": "Updated {date}",
       "accessEndedTitle": "Your course access ended.",
@@ -5889,7 +5892,8 @@
       "stripLive": "Live now: {title}",
       "stripSoon": "Starts in {count} min: {title}",
       "stripSoonAnnounce": "Starting soon: {title}",
-      "stripJoin": "Join"
+      "stripJoin": "Join",
+      "stripJoinLabel": "Join: {title}"
     },
     "calendar": {
       "google": "Add to Google Calendar",

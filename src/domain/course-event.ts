@@ -225,12 +225,34 @@ export const EVENT_LIVE_WINDOW_MS = 3 * 3_600_000;
 export type EventLiveState = "upcoming" | "startingSoon" | "live" | "over";
 
 // Data invalida fica "upcoming": a sessao continua na lista com "Date pending"
-// em vez de sumir.
-export function getEventLiveState(startsAt: string, now: number): EventLiveState {
+// em vez de sumir. Prazo (deadline) nao e reuniao: nunca "comecando" nem "ao
+// vivo"; vale ate a hora do prazo e depois passou.
+export function getEventLiveState(startsAt: string, now: number, type?: CourseEventType): EventLiveState {
   const start = Date.parse(startsAt);
-  if (!Number.isFinite(start) || now < start - EVENT_STARTING_SOON_MS) return "upcoming";
+  if (!Number.isFinite(start)) return "upcoming";
+  if (type === "deadline") return now < start ? "upcoming" : "over";
+  if (now < start - EVENT_STARTING_SOON_MS) return "upcoming";
   if (now < start) return "startingSoon";
   return now < start + EVENT_LIVE_WINDOW_MS ? "live" : "over";
+}
+
+// Entre as sessoes na janela, a de inicio mais perto de agora; no empate, a que
+// ainda nao comecou. A mais antiga ficava "ao vivo" por 3 h e escondia a
+// seguinte: as 7:20 a faixa abria a sala do webinar das 6, nao a das 7:30.
+export function pickClosestEvent<T extends Pick<CourseEvent, "startsAt">>(events: T[], now: number): T | null {
+  let best: T | null = null;
+  let bestStart = 0;
+  for (const event of events) {
+    const start = Date.parse(event.startsAt);
+    if (!Number.isFinite(start)) continue;
+    const distance = Math.abs(start - now);
+    const bestDistance = Math.abs(bestStart - now);
+    if (!best || distance < bestDistance || (distance === bestDistance && start > bestStart)) {
+      best = event;
+      bestStart = start;
+    }
+  }
+  return best;
 }
 
 // Cancelada continua a vista, marcada, ate 7 dias depois da hora marcada: quem
@@ -253,7 +275,7 @@ export function getEventUpdatedAt(event: Pick<CourseEvent, "createdAt" | "update
 // Sem hora de fim, a entrada do calendario assume 60 min (a tela diz isso).
 export const CALENDAR_EVENT_MINUTES = 60;
 
-type CalendarEvent = Pick<CourseEvent, "id" | "title" | "description" | "courseTitle" | "startsAt">;
+type CalendarEvent = Pick<CourseEvent, "id" | "title" | "description" | "courseTitle" | "startsAt" | "createdAt" | "updatedAt">;
 
 // 2026-11-25T21:00:00.000Z -> 20261125T210000Z (UTC, como o Google e o .ics pedem).
 function calendarStamp(ms: number): string {
@@ -295,9 +317,9 @@ export function buildGoogleCalendarUrl(event: CalendarEvent, joinUrl: string | n
 }
 
 // Texto do iCalendar (RFC 5545): barra, ponto e virgula, virgula e quebra de
-// linha escapados; acentos seguem como UTF-8.
+// linha (CRLF, LF ou um CR sozinho) escapados; acentos seguem como UTF-8.
 function icsText(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+  return value.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r\n|\r|\n/g, "\\n");
 }
 
 // Linha com mais de 75 bytes dobra (RFC 5545 3.1), sem partir um caractere.
@@ -320,11 +342,17 @@ function foldIcsLine(line: string): string {
   return parts.join("\r\n");
 }
 
-// O arquivo .ics de uma sessao. UID estavel (o mesmo arquivo baixado duas
-// vezes atualiza a mesma entrada); `now` e o carimbo DTSTAMP. Data invalida: null.
+// O arquivo .ics de uma sessao. UID estavel e SEQUENCE que cresce a cada
+// edicao (segundos entre criar e a ultima mudanca; 0 se nunca mudou): baixado
+// de novo depois de remarcar, o calendario troca a entrada em vez de duplicar.
+// `now` e o carimbo DTSTAMP. Data invalida: null.
 export function buildEventIcs(event: CalendarEvent, joinUrl: string | null, now: number): string | null {
   const details = calendarDetails(event, joinUrl);
   if (!details) return null;
+  const created = Date.parse(String(event.createdAt ?? ""));
+  const updated = Date.parse(String(event.updatedAt ?? ""));
+  const edited = Number.isFinite(created) && Number.isFinite(updated);
+  const sequence = edited ? Math.max(0, Math.floor((updated - created) / 1000)) : 0;
   return [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
@@ -333,7 +361,9 @@ export function buildEventIcs(event: CalendarEvent, joinUrl: string | null, now:
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",
     `UID:course-event-${event.id}@skillsetmind.com`,
+    `SEQUENCE:${sequence}`,
     `DTSTAMP:${calendarStamp(now)}`,
+    ...(Number.isFinite(updated) ? [`LAST-MODIFIED:${calendarStamp(updated)}`] : []),
     `DTSTART:${details.start}`,
     `DTEND:${details.end}`,
     `SUMMARY:${icsText(event.title)}`,

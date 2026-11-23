@@ -1107,7 +1107,8 @@ describe("sessoes ao vivo na sala", () => {
 
     expect(screen.getByText("Starts in 10 min: Live Q&A")).toBeInTheDocument();
     expect(status("Starting soon: Live Q&A")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Join" })).toHaveAttribute("href", "https://meet.example.com/live");
+    // O nome do link leva o titulo (a linha visivel fica fora da arvore).
+    expect(screen.getByRole("link", { name: "Join: Live Q&A" })).toHaveAttribute("href", "https://meet.example.com/live");
 
     // A contagem anda; o aviso do leitor de tela nao.
     act(() => vi.advanceTimersByTime(60_000));
@@ -1116,7 +1117,49 @@ describe("sessoes ao vivo na sala", () => {
 
     act(() => vi.advanceTimersByTime(10 * 60_000));
     expect(status("Live now: Live Q&A")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Join" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Join: Live Q&A" })).toBeInTheDocument();
+  });
+
+  // Webinar as 6:00 e plantao as 7:30: as 7:20 a faixa abria a sala do webinar
+  // (o primeiro da lista ainda "ao vivo"); agora vale a de inicio mais perto.
+  it.each([
+    ["7:20", 80, "Starts in 10 min: Office hours", "https://meet.example.com/office"],
+    ["6:10", 10, "Live now: Webinar", "https://meet.example.com/webinar"],
+  ])("duas sessoes a 90 min, as %s: a faixa mostra a mais perto de agora", (_label, offset, text, href) => {
+    const webinarStart = NOW - offset * 60_000;
+    vi.mocked(subscribeToCourseEvents).mockImplementation((_courseId, onData) => {
+      onData([
+        { ...liveEvent(new Date(webinarStart).toISOString()), id: "webinar", title: "Webinar", externalUrl: "https://meet.example.com/webinar" },
+        { ...liveEvent(new Date(webinarStart + 90 * 60_000).toISOString()), id: "office", title: "Office hours", externalUrl: "https://meet.example.com/office" },
+      ]);
+      return unsubscribable();
+    });
+    renderClassroom("lesson=l2");
+
+    // A linha visível (ao vivo, ela e o aviso têm o mesmo texto).
+    expect(screen.getAllByText(text).some((element) => element.getAttribute("role") !== "status")).toBe(true);
+    const title = text.split(": ")[1];
+    expect(screen.getByRole("link", { name: `Join: ${title}` })).toHaveAttribute("href", href);
+  });
+
+  it("um prazo na aba das sessoes: data de entrega e 'Open link', nunca 'Join now'; vencido, sai", () => {
+    vi.mocked(subscribeToCourseEvents).mockImplementation((_courseId, onData) => {
+      onData([
+        { ...liveEvent(new Date(NOW + 5 * 60_000).toISOString()), id: "due", title: "Essay due", type: "deadline" },
+        { ...liveEvent(new Date(NOW - 30 * 60_000).toISOString()), id: "late", title: "Quiz due", type: "deadline" },
+      ]);
+      return unsubscribable();
+    });
+    renderClassroom("lesson=l2", [], "lives");
+
+    const due = screen.getByText("Essay due").closest("li") as HTMLElement;
+    expect(within(due).getByText(/^Due: /)).toBeInTheDocument();
+    expect(within(due).getByRole("link", { name: "Open link" })).toBeInTheDocument();
+    expect(within(due).queryByText("Happening now")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Join now" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Quiz due")).not.toBeInTheDocument();
+    // Prazo nao vira faixa "ao vivo".
+    expect(screen.queryByText(/Starts in|Live now/)).not.toBeInTheDocument();
   });
 
   it("a faixa tambem aparece nas outras abas; sessao longe nao mostra faixa", () => {

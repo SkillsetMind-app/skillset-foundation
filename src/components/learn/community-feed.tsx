@@ -28,7 +28,13 @@ import {
   type CommunityFeedFilter,
 } from "@/domain/community-feed";
 import type { CommunityComment, CommunityPost } from "@/domain/community-post";
-import { formatEventDateTime, getEventLiveState, type CourseEvent } from "@/domain/course-event";
+import {
+  EVENT_STARTING_SOON_MS,
+  formatEventDateTime,
+  getEventLiveState,
+  pickClosestEvent,
+  type CourseEvent,
+} from "@/domain/course-event";
 import { noJoinLinkKey } from "@/components/learn/live-session-parts";
 import type { Enrollment } from "@/domain/enrollment";
 import { getSafeExternalUrl } from "@/domain/external-url";
@@ -1104,21 +1110,26 @@ function LiveCard({ live, now, locale }: { live: CourseEvent; now: number; local
         </a>
       ) : (
         <p className="mt-3 text-xs text-[var(--color-ink-muted)]">
-          {t(safeJoinUrl ? "learn.community.live.joinLater" : noJoinLinkKey(live.type))}
+          {safeJoinUrl
+            ? t("learn.community.live.joinLater").replace("{minutes}", () => String(EVENT_STARTING_SOON_MS / 60_000))
+            : t(noJoinLinkKey(live.type))}
         </p>
       )}
     </section>
   );
 }
 
+// A sessão de início mais perto de agora (pickClosestEvent): a mais antiga
+// seguia "ao vivo" por 3 h e escondia a seguinte. Prazo não é live: fica fora.
 function pickNextLive(events: CourseEvent[], now: number): CourseEvent | null {
-  return (
-    events
-      .filter((event) => {
-        const startsAt = Date.parse(event.startsAt);
-        return startsAt <= now + LIVE_SOON_WINDOW_MS && getEventLiveState(event.startsAt, now) !== "over";
-      })
-      .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))[0] ?? null
+  return pickClosestEvent(
+    events.filter((event) => {
+      const startsAt = Date.parse(event.startsAt);
+      return event.type !== "deadline"
+        && startsAt <= now + LIVE_SOON_WINDOW_MS
+        && getEventLiveState(event.startsAt, now) !== "over";
+    }),
+    now,
   );
 }
 

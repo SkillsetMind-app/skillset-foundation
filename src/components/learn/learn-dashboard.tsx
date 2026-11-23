@@ -207,11 +207,16 @@ export function LearnDashboard() {
   }, [enrollments]);
 
   // A live fica até acabar (a janela comum de course-event.ts). Antes ela
-  // saía do painel no minuto em que começava, levando o "Join" junto.
+  // saía do painel no minuto em que começava, levando o "Join" junto. O prazo
+  // sai na hora em que vence e nunca fica "Happening now".
   const upcomingEvents = useMemo(() => {
     return Object.values(eventBuckets)
       .flat()
-      .map((event) => ({ event, startsAt: Date.parse(event.startsAt), state: getEventLiveState(event.startsAt, now) }))
+      .map((event) => ({
+        event,
+        startsAt: Date.parse(event.startsAt),
+        state: getEventLiveState(event.startsAt, now, event.type),
+      }))
       .filter(({ startsAt, state }) => Number.isFinite(startsAt) && state !== "over")
       .sort((left, right) => left.startsAt - right.startsAt)
       .map(({ event, startsAt, state }) => ({
@@ -558,7 +563,11 @@ export function LearnDashboard() {
                       </p>
                     ) : null}
                     <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--color-primary)]">
-                      {formatEventDateTime(event.startsAt, locale, t("platform.events.datePending"))}
+                      {event.type === "deadline"
+                        ? t("platform.events.dueBy").replace("{when}", () =>
+                            formatEventDateTime(event.startsAt, locale, t("platform.events.datePending")),
+                          )
+                        : formatEventDateTime(event.startsAt, locale, t("platform.events.datePending"))}
                     </p>
                     <p className="truncate text-sm font-semibold text-[var(--color-ink)]">
                       {event.title}
@@ -574,7 +583,7 @@ export function LearnDashboard() {
                       rel="noreferrer"
                       className="button-solid px-4 text-sm"
                     >
-                      {t("learn.dashboard.joinLive")}
+                      {t(event.type === "deadline" ? "platform.events.openLink" : "learn.dashboard.joinLive")}
                     </a>
                   ) : (
                     <span className="text-xs text-[var(--color-ink-soft)]">

@@ -142,7 +142,8 @@ export function LearnEventsHub() {
   const { upcoming, past } = useMemo(() => {
     const split = { upcoming: [] as CourseEvent[], past: [] as CourseEvent[] };
     for (const event of events) {
-      (getEventLiveState(event.startsAt, now) === "over" ? split.past : split.upcoming).push(event);
+      // O prazo passa para "Past" na hora em que vence, não 3 h depois.
+      (getEventLiveState(event.startsAt, now, event.type) === "over" ? split.past : split.upcoming).push(event);
     }
     split.past.reverse();
     return split;
@@ -296,6 +297,9 @@ function LearnerEventCard({
   // banco nem aceita mudar a resposta de uma sessão cancelada).
   const isCancelled = event.status === "cancelled";
   const isClosed = isPast || isCancelled;
+  // Prazo não é reunião: "Due: <data>", "Open link" e, vencido, "Due date
+  // passed" (nunca "Happening now" nem "Join").
+  const isDeadline = event.type === "deadline";
   const [rsvp, setRsvp] = useState<CourseEventRsvp | null>(null);
   const [isLoadingRsvp, setIsLoadingRsvp] = useState(true);
   // Qual resposta está sendo salva: o "Saving..." aparece no botão tocado
@@ -359,8 +363,8 @@ function LearnerEventCard({
   const statusKey = isCancelled
     ? "creatorPanel.events.status.cancelled"
     : isPast
-      ? "learnWave2.eventsHub.held"
-      : getEventLiveState(event.startsAt, now) === "live"
+      ? isDeadline ? "learnWave2.eventsHub.duePassed" : "learnWave2.eventsHub.held"
+      : getEventLiveState(event.startsAt, now, event.type) === "live"
         ? "learnWave2.agenda.now"
         : "creatorPanel.events.status.scheduled";
   const updatedAt = isCancelled ? null : getEventUpdatedAt(event);
@@ -389,7 +393,11 @@ function LearnerEventCard({
       <p className="mt-3 text-sm text-[var(--color-ink-soft)]">
         <span className="font-semibold text-[var(--color-ink)]">{event.courseTitle}</span>
         {" · "}
-        {isCancelled ? <s>{when}</s> : <span>{when}</span>}
+        {isCancelled ? (
+          <s>{when}</s>
+        ) : (
+          <span>{isDeadline ? t("platform.events.dueBy").replace("{when}", () => when) : when}</span>
+        )}
       </p>
       {updatedAt ? (
         <p className="mt-1 text-xs font-semibold text-[var(--color-ink-soft)]">
@@ -469,7 +477,7 @@ function LearnerEventCard({
           rel="noreferrer noopener"
           className="button-solid mt-5 inline-flex px-4 py-2.5 text-sm"
         >
-          {t("learnWave2.eventsHub.join")}
+          {t(isDeadline ? "platform.events.openLink" : "learnWave2.eventsHub.join")}
         </a>
       ) : (
         <p className="mt-5 text-sm text-[var(--color-ink-soft)]">

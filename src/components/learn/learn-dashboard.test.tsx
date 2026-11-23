@@ -652,6 +652,22 @@ describe("LearnDashboard", () => {
     expect(lives).not.toHaveTextContent("The join link has not been added yet.");
   });
 
+  // Prazo nao e live: nada de "Happening now" por 3 h depois de vencer.
+  it("um prazo com link: 'Due:' e 'Open link'; vencido, sai do painel sem 'Happening now'", async () => {
+    fixtures.events = [
+      { ...fixtures.liveEvent, id: "due", title: "Essay due", type: "deadline" },
+      { ...fixtures.liveEvent, id: "late", title: "Quiz due", type: "deadline", startsAt: new Date(Date.now() - 30 * 60_000).toISOString() },
+    ];
+    render(<LearnDashboard />);
+
+    const lives = await screen.findByRole("region", { name: "Upcoming lives" });
+    expect(within(lives).getByText(`Due: ${formatEventDateTime(fixtures.liveEvent.startsAt, "en")}`)).toBeInTheDocument();
+    expect(within(lives).getByRole("link", { name: "Open link" })).toHaveAttribute("href", "https://meet.example.com/live");
+    expect(within(lives).queryByRole("link", { name: "Join" })).not.toBeInTheDocument();
+    expect(within(lives).queryByText("Quiz due")).not.toBeInTheDocument();
+    expect(within(lives).queryByText("Happening now")).not.toBeInTheDocument();
+  });
+
   it("preserves a valid HTTP upcoming link and trims surrounding whitespace", async () => {
     fixtures.events = [{ ...fixtures.liveEvent, externalUrl: "  http://example.com/live  " }];
     render(<LearnDashboard />);

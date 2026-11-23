@@ -181,8 +181,8 @@ describe("agenda de eventos no padrao da casa", () => {
     expect(tile("Still ahead on the agenda").getByText("2")).toBeInTheDocument();
     expect(tile("Already happened").getByText("1")).toBeInTheDocument();
     // A frase antiga prometia que quem confirmou "viu" o cancelamento; hoje o
-    // aluno ve a sessao marcada como cancelada por uma semana.
-    expect(tile("Called off — learners see it marked as cancelled for a week").getByText("1")).toBeInTheDocument();
+    // aluno ve a sessao marcada como cancelada ate uma semana depois da data.
+    expect(tile("Called off — learners see it marked as cancelled until a week after its date").getByText("1")).toBeInTheDocument();
   });
 
   // A leitura vem da mais antiga para a mais nova; no passado, o que importa

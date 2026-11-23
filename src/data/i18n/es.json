@@ -1293,7 +1293,9 @@
     "events": {
       "datePending": "Fecha pendiente",
       "linkUnavailable": "Todavía no se agregó el enlace para entrar. Contacta a tu instructor.",
-      "deadlineNoLink": "Es una fecha límite, no una reunión: no hay enlace para entrar."
+      "deadlineNoLink": "Es una fecha límite, no una reunión: no hay enlace para entrar.",
+      "dueBy": "Vence: {when}",
+      "openLink": "Abrir enlace"
     },
     "notifications": {
       "open": "Abrir notificaciones",
@@ -1781,7 +1783,7 @@
         "inMinutes": "En vivo en {count} min",
         "inHours": "En vivo en {count} h",
         "join": "Unirse",
-        "joinLater": "Únete cuando empiece"
+        "joinLater": "El enlace para entrar aparece {minutes} minutos antes del inicio."
       },
       "drawer": {
         "close": "Cerrar",
@@ -2487,7 +2489,7 @@
       "tiles": {
         "upcomingHint": "Todavía por venir en la agenda",
         "pastHint": "Ya sucedieron",
-        "cancelledHint": "Suspendidas: los alumnos las ven marcadas como canceladas durante una semana"
+        "cancelledHint": "Suspendidas: los alumnos las ven marcadas como canceladas hasta una semana después de su fecha"
       },
       "emptyTitle": "Ninguna sesión en esta vista.",
       "emptyBody": "Nada coincide con este filtro y esta búsqueda. Programa una y cada persona inscrita en el curso la encuentra en su propia agenda.",
@@ -2510,7 +2512,7 @@
       "cancelSession": "Cancelar sesión",
       "working": "Trabajando...",
       "delete": "Eliminar",
-      "confirmCancel": "¿Cancelar \"{title}\"? Los alumnos la ven marcada como cancelada en su agenda durante una semana. No reciben ningún aviso automático, así que avísales.",
+      "confirmCancel": "¿Cancelar \"{title}\"? Los alumnos la ven marcada como cancelada en su agenda de sesiones en vivo y en la pestaña Sesiones en vivo del curso hasta una semana después de su fecha. No reciben ningún aviso automático, así que avísales.",
       "confirmDelete": "¿Eliminar \"{title}\" para siempre? Esto no se puede deshacer.",
       "deleteGoing": "{count} personas dijeron que asistirán. Eliminar borra sus respuestas y nadie recibe aviso. Cancelar sesión conserva el registro.",
       "deleteGoingOne": "1 persona dijo que asistirá. Eliminar borra su respuesta y nadie recibe aviso. Cancelar sesión conserva el registro.",
@@ -5846,6 +5848,7 @@
       "attending": "Asistirás",
       "not_attending": "No asistirás",
       "held": "Realizada",
+      "duePassed": "Plazo vencido",
       "going": "Vas a asistir: {when}",
       "updated": "Actualizada: {date}",
       "accessEndedTitle": "Tu acceso al curso terminó.",
@@ -5889,7 +5892,8 @@
       "stripLive": "En vivo ahora: {title}",
       "stripSoon": "Empieza en {count} min: {title}",
       "stripSoonAnnounce": "Está por empezar: {title}",
-      "stripJoin": "Entrar"
+      "stripJoin": "Entrar",
+      "stripJoinLabel": "Entrar: {title}"
     },
     "calendar": {
       "google": "Agregar a Google Calendar",
