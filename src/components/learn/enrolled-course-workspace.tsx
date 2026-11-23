@@ -56,8 +56,17 @@ import { getCourseAssetKindLabel } from "@/lib/i18n/course-assets";
 import type { CourseEvent } from "@/domain/course-event";
 import {
   formatEventDateTime,
+  getEventLiveState,
+  getEventUpdatedAt,
+  isCancelledEventShown,
   isValidExternalEventUrl,
 } from "@/domain/course-event";
+import {
+  ClassroomLiveStrip,
+  EventCalendarActions,
+  noJoinLinkKey,
+  useNow,
+} from "@/components/learn/live-session-parts";
 import {
   formatUnlockDate,
   getLessonUnlockState,
@@ -745,27 +754,42 @@ export function EnrolledCourseWorkspace({
   // aparecia sempre e, sem sessão marcada, abria uma página vazia. Aqui em
   // cima ela decide se a aba existe. "Agora" é amostrado quando a lista chega
   // (o render tem de ser puro).
-  const [liveState, setLiveState] = useState<{ events: CourseEvent[]; now: number }>({
+  const [liveState, setLiveState] = useState<{ events: CourseEvent[]; now: number; failed: boolean }>({
     events: [],
     now: 0,
+    failed: false,
   });
+  const eventsSubscription = useRef<ReloadableSubscription | null>(null);
   // Só com matrícula: sem ela a sala não abre, e não há o que assinar.
   useEffect(() => {
     if (previewMode || !enrollmentId) {
       return;
     }
 
-    return subscribeToCourseEvents(
+    const current = subscribeToCourseEvents(
       course.id,
-      (events) => setLiveState({ events, now: Date.now() }),
-      // A agenda é acessória: com erro, fica vazia, sem aviso na sala.
-      () => setLiveState({ events: [], now: Date.now() }),
+      (events) => setLiveState({ events, now: Date.now(), failed: false }),
+      // A agenda é acessória: com erro, a sala abre igual, sem aviso. Só a aba
+      // das sessões diz que falhou e oferece "Try again" (nunca "nenhuma
+      // sessão"); o que já tinha chegado fica.
+      () => setLiveState((state) => ({ events: state.events, now: Date.now(), failed: true })),
+      // A cancelada aparece marcada na aba das sessões, em vez de sumir.
+      { includeCancelled: true },
     );
+    eventsSubscription.current = current;
+    return () => {
+      eventsSubscription.current = null;
+      // `?.`: antes o efeito devolvia a inscrição direto, e um dublê de teste
+      // sem retorno passava sem erro.
+      current?.();
+    };
   }, [course.id, enrollmentId, previewMode]);
-  // Ficam à vista até 2h depois do início: dá para entrar numa live que já
-  // começou.
-  const upcomingEvents = liveState.events.filter(
-    (event) => Date.parse(event.startsAt) > liveState.now - 2 * 60 * 60 * 1000,
+  // Ficam à vista enquanto não acabaram (a janela comum de course-event.ts);
+  // a cancelada, por 7 dias depois da hora marcada.
+  const upcomingEvents = liveState.events.filter((event) =>
+    event.status === "cancelled"
+      ? isCancelledEventShown(event.startsAt, liveState.now)
+      : getEventLiveState(event.startsAt, liveState.now, event.type) !== "over",
   );
 
   // LESSON_STARTED — fires when the learner navigates to a lesson card.
@@ -1308,7 +1332,9 @@ export function EnrolledCourseWorkspace({
   // gravacao (a aula que o professor acrescentar), se houver.
   const sessionAlreadyHappened =
     productFormat === "live_event"
-    && liveState.events.some((event) => Date.parse(event.startsAt) <= liveState.now);
+    && liveState.events.some(
+      (event) => event.status !== "cancelled" && Date.parse(event.startsAt) <= liveState.now,
+    );
 
   // As abas que este curso tem. Materiais só quando os arquivos do curso são
   // lidos (cursos publicados por professor); lives, comunidade e mensagens não
@@ -1440,6 +1466,11 @@ export function EnrolledCourseWorkspace({
           isCourseHome && !previewMode && totalLessonCount > 0 ? null : certificateHref
         }
       />
+
+      {/* Sessão começando ou ao vivo: a faixa fica em TODAS as abas. Ao lado
+          das leituras, não dentro delas: com a agenda falhando, a sala abre
+          igual (a faixa usa o que já chegou). */}
+      {previewMode ? null : <ClassroomLiveStrip events={liveState.events} />}
 
       {/* Um item so da grade para a aba aberta: na troca de aba ele entra
           subindo 8px (motion-panel-in); na carga da pagina, parado. A classe
@@ -1679,6 +1710,8 @@ export function EnrolledCourseWorkspace({
         <CourseEventsAgenda
           upcoming={upcomingEvents}
           now={liveState.now}
+          failed={liveState.failed}
+          onRetry={() => eventsSubscription.current?.reload?.()}
           alreadyHappened={sessionAlreadyHappened}
           replayHref={allLessons[0] ? classroomTabHref(basePath, "lesson", allLessons[0].id) : null}
         />
@@ -1730,21 +1763,44 @@ export function EnrolledCourseWorkspace({
 // teacher-event-studio writes). The workspace subscribes and only lists the tab
 // when there is a session; opened by its address with none, it says so.
 function CourseEventsAgenda({
-  upcoming,
+  upcoming: listed,
   now,
+  failed = false,
+  onRetry,
   alreadyHappened = false,
   replayHref = null,
 }: {
   upcoming: CourseEvent[];
   now: number;
+  failed?: boolean;
+  onRetry?: () => Promise<unknown> | void;
   alreadyHappened?: boolean;
   replayHref?: string | null;
 }) {
   const { t, locale } = useTranslation();
+  // O relógio que anda: "Happening now" e o "Join now" aparecem na hora, sem
+  // recarregar (antes o "agora" parava na hora em que a lista chegou).
+  const clock = useNow();
+  const panelRef = useRef<HTMLElement>(null);
+  const upcoming = listed.filter(
+    (event) => event.status === "cancelled" || getEventLiveState(event.startsAt, clock, event.type) !== "over",
+  );
 
   // now = 0: a primeira leitura ainda não voltou. Não dá para dizer "nenhuma".
   if (now === 0) {
     return null;
+  }
+
+  // A leitura falhou: o erro e "Try again", nunca "nenhuma sessão marcada"
+  // (para quem comprou um evento ao vivo, a sessão é o produto inteiro).
+  if (failed) {
+    return (
+      <section ref={panelRef} tabIndex={-1} className="member-resource-panel">
+        <LoadErrorAlert focusRef={panelRef} onRetry={() => onRetry?.()}>
+          {t("learnWave2.agenda.loadError")}
+        </LoadErrorAlert>
+      </section>
+    );
   }
 
   if (upcoming.length === 0) {
@@ -1775,7 +1831,17 @@ function CourseEventsAgenda({
       </div>
       <ul className="mt-4 grid gap-3">
         {upcoming.map((event) => {
-          const isLiveNow = Date.parse(event.startsAt) <= now;
+          // Prazo nunca fica "ao vivo" nem "Join now" (getEventLiveState):
+          // aparece como data de entrega, com "Open link".
+          const isDeadline = event.type === "deadline";
+          const state = getEventLiveState(event.startsAt, clock, event.type);
+          const isLiveNow = state === "live";
+          // De 15 min antes em diante, o botão de entrar ganha destaque.
+          const isJoinTime = isLiveNow || state === "startingSoon";
+          const isCancelled = event.status === "cancelled";
+          const date = formatEventDateTime(event.startsAt, locale, t("platform.events.datePending"));
+          const when = isDeadline ? t("platform.events.dueBy").replace("{when}", () => date) : date;
+          const updatedAt = isCancelled ? null : getEventUpdatedAt(event);
           const joinUrl = isValidExternalEventUrl(event.externalUrl)
             ? event.externalUrl
             : null;
@@ -1790,7 +1856,9 @@ function CourseEventsAgenda({
                   <span className="member-meta-chip">
                     {t(`creatorPanel.events.type.${event.type}`)}
                   </span>
-                  {isLiveNow ? (
+                  {isCancelled ? (
+                    <span className="member-meta-chip">{t("creatorPanel.events.status.cancelled")}</span>
+                  ) : isLiveNow ? (
                     <span className="rounded-full bg-[rgba(178,34,52,0.1)] px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-accent-fg)]">
                       {t("learnWave2.agenda.now")}
                     </span>
@@ -1800,24 +1868,37 @@ function CourseEventsAgenda({
                   {event.title}
                 </p>
                 <p className="mt-1 text-xs font-semibold text-[var(--color-ink-soft)]">
-                  {formatEventDateTime(event.startsAt, locale, t("platform.events.datePending"))}
+                  {isCancelled ? <s>{when}</s> : when}
                 </p>
+                {updatedAt ? (
+                  <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
+                    {t("learnWave2.eventsHub.updated").replace("{date}", () =>
+                      formatEventDateTime(updatedAt, locale, t("platform.events.datePending")),
+                    )}
+                  </p>
+                ) : null}
               </div>
-              {joinUrl ? (
+              {/* Cancelada: sem link de entrar e sem calendário. */}
+              {isCancelled ? null : joinUrl ? (
                 <a
                   href={joinUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`${isLiveNow ? "button-accent" : "button-outline"} inline-flex items-center gap-2 px-5 py-2.5 text-sm`}
+                  className={`${isJoinTime ? "button-accent" : "button-outline"} inline-flex items-center gap-2 px-5 py-2.5 text-sm`}
                 >
                   <PlayCircle size={16} aria-hidden />
-                  {isLiveNow ? t("learnWave2.agenda.join") : t("learnWave2.agenda.open")}
+                  {t(isDeadline ? "platform.events.openLink" : isJoinTime ? "learnWave2.agenda.join" : "learnWave2.agenda.open")}
                 </a>
               ) : (
                 <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
-                  {t("learnWave2.agenda.soon")}
+                  {t(noJoinLinkKey(event.type))}
                 </span>
               )}
+              {!isCancelled && state === "upcoming" ? (
+                <div className="basis-full">
+                  <EventCalendarActions event={event} joinUrl={joinUrl} />
+                </div>
+              ) : null}
             </li>
           );
         })}

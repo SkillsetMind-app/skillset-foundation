@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CommunityFeed } from "@/components/learn/community-feed";
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import type { CommunityComment, CommunityPost } from "@/domain/community-post";
+import { formatEventDateTime } from "@/domain/course-event";
 import type { CommunitySpace } from "@/domain/learning";
 import type { Enrollment } from "@/domain/enrollment";
 import { createCommunityPost, createCommunityComment, createCommunityReport, deleteCommunityComment, deleteCommunityPost, setCommunityPostAcceptedAnswer, setCommunityPostPinned, subscribeToCommunityPosts } from "@/lib/data/community-posts";
@@ -716,10 +717,20 @@ describe("feed da comunidade (rodada 11)", () => {
 
     const live = screen.getByRole("region", { name: "Next live" });
     expect(live).toHaveTextContent("Live in 40 min");
-    expect(live).toHaveTextContent("Join when it starts");
+    expect(live).toHaveTextContent("The join link appears 15 minutes before the start.");
     expect(within(live).queryByRole("link", { name: "Join" })).toBeNull();
     expect(screen.getByText(/2 online/)).toBeInTheDocument();
     expect(screen.getByText("New here? Say hi 👋")).toBeInTheDocument();
+
+    // 10 min antes ja e "comecando": o link de entrar aparece, como nas
+    // outras telas (antes so depois do inicio). Data e fuso na frase comum.
+    await act(async () => {
+      vi.setSystemTime(NOW + 30 * 60_000);
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+    const soon = screen.getByRole("region", { name: "Next live" });
+    expect(within(soon).getByRole("link", { name: "Join" })).toHaveAttribute("href", "https://zoom.us/j/1");
+    expect(soon).toHaveTextContent(formatEventDateTime(new Date(NOW + 40 * 60_000).toISOString(), "en"));
 
     await act(async () => {
       vi.setSystemTime(NOW + 41 * 60_000);
@@ -728,6 +739,38 @@ describe("feed da comunidade (rodada 11)", () => {
     expect(within(screen.getByRole("region", { name: "Next live" })).getByRole("link", { name: "Join" })).toHaveAttribute(
       "href",
       "https://zoom.us/j/1",
+    );
+  });
+
+  // Webinar as 6:00 e plantao as 7:30 (90 min depois): o cartao mostra a de
+  // inicio mais perto de agora. A mais antiga ficava "ao vivo" por 3 h e
+  // escondia a seguinte. Prazo nao e live: fica fora do cartao.
+  it.each([
+    ["7:20", 80, "Office hours", "Live in 10 min"],
+    ["6:10", 10, "Webinar", "Live now"],
+  ])("duas sessoes a 90 min, as %s: o cartao mostra a mais perto de agora", async (_label, offset, title, chip) => {
+    await renderFeed();
+    const session = (id: string, name: string, minutes: number, type = "live_class") => ({
+      id, title: name, type, status: "scheduled", startsAt: new Date(NOW + minutes * 60_000).toISOString(),
+      externalUrl: `https://zoom.us/j/${id}`,
+    });
+    await act(async () => {
+      mocks.eventsCallback?.([
+        session("webinar", "Webinar", 0),
+        session("office", "Office hours", 90),
+        session("due", "Essay due", offset + 5, "deadline"),
+      ]);
+      vi.setSystemTime(NOW + offset * 60_000);
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+
+    const live = screen.getByRole("region", { name: "Next live" });
+    expect(live).toHaveTextContent(title);
+    expect(live).toHaveTextContent(chip);
+    expect(live).not.toHaveTextContent("Essay due");
+    expect(within(live).getByRole("link", { name: "Join" })).toHaveAttribute(
+      "href",
+      title === "Webinar" ? "https://zoom.us/j/webinar" : "https://zoom.us/j/office",
     );
   });
 
@@ -748,9 +791,9 @@ describe("feed da comunidade (rodada 11)", () => {
       const live = screen.getByRole("region", { name: "Next live" });
       expect(live).toHaveTextContent("Live Q&A");
       expect(within(live).queryByRole("link")).not.toBeInTheDocument();
-      expect(live).toHaveTextContent("Session link unavailable. Contact your instructor.");
+      expect(live).toHaveTextContent("The join link has not been added yet. Contact your instructor.");
       fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-      expect(live).toHaveTextContent("El enlace de la sesión no está disponible. Contacta a tu instructor.");
+      expect(live).toHaveTextContent("Todavía no se agregó el enlace para entrar. Contacta a tu instructor.");
     },
   );
 

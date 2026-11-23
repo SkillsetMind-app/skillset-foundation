@@ -722,6 +722,24 @@ describe.each(COMBOS)("comunidade da sala nas cores do curso — %s", (_name, va
   });
 });
 
+// A faixa "ao vivo" da sala (live-session-parts.tsx): fundo e borda no verde
+// remapeado pelo tema do CURSO, texto no --ma-ink, direto sobre o fundo da
+// sala (--ma-bg). Nas quatro misturas: texto a 4.5:1, borda a 3:1.
+describe.each(COMBOS)("faixa ao vivo da sala — %s", (_name, vars, courseTheme) => {
+  it("lê o texto sobre o verde e a borda se destaca do fundo da sala", () => {
+    const success = palette(`.member-classroom[data-members-theme="${courseTheme}"] [class*="var(--color-success-"]`);
+    expect(Object.keys(success).length, "remapeamento do verde não encontrado").toBeGreaterThan(0);
+    const merged = { ...vars, ...success };
+    const text = ratio("var(--ma-ink)", "var(--color-success-soft)", merged, "--ma-bg");
+    expect(text, "texto da faixa").not.toBeNull();
+    expect(text!).toBeGreaterThanOrEqual(4.5);
+    const border = ratio("var(--color-success-fg)", "var(--ma-bg)", merged, "--ma-bg");
+    expect(border!, "borda da faixa").toBeGreaterThanOrEqual(3);
+    const soft = ratio("var(--ma-ink-soft)", "var(--color-success-soft)", merged, "--ma-bg");
+    expect(soft!, "frase sem link na faixa").toBeGreaterThanOrEqual(4.5);
+  });
+});
+
 it("o feed e a gaveta da comunidade não pintam mais verde fixo", () => {
   for (const file of ["community-feed.tsx", "community-post-drawer.tsx"]) {
     const source = readFileSync(join(process.cwd(), "src/components/learn", file), "utf8");
