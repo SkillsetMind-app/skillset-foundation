@@ -740,6 +740,19 @@ describe.each(COMBOS)("faixa ao vivo da sala — %s", (_name, vars, courseTheme)
   });
 });
 
+// Links de destaque da área de membros (o "← Back to the area" da comunidade,
+// o link do início da área): agora que a cor pedida num <a> chega à tela, eles
+// pedem --ma-accent-ink. O --ma-accent é fundo de botão: 2,9:1 num curso escuro.
+describe.each(COMBOS)("link de destaque da área de membros — %s", (_name, vars) => {
+  it("--ma-accent-ink lê 4.5:1 no fundo e na superfície do curso", () => {
+    for (const background of ["var(--ma-bg)", "var(--ma-surface)"]) {
+      const contrast = ratio("var(--ma-accent-ink)", background, vars, "--ma-bg");
+      expect(contrast, `${background} must resolve`).not.toBeNull();
+      expect(contrast!, background).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});
+
 it("o feed e a gaveta da comunidade não pintam mais verde fixo", () => {
   for (const file of ["community-feed.tsx", "community-post-drawer.tsx"]) {
     const source = readFileSync(join(process.cwd(), "src/components/learn", file), "utf8");

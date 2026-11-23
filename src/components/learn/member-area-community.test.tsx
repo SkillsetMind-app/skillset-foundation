@@ -85,6 +85,15 @@ describe("MemberAreaCommunityView", () => {
     expect(mocks.getMemberAreaCommunity).toHaveBeenCalledTimes(2);
   });
 
+  // Com a regra de link do globals.css sem cor fora de camada, a cor pedida
+  // chega à tela: o --ma-accent (fundo de botão) dava 2,9:1 num curso escuro.
+  it("o link de volta pede o texto de destaque do curso, não o fundo de botão", async () => {
+    renderView();
+    const back = await screen.findByRole("link", { name: /Back to the area/ });
+    expect(back).toHaveClass("text-[var(--ma-accent-ink)]");
+    expect(back).not.toHaveClass("text-[var(--ma-accent)]");
+  });
+
   it("sem tema guardado: espera neutra e abre no claro padrão", async () => {
     renderView();
     expect(screen.getByTestId("shell")).not.toHaveAttribute("data-members-theme");

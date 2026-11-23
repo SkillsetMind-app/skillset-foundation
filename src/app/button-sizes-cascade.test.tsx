@@ -396,13 +396,45 @@ describe("tempo das transições (C-09)", () => {
   });
 });
 
-// `a { color: inherit; text-decoration: none; }` mora FORA de camada e vence
-// toda utility do Tailwind: um link que pede a cor de destaque herda a do pai
-// (o texto apagado em volta). Só o modificador `!` passa por cima.
+// A regra de link do globals.css já teve `color: inherit` FORA de camada: ela
+// vencia toda utility do Tailwind, e um link que pedia a cor de destaque saía
+// com a do pai (o texto apagado em volta). Só o `!` passava por cima. Hoje a
+// herança vem só do preflight (camada base) e a utility do link vale.
 describe("cor de link", () => {
-  it("num <a>, a utility de cor sem ! herda; com ! sai com a cor pedida", () => {
-    expect(resolve(css, mount("text-[var(--color-accent-fg)]", "a"), "color")).toBe("inherit");
+  it("num <a>, a utility de cor vale sem `!` (e com `!` também)", () => {
+    expect(resolve(css, mount("text-[var(--color-accent-fg)]", "a"), "color")).toBe("var(--color-accent-fg)");
     expect(resolve(css, mount("text-[var(--color-primary)]!", "a"), "color")).toBe("var(--color-primary)");
+  });
+
+  it("sem utility, o <a> herda a cor do pai pelo preflight", () => {
+    expect(resolve(css, mount("font-semibold", "a"), "color")).toBe("inherit");
+  });
+
+  it("um link vestido de botão guarda a cor do .button-*, com utility de cor ou sem", () => {
+    expect(resolve(css, mount("button-outline text-[var(--color-accent-fg)]", "a"), "color")).toBe(
+      "var(--color-primary)",
+    );
+    expect(resolve(css, mount("button-solid text-[var(--color-accent-fg)]", "a"), "color")).toBe("#ffffff");
+    expect(resolve(css, mount("button-danger text-[var(--color-accent-fg)]", "a"), "color")).toBe(
+      "var(--color-danger-fg)",
+    );
+  });
+
+  it("o globals.css não traz de volta uma cor fora de camada na regra do <a>", () => {
+    // Lido do fonte, sem compilar: qualquer `a`, `a:hover`, `a:visited`... sem
+    // @layer em volta que declare `color` reabre o defeito em todo link.
+    const source = postcss.parse(readFileSync(globalsPath, "utf8"));
+    const offenders: string[] = [];
+    source.walkRules((rule) => {
+      for (let parent = rule.parent; parent && parent.type !== "root"; parent = parent.parent) {
+        if (parent.type === "atrule" && (parent as postcss.AtRule).name === "layer") return;
+      }
+      if (!rule.selectors.some((selector) => /^a(:[\w-]+(\([^)]*\))?)*$/.test(selector.trim()))) return;
+      rule.walkDecls("color", (decl) => {
+        offenders.push(`${rule.selector} { color: ${decl.value} } (linha ${decl.source?.start?.line})`);
+      });
+    });
+    expect(offenders).toEqual([]);
   });
 });
 

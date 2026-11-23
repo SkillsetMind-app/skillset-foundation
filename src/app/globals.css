@@ -578,8 +578,12 @@ body {
   background: transparent;
 }
 
+/* Link sem cor própria aqui: o preflight do Tailwind já herda a cor do pai
+   DENTRO de `@layer base`. A mesma herança fora de camada vencia toda utility
+   num <a>/<Link>, e o link que pedia a cor de destaque saía com a do texto em
+   volta (cascade em button-sizes-cascade.test.tsx). O sublinhado continua
+   desligado aqui: ligar os `underline` mortos é outra decisão. */
 a {
-  color: inherit;
   text-decoration: none;
 }
 
