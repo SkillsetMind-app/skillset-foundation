@@ -1,6 +1,6 @@
 "use client";
 
-import { UploadCloud, X } from "lucide-react";
+import { UploadCloud } from "lucide-react";
 import { useId, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -77,12 +77,14 @@ export function LandingImageField({
       <span id={labelId} className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
         {label}
       </span>
+      {/* A prévia das capas do construtor: 200px, 16:9. Em largura total ela
+          era outro desenho de campo de imagem (B-05). */}
       {value ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={value}
           alt={t("teacherLanding.upload.previewAlt").replace("{label}", () => label)}
-          className="max-h-40 w-full rounded-md border border-[var(--color-line)] object-cover"
+          className="aspect-video w-full max-w-[200px] rounded-md border border-[var(--color-line)] object-cover"
         />
       ) : null}
       <input
@@ -100,20 +102,19 @@ export function LandingImageField({
           disabled={uploading}
           aria-describedby={rulesId}
           onClick={() => inputRef.current?.click()}
-          className="inline-flex min-h-11 w-fit items-center gap-2 rounded-md border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm font-semibold text-[var(--color-primary)] disabled:opacity-60"
+          className="inline-flex min-h-11 w-fit items-center gap-2 rounded-md border border-dashed border-[var(--color-line)] bg-white px-4 py-3 text-sm font-semibold text-[var(--color-primary)] transition-colors duration-[var(--duration-base)] ease-[var(--ease-standard)] enabled:hover:border-[var(--color-primary-light)] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {/* Rótulo fixo, como nas capas do construtor: o andamento é só a
               nota logo abaixo. */}
           <UploadCloud className="size-4" aria-hidden />
           {t("teacherLanding.upload.button")}
         </button>
-        {value ? (
+        {value && !uploading ? (
           <button
             type="button"
             onClick={() => onChange(null)}
-            className="inline-flex min-h-11 w-fit items-center gap-2 rounded-md border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm font-semibold text-[var(--color-danger-fg)]"
+            className="min-h-11 w-fit text-xs font-semibold text-[var(--color-danger-fg)] underline-offset-2 hover:underline"
           >
-            <X className="size-4" aria-hidden />
             {t("teacherLanding.upload.remove")}
           </button>
         ) : null}

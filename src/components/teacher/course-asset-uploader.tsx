@@ -223,7 +223,9 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             {t("creatorEditor.assets.label")}
           </p>
-          <h3 className="display-title mt-3 text-3xl text-[var(--color-primary)]">
+          {/* Título de seção da casa, não display de 30px: a biblioteca é uma
+              ferramenta embaixo do construtor, não o assunto da página. */}
+          <h3 className="mt-2 text-lg font-semibold text-[var(--color-ink)]">
             {t("creatorEditor.assets.title")}
           </h3>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">

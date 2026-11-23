@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -8,6 +8,7 @@ import { CourseShareLink } from "@/components/teacher/course-share-link";
 import { CurrencySelect } from "@/components/teacher/currency-select";
 import { SavedNote } from "@/components/teacher/save-status-line";
 import { InlineAlert } from "@/components/ui/inline-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import { isActivationRequiredError } from "@/domain/creator-verification";
 import { paymentChoiceOf, type CoursePricingShape } from "@/domain/product-pricing";
 import type { TeacherCoursePaymentType } from "@/domain/teacher-course";
@@ -115,6 +116,12 @@ export function CourseOffersPanel({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // Falha de LEITURA da lista, separada do erro de criar: com ela a tela não
+  // sabe se há preço, então não diz "nenhum preço" nem abre o formulário de
+  // criar (com a lista vazia ele gravaria outro preço principal), e oferece
+  // "Try again" no lugar da lista (F-11).
+  const [loadError, setLoadError] = useState("");
+  const headingRef = useRef<HTMLHeadingElement>(null);
   const [notice, setNotice] = useState("");
   const [name, setName] = useState(() =>
     t(
@@ -157,7 +164,7 @@ export function CourseOffersPanel({
   const hasOffers = !loading && offers.length > 0;
   const canAddPrice = paymentTypes.length > 0;
   // Sem nenhuma oferta o formulario segue aberto: vazio guiado bate tabela vazia.
-  const formOpen = canAddPrice && (creating || (!loading && offers.length === 0));
+  const formOpen = canAddPrice && !loadError && (creating || (!loading && offers.length === 0));
   // Sem preco principal, o checkout usa o primeiro preco ativo daqui
   // (resolveCoursePrice). Quem adiciona um preco a mais precisa saber disso.
   const hasMainPrice = offers.some((offer) => offer.isDefault && offer.active);
@@ -166,6 +173,7 @@ export function CourseOffersPanel({
   const reload = useCallback(async () => {
     setLoading(true);
     setError("");
+    setLoadError("");
     try {
       const res = await fetch(
         `/api/teach/offers?courseId=${encodeURIComponent(courseId)}`,
@@ -179,10 +187,10 @@ export function CourseOffersPanel({
       // A rota responde 200 com aviso quando não leu a lista: é falha de
       // leitura, não "nenhum preço" (e o aviso vinha em inglês, cru).
       if (data.warning) {
-        setError("creatorPanel.offers.loadError");
+        setLoadError("creatorPanel.offers.loadError");
       }
-    } catch (loadError) {
-      setError(offerErrorKey(loadError, "creatorPanel.offers.loadError"));
+    } catch (failure) {
+      setLoadError(offerErrorKey(failure, "creatorPanel.offers.loadError"));
       setOffers([]);
     } finally {
       setLoading(false);
@@ -252,14 +260,15 @@ export function CourseOffersPanel({
 
   return (
     <section aria-labelledby="course-offers-title">
-      <h2 id="course-offers-title" className="text-xl font-semibold text-[var(--color-ink)]">
+      {/* tabIndex -1: o "Try again" põe o foco aqui antes de sumir. */}
+      <h2 ref={headingRef} tabIndex={-1} id="course-offers-title" className="text-xl font-semibold text-[var(--color-ink)]">
         {t("creatorPanel.offers.title")}
       </h2>
       {/* Com oferta criada, o formulario empurrava a lista real para baixo:
           quem ja precificou vem aqui para conferir ou copiar link, nao para
           criar de novo. */}
       {/* "Sem outros precios" so e verdade sem nenhum na lista. */}
-      {canAddPrice || loading || offers.length ? null : (
+      {canAddPrice || loading || loadError || offers.length ? null : (
         <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
           {t("creatorPanel.offers.free")}
         </p>
@@ -279,10 +288,18 @@ export function CourseOffersPanel({
         </div>
       ) : null}
 
+      {/* A forma da lista que vem (linhas de preço), não uma frase (F-03). */}
       {loading ? (
-        <p className="mt-4 text-sm text-[var(--color-ink-soft)]">
-          {t("creatorPanel.offers.loading")}
-        </p>
+        <div role="status" className="mt-4 grid animate-pulse gap-2">
+          <span className="sr-only">{t("creatorPanel.offers.loading")}</span>
+          {[0, 1].map((row) => (
+            <div key={row} aria-hidden="true" className="h-14 rounded-md bg-[var(--color-surface-strong)]" />
+          ))}
+        </div>
+      ) : loadError ? (
+        <LoadErrorAlert className="mt-4" focusRef={headingRef} onRetry={reload}>
+          {t(loadError)}
+        </LoadErrorAlert>
       ) : offers.length ? (
         <ul className="mt-4 divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">
           {offers.map((offer) => {

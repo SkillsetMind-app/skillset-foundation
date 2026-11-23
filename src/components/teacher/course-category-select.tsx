@@ -104,7 +104,7 @@ export function CourseCategorySelect({
           aria-hidden="true"
           size={16}
           strokeWidth={1.8}
-          className={`shrink-0 text-[var(--color-ink-muted)] transition-transform duration-200 ${
+          className={`shrink-0 text-[var(--color-ink-muted)] transition-transform duration-[var(--duration-base)] ease-[var(--ease-standard)] ${
             open ? "rotate-180" : ""
           }`}
         />
@@ -141,7 +141,7 @@ export function CourseCategorySelect({
                   isSelected
                     ? "bg-[var(--color-surface-soft)] font-semibold text-[var(--color-primary)]"
                     : "text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
-                } ${isLockedOut ? "cursor-not-allowed opacity-40" : isRequiredSelection ? "cursor-not-allowed" : "cursor-pointer"}`}
+                } ${isLockedOut ? "cursor-not-allowed opacity-60" : isRequiredSelection ? "cursor-not-allowed" : "cursor-pointer"}`}
               >
                 <input
                   type="checkbox"

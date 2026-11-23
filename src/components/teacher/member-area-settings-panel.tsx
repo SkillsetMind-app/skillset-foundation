@@ -7,7 +7,9 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
+import { CardPageSkeleton } from "@/components/teacher/builder-skeleton";
 import { SavedNote } from "@/components/teacher/save-status-line";
+import { UploadProgressNote } from "@/components/teacher/upload-progress-note";
 import { useConfirm } from "@/components/teacher/use-confirm";
 import { Button, Card, Field, InlineAlert, buttonClasses } from "@/components/ui";
 import type { PlanId } from "@/data/plans";
@@ -49,7 +51,7 @@ type Creator = { name: string; username: string | null };
 const fieldClass =
   "w-full rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]";
 const smallButtonClass =
-  "inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md border border-[var(--color-line)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-ink-soft)] disabled:opacity-40";
+  "inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md border border-[var(--color-line)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-ink-soft)] disabled:opacity-60";
 
 const areaKey = (area: MyMemberAreaEditorArea) => (area.slug === null ? mainKey : (area.id ?? mainKey));
 
@@ -134,7 +136,8 @@ export function MemberAreaSettingsPanel() {
   }
 
   if (!uid || !editor) {
-    return <p role="status" className="text-sm text-[var(--color-ink-soft)]">{t("teach.memberAreaEditor.loading")}</p>;
+    // A forma do cartão que vem, não uma frase solta (F-03).
+    return <CardPageSkeleton label={t("teach.memberAreaEditor.loading")} header={false} />;
   }
 
   // A principal conta como 1. Extra além do limite (o plano caiu) fica no ar
@@ -337,7 +340,10 @@ function MemberAreaForm({
   // Só nas extras: o que entrou (veio de outra área) e o que saiu (volta para a principal).
   const [added, setAdded] = useState<string[]>([]);
   const [removed, setRemoved] = useState<Set<string>>(new Set());
-  const [uploading, setUploading] = useState(false);
+  // Tamanho do arquivo em envio (null = nada subindo): a nota de andamento,
+  // a mesma das capas do construtor, diz "Sending..." e o tamanho.
+  const [uploadingBytes, setUploadingBytes] = useState<number | null>(null);
+  const uploading = uploadingBytes !== null;
   const [coverError, setCoverError] = useState<"" | "invalid" | "upload">("");
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<"" | "saved" | "saveError" | "productsError" | "communityError">("");
@@ -423,7 +429,7 @@ function MemberAreaForm({
       return;
     }
     setCoverError("");
-    setUploading(true);
+    setUploadingBytes(file.size);
     try {
       // ponytail: capa enviada e trocada antes de salvar fica órfã no bucket.
       // Apagar aqui arriscava apagar a que o banco ainda usa; limpar órfãs é outro trabalho.
@@ -433,7 +439,7 @@ function MemberAreaForm({
     } catch {
       setCoverError("upload");
     } finally {
-      setUploading(false);
+      setUploadingBytes(null);
     }
   }
 
@@ -497,6 +503,17 @@ function MemberAreaForm({
   }
 
   const coverUrl = coverPath ? memberAreaCoverUrl(coverPath) : "";
+  // O "Save" apagado diz por quê, numa linha ligada a ele (F-12). Salvando não
+  // precisa: o próprio botão diz "Saving...".
+  const saveBlockedKey = saving
+    ? null
+    : locked
+      ? "saveBlockedLocked"
+      : uploading
+        ? "saveBlockedUploading"
+        : courses === null || coursesFailed
+          ? "saveBlockedCourses"
+          : null;
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-5">
@@ -574,7 +591,9 @@ function MemberAreaForm({
                 }`}
               >
                 <UploadCloud aria-hidden="true" size={16} />
-                {t(`teach.memberAreaEditor.${uploading ? "uploading" : coverUrl ? "replaceCover" : "uploadCover"}`)}
+                {/* Rótulo fixo, como nas capas do construtor: o andamento é só
+                    a nota logo abaixo (B-05). */}
+                {t(`teach.memberAreaEditor.${coverUrl ? "replaceCover" : "uploadCover"}`)}
                 <input
                   type="file"
                   accept={allowedAvatarTypes.join(",")}
@@ -587,24 +606,30 @@ function MemberAreaForm({
                   className="sr-only"
                 />
               </label>
-              {coverUrl ? (
+              {/* O "Remove" das capas do construtor: texto vermelho num alvo
+                  de 44px, fora da vista enquanto a nova sobe. */}
+              {coverUrl && !uploading ? (
                 <button
                   type="button"
                   onClick={() => {
                     setCoverPath(null);
                     setFeedback("");
                   }}
-                  className={smallButtonClass}
+                  className="min-h-11 w-fit text-xs font-semibold text-[var(--color-danger-fg)] underline-offset-2 hover:underline"
                 >
-                  <Trash2 aria-hidden="true" size={15} />
                   {t("teach.memberAreaEditor.removeCover")}
                 </button>
               ) : null}
             </div>
+            {uploadingBytes !== null ? (
+              <div className="mt-2">
+                <UploadProgressNote progress={{ bytesTransferred: 0, totalBytes: uploadingBytes, percent: null, state: "running" }} />
+              </div>
+            ) : null}
             {coverError ? (
-              <p role="alert" className="mt-2 text-xs text-[var(--color-danger-fg)]">
+              <InlineAlert tone="error" className="mt-2 px-3 py-2 text-xs">
                 {t(`teach.memberAreaEditor.errors.${coverError === "invalid" ? "coverInvalid" : "coverUpload"}`)}
-              </p>
+              </InlineAlert>
             ) : null}
           </div>
         </div>
@@ -781,7 +806,11 @@ function MemberAreaForm({
       {/* O "salvo" fica na linha dos botões (último, para não empurrar o
           "Preview"): acima deles, nascia e empurrava o botão recém-clicado. */}
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" disabled={locked || saving || uploading || courses === null || coursesFailed}>
+        <Button
+          type="submit"
+          disabled={locked || saving || uploading || courses === null || coursesFailed}
+          aria-describedby={saveBlockedKey ? "member-area-save-reason" : undefined}
+        >
           {t(`teach.memberAreaEditor.${saving ? "saving" : "save"}`)}
         </Button>
         <Link
@@ -794,6 +823,11 @@ function MemberAreaForm({
           {t("teach.memberAreaEditor.previewAsStudent")}
         </Link>
         {feedback === "saved" ? <SavedNote text={t("teach.memberAreaEditor.saved")} /> : null}
+        {saveBlockedKey ? (
+          <p id="member-area-save-reason" className="basis-full text-xs text-[var(--color-ink-soft)]">
+            {t(`teach.memberAreaEditor.${saveBlockedKey}`)}
+          </p>
+        ) : null}
       </div>
       <p className="text-xs text-[var(--color-ink-soft)]">{t("teach.memberAreaEditor.previewHelp")}</p>
 

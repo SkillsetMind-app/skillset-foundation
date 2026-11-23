@@ -163,7 +163,9 @@ describe("abas da prévia do professor", () => {
     const page = await PreviewPage({ params: Promise.resolve({ courseId: course.id }) });
     const suspense = page.props.children.props.children;
     render(suspense.props.fallback);
-    expect(screen.getByText("Cargando vista previa del curso...")).toBeInTheDocument();
+    // A espera da sala (ClassroomLoading), a mesma da prévia já montada (F-03).
+    expect(screen.getByRole("status")).toHaveTextContent("Cargando curso...");
+    expect(screen.getByRole("status").closest("section")).toHaveAttribute("aria-busy", "true");
   });
 
   it("mantém a aula na rota-base e os links das abas dentro da prévia", async () => {

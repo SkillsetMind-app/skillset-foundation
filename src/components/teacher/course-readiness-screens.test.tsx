@@ -1413,6 +1413,33 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(await screen.findByText("5 of 7 checks · 71%")).toBeInTheDocument();
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "71");
   });
+
+  // B-15: sem a lista de arquivos o Manage dava outro número que o construtor
+  // (e a falha era engolida). Agora espera com "—%", e a falha tem "Try again".
+  it("Manage: sem a lista de arquivos, —% no lugar do numero e Try again", async () => {
+    const withLesson: TeacherCourse = {
+      ...mocks.course,
+      modules: [{ id: "m1", title: "Start here", lessons: [
+        { id: "l1", title: "Ready lesson", description: "", type: "text", contentText: "Read this first." },
+      ] }],
+      lessonCount: 1,
+    };
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, onData) => {
+      onData(withLesson);
+      return Object.assign(() => {}, { reload: async () => {} });
+    });
+    vi.mocked(fetchCourseAssets).mockRejectedValueOnce(new Error("offline"));
+    render(<CourseManageHub courseId="course-1" />);
+
+    expect(await screen.findByText("Checking the content of your lessons... · —% ready")).toBeInTheDocument();
+    expect(await screen.findByText(/We could not check the content of your lessons/)).toBeInTheDocument();
+    expect(screen.queryByRole("progressbar")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("progressbar")).toBeInTheDocument();
+    expect(screen.queryByText(/—%/)).toBeNull();
+    expect(screen.queryByText(/We could not check the content/)).toBeNull();
+  });
 });
 
 // Corte 1 da criacao simples: quem escolhe Gratis nao passa pela aba de preco
@@ -1505,6 +1532,20 @@ describe("aba de preco sem o que nao se aplica", () => {
     expect(screen.queryByText(/subscription|Payment model|Marketplace setup|billing interval/i)).not.toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Price" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Free preview lesson" })).toBeInTheDocument();
+    // F-12: sem aula o seletor fica apagado e diz por quê.
+    expect(screen.getByRole("combobox", { name: "Free preview lesson" })).toBeDisabled();
+    expect(screen.getByRole("combobox", { name: "Free preview lesson" }))
+      .toHaveAccessibleDescription("Add a lesson in Curriculum first, then pick it here.");
+  });
+
+  // F-12: no teto de resultados o "Add" apagava calado.
+  it("resultados no teto: o Add apagado diz o limite", async () => {
+    renderBuilder("details");
+    await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
+    const add = screen.getByRole("button", { name: "Add learning outcome" });
+    for (let index = 0; index < 8 && !(add as HTMLButtonElement).disabled; index += 1) fireEvent.click(add);
+    expect(add).toBeDisabled();
+    expect(add).toHaveAccessibleDescription("You can list up to 8 outcomes.");
   });
 
   it.each([

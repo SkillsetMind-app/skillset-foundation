@@ -184,7 +184,11 @@ describe("LessonContentModal — dias de espera", () => {
   it("esconde os dias de espera quando a estrategia do curso nao os usa", () => {
     renderModal({ dripDelayDays: 7 }, "Módulo 1", false, "instant");
     fireEvent.click(screen.getByRole("button", { name: /^Settings/ }));
-    expect(screen.getByRole("button", { name: "Use this lesson as the free preview" })).toBeInTheDocument();
+    const toggle = screen.getByRole("button", { name: "Use this lesson as the free preview" });
+    expect(toggle).toBeInTheDocument();
+    // B-22: a mesma chave da Conta e da comunidade, num alvo de 44px.
+    expect(toggle).toHaveClass("min-h-11", "min-w-11");
+    expect(toggle.querySelector(".settings-toggle")).not.toBeNull();
     expect(screen.queryByDisplayValue("7")).not.toBeInTheDocument();
   });
 
@@ -192,6 +196,27 @@ describe("LessonContentModal — dias de espera", () => {
     renderModal({ dripDelayDays: 7 }, "Módulo 1", false, "time_drip_custom");
     fireEvent.click(screen.getByRole("button", { name: /^Settings/ }));
     expect(screen.getByDisplayValue("7")).toBeInTheDocument();
+  });
+});
+
+// F-12: "Upload file" ficava apagado sem dizer que faltava escolher o arquivo.
+describe("LessonContentModal — envio sem arquivo", () => {
+  beforeEach(() => {
+    currentAssets = [];
+    vi.clearAllMocks();
+  });
+
+  it("o Upload file apagado diz que falta o arquivo, e a frase sai quando ele vem", () => {
+    renderModal({}, "Módulo 1", true);
+    fireEvent.click(screen.getByRole("button", { name: /^Materials/ }));
+    const upload = screen.getByRole("button", { name: "Upload file" });
+    expect(upload).toBeDisabled();
+    expect(upload).toHaveAccessibleDescription("Choose a file first, then upload it.");
+    fireEvent.change(screen.getByLabelText("Lesson material"), {
+      target: { files: [new File(["pdf"], "apostila.pdf", { type: "application/pdf" })] },
+    });
+    expect(screen.getByRole("button", { name: "Upload file" })).toBeEnabled();
+    expect(screen.queryByText("Choose a file first, then upload it.")).not.toBeInTheDocument();
   });
 });
 
