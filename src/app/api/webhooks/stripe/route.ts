@@ -40,6 +40,7 @@ import {
 import { deliverPlanTrialEmail } from "@/lib/payments/server/plan-trial-email-delivery";
 import { getStripeClient, isStripeConfigured } from "@/lib/payments/server/stripe";
 import {
+  connectApplicationId,
   courseSubscriptionInterval,
   ensureCourseSubscriptionCanceled,
   hasRetainedActivationPayment,
@@ -822,7 +823,9 @@ async function handleCourseSubscriptionInvoicePaid(
     eventAccountId ? { stripeAccount: eventAccountId } : undefined,
   );
   const meta = subscription.metadata ?? {};
-  const resolved = await resolveCourseSubscriptionSale(admin, eventAccountId, subscriptionId, meta);
+  const resolved = await resolveCourseSubscriptionSale(
+    admin, eventAccountId, subscriptionId, meta, subscription.application,
+  );
   if (!resolved) return;
 
   const { courseId, userId, teacherId } = resolved.sale;
@@ -1179,16 +1182,29 @@ function reportCourseSubscriptionMetadataMismatch(subscriptionId: string, eventA
   });
 }
 
+type SubscriptionApplication = Stripe.Subscription["application"] | undefined;
+
+// With STRIPE_CONNECT_APPLICATION_ID set, a subscription Stripe says another
+// application (or the teacher's own keys, null) created is not ours. Unset: false.
+function createdByOtherApplication(application: SubscriptionApplication): boolean {
+  const ours = connectApplicationId();
+  if (!ours) return false;
+  const id = typeof application === "string" ? application : application?.id ?? null;
+  return id !== ours;
+}
+
 // One rule for course-subscription events. On a connected account the saved
 // row decides course and student, and the teacher is that course's owner; the
 // metadata is only compared. With no row yet (the first events of a new
-// subscription) or on the platform, the metadata decides, as before.
-// null = not a course subscription.
+// subscription) or on the platform, the metadata decides, as before — and on a
+// connected account the subscription must also come from our application.
+// null = not a course subscription of ours.
 async function resolveCourseSubscriptionSale(
   admin: Admin,
   eventAccountId: string | null,
   subscriptionId: string,
   meta: Stripe.Metadata,
+  application: SubscriptionApplication,
 ): Promise<{ sale: CourseSubscriptionSale; fromSavedRow: boolean } | null> {
   const fromMetadata = {
     courseId: meta.courseId || null,
@@ -1197,7 +1213,12 @@ async function resolveCourseSubscriptionSale(
   };
   const saved = eventAccountId ? await savedCourseSubscription(admin, subscriptionId) : null;
   if (!saved) {
-    return meta.purpose === "course_subscription" ? { sale: fromMetadata, fromSavedRow: false } : null;
+    if (meta.purpose !== "course_subscription") return null;
+    if (eventAccountId && createdByOtherApplication(application)) {
+      console.info(`[stripe webhook] Course subscription ${subscriptionId} was not created by SkillsetMind; ignored.`);
+      return null;
+    }
+    return { sale: fromMetadata, fromSavedRow: false };
   }
   const { data: course, error } = await admin
     .from("courses")
@@ -1245,7 +1266,7 @@ async function handleCourseSubscriptionLifecycle(
   eventAccountId: string | null,
 ): Promise<boolean> {
   const resolved = await resolveCourseSubscriptionSale(
-    admin, eventAccountId, subscription.id, subscription.metadata ?? {},
+    admin, eventAccountId, subscription.id, subscription.metadata ?? {}, subscription.application,
   );
   if (!resolved) return false;
 
@@ -1524,6 +1545,12 @@ async function handleChargeRefunded(
         const metadata = invoice.parent?.subscription_details?.metadata
           ?? (await stripe.subscriptions.retrieve(subscriptionId, undefined, options)).metadata;
         if (metadata?.purpose !== "course_subscription") continue;
+        // Not created by our application: invoice.paid never books it, so there
+        // is nothing to wait for. Read only when the application id is set.
+        if (connectedAccountId && connectApplicationId()) {
+          const { application } = await stripe.subscriptions.retrieve(subscriptionId, undefined, options);
+          if (createdByOtherApplication(application)) continue;
+        }
         // Sale records never come for a course that does not exist here.
         if (
           connectedAccountId
@@ -2049,7 +2076,7 @@ async function handleCourseSubscriptionInvoiceCreated(
     { stripeAccount: eventAccountId },
   );
   const resolved = await resolveCourseSubscriptionSale(
-    admin, eventAccountId, subscription.id, subscription.metadata ?? {},
+    admin, eventAccountId, subscription.id, subscription.metadata ?? {}, subscription.application,
   );
   const teacherId = resolved?.sale.teacherId;
   if (!resolved || !teacherId) return;
