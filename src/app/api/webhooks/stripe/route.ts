@@ -568,6 +568,11 @@ async function handleCheckoutCompleted(
   const orderId = order.id;
   const courseId = order.course_id;
   const userId = order.user_id;
+  // Antes a igualdade com o metadata garantia os dois; pela sessao gravada, o
+  // proprio pedido tem que trazer curso e comprador.
+  if (typeof courseId !== "string" || !courseId || typeof userId !== "string" || !userId) {
+    throw new Error("Saved checkout order is missing its course or buyer.");
+  }
   const amountMinor = Number(order.amount_minor);
   // The server attaches this session before returning its URL. Metadata is a
   // reference to that saved sale, never authority to replace its buyer or course.
