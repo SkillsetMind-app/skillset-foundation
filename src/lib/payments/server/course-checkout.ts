@@ -132,6 +132,10 @@ export async function createCourseCheckoutSession(
     // com o pedido expresso de acesso imediato e a ciência de que o direito de
     // desistência de 14 dias termina ali. O aceite vai no metadata do
     // pagamento (a prova fica com a venda) e é confirmado no e-mail da compra.
+    // ponytail: uma compra já aberta (até 31 min) é devolvida como está. Se ela
+    // nasceu sem o aceite (país desconhecido) e o mesmo comprador volta de um
+    // país que o exige, o metadata dela não ganha o aceite. Raro; se aparecer,
+    // recusar a reutilização quando o aceite veio e a sessão aberta não o tem.
     const withdrawalConsentGiven = body.withdrawalConsent === true;
     if (requiresWithdrawalConsent(options.buyerCountry) && !withdrawalConsentGiven) {
       throw new PaymentError(

@@ -741,6 +741,15 @@ export function CreatorCourseDetail({
       ?.scrollIntoView?.({ behavior: reduce ? "auto" : "smooth", block: "center" });
   }
 
+  // O país pode mudar entre a leitura das ofertas e o clique (VPN, troca de
+  // rede). Se o servidor pedir a caixa do acesso imediato, ela aparece na
+  // hora, junto do aviso: sem isso a pessoa via o erro e nenhuma caixa.
+  function showConsentBoxIfAsked(error: unknown) {
+    if (error instanceof PaymentRequestError && error.code === "withdrawal_consent_required") {
+      setWithdrawalConsentRequired(true);
+    }
+  }
+
   async function handleCheckout() {
     if (!course || !resolvedPrice || !canCheckout || !checkoutEnabled) {
       return;
@@ -774,6 +783,7 @@ export function CreatorCourseDetail({
         ...(withdrawalConsentRequired && withdrawalConsent ? { withdrawalConsent: true } : {}),
       });
     } catch (error) {
+      showConsentBoxIfAsked(error);
       setCheckoutError(getCheckoutErrorKey(error));
       setIsCheckingOut(false);
       revealBuyCard();
@@ -1301,7 +1311,10 @@ export function CreatorCourseDetail({
             submitLabel={enrollLabel}
             disabled={!hasPaidPrice}
             withdrawalConsentRequired={withdrawalConsentRequired}
-            errorKeyFor={getCheckoutErrorKey}
+            errorKeyFor={(error) => {
+              showConsentBoxIfAsked(error);
+              return getCheckoutErrorKey(error);
+            }}
             onSubmitStart={() => {
               if (!resolvedPrice) return;
               track.checkoutStarted({

@@ -7,13 +7,16 @@
  * a compra só segue com a caixa marcada, e o aceite fica guardado com o
  * pagamento e confirmado no e-mail da compra.
  *
- * UE (27) + EEE (Islândia, Liechtenstein, Noruega) + Reino Unido.
+ * UE (27) + EEE (Islândia, Liechtenstein, Noruega) + Reino Unido, mais os
+ * territórios da UE que têm código de país próprio: as regiões ultraperiféricas
+ * francesas (GF, GP, MQ, RE, YT, MF) e Åland (AX).
  */
 const WITHDRAWAL_RIGHT_COUNTRIES = new Set([
   "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE",
   "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE",
   "IS", "LI", "NO",
   "GB",
+  "GF", "GP", "MQ", "RE", "YT", "MF", "AX",
 ]);
 
 export function requiresWithdrawalConsent(country: string | null | undefined): boolean {
