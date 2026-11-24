@@ -31,6 +31,16 @@ import type { Database } from "@/lib/supabase/database.types";
 export type CourseRow = Database["public"]["Tables"]["courses"]["Row"];
 export type UserRow = Database["public"]["Tables"]["users"]["Row"];
 
+/**
+ * Our Stripe Connect application id (ca_...), optional, for the same mode as
+ * STRIPE_SECRET_KEY. When set, the webhook only accepts a new course
+ * subscription on a connected account if Stripe says our application created
+ * it (subscription.application). Unset leaves the webhook as it was.
+ */
+export function connectApplicationId(): string | null {
+  return process.env.STRIPE_CONNECT_APPLICATION_ID?.trim() || null;
+}
+
 /** Cached recurring-Price snapshot stored on courses.stripe_subscription_price. */
 type CourseSubscriptionPriceCache = {
   priceId?: string;

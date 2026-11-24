@@ -299,6 +299,32 @@ describe("invoice.created on a student-subscription renewal", () => {
     },
   );
 
+  // Com STRIPE_CONNECT_APPLICATION_ID, assinatura sem linha salva so vale se a
+  // nossa aplicacao a criou; a que ja gravamos segue valendo.
+  it.each([
+    ["created by the teacher's own keys, no saved row", null, false, false],
+    ["created by our application, no saved row", "ca_ours", false, true],
+    ["already saved, whatever created it", null, true, true],
+  ])("with the application id set, handles a subscription %s", async (_label, application, saved, charged) => {
+    vi.stubEnv("STRIPE_CONNECT_APPLICATION_ID", "ca_ours");
+    vi.spyOn(console, "info").mockImplementation(() => undefined);
+    mocks.getAdmin.mockReturnValue(createDb("starter", saved));
+    mocks.retrieve.mockResolvedValue({ id: "sub_student_1", application, metadata: { ...ownCourse, userId: "user_1" } });
+
+    expect((await deliver(renewal())).status).toBe(200);
+
+    if (charged) {
+      expect(mocks.updateInvoice).toHaveBeenCalledWith(
+        "in_renewal_1",
+        { application_fee_amount: Math.floor((2_000 * 490) / 10_000) + 30 },
+        { stripeAccount: "acct_teacher" },
+      );
+    } else {
+      expect(mocks.updateInvoice).not.toHaveBeenCalled();
+      expect(mocks.updateSubscription).not.toHaveBeenCalled();
+    }
+  });
+
   it("leaves a connected account's own subscriptions alone", async () => {
     mocks.getAdmin.mockReturnValue(createDb("starter"));
     mocks.retrieve.mockResolvedValue({ id: "sub_teacher_own", metadata: {} });

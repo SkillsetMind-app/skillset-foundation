@@ -3713,5 +3713,130 @@ describe("Stripe webhook financial integrity", () => {
       expect(response.status).toBe(status);
       expect(admin.state.saleRows).toEqual({ orders: [], payments: [], payout_ledger: [] });
     });
+
+    // STRIPE_CONNECT_APPLICATION_ID: assinatura nova (sem linha salva) so vale se
+    // o Stripe diz que a nossa aplicacao a criou. Sem a variavel, nada muda.
+    describe("subscription.application", () => {
+      function appSubscription(application: unknown) {
+        return { ...ourSubscription(), application };
+      }
+
+      function firstInvoice() {
+        const invoice = paidInvoiceEvent();
+        Object.assign(invoice.data.object, { billing_reason: "subscription_create" });
+        return invoice;
+      }
+
+      const createdEvent = (object: unknown) => ({
+        id: "evt_app_sub_created", type: "customer.subscription.created", account: "acct_teacher", data: { object },
+      });
+
+      it.each([
+        ["unset", undefined],
+        ["empty", ""],
+      ])("changes nothing while the variable is %s", async (_label, value) => {
+        if (value !== undefined) vi.stubEnv("STRIPE_CONNECT_APPLICATION_ID", value);
+        const admin = createAdmin("checkout");
+        mocks.getAdmin.mockReturnValue(admin);
+        mocks.subscriptionRetrieve.mockResolvedValue(appSubscription(null));
+
+        expect((await postEvent(createdEvent(appSubscription(null)))).status).toBe(200);
+        expect((await postEvent(firstInvoice())).status).toBe(200);
+
+        expect(admin.state.savedCourseSubscription).toMatchObject({ id: "sub_1", user_id: "user_1" });
+        expect(fulfillCalls(admin)).toHaveLength(1);
+        expect(admin.state.ledgerIds.has("in_paid_1")).toBe(true);
+      });
+
+      it.each([
+        ["the teacher's own keys", null],
+        ["another application", "ca_other"],
+        ["another application, expanded", { id: "ca_other", object: "application" }],
+      ])("ignores a new subscription created by %s", async (_label, application) => {
+        vi.stubEnv("STRIPE_CONNECT_APPLICATION_ID", "ca_ours");
+        vi.spyOn(console, "info").mockImplementation(() => undefined);
+        const admin = createAdmin("checkout");
+        mocks.getAdmin.mockReturnValue(admin);
+        const subscription = appSubscription(application);
+        mocks.subscriptionRetrieve.mockResolvedValue(subscription);
+
+        expect((await postEvent(createdEvent(subscription))).status).toBe(200);
+        expect((await postEvent(firstInvoice())).status).toBe(200);
+
+        expect(admin.state.savedCourseSubscription).toBeUndefined();
+        expect(fulfillCalls(admin)).toEqual([]);
+        expect(admin.state.ledgerIds.size).toBe(0);
+        expect(admin.state.orderWrites).toEqual([]);
+        expect(admin.state.paymentWrites).toEqual([]);
+        // Chaves do professor (null): esperado, sem alarme. Outro id de aplicacao
+        // pode ser a variavel errada (todo aluno novo sem acesso): alarme critico.
+        if (application === null) {
+          expect(mocks.notifyOps).not.toHaveBeenCalled();
+        } else {
+          expect(mocks.notifyOps).toHaveBeenCalledWith(expect.objectContaining({
+            event: "stripe.course_subscription.unknown_application",
+            severity: "critical",
+            context: expect.objectContaining({ applicationId: "ca_other" }),
+          }));
+        }
+      });
+
+      it.each([
+        ["subscription event first, id", ["subscription", "invoice"], "ca_ours"],
+        ["invoice first, expanded", ["invoice", "subscription"], { id: "ca_ours", object: "application" }],
+      ])("still starts our own new subscription (%s)", async (_label, order, application) => {
+        vi.stubEnv("STRIPE_CONNECT_APPLICATION_ID", "ca_ours");
+        const admin = createAdmin("checkout");
+        mocks.getAdmin.mockReturnValue(admin);
+        const subscription = appSubscription(application);
+        mocks.subscriptionRetrieve.mockResolvedValue(subscription);
+
+        for (const step of order) {
+          expect((await postEvent(step === "invoice" ? firstInvoice() : createdEvent(subscription))).status).toBe(200);
+        }
+
+        expect(fulfillCalls(admin).map((call) => call.args)).toEqual([
+          expect.objectContaining({ p_user_id: "user_1", p_course_id: "course_1", p_subscription_id: "sub_1" }),
+        ]);
+        expect(admin.state.ledgerIds.has("in_paid_1")).toBe(true);
+        expect(admin.state.savedCourseSubscription).toMatchObject({ id: "sub_1", user_id: "user_1" });
+      });
+
+      it("keeps a subscription we already saved, whatever its application", async () => {
+        vi.stubEnv("STRIPE_CONNECT_APPLICATION_ID", "ca_ours");
+        const admin = createAdmin("checkout");
+        admin.state.savedCourseSubscription = { ...savedRow, id: "sub_1" };
+        mocks.getAdmin.mockReturnValue(admin);
+        mocks.subscriptionRetrieve.mockResolvedValue(appSubscription(null));
+
+        expect((await postEvent(renewalInvoice())).status).toBe(200);
+        expect(fulfillCalls(admin)).toHaveLength(1);
+        expect(admin.state.ledgerIds.has("in_paid_1")).toBe(true);
+      });
+
+      it.each([
+        ["another application", "ca_other", 200],
+        ["ours, before its sale records", "ca_ours", 500],
+      ])("on an early refund of a new subscription from %s (%s) answers %i", async (_label, application, status) => {
+        vi.stubEnv("STRIPE_CONNECT_APPLICATION_ID", "ca_ours");
+        const admin = createAdmin("checkout");
+        admin.state.saleRows = { orders: [], payments: [], payout_ledger: [] };
+        mocks.getAdmin.mockReturnValue(admin);
+        mocks.subscriptionRetrieve.mockResolvedValue(appSubscription(application));
+        const metadata = ourSubscription().metadata;
+        mocks.invoicePaymentsList.mockImplementation(async function* () {
+          yield { invoice: { id: "in_x", parent: { subscription_details: { subscription: "sub_1", metadata } } } };
+        });
+        const event = refundEvent("evt_app_refund", 10000);
+
+        const response = await postEvent({
+          ...event, account: "acct_teacher",
+          data: { object: { ...event.data.object, payment_intent: "pi_app_sub", refunded: true } },
+        });
+
+        expect(response.status).toBe(status);
+        expect(admin.state.saleRows).toEqual({ orders: [], payments: [], payout_ledger: [] });
+      });
+    });
   });
 });

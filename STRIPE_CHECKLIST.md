@@ -137,3 +137,4 @@ Onde: **Connect → Settings**.
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | variável de ambiente do projeto na Vercel + `.env.local` | Stripe → Developers → API keys → Publishable key |
 | `SUPABASE_SERVICE_ROLE_KEY` | variável de ambiente do projeto na Vercel | painel do Supabase (chave `service_role`) |
 | `SKILLSET_APP_URL` (opcional) | variável de ambiente do projeto na Vercel | default é o `SITE_URL` canônico (https://www.skillsetmind.com) |
+| `STRIPE_CONNECT_APPLICATION_ID` (opcional) | variável de ambiente do projeto na Vercel | Stripe → Settings → Connect → Onboarding options → OAuth → `client_id` (`ca_...`), do MESMO modo da `STRIPE_SECRET_KEY` (live com live, test com test); antes de ligar, confira numa assinatura de curso criada pelo nosso checkout que o campo `application` traz esse mesmo id. Com ela, uma assinatura de curso nova numa conta conectada só vale se foi criada pelo nosso checkout (`subscription.application`). Sem ela, nada muda. |
