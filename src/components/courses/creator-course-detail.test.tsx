@@ -499,6 +499,9 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
     // Nenhuma caixa colorida própria: o reembolso e o vendedor são linhas da mesma lista.
     const list = within(card).getByRole("list");
     expect(within(list).getByText("7-day refund guarantee.")).toBeInTheDocument();
+    // A garantia diz as condições que a política impõe e leva à política inteira.
+    expect(within(list).getByRole("link", { name: "7-day refund guarantee." })).toHaveAttribute("href", "/refund-policy");
+    expect(within(list).getByText(/once per course, as long as you have completed less than half of it and no certificate has been issued\./)).toBeInTheDocument();
     expect(within(list).getByText("Sold by your instructor, not by SkillsetMind.")).toBeInTheDocument();
     expect(card.querySelector('[class*="success-soft"]')).toBeNull();
     // A barra fixa do celular usa o mesmo rótulo do cartão.

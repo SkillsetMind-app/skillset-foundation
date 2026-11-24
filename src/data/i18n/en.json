@@ -3075,7 +3075,7 @@
     "freeAccess": "Free enrollment attaches this course to your learning workspace immediately.",
     "paidAccess": "Paid access opens automatically once your payment is confirmed — usually within seconds.",
     "refundTitle": "7-day refund guarantee.",
-    "refundBody": "Not the right fit? Request a refund within 7 days, as long as you have completed less than half the course.",
+    "refundBody": "Not the right fit? Request a refund within 7 days, once per course, as long as you have completed less than half of it and no certificate has been issued.",
     "sellerTitle": "Sold by your instructor, not by SkillsetMind.",
     "sellerBody": "This course is sold directly by the independent educator who publishes it. Your payment goes to their own Stripe account, so their name or business name — not “SkillsetMind” — is what may appear on your card statement.",
     "sellerLearnMore": "Learn more",
