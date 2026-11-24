@@ -92,6 +92,8 @@ describe("GuestCheckoutForm: os campos da casa", () => {
     expect(consent).not.toHaveClass("field-input");
     expect(screen.getByRole("link", { name: "Terms of service" })).toHaveAttribute("href", "/legal/terms");
     expect(screen.getByRole("link", { name: "Privacy policy" })).toHaveAttribute("href", "/legal/privacy");
+    // A mesma caixa confirma a maioridade (Termos §1): sem frase nova nem caixa a mais.
+    expect(consent).toHaveAccessibleName(/^I am 18 or older and I agree to the SkillsetMind Terms of service and Privacy policy\.$/);
   });
 
   it("um formulário válido manda exatamente o mesmo pedido de antes", async () => {
