@@ -11,6 +11,7 @@ import {
   BunnyVideoNotFoundError,
   bunnyLowestMp4Url,
   deleteBunnyCaption,
+  getBunnyCaptionLanguages,
   getBunnyVideoStatus,
   hasValidBunnyAssetPath,
   putBunnyCaption,
@@ -459,6 +460,19 @@ export async function POST(request: Request) {
     const videoId = await lessonVideoId(gate, body.assetId);
     if (!videoId || videoId !== caption.video_id) {
       return fail(409, "stale_caption", "These captions were made for a different video. Generate them again.");
+    }
+    // A Bunny troca a legenda do idioma inteira. Na primeira publicacao daqui,
+    // pergunta antes se o video ja tem uma (feita fora da ferramenta).
+    if (!caption.published_at && body.replace !== true) {
+      let existing: string[];
+      try {
+        existing = await getBunnyCaptionLanguages(videoId);
+      } catch {
+        return fail(503, "unavailable", "Video host unavailable. Please try again.");
+      }
+      if (existing.includes(language)) {
+        return fail(409, "caption_exists", "This video already has captions in this language. Publishing replaces them.");
+      }
     }
     try {
       await putBunnyCaption(videoId, language, nativeLabel(language), caption.vtt);

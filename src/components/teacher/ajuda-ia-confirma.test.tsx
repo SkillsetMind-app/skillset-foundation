@@ -149,4 +149,38 @@ describe("ajudas de IA: confirmar na janela da plataforma", () => {
     await waitFor(() => expect(callTeachAi).toHaveBeenCalledOnce());
     expect(callTeachAi).toHaveBeenCalledWith(expect.objectContaining({ action: "removeCaption", language: "en" }));
   });
+
+  // A Bunny ja tinha legenda neste idioma, feita fora da ferramenta: publicar
+  // a substitui. Pergunta antes; cancelar nao manda nada nem mostra erro.
+  it("publicar por cima da legenda que ja estava no video pergunta antes e so substitui no confirmar", async () => {
+    vi.mocked(loadTeachAi).mockResolvedValue({
+      ok: true,
+      status: 200,
+      body: {
+        captions: [{ language: "en", vtt: "WEBVTT", translatedFrom: null, updatedAt: "2026-11-01", publishedAt: null, stale: false }],
+        usage: { usedSeconds: 0, limitSeconds: 3600 },
+      },
+    });
+    const exists = { ok: false, status: 409, body: { code: "caption_exists" } };
+    vi.mocked(callTeachAi).mockResolvedValueOnce(exists);
+    mount(<LessonAiCaptions {...ids} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Publish" }));
+    const title = "Replace the captions already on this video?";
+    const dialog = await screen.findByRole("dialog", { name: title });
+    expect(dialog).toHaveAccessibleDescription(
+      "This video already has English captions. Publishing will replace them for your students.",
+    );
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog", { name: title })).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(callTeachAi).toHaveBeenCalledOnce();
+
+    vi.mocked(callTeachAi).mockResolvedValueOnce(exists).mockResolvedValueOnce({ ok: true, status: 200, body: {} });
+    fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+    clickConfirm(await screen.findByRole("dialog", { name: title }), "Replace captions");
+    await waitFor(() => expect(callTeachAi).toHaveBeenCalledTimes(3));
+    expect(vi.mocked(callTeachAi).mock.calls.map(([payload]) => payload.replace)).toEqual([undefined, undefined, true]);
+    expect(vi.mocked(callTeachAi).mock.calls[2][0]).toMatchObject({ action: "publishCaption", language: "en", replace: true });
+  });
 });
