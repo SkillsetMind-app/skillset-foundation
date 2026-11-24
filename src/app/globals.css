@@ -9637,7 +9637,9 @@ button:hover > .dash-card,
 
 @media (min-width: 820px) {
   .marketplace-controls {
-    grid-template-columns: minmax(16rem, 1fr) 13rem auto;
+    /* A ordenação cresce até caber o rótulo inteiro: "(paid placement)" não
+       pode ficar cortado no seletor fechado. */
+    grid-template-columns: minmax(16rem, 1fr) minmax(13rem, max-content) auto;
     align-items: end;
   }
 }
