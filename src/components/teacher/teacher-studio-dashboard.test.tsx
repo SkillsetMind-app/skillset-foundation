@@ -145,6 +145,7 @@ beforeEach(() => {
   state.activationBlocked = false;
   state.planRequired = false;
   state.ordersFail = false;
+  window.localStorage.clear();
   vi.clearAllMocks();
 });
 
@@ -454,6 +455,59 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
     ) as HTMLElement;
     expect(within(section).getByText("1 of 3 complete")).toBeInTheDocument();
     expect(within(section).getByText("33%")).toBeInTheDocument();
+  });
+
+  // O bloco entra ~0,6 s depois da lista de produtos; sem reserva, "My
+  // products" descia centenas de pixels no celular. A altura da ultima visita
+  // (mesma pessoa, mesma largura de tela) segura o lugar ate os dados chegarem.
+  describe("lugar reservado enquanto as travas carregam", () => {
+    function holdGates() {
+      let release: (value: boolean) => void = () => undefined;
+      state.verificationFlag = new Promise<boolean>((resolve) => {
+        release = resolve;
+      });
+      state.courses = [course({ paymentType: "free", priceAmountMinor: 0 })];
+      return (value: boolean) => release(value);
+    }
+    function saveHeight(fields: { uid?: string; w?: number; h: number }) {
+      window.localStorage.setItem(
+        "skillset.studio.nextStepsHeight.v1",
+        JSON.stringify({ uid: "teacher-1", w: window.innerWidth, ...fields }),
+      );
+    }
+    const placeholder = () => document.querySelector<HTMLElement>('[data-reserved="next-steps"]');
+
+    it("com a altura da ultima visita: reserva o lugar e troca pelo bloco quando os dados chegam", async () => {
+      const release = holdGates();
+      saveHeight({ h: 312 });
+      render(<TeacherStudioDashboard />);
+
+      await screen.findByRole("heading", { name: "Products in your workspace" });
+      expect(placeholder()?.style.height).toBe("312px");
+      expect(placeholder()).toHaveAttribute("aria-hidden", "true");
+      expect(screen.queryByRole("list", { name: "Creator next steps" })).toBeNull();
+
+      release(true);
+
+      await screen.findByRole("list", { name: "Creator next steps" });
+      expect(placeholder()).toBeNull();
+      // A visita de hoje grava a sua altura para a proxima.
+      const saved = JSON.parse(window.localStorage.getItem("skillset.studio.nextStepsHeight.v1") ?? "{}");
+      expect(saved).toMatchObject({ uid: "teacher-1", w: window.innerWidth });
+    });
+
+    it.each([
+      ["outra largura de tela", { w: window.innerWidth + 200, h: 312 }],
+      ["outra pessoa neste aparelho", { uid: "someone-else", h: 312 }],
+      ["o bloco nao aparecia na ultima visita", { h: 0 }],
+    ])("%s: nao reserva nada", async (_label, fields) => {
+      holdGates();
+      saveHeight(fields);
+      render(<TeacherStudioDashboard />);
+
+      await screen.findByRole("heading", { name: "Products in your workspace" });
+      expect(placeholder()).toBeNull();
+    });
   });
 
   it.each([
