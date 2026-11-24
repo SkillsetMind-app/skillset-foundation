@@ -473,8 +473,9 @@ export function StorefrontSettingsPanel() {
             </div>
             <div className="grid gap-2 rounded-lg border border-[var(--color-line)] p-4">
               <div className={`h-3 w-36 ${bone}`} />
-              {[0, 1, 2].map((item) => (
-                <div key={item} className={`h-14 ${bone}`} />
+              {/* Os mesmos 2 blocos de h-16 que o cartao mostra enquanto os cursos chegam. */}
+              {[0, 1].map((item) => (
+                <div key={item} className={`h-16 ${bone}`} />
               ))}
             </div>
             <div className={`h-11 w-36 ${bone}`} />

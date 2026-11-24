@@ -12,6 +12,8 @@ import { StripeConnectNotice } from "@/components/teacher/stripe-connect-notice"
 const mocks = vi.hoisted(() => ({
   // true: o perfil ainda nao chegou (a inscricao nao responde).
   profilePending: false,
+  // true: a leitura do perfil falha.
+  profileFails: false,
   // Termos ja aceitos de proposito: sem isso a faixa de termos dispara antes e
   // o teste "a faixa fixa nao existe mais" passaria mesmo com o ramo do Stripe
   // de volta no lugar.
@@ -52,8 +54,10 @@ vi.mock("@/lib/data/user-profiles", () => ({
   subscribeToUserProfile: (
     _uid: string,
     onData: (profile: Record<string, unknown>) => void,
+    onError?: (error: Error) => void,
   ) => {
-    if (!mocks.profilePending) onData(mocks.profile);
+    if (mocks.profileFails) onError?.(new Error("offline"));
+    else if (!mocks.profilePending) onData(mocks.profile);
     return () => undefined;
   },
 }));
@@ -62,6 +66,7 @@ beforeEach(() => {
   window.sessionStorage.clear();
   window.localStorage.clear();
   mocks.profilePending = false;
+  mocks.profileFails = false;
   mocks.profile = {
     teacherTermsAcceptedAt: "2026-01-01T00:00:00.000Z",
     stripeConnectChargesEnabled: false,
@@ -126,6 +131,14 @@ describe("aviso do Stripe nas telas de venda", () => {
     ])("%s: nada ate o perfil chegar", (_label, saved) => {
       mocks.profilePending = true;
       if (saved) remember(saved.uid, saved.ready);
+      render(<StripeConnectNotice />);
+
+      expect(screen.queryByText(/buyers are charged on it directly/)).toBeNull();
+    });
+
+    it("leitura do perfil falhou: a marca da ultima visita nao basta para afirmar", () => {
+      mocks.profileFails = true;
+      remember("teacher-1", false);
       render(<StripeConnectNotice />);
 
       expect(screen.queryByText(/buyers are charged on it directly/)).toBeNull();

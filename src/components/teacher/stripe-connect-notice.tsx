@@ -70,6 +70,9 @@ export function StripeConnectNotice() {
   const { t } = useTranslation();
   const userId = user?.uid ?? null;
   const [payoutsReady, setPayoutsReady] = useState<boolean | null>(null);
+  // A leitura do perfil falhou: sem leitura nesta visita, a marca da ultima
+  // tambem nao vale (a conta pode ter conectado em outro aparelho).
+  const [readFailed, setReadFailed] = useState(false);
   const [dismissedNow, setDismissedNow] = useState(false);
   const dismissed = useDismissedThisSession() || dismissedNow;
   const lastKnown = useSyncExternalStore(EMPTY_SUBSCRIBE, () => readLastKnown(userId), () => null);
@@ -86,16 +89,20 @@ export function StripeConnectNotice() {
           profile?.stripeConnectChargesEnabled && profile?.stripeConnectPayoutsEnabled,
         );
         saveLastKnown(userId, ready);
+        setReadFailed(false);
         setPayoutsReady(ready);
       },
-      () => setPayoutsReady(null),
+      () => {
+        setReadFailed(true);
+        setPayoutsReady(null);
+      },
     );
   }, [status, userId]);
 
   // `null` = ainda não sabemos. Não afirmamos que falta configurar antes de ler
   // o perfil (nem nesta visita nem numa anterior): um aviso que pisca e some é
   // pior que nenhum.
-  if (dismissed || (payoutsReady ?? lastKnown) !== false) {
+  if (dismissed || readFailed || (payoutsReady ?? lastKnown) !== false) {
     return null;
   }
 
