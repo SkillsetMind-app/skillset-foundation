@@ -119,6 +119,7 @@ export function FeaturedCourses() {
                   freePreviewHref: course.freePreviewHref,
                   ratingCount: course.ratingCount,
                   ownerId: course.ownerId,
+                  featured: course.featured,
                 }}
                 priceLabel={course.priceLabel}
                 rating={

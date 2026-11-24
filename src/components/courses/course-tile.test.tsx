@@ -124,6 +124,12 @@ describe("courseCardBadge", () => {
     ).toBe("Free preview");
   });
 
+  it("destaque pago vem antes da amostra e do novo: a posição comprada é dita", () => {
+    expect(
+      courseCardBadge({ ...base, featured: true, freePreviewHref: "/courses/x#free-preview", ratingCount: 0 }),
+    ).toBe("Featured (paid placement)");
+  });
+
   it("chama de novo o curso sem avaliacao", () => {
     expect(courseCardBadge({ ...base, ratingCount: 0 })).toBe("New");
   });
@@ -162,4 +168,15 @@ it("updates derived card copy after a language switch while preserving authored 
   expect(screen.getByText("Ver curso")).toBeInTheDocument();
   expect(screen.getByText("A lesson author's own summary")).toBeInTheDocument();
   expect(screen.getByRole("link", { name: props.title })).toHaveAttribute("href", props.href);
+});
+
+// Destaque pago: o comprador vê que a posição foi paga, nas duas línguas.
+it("labels a featured course as paid placement, in English and Spanish", () => {
+  const props = { href: "/courses/focus", title: "Deep Focus Systems", image: "/brand/logo-mark.png", courseData: { lessonCount: 2, priceAmountMinor: 14900, currency: "USD", freePreviewHref: "/courses/focus#free-preview", featured: true } };
+  const { rerender } = render(<CourseTile {...props} />);
+  expect(screen.getByText("Featured (paid placement)")).toBeInTheDocument();
+  expect(screen.queryByText("Free preview")).not.toBeInTheDocument();
+  language.locale = "es";
+  rerender(<CourseTile {...props} />);
+  expect(screen.getByText("Destacado (posición pagada)")).toBeInTheDocument();
 });
