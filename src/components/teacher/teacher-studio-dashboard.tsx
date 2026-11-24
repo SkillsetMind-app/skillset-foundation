@@ -391,10 +391,17 @@ function StudioNextSteps({
   const visible = ready && (Boolean(openStep) || justDone.size > 0);
   const reserved = useSyncExternalStore(EMPTY_SUBSCRIBE, () => readNextStepsHeight(userId), () => 0);
   const sectionRef = useRef<HTMLElement>(null);
-  // Guarda a altura de hoje (0 quando o bloco sai) para a proxima visita.
+  // Tudo que muda a altura do bloco: passos que entram ou saem (o do plano
+  // volta a ser lido quando a janela ganha foco), feitos, e textos (a taxa de
+  // ativacao chega depois e alonga a frase do publish).
+  const hasOpenStep = Boolean(openStep);
+  const layoutKey = steps.map((step) => `${step.id}:${step.done}:${step.detail}:${step.action}`).join("|");
+  // Guarda a altura de hoje para a proxima visita. Sem passo aberto, 0: o
+  // ultimo passo feito com a Home aberta deixa o bloco na tela, mas na proxima
+  // visita ele ja nao aparece, e o lugar reservado sumiria num salto.
   useEffect(() => {
-    if (ready && userId) saveNextStepsHeight(userId, sectionRef.current?.offsetHeight ?? 0);
-  }, [ready, userId, visible, completeCount]);
+    if (ready && userId) saveNextStepsHeight(userId, hasOpenStep ? (sectionRef.current?.offsetHeight ?? 0) : 0);
+  }, [ready, userId, visible, hasOpenStep, layoutKey]);
 
   // Antes de cursos e travas chegarem a lista vazia abria "Create a product" e,
   // para quem ja tem tudo pronto, o bloco aparecia e sumia a cada visita: nada

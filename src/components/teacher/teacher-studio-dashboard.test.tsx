@@ -487,13 +487,33 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
       expect(placeholder()).toHaveAttribute("aria-hidden", "true");
       expect(screen.queryByRole("list", { name: "Creator next steps" })).toBeNull();
 
+      // O jsdom nao mede: a altura do bloco de hoje vem daqui.
+      const offset = vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(280);
       release(true);
 
       await screen.findByRole("list", { name: "Creator next steps" });
       expect(placeholder()).toBeNull();
       // A visita de hoje grava a sua altura para a proxima.
-      const saved = JSON.parse(window.localStorage.getItem("skillset.studio.nextStepsHeight.v1") ?? "{}");
-      expect(saved).toMatchObject({ uid: "teacher-1", w: window.innerWidth });
+      await waitFor(() =>
+        expect(JSON.parse(window.localStorage.getItem("skillset.studio.nextStepsHeight.v1") ?? "{}")).toEqual({
+          uid: "teacher-1",
+          w: window.innerWidth,
+          h: 280,
+        }),
+      );
+      offset.mockRestore();
+    });
+
+    it("chegando com tudo feito: grava 0, e a proxima visita nao reserva nada", async () => {
+      saveHeight({ h: 312 });
+      state.courses = [course({ status: "published" })];
+      state.profile = { stripeConnectChargesEnabled: true, stripeConnectPayoutsEnabled: true };
+      render(<TeacherStudioDashboard />);
+
+      await waitFor(() =>
+        expect(JSON.parse(window.localStorage.getItem("skillset.studio.nextStepsHeight.v1") ?? "{}").h).toBe(0),
+      );
+      expect(screen.queryByRole("list", { name: "Creator next steps" })).toBeNull();
     });
 
     it.each([
