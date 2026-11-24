@@ -2519,7 +2519,23 @@ describe("Stripe webhook financial integrity", () => {
       expect(email.body.text).toContain(courseUrl);
       expect(email.body.text).toContain("Sign in with buyer@example.test");
       expect(email.body.text).toContain("support@skillsetmind.com");
+      expect(email.body.text).not.toMatch(/withdrawal|renews/i);
       expect(admin.auth.admin.getUserById).toHaveBeenCalledWith("user_1");
+    });
+
+    it("confirms the immediate-access consent recorded on the session, and stays silent without it", async () => {
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+      const event = checkoutEvent();
+      const session = event.data.object as unknown as { metadata: Record<string, string> };
+      session.metadata = { ...session.metadata, withdrawalConsent: "accepted", withdrawalConsentCountry: "DE" };
+
+      expect((await postEvent(event)).status).toBe(200);
+
+      await vi.waitFor(() => expect(buyerEmails()).toHaveLength(1));
+      expect(buyerEmails()[0].body.text).toContain(
+        "acknowledged that you lose your 14-day right of withdrawal once access starts.",
+      );
     });
 
     it("writes in Spanish when the buyer checked out in Spanish", async () => {

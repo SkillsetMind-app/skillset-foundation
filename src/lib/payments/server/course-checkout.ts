@@ -11,6 +11,7 @@ import { isCoursePubliclySellable } from "@/domain/teacher-course";
 import { isPublicFeatureEnabled } from "@/lib/feature-flags";
 import { courseSubscriptionDisclosure } from "@/lib/payments/course-subscription-disclosure";
 import { toStripeAmount } from "@/lib/payments/currencies";
+import { requiresWithdrawalConsent, WITHDRAWAL_CONSENT_ACCEPTED } from "@/lib/payments/withdrawal-consent";
 import {
   canonicalPlatformFeeBpsForPlan,
   platformFeeForSale,
@@ -52,6 +53,8 @@ export type CourseCheckoutBody = {
   offerId?: unknown;
   offerCode?: unknown;
   priceId?: unknown;
+  /** true: a caixa do acesso imediato foi marcada (UE, EEE e Reino Unido). */
+  withdrawalConsent?: unknown;
 };
 
 export type CourseCheckoutOptions = {
@@ -71,6 +74,11 @@ export type CourseCheckoutOptions = {
    * Stripe page. Default: handed back (signed-in buyer, double click).
    */
   reuseOpenCheckout?: boolean;
+  /**
+   * País do comprador (cabeçalho da hospedagem). UE, EEE e Reino Unido exigem
+   * a caixa do acesso imediato; sem país conhecido, nada é exigido.
+   */
+  buyerCountry?: string | null;
 };
 
 // Opens a Stripe Checkout Session for a paid course. Shared by the signed-in
@@ -119,6 +127,30 @@ export async function createCourseCheckoutSession(
     if (offerCode.length > 24 || (offerCode && !/^[A-Z0-9-]+$/.test(offerCode))) {
       throw new PaymentError("The selected offer code is invalid.");
     }
+
+    // UE, EEE e Reino Unido: o acesso começa na hora, então a compra só segue
+    // com o pedido expresso de acesso imediato e a ciência de que o direito de
+    // desistência de 14 dias termina ali. O aceite vai no metadata do
+    // pagamento (a prova fica com a venda) e é confirmado no e-mail da compra.
+    // ponytail: uma compra já aberta (até 31 min) é devolvida como está. Se ela
+    // nasceu sem o aceite (país desconhecido) e o mesmo comprador volta de um
+    // país que o exige, o metadata dela não ganha o aceite. Raro; se aparecer,
+    // recusar a reutilização quando o aceite veio e a sessão aberta não o tem.
+    const withdrawalConsentGiven = body.withdrawalConsent === true;
+    if (requiresWithdrawalConsent(options.buyerCountry) && !withdrawalConsentGiven) {
+      throw new PaymentError(
+        "Confirm that you want access now to continue.",
+        400,
+        "withdrawal_consent_required",
+      );
+    }
+    const withdrawalConsentMetadata: Record<string, string> = withdrawalConsentGiven
+      ? {
+          withdrawalConsent: WITHDRAWAL_CONSENT_ACCEPTED,
+          withdrawalConsentAt: new Date().toISOString(),
+          ...(options.buyerCountry ? { withdrawalConsentCountry: options.buyerCountry } : {}),
+        }
+      : {};
 
     const { error: rateError } = await admin.rpc("enforce_rate_limit", {
       p_key: `checkout_${userId}`,
@@ -503,6 +535,7 @@ export async function createCourseCheckoutSession(
                 // The webhook only ever sees the subscription, so the
                 // reservation id has to live here to be finalizable.
                 ...couponMetadata,
+                ...withdrawalConsentMetadata,
                 ...(options.checkoutOrigin ? { checkout_origin: options.checkoutOrigin } : {}),
               },
             },
@@ -518,6 +551,7 @@ export async function createCourseCheckoutSession(
               ...(priced.offerId ? { offerId: priced.offerId } : {}),
               ...(priced.priceId ? { priceId: priced.priceId } : {}),
               ...couponMetadata,
+              ...withdrawalConsentMetadata,
               ...(options.checkoutOrigin ? { checkout_origin: options.checkoutOrigin } : {}),
             },
             expires_at: Math.floor(Date.now() / 1000) + checkoutSessionExpiresInSec,
@@ -800,6 +834,7 @@ export async function createCourseCheckoutSession(
         connectedAccountId,
         platformFeeBps: String(platformFeeBps),
         platformFeeFixedMinor: String(platformFeeFixedMinor),
+        ...withdrawalConsentMetadata,
         ...(options.checkoutOrigin ? { checkout_origin: options.checkoutOrigin } : {}),
       },
       payment_intent_data: {
@@ -824,6 +859,7 @@ export async function createCourseCheckoutSession(
           ...(installmentPlan.enabled
             ? { installmentsMax: String(installmentPlan.maxCount) }
             : {}),
+          ...withdrawalConsentMetadata,
         },
         ...(enableStripeCardInstallments
           ? {

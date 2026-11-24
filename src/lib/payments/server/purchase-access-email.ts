@@ -15,6 +15,11 @@ export type PurchaseAccessEmail = {
    * renovação automática). `amountMinor` é o preço de cada renovação, valor x 100.
    */
   renewal?: PurchaseRenewalTerms;
+  /**
+   * Comprador da UE, EEE ou Reino Unido que marcou a caixa do acesso imediato:
+   * o e-mail confirma o pedido e a ciência em meio durável.
+   */
+  withdrawalConsent?: boolean;
 };
 
 export type PurchaseRenewalTerms = {
@@ -47,6 +52,7 @@ const COPY: Record<Locale, {
   help: string;
   renewal: (price: string, interval: "month" | "year") => string;
   renewalCancel: string;
+  withdrawalConsent: string;
 }> = {
   en: {
     subject: (title) => `Your course is ready: ${title}`,
@@ -58,6 +64,8 @@ const COPY: Record<Locale, {
       `This is a subscription. It renews automatically at ${price} every ${interval === "year" ? "year" : "month"} until you cancel.`,
     renewalCancel:
       "To cancel, open your course and choose \"Cancel subscription\" under Subscription. You keep access until the end of the period you already paid for.",
+    withdrawalConsent:
+      "At checkout you asked for access to start right away and acknowledged that you lose your 14-day right of withdrawal once access starts.",
   },
   es: {
     subject: (title) => `Tu curso está listo: ${title}`,
@@ -69,6 +77,8 @@ const COPY: Record<Locale, {
       `Esta compra es una suscripción. Se renueva automáticamente por ${price} cada ${interval === "year" ? "año" : "mes"} hasta que canceles.`,
     renewalCancel:
       "Para cancelar, abre tu curso y elige «Cancelar suscripción» en Suscripción. Conservas el acceso hasta el final del período que ya pagaste.",
+    withdrawalConsent:
+      "Al comprar pediste que el acceso empezara de inmediato y reconociste que pierdes tu derecho de desistimiento de 14 días cuando empieza el acceso.",
   },
 };
 
@@ -87,22 +97,26 @@ const PARAGRAPH = "font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:1
 const BUTTON = "display:inline-block;padding:12px 28px;background-color:#102a43;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;";
 
 /** Subject, HTML and plain-text parts. The course title is creator input: escaped in HTML. */
-export function buildPurchaseAccessEmail({ email, courseTitle, courseUrl, locale, renewal }: PurchaseAccessEmail) {
+export function buildPurchaseAccessEmail({ email, courseTitle, courseUrl, locale, renewal, withdrawalConsent }: PurchaseAccessEmail) {
   const copy = COPY[locale] ?? COPY[DEFAULT_LOCALE];
   const title = oneLine(courseTitle);
   const safeTitle = escapeHtml(title);
   const safeUrl = escapeHtml(courseUrl);
   // Assinatura: preço e intervalo de cada renovação, e como cancelar.
-  const renewalLines = renewal
-    ? [
-        copy.renewal(
-          new Intl.NumberFormat(locale, { style: "currency", currency: renewal.currency.toUpperCase() })
-            .format(renewal.amountMinor / 100),
-          renewal.interval,
-        ),
-        copy.renewalCancel,
-      ]
-    : [];
+  const renewalLines = [
+    ...(renewal
+      ? [
+          copy.renewal(
+            new Intl.NumberFormat(locale, { style: "currency", currency: renewal.currency.toUpperCase() })
+              .format(renewal.amountMinor / 100),
+            renewal.interval,
+          ),
+          copy.renewalCancel,
+        ]
+      : []),
+    // Acesso imediato (UE, EEE e Reino Unido): a confirmação por escrito.
+    ...(withdrawalConsent ? [copy.withdrawalConsent] : []),
+  ];
 
   const text = [
     copy.intro,

@@ -121,6 +121,9 @@ const ENROLLMENT_READ_TIMEOUT_MS = 4_000;
 
 function getCheckoutErrorKey(error: unknown): string {
   if (error instanceof PaymentRequestError) {
+    if (error.code === "withdrawal_consent_required") {
+      return "publicCourses.withdrawalConsentRequired";
+    }
     if (error.status === 401 && error.code === "unauthenticated") {
       return "publicCourses.paymentErrors.signInRequired";
     }
@@ -285,6 +288,10 @@ export function CreatorCourseDetail({
     };
   }, [hasBackendConfig, viewerUid, enrollmentCourseId]);
   const [offerLoadError, setOfferLoadError] = useState("");
+  // UE, EEE e Reino Unido: a leitura das ofertas diz se este comprador precisa
+  // marcar a caixa do acesso imediato antes de pagar. Nunca vem marcada.
+  const [withdrawalConsentRequired, setWithdrawalConsentRequired] = useState(false);
+  const [withdrawalConsent, setWithdrawalConsent] = useState(false);
   const [offerState, setOfferState] = useState<{
     courseId: string | null;
     offers: ProductOffer[];
@@ -370,12 +377,14 @@ export function CreatorCourseDetail({
       .then(async (response) => {
         const body = (await response.json()) as {
           offers?: ProductOffer[];
+          withdrawalConsentRequired?: boolean;
           error?: string;
         };
         if (!response.ok) {
           throw new Error("publicCourses.offersUnavailable");
         }
         setOfferLoadError("");
+        setWithdrawalConsentRequired(body.withdrawalConsentRequired === true);
         setOfferState({ courseId: resolvedCourseId, offers: body.offers ?? [] });
       })
       .catch(() => {
@@ -732,8 +741,25 @@ export function CreatorCourseDetail({
       ?.scrollIntoView?.({ behavior: reduce ? "auto" : "smooth", block: "center" });
   }
 
+  // O país pode mudar entre a leitura das ofertas e o clique (VPN, troca de
+  // rede). Se o servidor pedir a caixa do acesso imediato, ela aparece na
+  // hora, junto do aviso: sem isso a pessoa via o erro e nenhuma caixa.
+  function showConsentBoxIfAsked(error: unknown) {
+    if (error instanceof PaymentRequestError && error.code === "withdrawal_consent_required") {
+      setWithdrawalConsentRequired(true);
+    }
+  }
+
   async function handleCheckout() {
     if (!course || !resolvedPrice || !canCheckout || !checkoutEnabled) {
+      return;
+    }
+
+    // Sem a caixa do acesso imediato a compra não começa: o aviso aparece no
+    // cartão, ao lado da caixa (vale também para os botões da página de venda).
+    if (withdrawalConsentRequired && !withdrawalConsent) {
+      setCheckoutError("publicCourses.withdrawalConsentRequired");
+      revealBuyCard();
       return;
     }
 
@@ -754,8 +780,10 @@ export function CreatorCourseDetail({
         ...(resolvedPrice.offerId ? { offerId: resolvedPrice.offerId } : {}),
         ...(requestedOfferCode ? { offerCode: requestedOfferCode } : {}),
         ...(resolvedPrice.priceId ? { priceId: resolvedPrice.priceId } : {}),
+        ...(withdrawalConsentRequired && withdrawalConsent ? { withdrawalConsent: true } : {}),
       });
     } catch (error) {
+      showConsentBoxIfAsked(error);
       setCheckoutError(getCheckoutErrorKey(error));
       setIsCheckingOut(false);
       revealBuyCard();
@@ -1282,7 +1310,11 @@ export function CreatorCourseDetail({
             returnTo={returnTo}
             submitLabel={enrollLabel}
             disabled={!hasPaidPrice}
-            errorKeyFor={getCheckoutErrorKey}
+            withdrawalConsentRequired={withdrawalConsentRequired}
+            errorKeyFor={(error) => {
+              showConsentBoxIfAsked(error);
+              return getCheckoutErrorKey(error);
+            }}
             onSubmitStart={() => {
               if (!resolvedPrice) return;
               track.checkoutStarted({
@@ -1330,16 +1362,32 @@ export function CreatorCourseDetail({
                 {cardActionLabel}
               </button>
             ) : (
-              <button
-                type="button"
-                data-cta-focus
-                onClick={handleCheckout}
-                disabled={!canCheckout || isCheckingOut}
-                aria-busy={accessPending || (checkoutEnabled && pricePending) || undefined}
-                className="button-solid mt-6 min-h-12 w-full px-5 py-3 text-base font-semibold"
-              >
-                {cardActionLabel}
-              </button>
+              <>
+                {/* UE, EEE e Reino Unido: pedido de acesso imediato e ciência
+                    da perda do direito de desistência, antes do botão de pagar. */}
+                {withdrawalConsentRequired && canCheckout && hasPaidPrice ? (
+                  <label className="mt-6 flex items-start gap-2.5 text-sm leading-6 text-[var(--color-ink)]">
+                    <input
+                      type="checkbox"
+                      data-withdrawal-consent
+                      checked={withdrawalConsent}
+                      onChange={(event) => setWithdrawalConsent(event.target.checked)}
+                      className="mt-0.5 size-5 shrink-0 accent-[var(--color-primary)]"
+                    />
+                    <span>{t("publicCourses.withdrawalConsent")}</span>
+                  </label>
+                ) : null}
+                <button
+                  type="button"
+                  data-cta-focus
+                  onClick={handleCheckout}
+                  disabled={!canCheckout || isCheckingOut}
+                  aria-busy={accessPending || (checkoutEnabled && pricePending) || undefined}
+                  className={`button-solid ${withdrawalConsentRequired && canCheckout && hasPaidPrice ? "mt-3" : "mt-6"} min-h-12 w-full px-5 py-3 text-base font-semibold`}
+                >
+                  {cardActionLabel}
+                </button>
+              </>
             )}
             {/* Cupom fora do caminho de quem nao tem um. */}
             {canCheckout && !subscriptionInterval ? (

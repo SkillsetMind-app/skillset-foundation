@@ -31,6 +31,7 @@ import {
 } from "@/lib/payments/rules";
 import { fromStripeAmount, toStripeAmount } from "@/lib/payments/currencies";
 import { getAppUrl } from "@/lib/payments/server/app-url";
+import { WITHDRAWAL_CONSENT_ACCEPTED } from "@/lib/payments/withdrawal-consent";
 import { sendGuestSignInLinkAfterPurchase } from "@/lib/payments/server/guest-access-link";
 import {
   sendCreatorSaleEmail,
@@ -231,6 +232,8 @@ type AccessEmailSale = {
   fromGuestCheckout?: boolean;
   /** Assinatura: preço e intervalo de cada renovação, para o e-mail confirmar. */
   renewal?: PurchaseRenewalTerms;
+  /** A caixa do acesso imediato foi marcada na compra (metadata do Stripe). */
+  withdrawalConsent?: boolean;
 };
 
 // The one place a lost access email becomes visible. Ids only: never the
@@ -294,6 +297,7 @@ function queuePurchaseAccessEmail(admin: Admin, sale: AccessEmailSale): void {
         locale: sale.locale,
         idempotencyKey: sale.ledgerId,
         renewal: sale.renewal,
+        withdrawalConsent: sale.withdrawalConsent,
       });
     } catch (error) {
       reportLostAccessEmail(sale, error);
@@ -799,6 +803,7 @@ async function handleCheckoutCompleted(
     ledgerId: orderId,
     locale: normalizeLocale(session.locale),
     fromGuestCheckout: session.metadata?.checkout_origin === "guest",
+    withdrawalConsent: session.metadata?.withdrawalConsent === WITHDRAWAL_CONSENT_ACCEPTED,
   });
   queueCreatorSaleEmail(admin, {
     ownerId: course.owner_id,
@@ -1080,6 +1085,7 @@ async function handleCourseSubscriptionInvoicePaid(
         locale: normalizeLocale(typeof meta.locale === "string" ? meta.locale : null),
         fromGuestCheckout: meta.checkout_origin === "guest",
         renewal: subscriptionRenewalTerms(item, currencyUpper),
+        withdrawalConsent: meta.withdrawalConsent === WITHDRAWAL_CONSENT_ACCEPTED,
       });
       queueCreatorSaleEmail(admin, {
         ownerId: course.owner_id,

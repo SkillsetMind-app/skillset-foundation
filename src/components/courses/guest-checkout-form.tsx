@@ -41,6 +41,8 @@ type GuestCheckoutFormProps = {
   returnTo: string;
   submitLabel: string;
   disabled: boolean;
+  /** UE, EEE e Reino Unido: mostra e exige a caixa do acesso imediato. */
+  withdrawalConsentRequired?: boolean;
   /** The course page's mapping of checkout API errors to copy. */
   errorKeyFor: (error: unknown) => string;
   onSubmitStart?: () => void;
@@ -56,6 +58,7 @@ export function GuestCheckoutForm({
   returnTo,
   submitLabel,
   disabled,
+  withdrawalConsentRequired = false,
   errorKeyFor,
   onSubmitStart,
 }: GuestCheckoutFormProps) {
@@ -63,6 +66,7 @@ export function GuestCheckoutForm({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [accepted, setAccepted] = useState(false);
+  const [withdrawalConsent, setWithdrawalConsent] = useState(false);
   const [captchaToken, setCaptchaToken] = useState("");
   const [captchaReset, setCaptchaReset] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -83,6 +87,10 @@ export function GuestCheckoutForm({
       setErrorKey("guestCheckout.form.acceptTerms");
       return;
     }
+    if (withdrawalConsentRequired && !withdrawalConsent) {
+      setErrorKey("publicCourses.withdrawalConsentRequired");
+      return;
+    }
     if (!captchaToken) {
       setErrorKey("guestCheckout.form.captchaPending");
       return;
@@ -100,6 +108,7 @@ export function GuestCheckoutForm({
         offerId,
         offerCode,
         priceId,
+        ...(withdrawalConsentRequired && withdrawalConsent ? { withdrawalConsent: true } : {}),
       });
       // Stripe is loading: keep the button busy until the page unloads.
       if (outcome === "redirected") return;
@@ -189,6 +198,20 @@ export function GuestCheckoutForm({
             {t("auth.signup.agreeSuffix")}
           </span>
         </label>
+        {/* UE, EEE e Reino Unido: pedido de acesso imediato e ciência da perda
+            do direito de desistência. Nunca vem marcada. */}
+        {withdrawalConsentRequired ? (
+          <label className="flex items-start gap-2.5 text-xs leading-5 text-[var(--color-ink-soft)]">
+            <input
+              type="checkbox"
+              data-withdrawal-consent
+              checked={withdrawalConsent}
+              onChange={(event) => setWithdrawalConsent(event.target.checked)}
+              className="mt-0.5 size-5 shrink-0 accent-[var(--color-primary)]"
+            />
+            <span>{t("publicCourses.withdrawalConsent")}</span>
+          </label>
+        ) : null}
         {/* The purchase card can be narrower than the 300px normal widget on a
             phone: compact (150px) there, so nothing renders off screen. */}
         <TurnstileWidget

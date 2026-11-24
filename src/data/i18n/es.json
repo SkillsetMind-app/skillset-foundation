@@ -3077,6 +3077,8 @@
     "checkoutLater": "El pago aún no está disponible. Puedes ver la vista previa e inscribirte cuando se habilite la compra en SkillsetMind.",
     "freeAccess": "La inscripción gratuita añade este curso a tu espacio de aprendizaje de inmediato.",
     "paidAccess": "El acceso de pago se activa automáticamente al confirmar el pago, normalmente en segundos.",
+    "withdrawalConsent": "Quiero acceso ahora y entiendo que pierdo mi derecho de desistimiento de 14 días cuando empiece el acceso.",
+    "withdrawalConsentRequired": "Marca la casilla para confirmar que quieres acceso ahora.",
     "refundTitle": "Garantía de reembolso de 7 días.",
     "refundBody": "¿No es lo que buscabas? Solicita un reembolso dentro de los 7 días, una vez por curso, siempre que hayas completado menos de la mitad y no se haya emitido un certificado.",
     "sellerTitle": "Vendido por tu instructor, no por SkillsetMind.",

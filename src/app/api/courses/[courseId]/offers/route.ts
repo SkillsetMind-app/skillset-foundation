@@ -5,6 +5,7 @@ import {
   getCourseRow,
   loadCourseProductOffers,
 } from "@/lib/payments/server/stripe-helpers";
+import { buyerCountryFromRequest, requiresWithdrawalConsent } from "@/lib/payments/withdrawal-consent";
 import { allowByIp } from "@/lib/supabase/rate-limit";
 
 // Public, unauthenticated, and two DB reads per call. 120/min per IP covers a
@@ -34,6 +35,9 @@ export async function GET(
 
     const response = NextResponse.json({
       offers: await loadCourseProductOffers(courseId),
+      // UE, EEE e Reino Unido: o cartão de compra mostra a caixa do acesso
+      // imediato. A resposta já é por pedido (no-store), então pode levar isto.
+      withdrawalConsentRequired: requiresWithdrawalConsent(buyerCountryFromRequest(request)),
     });
     response.headers.set("Cache-Control", "private, no-store");
     return response;
