@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import { bunnyLowestMp4Url, deleteBunnyCaption, putBunnyCaption } from "./server";
+import { bunnyLowestMp4Url, deleteBunnyCaption, getBunnyCaptionLanguages, putBunnyCaption } from "./server";
 
 const fetchMock = vi.fn();
 beforeEach(() => {
@@ -35,4 +35,14 @@ it("treats a caption that is already gone as removed, and fails on other errors"
   await expect(deleteBunnyCaption("vid-1", "en")).resolves.toBeUndefined();
   fetchMock.mockResolvedValueOnce(new Response("", { status: 500 }));
   await expect(putBunnyCaption("vid-1", "en", "English", "WEBVTT")).rejects.toThrow("500");
+});
+
+it("reads the caption languages already on the video, and fails instead of guessing", async () => {
+  fetchMock.mockResolvedValueOnce(Response.json({ captions: [{ srclang: "EN", label: "English" }, { label: "no code" }] }));
+  await expect(getBunnyCaptionLanguages("vid-1")).resolves.toEqual(["en"]);
+  expect(fetchMock.mock.calls[0][0]).toBe("https://video.bunnycdn.com/library/lib-1/videos/vid-1");
+  fetchMock.mockResolvedValueOnce(Response.json({}));
+  await expect(getBunnyCaptionLanguages("vid-1")).resolves.toEqual([]);
+  fetchMock.mockResolvedValueOnce(new Response("", { status: 500 }));
+  await expect(getBunnyCaptionLanguages("vid-1")).rejects.toThrow("500");
 });

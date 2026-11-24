@@ -87,9 +87,9 @@ export type BunnyVideoStatus = {
   lengthSeconds: number | null;
 };
 
-// Processing state of one video (Bunny "Get Video"). Returns only the three
-// fields the lesson studio shows; the full response and the key stay here.
-export async function getBunnyVideoStatus(videoId: string): Promise<BunnyVideoStatus> {
+// Bunny "Get Video". The full response and the key stay here; each export
+// below returns only the fields its caller needs.
+async function getBunnyVideo(videoId: string): Promise<Record<string, unknown>> {
   const libraryId = getLibraryId();
   const apiKey = requireEnv("BUNNY_STREAM_API_KEY");
 
@@ -107,13 +107,28 @@ export async function getBunnyVideoStatus(videoId: string): Promise<BunnyVideoSt
     throw new Error(`Bunny get video failed: ${res.status}`);
   }
 
-  const data = (await res.json()) as { status?: unknown; encodeProgress?: unknown; length?: unknown };
+  return (await res.json()) as Record<string, unknown>;
+}
+
+// Processing state of one video: the three fields the lesson studio shows.
+export async function getBunnyVideoStatus(videoId: string): Promise<BunnyVideoStatus> {
+  const data = await getBunnyVideo(videoId);
   const asNumber = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : null);
   return {
     status: asNumber(data.status),
     encodeProgress: asNumber(data.encodeProgress),
     lengthSeconds: asNumber(data.length),
   };
+}
+
+// Idiomas que ja tem legenda no video, inclusive as enviadas fora do estudio.
+export async function getBunnyCaptionLanguages(videoId: string): Promise<string[]> {
+  const { captions } = await getBunnyVideo(videoId);
+  if (!Array.isArray(captions)) return [];
+  return captions
+    .map((caption) => (caption as { srclang?: unknown } | null)?.srclang)
+    .filter((language): language is string => typeof language === "string")
+    .map((language) => language.toLowerCase());
 }
 
 // MP4 de 240p de um vídeo (o "MP4 fallback", ligado na biblioteca desde o

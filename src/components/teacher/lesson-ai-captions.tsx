@@ -7,7 +7,7 @@ import { RetryAlert } from "@/components/teacher/save-status-line";
 import { useConfirm } from "@/components/teacher/use-confirm";
 import { Button } from "@/components/ui";
 import { CAPTION_LANGUAGES, captionLanguageName, isCaptionLanguage } from "@/domain/caption-languages";
-import { callTeachAi, loadTeachAi, teachAiErrorText } from "@/lib/ai/teach-ai-client";
+import { callTeachAi, loadTeachAi, teachAiErrorText, type TeachAiResult } from "@/lib/ai/teach-ai-client";
 
 // Legendas com IA no estúdio da aula (aba Vídeo, só vídeo enviado para a Bunny).
 // A IA escreve um rascunho a partir do áudio; o professor lê, corrige e publica.
@@ -85,12 +85,14 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
 
   // `retry`: o que o "Try again" refaz. Sem ele, o mesmo pedido; o Publish
   // passa a ação inteira (gravar e publicar), não só o passo que falhou.
+  // `handled`: erro que quem chamou trata sozinho (true = sem alerta).
   async function run(
     action: string,
     extra: Record<string, unknown>,
     busyKey: string,
     okText: string,
     retry?: () => void,
+    handled?: (result: TeachAiResult) => boolean,
   ): Promise<boolean> {
     setBusy(busyKey);
     setNotice(null);
@@ -98,6 +100,7 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
     setBusy(null);
     if (result.body.usage) setUsage(result.body.usage as Usage);
     if (!result.ok) {
+      if (handled?.(result)) return false;
       setNotice({
         kind: "error",
         text: teachAiErrorText(result, t),
@@ -124,8 +127,21 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
       `publish-${caption.language}`, t("creatorEditor.lesson.ai.saved"), again))) {
       return;
     }
-    await run("publishCaption", { language: caption.language }, `publish-${caption.language}`,
-      t("creatorEditor.lesson.ai.publishedNotice"), again);
+    const busyKey = `publish-${caption.language}`;
+    const okText = t("creatorEditor.lesson.ai.publishedNotice");
+    // O video ja tem legenda neste idioma, feita fora daqui: publicar substitui.
+    // Pergunta; cancelar nao muda nada e nao mostra erro.
+    await run("publishCaption", { language: caption.language }, busyKey, okText, again, (result) => {
+      if (result.body.code !== "caption_exists") return false;
+      ask({
+        title: t("creatorEditor.lesson.ai.confirmReplaceCaptionsTitle"),
+        body: t("creatorEditor.lesson.ai.confirmReplaceCaptions").replace("{language}", () => name(caption.language)),
+        confirmLabel: t("creatorEditor.lesson.ai.replaceCaptions"),
+        danger: true,
+        run: () => void run("publishCaption", { language: caption.language, replace: true }, busyKey, okText),
+      });
+      return true;
+    });
   }
 
   // Mudou o texto ou um idioma depois da falha: o "Try again" refaria o pedido

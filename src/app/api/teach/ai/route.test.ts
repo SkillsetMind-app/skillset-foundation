@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   translate: vi.fn(),
   videoStatus: vi.fn(),
   putCaption: vi.fn(),
+  captionLanguages: vi.fn(),
   deleteCaption: vi.fn(),
   generateQuiz: vi.fn(),
   suggest: vi.fn(),
@@ -74,6 +75,7 @@ vi.mock("@/lib/bunny/server", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/bunny/server")>()),
   getBunnyVideoStatus: mocks.videoStatus,
   putBunnyCaption: mocks.putCaption,
+  getBunnyCaptionLanguages: mocks.captionLanguages,
   deleteBunnyCaption: mocks.deleteCaption,
 }));
 
@@ -126,6 +128,7 @@ beforeEach(() => {
     return { data: null, error: null };
   });
   mocks.transcribe.mockResolvedValue(VTT);
+  mocks.captionLanguages.mockResolvedValue([]);
 });
 afterEach(() => vi.unstubAllEnvs());
 
@@ -285,6 +288,49 @@ describe("review and publish", () => {
     const body = await response.json();
     expect(body.usage).toEqual({ usedSeconds: 600, limitSeconds: 36000 });
     expect(body.captions[0]).toMatchObject({ language: "en", stale: true });
+  });
+});
+
+// A Bunny troca a legenda do idioma inteira: uma feita a mao fora da
+// ferramenta nao some sem o professor dizer que pode.
+describe("publish over captions already on Bunny", () => {
+  // A legenda existe e nunca foi publicada por nos.
+  beforeEach(() => mocks.adminResult.mockImplementation(() => ({ data: row(), error: null })));
+
+  it("asks first when the video already has this language, and publishes nothing", async () => {
+    mocks.captionLanguages.mockResolvedValue(["en"]);
+    const response = await post({ action: "publishCaption", language: "en" });
+    expect(response.status).toBe(409);
+    expect((await response.json()).code).toBe("caption_exists");
+    expect(mocks.captionLanguages).toHaveBeenCalledWith("vid-1");
+    expect(mocks.putCaption).not.toHaveBeenCalled();
+  });
+
+  it("replaces them once the teacher says so", async () => {
+    mocks.captionLanguages.mockResolvedValue(["en"]);
+    expect((await post({ action: "publishCaption", language: "en", replace: true })).status).toBe(200);
+    expect(mocks.putCaption).toHaveBeenCalledWith("vid-1", "en", "English", VTT);
+  });
+
+  it("publishes when the video has no captions in that language", async () => {
+    mocks.captionLanguages.mockResolvedValue(["es"]);
+    expect((await post({ action: "publishCaption", language: "en" })).status).toBe(200);
+    expect(mocks.putCaption).toHaveBeenCalledOnce();
+  });
+
+  it("does not ask again for captions this tool already published", async () => {
+    mocks.adminResult.mockImplementation(() => ({ data: row({ published_at: "2026-11-15T00:00:00Z" }), error: null }));
+    expect((await post({ action: "publishCaption", language: "en" })).status).toBe(200);
+    expect(mocks.captionLanguages).not.toHaveBeenCalled();
+    expect(mocks.putCaption).toHaveBeenCalledOnce();
+  });
+
+  it("does not publish blind when Bunny cannot say what is there", async () => {
+    mocks.captionLanguages.mockRejectedValue(new Error("Bunny get video failed: 500"));
+    const response = await post({ action: "publishCaption", language: "en" });
+    expect(response.status).toBe(503);
+    expect((await response.json()).code).toBe("unavailable");
+    expect(mocks.putCaption).not.toHaveBeenCalled();
   });
 });
 
