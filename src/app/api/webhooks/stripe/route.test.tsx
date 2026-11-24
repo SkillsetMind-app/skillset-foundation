@@ -3768,7 +3768,17 @@ describe("Stripe webhook financial integrity", () => {
         expect(admin.state.ledgerIds.size).toBe(0);
         expect(admin.state.orderWrites).toEqual([]);
         expect(admin.state.paymentWrites).toEqual([]);
-        expect(mocks.notifyOps).not.toHaveBeenCalled();
+        // Chaves do professor (null): esperado, sem alarme. Outro id de aplicacao
+        // pode ser a variavel errada (todo aluno novo sem acesso): alarme critico.
+        if (application === null) {
+          expect(mocks.notifyOps).not.toHaveBeenCalled();
+        } else {
+          expect(mocks.notifyOps).toHaveBeenCalledWith(expect.objectContaining({
+            event: "stripe.course_subscription.unknown_application",
+            severity: "critical",
+            context: expect.objectContaining({ applicationId: "ca_other" }),
+          }));
+        }
       });
 
       it.each([

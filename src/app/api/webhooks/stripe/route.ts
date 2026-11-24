@@ -1216,6 +1216,20 @@ async function resolveCourseSubscriptionSale(
     if (meta.purpose !== "course_subscription") return null;
     if (eventAccountId && createdByOtherApplication(application)) {
       console.info(`[stripe webhook] Course subscription ${subscriptionId} was not created by SkillsetMind; ignored.`);
+      // null = as chaves do proprio professor (esperado). Outro id de aplicacao
+      // pode ser STRIPE_CONNECT_APPLICATION_ID errado (ex.: o de teste em
+      // producao): todo aluno novo pagaria sem acesso. Isso precisa de alarme.
+      const applicationId = typeof application === "string" ? application : application?.id ?? null;
+      if (applicationId) {
+        notifyOps({
+          event: "stripe.course_subscription.unknown_application",
+          severity: "critical",
+          summary:
+            "A new course subscription came from another Connect application and was ignored. If this repeats, check STRIPE_CONNECT_APPLICATION_ID.",
+          context: { subscriptionId, eventAccountId, applicationId },
+          throttleKey: `stripe.course_subscription.unknown_application:${eventAccountId}`,
+        });
+      }
       return null;
     }
     return { sale: fromMetadata, fromSavedRow: false };
