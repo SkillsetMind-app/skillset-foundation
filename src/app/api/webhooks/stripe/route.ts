@@ -399,24 +399,25 @@ async function releaseAbandonedSubscriptionCoupon(
   const reservationId = meta.couponReservationId;
   if (typeof reservationId !== "string" || !reservationId) return;
   const courseId = meta.courseId ?? null;
-  if (await isForeignCourseEvent(admin, eventAccountId, courseId, meta.teacherId ?? null)) {
-    reportForeignCouponReservation(reservationId, eventAccountId);
-    return;
-  }
-  if (!await couponReservationBelongsToSale(admin, reservationId, courseId, meta.userId ?? null, eventAccountId)) {
+  const foreignAccount = await isForeignCourseEvent(admin, eventAccountId, courseId, meta.teacherId ?? null);
+  if (!await couponReservationBelongsToSale(
+    admin, reservationId, courseId, meta.userId ?? null, eventAccountId, foreignAccount,
+  )) {
     return;
   }
   await releaseCourseCouponReservation(admin, reservationId);
 }
 
 // Com chaves proprias o professor escreve o metadata: a reserva so e tocada se
-// for deste curso e deste comprador. Divergencia nao mexe nela e avisa ops.
+// for deste curso e deste comprador (e o curso da conta do evento). Reserva que
+// nao existe sai calada; divergencia nao mexe nela e avisa ops.
 async function couponReservationBelongsToSale(
   admin: Admin,
   reservationId: string,
   courseId: string | null,
   userId: string | null,
   eventAccountId: string | null,
+  foreignAccount = false,
 ): Promise<boolean> {
   const { data: reservation, error } = await admin
     .from("course_coupon_reservations")
@@ -432,7 +433,7 @@ async function couponReservationBelongsToSale(
     .eq("id", reservation.coupon_id)
     .maybeSingle();
   if (couponError) throw new Error(couponError.message);
-  if (coupon?.course_id === courseId && reservation.user_id === userId) return true;
+  if (!foreignAccount && coupon?.course_id === courseId && reservation.user_id === userId) return true;
   reportForeignCouponReservation(reservationId, eventAccountId);
   return false;
 }
@@ -525,12 +526,34 @@ async function handleCheckoutCompleted(
 ): Promise<void> {
   if (session.payment_status !== "paid") return;
 
-  const metadata = session.metadata;
-  const orderId = metadata?.orderId;
-  const { data: order, error: orderError } = orderId
-    ? await admin.from("orders").select("*").eq("id", orderId).maybeSingle()
+  const metadata = session.metadata ?? {};
+  const { data: metadataOrder, error: orderError } = metadata.orderId
+    ? await admin.from("orders").select("*").eq("id", metadata.orderId).maybeSingle()
     : { data: null, error: null };
   if (orderError) throw new Error("Could not verify the saved checkout order.");
+  let order = metadataOrder;
+  // Na conta conectada o professor pode editar o metadata da sessao. A sessao
+  // gravada no pedido manda: achou por ela, processa esse pedido e avisa ops.
+  let metadataTampered = false;
+  if (connectedAccountId && order?.checkout_session_id !== session.id) {
+    const { data: sessionOrder, error: sessionOrderError } = await admin
+      .from("orders")
+      .select("*")
+      .eq("checkout_session_id", session.id)
+      .maybeSingle();
+    if (sessionOrderError) throw new Error("Could not verify the saved checkout order.");
+    if (sessionOrder) {
+      order = sessionOrder;
+      metadataTampered = true;
+      notifyOps({
+        event: "stripe.webhook.checkout_metadata_mismatch",
+        severity: "critical",
+        summary:
+          "A paid checkout's orderId metadata did not name its saved order. The sale was fulfilled from the order saved with the session.",
+        context: { orderId: sessionOrder.id, checkoutSessionId: session.id, eventAccountId: connectedAccountId },
+      });
+    }
+  }
   // Com chaves proprias o professor tambem vende fora da plataforma (link ou
   // checkout dele). O pedido nasce antes da sessao, entao sem pedido nosso o
   // evento nao e nosso: 2xx, nada gravado. Plataforma sem pedido segue falhando.
@@ -538,10 +561,11 @@ async function handleCheckoutCompleted(
     console.info(`[stripe webhook] Checkout ${session.id} has no SkillsetMind order; ignored.`);
     return;
   }
-  if (!orderId || !order || !metadata?.courseId || !metadata.userId) {
+  if (!order || (!metadataTampered && (!metadata.courseId || !metadata.userId))) {
     throw new Error("Missing required Checkout metadata.");
   }
 
+  const orderId = order.id;
   const courseId = order.course_id;
   const userId = order.user_id;
   const amountMinor = Number(order.amount_minor);
@@ -549,14 +573,16 @@ async function handleCheckoutCompleted(
   // reference to that saved sale, never authority to replace its buyer or course.
   if (
     !sessionBelongsToOrder(order, session.id, connectedAccountId)
-    || metadata.courseId !== courseId || metadata.userId !== userId
     || typeof order.currency !== "string"
     || session.currency?.toUpperCase() !== order.currency.toUpperCase()
     || !Number.isSafeInteger(amountMinor) || amountMinor < 0
     || session.amount_total !== toStripeAmount(amountMinor, order.currency)
-    || (metadata.teacherId !== undefined && metadata.teacherId !== order.teacher_id)
-    || (metadata.connectedAccountId !== undefined
-      && metadata.connectedAccountId !== order.teacher_stripe_connected_account_id)
+    || (!metadataTampered && (
+      metadata.courseId !== courseId || metadata.userId !== userId
+      || (metadata.teacherId !== undefined && metadata.teacherId !== order.teacher_id)
+      || (metadata.connectedAccountId !== undefined
+        && metadata.connectedAccountId !== order.teacher_stripe_connected_account_id)
+    ))
   ) {
     throw new Error("Checkout does not match its saved order.");
   }
@@ -2210,7 +2236,10 @@ async function handleConnectedAccountUpdated(
         stripe_connect_updated_at: ts,
         updated_at: ts,
       })
-      .eq("stripe_connected_account_id", account.id),
+      .eq("stripe_connected_account_id", account.id)
+      // Um account.updated atrasado nao desfaz a desconexao. Reconectar cria
+      // conta nova (status "created") ou passa pelo refresh, que le o Stripe.
+      .or("stripe_connect_status.is.null,stripe_connect_status.neq.disconnected"),
     "Sync connected account readiness",
   );
 }
@@ -2224,19 +2253,28 @@ async function handleConnectedAccountDeauthorized(
 ): Promise<void> {
   if (!accountId) return;
   const ts = nowIso();
-  await requireSupabaseWrite(
-    admin
-      .from("users")
-      .update({
-        stripe_connect_status: "disconnected",
-        stripe_connect_charges_enabled: false,
-        stripe_connect_payouts_enabled: false,
-        stripe_connect_updated_at: ts,
-        updated_at: ts,
-      })
-      .eq("stripe_connected_account_id", accountId),
-    "Mark connected account deauthorized",
-  );
+  const { data: teachers, error } = await admin
+    .from("users")
+    .update({
+      stripe_connect_status: "disconnected",
+      stripe_connect_charges_enabled: false,
+      stripe_connect_payouts_enabled: false,
+      stripe_connect_updated_at: ts,
+      updated_at: ts,
+    })
+    .eq("stripe_connected_account_id", accountId)
+    .select("uid");
+  if (error) throw new Error(`Mark connected account deauthorized: ${error.message}`);
+  // Assinaturas de alunos nessa conta seguem no Stripe dele: alguem precisa olhar.
+  for (const teacher of teachers ?? []) {
+    notifyOps({
+      event: "stripe.connect.deauthorized",
+      severity: "warn",
+      summary:
+        "A teacher disconnected SkillsetMind from their Stripe account. They can no longer sell here; check their active student subscriptions.",
+      context: { uid: teacher.uid },
+    });
+  }
 }
 
 function constructStripeWebhookEvent(
