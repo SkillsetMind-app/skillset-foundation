@@ -50,6 +50,26 @@ describe("notifyOps", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("throttles by throttleKey when given, so one noisy key cannot mute another", async () => {
+    process.env.OPS_ALERT_WEBHOOK_URL = WEBHOOK;
+    const { notifyOps } = await loadFresh();
+    const alert = (key: string) => ({
+      event: "stripe.course_subscription.metadata_mismatch",
+      severity: "critical" as const,
+      summary: "mismatch",
+      throttleKey: `stripe.course_subscription.metadata_mismatch:${key}`,
+    });
+
+    notifyOps(alert("sub_a"));
+    notifyOps(alert("sub_a"));
+    notifyOps(alert("sub_b"));
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    // The key decides the throttle only; the relay never sees it.
+    const body = JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body));
+    expect(body).not.toHaveProperty("throttleKey");
+  });
+
   it("hands the send to the platform waitUntil when after() is unavailable", async () => {
     // Outside a request scope after() throws, and a bare unawaited fetch dies
     // when a serverless instance freezes. The platform's waitUntil, read from

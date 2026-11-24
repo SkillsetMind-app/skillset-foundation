@@ -399,7 +399,8 @@ async function releaseAbandonedSubscriptionCoupon(
   const reservationId = meta.couponReservationId;
   if (typeof reservationId !== "string" || !reservationId) return;
   const courseId = meta.courseId ?? null;
-  const foreignAccount = await isForeignCourseEvent(admin, eventAccountId, courseId, meta.teacherId ?? null);
+  const foreignAccount =
+    (await courseEventOwner(admin, eventAccountId, courseId, meta.teacherId ?? null)) !== "ours";
   if (!await couponReservationBelongsToSale(
     admin, reservationId, courseId, meta.userId ?? null, eventAccountId, foreignAccount,
   )) {
@@ -821,20 +822,25 @@ async function handleCourseSubscriptionInvoicePaid(
     eventAccountId ? { stripeAccount: eventAccountId } : undefined,
   );
   const meta = subscription.metadata ?? {};
-  if (meta.purpose !== "course_subscription") return;
+  const resolved = await resolveCourseSubscriptionSale(admin, eventAccountId, subscriptionId, meta);
+  if (!resolved) return;
 
-  const courseId = typeof meta.courseId === "string" ? meta.courseId : null;
-  const userId = typeof meta.userId === "string" ? meta.userId : null;
-  const teacherId = typeof meta.teacherId === "string" ? meta.teacherId : null;
+  const { courseId, userId, teacherId } = resolved.sale;
   if (!courseId || !userId || !teacherId) {
     throw new Error("course_subscription invoice is missing required metadata.");
   }
 
-  const { data: course } = await admin
+  const { data: course, error: courseError } = await admin
     .from("courses")
     .select("*")
     .eq("id", courseId)
     .maybeSingle();
+  // A read error must retry, never pass for "no such course".
+  if (courseError) throw new Error(courseError.message);
+  if (!course && eventAccountId && !resolved.fromSavedRow) {
+    skipNotOurCourse("unknown_course", subscriptionId, eventAccountId);
+    return;
+  }
   if (!course) throw new Error(`Course ${courseId} not found for subscription invoice.`);
   const { data: owner, error: ownerError } = await admin
     .from("users")
@@ -1117,24 +1123,110 @@ function isForeignCourseAccount(
       && eventAccountId !== owner?.stripe_connected_account_id);
 }
 
+// "unknown_course": a connected-account object naming no course of ours (the
+// teacher's own subscription). Acknowledged with a log, no ops alert.
+type CourseEventOwner = "ours" | "foreign" | "unknown_course";
+
 // Reads the course and its owner for isForeignCourseAccount. A read error
 // throws: a transient failure must never turn our event into a foreign one.
-async function isForeignCourseEvent(
+async function courseEventOwner(
   admin: Admin,
   eventAccountId: string | null,
   courseId: string | null,
   teacherId: string | null,
-): Promise<boolean> {
-  if (!eventAccountId) return false;
+): Promise<CourseEventOwner> {
+  if (!eventAccountId) return "ours";
   const { data: course, error: courseError } = courseId
     ? await admin.from("courses").select("owner_id,stripe_connected_account_id").eq("id", courseId).maybeSingle()
     : { data: null, error: null };
   if (courseError) throw new Error(courseError.message);
+  if (!course) return "unknown_course";
   const { data: owner, error: ownerError } = teacherId
     ? await admin.from("users").select("stripe_connected_account_id").eq("uid", teacherId).maybeSingle()
     : { data: null, error: null };
   if (ownerError) throw new Error(ownerError.message);
-  return isForeignCourseAccount(eventAccountId, teacherId, course, owner);
+  return isForeignCourseAccount(eventAccountId, teacherId, course, owner) ? "foreign" : "ours";
+}
+
+type CourseSubscriptionSale = { courseId: string | null; userId: string | null; teacherId: string | null };
+
+// Our own record of the subscription (written by invoice.paid or the lifecycle
+// handler once the subscription was verified). The teacher cannot edit it.
+async function savedCourseSubscription(
+  admin: Admin,
+  subscriptionId: string,
+): Promise<{ courseId: string; userId: string } | null> {
+  const { data, error } = await admin
+    .from("course_subscriptions")
+    .select("course_id,user_id")
+    .eq("id", subscriptionId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data?.course_id) return null;
+  return { courseId: data.course_id, userId: data.user_id };
+}
+
+function reportCourseSubscriptionMetadataMismatch(subscriptionId: string, eventAccountId: string | null): void {
+  notifyOps({
+    event: "stripe.course_subscription.metadata_mismatch",
+    severity: "critical",
+    summary:
+      "A course subscription's metadata no longer matches the sale saved for it. It was handled with the saved course and student.",
+    context: { subscriptionId, eventAccountId },
+    // Per connected account: one teacher can neither flood this alert (many
+    // subscriptions) nor mute another teacher's.
+    throttleKey: `stripe.course_subscription.metadata_mismatch:${eventAccountId ?? subscriptionId}`,
+  });
+}
+
+// One rule for course-subscription events. On a connected account the saved
+// row decides course and student, and the teacher is that course's owner; the
+// metadata is only compared. With no row yet (the first events of a new
+// subscription) or on the platform, the metadata decides, as before.
+// null = not a course subscription.
+async function resolveCourseSubscriptionSale(
+  admin: Admin,
+  eventAccountId: string | null,
+  subscriptionId: string,
+  meta: Stripe.Metadata,
+): Promise<{ sale: CourseSubscriptionSale; fromSavedRow: boolean } | null> {
+  const fromMetadata = {
+    courseId: meta.courseId || null,
+    userId: meta.userId || null,
+    teacherId: meta.teacherId || null,
+  };
+  const saved = eventAccountId ? await savedCourseSubscription(admin, subscriptionId) : null;
+  if (!saved) {
+    return meta.purpose === "course_subscription" ? { sale: fromMetadata, fromSavedRow: false } : null;
+  }
+  const { data: course, error } = await admin
+    .from("courses")
+    .select("owner_id")
+    .eq("id", saved.courseId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  const sale = { ...saved, teacherId: course?.owner_id ?? null };
+  if (
+    meta.purpose !== "course_subscription"
+    || fromMetadata.courseId !== sale.courseId
+    || fromMetadata.userId !== sale.userId
+    || fromMetadata.teacherId !== sale.teacherId
+  ) {
+    reportCourseSubscriptionMetadataMismatch(subscriptionId, eventAccountId);
+  }
+  return { sale, fromSavedRow: true };
+}
+
+function skipNotOurCourse(
+  ownership: Exclude<CourseEventOwner, "ours">,
+  subscriptionId: string,
+  eventAccountId: string | null,
+): void {
+  if (ownership === "foreign") {
+    reportForeignCourseSubscription(subscriptionId, eventAccountId);
+    return;
+  }
+  console.info(`[stripe webhook] Course subscription ${subscriptionId} names no SkillsetMind course; ignored.`);
 }
 
 function reportForeignCourseSubscription(subscriptionId: string, eventAccountId: string | null): void {
@@ -1152,16 +1244,17 @@ async function handleCourseSubscriptionLifecycle(
   subscription: Stripe.Subscription,
   eventAccountId: string | null,
 ): Promise<boolean> {
-  const meta = subscription.metadata ?? {};
-  if (meta.purpose !== "course_subscription") return false;
+  const resolved = await resolveCourseSubscriptionSale(
+    admin, eventAccountId, subscription.id, subscription.metadata ?? {},
+  );
+  if (!resolved) return false;
 
-  const courseId = typeof meta.courseId === "string" ? meta.courseId : null;
-  const userId = typeof meta.userId === "string" ? meta.userId : null;
-  const teacherId = typeof meta.teacherId === "string" ? meta.teacherId : null;
+  const { courseId, userId, teacherId } = resolved.sale;
   if (!courseId || !userId) return true; // ours; swallow so plan handler isn't called
 
-  if (await isForeignCourseEvent(admin, eventAccountId, courseId, teacherId)) {
-    reportForeignCourseSubscription(subscription.id, eventAccountId);
+  const ownership = await courseEventOwner(admin, eventAccountId, courseId, teacherId);
+  if (ownership !== "ours") {
+    skipNotOurCourse(ownership, subscription.id, eventAccountId);
     return true; // swallow: never upsert a creator-forged row, never run the plan handler
   }
 
@@ -1422,10 +1515,23 @@ async function handleChargeRefunded(
         }
         const subscriptionId = resolveInvoiceSubscriptionId(invoice);
         if (!subscriptionId) continue;
+        // Our saved row first, as in invoice.paid: with it the subscription is
+        // ours whatever its metadata says, and its sale records are coming.
+        if (connectedAccountId && await savedCourseSubscription(admin, subscriptionId)) {
+          throw new Error("Course subscription refund arrived before its sale records; retry this refund.");
+        }
         // Prefer the immutable invoice snapshot; mutable subscription metadata is only a legacy fallback.
         const metadata = invoice.parent?.subscription_details?.metadata
           ?? (await stripe.subscriptions.retrieve(subscriptionId, undefined, options)).metadata;
         if (metadata?.purpose !== "course_subscription") continue;
+        // Sale records never come for a course that does not exist here.
+        if (
+          connectedAccountId
+          && (await courseEventOwner(admin, connectedAccountId, metadata.courseId || null, metadata.teacherId || null))
+            === "unknown_course"
+        ) {
+          continue;
+        }
         if (!metadata.courseId || !metadata.userId || !metadata.teacherId) {
           throw new Error("Refunded course subscription is missing required metadata.");
         }
@@ -1942,19 +2048,23 @@ async function handleCourseSubscriptionInvoiceCreated(
     undefined,
     { stripeAccount: eventAccountId },
   );
-  const meta = subscription.metadata ?? {};
-  if (meta.purpose !== "course_subscription" || !meta.teacherId) return;
+  const resolved = await resolveCourseSubscriptionSale(
+    admin, eventAccountId, subscription.id, subscription.metadata ?? {},
+  );
+  const teacherId = resolved?.sale.teacherId;
+  if (!resolved || !teacherId) return;
   // Same ownership check as invoice.paid: the fee follows the course owner's
-  // plan, so the course must belong to teacherId and to this account.
-  if (await isForeignCourseEvent(admin, eventAccountId, meta.courseId ?? null, meta.teacherId)) {
-    reportForeignCourseSubscription(subscription.id, eventAccountId);
+  // plan, so the course must belong to that teacher and to this account.
+  const ownership = await courseEventOwner(admin, eventAccountId, resolved.sale.courseId, teacherId);
+  if (ownership !== "ours") {
+    skipNotOurCourse(ownership, subscription.id, eventAccountId);
     return;
   }
 
   const { data: owner, error } = await admin
     .from("users")
     .select("current_plan_id")
-    .eq("uid", meta.teacherId)
+    .eq("uid", teacherId)
     .maybeSingle();
   if (error) throw new Error(error.message);
 
@@ -2192,7 +2302,9 @@ async function handleInvoicePaymentFailed(
     if (code !== "resource_missing") throw retrieveError;
   }
 
-  if (subscription?.metadata?.purpose === "course_subscription") {
+  // On a connected account the saved row decides, not the editable metadata:
+  // the update is keyed by our row, so a subscription without one changes nothing.
+  if (eventAccountId || subscription?.metadata?.purpose === "course_subscription") {
     await requireSupabaseWrite(
       admin
         .from("course_subscriptions")

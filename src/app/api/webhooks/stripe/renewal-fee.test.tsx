@@ -28,8 +28,12 @@ import { POST } from "@/app/api/webhooks/stripe/route";
 
 // course_1 e de teacher_1 (no plano do teste) na conta acct_teacher;
 // course_pro e de teacher_pro, um professor Pro em outra conta.
-function createDb(planId: string) {
+function createDb(planId: string, savedSubscription = false) {
   const rows: Record<string, Record<string, Record<string, unknown>>> = {
+    // A linha que o invoice.paid grava para uma assinatura nossa.
+    course_subscriptions: savedSubscription
+      ? { sub_student_1: { course_id: "course_1", user_id: "user_1", teacher_id: "teacher_1" } }
+      : {},
     users: {
       teacher_1: { current_plan_id: planId, stripe_connected_account_id: "acct_teacher" },
       teacher_pro: { current_plan_id: "pro", stripe_connected_account_id: "acct_pro" },
@@ -216,7 +220,6 @@ describe("invoice.created on a student-subscription renewal", () => {
   it.each([
     ["a Pro teacher's id on the account's own course", { courseId: "course_1", teacherId: "teacher_pro" }],
     ["a Pro teacher's id and course", { courseId: "course_pro", teacherId: "teacher_pro" }],
-    ["no course at all", { courseId: "", teacherId: "teacher_pro" }],
   ])("touches no fee when the metadata names %s, and tells ops", async (_label, forged) => {
     mocks.getAdmin.mockReturnValue(createDb("starter"));
     mocks.retrieve.mockResolvedValue({
@@ -234,6 +237,67 @@ describe("invoice.created on a student-subscription renewal", () => {
       severity: "critical",
     }));
   });
+
+  // Curso que nao existe aqui e assinatura do proprio professor: so log, sem alerta.
+  it.each([
+    ["no course", ""],
+    ["a course that does not exist here", "course_unknown"],
+  ])("touches no fee and sends no alert for %s", async (_label, courseId) => {
+    mocks.getAdmin.mockReturnValue(createDb("starter"));
+    vi.spyOn(console, "info").mockImplementation(() => undefined);
+    mocks.retrieve.mockResolvedValue({
+      id: "sub_student_1",
+      application_fee_percent: 6.4,
+      metadata: { ...ownCourse, courseId, teacherId: "teacher_pro" },
+    });
+
+    expect((await deliver(renewal())).status).toBe(200);
+
+    expect(mocks.updateSubscription).not.toHaveBeenCalled();
+    expect(mocks.updateInvoice).not.toHaveBeenCalled();
+    expect(mocks.notifyOps).not.toHaveBeenCalled();
+  });
+
+  it("charges our subscription from its saved course when the courseId metadata was edited", async () => {
+    mocks.getAdmin.mockReturnValue(createDb("starter", true));
+    mocks.retrieve.mockResolvedValue({
+      id: "sub_student_1",
+      metadata: { ...ownCourse, courseId: "course_unknown" },
+    });
+
+    expect((await deliver(renewal())).status).toBe(200);
+
+    expect(mocks.updateInvoice).toHaveBeenCalledWith(
+      "in_renewal_1",
+      { application_fee_amount: Math.floor((2_000 * 490) / 10_000) + 30 },
+      { stripeAccount: "acct_teacher" },
+    );
+    expect(mocks.notifyOps).toHaveBeenCalledWith(expect.objectContaining({
+      event: "stripe.course_subscription.metadata_mismatch",
+    }));
+  });
+
+  // Vendido no Pro (sem percentual), professor rebaixado apaga chaves do metadata:
+  // a linha salva mantem a venda e a taxa sai pelo plano do dono do curso.
+  it.each(["teacherId", "purpose", "courseId"])(
+    "still charges the owner's plan fee when metadata %s was deleted", async (key) => {
+      mocks.getAdmin.mockReturnValue(createDb("starter", true));
+      const metadata: Record<string, string> = { ...ownCourse };
+      delete metadata[key];
+      mocks.retrieve.mockResolvedValue({ id: "sub_student_1", metadata });
+
+      expect((await deliver(renewal())).status).toBe(200);
+
+      expect(mocks.updateInvoice).toHaveBeenCalledWith(
+        "in_renewal_1",
+        { application_fee_amount: Math.floor((2_000 * 490) / 10_000) + 30 },
+        { stripeAccount: "acct_teacher" },
+      );
+      expect(mocks.notifyOps).toHaveBeenCalledWith(expect.objectContaining({
+        event: "stripe.course_subscription.metadata_mismatch",
+      }));
+    },
+  );
 
   it("leaves a connected account's own subscriptions alone", async () => {
     mocks.getAdmin.mockReturnValue(createDb("starter"));
