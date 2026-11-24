@@ -3379,5 +3379,66 @@ describe("Stripe webhook financial integrity", () => {
       expect(admin.state.rpcCalls.map((call) => call.name)).not.toContain("release_course_coupon_reservation");
       expect(mocks.notifyOps).not.toHaveBeenCalled();
     });
+
+    // Planos so existem na conta da plataforma; o id do Price e publico.
+    function planSubscription() {
+      return {
+        id: "sub_plan_lookalike", status: "trialing", customer: "cus_x", cancel_at_period_end: false,
+        metadata: { uid: "user_1" },
+        trial_start: 1_800_000_000, trial_end: 1_801_000_000,
+        items: { data: [{
+          price: { id: planById("pro").stripePriceIds!.monthlyId },
+          current_period_start: 1_800_000_000, current_period_end: 1_802_000_000,
+        }] },
+      };
+    }
+
+    function planSubscriptionEvent(account?: string) {
+      return {
+        id: `evt_plan_sub_${account ?? "platform"}`,
+        type: "customer.subscription.updated",
+        ...(account ? { account } : {}),
+        data: { object: planSubscription() },
+      };
+    }
+
+    it("never syncs a plan or records a trial from a connected-account subscription", async () => {
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+      mocks.subscriptionRetrieve.mockResolvedValue(planSubscription());
+
+      expect((await postEvent(planSubscriptionEvent("acct_teacher"))).status).toBe(200);
+
+      expect(admin.state.planSubscriptions).toEqual([]);
+      expect(admin.state.userUpdates).toEqual([]);
+      for (const table of ["subscriptions", "creator_plan_trials", "plan_grants"]) {
+        expect(admin.from).not.toHaveBeenCalledWith(table);
+      }
+      expect(admin.state.doneEvents).toContain("evt_plan_sub_acct_teacher");
+    });
+
+    it("still syncs the same plan subscription from the platform account", async () => {
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+      mocks.subscriptionRetrieve.mockResolvedValue(planSubscription());
+
+      expect((await postEvent(planSubscriptionEvent())).status).toBe(200);
+
+      expect(admin.state.planSubscriptions).toEqual([
+        expect.objectContaining({ id: "sub_plan_lookalike", user_id: "user_1", plan_id: "pro" }),
+      ]);
+      expect(admin.state.userUpdates.at(-1)?.current_plan_id).toBe("pro");
+      expect(admin.from).toHaveBeenCalledWith("creator_plan_trials");
+    });
+
+    it("never marks a plan past due from a connected account's own failed invoice", async () => {
+      const admin = createAdmin("checkout", undefined, true);
+      mocks.getAdmin.mockReturnValue(admin);
+      mocks.subscriptionRetrieve.mockResolvedValueOnce({ id: "sub_1", metadata: {} });
+
+      expect((await postEvent(failedInvoiceEvent())).status).toBe(200);
+      expect(admin.from).not.toHaveBeenCalledWith("subscriptions");
+      expect(admin.state.doneEvents).toContain("evt_invoice_failed");
+    });
   });
 });
