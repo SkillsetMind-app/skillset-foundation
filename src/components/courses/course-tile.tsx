@@ -19,6 +19,7 @@ import type { CourseCard } from "@/lib/data/catalog";
  * — todo curso do catalogo esta publicado, entao o selo nao separava nada.
  */
 export function courseCardBadge(card: CourseCard): string | null {
+  if (card.featured) return "Featured (paid placement)";
   if (card.freePreviewHref) return "Free preview";
   if (!card.ratingCount) return "New";
   return null;
@@ -42,7 +43,7 @@ export function courseCardBadge(card: CourseCard): string | null {
  * - resumo cortado em duas linhas em qualquer tela.
  */
 export type CourseTileProps = {
-  courseData?: Pick<CourseCard, "lessonCount" | "priceAmountMinor" | "currency" | "freePreviewHref" | "ratingCount" | "ownerId">;
+  courseData?: Pick<CourseCard, "lessonCount" | "priceAmountMinor" | "currency" | "freePreviewHref" | "ratingCount" | "ownerId" | "featured">;
   href: string;
   title: string;
   image: string;
@@ -87,8 +88,10 @@ export function CourseTile({
   const displayPrice = typeof courseData?.priceAmountMinor === "number"
     ? new Intl.NumberFormat(locale, { style: "currency", currency: courseData.currency ?? "USD" }).format(courseData.priceAmountMinor / 100)
     : courseData?.ownerId ? t("publicCourses.enrollmentSoon") : priceLabel;
+  // Destaque comprado com o plano vem antes de tudo: quem compra precisa saber
+  // que aquela posição na lista foi paga (o selo único continua sendo um só).
   const displayBadge = courseData
-    ? courseData.freePreviewHref ? t("publicCourses.preview") : !courseData.ratingCount ? t("publicCourses.new") : null
+    ? courseData.featured ? t("publicCourses.featuredPaid") : courseData.freePreviewHref ? t("publicCourses.preview") : !courseData.ratingCount ? t("publicCourses.new") : null
     : badge;
   const kicker = [category ? getCourseCategoryLabel(category, t) : category, displayMeta].filter(Boolean).join(" · ");
   const hasRating = Boolean(rating && rating.count > 0);

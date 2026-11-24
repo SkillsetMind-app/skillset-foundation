@@ -539,6 +539,7 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
                   freePreviewHref: track.freePreviewHref,
                   ratingCount: track.ratingCount,
                   ownerId: track.ownerId,
+                  featured: track.featured,
                 }}
                 priceLabel={track.priceLabel}
                 rating={
