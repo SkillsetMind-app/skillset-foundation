@@ -3128,14 +3128,17 @@ export function CourseBuilderStudio() {
   // O botao apagado sempre diz por que. Antes a frase dependia so da
   // prontidao: com o preco digitado invalido, ou abrindo o curso de outra
   // pessoa, o botao apagava em silencio.
+  // Do mais especifico ao mais geral: quem nao e dono nao tem o que terminar;
+  // o preco digitado invalido tambem reprova a prontidao, e "corrija o preco"
+  // diz o que fazer melhor que "termine os itens".
   const publishReasonKey = isLive || success === "published"
     ? null
-    : !readyToPublish
-      ? "creatorEditor.builder.publish.finish"
-      : !canPublish
-        ? viewingOthersCourse ? "creatorEditor.builder.publish.ownerOnly" : null
-        : !priceFieldIsValid
-          ? "creatorEditor.builder.publish.fixPrice"
+    : viewingOthersCourse
+      ? "creatorEditor.builder.publish.ownerOnly"
+      : !priceFieldIsValid
+        ? "creatorEditor.builder.publish.fixPrice"
+        : !readyToPublish
+          ? "creatorEditor.builder.publish.finish"
           : null;
   const showPublishReason = publishReasonKey !== null;
   const publishButton = isLive ? (
@@ -3689,9 +3692,9 @@ export function CourseBuilderStudio() {
                 setCommunityEnabled((previous) => !previous);
                 setSuccess(null);
               }}
-              className="flex min-h-11 w-full flex-wrap items-center justify-between gap-3 rounded-md text-left disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex min-h-11 w-full items-center justify-between gap-3 rounded-md text-left disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <span className="grid gap-1">
+              <span className="grid min-w-0 gap-1">
                 <span className="text-sm font-semibold text-[var(--color-ink)]">
                   {t("creatorEditor.builder.community.title")}
                 </span>

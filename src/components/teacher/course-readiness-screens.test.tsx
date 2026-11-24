@@ -347,6 +347,10 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
       </I18nProvider>,
     );
     expect(screen.getByRole("button", { name: "Publicar producto" })).toBeDisabled();
+    // O motivo diz o que fazer: corrigir o preco, nao "terminar os itens".
+    expect(screen.getByRole("button", { name: "Publicar producto" })).toHaveAccessibleDescription(
+      "Corrige el precio en Precios para publicar.",
+    );
     expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
   });
 
