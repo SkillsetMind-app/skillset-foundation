@@ -3125,7 +3125,19 @@ export function CourseBuilderStudio() {
     };
   }
 
-  const showPublishReason = !(readyToPublish || isLive || success === "published");
+  // O botao apagado sempre diz por que. Antes a frase dependia so da
+  // prontidao: com o preco digitado invalido, ou abrindo o curso de outra
+  // pessoa, o botao apagava em silencio.
+  const publishReasonKey = isLive || success === "published"
+    ? null
+    : !readyToPublish
+      ? "creatorEditor.builder.publish.finish"
+      : !canPublish
+        ? viewingOthersCourse ? "creatorEditor.builder.publish.ownerOnly" : null
+        : !priceFieldIsValid
+          ? "creatorEditor.builder.publish.fixPrice"
+          : null;
+  const showPublishReason = publishReasonKey !== null;
   const publishButton = isLive ? (
     <p className="text-sm font-semibold text-[var(--color-ink-soft)]">
       {t("creatorEditor.builder.publish.live")}
@@ -3663,35 +3675,34 @@ export function CourseBuilderStudio() {
 
         {activeTab === "members" && course ? (
           <div className={`${panelIn} rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4`}>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="grid gap-1">
-                <p className="text-sm font-semibold text-[var(--color-ink)]">
+            {/* A linha inteira e a chave, como na Conta e no estudio da aula:
+                antes so o alvo de 44px em volta do trilho respondia e o texto
+                ao lado nao. O trilho e a .settings-toggle da casa. */}
+            <button
+              type="button"
+              role="switch"
+              aria-checked={communityEnabled}
+              aria-label={t("creatorEditor.builder.community.enable")}
+              aria-describedby="builder-community-help"
+              disabled={!isEditable}
+              onClick={() => {
+                setCommunityEnabled((previous) => !previous);
+                setSuccess(null);
+              }}
+              className="flex min-h-11 w-full flex-wrap items-center justify-between gap-3 rounded-md text-left disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <span className="grid gap-1">
+                <span className="text-sm font-semibold text-[var(--color-ink)]">
                   {t("creatorEditor.builder.community.title")}
-                </p>
-                <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
-                  {t("creatorEditor.builder.community.help")}
-                </p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={communityEnabled}
-                aria-label={t("creatorEditor.builder.community.enable")}
-                disabled={!isEditable}
-                onClick={() => {
-                  setCommunityEnabled((previous) => !previous);
-                  setSuccess(null);
-                }}
-                // A chave da Conta (.settings-toggle: botao por transform, nos
-                // tokens de movimento) dentro de um alvo de 44px. A daqui era
-                // feita a mao, 48x28, e o botao pulava por `left`.
-                className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-md disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <span aria-hidden="true" className={`settings-toggle ${communityEnabled ? "settings-toggle--on" : ""}`}>
-                  <span />
                 </span>
-              </button>
-            </div>
+                <span id="builder-community-help" className="text-xs leading-5 text-[var(--color-ink-soft)]">
+                  {t("creatorEditor.builder.community.help")}
+                </span>
+              </span>
+              <span aria-hidden="true" className={`settings-toggle shrink-0 ${communityEnabled ? "settings-toggle--on" : ""}`}>
+                <span />
+              </span>
+            </button>
             <p className="mt-3 text-xs font-semibold text-[var(--color-ink-soft)]">
               {communityEnabled
                 ? t("creatorEditor.builder.community.on")
@@ -4425,7 +4436,7 @@ export function CourseBuilderStudio() {
             <div className="flex w-full flex-wrap items-center justify-end gap-3 sm:w-auto">
               {showPublishReason ? (
                 <span id="builder-publish-reason" className="text-xs font-semibold text-[var(--color-ink-soft)]">
-                  {t("creatorEditor.builder.publish.finish")}
+                  {t(publishReasonKey ?? "creatorEditor.builder.publish.finish")}
                 </span>
               ) : null}
               {success === "published" ? null : publishButton}

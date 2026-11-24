@@ -187,11 +187,12 @@ export function TeacherStudentsList() {
         </select>
         <ExportTableButton rows={exportRows} filename="students" />
       </div>
-      {visible.length === 0 ? (
-        <p role="status" className="mt-4 text-sm leading-6 text-[var(--color-ink-soft)]">
-          {t("teach.studentsPage.noMatches")}
-        </p>
-      ) : (
+      {/* A regiao viva existe sempre: inserida ja com o texto, muitos leitores
+          de tela nao a anunciavam. */}
+      <p role="status" className={visible.length === 0 ? "mt-4 text-sm leading-6 text-[var(--color-ink-soft)]" : "sr-only"}>
+        {visible.length === 0 ? t("teach.studentsPage.noMatches") : ""}
+      </p>
+      {visible.length === 0 ? null : (
       <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[720px] border-collapse text-left text-sm">
           <thead>
