@@ -178,7 +178,10 @@ export function VerifiedBadge({
         }}
         className={
           compact
-            ? "grid size-7 place-items-center rounded-sm"
+            ? // O selo fica com 28px ao lado do nome, mas o alvo tem 44px: o
+              // ::after cresce 8px para cada lado sem empurrar a linha (o mesmo
+              // desenho do "?" de ajuda).
+              "relative grid size-7 place-items-center rounded-sm after:absolute after:-inset-2 after:content-['']"
             : cn(verifiedLabelClass, "transition-colors duration-[var(--duration-fast)] hover:border-[var(--color-accent)]")
         }
       >
