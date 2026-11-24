@@ -28,8 +28,12 @@ import { POST } from "@/app/api/webhooks/stripe/route";
 
 // course_1 e de teacher_1 (no plano do teste) na conta acct_teacher;
 // course_pro e de teacher_pro, um professor Pro em outra conta.
-function createDb(planId: string) {
+function createDb(planId: string, savedSubscription = false) {
   const rows: Record<string, Record<string, Record<string, unknown>>> = {
+    // A linha que o invoice.paid grava para uma assinatura nossa.
+    course_subscriptions: savedSubscription
+      ? { sub_student_1: { course_id: "course_1", user_id: "user_1", teacher_id: "teacher_1" } }
+      : {},
     users: {
       teacher_1: { current_plan_id: planId, stripe_connected_account_id: "acct_teacher" },
       teacher_pro: { current_plan_id: "pro", stripe_connected_account_id: "acct_pro" },
@@ -252,6 +256,25 @@ describe("invoice.created on a student-subscription renewal", () => {
     expect(mocks.updateSubscription).not.toHaveBeenCalled();
     expect(mocks.updateInvoice).not.toHaveBeenCalled();
     expect(mocks.notifyOps).not.toHaveBeenCalled();
+  });
+
+  it("charges our subscription from its saved course when the courseId metadata was edited", async () => {
+    mocks.getAdmin.mockReturnValue(createDb("starter", true));
+    mocks.retrieve.mockResolvedValue({
+      id: "sub_student_1",
+      metadata: { ...ownCourse, courseId: "course_unknown" },
+    });
+
+    expect((await deliver(renewal())).status).toBe(200);
+
+    expect(mocks.updateInvoice).toHaveBeenCalledWith(
+      "in_renewal_1",
+      { application_fee_amount: Math.floor((2_000 * 490) / 10_000) + 30 },
+      { stripeAccount: "acct_teacher" },
+    );
+    expect(mocks.notifyOps).toHaveBeenCalledWith(expect.objectContaining({
+      event: "stripe.course_subscription.metadata_mismatch",
+    }));
   });
 
   it("leaves a connected account's own subscriptions alone", async () => {

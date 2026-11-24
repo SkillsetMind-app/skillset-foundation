@@ -824,23 +824,31 @@ async function handleCourseSubscriptionInvoicePaid(
   const meta = subscription.metadata ?? {};
   if (meta.purpose !== "course_subscription") return;
 
-  const courseId = typeof meta.courseId === "string" ? meta.courseId : null;
-  const userId = typeof meta.userId === "string" ? meta.userId : null;
-  const teacherId = typeof meta.teacherId === "string" ? meta.teacherId : null;
+  let courseId = typeof meta.courseId === "string" ? meta.courseId : null;
+  let userId = typeof meta.userId === "string" ? meta.userId : null;
+  let teacherId = typeof meta.teacherId === "string" ? meta.teacherId : null;
   if (!courseId || !userId || !teacherId) {
     throw new Error("course_subscription invoice is missing required metadata.");
   }
 
-  const { data: course, error: courseError } = await admin
-    .from("courses")
-    .select("*")
-    .eq("id", courseId)
-    .maybeSingle();
-  // A read error must retry, never pass for "no such course".
-  if (courseError) throw new Error(courseError.message);
+  const readCourse = async (id: string) => {
+    const { data, error } = await admin.from("courses").select("*").eq("id", id).maybeSingle();
+    // A read error must retry, never pass for "no such course".
+    if (error) throw new Error(error.message);
+    return data;
+  };
+  let course = await readCourse(courseId);
   if (!course && eventAccountId) {
-    skipNotOurCourse("unknown_course", subscriptionId, eventAccountId);
-    return;
+    const saved = await savedCourseSubscription(admin, subscriptionId);
+    if (!saved) {
+      skipNotOurCourse("unknown_course", subscriptionId, eventAccountId);
+      return;
+    }
+    reportCourseSubscriptionMetadataMismatch(subscriptionId, eventAccountId);
+    courseId = saved.courseId;
+    userId = saved.userId;
+    teacherId = saved.teacherId ?? teacherId;
+    course = await readCourse(courseId);
   }
   if (!course) throw new Error(`Course ${courseId} not found for subscription invoice.`);
   const { data: owner, error: ownerError } = await admin
@@ -1149,6 +1157,51 @@ async function courseEventOwner(
   return isForeignCourseAccount(eventAccountId, teacherId, course, owner) ? "foreign" : "ours";
 }
 
+type CourseSubscriptionSale = { courseId: string | null; userId: string | null; teacherId: string | null };
+
+// Our own record of the subscription (written by invoice.paid). It outranks the
+// connected account's metadata, which the teacher can edit.
+async function savedCourseSubscription(
+  admin: Admin,
+  subscriptionId: string,
+): Promise<{ courseId: string; userId: string; teacherId: string | null } | null> {
+  const { data, error } = await admin
+    .from("course_subscriptions")
+    .select("course_id,user_id,teacher_id")
+    .eq("id", subscriptionId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data?.course_id) return null;
+  return { courseId: data.course_id, userId: data.user_id, teacherId: data.teacher_id };
+}
+
+function reportCourseSubscriptionMetadataMismatch(subscriptionId: string, eventAccountId: string | null): void {
+  notifyOps({
+    event: "stripe.course_subscription.metadata_mismatch",
+    severity: "critical",
+    summary:
+      "A course subscription's courseId metadata names no course. It was handled with the course and student saved for that subscription.",
+    context: { subscriptionId, eventAccountId },
+  });
+}
+
+// courseEventOwner, but a course that does not exist here falls back to the
+// saved subscription row before it counts as the teacher's own object.
+async function resolveCourseSubscriptionOwner(
+  admin: Admin,
+  eventAccountId: string | null,
+  subscriptionId: string,
+  fromMetadata: CourseSubscriptionSale,
+): Promise<{ ownership: CourseEventOwner; sale: CourseSubscriptionSale }> {
+  const ownership = await courseEventOwner(admin, eventAccountId, fromMetadata.courseId, fromMetadata.teacherId);
+  if (ownership !== "unknown_course") return { ownership, sale: fromMetadata };
+  const saved = await savedCourseSubscription(admin, subscriptionId);
+  if (!saved) return { ownership, sale: fromMetadata };
+  reportCourseSubscriptionMetadataMismatch(subscriptionId, eventAccountId);
+  const sale = { ...saved, teacherId: saved.teacherId ?? fromMetadata.teacherId };
+  return { ownership: await courseEventOwner(admin, eventAccountId, sale.courseId, sale.teacherId), sale };
+}
+
 function skipNotOurCourse(
   ownership: Exclude<CourseEventOwner, "ours">,
   subscriptionId: string,
@@ -1179,16 +1232,21 @@ async function handleCourseSubscriptionLifecycle(
   const meta = subscription.metadata ?? {};
   if (meta.purpose !== "course_subscription") return false;
 
-  const courseId = typeof meta.courseId === "string" ? meta.courseId : null;
-  const userId = typeof meta.userId === "string" ? meta.userId : null;
-  const teacherId = typeof meta.teacherId === "string" ? meta.teacherId : null;
-  if (!courseId || !userId) return true; // ours; swallow so plan handler isn't called
+  const metaCourseId = typeof meta.courseId === "string" ? meta.courseId : null;
+  const metaUserId = typeof meta.userId === "string" ? meta.userId : null;
+  if (!metaCourseId || !metaUserId) return true; // ours; swallow so plan handler isn't called
 
-  const ownership = await courseEventOwner(admin, eventAccountId, courseId, teacherId);
+  const { ownership, sale } = await resolveCourseSubscriptionOwner(admin, eventAccountId, subscription.id, {
+    courseId: metaCourseId,
+    userId: metaUserId,
+    teacherId: typeof meta.teacherId === "string" ? meta.teacherId : null,
+  });
   if (ownership !== "ours") {
     skipNotOurCourse(ownership, subscription.id, eventAccountId);
     return true; // swallow: never upsert a creator-forged row, never run the plan handler
   }
+  const { courseId, userId, teacherId } = sale;
+  if (!courseId || !userId) return true; // both come from metadata or the saved row
 
   const status = subscription.status;
   const entitled = status === "active" || status === "trialing";
@@ -1451,9 +1509,11 @@ async function handleChargeRefunded(
         const metadata = invoice.parent?.subscription_details?.metadata
           ?? (await stripe.subscriptions.retrieve(subscriptionId, undefined, options)).metadata;
         if (metadata?.purpose !== "course_subscription") continue;
-        // Sale records never come for a course that does not exist here.
+        // Sale records never come for a course that does not exist here. Our
+        // saved row comes first, as in invoice.paid: metadata can be edited.
         if (
           connectedAccountId
+          && !(await savedCourseSubscription(admin, subscriptionId))
           && (await courseEventOwner(admin, connectedAccountId, metadata.courseId || null, metadata.teacherId || null))
             === "unknown_course"
         ) {
@@ -1979,7 +2039,11 @@ async function handleCourseSubscriptionInvoiceCreated(
   if (meta.purpose !== "course_subscription" || !meta.teacherId) return;
   // Same ownership check as invoice.paid: the fee follows the course owner's
   // plan, so the course must belong to teacherId and to this account.
-  const ownership = await courseEventOwner(admin, eventAccountId, meta.courseId ?? null, meta.teacherId);
+  const { ownership, sale } = await resolveCourseSubscriptionOwner(admin, eventAccountId, subscription.id, {
+    courseId: meta.courseId || null,
+    userId: meta.userId || null,
+    teacherId: meta.teacherId,
+  });
   if (ownership !== "ours") {
     skipNotOurCourse(ownership, subscription.id, eventAccountId);
     return;
@@ -1988,7 +2052,7 @@ async function handleCourseSubscriptionInvoiceCreated(
   const { data: owner, error } = await admin
     .from("users")
     .select("current_plan_id")
-    .eq("uid", meta.teacherId)
+    .eq("uid", sale.teacherId ?? meta.teacherId)
     .maybeSingle();
   if (error) throw new Error(error.message);
 

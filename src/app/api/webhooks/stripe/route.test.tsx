@@ -86,6 +86,8 @@ type AdminState = {
   reservationSale?: { course_id: string; user_id: string };
   // stripe_connect_status da linha de teacher_1 (acct_teacher).
   connectStatus?: string;
+  // A linha de course_subscriptions que o invoice.paid ja gravou (por id).
+  savedCourseSubscription?: Record<string, unknown>;
   checkoutLock?: { lock_key: string; order_id: string } | null;
   afterCheckoutLockRead?: () => void;
   // Outra transacao commita depois da leitura do handler e antes de a RPC
@@ -413,6 +415,9 @@ function createAdmin(
           cover_image_url: null,
           stripe_connected_account_id: "acct_teacher",
         };
+      } else if (this.table === "course_subscriptions") {
+        const saved = state.savedCourseSubscription;
+        data = saved && this.filterValue("id") === saved.id ? { ...saved } : null;
       } else if (this.table === "enrollments") {
         data = state.enrollmentRow ?? null;
       } else if (this.table === "course_coupon_reservations") {
@@ -3458,9 +3463,82 @@ describe("Stripe webhook financial integrity", () => {
       expect(admin.state.orderWrites).toEqual([]);
       expect(admin.state.paymentWrites).toEqual([]);
       expect(admin.state.ledgerIds.size).toBe(0);
-      expect(admin.from).not.toHaveBeenCalledWith("course_subscriptions");
+      // Le a linha salva (nao ha), nunca grava.
+      const courseSubscriptionWrites = admin.from.mock.results
+        .map((result) => result.value as unknown as { table: string; operation: string })
+        .filter((query) => query.table === "course_subscriptions" && query.operation !== "select");
+      expect(courseSubscriptionWrites).toEqual([]);
       expect(mocks.notifyOps).not.toHaveBeenCalled();
     }
+
+    // Assinatura nossa (linha salva pelo invoice.paid) cujo courseId foi trocado
+    // no painel do professor por um curso que nao existe.
+    const savedRow = { id: "sub_unknown_course", course_id: "course_1", user_id: "user_1", teacher_id: "teacher_1" };
+    const mismatchAlert = (subscriptionId: string) => expect.objectContaining({
+      event: "stripe.course_subscription.metadata_mismatch",
+      severity: "critical",
+      context: expect.objectContaining({ subscriptionId }),
+    });
+
+    it("books a renewal of our subscription from the saved row when its courseId was edited", async () => {
+      const admin = createAdmin("checkout");
+      // A fatura aponta para sub_1: a linha salva e dessa assinatura.
+      admin.state.savedCourseSubscription = { ...savedRow, id: "sub_1" };
+      mocks.getAdmin.mockReturnValue(admin);
+      mocks.subscriptionRetrieve.mockResolvedValue(unknownCourseSubscription());
+      const renewal = paidInvoiceEvent();
+      Object.assign(renewal.data.object, { billing_reason: "subscription_cycle" });
+
+      expect((await postEvent(renewal)).status).toBe(200);
+
+      expect(fulfillCalls(admin).map((call) => call.args)).toEqual([
+        expect.objectContaining({ p_user_id: "user_1", p_course_id: "course_1", p_subscription_id: "sub_1" }),
+      ]);
+      expect(admin.state.ledgerIds.has("in_paid_1")).toBe(true);
+      expect(mocks.notifyOps).toHaveBeenCalledWith(mismatchAlert("sub_1"));
+    });
+
+    it("revokes the saved course on cancel when the courseId was edited", async () => {
+      const admin = createAdmin("checkout");
+      admin.state.savedCourseSubscription = { ...savedRow };
+      admin.state.enrollmentRow = {
+        status: "active", source: "subscription", subscription_id: "sub_unknown_course", progress_percent: 40,
+      };
+      mocks.getAdmin.mockReturnValue(admin);
+      const canceled = { ...unknownCourseSubscription(), status: "canceled" };
+      mocks.subscriptionRetrieve.mockResolvedValue(canceled);
+
+      const response = await postEvent({
+        id: "evt_edited_course_canceled", type: "customer.subscription.deleted", account: "acct_teacher",
+        data: { object: canceled },
+      });
+
+      expect(response.status).toBe(200);
+      expect(admin.state.enrollmentRow?.status).toBe("revoked");
+      expect(admin.state.enrollmentUpdates).toContainEqual(
+        expect.objectContaining({ id: "user_1__course_1", status: "revoked" }),
+      );
+      expect(mocks.notifyOps).toHaveBeenCalledWith(mismatchAlert("sub_unknown_course"));
+    });
+
+    it("still retries an early refund of our subscription whose courseId was edited", async () => {
+      const admin = createAdmin("checkout");
+      admin.state.saleRows = { orders: [], payments: [], payout_ledger: [] };
+      admin.state.savedCourseSubscription = { ...savedRow };
+      mocks.getAdmin.mockReturnValue(admin);
+      const metadata = unknownCourseSubscription().metadata;
+      mocks.invoicePaymentsList.mockImplementation(async function* () {
+        yield { invoice: { id: "in_x", parent: { subscription_details: { subscription: "sub_unknown_course", metadata } } } };
+      });
+      const event = refundEvent("evt_edited_course_refund", 10000);
+
+      const response = await postEvent({
+        ...event, account: "acct_teacher",
+        data: { object: { ...event.data.object, payment_intent: "pi_teacher_sub", refunded: true } },
+      });
+
+      expect(response.status).toBe(500);
+    });
 
     it("acknowledges a paid invoice for an unknown course on a connected account", async () => {
       const admin = createAdmin("checkout");
