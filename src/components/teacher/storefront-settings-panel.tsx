@@ -459,14 +459,26 @@ export function StorefrontSettingsPanel() {
               <div className={`h-4 w-full max-w-xl ${bone}`} />
             </div>
             <div className={`h-32 ${bone}`} />
+            {/* Os mesmos dois cartoes do formulario (cor, logo, capa, tema e
+                frase; depois a ordem dos cursos) e o botao. Com tres campos
+                so, o esqueleto tinha 531px para ~1.690px no celular, e o
+                cartao "Your own domain" logo abaixo saltava para fora da tela. */}
             <div className="grid gap-4 rounded-lg border border-[var(--color-line)] p-4">
-              {[0, 1, 2].map((item) => (
+              {["h-11", "h-28", "h-28", "h-11", "h-24"].map((height, item) => (
                 <div key={item} className="grid gap-2">
                   <div className={`h-3 w-28 ${bone}`} />
-                  <div className={`h-11 ${bone}`} />
+                  <div className={`${height} ${bone}`} />
                 </div>
               ))}
             </div>
+            <div className="grid gap-2 rounded-lg border border-[var(--color-line)] p-4">
+              <div className={`h-3 w-36 ${bone}`} />
+              {/* Os mesmos 2 blocos de h-16 que o cartao mostra enquanto os cursos chegam. */}
+              {[0, 1].map((item) => (
+                <div key={item} className={`h-16 ${bone}`} />
+              ))}
+            </div>
+            <div className={`h-11 w-36 ${bone}`} />
           </div>
         </div>
       </section>

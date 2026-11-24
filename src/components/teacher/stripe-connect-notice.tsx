@@ -20,6 +20,31 @@ const DISMISS_KEY = "skillset:stripe-connect-notice-dismissed";
 
 const EMPTY_SUBSCRIBE = () => () => {};
 
+// O aviso esperava o perfil (~0,3 s depois da lista de vendas) e, ao entrar,
+// empurrava a lista 117px para baixo no celular. O ultimo estado lido para esta
+// pessoa fica neste aparelho: quem ainda nao conectou ve o aviso desde o
+// primeiro quadro; se a conta conectou desde a ultima visita, ele sai quando o
+// perfil chega (uma vez so).
+const LAST_KNOWN_KEY = "skillset:stripe-connect-notice-last";
+
+function readLastKnown(userId: string | null): boolean | null {
+  if (!userId) return null;
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(LAST_KNOWN_KEY) ?? "null");
+    return saved?.uid === userId && typeof saved.ready === "boolean" ? saved.ready : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveLastKnown(userId: string, ready: boolean) {
+  try {
+    window.localStorage.setItem(LAST_KNOWN_KEY, JSON.stringify({ uid: userId, ready }));
+  } catch {
+    // ponytail: armazenamento bloqueado: o aviso so espera o perfil, como antes.
+  }
+}
+
 // Le a marca de "ja dispensei" sem set-state-in-effect (a casa proibe) e sem
 // divergencia de hidratacao: o instantaneo do servidor e `true`, entao nada e
 // desenhado no SSR e o valor real entra na hidratacao. Sem inscricao — a marca
@@ -45,8 +70,12 @@ export function StripeConnectNotice() {
   const { t } = useTranslation();
   const userId = user?.uid ?? null;
   const [payoutsReady, setPayoutsReady] = useState<boolean | null>(null);
+  // A leitura do perfil falhou: sem leitura nesta visita, a marca da ultima
+  // tambem nao vale (a conta pode ter conectado em outro aparelho).
+  const [readFailed, setReadFailed] = useState(false);
   const [dismissedNow, setDismissedNow] = useState(false);
   const dismissed = useDismissedThisSession() || dismissedNow;
+  const lastKnown = useSyncExternalStore(EMPTY_SUBSCRIBE, () => readLastKnown(userId), () => null);
 
   useEffect(() => {
     if (status !== "authenticated" || !userId) {
@@ -56,19 +85,24 @@ export function StripeConnectNotice() {
     return subscribeToUserProfile(
       userId,
       (profile) => {
-        setPayoutsReady(
-          Boolean(
-            profile?.stripeConnectChargesEnabled && profile?.stripeConnectPayoutsEnabled,
-          ),
+        const ready = Boolean(
+          profile?.stripeConnectChargesEnabled && profile?.stripeConnectPayoutsEnabled,
         );
+        saveLastKnown(userId, ready);
+        setReadFailed(false);
+        setPayoutsReady(ready);
       },
-      () => setPayoutsReady(null),
+      () => {
+        setReadFailed(true);
+        setPayoutsReady(null);
+      },
     );
   }, [status, userId]);
 
   // `null` = ainda não sabemos. Não afirmamos que falta configurar antes de ler
-  // o perfil: um aviso que pisca e some é pior que nenhum.
-  if (dismissed || payoutsReady !== false) {
+  // o perfil (nem nesta visita nem numa anterior): um aviso que pisca e some é
+  // pior que nenhum.
+  if (dismissed || readFailed || (payoutsReady ?? lastKnown) !== false) {
     return null;
   }
 

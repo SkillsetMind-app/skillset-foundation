@@ -10,6 +10,10 @@ import { StripeConnectNotice } from "@/components/teacher/stripe-connect-notice"
 // dinheiro, que some sozinha quando cobrancas e repasses estao ligados.
 
 const mocks = vi.hoisted(() => ({
+  // true: o perfil ainda nao chegou (a inscricao nao responde).
+  profilePending: false,
+  // true: a leitura do perfil falha.
+  profileFails: false,
   // Termos ja aceitos de proposito: sem isso a faixa de termos dispara antes e
   // o teste "a faixa fixa nao existe mais" passaria mesmo com o ramo do Stripe
   // de volta no lugar.
@@ -50,14 +54,19 @@ vi.mock("@/lib/data/user-profiles", () => ({
   subscribeToUserProfile: (
     _uid: string,
     onData: (profile: Record<string, unknown>) => void,
+    onError?: (error: Error) => void,
   ) => {
-    onData(mocks.profile);
+    if (mocks.profileFails) onError?.(new Error("offline"));
+    else if (!mocks.profilePending) onData(mocks.profile);
     return () => undefined;
   },
 }));
 
 beforeEach(() => {
   window.sessionStorage.clear();
+  window.localStorage.clear();
+  mocks.profilePending = false;
+  mocks.profileFails = false;
   mocks.profile = {
     teacherTermsAcceptedAt: "2026-01-01T00:00:00.000Z",
     stripeConnectChargesEnabled: false,
@@ -99,6 +108,54 @@ describe("aviso do Stripe nas telas de venda", () => {
 
     await waitFor(() => {
       expect(screen.queryByText(/buyers are charged on it directly/)).toBeNull();
+    });
+  });
+
+  // O aviso esperava o perfil e empurrava a lista de vendas 117px para baixo.
+  describe("antes de o perfil chegar", () => {
+    const remember = (uid: string, ready: boolean) =>
+      window.localStorage.setItem("skillset:stripe-connect-notice-last", JSON.stringify({ uid, ready }));
+
+    it("quem nao tinha conectado na ultima visita ve o aviso desde o primeiro quadro", () => {
+      mocks.profilePending = true;
+      remember("teacher-1", false);
+      render(<StripeConnectNotice />);
+
+      expect(screen.getByText(/buyers are charged on it directly/)).toBeInTheDocument();
+    });
+
+    it.each([
+      ["sem visita anterior", null],
+      ["conta ja conectada na ultima visita", { uid: "teacher-1", ready: true }],
+      ["ultima visita foi de outra pessoa", { uid: "someone-else", ready: false }],
+    ])("%s: nada ate o perfil chegar", (_label, saved) => {
+      mocks.profilePending = true;
+      if (saved) remember(saved.uid, saved.ready);
+      render(<StripeConnectNotice />);
+
+      expect(screen.queryByText(/buyers are charged on it directly/)).toBeNull();
+    });
+
+    it("leitura do perfil falhou: a marca da ultima visita nao basta para afirmar", () => {
+      mocks.profileFails = true;
+      remember("teacher-1", false);
+      render(<StripeConnectNotice />);
+
+      expect(screen.queryByText(/buyers are charged on it directly/)).toBeNull();
+    });
+
+    it("conectou desde a ultima visita: o aviso sai quando o perfil chega e a marca vira", async () => {
+      remember("teacher-1", false);
+      mocks.profile = { ...mocks.profile, stripeConnectChargesEnabled: true, stripeConnectPayoutsEnabled: true };
+      render(<StripeConnectNotice />);
+
+      await waitFor(() => {
+        expect(screen.queryByText(/buyers are charged on it directly/)).toBeNull();
+      });
+      expect(JSON.parse(window.localStorage.getItem("skillset:stripe-connect-notice-last") ?? "{}")).toEqual({
+        uid: "teacher-1",
+        ready: true,
+      });
     });
   });
 
