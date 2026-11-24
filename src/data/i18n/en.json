@@ -4380,6 +4380,7 @@
         "offerChange": "Change it in Other prices.",
         "offersFailed": "Couldn't load your prices.",
         "offersRefreshFailed": "Couldn't refresh your prices. These are the last ones loaded.",
+        "ownerOnly": "Only the course owner can see and change these prices.",
         "preview": "Free preview lesson",
         "noPreview": "No preview selected yet",
         "previewNeedsLesson": "Add a lesson in Curriculum first, then pick it here.",
