@@ -2770,6 +2770,22 @@ describe("Stripe webhook financial integrity", () => {
       expect(buyerEmails()).toHaveLength(1);
     });
 
+    it("confirms the renewal price, interval and how to cancel in the first invoice's email", async () => {
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+      mocks.subscriptionRetrieve.mockResolvedValue({
+        ...subscription(),
+        items: { data: [{ current_period_end: 1_800_000_000, price: { unit_amount: 2900, recurring: { interval: "month" } } }] },
+      });
+
+      expect((await postEvent(firstInvoiceEvent())).status).toBe(200);
+      await vi.waitFor(() => expect(buyerEmails()).toHaveLength(1));
+      const [email] = buyerEmails();
+      expect(email.body.text).toContain("It renews automatically at $29.00 every month until you cancel.");
+      expect(email.body.text).toContain('choose "Cancel subscription" under Subscription');
+      expect(email.body.html).toContain("It renews automatically at $29.00 every month until you cancel.");
+    });
+
     it("sends on a subscription's first invoice, not on its renewals", async () => {
       const admin = createAdmin("checkout");
       mocks.getAdmin.mockReturnValue(admin);

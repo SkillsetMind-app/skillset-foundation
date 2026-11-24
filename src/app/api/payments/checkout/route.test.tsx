@@ -505,6 +505,18 @@ describe("course checkout subscription exclusivity", () => {
       expect.objectContaining({ locale, mode }),
       expect.objectContaining({ stripeAccount: "acct_teacher" }),
     );
+    // Assinatura: o aviso de renovação vai para a página do Stripe, acima do
+    // botão de pagar, na língua do pedido. Pagamento único não leva o aviso.
+    const [params] = mocks.createSession.mock.calls.at(-1) as [{ custom_text?: { submit?: { message?: string } } }];
+    if (mode === "subscription") {
+      expect(params.custom_text?.submit?.message).toBe(
+        locale === "es"
+          ? "Se cobra hoy y luego 120,00\u00a0US$ cada mes. Se renueva automáticamente hasta que canceles. Cancela cuando quieras en la página de tu curso, en Suscripción, para evitar el próximo cobro."
+          : "Charged today, then $120.00 every month. Renews automatically until you cancel. Cancel anytime on your course page, under Subscription, to stop the next charge.",
+      );
+    } else {
+      expect(params.custom_text?.submit?.message ?? "").not.toMatch(/renews|renueva/i);
+    }
   });
 
   it("blocks a second subscription when a non-terminal subscription already exists", async () => {

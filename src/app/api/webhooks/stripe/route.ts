@@ -36,6 +36,7 @@ import {
   sendCreatorSaleEmail,
   buildPlanTrialEmailPayload,
   sendPurchaseAccessEmail,
+  type PurchaseRenewalTerms,
 } from "@/lib/payments/server/purchase-access-email";
 import { deliverPlanTrialEmail } from "@/lib/payments/server/plan-trial-email-delivery";
 import { getStripeClient, isStripeConfigured } from "@/lib/payments/server/stripe";
@@ -228,6 +229,8 @@ type AccessEmailSale = {
   locale: Locale;
   /** The sale came through guest checkout (metadata.checkout_origin). */
   fromGuestCheckout?: boolean;
+  /** Assinatura: preço e intervalo de cada renovação, para o e-mail confirmar. */
+  renewal?: PurchaseRenewalTerms;
 };
 
 // The one place a lost access email becomes visible. Ids only: never the
@@ -257,6 +260,20 @@ function afterResponse(task: () => Promise<void>): void {
   }
 }
 
+// O preço de tabela e o intervalo do item da assinatura: é o que cada
+// renovação cobra (um cupom só vale na primeira fatura). Sem preço recorrente
+// legível o e-mail sai sem o parágrafo, em vez de afirmar um valor errado.
+function subscriptionRenewalTerms(
+  item: Stripe.SubscriptionItem | undefined,
+  currency: string,
+): PurchaseRenewalTerms | undefined {
+  const unitAmount = item?.price?.unit_amount;
+  const interval = item?.price?.recurring?.interval;
+  if (typeof unitAmount !== "number" || unitAmount <= 0) return undefined;
+  if (interval !== "month" && interval !== "year") return undefined;
+  return { amountMinor: fromStripeAmount(unitAmount, currency), currency, interval };
+}
+
 function queuePurchaseAccessEmail(admin: Admin, sale: AccessEmailSale): void {
   afterResponse(async () => {
     let buyer: Parameters<typeof sendGuestSignInLinkAfterPurchase>[1] = null;
@@ -272,6 +289,7 @@ function queuePurchaseAccessEmail(admin: Admin, sale: AccessEmailSale): void {
         courseUrl: `${getAppUrl()}/learn/courses/${encodeURIComponent(sale.courseId)}`,
         locale: sale.locale,
         idempotencyKey: sale.ledgerId,
+        renewal: sale.renewal,
       });
     } catch (error) {
       reportLostAccessEmail(sale, error);
@@ -1057,6 +1075,7 @@ async function handleCourseSubscriptionInvoicePaid(
         // Written by checkout on the subscription; older ones fall back to English.
         locale: normalizeLocale(typeof meta.locale === "string" ? meta.locale : null),
         fromGuestCheckout: meta.checkout_origin === "guest",
+        renewal: subscriptionRenewalTerms(item, currencyUpper),
       });
       queueCreatorSaleEmail(admin, {
         ownerId: course.owner_id,

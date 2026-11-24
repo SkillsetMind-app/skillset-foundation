@@ -3030,6 +3030,8 @@
     "freeEnrollment": "inscripción gratuita",
     "billedMonthly": "cobro mensual",
     "billedYearly": "cobro anual",
+    "subscriptionDisclosureMonthly": "Se cobra hoy y luego {price} cada mes. Se renueva automáticamente hasta que canceles. Cancela cuando quieras en la página de tu curso, en Suscripción, para evitar el próximo cobro.",
+    "subscriptionDisclosureYearly": "Se cobra hoy y luego {price} cada año. Se renueva automáticamente hasta que canceles. Cancela cuando quieras en la página de tu curso, en Suscripción, para evitar el próximo cobro.",
     "oneTime": "pago único",
     "enrollFree": "Inscríbete gratis",
     "subscribe": "Suscribirse",

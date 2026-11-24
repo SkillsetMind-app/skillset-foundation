@@ -30,6 +30,7 @@ import { getSafeExternalUrl } from "@/domain/external-url";
 import { CourseLandingBlocks } from "@/components/courses/course-landing-blocks";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
 import { linkify } from "@/lib/format/linkify";
+import { courseSubscriptionDisclosure } from "@/lib/payments/course-subscription-disclosure";
 import type { CourseLanding } from "@/lib/data/course-landings";
 import { emptyCourseLanding, getCourseLanding } from "@/lib/data/course-landings";
 import {
@@ -653,6 +654,18 @@ export function CreatorCourseDetail({
         : hasPaidPrice
           ? t("publicCourses.oneTime")
           : null;
+  // Assinatura: a renovação automática é dita junto do botão, antes de a
+  // pessoa ir ao Stripe. A mesma frase aparece lá, acima do botão de pagar.
+  const subscriptionDisclosure =
+    pricingReady && resolvedPrice && subscriptionInterval && !courseIsFree
+      ? courseSubscriptionDisclosure({
+          t,
+          locale,
+          amountMinor: resolvedPrice.amountMinor,
+          currency: resolvedPrice.currency,
+          interval: subscriptionInterval,
+        })
+      : null;
   const coursePath = `/courses/${encodeURIComponent(courseRef)}${checkoutOnly ? "/checkout" : ""}`;
   const returnParams = new URLSearchParams();
   if (requestedOfferId) returnParams.set("offerId", requestedOfferId);
@@ -1354,6 +1367,15 @@ export function CreatorCourseDetail({
             ) : null}
           </>
         )}
+
+        {/* Renovação automática, logo abaixo do botão de assinar: preço,
+            intervalo, que renova sozinha e onde cancelar. Quem já tem o curso
+            não está comprando, então não lê o aviso. */}
+        {subscriptionDisclosure && !viewerIsLearner ? (
+          <p data-subscription-disclosure className="mt-3 text-sm leading-6 text-[var(--color-ink)]">
+            {subscriptionDisclosure}
+          </p>
+        ) : null}
 
         {/* Depois do botao vinham cinco blocos soltos, dois em caixas de cores
             diferentes (verde e cinza), e o botao se perdia no meio do cartao.

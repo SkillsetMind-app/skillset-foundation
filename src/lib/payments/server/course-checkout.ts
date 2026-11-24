@@ -1,3 +1,4 @@
+import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 import { getServerLocale } from "@/lib/i18n/server";
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
@@ -8,6 +9,7 @@ import { redeemCourseCoupon } from "@/domain/coupon-redemption";
 import { buildInstallmentPlan } from "@/domain/installments";
 import { isCoursePubliclySellable } from "@/domain/teacher-course";
 import { isPublicFeatureEnabled } from "@/lib/feature-flags";
+import { courseSubscriptionDisclosure } from "@/lib/payments/course-subscription-disclosure";
 import { toStripeAmount } from "@/lib/payments/currencies";
 import {
   canonicalPlatformFeeBpsForPlan,
@@ -453,6 +455,20 @@ export async function createCourseCheckoutSession(
             customer_email: userEmail,
             client_reference_id: userId,
             line_items: [{ price: subscriptionPriceId, quantity: 1 }],
+            // Os termos da renovação na própria página do Stripe, acima do
+            // botão que recolhe o cartão: a mesma frase do cartão de compra
+            // (aviso de renovação automática, US ROSCA).
+            custom_text: {
+              submit: {
+                message: courseSubscriptionDisclosure({
+                  t: (key) => translate(getDictionary(locale), key),
+                  locale,
+                  amountMinor,
+                  currency,
+                  interval: subscriptionInterval,
+                }),
+              },
+            },
             // duration: "once" — first invoice only. See the helper.
             ...(subscriptionDiscountCouponId
               ? { discounts: [{ coupon: subscriptionDiscountCouponId }] }

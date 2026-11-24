@@ -3030,6 +3030,8 @@
     "freeEnrollment": "free enrollment",
     "billedMonthly": "billed monthly",
     "billedYearly": "billed yearly",
+    "subscriptionDisclosureMonthly": "Charged today, then {price} every month. Renews automatically until you cancel. Cancel anytime on your course page, under Subscription, to stop the next charge.",
+    "subscriptionDisclosureYearly": "Charged today, then {price} every year. Renews automatically until you cancel. Cancel anytime on your course page, under Subscription, to stop the next charge.",
     "oneTime": "one-time",
     "enrollFree": "Enroll free",
     "subscribe": "Subscribe",
