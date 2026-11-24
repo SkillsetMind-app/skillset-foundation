@@ -178,7 +178,12 @@ export function VerifiedBadge({
         }}
         className={
           compact
-            ? "grid size-7 place-items-center rounded-sm"
+            ? // O selo fica com 28px ao lado do nome, mas o alvo tem 44px: o
+              // ::after cresce sem empurrar a linha (o desenho do "?" de
+              // ajuda). Cresce para a direita, nao para a esquerda: o selo fica
+              // a 2px do nome do instrutor, e um anel igual dos dois lados
+              // roubava o toque do fim do link do nome.
+              "relative grid size-7 place-items-center rounded-sm after:absolute after:-inset-y-2 after:-left-0.5 after:-right-3.5 after:content-['']"
             : cn(verifiedLabelClass, "transition-colors duration-[var(--duration-fast)] hover:border-[var(--color-accent)]")
         }
       >
