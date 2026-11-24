@@ -473,8 +473,11 @@ function AssetGroup({
                     className={`shrink-0 rounded-md border border-[var(--color-line)] bg-white object-cover ${asset.kind === "module_cover" ? "aspect-[2/3] w-24" : "h-16 w-24"}`}
                   />
                 ) : null}
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-[var(--color-ink)]">
+                {/* basis-32: a 375px, ao lado da miniatura e do selo, o nome do
+                    arquivo ficava com 72px e quebrava em ate 7 linhas. Com a
+                    base ele fica com 160px e o selo desce. */}
+                <div className="min-w-0 flex-1 basis-32">
+                  <p className="wrap-anywhere text-sm font-semibold text-[var(--color-ink)]">
                     {asset.fileName}
                   </p>
                   <p className="mt-1 text-xs uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
