@@ -36,8 +36,57 @@ describe("MemberAreaLinks", () => {
     mocks.getPublicProfilesByIds.mockReset();
     mocks.getMemberAreaSlugs.mockReset();
     mocks.getMemberAreaSlugs.mockResolvedValue(new Map());
+    window.localStorage.clear();
   });
   afterEach(cleanup);
+
+  // Os atalhos chegavam ~0,4 s depois do resto do /learn e empurravam "My
+  // courses" 54px para baixo no celular.
+  describe("atalhos da ultima visita", () => {
+    const CACHE = "skillset:learn-member-area-links.v1";
+    const remember = (key: string, links: unknown) => window.localStorage.setItem(CACHE, JSON.stringify({ key, links }));
+    const etonLink = ["u-1/", { href: "/learn/areas/@eton", name: "Eton Simon" }];
+
+    it("mesma lista de compras: o atalho aparece ja no primeiro desenho", () => {
+      remember("c-a:u-1", [etonLink]);
+      mocks.getPublicProfilesByIds.mockReturnValue(new Promise(() => undefined));
+      mocks.getMemberAreaSlugs.mockReturnValue(new Promise(() => undefined));
+      render(withLocale(<MemberAreaLinks courses={[course("c-a", "u-1")]} enrollments={[enrollment("c-a", "active")]} />));
+
+      expect(screen.getByRole("link", { name: "Open Eton Simon's members area" }).getAttribute("href")).toBe("/learn/areas/@eton");
+    });
+
+    it.each([
+      ["outra lista de compras", "c-z:u-9", [etonLink]],
+      ["endereco fora da area de membros", "c-a:u-1", [["u-1/", { href: "https://evil.example", name: "Eton Simon" }]]],
+    ])("%s: nada ate as leituras chegarem", (_label, key, links) => {
+      remember(key, links);
+      mocks.getPublicProfilesByIds.mockReturnValue(new Promise(() => undefined));
+      mocks.getMemberAreaSlugs.mockReturnValue(new Promise(() => undefined));
+      render(withLocale(<MemberAreaLinks courses={[course("c-a", "u-1")]} enrollments={[enrollment("c-a", "active")]} />));
+
+      expect(screen.queryByRole("link")).toBeNull();
+    });
+
+    it("as leituras valem quando chegam e regravam a marca (o criador saiu: o atalho sai)", async () => {
+      remember("c-a:u-1", [etonLink]);
+      mocks.getPublicProfilesByIds.mockResolvedValue([]);
+      render(withLocale(<MemberAreaLinks courses={[course("c-a", "u-1")]} enrollments={[enrollment("c-a", "active")]} />));
+
+      await waitFor(() => expect(screen.queryByRole("link")).toBeNull());
+      expect(JSON.parse(window.localStorage.getItem(CACHE) ?? "{}")).toEqual({ key: "c-a:u-1", links: [] });
+    });
+
+    it("primeira visita: grava os atalhos montados", async () => {
+      mocks.getPublicProfilesByIds.mockResolvedValue([profile("u-1", "Eton Simon", "eton")]);
+      render(withLocale(<MemberAreaLinks courses={[course("c-a", "u-1")]} enrollments={[enrollment("c-a", "active")]} />));
+
+      await screen.findByRole("link", { name: "Open Eton Simon's members area" });
+      await waitFor(() =>
+        expect(JSON.parse(window.localStorage.getItem(CACHE) ?? "{}")).toEqual({ key: "c-a:u-1", links: [etonLink] }),
+      );
+    });
+  });
 
   it("um atalho por criador de quem a pessoa é aluna; reembolso não conta", async () => {
     mocks.getPublicProfilesByIds.mockResolvedValue([profile("u-1", "Eton Simon", "eton")]);

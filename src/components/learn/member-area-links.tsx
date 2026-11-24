@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import type { Enrollment } from "@/domain/enrollment";
@@ -11,6 +11,43 @@ import { getMemberAreaSlugs, memberAreaPath } from "@/lib/data/member-areas";
 import { getPublicProfilesByIds, subscribeToPublicProfile } from "@/lib/data/user-profiles";
 
 const studentStatuses = new Set(["active", "completed"]);
+
+type AreaLink = { href: string; name: string };
+
+// Os atalhos dependem de duas leituras (perfis e areas) e chegavam ~0,4 s
+// depois do resto do /learn: no celular o botao abria uma segunda linha e
+// "My courses" descia 54px. Os ultimos atalhos montados para a MESMA lista de
+// compras ficam neste aparelho e aparecem ja no primeiro desenho; quando as
+// leituras chegam, valem elas.
+const LINKS_CACHE_KEY = "skillset:learn-member-area-links.v1";
+const EMPTY_SUBSCRIBE = () => () => {};
+
+function readLinksCache(): string | null {
+  try {
+    return window.localStorage.getItem(LINKS_CACHE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function cachedLinksFor(raw: string | null, ownedKey: string): [string, AreaLink][] | null {
+  if (!raw || !ownedKey) return null;
+  try {
+    const saved = JSON.parse(raw);
+    if (saved?.key !== ownedKey || !Array.isArray(saved.links)) return null;
+    // So enderecos da propria area de membros: o armazenamento nao e fonte confiavel de link.
+    return saved.links.filter(
+      (entry: unknown): entry is [string, AreaLink] =>
+        Array.isArray(entry) &&
+        typeof entry[0] === "string" &&
+        typeof entry[1]?.name === "string" &&
+        typeof entry[1]?.href === "string" &&
+        entry[1].href.startsWith("/learn/areas/"),
+    );
+  } catch {
+    return null;
+  }
+}
 
 /**
  * /learn: um atalho "Área de {nome}" por área de quem a pessoa é aluna: a
@@ -36,7 +73,7 @@ export function MemberAreaLinks({
       .sort()
       .join(",");
   }, [courses, enrollments]);
-  const [profiles, setProfiles] = useState<PublicProfile[]>([]);
+  const [profiles, setProfiles] = useState<{ key: string; list: PublicProfile[] } | null>(null);
   // null = ainda perguntando: sem atalho, para não mandar o aluno de uma extra à principal.
   const [slugs, setSlugs] = useState<{ key: string; map: Awaited<ReturnType<typeof getMemberAreaSlugs>> } | null>(null);
 
@@ -46,10 +83,12 @@ export function MemberAreaLinks({
     const pairs = ownedKey.split(",").map((pair) => pair.split(":"));
     getPublicProfilesByIds(Array.from(new Set(pairs.map(([, ownerId]) => ownerId))))
       .then((next) => {
-        if (!cancelled) setProfiles(next);
+        if (!cancelled) setProfiles({ key: ownedKey, list: next });
       })
       // Atalho é conveniência: sem o perfil, o painel segue sem ele.
-      .catch(() => undefined);
+      .catch(() => {
+        if (!cancelled) setProfiles({ key: ownedKey, list: [] });
+      });
     getMemberAreaSlugs(pairs.map(([courseId]) => courseId))
       .then((map) => {
         if (!cancelled) setSlugs({ key: ownedKey, map });
@@ -64,11 +103,12 @@ export function MemberAreaLinks({
   }, [ownedKey]);
 
   // Uma entrada por (criador, área), na ordem dos produtos.
-  const links = new Map<string, { href: string; name: string }>();
+  const links = new Map<string, AreaLink>();
   const resolved = slugs?.key === ownedKey ? slugs.map : null;
+  const profileList = profiles?.key === ownedKey ? profiles.list : [];
   for (const pair of ownedKey && resolved ? ownedKey.split(",") : []) {
     const [courseId, ownerId] = pair.split(":");
-    const profile = profiles.find((candidate) => candidate.uid === ownerId);
+    const profile = profileList.find((candidate) => candidate.uid === ownerId);
     const creatorName = profile ? publicProfileName(profile) : null;
     if (!profile || !creatorName) continue;
     const extra = resolved?.get(courseId) ?? null;
@@ -77,9 +117,25 @@ export function MemberAreaLinks({
       name: extra ? extra.name?.trim() || creatorName : creatorName,
     });
   }
+  // As duas leituras desta lista chegaram: os atalhos de agora valem e ficam
+  // guardados para a proxima visita (inclusive "nenhum").
+  const settled = Boolean(ownedKey) && resolved !== null && profiles?.key === ownedKey;
+  const freshJson = settled ? JSON.stringify([...links]) : null;
+  useEffect(() => {
+    if (freshJson === null) return;
+    try {
+      window.localStorage.setItem(LINKS_CACHE_KEY, `{"key":${JSON.stringify(ownedKey)},"links":${freshJson}}`);
+    } catch {
+      // ponytail: armazenamento bloqueado: os atalhos so esperam as leituras, como antes.
+    }
+  }, [ownedKey, freshJson]);
+  const cachedRaw = useSyncExternalStore(EMPTY_SUBSCRIBE, readLinksCache, () => null);
+  const cached = useMemo(() => cachedLinksFor(cachedRaw, ownedKey), [cachedRaw, ownedKey]);
+  const shown = settled ? [...links] : (cached ?? []);
+
   return (
     <>
-      {[...links].map(([key, link]) => (
+      {shown.map(([key, link]) => (
         <Link key={key} href={link.href} className="button-outline px-4 text-sm">
           {t("learn.memberArea.openArea").replace("{name}", () => link.name)}
         </Link>
