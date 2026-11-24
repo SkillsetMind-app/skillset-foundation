@@ -38,6 +38,28 @@ describe("purchase access email", () => {
     expect(email.subject).toBe("Your course is ready: <script>alert(1)</script> Part 2");
   });
 
+  // Assinatura: o e-mail da primeira cobrança confirma os termos da renovação.
+  it("confirms the renewal terms and how to cancel on a subscription, in both languages", () => {
+    const renewal = { amountMinor: 2900, currency: "usd", interval: "month" as const };
+    const english = buildPurchaseAccessEmail({ ...sale, renewal });
+    for (const part of [english.text, english.html]) {
+      expect(part).toContain("It renews automatically at $29.00 every month until you cancel.");
+      expect(part).toContain("under Subscription. You keep access until the end of the period you already paid for.");
+    }
+    expect(english.text).toContain('choose "Cancel subscription"');
+    expect(english.html).toContain("choose &quot;Cancel subscription&quot;");
+
+    const spanish = buildPurchaseAccessEmail({ ...sale, locale: "es", renewal: { ...renewal, interval: "year" } });
+    expect(spanish.text).toContain("cada año hasta que canceles.");
+    expect(spanish.text).toContain("elige «Cancelar suscripción» en Suscripción");
+  });
+
+  it("says nothing about renewal on a one-time purchase", () => {
+    const email = buildPurchaseAccessEmail(sale);
+    expect(email.text).not.toMatch(/renews|subscription/i);
+    expect(email.html).not.toMatch(/renews|subscription/i);
+  });
+
   it("throws on a Resend error so the webhook can alert", async () => {
     vi.stubEnv("RESEND_API_KEY", "re_fixture");
     vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status: 500 })));

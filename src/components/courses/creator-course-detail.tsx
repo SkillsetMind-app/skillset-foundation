@@ -30,6 +30,7 @@ import { getSafeExternalUrl } from "@/domain/external-url";
 import { CourseLandingBlocks } from "@/components/courses/course-landing-blocks";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
 import { linkify } from "@/lib/format/linkify";
+import { courseSubscriptionDisclosure } from "@/lib/payments/course-subscription-disclosure";
 import type { CourseLanding } from "@/lib/data/course-landings";
 import { emptyCourseLanding, getCourseLanding } from "@/lib/data/course-landings";
 import {
@@ -653,6 +654,18 @@ export function CreatorCourseDetail({
         : hasPaidPrice
           ? t("publicCourses.oneTime")
           : null;
+  // Assinatura: a renovação automática é dita junto do botão, antes de a
+  // pessoa ir ao Stripe. A mesma frase aparece lá, acima do botão de pagar.
+  const subscriptionDisclosure =
+    pricingReady && resolvedPrice && subscriptionInterval && !courseIsFree
+      ? courseSubscriptionDisclosure({
+          t,
+          locale,
+          amountMinor: resolvedPrice.amountMinor,
+          currency: resolvedPrice.currency,
+          interval: subscriptionInterval,
+        })
+      : null;
   const coursePath = `/courses/${encodeURIComponent(courseRef)}${checkoutOnly ? "/checkout" : ""}`;
   const returnParams = new URLSearchParams();
   if (requestedOfferId) returnParams.set("offerId", requestedOfferId);
@@ -1246,6 +1259,16 @@ export function CreatorCourseDetail({
           </LoadErrorAlert>
         ) : pricingReady && hasExplicitOffer && !resolvedPrice ? (
           <InlineAlert tone="error" className="mt-5">{t("publicCourses.selectedOfferUnavailable")}</InlineAlert>
+        ) : null}
+
+        {/* Renovação automática, logo acima do botão de assinar (e do
+            formulário de quem compra sem conta): preço, intervalo, que renova
+            sozinha e onde cancelar. Quem já tem o curso não está comprando,
+            então não lê o aviso. */}
+        {subscriptionDisclosure && !viewerIsLearner ? (
+          <p data-subscription-disclosure className="mt-6 text-sm leading-6 text-[var(--color-ink)]">
+            {subscriptionDisclosure}
+          </p>
         ) : null}
 
         {guestCheckoutOn ? (

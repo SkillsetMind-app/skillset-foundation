@@ -1162,6 +1162,26 @@ describe("CreatorCourseDetail — padlocked lessons and the buy popup", () => {
     expect(popupCta.textContent?.trim()).toBe(cardAction(container)?.textContent?.trim());
   });
 
+  // Assinatura: a renovação automática é dita junto do botão, antes do Stripe.
+  it("a subscription states price, interval, auto-renewal and how to cancel right before the button", async () => {
+    Object.assign(fixtures.course, { paymentType: "subscription_monthly" });
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    await waitFor(() => expect(cardAction(container)).toHaveTextContent("Subscribe — $149.00 / month"));
+
+    const disclosure = container.querySelector("#enroll-card [data-subscription-disclosure]") as HTMLElement;
+    expect(disclosure).toHaveTextContent(
+      "Charged today, then $149.00 every month. Renews automatically until you cancel. Cancel anytime on your course page, under Subscription, to stop the next charge.",
+    );
+    const button = cardAction(container) as HTMLElement;
+    expect(button.compareDocumentPosition(disclosure) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+  });
+
+  it("a one-time purchase shows no renewal notice", async () => {
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    await waitFor(() => expect(cardAction(container)).toHaveTextContent("Enroll — $149.00"));
+    expect(container.querySelector("[data-subscription-disclosure]")).toBeNull();
+  });
+
   it("a free course gets free wording and no price", async () => {
     Object.assign(fixtures.course, { paymentType: "free", priceAmountMinor: 0 });
     withOffers([]);

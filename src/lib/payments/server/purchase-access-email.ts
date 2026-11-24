@@ -9,6 +9,18 @@ export type PurchaseAccessEmail = {
   locale: Locale;
   /** The sale's payout_ledger id (order id or invoice id). */
   idempotencyKey: string;
+  /**
+   * Só na primeira cobrança de uma assinatura: o e-mail confirma por escrito
+   * os termos da renovação e como cancelar (o "acknowledgment" das leis de
+   * renovação automática). `amountMinor` é o preço de cada renovação, valor x 100.
+   */
+  renewal?: PurchaseRenewalTerms;
+};
+
+export type PurchaseRenewalTerms = {
+  amountMinor: number;
+  currency: string;
+  interval: "month" | "year";
 };
 
 export type CreatorSaleEmail = {
@@ -33,6 +45,8 @@ const COPY: Record<Locale, {
   open: string;
   signIn: (email: string) => string;
   help: string;
+  renewal: (price: string, interval: "month" | "year") => string;
+  renewalCancel: string;
 }> = {
   en: {
     subject: (title) => `Your course is ready: ${title}`,
@@ -40,6 +54,10 @@ const COPY: Record<Locale, {
     open: "Open your course",
     signIn: (email) => `Sign in with ${email}, the email on your SkillsetMind account.`,
     help: "Questions? Write to",
+    renewal: (price, interval) =>
+      `This is a subscription. It renews automatically at ${price} every ${interval === "year" ? "year" : "month"} until you cancel.`,
+    renewalCancel:
+      "To cancel, open your course and choose \"Cancel subscription\" under Subscription. You keep access until the end of the period you already paid for.",
   },
   es: {
     subject: (title) => `Tu curso está listo: ${title}`,
@@ -47,6 +65,10 @@ const COPY: Record<Locale, {
     open: "Abrir tu curso",
     signIn: (email) => `Inicia sesión con ${email}, el correo de tu cuenta de SkillsetMind.`,
     help: "¿Preguntas? Escríbenos a",
+    renewal: (price, interval) =>
+      `Esta compra es una suscripción. Se renueva automáticamente por ${price} cada ${interval === "year" ? "año" : "mes"} hasta que canceles.`,
+    renewalCancel:
+      "Para cancelar, abre tu curso y elige «Cancelar suscripción» en Suscripción. Conservas el acceso hasta el final del período que ya pagaste.",
   },
 };
 
@@ -65,11 +87,22 @@ const PARAGRAPH = "font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:1
 const BUTTON = "display:inline-block;padding:12px 28px;background-color:#102a43;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;";
 
 /** Subject, HTML and plain-text parts. The course title is creator input: escaped in HTML. */
-export function buildPurchaseAccessEmail({ email, courseTitle, courseUrl, locale }: PurchaseAccessEmail) {
+export function buildPurchaseAccessEmail({ email, courseTitle, courseUrl, locale, renewal }: PurchaseAccessEmail) {
   const copy = COPY[locale] ?? COPY[DEFAULT_LOCALE];
   const title = oneLine(courseTitle);
   const safeTitle = escapeHtml(title);
   const safeUrl = escapeHtml(courseUrl);
+  // Assinatura: preço e intervalo de cada renovação, e como cancelar.
+  const renewalLines = renewal
+    ? [
+        copy.renewal(
+          new Intl.NumberFormat(locale, { style: "currency", currency: renewal.currency.toUpperCase() })
+            .format(renewal.amountMinor / 100),
+          renewal.interval,
+        ),
+        copy.renewalCancel,
+      ]
+    : [];
 
   const text = [
     copy.intro,
@@ -79,6 +112,7 @@ export function buildPurchaseAccessEmail({ email, courseTitle, courseUrl, locale
     "",
     copy.signIn(email),
     "",
+    ...renewalLines.flatMap((line) => [line, ""]),
     `${copy.help} ${SUPPORT}.`,
   ].join("\n");
 
@@ -87,7 +121,7 @@ export function buildPurchaseAccessEmail({ email, courseTitle, courseUrl, locale
   <p style="font-size:18px;font-weight:bold;">${safeTitle}</p>
   <p><a href="${safeUrl}" style="${BUTTON}">${copy.open}</a></p>
   <p style="font-size:13px;word-break:break-all;"><a href="${safeUrl}" style="color:#102a43;">${safeUrl}</a></p>
-  <p>${escapeHtml(copy.signIn(email))}</p>
+  <p>${escapeHtml(copy.signIn(email))}</p>${renewalLines.map((line) => `\n  <p>${escapeHtml(line)}</p>`).join("")}
   <p>${copy.help} <a href="mailto:${SUPPORT}" style="color:#102a43;font-weight:bold;">${SUPPORT}</a>.</p>
 </div>`;
 
