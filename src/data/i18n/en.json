@@ -283,7 +283,7 @@
       "passwordsDontMatch": "The two passwords do not match.",
       "confirmPasswordFirst": "Type the password again to confirm it.",
       "choosePasswordFirst": "Choose a password that meets the rules above.",
-      "agreePrefix": "I agree to the SkillsetMind ",
+      "agreePrefix": "I am 18 or older and I agree to the SkillsetMind ",
       "agreeMiddle": " and ",
       "agreeSuffix": ".",
       "createAccount": "Create account",
