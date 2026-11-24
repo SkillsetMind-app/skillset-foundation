@@ -18,6 +18,8 @@ afterEach(() => {
 });
 
 it("points at the 240p MP4 on the library CDN", () => {
+  // Sem a chave do player o link sai como antes, sem assinatura.
+  vi.stubEnv("BUNNY_STREAM_TOKEN_KEY", "");
   expect(bunnyLowestMp4Url("vid 1")).toBe("https://vz-test.b-cdn.net/vid%201/play_240p.mp4");
 });
 
