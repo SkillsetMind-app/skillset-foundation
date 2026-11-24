@@ -79,6 +79,8 @@ export function LearnDashboard() {
   // ("Private modules"), justamente na primeira tela depois de pagar.
   // Buscados por id (não o catálogo inteiro) e repassados às fileiras de baixo.
   const [realCourses, setRealCourses] = useState<TeacherCourse[]>([]);
+  // De qual lista de matriculas a leitura dos cursos ja voltou (bem ou mal).
+  const [coursesReadKey, setCoursesReadKey] = useState("");
   const firstName = user?.displayName?.trim().split(/\s+/)[0] ?? "";
 
   // Casa a matrícula com o curso, seja de demonstração ou real.
@@ -119,12 +121,15 @@ export function LearnDashboard() {
       .then((courses) => {
         if (!cancelled) {
           setRealCourses(courses);
+          setCoursesReadKey(enrolledCourseKey);
         }
       })
       // Falha aqui não pode derrubar o painel: sem os cursos reais o cartão
       // volta ao texto genérico, que é ruim, mas melhor que uma tela de erro
       // sobre uma compra que existe.
-      .catch(() => undefined);
+      .catch(() => {
+        if (!cancelled) setCoursesReadKey(enrolledCourseKey);
+      });
     return () => {
       cancelled = true;
     };
@@ -444,7 +449,11 @@ export function LearnDashboard() {
             o caminho ate ela fica aqui, sempre, com ou sem live marcada —
             e em /learn/events que estao as lives que ja passaram. */}
         <div className="flex flex-wrap items-center gap-2">
-          <MemberAreaLinks courses={realCourses} enrollments={enrollments} />
+          <MemberAreaLinks
+            courses={realCourses}
+            enrollments={enrollments}
+            coursesSettled={coursesReadKey === enrolledCourseKey}
+          />
           <Link href="/learn/events" className="button-outline px-4 text-sm">
             {t("learn.dashboard.allEvents")}
           </Link>

@@ -40,51 +40,72 @@ describe("MemberAreaLinks", () => {
   });
   afterEach(cleanup);
 
-  // Os atalhos chegavam ~0,4 s depois do resto do /learn e empurravam "My
-  // courses" 54px para baixo no celular.
+  // Os atalhos chegavam ~0,4 s depois do cabecalho do /learn e empurravam
+  // "My courses" 54px para baixo no celular.
   describe("atalhos da ultima visita", () => {
     const CACHE = "skillset:learn-member-area-links.v1";
     const remember = (key: string, links: unknown) => window.localStorage.setItem(CACHE, JSON.stringify({ key, links }));
     const etonLink = ["u-1/", { href: "/learn/areas/@eton", name: "Eton Simon" }];
+    const reserved = () => document.querySelector('[data-reserved="member-area-link"]');
+    const saved = () => JSON.parse(window.localStorage.getItem(CACHE) ?? "null");
 
-    it("mesma lista de compras: o atalho aparece ja no primeiro desenho", () => {
-      remember("c-a:u-1", [etonLink]);
-      mocks.getPublicProfilesByIds.mockReturnValue(new Promise(() => undefined));
-      mocks.getMemberAreaSlugs.mockReturnValue(new Promise(() => undefined));
-      render(withLocale(<MemberAreaLinks courses={[course("c-a", "u-1")]} enrollments={[enrollment("c-a", "active")]} />));
+    it("mesmas matriculas: guarda o lugar antes da lista de cursos, sem navegar", () => {
+      remember("c-a", [etonLink]);
+      // A lista de cursos ainda nao chegou: so as matriculas.
+      render(withLocale(<MemberAreaLinks courses={[]} coursesSettled={false} enrollments={[enrollment("c-a", "active")]} />));
 
-      expect(screen.getByRole("link", { name: "Open Eton Simon's members area" }).getAttribute("href")).toBe("/learn/areas/@eton");
-    });
-
-    it.each([
-      ["outra lista de compras", "c-z:u-9", [etonLink]],
-      ["endereco fora da area de membros", "c-a:u-1", [["u-1/", { href: "https://evil.example", name: "Eton Simon" }]]],
-    ])("%s: nada ate as leituras chegarem", (_label, key, links) => {
-      remember(key, links);
-      mocks.getPublicProfilesByIds.mockReturnValue(new Promise(() => undefined));
-      mocks.getMemberAreaSlugs.mockReturnValue(new Promise(() => undefined));
-      render(withLocale(<MemberAreaLinks courses={[course("c-a", "u-1")]} enrollments={[enrollment("c-a", "active")]} />));
-
+      expect(reserved()?.textContent).toBe("Open Eton Simon's members area");
+      expect(reserved()).toHaveAttribute("aria-hidden", "true");
       expect(screen.queryByRole("link")).toBeNull();
     });
 
-    it("as leituras valem quando chegam e regravam a marca (o criador saiu: o atalho sai)", async () => {
-      remember("c-a:u-1", [etonLink]);
-      mocks.getPublicProfilesByIds.mockResolvedValue([]);
-      render(withLocale(<MemberAreaLinks courses={[course("c-a", "u-1")]} enrollments={[enrollment("c-a", "active")]} />));
+    it.each([
+      ["outras matriculas", "c-z", [etonLink]],
+      ["endereco fora da area de membros", "c-a", [["u-1/", { href: "https://evil.example", name: "Eton Simon" }]]],
+    ])("%s: nada guardado aparece", (_label, key, links) => {
+      remember(key, links);
+      render(withLocale(<MemberAreaLinks courses={[]} coursesSettled={false} enrollments={[enrollment("c-a", "active")]} />));
 
-      await waitFor(() => expect(screen.queryByRole("link")).toBeNull());
-      expect(JSON.parse(window.localStorage.getItem(CACHE) ?? "{}")).toEqual({ key: "c-a:u-1", links: [] });
+      expect(reserved()).toBeNull();
     });
 
-    it("primeira visita: grava os atalhos montados", async () => {
+    it("as leituras chegam: o botao de verdade entra no lugar e a lembranca e regravada", async () => {
+      remember("c-a", [["u-1/", { href: "/learn/areas/@old", name: "Eton Simon" }]]);
       mocks.getPublicProfilesByIds.mockResolvedValue([profile("u-1", "Eton Simon", "eton")]);
       render(withLocale(<MemberAreaLinks courses={[course("c-a", "u-1")]} enrollments={[enrollment("c-a", "active")]} />));
 
+      const link = await screen.findByRole("link", { name: "Open Eton Simon's members area" });
+      expect(link.getAttribute("href")).toBe("/learn/areas/@eton");
+      expect(reserved()).toBeNull();
+      await waitFor(() => expect(saved()).toEqual({ key: "c-a", links: [etonLink] }));
+    });
+
+    it("leitura das areas falhou: mostra a principal, mas nao vira lembranca", async () => {
+      remember("c-b", [["u-1/vip", { href: "/learn/areas/@eton/vip", name: "VIP Room" }]]);
+      mocks.getPublicProfilesByIds.mockResolvedValue([profile("u-1", "Eton Simon", "eton")]);
+      mocks.getMemberAreaSlugs.mockRejectedValue(new Error("offline"));
+      render(withLocale(<MemberAreaLinks courses={[course("c-b", "u-1")]} enrollments={[enrollment("c-b", "active")]} />));
+
       await screen.findByRole("link", { name: "Open Eton Simon's members area" });
-      await waitFor(() =>
-        expect(JSON.parse(window.localStorage.getItem(CACHE) ?? "{}")).toEqual({ key: "c-a:u-1", links: [etonLink] }),
-      );
+      expect(saved()).toEqual({ key: "c-b", links: [["u-1/vip", { href: "/learn/areas/@eton/vip", name: "VIP Room" }]] });
+    });
+
+    it("a leitura dos cursos voltou sem o curso: o lugar guardado sai", () => {
+      remember("c-a", [etonLink]);
+      render(withLocale(<MemberAreaLinks courses={[]} coursesSettled enrollments={[enrollment("c-a", "active")]} />));
+
+      expect(reserved()).toBeNull();
+      expect(screen.queryByRole("link")).toBeNull();
+    });
+
+    it("o criador saiu: o atalho sai e a lembranca vira 'nenhum'", async () => {
+      remember("c-a", [etonLink]);
+      mocks.getPublicProfilesByIds.mockResolvedValue([]);
+      render(withLocale(<MemberAreaLinks courses={[course("c-a", "u-1")]} enrollments={[enrollment("c-a", "active")]} />));
+
+      await waitFor(() => expect(saved()).toEqual({ key: "c-a", links: [] }));
+      expect(reserved()).toBeNull();
+      expect(screen.queryByRole("link")).toBeNull();
     });
   });
 
