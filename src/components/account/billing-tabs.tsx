@@ -514,7 +514,7 @@ function PortalButton({ label }: { label: string }) {
         disabled={busy}
         className="button-outline px-4 py-2 text-sm"
       >
-        {busy ? t("accountBilling.openingStripe") : label}
+        <BusyLabel busy={busy} idle={label} busyText={t("accountBilling.openingStripe")} />
       </button>
       {portalError ? (
         <InlineAlert tone="error" className="mt-3">{t(portalError)}</InlineAlert>

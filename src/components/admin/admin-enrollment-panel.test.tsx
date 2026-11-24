@@ -130,6 +130,45 @@ describe("administrative enrollment presentation", () => {
     expect(mocks.create).not.toHaveBeenCalled();
   });
 
+  // Sem "Try again" a equipe só saía do erro recarregando a página (F-11). O
+  // botão relê só o que falhou, sem fechar e abrir o canal: com o mesmo nome,
+  // o canal novo pegava o velho ainda fechando e a lista parava.
+  it("a failed read offers Try again, which reloads only what failed and keeps the channels", async () => {
+    const reload = { users: vi.fn(async () => {}), courses: vi.fn(async () => {}), grants: vi.fn(async () => {}) };
+    const closed = { users: vi.fn(), courses: vi.fn(), grants: vi.fn() };
+    for (const name of ["users", "courses", "grants"] as const) {
+      mocks[name].mockImplementation(() => Object.assign(closed[name], { reload: reload[name] }));
+    }
+    render(panel());
+    act(() => {
+      mocks.users.mock.calls[0][1](new Error("offline"));
+      mocks.courses.mock.calls[0][0]([course]);
+      mocks.grants.mock.calls[0][1](new Error("offline"));
+    });
+    expect(screen.getByText("We could not load users for manual enrollment.")).toBeInTheDocument();
+    expect(screen.getByText("We could not load granted enrollments.")).toBeInTheDocument();
+    const [fieldsRetry, grantsRetry] = screen.getAllByRole("button", { name: "Try again" });
+
+    await act(async () => { fireEvent.click(fieldsRetry); });
+    expect(reload.users).toHaveBeenCalledTimes(1);
+    expect(reload.courses).not.toHaveBeenCalled();
+    await act(async () => { fireEvent.click(grantsRetry); });
+    expect(reload.grants).toHaveBeenCalledTimes(1);
+    // Nenhuma inscrição nova, nenhuma fechada.
+    for (const name of ["users", "courses", "grants"] as const) {
+      expect(mocks[name]).toHaveBeenCalledTimes(1);
+      expect(closed[name]).not.toHaveBeenCalled();
+    }
+
+    act(() => {
+      mocks.users.mock.calls[0][0]([user]);
+      mocks.grants.mock.calls[0][0]([grant]);
+    });
+    expect(screen.queryByText("We could not load users for manual enrollment.")).toBeNull();
+    expect(screen.queryByText("We could not load granted enrollments.")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+  });
+
   it("says nothing while the lists load, then names what is missing", () => {
     render(panel());
     const create = screen.getByRole("button", { name: "Create admin enrollment" });

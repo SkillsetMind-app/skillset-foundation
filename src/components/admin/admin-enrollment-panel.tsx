@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { BusyLabel, Button, ConfirmDialog, Field, InlineAlert } from "@/components/ui";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import type { Enrollment } from "@/domain/enrollment";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import type { UserProfile } from "@/domain/user-profile";
@@ -38,9 +39,36 @@ export function AdminEnrollmentPanel() {
   const [isLoadingGranted, setIsLoadingGranted] = useState(true);
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [asking, setAsking] = useState<Enrollment | null>(null);
+  // O "Try again" rele so o que falhou, pelo reload() de cada inscricao, sem
+  // fechar e abrir o canal (com o mesmo nome, o canal novo pegava o velho
+  // ainda fechando e a lista parava de se atualizar).
+  const subscriptions = useRef<{
+    users: { reload: () => Promise<void> } | null;
+    courses: { reload: () => Promise<void> } | null;
+    grants: { reload: () => Promise<void> } | null;
+  }>({ users: null, courses: null, grants: null });
+  const [retryingFields, setRetryingFields] = useState(false);
+  // O foco vai para o que fica na tela nos dois desfechos: o botao some
+  // quando a leitura da certo.
+  const panelRef = useRef<HTMLElement | null>(null);
+  const grantsRef = useRef<HTMLDivElement | null>(null);
+
+  async function retryFieldReads() {
+    if (retryingFields) return;
+    panelRef.current?.focus();
+    setRetryingFields(true);
+    try {
+      await Promise.all([
+        readErrors.users ? subscriptions.current.users?.reload() : null,
+        readErrors.courses ? subscriptions.current.courses?.reload() : null,
+      ]);
+    } finally {
+      setRetryingFields(false);
+    }
+  }
 
   useEffect(() => {
-    return subscribeToAdminUserProfiles(
+    const subscription = subscribeToAdminUserProfiles(
       (nextUsers) => {
         setUsers(nextUsers);
         setReadErrors(current => ({ ...current, users: false }));
@@ -51,10 +79,16 @@ export function AdminEnrollmentPanel() {
         setIsLoadingUsers(false);
       },
     );
+    const store = subscriptions.current;
+    store.users = subscription;
+    return () => {
+      store.users = null;
+      subscription();
+    };
   }, []);
 
   useEffect(() => {
-    return subscribeToPublishedTeacherCourses(
+    const subscription = subscribeToPublishedTeacherCourses(
       (nextCourses) => {
         setCourses(nextCourses);
         setReadErrors(current => ({ ...current, courses: false }));
@@ -65,10 +99,16 @@ export function AdminEnrollmentPanel() {
         setIsLoadingCourses(false);
       },
     );
+    const store = subscriptions.current;
+    store.courses = subscription;
+    return () => {
+      store.courses = null;
+      subscription();
+    };
   }, []);
 
   useEffect(() => {
-    return subscribeToAdminGrantedEnrollments(
+    const subscription = subscribeToAdminGrantedEnrollments(
       (nextEnrollments) => {
         setGrantedEnrollments(nextEnrollments);
         setReadErrors(current => ({ ...current, grants: false }));
@@ -79,6 +119,12 @@ export function AdminEnrollmentPanel() {
         setIsLoadingGranted(false);
       },
     );
+    const store = subscriptions.current;
+    store.grants = subscription;
+    return () => {
+      store.grants = null;
+      subscription();
+    };
   }, []);
 
   // O mesmo rótulo da linha da lista e da janela de revogar.
@@ -148,7 +194,7 @@ export function AdminEnrollmentPanel() {
   }
 
   return (
-    <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+    <section ref={panelRef} tabIndex={-1} className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)] outline-none">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
@@ -217,6 +263,19 @@ export function AdminEnrollmentPanel() {
         </Field>
       </div>
 
+      {readErrors.users || readErrors.courses ? (
+        // A frase do erro fica em cada campo; o botão lê de novo os dois.
+        <Button
+          variant="outline"
+          className="mt-3"
+          loading={retryingFields}
+          busyLabel={t("appErrors.retrying")}
+          onClick={() => void retryFieldReads()}
+        >
+          {t("appErrors.retry")}
+        </Button>
+      ) : null}
+
       {error ? <InlineAlert tone="error" className="mt-5">{t(`${copy}.errors.${error}`)}</InlineAlert> : null}
       {success ? <InlineAlert tone="success" className="mt-5">{t(`${copy}.success.${success}`)}</InlineAlert> : null}
 
@@ -238,7 +297,7 @@ export function AdminEnrollmentPanel() {
               : null}
       </p>
 
-      <div className="mt-8 border-t border-[var(--color-line)] pt-6">
+      <div ref={grantsRef} tabIndex={-1} className="mt-8 border-t border-[var(--color-line)] pt-6 outline-none">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h4 className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
             {t(`${copy}.grantedTitle`)}
@@ -249,7 +308,11 @@ export function AdminEnrollmentPanel() {
           {t(`${copy}.grantedDescription`)}
         </p>
 
-        {readErrors.grants ? <InlineAlert tone="error" className="mt-4">{t(`${copy}.readErrors.grants`)}</InlineAlert> : null}
+        {readErrors.grants ? (
+          <LoadErrorAlert className="mt-4" focusRef={grantsRef} onRetry={() => subscriptions.current.grants?.reload()}>
+            {t(`${copy}.readErrors.grants`)}
+          </LoadErrorAlert>
+        ) : null}
 
         <div className="mt-4 grid gap-3">
           {isLoadingGranted ? (

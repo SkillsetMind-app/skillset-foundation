@@ -240,7 +240,7 @@ export function subscribeToUserEnrollments(
 export function subscribeToAdminGrantedEnrollments(
   callback: (enrollments: Enrollment[]) => void,
   onError: (error: Error) => void,
-): () => void {
+): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
 
   const load = async () => {
@@ -273,9 +273,13 @@ export function subscribeToAdminGrantedEnrollments(
     )
     .subscribe();
 
-  return () => {
-    void supabase.removeChannel(channel);
-  };
+  // `reload()` (o "Try again") le de novo sem mexer no canal.
+  return Object.assign(
+    () => {
+      void supabase.removeChannel(channel);
+    },
+    { reload: load },
+  );
 }
 
 /**
