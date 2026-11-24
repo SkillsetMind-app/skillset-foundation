@@ -170,11 +170,13 @@ export function InlineHelp({ topic, children, href, className }: InlineHelpProps
                     {children}
                   </div>
                 </div>
-                <footer className="border-t border-[var(--color-line)] px-5 py-4 sm:px-6">
+                <footer className="border-t border-[var(--color-line)] px-5 py-4 sm:px-6 pointer-coarse:py-1.5">
                   <Link
                     href={href}
                     onClick={closeHelp}
-                    className="text-sm font-semibold text-[var(--color-primary)] underline underline-offset-4"
+                    // No toque o link do rodape tem 44px de altura (eram 19px); o
+                    // respiro do rodape encolhe para a faixa nao crescer.
+                    className="inline-flex items-center text-sm font-semibold text-[var(--color-primary)] underline underline-offset-4 pointer-coarse:min-h-11"
                   >
                     {t("platform.help.contextual.related")}
                   </Link>
