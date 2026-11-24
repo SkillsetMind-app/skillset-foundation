@@ -33,7 +33,7 @@ describe("faixa final da home com foto", () => {
     const { image, sources } = await renderBand(locale);
 
     expect(sources).toHaveLength(1);
-    expect(sources[0]).toHaveAttribute("media", "(min-width: 768px)");
+    expect(sources[0]).toHaveAttribute("media", "(min-width: 48rem)");
     expect(sources[0].getAttribute("srcset")).toContain(encodeURIComponent("/brand/home/home-cta-desktop.avif"));
     expect(image.getAttribute("src")).toContain(encodeURIComponent("/brand/home/home-cta-mobile.avif"));
     expect(image.getAttribute("srcset")).toContain(encodeURIComponent("/brand/home/home-cta-mobile.avif"));

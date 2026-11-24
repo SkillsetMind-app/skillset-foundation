@@ -35,7 +35,7 @@ export async function ForCreatorsBand() {
             Do lg para cima a faixa vai de ponta a ponta: a foto 12:5 fica
             atrás do título, que mora na parede vazia (metade esquerda), e os
             planos e os três itens vêm logo abaixo da foto. */}
-        <div className="relative overflow-hidden rounded-lg bg-[var(--color-primary)] text-white shadow-[var(--shadow-strong)] lg:rounded-none lg:shadow-none">
+        <div className="relative overflow-hidden rounded-lg bg-[var(--color-primary)] text-white shadow-[var(--shadow-strong)] [--focus-ring:#fff] lg:rounded-none lg:shadow-none">
           <div className="absolute inset-0 bg-gradient-to-br from-[#07172a] via-[#102944] to-[#1a365d]" />
           <div className="relative lg:flex lg:aspect-[12/5] lg:min-h-[28rem] lg:items-center">
             {/* No lg a base da foto se dissolve no azul da faixa (máscara) e
@@ -44,7 +44,9 @@ export async function ForCreatorsBand() {
                 da parede (object-right). */}
             <div className="home-creators__photo relative aspect-[3/4] overflow-hidden md:aspect-[12/5] lg:absolute lg:inset-0 lg:aspect-auto lg:[mask-image:linear-gradient(to_bottom,#000_80%,transparent)]">
               <picture>
-                <source media="(min-width: 768px)" srcSet={wide.srcSet} sizes={wide.sizes} />
+                {/* 48rem, igual ao md do Tailwind: com fonte padrao maior no navegador,
+                    768px fixos traziam o corte largo para dentro do quadro 3:4. */}
+                <source media="(min-width: 48rem)" srcSet={wide.srcSet} sizes={wide.sizes} />
                 <img {...tall} alt={photoAlt} className="object-cover object-right" />
               </picture>
               <div
@@ -52,13 +54,13 @@ export async function ForCreatorsBand() {
                 className="absolute inset-0 hidden lg:block"
                 style={{
                   backgroundImage:
-                    "linear-gradient(to right, rgba(7,23,42,0.75) 0%, rgba(7,23,42,0.45) 32%, rgba(7,23,42,0) 58%)",
+                    "linear-gradient(to right, rgba(7,23,42,0.78) 0%, rgba(7,23,42,0.78) 46%, rgba(7,23,42,0.55) 50%, rgba(7,23,42,0) 57%)",
                 }}
               />
             </div>
             <div className="relative z-10 w-full p-6 sm:p-8 lg:mx-auto lg:max-w-7xl lg:py-12">
               <div className="home-creators__lead lg:max-w-[min(36rem,50%)]">
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/75">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/75 lg:text-white">
                   {t("home.creators.eyebrow")}
                 </p>
                 <h2 className="display-title mt-3 text-[clamp(2.25rem,4.2vw,3.25rem)] leading-[1.05] text-white">

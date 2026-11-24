@@ -3,8 +3,8 @@ import Image from "next/image";
 import { RevealSection } from "@/components/shared/reveal-section";
 import { getServerTranslation } from "@/lib/i18n/server";
 
-// "Para quem é": só frases que o site já publica (o público da faixa final e a
-// linha do topo sobre psicólogos que ensinam). As três fotos são de gente que
+// "Para quem é": só a frase de público que o site já publica (a da faixa
+// final). As três fotos são de gente que
 // não existe, feitas por IA: sem nome, sem frase, nada com cara de depoimento
 // ou de cliente. O texto alternativo descreve a cena, não a pessoa.
 const PORTRAITS = [
@@ -28,9 +28,6 @@ export async function HomeWhoFor() {
         <h2 className="display-title text-[clamp(2.25rem,4.2vw,3.25rem)] leading-[1.05] text-[var(--color-primary)]" id="home-who-title">
           {t("home.creators.eyebrow")}
         </h2>
-        <p className="mt-4 max-w-xl text-[1.0625rem] leading-[1.6] text-[var(--color-ink)] md:text-lg">
-          {t("home.hero.alsoFor")}
-        </p>
       </RevealSection>
       <div className="mt-10 grid gap-5 sm:mt-12 md:grid-cols-3">
         {PORTRAITS.map(({ src, alt }) => (

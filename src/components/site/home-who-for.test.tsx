@@ -25,8 +25,8 @@ async function renderStrip(locale: string) {
 }
 
 describe("faixa 'para quem é' da home", () => {
-  // Nenhuma frase nova: o título é o público da faixa final e a linha é a do
-  // topo sobre psicólogos que ensinam. Fora isso, só fotos.
+  // Nenhuma frase nova: o título é o público da faixa final. Fora isso, só
+  // fotos (a linha sobre psicólogos que ensinam fica só no topo da home).
   it.each(dictionaries)("em %s mostra só frases que o site já publica", async (locale, dict) => {
     const { container } = await renderStrip(locale);
 
@@ -34,7 +34,7 @@ describe("faixa 'para quem é' da home", () => {
     const title = container.querySelector(`#${section.getAttribute("aria-labelledby")}`);
     expect(title?.tagName).toBe("H2");
     expect(title?.textContent).toBe(dict.home.creators.eyebrow);
-    expect(container.textContent).toBe(`${dict.home.creators.eyebrow}${dict.home.hero.alsoFor}`);
+    expect(container.textContent).toBe(dict.home.creators.eyebrow);
   });
 
   // As pessoas das fotos não existem (IA): nada de nome, citação, legenda ou
