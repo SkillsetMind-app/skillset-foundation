@@ -82,6 +82,7 @@ const HANDLED_STRIPE_EVENT_TYPES = new Set<string>([
   "invoice.payment_failed",
   "invoice.paid",
   "account.updated",
+  "account.application.deauthorized",
 ]);
 
 type Admin = ReturnType<typeof getSupabaseAdminClient>;
@@ -391,11 +392,60 @@ async function releaseCourseCouponReservation(
 async function releaseAbandonedSubscriptionCoupon(
   admin: Admin,
   session: Stripe.Checkout.Session,
+  eventAccountId: string | null,
 ): Promise<void> {
   if (session.mode !== "subscription") return;
-  const reservationId = session.metadata?.couponReservationId;
+  const meta = session.metadata ?? {};
+  const reservationId = meta.couponReservationId;
   if (typeof reservationId !== "string" || !reservationId) return;
+  const courseId = meta.courseId ?? null;
+  const foreignAccount = await isForeignCourseEvent(admin, eventAccountId, courseId, meta.teacherId ?? null);
+  if (!await couponReservationBelongsToSale(
+    admin, reservationId, courseId, meta.userId ?? null, eventAccountId, foreignAccount,
+  )) {
+    return;
+  }
   await releaseCourseCouponReservation(admin, reservationId);
+}
+
+// Com chaves proprias o professor escreve o metadata: a reserva so e tocada se
+// for deste curso e deste comprador (e o curso da conta do evento). Reserva que
+// nao existe sai calada; divergencia nao mexe nela e avisa ops.
+async function couponReservationBelongsToSale(
+  admin: Admin,
+  reservationId: string,
+  courseId: string | null,
+  userId: string | null,
+  eventAccountId: string | null,
+  foreignAccount = false,
+): Promise<boolean> {
+  const { data: reservation, error } = await admin
+    .from("course_coupon_reservations")
+    .select("coupon_id,user_id")
+    .eq("order_id", reservationId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  // Sem reserva (cupom apagado) a RPC nao teria o que fazer.
+  if (!reservation) return false;
+  const { data: coupon, error: couponError } = await admin
+    .from("course_coupons")
+    .select("course_id")
+    .eq("id", reservation.coupon_id)
+    .maybeSingle();
+  if (couponError) throw new Error(couponError.message);
+  if (!foreignAccount && coupon?.course_id === courseId && reservation.user_id === userId) return true;
+  reportForeignCouponReservation(reservationId, eventAccountId);
+  return false;
+}
+
+function reportForeignCouponReservation(reservationId: string, eventAccountId: string | null): void {
+  notifyOps({
+    event: "stripe.webhook.foreign_coupon_reservation",
+    severity: "critical",
+    summary:
+      "A Stripe event named a coupon reservation that does not belong to its sale. The reservation was not touched.",
+    context: { reservationId, eventAccountId },
+  });
 }
 
 /**
@@ -476,34 +526,68 @@ async function handleCheckoutCompleted(
 ): Promise<void> {
   if (session.payment_status !== "paid") return;
 
-  const metadata = session.metadata;
-  const orderId = metadata?.orderId;
-  if (!orderId || !metadata?.courseId || !metadata.userId) {
+  const metadata = session.metadata ?? {};
+  const { data: metadataOrder, error: orderError } = metadata.orderId
+    ? await admin.from("orders").select("*").eq("id", metadata.orderId).maybeSingle()
+    : { data: null, error: null };
+  if (orderError) throw new Error("Could not verify the saved checkout order.");
+  let order = metadataOrder;
+  // Na conta conectada o professor pode editar o metadata da sessao. A sessao
+  // gravada no pedido manda: achou por ela, processa esse pedido e avisa ops.
+  let metadataTampered = false;
+  if (connectedAccountId && order?.checkout_session_id !== session.id) {
+    const { data: sessionOrder, error: sessionOrderError } = await admin
+      .from("orders")
+      .select("*")
+      .eq("checkout_session_id", session.id)
+      .maybeSingle();
+    if (sessionOrderError) throw new Error("Could not verify the saved checkout order.");
+    if (sessionOrder) {
+      order = sessionOrder;
+      metadataTampered = true;
+      notifyOps({
+        event: "stripe.webhook.checkout_metadata_mismatch",
+        severity: "critical",
+        summary:
+          "A paid checkout's orderId metadata did not name its saved order. The sale was fulfilled from the order saved with the session.",
+        context: { orderId: sessionOrder.id, checkoutSessionId: session.id, eventAccountId: connectedAccountId },
+      });
+    }
+  }
+  // Com chaves proprias o professor tambem vende fora da plataforma (link ou
+  // checkout dele). O pedido nasce antes da sessao, entao sem pedido nosso o
+  // evento nao e nosso: 2xx, nada gravado. Plataforma sem pedido segue falhando.
+  if (!order && connectedAccountId) {
+    console.info(`[stripe webhook] Checkout ${session.id} has no SkillsetMind order; ignored.`);
+    return;
+  }
+  if (!order || (!metadataTampered && (!metadata.courseId || !metadata.userId))) {
     throw new Error("Missing required Checkout metadata.");
   }
 
-  const { data: order, error: orderError } = await admin
-    .from("orders")
-    .select("*")
-    .eq("id", orderId)
-    .maybeSingle();
-  if (orderError || !order) throw new Error("Could not verify the saved checkout order.");
-
+  const orderId = order.id;
   const courseId = order.course_id;
   const userId = order.user_id;
+  // Antes a igualdade com o metadata garantia os dois; pela sessao gravada, o
+  // proprio pedido tem que trazer curso e comprador.
+  if (typeof courseId !== "string" || !courseId || typeof userId !== "string" || !userId) {
+    throw new Error("Saved checkout order is missing its course or buyer.");
+  }
   const amountMinor = Number(order.amount_minor);
   // The server attaches this session before returning its URL. Metadata is a
   // reference to that saved sale, never authority to replace its buyer or course.
   if (
     !sessionBelongsToOrder(order, session.id, connectedAccountId)
-    || metadata.courseId !== courseId || metadata.userId !== userId
     || typeof order.currency !== "string"
     || session.currency?.toUpperCase() !== order.currency.toUpperCase()
     || !Number.isSafeInteger(amountMinor) || amountMinor < 0
     || session.amount_total !== toStripeAmount(amountMinor, order.currency)
-    || (metadata.teacherId !== undefined && metadata.teacherId !== order.teacher_id)
-    || (metadata.connectedAccountId !== undefined
-      && metadata.connectedAccountId !== order.teacher_stripe_connected_account_id)
+    || (!metadataTampered && (
+      metadata.courseId !== courseId || metadata.userId !== userId
+      || (metadata.teacherId !== undefined && metadata.teacherId !== order.teacher_id)
+      || (metadata.connectedAccountId !== undefined
+        && metadata.connectedAccountId !== order.teacher_stripe_connected_account_id)
+    ))
   ) {
     throw new Error("Checkout does not match its saved order.");
   }
@@ -1003,10 +1087,13 @@ async function handleCourseSubscriptionInvoicePaid(
   // duration:"once", so renewals carry the same metadata but no discount —
   // finalizing on every invoice would count one buyer against the redemption
   // cap forever. The RPC is idempotent, the billing_reason gate is the intent.
+  // The course was checked against event.account above; the reservation must
+  // also be this course's and this buyer's.
   if (
     invoice.billing_reason === "subscription_create"
     && typeof meta.couponReservationId === "string"
     && meta.couponReservationId
+    && await couponReservationBelongsToSale(admin, meta.couponReservationId, courseId, userId, eventAccountId)
   ) {
     await finalizeCourseCouponReservation(admin, meta.couponReservationId);
   }
@@ -1028,6 +1115,26 @@ function isForeignCourseAccount(
   return !course || !teacherId || course.owner_id !== teacherId
     || (eventAccountId !== course.stripe_connected_account_id
       && eventAccountId !== owner?.stripe_connected_account_id);
+}
+
+// Reads the course and its owner for isForeignCourseAccount. A read error
+// throws: a transient failure must never turn our event into a foreign one.
+async function isForeignCourseEvent(
+  admin: Admin,
+  eventAccountId: string | null,
+  courseId: string | null,
+  teacherId: string | null,
+): Promise<boolean> {
+  if (!eventAccountId) return false;
+  const { data: course, error: courseError } = courseId
+    ? await admin.from("courses").select("owner_id,stripe_connected_account_id").eq("id", courseId).maybeSingle()
+    : { data: null, error: null };
+  if (courseError) throw new Error(courseError.message);
+  const { data: owner, error: ownerError } = teacherId
+    ? await admin.from("users").select("stripe_connected_account_id").eq("uid", teacherId).maybeSingle()
+    : { data: null, error: null };
+  if (ownerError) throw new Error(ownerError.message);
+  return isForeignCourseAccount(eventAccountId, teacherId, course, owner);
 }
 
 function reportForeignCourseSubscription(subscriptionId: string, eventAccountId: string | null): void {
@@ -1053,21 +1160,9 @@ async function handleCourseSubscriptionLifecycle(
   const teacherId = typeof meta.teacherId === "string" ? meta.teacherId : null;
   if (!courseId || !userId) return true; // ours; swallow so plan handler isn't called
 
-  if (eventAccountId) {
-    const { data: course, error: courseError } = await admin
-      .from("courses")
-      .select("owner_id,stripe_connected_account_id")
-      .eq("id", courseId)
-      .maybeSingle();
-    if (courseError) throw new Error(courseError.message);
-    const { data: owner, error: ownerError } = teacherId
-      ? await admin.from("users").select("stripe_connected_account_id").eq("uid", teacherId).maybeSingle()
-      : { data: null, error: null };
-    if (ownerError) throw new Error(ownerError.message);
-    if (isForeignCourseAccount(eventAccountId, teacherId, course, owner)) {
-      reportForeignCourseSubscription(subscription.id, eventAccountId);
-      return true; // swallow: never upsert a creator-forged row, never run the plan handler
-    }
+  if (await isForeignCourseEvent(admin, eventAccountId, courseId, teacherId)) {
+    reportForeignCourseSubscription(subscription.id, eventAccountId);
+    return true; // swallow: never upsert a creator-forged row, never run the plan handler
   }
 
   const status = subscription.status;
@@ -1202,6 +1297,12 @@ async function revokeStorefrontActivation(
   if (auditError) throw new Error(auditError.message);
 }
 
+async function orderExists(admin: Admin, orderId: string): Promise<boolean> {
+  const { data, error } = await admin.from("orders").select("id").eq("id", orderId).maybeSingle();
+  if (error) throw new Error(error.message);
+  return Boolean(data);
+}
+
 // --- charge.refunded ---------------------------------------------------------
 // Under direct charges a refund debits the TEACHER's own Stripe balance, and
 // Stripe returns the proportional application fee to them automatically when
@@ -1293,7 +1394,13 @@ async function handleChargeRefunded(
     // identifica com precisão a compra de curso. Aqui vale o MESMO raciocínio
     // que a linha ~1041 já aplica no ramo de baixo: lançar para o Stripe
     // reenviar depois que a fulfilment terminar, em vez de perder o reembolso.
-    if (!ledger && typeof charge.metadata?.orderId === "string") {
+    // Numa conta conectada o "orderId" pode ser do proprio professor: so conta
+    // se o pedido existe aqui.
+    if (
+      !ledger
+      && typeof charge.metadata?.orderId === "string"
+      && (!connectedAccountId || await orderExists(admin, charge.metadata.orderId))
+    ) {
       throw new Error(
         `Refund for order ${charge.metadata.orderId} arrived before its payment row; retry this refund.`,
       );
@@ -2134,9 +2241,45 @@ async function handleConnectedAccountUpdated(
         stripe_connect_updated_at: ts,
         updated_at: ts,
       })
-      .eq("stripe_connected_account_id", account.id),
+      .eq("stripe_connected_account_id", account.id)
+      // Um account.updated atrasado nao desfaz a desconexao. Reconectar cria
+      // conta nova (status "created") ou passa pelo refresh, que le o Stripe.
+      .or("stripe_connect_status.is.null,stripe_connect_status.neq.disconnected"),
     "Sync connected account readiness",
   );
+}
+
+// O professor desconectou a plataforma no proprio painel do Stripe: nada mais
+// cobra nem repassa por aqui. O id da conta fica (reembolso e historico usam).
+// Idempotente; conta desconhecida casa zero linhas e o evento segue 2xx.
+async function handleConnectedAccountDeauthorized(
+  admin: Admin,
+  accountId: string | null,
+): Promise<void> {
+  if (!accountId) return;
+  const ts = nowIso();
+  const { data: teachers, error } = await admin
+    .from("users")
+    .update({
+      stripe_connect_status: "disconnected",
+      stripe_connect_charges_enabled: false,
+      stripe_connect_payouts_enabled: false,
+      stripe_connect_updated_at: ts,
+      updated_at: ts,
+    })
+    .eq("stripe_connected_account_id", accountId)
+    .select("uid");
+  if (error) throw new Error(`Mark connected account deauthorized: ${error.message}`);
+  // Assinaturas de alunos nessa conta seguem no Stripe dele: alguem precisa olhar.
+  for (const teacher of teachers ?? []) {
+    notifyOps({
+      event: "stripe.connect.deauthorized",
+      severity: "warn",
+      summary:
+        "A teacher disconnected SkillsetMind from their Stripe account. They can no longer sell here; check their active student subscriptions.",
+      context: { uid: teacher.uid },
+    });
+  }
 }
 
 function constructStripeWebhookEvent(
@@ -2247,11 +2390,11 @@ export async function POST(request: Request) {
       }
       case "checkout.session.async_payment_failed":
         await markOrderStatus(admin, event.data.object, eventAccountId, "failed");
-        await releaseAbandonedSubscriptionCoupon(admin, event.data.object);
+        await releaseAbandonedSubscriptionCoupon(admin, event.data.object, eventAccountId);
         break;
       case "checkout.session.expired":
         await markOrderStatus(admin, event.data.object, eventAccountId, "cancelled");
-        await releaseAbandonedSubscriptionCoupon(admin, event.data.object);
+        await releaseAbandonedSubscriptionCoupon(admin, event.data.object, eventAccountId);
         break;
       case "payment_intent.payment_failed":
         // A declined card can be retried in the same session; only terminal session events release it.
@@ -2319,6 +2462,9 @@ export async function POST(request: Request) {
         break;
       case "account.updated":
         await handleConnectedAccountUpdated(admin, event.data.object);
+        break;
+      case "account.application.deauthorized":
+        await handleConnectedAccountDeauthorized(admin, eventAccountId);
         break;
     }
 

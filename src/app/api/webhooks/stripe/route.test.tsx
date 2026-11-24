@@ -82,6 +82,10 @@ type AdminState = {
   planSubscriptions: Array<Record<string, unknown>>;
   orderRow: Record<string, unknown>;
   couponReservation?: "reserved" | "released" | "redeemed";
+  // Curso e comprador gravados na reserva; padrao: esta venda (course_1/user_1).
+  reservationSale?: { course_id: string; user_id: string };
+  // stripe_connect_status da linha de teacher_1 (acct_teacher).
+  connectStatus?: string;
   checkoutLock?: { lock_key: string; order_id: string } | null;
   afterCheckoutLockRead?: () => void;
   // Outra transacao commita depois da leitura do handler e antes de a RPC
@@ -164,6 +168,7 @@ function createAdmin(
     private values: Record<string, unknown> = {};
     private filters: Filter[] = [];
     private ignoreDuplicates = false;
+    private orFilters: string[] = [];
 
     constructor(private readonly table: string) {}
 
@@ -204,6 +209,11 @@ function createAdmin(
     // .is(column, null) to stay idempotent.
     is(column: string, value: unknown) {
       this.filters.push({ column, value });
+      return this;
+    }
+
+    or(filter: string) {
+      this.orFilters.push(filter);
       return this;
     }
 
@@ -327,12 +337,24 @@ function createAdmin(
         }
 
         if (this.table === "users" && this.operation === "update") {
+          // O guard do account.updated: linha "disconnected" nao casa.
+          const blocked = this.orFilters.includes("stripe_connect_status.is.null,stripe_connect_status.neq.disconnected")
+            && state.connectStatus === "disconnected";
+          if (blocked) return { data: [], error: null };
           state.userUpdates.push({
             ...this.values,
             stripe_connected_account_id: this.filterValue(
               "stripe_connected_account_id",
             ),
           });
+          // acct_teacher e a conta de teacher_1; outra conta casa zero linhas.
+          if (this.filterValue("stripe_connected_account_id") === "acct_teacher") {
+            if (typeof this.values.stripe_connect_status === "string") {
+              state.connectStatus = this.values.stripe_connect_status;
+            }
+            return { data: [{ uid: "teacher_1" }], error: null };
+          }
+          return { data: [], error: null };
         }
 
         // The plan past_due write reads its row back, so it needs a real row
@@ -371,7 +393,9 @@ function createAdmin(
         };
       }
       if (this.table === "orders") {
-        data = this.filterValue("id") === state.orderRow.id ? { ...state.orderRow } : null;
+        // Pelo id do metadata ou pela sessao gravada no pedido: todo filtro precisa casar.
+        const row = state.orderRow;
+        data = this.filters.every(({ column, value }) => row[column] === value) ? { ...row } : null;
       } else if (this.table === "checkout_locks") {
         data = state.checkoutLock && this.filterValue("lock_key") === state.checkoutLock.lock_key
           ? { ...state.checkoutLock } : null;
@@ -390,6 +414,15 @@ function createAdmin(
         };
       } else if (this.table === "enrollments") {
         data = state.enrollmentRow ?? null;
+      } else if (this.table === "course_coupon_reservations") {
+        // A unica reserva existente e res_1 (chave order_id), no cupom coupon_1.
+        data = state.couponReservation && this.filterValue("order_id") === "res_1"
+          ? { coupon_id: "coupon_1", user_id: state.reservationSale?.user_id ?? "user_1" }
+          : null;
+      } else if (this.table === "course_coupons") {
+        data = this.filterValue("id") === "coupon_1"
+          ? { id: "coupon_1", course_id: state.reservationSale?.course_id ?? "course_1" }
+          : null;
       } else if (
         this.table === "payments"
         && state.mode === "refund"
@@ -3036,6 +3069,315 @@ describe("Stripe webhook financial integrity", () => {
       expect(mocks.reversalCreate).not.toHaveBeenCalled();
       expect(mocks.subscriptionCancel).not.toHaveBeenCalled();
       expect(mocks.refundCreate).not.toHaveBeenCalled();
+    });
+  });
+
+  // Contas com o painel completo do Stripe: o professor tem chaves proprias,
+  // desconecta a plataforma, vende por fora e escreve metadata.
+  describe("full-Dashboard connected accounts", () => {
+    function deauthorizedEvent(id: string, account?: string) {
+      return {
+        id,
+        type: "account.application.deauthorized",
+        ...(account ? { account } : {}),
+        data: { object: { id: "ca_platform", object: "application" } },
+      };
+    }
+
+    // Os valores gravados em `users`, antes do fake anotar o filtro.
+    function userWriteValues(admin: ReturnType<typeof createAdmin>) {
+      return admin.from.mock.results
+        .map((result) => result.value as unknown as { table: string; operation: string; values: Record<string, unknown> })
+        .filter((query) => query.table === "users" && query.operation === "update")
+        .map((query) => query.values);
+    }
+
+    it("marks a deauthorized account as unable to charge or pay out, keeping its id", async () => {
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(deauthorizedEvent("evt_deauth_1", "acct_teacher"))).status).toBe(200);
+      expect((await postEvent(deauthorizedEvent("evt_deauth_2", "acct_teacher"))).status).toBe(200);
+
+      expect(admin.state.userUpdates).toEqual([1, 2].map(() => expect.objectContaining({
+        stripe_connected_account_id: "acct_teacher",
+        stripe_connect_status: "disconnected",
+        stripe_connect_charges_enabled: false,
+        stripe_connect_payouts_enabled: false,
+      })));
+      expect(userWriteValues(admin).every((values) => !("stripe_connected_account_id" in values))).toBe(true);
+      expect(admin.state.doneEvents).toEqual(new Set(["evt_deauth_1", "evt_deauth_2"]));
+      expect(mocks.subscriptionRetrieve).not.toHaveBeenCalled();
+      // Aviso nao critico, so com o id do perfil.
+      expect(mocks.notifyOps).toHaveBeenCalledWith(expect.objectContaining({
+        event: "stripe.connect.deauthorized",
+        severity: "warn",
+        context: { uid: "teacher_1" },
+      }));
+    });
+
+    function accountUpdatedEvent(id: string) {
+      return {
+        id,
+        type: "account.updated",
+        account: "acct_teacher",
+        data: { object: { id: "acct_teacher", object: "account", charges_enabled: true, payouts_enabled: true } },
+      };
+    }
+
+    it("keeps a deauthorized account disconnected when a late account.updated arrives", async () => {
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(deauthorizedEvent("evt_deauth_first", "acct_teacher"))).status).toBe(200);
+      expect((await postEvent(accountUpdatedEvent("evt_account_updated_late"))).status).toBe(200);
+
+      expect(admin.state.connectStatus).toBe("disconnected");
+      expect(admin.state.userUpdates).not.toContainEqual(expect.objectContaining({ stripe_connect_status: "ready" }));
+      expect(admin.state.doneEvents).toContain("evt_account_updated_late");
+    });
+
+    it("still syncs the new account a teacher creates after reconnecting", async () => {
+      const admin = createAdmin("checkout");
+      admin.state.connectStatus = "created";
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(accountUpdatedEvent("evt_account_updated_new"))).status).toBe(200);
+      expect(admin.state.connectStatus).toBe("ready");
+    });
+
+    it("acknowledges a deauthorization for an unknown account and touches no one else", async () => {
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(deauthorizedEvent("evt_deauth_unknown", "acct_unknown"))).status).toBe(200);
+      // Sem conta no evento nao ha o que procurar.
+      expect((await postEvent(deauthorizedEvent("evt_deauth_no_account"))).status).toBe(200);
+
+      expect(admin.state.userUpdates).toEqual([
+        expect.objectContaining({ stripe_connected_account_id: "acct_unknown" }),
+      ]);
+      expect(admin.state.doneEvents).toEqual(new Set(["evt_deauth_unknown", "evt_deauth_no_account"]));
+      expect(mocks.notifyOps).not.toHaveBeenCalled();
+    });
+
+    function outsideSale(metadata: Record<string, string>) {
+      const event = checkoutEvent();
+      event.id = "evt_outside_sale";
+      event.data.object.id = "cs_teacher_own_link";
+      event.data.object.metadata = metadata;
+      return event;
+    }
+
+    it.each([
+      ["a payment link with no metadata", {}],
+      ["the teacher's own order id", { orderId: "their_order_42", courseId: "x", userId: "y" }],
+    ])("acknowledges %s on a connected account and records nothing", async (_label, metadata) => {
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+      vi.spyOn(console, "info").mockImplementation(() => undefined);
+      const event = outsideSale(metadata);
+
+      expect((await postEvent(event)).status).toBe(200);
+
+      expect(admin.state.doneEvents).toContain(event.id);
+      expect(admin.state.rpcCalls).toEqual([]);
+      expect(admin.state.paymentWrites).toEqual([]);
+      expect(admin.state.orderWrites).toEqual([]);
+      expect(admin.state.ledgerIds.size).toBe(0);
+      expect(mocks.notifyOps).not.toHaveBeenCalled();
+    });
+
+    // A sessao vive na conta do professor, que pode mexer no metadata dela.
+    it.each([
+      ["removed", {}],
+      ["altered", { orderId: "order_forged", courseId: "course_other", userId: "user_other" }],
+    ])("fulfils a real sale whose orderId metadata was %s, from the order saved with its session", async (_label, metadata) => {
+      const admin = createAdmin("checkout");
+      admin.state.couponReservation = "reserved";
+      admin.state.checkoutLock = { lock_key: "user_1__course_1", order_id: "order_1" };
+      mocks.getAdmin.mockReturnValue(admin);
+      const event = checkoutEvent();
+      event.data.object.metadata = metadata;
+
+      expect((await postEvent(event)).status).toBe(200);
+
+      expect(fulfillCalls(admin).map((call) => call.args)).toEqual([
+        expect.objectContaining({ p_user_id: "user_1", p_course_id: "course_1" }),
+      ]);
+      expect(admin.state.ledgerIds.has("order_1")).toBe(true);
+      expect(admin.state.orderRow.status).toBe("paid");
+      expect(admin.state.couponReservation).toBe("redeemed");
+      expect(admin.state.checkoutLock).toBeNull();
+      expect(mocks.notifyOps).toHaveBeenCalledWith(expect.objectContaining({
+        event: "stripe.webhook.checkout_metadata_mismatch",
+        severity: "critical",
+        context: expect.objectContaining({ orderId: "order_1", checkoutSessionId: "cs_1" }),
+      }));
+    });
+
+    it("still fails a platform checkout with no order: that account is only ours", async () => {
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+      const event = outsideSale({});
+      delete (event as { account?: string }).account;
+
+      expect((await postEvent(event)).status).toBe(500);
+      expect(admin.state.doneEvents).not.toContain(event.id);
+    });
+
+    it("still fulfils a real platform sale, and still retries it when a write fails", async () => {
+      const failing = createAdmin("checkout", "payments.upsert");
+      mocks.getAdmin.mockReturnValue(failing);
+      expect((await postEvent(checkoutEvent())).status).toBe(500);
+      expect(failing.state.doneEvents).not.toContain("evt_checkout");
+
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+      expect((await postEvent(checkoutEvent())).status).toBe(200);
+      expect(fulfillCalls(admin)).toHaveLength(1);
+      expect(admin.state.ledgerIds.has("order_1")).toBe(true);
+    });
+
+    it.each([
+      ["the teacher's own order id", "their_order_42", 200],
+      ["our order, before its payment row", "order_1", 500],
+    ])("on a connected refund carrying %s (%s) answers %i", async (_label, orderId, status) => {
+      const admin = createAdmin("refund");
+      admin.state.paymentRowMissing = true;
+      mocks.getAdmin.mockReturnValue(admin);
+      const event = refundEvent("evt_connected_refund", 10000) as unknown as {
+        account: string; data: { object: Record<string, unknown> };
+      };
+      event.account = "acct_teacher";
+      event.data.object.payment_intent = "pi_teacher_own";
+      event.data.object.metadata = { orderId };
+
+      expect((await postEvent(event as unknown as Record<string, unknown>)).status).toBe(status);
+      expect(admin.state.orderWrites).toEqual([]);
+      expect(admin.state.enrollmentUpdates).toEqual([]);
+    });
+
+    function couponSubscription(metadata: Record<string, string> = {}) {
+      return {
+        metadata: {
+          purpose: "course_subscription", courseId: "course_1", userId: "user_1", teacherId: "teacher_1",
+          couponReservationId: "res_1", ...metadata,
+        },
+        items: { data: [{ current_period_end: 1_800_000_000 }] },
+        customer: "cus_1",
+        status: "active",
+        cancel_at_period_end: false,
+      };
+    }
+
+    function firstCouponInvoice(account = "acct_teacher") {
+      const event = paidInvoiceEvent();
+      event.account = account;
+      Object.assign(event.data.object, { billing_reason: "subscription_create" });
+      return event;
+    }
+
+    const foreignReservationAlert = expect.objectContaining({
+      event: "stripe.webhook.foreign_coupon_reservation",
+      severity: "critical",
+      context: expect.objectContaining({ reservationId: "res_1" }),
+    });
+
+    it("still redeems this sale's own reservation on the first invoice", async () => {
+      const admin = createAdmin("checkout");
+      admin.state.couponReservation = "reserved";
+      mocks.getAdmin.mockReturnValue(admin);
+      mocks.subscriptionRetrieve.mockResolvedValue(couponSubscription());
+
+      expect((await postEvent(firstCouponInvoice())).status).toBe(200);
+      expect(admin.state.couponReservation).toBe("redeemed");
+      expect(mocks.notifyOps).not.toHaveBeenCalledWith(foreignReservationAlert);
+    });
+
+    it.each([
+      ["another course", { course_id: "course_other", user_id: "user_1" }],
+      ["another buyer", { course_id: "course_1", user_id: "user_other" }],
+    ])("does not redeem a reservation from %s and alerts ops", async (_label, reservationSale) => {
+      const admin = createAdmin("checkout");
+      admin.state.couponReservation = "reserved";
+      admin.state.reservationSale = reservationSale;
+      mocks.getAdmin.mockReturnValue(admin);
+      mocks.subscriptionRetrieve.mockResolvedValue(couponSubscription());
+
+      expect((await postEvent(firstCouponInvoice())).status).toBe(200);
+      expect(admin.state.couponReservation).toBe("reserved");
+      expect(admin.state.rpcCalls.map((call) => call.name)).not.toContain("finalize_course_coupon_reservation");
+      expect(mocks.notifyOps).toHaveBeenCalledWith(foreignReservationAlert);
+      // A venda em si segue registrada: so a reserva alheia fica de fora.
+      expect(fulfillCalls(admin)).toHaveLength(1);
+    });
+
+    it("does not redeem anything for an invoice from an account that does not own the course", async () => {
+      const admin = createAdmin("checkout");
+      admin.state.couponReservation = "reserved";
+      mocks.getAdmin.mockReturnValue(admin);
+      mocks.subscriptionRetrieve.mockResolvedValue(couponSubscription());
+
+      expect((await postEvent(firstCouponInvoice("acct_attacker"))).status).toBe(200);
+      expect(admin.state.couponReservation).toBe("reserved");
+      expect(admin.state.rpcCalls.map((call) => call.name)).not.toContain("finalize_course_coupon_reservation");
+    });
+
+    function expiredSubscriptionCheckout(account = "acct_teacher") {
+      return {
+        id: "evt_sub_checkout_expired",
+        type: "checkout.session.expired",
+        account,
+        data: { object: {
+          id: "cs_sub_1",
+          mode: "subscription",
+          payment_status: "unpaid",
+          metadata: {
+            purpose: "course_subscription", courseId: "course_1", userId: "user_1", teacherId: "teacher_1",
+            couponReservationId: "res_1",
+          },
+        } },
+      };
+    }
+
+    it("still releases this checkout's own reservation when it expires", async () => {
+      const admin = createAdmin("checkout");
+      admin.state.couponReservation = "reserved";
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(expiredSubscriptionCheckout())).status).toBe(200);
+      expect(admin.state.couponReservation).toBe("released");
+      expect(mocks.notifyOps).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["from an account that does not own the course", "acct_attacker", undefined],
+      ["for another course", "acct_teacher", { course_id: "course_other", user_id: "user_1" }],
+    ])("does not release a reservation %s and alerts ops", async (_label, account, reservationSale) => {
+      const admin = createAdmin("checkout");
+      admin.state.couponReservation = "reserved";
+      admin.state.reservationSale = reservationSale;
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(expiredSubscriptionCheckout(account))).status).toBe(200);
+      expect(admin.state.couponReservation).toBe("reserved");
+      expect(admin.state.rpcCalls.map((call) => call.name)).not.toContain("release_course_coupon_reservation");
+      expect(mocks.notifyOps).toHaveBeenCalledWith(foreignReservationAlert);
+    });
+
+    // Sem reserva nao ha o que proteger: um id inventado nao pode gastar o alerta.
+    it("stays silent for a reservation id that does not exist", async () => {
+      const admin = createAdmin("checkout");
+      admin.state.couponReservation = "reserved";
+      mocks.getAdmin.mockReturnValue(admin);
+      const event = expiredSubscriptionCheckout("acct_attacker");
+      event.data.object.metadata.couponReservationId = "res_missing";
+
+      expect((await postEvent(event)).status).toBe(200);
+      expect(admin.state.couponReservation).toBe("reserved");
+      expect(admin.state.rpcCalls.map((call) => call.name)).not.toContain("release_course_coupon_reservation");
+      expect(mocks.notifyOps).not.toHaveBeenCalled();
     });
   });
 });

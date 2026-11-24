@@ -3254,7 +3254,7 @@
       "international_cards_non_usd_use_stripe": "Las tarjetas internacionales (no USD) usan la tarifa internacional estimada de Stripe del 5.4% + $0.30 en lugar del 2.9% + $0.30. Todo lo demás es igual. Ambas cifras corresponden a los precios de Stripe en Estados Unidos; tus tarifas son las que Stripe establece en el país donde está registrada tu cuenta.",
       "refund_window": "Plazo de reembolso",
       "learners_can_self_refund_within": "Los alumnos pueden solicitar el reembolso por su cuenta dentro de los ",
-      "days_of_purchase_if_they_ve": " días posteriores a la compra si completaron menos de la mitad del curso y no se ha emitido ningún certificado; una vez por curso. El reembolso revierte la venta automáticamente, incluida la comisión de SkillsetMind.",
+      "days_of_purchase_if_they_ve": " días posteriores a la compra si completaron menos de la mitad del curso y no se ha emitido ningún certificado; una vez por curso. Un reembolso hecho a través de SkillsetMind revierte la venta automáticamente, incluida la comisión de SkillsetMind. Un reembolso que hagas directamente en tu panel de Stripe no devuelve esa comisión.",
       "payouts": "Transferencias",
       "buyers_pay_your_stripe_account_directly": "Los compradores pagan directamente a tu cuenta de Stripe. Nunca retenemos tu dinero, así que no hay nada que debamos liberar. Stripe liquida y transfiere a tu banco desde tu propio saldo de Stripe según sus plazos, que dependen de tu país y del método de pago. Una cuenta nueva debe esperar la verificación de Stripe antes de su primera transferencia.",
       "plan_changes": "Cambios de plan",
@@ -3267,7 +3267,7 @@
       "how_do_the_fees_work_on": "¿Cómo funcionan las tarifas en una venta por suscripción?",
       "two_fees_come_out_of_each": "De cada venta se deducen hasta dos tarifas, que se muestran por separado para que las cuentas sean claras. SkillsetMind cobra la comisión de tu plan (10% + $0.30 en Basic, 4.9% + $0.30 en Starter, 0% en Pro; en otras monedas, los $0.30 se cobran en su equivalente local), y se te repercute la tarifa estándar de procesamiento de Stripe (2.9% + $0.30 para tarjetas en USD y un estimado del 5.4% + $0.30 para otras monedas) en todos los planes. Todo lo que queda es tuyo.",
       "when_can_a_sale_be_refunded": "¿Cuándo se puede reembolsar una venta y cómo afecta a mi transferencia?",
-      "learners_can_self_refund_within_days": "Los alumnos pueden solicitar el reembolso por su cuenta dentro de los {value0} días posteriores a la compra si completaron menos de la mitad del curso. Como el comprador pagó directamente a tu cuenta de Stripe, el reembolso se descuenta de tu propio saldo y se te devuelve la comisión de SkillsetMind de esa venta. Así no pagas una comisión por una venta que se anuló.",
+      "learners_can_self_refund_within_days": "Los alumnos pueden solicitar el reembolso por su cuenta dentro de los {value0} días posteriores a la compra si completaron menos de la mitad del curso. Como el comprador pagó directamente a tu cuenta de Stripe, el reembolso se descuenta de tu propio saldo. Cuando el reembolso se hace a través de SkillsetMind, se te devuelve la comisión de SkillsetMind de esa venta. Un reembolso que hagas directamente en tu panel de Stripe no devuelve esa comisión.",
       "ready_to_publish_on_skillsetmind": "¿Listo para publicar en SkillsetMind?",
       "creator_overview": "Información para creadores",
       "start_free": "Crear cuenta",
@@ -3495,7 +3495,7 @@
       "stripe_processing_fee": "Tarifa de procesamiento de Stripe",
       "charged_by_stripe_to_your_account": "Stripe la cobra a tu cuenta en cada venta. Los precios de Stripe en Estados Unidos son del 2.9% + $0.30 para pagos con tarjeta en USD y un estimado del 5.4% + $0.30 para otras monedas. Tus tarifas son las que Stripe establece en el país donde está registrada tu cuenta. En las cuentas conectadas con el panel completo de Stripe, Stripe también cobra a tu cuenta sus demás tarifas, como la de las ventas por suscripción, y te da soporte directo. Nunca se oculta dentro del porcentaje de la plataforma.",
       "refund_window": "Plazo de reembolso",
-      "self_serve_for_days_from_purchase": "Disponible por autoservicio durante {value0} días desde la compra, sujeto al progreso del curso y al estado del certificado. El reembolso se descuenta de tu saldo de Stripe y se te devuelve nuestra comisión de esa venta. Nunca pagas una comisión por una venta que se anuló.",
+      "self_serve_for_days_from_purchase": "Disponible por autoservicio durante {value0} días desde la compra, sujeto al progreso del curso y al estado del certificado. El reembolso se descuenta de tu saldo de Stripe. Cuando se hace a través de SkillsetMind, se te devuelve nuestra comisión de esa venta. Un reembolso que hagas directamente en tu panel de Stripe no devuelve nuestra comisión.",
       "payout_schedule": "Calendario de transferencias",
       "there_is_no_platform_clearance_period": "No existe un plazo de liquidación de la plataforma porque no tenemos nada que liquidar. La venta llega a tu propio saldo de Stripe y Stripe lo transfiere a tu banco según el calendario de tu cuenta conectada. La cuenta es tuya. En las cuentas conectadas con el panel completo de Stripe eliges tú el calendario de transferencias en Stripe. En las cuentas Stripe Express más antiguas abiertas a través de SkillsetMind, el intervalo de transferencias es una configuración de la plataforma que no eliges tú. En algunos países ese intervalo no se puede cambiar. Stripe aplica su demora habitual de verificación antes de la primera transferencia de una cuenta nueva, y los plazos de liquidación dependen de tu país y método de pago. Las plataformas que cobran tus ventas en su propia cuenta deben liquidar ese dinero antes de liberarlo; nosotros nunca lo cobramos, por lo que no hay nada que liberar.",
       "payout_account": "Cuenta de cobro",
@@ -3607,7 +3607,7 @@
           },
           "1": {
             "q": "¿Cómo se gestionan las transferencias a los creadores?",
-            "a": "Stripe te paga desde tu propia cuenta conectada; SkillsetMind nunca intermedia. Cada venta, nuestra comisión y cada reembolso se registran en el registro de ingresos de Estudio para que puedas conciliarlos con tu panel de Stripe. Los reembolsos y las disputas perdidas se descuentan de tu saldo de Stripe, y cuando se reembolsa una venta se te devuelve también nuestra comisión."
+            "a": "Stripe te paga desde tu propia cuenta conectada; SkillsetMind nunca intermedia. Cada venta, nuestra comisión y cada reembolso se registran en el registro de ingresos de Estudio para que puedas conciliarlos con tu panel de Stripe. Los reembolsos y las disputas perdidas se descuentan de tu saldo de Stripe. Cuando una venta se reembolsa a través de SkillsetMind, se te devuelve también nuestra comisión; un reembolso que hagas directamente en tu panel de Stripe no la devuelve."
           }
         }
       },
@@ -3616,7 +3616,7 @@
         "items": {
           "0": {
             "q": "¿Cómo se gestionan los reembolsos?",
-            "a": "Los alumnos pueden solicitar un reembolso dentro de los 7 días posteriores a la compra si completaron menos de la mitad del curso y no recibieron un certificado. El reembolso por autoservicio está disponible una vez por curso; después, la solicitud pasa a soporte. Se solicita directamente desde el pedido y se procesa automáticamente. Como el creador es el vendedor responsable, el reembolso se crea en su propia cuenta de Stripe y se descuenta de su saldo de Stripe; también se le devuelve la comisión de SkillsetMind de esa venta. La reversión se registra en el registro de ingresos del creador en cuestión de minutos para poder conciliarla con su panel de Stripe. El movimiento de dinero lo realiza Stripe en la propia cuenta del creador."
+            "a": "Los alumnos pueden solicitar un reembolso dentro de los 7 días posteriores a la compra si completaron menos de la mitad del curso y no recibieron un certificado. El reembolso por autoservicio está disponible una vez por curso; después, la solicitud pasa a soporte. Se solicita directamente desde el pedido y se procesa automáticamente. Como el creador es el vendedor responsable, el reembolso se crea en su propia cuenta de Stripe y se descuenta de su saldo de Stripe; también se le devuelve la comisión de SkillsetMind de esa venta. Un reembolso que el creador haga directamente en su propio panel de Stripe no devuelve esa comisión. La reversión se registra en el registro de ingresos del creador en cuestión de minutos para poder conciliarla con su panel de Stripe. El movimiento de dinero lo realiza Stripe en la propia cuenta del creador."
           }
         }
       },
@@ -5275,7 +5275,7 @@
     "signInAction": "Iniciar sesión",
     "rateLimit": "Demasiados intentos. Espera antes de volver a intentarlo.",
     "support": "Contactar con soporte",
-    "refundGuidance": "Abre tu panel de Stripe para buscar el pago. Puedes emitir un reembolso allí si esa función está habilitada. Si no encuentras el pago o la opción de reembolso, contacta con soporte con el identificador del pedido.",
+    "refundGuidance": "Abre tu panel de Stripe para buscar el pago. Puedes emitir un reembolso allí si esa función está habilitada. Un reembolso hecho allí no devuelve la comisión de SkillsetMind. Si no encuentras el pago o la opción de reembolso, contacta con soporte con el identificador del pedido.",
     "refundHelp": "Opciones de reembolso",
     "refundSupport": "Ayuda con el reembolso"
   },
@@ -5573,7 +5573,7 @@
     "chargeCreated": "Cobro creado en tu cuenta de Stripe",
     "chargeDetail": "El comprador pagó directamente a tu cuenta de Stripe, sin retención por parte de SkillsetMind. Stripe incorpora el cobro a tu saldo disponible según sus plazos, que dependen de tu país y del método de pago utilizado. Después lo transfiere a tu banco según el calendario de pagos de tu cuenta conectada. Una cuenta nueva también debe esperar la verificación de Stripe antes de su primer pago.",
     "refundRecorded": "Reembolso registrado",
-    "refundDetail": "Se emitió un reembolso total o parcial. Se descontó de tu propio saldo de Stripe y se te devolvió la comisión de SkillsetMind de esa venta.",
+    "refundDetail": "Se emitió un reembolso total o parcial. Se descontó de tu propio saldo de Stripe. Si el reembolso se hizo a través de SkillsetMind, se te devolvió la comisión de SkillsetMind de esa venta; un reembolso hecho directamente en tu panel de Stripe no la devuelve.",
     "notFound": "Venta no encontrada.",
     "amount": "Importe",
     "fee": "Comisión de SkillsetMind",

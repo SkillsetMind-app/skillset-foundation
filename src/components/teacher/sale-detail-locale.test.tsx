@@ -63,7 +63,10 @@ describe("sale detail with real EN/ES dictionaries", () => {
     mocks.subscribe.mockImplementation((_id, callback) => { callback({ ...order, status }); return () => {}; });
     mount();
     expect(screen.getByText("Reembolso registrado")).toBeVisible();
-    expect(screen.getByText(/Se descontó de tu propio saldo de Stripe/)).toHaveTextContent("se te devolvió la comisión de SkillsetMind");
+    // A comissao so volta quando o reembolso passa pela SkillsetMind.
+    const refundDetail = screen.getByText(/Se descontó de tu propio saldo de Stripe/);
+    expect(refundDetail).toHaveTextContent("Si el reembolso se hizo a través de SkillsetMind, se te devolvió la comisión de SkillsetMind");
+    expect(refundDetail).toHaveTextContent("un reembolso hecho directamente en tu panel de Stripe no la devuelve");
     expect(screen.queryByText("Inscripción activada")).toBeNull();
     switchLanguage();
     expect(screen.getByText("Refund recorded")).toBeVisible();
