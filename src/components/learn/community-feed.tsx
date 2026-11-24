@@ -697,7 +697,10 @@ function Composer({
           ref={promptRef}
           type="button"
           onClick={() => setMode("share")}
-          className="min-h-11 flex-1 rounded-md bg-[var(--color-surface-soft)] px-4 text-left text-sm text-[var(--color-ink-muted)]"
+          // basis-48: a 375px o campo ficava com 134px (100px em espanhol) e a
+          // frase quebrava em 3 ou 4 linhas; agora ele ocupa a linha e os
+          // botões descem.
+          className="min-h-11 flex-1 basis-48 rounded-md bg-[var(--color-surface-soft)] px-4 text-left text-sm text-[var(--color-ink-muted)]"
         >
           {t("learn.community.composer.prompt")}
         </button>

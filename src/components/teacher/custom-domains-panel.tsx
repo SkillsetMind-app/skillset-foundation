@@ -133,7 +133,9 @@ function DomainCard({
     <Card tone="soft" padding="sm" shadow={false} className="grid grid-cols-1 gap-3">
       <div className="flex flex-wrap items-center gap-3">
         <Globe className="h-4 w-4 shrink-0 text-[var(--color-ink-soft)]" />
-        <span className="min-w-0 flex-1 truncate font-semibold text-[var(--color-ink)]">
+        {/* basis-48: a 375px o endereço ficava com 71px ao lado do selo
+            ("courses.d…"); com a base ele ocupa a linha e o selo desce. */}
+        <span className="min-w-0 flex-1 basis-48 truncate font-semibold text-[var(--color-ink)]">
           {domain.hostname}
         </span>
         {/* O chip da casa: a cor carrega a mesma informação do rótulo, no
