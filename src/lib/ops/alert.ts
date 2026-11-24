@@ -37,6 +37,8 @@ type OpsAlert = {
   severity: OpsAlertSeverity;
   summary: string;
   context?: Record<string, string | number | boolean | null>;
+  /** Throttle per this key instead of per event name. Not sent to the relay. */
+  throttleKey?: string;
 };
 
 // One message per event key per window. A forged-webhook flood is one attack,
@@ -158,7 +160,7 @@ export function notifyOps(alert: OpsAlert): void {
   }
 
   const now = Date.now();
-  if (!shouldSend(alert.event, now)) {
+  if (!shouldSend(alert.throttleKey ?? alert.event, now)) {
     return;
   }
 

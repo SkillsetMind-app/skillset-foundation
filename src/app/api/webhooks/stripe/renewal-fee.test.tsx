@@ -277,6 +277,28 @@ describe("invoice.created on a student-subscription renewal", () => {
     }));
   });
 
+  // Vendido no Pro (sem percentual), professor rebaixado apaga chaves do metadata:
+  // a linha salva mantem a venda e a taxa sai pelo plano do dono do curso.
+  it.each(["teacherId", "purpose", "courseId"])(
+    "still charges the owner's plan fee when metadata %s was deleted", async (key) => {
+      mocks.getAdmin.mockReturnValue(createDb("starter", true));
+      const metadata: Record<string, string> = { ...ownCourse };
+      delete metadata[key];
+      mocks.retrieve.mockResolvedValue({ id: "sub_student_1", metadata });
+
+      expect((await deliver(renewal())).status).toBe(200);
+
+      expect(mocks.updateInvoice).toHaveBeenCalledWith(
+        "in_renewal_1",
+        { application_fee_amount: Math.floor((2_000 * 490) / 10_000) + 30 },
+        { stripeAccount: "acct_teacher" },
+      );
+      expect(mocks.notifyOps).toHaveBeenCalledWith(expect.objectContaining({
+        event: "stripe.course_subscription.metadata_mismatch",
+      }));
+    },
+  );
+
   it("leaves a connected account's own subscriptions alone", async () => {
     mocks.getAdmin.mockReturnValue(createDb("starter"));
     mocks.retrieve.mockResolvedValue({ id: "sub_teacher_own", metadata: {} });
