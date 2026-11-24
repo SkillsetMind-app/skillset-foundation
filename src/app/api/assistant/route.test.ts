@@ -49,6 +49,8 @@ describe("public help assistant", () => {
     expect(await res.json()).toEqual({ reply: "Open your course and click Publish." });
     const call = mocks.askKimi.mock.calls[0][0];
     expect(call.model).toBe("kimi-k3");
+    expect(call.maxTokens).toBe(4096);
+    expect(mocks.enforceRateLimit).toHaveBeenCalledWith("assistant_global_daily", 500, 86_400_000);
     expect(call.messages[0].role).toBe("system");
     expect(call.messages[0].content).toContain("support@skillsetmind.com");
     expect(call.messages[0].content).toContain("PLANS-AND-FAQ");
@@ -69,6 +71,32 @@ describe("public help assistant", () => {
     const res = await ask("hi");
     expect(res.status).toBe(503);
     expect((await res.json()).error).toBe("assistant_not_configured");
+  });
+
+  it("stops at the shared daily ceiling without calling the model", async () => {
+    const { PaymentError } = await import("@/lib/payments/server/auth");
+    mocks.enforceRateLimit.mockImplementation(async (key: string) => {
+      if (key === "assistant_global_daily") throw new PaymentError("Too many requests.");
+    });
+    const res = await ask("hi");
+    expect(res.status).toBe(429);
+    expect(mocks.askKimi).not.toHaveBeenCalled();
+  });
+
+  it("does not charge the shared ceiling for a malformed request", async () => {
+    const res = await POST(
+      new Request("https://www.skillsetmind.com/api/assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: [] }),
+      }),
+    );
+    expect(res.status).toBe(400);
+    expect(mocks.enforceRateLimit).not.toHaveBeenCalledWith(
+      "assistant_global_daily",
+      expect.anything(),
+      expect.anything(),
+    );
   });
 
   it("reports a slow answer as a 504", async () => {

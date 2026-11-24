@@ -40,6 +40,14 @@ const RATE_LIMIT_PER_HOUR = 20;
 const RATE_LIMIT_PER_DAY = 80; // bounds sustained economic abuse (every turn hits the model)
 // kimi-k3 measured 23-34s on FAQ questions (reasoning included). 90s headroom.
 const UPSTREAM_TIMEOUT_MS = 90_000;
+// Thinking + answer together. Measured 794-1519 tokens on FAQ questions; 4096
+// leaves room without letting one public call spend the advisor's 12k ceiling.
+const MAX_OUTPUT_TOKENS = 4096;
+// Per-IP keys don't bound spend (an IPv6 /64 mints endless keys), and this key
+// is shared with the paid teacher advisor. One ceiling for every visitor keeps
+// a scripted abuser from draining it; the assistant pauses, teachers don't.
+// shortcut: fixed daily ceiling; move to a budget alert if real traffic nears it.
+const GLOBAL_PER_DAY = 500;
 
 // Reject NUL + C0/C1 control chars (tab/newline/CR allowed): they have no place
 // in a chat message and are a classic vector for smuggling a payload past a
@@ -112,6 +120,18 @@ export async function POST(request: Request) {
     );
   }
 
+  // Charged only for a request that will reach the model, so malformed traffic
+  // can't burn the shared ceiling. Awaited BEFORE the in-flight check below,
+  // which must stay synchronous with its increment.
+  try {
+    await enforceRateLimit("assistant_global_daily", GLOBAL_PER_DAY, 86_400_000);
+  } catch (error) {
+    if (error instanceof PaymentError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
+  }
+
   if (inFlight >= MAX_INFLIGHT) {
     return NextResponse.json(
       { error: "The assistant is busy right now. Please try again in a moment." },
@@ -123,6 +143,7 @@ export async function POST(request: Request) {
   try {
     const reply = await askKimi({
       model: ASSISTANT_MODEL,
+      maxTokens: MAX_OUTPUT_TOKENS,
       messages: [
         {
           role: "system",
