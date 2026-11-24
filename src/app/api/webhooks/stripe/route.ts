@@ -268,9 +268,11 @@ function subscriptionRenewalTerms(
   currency: string,
 ): PurchaseRenewalTerms | undefined {
   const unitAmount = item?.price?.unit_amount;
-  const interval = item?.price?.recurring?.interval;
+  // O tipo do Stripe aceita qualquer texto aqui: só mês e ano viram frase.
+  const rawInterval = item?.price?.recurring?.interval;
+  const interval = rawInterval === "month" ? "month" : rawInterval === "year" ? "year" : null;
   if (typeof unitAmount !== "number" || unitAmount <= 0) return undefined;
-  if (interval !== "month" && interval !== "year") return undefined;
+  if (!interval) return undefined;
   return { amountMinor: fromStripeAmount(unitAmount, currency), currency, interval };
 }
 
