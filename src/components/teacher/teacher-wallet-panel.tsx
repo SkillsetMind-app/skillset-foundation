@@ -298,7 +298,7 @@ export function TeacherWalletPanel() {
         {/* Uma frase, e o resto recolhido. `details` nativo: sem estado, sem
             portal, e o texto longo so ocupa a tela de quem pediu por ele. */}
         <details className="mt-2 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
-          <summary className="cursor-pointer font-semibold text-[var(--color-primary)]">
+          <summary className="cursor-pointer font-semibold text-[var(--color-primary)] pointer-coarse:py-2">
             {t("teach.earnings.learnMore")}
           </summary>
           <p className="mt-2">{t("teach.earnings.details")}</p>
