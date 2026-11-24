@@ -9325,6 +9325,15 @@ button:hover > .dash-card,
 .members-hero__back:hover {
   text-decoration: underline;
 }
+/* No toque o link de voltar tem 44px de altura (eram 23px, e ele e o caminho
+   de volta do aluno). As margens encolhem o mesmo tanto: o titulo nao desce. */
+@media (pointer: coarse) {
+  .members-hero__back {
+    min-height: 44px;
+    margin-top: -10px;
+    margin-bottom: 13px;
+  }
+}
 .members-hero__title {
   margin: 0;
   max-width: 680px;
