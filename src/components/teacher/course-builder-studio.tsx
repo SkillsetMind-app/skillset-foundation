@@ -1025,7 +1025,9 @@ export function CourseBuilderStudio() {
       document.removeEventListener("visibilitychange", loadWhenVisible);
     };
   }, [courseId, offersAttempt, viewingOthersCourse]);
-  const offerPrice = course && checkoutOffers ? resolveCoursePrice(course, checkoutOffers) : null;
+  // No curso de outra pessoa a lista nunca e lida: uma lista que sobrou do
+  // curso aberto antes nao pode valer para este.
+  const offerPrice = course && checkoutOffers && !viewingOthersCourse ? resolveCoursePrice(course, checkoutOffers) : null;
   const chargedByOffer = offerPrice?.source === "offer" ? offerPrice : null;
   const paymentChoice = paymentChoiceOf(paymentType);
   const paymentChoices = paymentChoicesFor(productFormat, paymentChoice);
@@ -1294,7 +1296,7 @@ export function CourseBuilderStudio() {
         ? t("creatorEditor.builder.summary.year")
         : "";
   const formattedPrice =
-    !checkoutOffers
+    !checkoutOffers || viewingOthersCourse
       ? null
       : summaryPrice.type === "free"
       ? t("publicCourses.free")
