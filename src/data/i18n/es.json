@@ -3075,7 +3075,7 @@
     "freeAccess": "La inscripción gratuita añade este curso a tu espacio de aprendizaje de inmediato.",
     "paidAccess": "El acceso de pago se activa automáticamente al confirmar el pago, normalmente en segundos.",
     "refundTitle": "Garantía de reembolso de 7 días.",
-    "refundBody": "¿No es lo que buscabas? Solicita un reembolso dentro de los 7 días, siempre que hayas completado menos de la mitad del curso.",
+    "refundBody": "¿No es lo que buscabas? Solicita un reembolso dentro de los 7 días, una vez por curso, siempre que hayas completado menos de la mitad y no se haya emitido un certificado.",
     "sellerTitle": "Vendido por tu instructor, no por SkillsetMind.",
     "sellerBody": "Este curso lo vende directamente el educador independiente que lo publica. El pago va a su propia cuenta de Stripe, por lo que en el estado de cuenta de tu tarjeta puede aparecer su nombre o el de su negocio, en lugar de “SkillsetMind”.",
     "sellerLearnMore": "Más información",
