@@ -1399,10 +1399,10 @@ export function CreatorCourseDetail({
               <li className="flex gap-2.5">
                 <ShieldCheck aria-hidden="true" size={14} strokeWidth={2} className="mt-0.5 shrink-0 text-[var(--color-primary)]" />
                 <span>
-                  {/* A palavra "garantia" leva às condições inteiras (/refund-policy),
-                      em outra aba para não perder a compra. */}
+                  {/* A palavra "garantia" leva às condições inteiras (/refund-policy).
+                      Na mesma aba, como todo link interno da casa. */}
                   <strong className="text-[var(--color-ink)]">
-                    <Link href="/refund-policy" target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-[var(--color-primary)]">
+                    <Link href="/refund-policy" className="underline underline-offset-2 hover:text-[var(--color-primary)]">
                       {t("publicCourses.refundTitle")}
                     </Link>
                   </strong>{" "}
