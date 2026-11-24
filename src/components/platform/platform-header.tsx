@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import { ArrowLeftRight, ChevronRight, Search } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -30,6 +30,14 @@ export function PlatformHeader({ currentNavigationHref, searchHref }: {
   const { t } = useTranslation();
   const { status, user, signOut } = useAuth();
   const [searchOpen, setSearchOpen] = useState(false);
+  const searchToggleRef = useRef<HTMLButtonElement>(null);
+  // Só a faixa do celular fecha; em telas maiores o campo é fixo e
+  // `searchOpen` nunca liga.
+  const dismissSearch = (reason: "escape" | "submit") => {
+    if (!searchOpen) return;
+    setSearchOpen(false);
+    if (reason === "escape") searchToggleRef.current?.focus();
+  };
   const surface = getSurface(pathname);
   const pageLabel = getPageLabel(pathname, t, currentNavigationHref, { roles: user?.roles });
   const showSearch = searchHref !== null && (!pathname.startsWith("/ops") || Boolean(searchHref));
@@ -70,7 +78,7 @@ export function PlatformHeader({ currentNavigationHref, searchHref }: {
             em que a pessoa esta. */}
         {signedIn ? <p className="platform-topbar__side">{t(`platform.side.${side}`)}</p> : null}
 
-        {showSearch ? <PlatformSearch pathname={pathname} open={searchOpen} searchHref={searchHref ?? undefined} /> : null}
+        {showSearch ? <PlatformSearch pathname={pathname} open={searchOpen} searchHref={searchHref ?? undefined} onDismiss={dismissSearch} /> : null}
 
         <div className="platform-topbar__actions">
           {/* Abaixo de 1280px o botao fica so com o icone (o texto continua
@@ -92,6 +100,7 @@ export function PlatformHeader({ currentNavigationHref, searchHref }: {
           {/* No celular o campo não cabe na linha: o ícone o abre logo abaixo
               da barra. Em telas maiores ele já está aberto e este botão some. */}
           {showSearch ? <button
+            ref={searchToggleRef}
             type="button"
             onClick={() => setSearchOpen((open) => !open)}
             className="platform-topbar__search-toggle grid size-10 place-items-center rounded-full border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-ink)] transition hover:bg-[var(--color-surface-strong)]"

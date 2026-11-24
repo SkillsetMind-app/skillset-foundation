@@ -177,6 +177,34 @@ describe("busca na barra do topo", () => {
     expect(field).toHaveFocus();
   });
 
+  it("no celular o Esc fecha a faixa e devolve o foco ao icone", () => {
+    render(<PlatformHeader />);
+
+    const toggle = screen.getByRole("button", { name: "Open search" });
+    const field = screen.getByRole("searchbox", { name: "Search your studio" });
+    fireEvent.click(toggle);
+    fireEvent.change(field, { target: { value: "anxiety" } });
+    // O Esc so fecha a faixa: o padrao do navegador (apagar o campo) e cancelado.
+    expect(fireEvent.keyDown(field, { key: "Escape" })).toBe(false);
+
+    expect(field).toHaveValue("anxiety");
+    expect(field.closest("label")).toHaveAttribute("data-open", "false");
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(toggle).toHaveFocus();
+  });
+
+  it("no celular a faixa fecha depois de enviar a busca", () => {
+    render(<PlatformHeader />);
+
+    const field = screen.getByRole("searchbox", { name: "Search your studio" });
+    fireEvent.click(screen.getByRole("button", { name: "Open search" }));
+    fireEvent.change(field, { target: { value: "anxiety" } });
+    fireEvent.keyDown(field, { key: "Enter" });
+
+    expect(mocks.push).toHaveBeenLastCalledWith("/teach/builder?q=anxiety");
+    expect(field.closest("label")).toHaveAttribute("data-open", "false");
+  });
+
   it("no Mac a dica e ⌘K", () => {
     setPlatform("MacIntel");
     render(<PlatformHeader />);
