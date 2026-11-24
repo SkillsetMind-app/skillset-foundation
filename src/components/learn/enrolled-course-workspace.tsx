@@ -1757,6 +1757,23 @@ export function EnrolledCourseWorkspace({
           previewMode={previewMode}
         />
       ) : null}
+
+      {/* Assinatura: fora da trilha de aulas (comunidade ou evento sem aula, e
+          as outras abas) o cartão de cancelar vem aqui. Antes ele só existia
+          ao lado do currículo, e quem assinava um produto sem aula não tinha
+          onde cancelar. */}
+      {!(activeTab === "lesson" && totalLessonCount > 0)
+        && !previewMode
+        && workspaceEnrollment.source === "subscription"
+        && workspaceEnrollment.subscriptionId ? (
+        <section className="member-resource-panel" data-subscription-panel>
+          <CourseSubscriptionCard
+            key={workspaceEnrollment.subscriptionId}
+            courseId={course.id}
+            subscriptionId={workspaceEnrollment.subscriptionId}
+          />
+        </section>
+      ) : null}
       </div>
 
       {lessonListOpen ? (

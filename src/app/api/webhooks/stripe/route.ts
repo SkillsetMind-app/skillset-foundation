@@ -273,6 +273,8 @@ function subscriptionRenewalTerms(
   const interval = rawInterval === "month" ? "month" : rawInterval === "year" ? "year" : null;
   if (typeof unitAmount !== "number" || unitAmount <= 0) return undefined;
   if (!interval) return undefined;
+  // "A cada 3 meses" não cabe na frase "every month": sem ela, o e-mail não erra.
+  if ((item?.price?.recurring?.interval_count ?? 1) !== 1) return undefined;
   return { amountMinor: fromStripeAmount(unitAmount, currency), currency, interval };
 }
 

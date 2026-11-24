@@ -1160,7 +1160,7 @@ describe("CreatorCourseDetail — padlocked lessons and the buy popup", () => {
   });
 
   // Assinatura: a renovação automática é dita junto do botão, antes do Stripe.
-  it("a subscription states price, interval, auto-renewal and how to cancel right after the button", async () => {
+  it("a subscription states price, interval, auto-renewal and how to cancel right before the button", async () => {
     Object.assign(fixtures.course, { paymentType: "subscription_monthly" });
     const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" />);
     await waitFor(() => expect(cardAction(container)).toHaveTextContent("Subscribe — $149.00 / month"));
@@ -1170,7 +1170,7 @@ describe("CreatorCourseDetail — padlocked lessons and the buy popup", () => {
       "Charged today, then $149.00 every month. Renews automatically until you cancel. Cancel anytime on your course page, under Subscription, to stop the next charge.",
     );
     const button = cardAction(container) as HTMLElement;
-    expect(button.compareDocumentPosition(disclosure) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(button.compareDocumentPosition(disclosure) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
   });
 
   it("a one-time purchase shows no renewal notice", async () => {

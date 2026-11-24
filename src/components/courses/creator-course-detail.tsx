@@ -1261,6 +1261,16 @@ export function CreatorCourseDetail({
           <InlineAlert tone="error" className="mt-5">{t("publicCourses.selectedOfferUnavailable")}</InlineAlert>
         ) : null}
 
+        {/* Renovação automática, logo acima do botão de assinar (e do
+            formulário de quem compra sem conta): preço, intervalo, que renova
+            sozinha e onde cancelar. Quem já tem o curso não está comprando,
+            então não lê o aviso. */}
+        {subscriptionDisclosure && !viewerIsLearner ? (
+          <p data-subscription-disclosure className="mt-6 text-sm leading-6 text-[var(--color-ink)]">
+            {subscriptionDisclosure}
+          </p>
+        ) : null}
+
         {guestCheckoutOn ? (
           // Visitante com a compra sem login ligada: nome, e-mail e termos,
           // direto para o Stripe. Entrar continua a um clique.
@@ -1367,15 +1377,6 @@ export function CreatorCourseDetail({
             ) : null}
           </>
         )}
-
-        {/* Renovação automática, logo abaixo do botão de assinar: preço,
-            intervalo, que renova sozinha e onde cancelar. Quem já tem o curso
-            não está comprando, então não lê o aviso. */}
-        {subscriptionDisclosure && !viewerIsLearner ? (
-          <p data-subscription-disclosure className="mt-3 text-sm leading-6 text-[var(--color-ink)]">
-            {subscriptionDisclosure}
-          </p>
-        ) : null}
 
         {/* Depois do botao vinham cinco blocos soltos, dois em caixas de cores
             diferentes (verde e cinza), e o botao se perdia no meio do cartao.
