@@ -161,6 +161,34 @@ describe("askKimi", () => {
     expect((await askAndCatch()).code).toBe("reasoning_budget_exhausted");
   });
 
+  // The help assistant shipped answers that stopped at "3. Build your": text
+  // that ends because the ceiling ended the turn is a cut-off, not a reply.
+  it("rejects a non-empty answer that the token ceiling cut off", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse({
+          choices: [{ finish_reason: "length", message: { role: "assistant", content: "3. Build your" } }],
+        }),
+      ),
+    );
+
+    const error = await askAndCatch();
+    expect(error.code).toBe("reasoning_budget_exhausted");
+    expect(error.message).toContain("cut off");
+  });
+
+  it("sends the caller's model and token ceiling when given", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(reply("ok")));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await askKimi({ messages: [{ role: "user", content: "hi" }], model: "kimi-k3", maxTokens: 4096 });
+
+    const body = JSON.parse(String((fetchMock.mock.calls[0] as [string, RequestInit])[1].body));
+    expect(body.model).toBe("kimi-k3");
+    expect(body.max_tokens).toBe(4096);
+  });
+
   // Some OpenAI-compatible servers answer with content parts instead of a
   // string. Calling .trim() on that throws a TypeError, which is not a KimiError
   // and so slips past every caller that catches one.

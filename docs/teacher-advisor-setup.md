@@ -7,9 +7,9 @@ but **dormant** until you set the env vars below. This is the whole wiring guide
 > fronted DeepSeek. That is gone: the model call, the system prompt and the
 > failure behaviour now live in this repo, in version control, with tests.
 > `N8N_ADVISOR_WEBHOOK_URL` / `N8N_ADVISOR_WEBHOOK_SECRET` are no longer read by
-> any code, and the old n8n flow was removed from this repo. The n8n vars that
-> still matter belong to the **public help assistant** (`/api/assistant`), which
-> is a different feature.
+> any code, and the old n8n flow was removed from this repo. Since Nov 2026 the
+> **public help assistant** (`/api/assistant`) calls Kimi the same way
+> (`kimi-k3`, same `KIMI_API_KEY`), so `N8N_ASSISTANT_WEBHOOK_*` are unused too.
 
 ## How it works
 

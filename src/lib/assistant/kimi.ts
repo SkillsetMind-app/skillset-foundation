@@ -130,9 +130,14 @@ function reasoningTokensOf(payload: KimiResponse | null): number {
 export async function askKimi(opts: {
   messages: KimiMessage[];
   signal?: AbortSignal;
+  /** Defaults to KIMI_MODEL. The public help assistant passes kimi-k3 (faster on short FAQ answers). */
+  model?: string;
+  /** Defaults to MAX_TOKENS. The public help assistant passes a smaller ceiling to bound spend. */
+  maxTokens?: number;
 }): Promise<string> {
   const apiKey = process.env.KIMI_API_KEY;
   if (!apiKey) throw new KimiConfigError();
+  const budget = opts.maxTokens ?? MAX_TOKENS;
 
   const response = await fetch(KIMI_ENDPOINT, {
     method: "POST",
@@ -141,9 +146,9 @@ export async function askKimi(opts: {
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: KIMI_MODEL,
+      model: opts.model ?? KIMI_MODEL,
       messages: opts.messages,
-      max_tokens: MAX_TOKENS,
+      max_tokens: budget,
     }),
     // The caller owns the deadline (the route already budgets one for the whole
     // request); a second timer here would silently shorten it.
@@ -167,7 +172,16 @@ export async function askKimi(opts: {
   // .trim() with a raw TypeError, escaping the KimiError contract callers catch.
   const raw = payload?.choices?.[0]?.message?.content;
   const content = typeof raw === "string" ? raw : "";
-  if (content.trim().length > 0) return content;
+  const finishReason = payload?.choices?.[0]?.finish_reason ?? null;
+  if (content.trim().length > 0) {
+    if (finishReason !== "length") return content;
+    // Text that stops because the ceiling ended the turn is a cut-off answer.
+    // Shown as-is it reads as a finished reply that trails off mid-sentence.
+    throw new KimiError(
+      "reasoning_budget_exhausted",
+      `Kimi hit its ${budget}-token budget mid-answer; the reply was cut off.`,
+    );
+  }
 
   // An empty answer from a reasoning model has two very different causes, and
   // the message has to name the right one: blaming the token budget for a model
@@ -176,13 +190,12 @@ export async function askKimi(opts: {
   // the ceiling ended the turn; reasoning_tokens only proves the model thought
   // first, which is equally true of one that thought and then declined. Trust
   // the explicit signal, and fall back to the count only when it is missing.
-  const finishReason = payload?.choices?.[0]?.finish_reason ?? null;
   const reasoningTokens = reasoningTokensOf(payload);
   if (finishReason === "length" || (finishReason === null && reasoningTokens > 0)) {
     const spent = reasoningTokens > 0 ? ` (${reasoningTokens} reasoning tokens)` : "";
     throw new KimiError(
       "reasoning_budget_exhausted",
-      `Kimi used its ${MAX_TOKENS}-token budget${spent} and had none left to answer with. Raise MAX_TOKENS or ask a narrower question.`,
+      `Kimi used its ${budget}-token budget${spent} and had none left to answer with. Raise MAX_TOKENS or ask a narrower question.`,
     );
   }
   throw new KimiError("empty_reply", "Kimi returned an empty reply.");

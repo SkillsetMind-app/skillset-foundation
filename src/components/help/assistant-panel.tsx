@@ -32,7 +32,7 @@ const NOTICE_KEYS: Record<string, string> = {
 
 // Inline chat card at the top of the help center. Renders nothing until
 // NEXT_PUBLIC_PLATFORM_ASSISTANT_ENABLED is true, so /help is unchanged while
-// the n8n flow is being wired. Open to signed-out visitors by design —
+// the model is being wired. Open to signed-out visitors by design —
 // pre-sales questions are the main use case; /api/assistant rate-limits by IP.
 export function AssistantPanel() {
   const { t } = useTranslation();
