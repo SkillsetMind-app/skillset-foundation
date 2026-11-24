@@ -34,9 +34,9 @@ describe("faixa final da home com foto", () => {
 
     expect(sources).toHaveLength(1);
     expect(sources[0]).toHaveAttribute("media", "(min-width: 768px)");
-    expect(sources[0].getAttribute("srcset")).toContain(encodeURIComponent("/brand/home/home-cta-desktop.webp"));
-    expect(image.getAttribute("src")).toContain(encodeURIComponent("/brand/home/home-cta-mobile.webp"));
-    expect(image.getAttribute("srcset")).toContain(encodeURIComponent("/brand/home/home-cta-mobile.webp"));
+    expect(sources[0].getAttribute("srcset")).toContain(encodeURIComponent("/brand/home/home-cta-desktop.avif"));
+    expect(image.getAttribute("src")).toContain(encodeURIComponent("/brand/home/home-cta-mobile.avif"));
+    expect(image.getAttribute("srcset")).toContain(encodeURIComponent("/brand/home/home-cta-mobile.avif"));
     expect(image).toHaveAttribute("alt", dict.home.creators.photoAlt);
     // No fim da página: preguiçosa, nunca disputa com o topo.
     expect(image).toHaveAttribute("loading", "lazy");
@@ -80,11 +80,11 @@ describe("faixa final da home com foto", () => {
     const folder = join(process.cwd(), "public/brand/home");
     const files = readdirSync(folder);
     expect(files.sort()).toEqual([
-      "home-cta-desktop.webp",
-      "home-cta-mobile.webp",
-      "home-who-coach.webp",
-      "home-who-educator.webp",
-      "home-who-teacher.webp",
+      "home-cta-desktop.avif",
+      "home-cta-mobile.avif",
+      "home-who-coach.avif",
+      "home-who-educator.avif",
+      "home-who-teacher.avif",
     ]);
     const bytes = files.reduce((total, file) => total + statSync(join(folder, file)).size, 0);
     expect(bytes).toBeLessThanOrEqual(460 * 1024);

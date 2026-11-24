@@ -66,8 +66,8 @@ describe("faixa 'para quem é' da home", () => {
       const image = images[index];
       expect(image).toHaveAttribute("loading", "lazy");
       expect(image.getAttribute("sizes")).toContain("100vw");
-      expect(image.getAttribute("src")).toContain(encodeURIComponent(`/brand/home/home-who-${name}.webp`));
-      expect(existsSync(join(process.cwd(), "public/brand/home", `home-who-${name}.webp`)), name).toBe(true);
+      expect(image.getAttribute("src")).toContain(encodeURIComponent(`/brand/home/home-who-${name}.avif`));
+      expect(existsSync(join(process.cwd(), "public/brand/home", `home-who-${name}.avif`)), name).toBe(true);
     });
   });
 

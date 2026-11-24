@@ -25,8 +25,8 @@ export async function ForCreatorsBand() {
   // título. <picture> com getImageProps: o navegador baixa só um dos dois, e
   // preguiçoso (a faixa fica no fim da página; o LCP do topo não muda).
   const photoAlt = t("home.creators.photoAlt");
-  const wide = getImageProps({ src: "/brand/home/home-cta-desktop.webp", alt: photoAlt, fill: true, sizes: "100vw" }).props;
-  const tall = getImageProps({ src: "/brand/home/home-cta-mobile.webp", alt: photoAlt, fill: true, sizes: "100vw" }).props;
+  const wide = getImageProps({ src: "/brand/home/home-cta-desktop.avif", alt: photoAlt, fill: true, sizes: "100vw" }).props;
+  const tall = getImageProps({ src: "/brand/home/home-cta-mobile.avif", alt: photoAlt, fill: true, sizes: "100vw" }).props;
 
   return (
     <section className="mx-auto w-full max-w-7xl px-5 py-16 sm:px-8 sm:py-20 lg:max-w-none lg:px-0 lg:py-24">

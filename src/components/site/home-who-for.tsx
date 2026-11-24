@@ -8,9 +8,9 @@ import { getServerTranslation } from "@/lib/i18n/server";
 // não existe, feitas por IA: sem nome, sem frase, nada com cara de depoimento
 // ou de cliente. O texto alternativo descreve a cena, não a pessoa.
 const PORTRAITS = [
-  { src: "/brand/home/home-who-coach.webp", alt: "home.who.coachAlt" },
-  { src: "/brand/home/home-who-teacher.webp", alt: "home.who.teacherAlt" },
-  { src: "/brand/home/home-who-educator.webp", alt: "home.who.educatorAlt" },
+  { src: "/brand/home/home-who-coach.avif", alt: "home.who.coachAlt" },
+  { src: "/brand/home/home-who-teacher.avif", alt: "home.who.teacherAlt" },
+  { src: "/brand/home/home-who-educator.avif", alt: "home.who.educatorAlt" },
 ] as const;
 
 // Server component, sem estado. No celular os retratos ficam um embaixo do
