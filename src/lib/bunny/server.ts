@@ -135,8 +135,24 @@ export async function getBunnyCaptionLanguages(videoId: string): Promise<string[
 // envio). É a menor versão com áudio: a transcrição lê só a voz dele. O host da
 // CDN não sai da API da biblioteca com a chave que temos aqui, por isso vem de
 // variável (BUNNY_STREAM_CDN_HOSTNAME, ex.: vz-xxxx.b-cdn.net).
-export function bunnyLowestMp4Url(videoId: string): string {
-  return `https://${requireEnv("BUNNY_STREAM_CDN_HOSTNAME")}/${encodeURIComponent(videoId)}/play_240p.mp4`;
+//
+// Assinado (token avançado da CDN): com a autenticação por token da CDN ligada
+// na biblioteca, a CDN só serve link assinado, e sem ela o MP4 baixava com um
+// Referer só. Pela documentação da Bunny, a mesma chave do player assina a CDN
+// da biblioteca: "HS256-" + Base64URL(HMAC-SHA256(chave, caminho + expires)).
+// Com a opção desligada, a CDN ignora os parâmetros. A leitura é um pedido só,
+// então a validade curta basta.
+export function bunnyLowestMp4Url(videoId: string, ttlSeconds = 300): string {
+  const path = `/${encodeURIComponent(videoId)}/play_240p.mp4`;
+  const url = `https://${requireEnv("BUNNY_STREAM_CDN_HOSTNAME")}${path}`;
+  const signingKey = process.env.BUNNY_STREAM_TOKEN_KEY?.trim();
+  if (!signingKey) return url;
+  const expires = Math.floor(Date.now() / 1000) + ttlSeconds;
+  const signature = createHmac("sha256", signingKey).update(`${path}${expires}`).digest("base64url");
+  const query = new URLSearchParams();
+  query.set("token", `HS256-${signature}`);
+  query.set("expires", String(expires));
+  return `${url}?${query.toString()}`;
 }
 
 // Publica (ou substitui) a legenda de um idioma no vídeo (Bunny "Add Caption").
