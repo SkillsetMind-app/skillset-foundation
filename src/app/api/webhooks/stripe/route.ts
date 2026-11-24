@@ -1173,8 +1173,9 @@ function reportCourseSubscriptionMetadataMismatch(subscriptionId: string, eventA
     summary:
       "A course subscription's metadata no longer matches the sale saved for it. It was handled with the saved course and student.",
     context: { subscriptionId, eventAccountId },
-    // Per subscription: one edited subscription must not mute another's alert.
-    throttleKey: `stripe.course_subscription.metadata_mismatch:${subscriptionId}`,
+    // Per connected account: one teacher can neither flood this alert (many
+    // subscriptions) nor mute another teacher's.
+    throttleKey: `stripe.course_subscription.metadata_mismatch:${eventAccountId ?? subscriptionId}`,
   });
 }
 

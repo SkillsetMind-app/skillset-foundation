@@ -3487,7 +3487,8 @@ describe("Stripe webhook financial integrity", () => {
       event: "stripe.course_subscription.metadata_mismatch",
       severity: "critical",
       context: expect.objectContaining({ subscriptionId }),
-      throttleKey: `stripe.course_subscription.metadata_mismatch:${subscriptionId}`,
+      // Por conta conectada: um professor nao inunda nem cala o alerta de outro.
+      throttleKey: expect.stringMatching(/^stripe\.course_subscription\.metadata_mismatch:acct_/),
     });
 
     it("books a renewal of our subscription from the saved row when its courseId was edited", async () => {
