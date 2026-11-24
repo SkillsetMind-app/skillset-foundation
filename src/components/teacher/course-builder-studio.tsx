@@ -4136,7 +4136,10 @@ export function CourseBuilderStudio() {
                           moduleNavigationRef.current = { returnTo: null };
                         }
                       }}
-                      className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-md"
+                      // basis-48 como o campo do titulo da aula: a 375px o nome
+                      // do modulo ficava com 31px ("Fo…") espremido pelos tres
+                      // botoes; agora ele ocupa a linha e os botoes descem.
+                      className="flex min-h-11 min-w-0 flex-1 basis-48 items-center gap-3 rounded-md"
                     >
                       {/* A capa vertical 2:3 em miniatura (32x48), com o canto
                           das outras capas: era um círculo aqui e um retângulo
