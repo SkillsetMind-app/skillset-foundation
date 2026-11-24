@@ -42,13 +42,13 @@ beforeEach(() => {
 });
 
 describe("public help assistant", () => {
-  it("asks kimi-k3 with the grounding context and returns the reply", async () => {
+  it("asks the cheapest passing model (kimi-k2.6) with the grounding context and returns the reply", async () => {
     mocks.askKimi.mockResolvedValue("Open your course and click Publish.");
     const res = await ask("How do I publish my course?");
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ reply: "Open your course and click Publish." });
     const call = mocks.askKimi.mock.calls[0][0];
-    expect(call.model).toBe("kimi-k3");
+    expect(call.model).toBe("kimi-k2.6");
     expect(call.maxTokens).toBe(4096);
     expect(mocks.enforceRateLimit).toHaveBeenCalledWith("assistant_global_daily", 500, 86_400_000);
     expect(call.messages[0].role).toBe("system");

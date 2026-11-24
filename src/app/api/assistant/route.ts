@@ -15,9 +15,13 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 // endpoint is open to signed-out visitors (pre-sales questions are the point),
 // so the throttle keys on the session uid when present and a hashed IP when not.
 
-// kimi-k3 over the advisor's k2.6: on the two questions that came back blank
-// from DeepSeek it answered in full in 23-34s vs 37-40s, with longer answers.
-const ASSISTANT_MODEL = "kimi-k3";
+// Rule: the cheapest model that doesn't fail. Measured 24/11/2026, same prompt
+// and real context, 9 questions x 2 rounds: kimi-k2.6, kimi-k3.1-pro and
+// kimi-k3 all 18/18 correct; k2.6 is ~3x cheaper than k3 (US$4-6 vs 10-17 per
+// 1,000 answers), median 26s vs 18s, worst 52s. GPT-6 Luna and GLM-5.3 Flash
+// were not testable (no balance). Report:
+// PS8-OS/03-projetos/skillsetmind/COMPARACAO-MODELOS-ASSISTENTE-2026-11.md
+const ASSISTANT_MODEL = "kimi-k2.6";
 
 const SYSTEM_PROMPT = `You are the SkillsetMind help assistant on the public help center. SkillsetMind is an online course platform. You answer questions from visitors, learners, and course creators.
 
@@ -38,9 +42,9 @@ const MAX_MESSAGES = 12; // only the tail of the thread is forwarded
 const MAX_CHARS = 1200; // per-message cap — public endpoint, keep payloads tight
 const RATE_LIMIT_PER_HOUR = 20;
 const RATE_LIMIT_PER_DAY = 80; // bounds sustained economic abuse (every turn hits the model)
-// kimi-k3 measured 23-34s on FAQ questions (reasoning included). 90s headroom.
+// kimi-k2.6 measured median 26s, worst 52s on FAQ questions (reasoning included).
 const UPSTREAM_TIMEOUT_MS = 90_000;
-// Thinking + answer together. Measured 794-1519 tokens on FAQ questions; 4096
+// Thinking + answer together. kimi-k2.6 peaked at 1840 tokens on FAQ questions; 4096
 // leaves room without letting one public call spend the advisor's 12k ceiling.
 const MAX_OUTPUT_TOKENS = 4096;
 // Per-IP keys don't bound spend (an IPv6 /64 mints endless keys), and this key
