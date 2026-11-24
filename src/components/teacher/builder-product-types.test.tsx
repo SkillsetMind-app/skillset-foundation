@@ -496,6 +496,18 @@ describe("como as pessoas vao pagar", () => {
       expect(screen.queryByRole("alert")).toBeNull();
     });
 
+    // Quem nao e dono do curso (equipe da plataforma) nao le os precos: a rota
+    // responde 403. A etapa diz isso, em vez de um erro com "Try again".
+    it("quem nao e dono do curso ve o aviso, sem erro e sem Try again", async () => {
+      vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, json: async () => ({ error: "Only the course owner can list offers." }) })));
+      mocks.course = paid("course", "one_time", 9700, { status: "published", ownerId: "another-teacher" });
+      renderBuilder("pricing");
+
+      expect(await screen.findByText("Only the course owner can see and change these prices.")).toBeInTheDocument();
+      expect(screen.queryByText("Couldn't load your prices.")).toBeNull();
+      expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    });
+
     // Enquanto a lista chega: um bloco por cartao, no lugar deles, e os tres
     // cartoes do curso numa linha so (em duas colunas o terceiro sobrava).
     it("carregando: blocos no lugar dos cartoes; carregado: tres colunas", async () => {

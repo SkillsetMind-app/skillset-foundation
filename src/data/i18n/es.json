@@ -4380,6 +4380,7 @@
         "offerChange": "Cámbialo en Otros precios.",
         "offersFailed": "No pudimos cargar tus precios.",
         "offersRefreshFailed": "No pudimos actualizar tus precios. Estos son los últimos que cargamos.",
+        "ownerOnly": "Solo la persona dueña del curso puede ver y cambiar estos precios.",
         "preview": "Lección de vista previa gratuita",
         "noPreview": "Aún no hay una vista previa seleccionada",
         "previewNeedsLesson": "Añade primero una lección en Contenido y luego elígela aquí.",

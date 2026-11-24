@@ -938,6 +938,10 @@ export function CourseBuilderStudio() {
   }, [courseAssets]);
 
   const isOwner = course && user?.uid === course.ownerId;
+  // Quem abre o curso de outra pessoa (equipe da plataforma) nao le os precos:
+  // a rota so responde ao dono. Sem isto a etapa dizia "Couldn't load your
+  // prices." com um "Try again" que nunca funcionaria.
+  const viewingOthersCourse = Boolean(course && user && user.uid !== course.ownerId);
   const isEditable = Boolean(isOwner && course && teacherCanEditCourse(course.status));
   const canPublish = Boolean(
     isOwner && course && teacherCanPublishCourse(course.status),
@@ -976,7 +980,7 @@ export function CourseBuilderStudio() {
     setOffersAttempt((current) => current + 1);
   };
   useEffect(() => {
-    if (!courseId) {
+    if (!courseId || viewingOthersCourse) {
       return;
     }
     let alive = true;
@@ -1020,7 +1024,7 @@ export function CourseBuilderStudio() {
       window.removeEventListener("focus", load);
       document.removeEventListener("visibilitychange", loadWhenVisible);
     };
-  }, [courseId, offersAttempt]);
+  }, [courseId, offersAttempt, viewingOthersCourse]);
   const offerPrice = course && checkoutOffers ? resolveCoursePrice(course, checkoutOffers) : null;
   const chargedByOffer = offerPrice?.source === "offer" ? offerPrice : null;
   const paymentChoice = paymentChoiceOf(paymentType);
@@ -3707,7 +3711,9 @@ export function CourseBuilderStudio() {
                 busy={offersRetrying}
               />
             ) : null}
-            {!checkoutOffers ? (
+            {viewingOthersCourse ? (
+              <InlineAlert tone="info">{t("creatorEditor.builder.pricing.ownerOnly")}</InlineAlert>
+            ) : !checkoutOffers ? (
               // Sem a lista de precos, o preco principal e desconhecido: nada
               // de cartoes por cima dele. Enquanto ela chega, blocos do tamanho
               // dos cartoes guardam o lugar (antes o painel ficava so com a nota
