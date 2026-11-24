@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { createHmac } from "node:crypto";
 
 import { bunnyLowestMp4Url, deleteBunnyCaption, getBunnyCaptionLanguages, putBunnyCaption } from "./server";
 
@@ -17,7 +18,28 @@ afterEach(() => {
 });
 
 it("points at the 240p MP4 on the library CDN", () => {
+  // Sem a chave do player o link sai como antes, sem assinatura.
+  vi.stubEnv("BUNNY_STREAM_TOKEN_KEY", "");
   expect(bunnyLowestMp4Url("vid 1")).toBe("https://vz-test.b-cdn.net/vid%201/play_240p.mp4");
+});
+
+// Com a chave do player, o link sai assinado no formato do token avançado da
+// CDN: "HS256-" + Base64URL sem "=" do HMAC-SHA256(chave, caminho + expires).
+it("signs the 240p MP4 with the library token key when there is one", () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-11-24T00:00:00Z"));
+  vi.stubEnv("BUNNY_STREAM_TOKEN_KEY", "local-token-key");
+  try {
+    const expires = Math.floor(Date.parse("2026-11-24T00:00:00Z") / 1000) + 300;
+    const url = new URL(bunnyLowestMp4Url("vid-1"));
+    expect(`${url.origin}${url.pathname}`).toBe("https://vz-test.b-cdn.net/vid-1/play_240p.mp4");
+    expect(url.searchParams.get("expires")).toBe(String(expires));
+    const expected = createHmac("sha256", "local-token-key").update(`/vid-1/play_240p.mp4${expires}`).digest("base64url");
+    expect(url.searchParams.get("token")).toBe(`HS256-${expected}`);
+    expect(url.searchParams.get("token")).not.toMatch(/[+/=]/);
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 it("uploads captions as base64 under the language code", async () => {
