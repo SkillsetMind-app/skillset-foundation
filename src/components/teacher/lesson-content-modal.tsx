@@ -395,8 +395,14 @@ export function LessonContentModal({
     }
   }
   const assetsRetry = loadErrorMessage ? (
-    <Button variant="outline" className="justify-self-start" loading={retryingAssets} onClick={() => void retryAssets()}>
-      {t(retryingAssets ? "appErrors.retrying" : "appErrors.retry")}
+    <Button
+      variant="outline"
+      className="justify-self-start"
+      loading={retryingAssets}
+      busyLabel={t("appErrors.retrying")}
+      onClick={() => void retryAssets()}
+    >
+      {t("appErrors.retry")}
     </Button>
   ) : null;
 

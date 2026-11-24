@@ -200,7 +200,7 @@ export function GuestCheckoutForm({
         <button
           type="submit"
           disabled={disabled || isSubmitting || isGoogleLoading}
-          className="button-solid min-h-12 w-full justify-center px-5 py-3 text-base font-semibold disabled:opacity-60"
+          className="button-solid min-h-12 w-full justify-center px-5 py-3 text-base font-semibold"
         >
           {isSubmitting ? t("publicCourses.openingCheckout") : submitLabel}
         </button>
@@ -222,7 +222,7 @@ export function GuestCheckoutForm({
             type="button"
             disabled={isSubmitting || isGoogleLoading}
             onClick={handleGoogle}
-            className="button-outline w-full justify-center px-4 py-2.5 text-sm disabled:opacity-60"
+            className="button-outline w-full justify-center px-4 py-2.5 text-sm"
           >
             <GoogleMark />
             {t("auth.continueWithGoogle")}

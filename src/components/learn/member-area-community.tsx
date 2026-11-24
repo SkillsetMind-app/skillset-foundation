@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { CommunityFeed } from "@/components/learn/community-feed";
 import { MemberAreaShell, type MemberAreaBrand } from "@/components/learn/member-area-shell";
+import { BusyLabel } from "@/components/ui/busy-label";
 import type { CommunitySpace } from "@/domain/learning";
 import {
   getMemberAreaCommunity,
@@ -126,7 +127,7 @@ export function MemberAreaCommunityView({
             aria-busy={retrying || undefined}
             className="inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--ma-line)] px-4 text-sm font-semibold text-[var(--ma-ink)] disabled:opacity-60"
           >
-            {t(retrying ? "appErrors.retrying" : "appErrors.retry")}
+            <BusyLabel busy={retrying} idle={t("appErrors.retry")} busyText={t("appErrors.retrying")} />
           </button>
         </div>
       </MemberAreaShell>

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { BusyLabel, Button, ConfirmDialog, Field, InlineAlert } from "@/components/ui";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import type { Enrollment } from "@/domain/enrollment";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import type { UserProfile } from "@/domain/user-profile";
@@ -38,6 +39,16 @@ export function AdminEnrollmentPanel() {
   const [isLoadingGranted, setIsLoadingGranted] = useState(true);
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [asking, setAsking] = useState<Enrollment | null>(null);
+  // Cada "Try again" abre as tres leituras de novo (sao inscricoes, sem reload).
+  const [readAttempt, setReadAttempt] = useState(0);
+  const panelRef = useRef<HTMLElement | null>(null);
+
+  function retryReads() {
+    if (readErrors.users) setIsLoadingUsers(true);
+    if (readErrors.courses) setIsLoadingCourses(true);
+    if (readErrors.grants) setIsLoadingGranted(true);
+    setReadAttempt((current) => current + 1);
+  }
 
   useEffect(() => {
     return subscribeToAdminUserProfiles(
@@ -51,7 +62,7 @@ export function AdminEnrollmentPanel() {
         setIsLoadingUsers(false);
       },
     );
-  }, []);
+  }, [readAttempt]);
 
   useEffect(() => {
     return subscribeToPublishedTeacherCourses(
@@ -65,7 +76,7 @@ export function AdminEnrollmentPanel() {
         setIsLoadingCourses(false);
       },
     );
-  }, []);
+  }, [readAttempt]);
 
   useEffect(() => {
     return subscribeToAdminGrantedEnrollments(
@@ -79,7 +90,7 @@ export function AdminEnrollmentPanel() {
         setIsLoadingGranted(false);
       },
     );
-  }, []);
+  }, [readAttempt]);
 
   // O mesmo rótulo da linha da lista e da janela de revogar.
   function learnerLabel(userId: string) {
@@ -148,7 +159,7 @@ export function AdminEnrollmentPanel() {
   }
 
   return (
-    <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+    <section ref={panelRef} tabIndex={-1} className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)] outline-none">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
@@ -217,6 +228,13 @@ export function AdminEnrollmentPanel() {
         </Field>
       </div>
 
+      {readErrors.users || readErrors.courses ? (
+        // A frase do erro fica em cada campo; o botão lê de novo os dois.
+        <Button variant="outline" className="mt-3" onClick={retryReads}>
+          {t("appErrors.retry")}
+        </Button>
+      ) : null}
+
       {error ? <InlineAlert tone="error" className="mt-5">{t(`${copy}.errors.${error}`)}</InlineAlert> : null}
       {success ? <InlineAlert tone="success" className="mt-5">{t(`${copy}.success.${success}`)}</InlineAlert> : null}
 
@@ -249,7 +267,11 @@ export function AdminEnrollmentPanel() {
           {t(`${copy}.grantedDescription`)}
         </p>
 
-        {readErrors.grants ? <InlineAlert tone="error" className="mt-4">{t(`${copy}.readErrors.grants`)}</InlineAlert> : null}
+        {readErrors.grants ? (
+          <LoadErrorAlert className="mt-4" focusRef={panelRef} onRetry={retryReads}>
+            {t(`${copy}.readErrors.grants`)}
+          </LoadErrorAlert>
+        ) : null}
 
         <div className="mt-4 grid gap-3">
           {isLoadingGranted ? (

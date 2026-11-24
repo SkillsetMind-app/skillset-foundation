@@ -130,6 +130,33 @@ describe("administrative enrollment presentation", () => {
     expect(mocks.create).not.toHaveBeenCalled();
   });
 
+  // As três leituras são inscrições: sem "Try again" a equipe só saía do erro
+  // recarregando a página (F-11).
+  it("a failed read offers Try again, which subscribes to the three lists again", () => {
+    render(panel());
+    act(() => {
+      mocks.users.mock.calls[0][1](new Error("offline"));
+      mocks.courses.mock.calls[0][0]([course]);
+      mocks.grants.mock.calls[0][1](new Error("offline"));
+    });
+    expect(screen.getByText("We could not load users for manual enrollment.")).toBeInTheDocument();
+    expect(screen.getByText("We could not load granted enrollments.")).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Try again" })[0]);
+
+    expect(mocks.users).toHaveBeenCalledTimes(2);
+    expect(mocks.courses).toHaveBeenCalledTimes(2);
+    expect(mocks.grants).toHaveBeenCalledTimes(2);
+    act(() => {
+      mocks.users.mock.calls[1][0]([user]);
+      mocks.courses.mock.calls[1][0]([course]);
+      mocks.grants.mock.calls[1][0]([grant]);
+    });
+    expect(screen.queryByText("We could not load users for manual enrollment.")).toBeNull();
+    expect(screen.queryByText("We could not load granted enrollments.")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+  });
+
   it("says nothing while the lists load, then names what is missing", () => {
     render(panel());
     const create = screen.getByRole("button", { name: "Create admin enrollment" });

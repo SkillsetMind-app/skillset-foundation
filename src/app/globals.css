@@ -5181,7 +5181,7 @@ body:has([aria-label="Course categories"])
 
 .lesson-video-source-picker__dropzone[data-disabled="true"] {
   cursor: not-allowed;
-  opacity: 0.55;
+  opacity: 0.6;
 }
 
 .lesson-video-source-picker__dropzone:has(input:focus-visible) {
@@ -5232,7 +5232,7 @@ body:has([aria-label="Course categories"])
 
 .lesson-video-source-picker__url input:disabled {
   cursor: not-allowed;
-  opacity: 0.55;
+  opacity: 0.6;
 }
 
 .lesson-video-source-picker__url small {
@@ -6064,7 +6064,7 @@ html:has(.member-preview-banner) {
 }
 
 .member-classroom-head__nav-button[aria-disabled="true"] {
-  opacity: 0.38;
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
@@ -6607,7 +6607,7 @@ html:has(.member-preview-banner) {
 
 .member-module-card:disabled {
   cursor: not-allowed;
-  opacity: 0.58;
+  opacity: 0.6;
 }
 
 .member-module-card__cover {

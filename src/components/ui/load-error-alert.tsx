@@ -63,8 +63,14 @@ export function LoadErrorAlert({
   return (
     <div className={cn("grid gap-3", className)}>
       <InlineAlert tone="error" className={alertClassName}>{children}</InlineAlert>
-      <Button variant="outline" className="justify-self-start" loading={locked} onClick={() => void retry()}>
-        {t(locked ? "appErrors.retrying" : "appErrors.retry")}
+      <Button
+        variant="outline"
+        className="justify-self-start"
+        loading={locked}
+        busyLabel={t("appErrors.retrying")}
+        onClick={() => void retry()}
+      >
+        {t("appErrors.retry")}
       </Button>
     </div>
   );

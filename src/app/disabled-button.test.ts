@@ -89,9 +89,7 @@ describe("botao desligado nao reage ao mouse nem ao clique", () => {
   // chamada só criava a quinta variação. Ela não volta.
   it("nenhum botão .button-* escreve a própria opacidade de desligado", () => {
     const dir = join(process.cwd(), "src");
-    // A compra sem conta fica fora deste pacote (caminho de pagamento); os
-    // 60% dela já são os da regra central.
-    const pending = new Set(["guest-checkout-form.tsx"]);
+    const pending = new Set<string>();
     const files = readdirSync(dir, { recursive: true, withFileTypes: true })
       .filter(
         (entry) =>
