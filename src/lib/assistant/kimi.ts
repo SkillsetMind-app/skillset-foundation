@@ -130,6 +130,8 @@ function reasoningTokensOf(payload: KimiResponse | null): number {
 export async function askKimi(opts: {
   messages: KimiMessage[];
   signal?: AbortSignal;
+  /** Defaults to KIMI_MODEL. The public help assistant passes kimi-k3 (faster on short FAQ answers). */
+  model?: string;
 }): Promise<string> {
   const apiKey = process.env.KIMI_API_KEY;
   if (!apiKey) throw new KimiConfigError();
@@ -141,7 +143,7 @@ export async function askKimi(opts: {
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: KIMI_MODEL,
+      model: opts.model ?? KIMI_MODEL,
       messages: opts.messages,
       max_tokens: MAX_TOKENS,
     }),
