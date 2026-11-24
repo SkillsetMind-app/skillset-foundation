@@ -211,7 +211,9 @@ export function VerifiedBadge({
           </span>
           <Link
             href="/trust"
-            className="mt-3 inline-flex min-h-8 items-center text-xs font-semibold normal-case tracking-normal text-[var(--color-primary)] underline underline-offset-4"
+            // No toque o link tem 44px de altura (eram 32px); a margem de cima
+            // encolhe o mesmo tanto.
+            className="mt-3 inline-flex min-h-8 items-center text-xs font-semibold normal-case tracking-normal text-[var(--color-primary)] underline underline-offset-4 pointer-coarse:mt-1.5 pointer-coarse:min-h-11"
           >
             {t("verifiedBadge.trustLink")}
           </Link>
