@@ -12,7 +12,7 @@ import {
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -38,6 +38,37 @@ import { subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
 import { logSubscriptionError } from "@/lib/data/subscription-error";
 
 type ProductFilter = "all" | "draft" | "published" | "in_review" | "other";
+
+// O bloco "Next steps" so entra quando cursos e travas chegam, ~0,6 s depois da
+// lista de produtos: no celular "My products" descia 632px na frente de quem ia
+// tocar. A altura que o bloco teve na ultima visita (neste aparelho, nesta
+// largura de tela) fica reservada enquanto os dados chegam.
+const NEXT_STEPS_HEIGHT_KEY = "skillset.studio.nextStepsHeight.v1";
+const EMPTY_SUBSCRIBE = () => () => {};
+
+function readNextStepsHeight(userId: string): number {
+  if (!userId) return 0;
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(NEXT_STEPS_HEIGHT_KEY) ?? "null");
+    if (saved?.uid !== userId || typeof saved.h !== "number" || typeof saved.w !== "number") return 0;
+    // Outra largura (celular deitado, janela redimensionada) quebra o texto em
+    // outras linhas: a altura guardada nao vale mais.
+    return Math.abs(saved.w - window.innerWidth) <= 48 ? saved.h : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function saveNextStepsHeight(userId: string, height: number) {
+  try {
+    window.localStorage.setItem(
+      NEXT_STEPS_HEIGHT_KEY,
+      JSON.stringify({ uid: userId, w: window.innerWidth, h: height }),
+    );
+  } catch {
+    // ponytail: armazenamento bloqueado (modo privado): o bloco so nao reserva o espaco.
+  }
+}
 
 export function TeacherStudioDashboard() {
   const { user } = useAuth();
@@ -198,6 +229,7 @@ export function TeacherStudioDashboard() {
       ) : null}
 
       <StudioNextSteps
+        userId={user?.uid ?? ""}
         courses={courses}
         ready={coursesLoaded && gatesLoaded}
         account={account}
@@ -240,6 +272,7 @@ export function TeacherStudioDashboard() {
 }
 
 function StudioNextSteps({
+  userId,
   courses,
   ready,
   account,
@@ -248,6 +281,7 @@ function StudioNextSteps({
   activationBlocked,
   launched,
 }: {
+  userId: string;
   courses: TeacherCourse[];
   // Cursos e travas carregados. Antes disso a lista ainda pode ganhar ou perder
   // passos (verificacao exigida, plano, Stripe): o bloco nao aparece.
@@ -354,17 +388,46 @@ function StudioNextSteps({
   // O check se desenha e o selo cresce so no passo que ficou pronto com a
   // Home aberta; quem chega com tudo pronto ve tudo parado.
   const justDone = useJustDone(steps.filter((step) => step.done).map((step) => step.id), ready);
+  const visible = ready && (Boolean(openStep) || justDone.size > 0);
+  const reserved = useSyncExternalStore(EMPTY_SUBSCRIBE, () => readNextStepsHeight(userId), () => 0);
+  const sectionRef = useRef<HTMLElement>(null);
+  // Tudo que muda a altura do bloco: passos que entram ou saem (o do plano
+  // volta a ser lido quando a janela ganha foco), feitos, e textos (a taxa de
+  // ativacao chega depois e alonga a frase do publish).
+  const hasOpenStep = Boolean(openStep);
+  const layoutKey = steps.map((step) => `${step.id}:${step.done}:${step.detail}:${step.action}`).join("|");
+  // Guarda a altura de hoje para a proxima visita. Sem passo aberto, 0: o
+  // ultimo passo feito com a Home aberta deixa o bloco na tela, mas na proxima
+  // visita ele ja nao aparece, e o lugar reservado sumiria num salto.
+  useEffect(() => {
+    if (ready && userId) saveNextStepsHeight(userId, hasOpenStep ? (sectionRef.current?.offsetHeight ?? 0) : 0);
+  }, [ready, userId, visible, hasOpenStep, layoutKey]);
 
   // Antes de cursos e travas chegarem a lista vazia abria "Create a product" e,
   // para quem ja tem tudo pronto, o bloco aparecia e sumia a cada visita: nada
   // ate `ready`. Tudo pronto ao abrir a Home: o bloco sai da tela. Se o ultimo
   // passo ficou pronto com a Home aberta, ele fica ate a proxima visita.
-  if (!ready || (!openStep && justDone.size === 0)) {
+  if (!ready) {
+    return reserved > 0 ? (
+      <div
+        aria-hidden="true"
+        data-reserved="next-steps"
+        className="animate-pulse overflow-hidden border-y border-[var(--color-line)] bg-white px-4 py-5 sm:px-5"
+        style={{ height: reserved }}
+      >
+        <div className="h-3 w-24 rounded-sm bg-[var(--color-surface-strong)]" />
+        <div className="mt-2 h-5 w-48 max-w-full rounded-sm bg-[var(--color-surface-strong)]" />
+        <div className="mt-6 h-2 rounded-full bg-[var(--color-surface-strong)]" />
+      </div>
+    ) : null;
+  }
+  if (!visible) {
     return null;
   }
 
   return (
     <section
+      ref={sectionRef}
       aria-labelledby="next-steps-title"
       className="border-y border-[var(--color-line)] bg-white"
     >
