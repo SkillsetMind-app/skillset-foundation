@@ -755,6 +755,35 @@ describe("CreatorCourseDetail: the sales-page button does what the buy card does
     }
   });
 
+  // UE, EEE e Reino Unido: a leitura das ofertas pede a caixa do acesso
+  // imediato; sem ela marcada o botão não abre a compra.
+  it("a buyer who must consent to immediate access cannot open checkout until the box is ticked", async () => {
+    fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ offers: [], withdrawalConsentRequired: true }) })));
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" />);
+
+    const consent = await screen.findByRole("checkbox", {
+      name: "I want access now and I understand I lose my 14-day withdrawal right once access starts.",
+    });
+    expect(consent).not.toBeChecked();
+
+    const button = container.querySelector("#enroll-card button[data-cta-focus]") as HTMLElement;
+    fireEvent.click(button);
+    expect(await screen.findByText("Tick the box to confirm you want access now.")).toBeInTheDocument();
+    expect(startCourseCheckout).not.toHaveBeenCalled();
+
+    fireEvent.click(consent);
+    fireEvent.click(button);
+    await waitFor(() => expect(startCourseCheckout).toHaveBeenCalledWith("course-1", { withdrawalConsent: true }));
+  });
+
+  it("a buyer outside those countries sees no consent box", async () => {
+    fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    await screen.findAllByText("$149.00");
+    expect(container.querySelector("[data-withdrawal-consent]")).toBeNull();
+  });
+
   it("a signed-in buyer of a paid course still opens checkout", async () => {
     fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
     render(<CreatorCourseDetail courseIdOverride="course-1" />);

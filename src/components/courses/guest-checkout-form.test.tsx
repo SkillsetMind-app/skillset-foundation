@@ -28,9 +28,10 @@ afterEach(cleanup);
 
 const invalidMessage = "Enter your name and a valid email, and accept the terms.";
 
-function renderForm() {
+function renderForm(props: { withdrawalConsentRequired?: boolean } = {}) {
   return render(
     <GuestCheckoutForm
+      {...props}
       courseId="course-1"
       offerId="offer-1"
       offerCode="LAUNCH"
@@ -52,6 +53,40 @@ function fillAndSubmit() {
   fireEvent.click(screen.getByRole("checkbox"));
   fireEvent.submit(nameField().closest("form") as HTMLFormElement);
 }
+
+// UE, EEE e Reino Unido: a caixa do acesso imediato aparece desmarcada e a
+// compra só segue com ela marcada.
+describe("GuestCheckoutForm: acesso imediato (UE, EEE e Reino Unido)", () => {
+  const consentLabel = "I want access now and I understand I lose my 14-day withdrawal right once access starts.";
+
+  it("sem a exigência, a caixa não existe", () => {
+    renderForm();
+    expect(screen.queryByRole("checkbox", { name: consentLabel })).not.toBeInTheDocument();
+  });
+
+  it("com a exigência, a caixa vem desmarcada e segura a compra até ser marcada", async () => {
+    vi.mocked(startGuestCourseCheckout).mockResolvedValue("redirected");
+    renderForm({ withdrawalConsentRequired: true });
+
+    const consent = screen.getByRole("checkbox", { name: consentLabel });
+    expect(consent).not.toBeChecked();
+
+    fireEvent.change(nameField(), { target: { value: "Ana Prado" } });
+    fireEvent.change(emailField(), { target: { value: "ana@example.com" } });
+    fireEvent.click(screen.getByRole("checkbox", { name: /I agree to the SkillsetMind/ }));
+    fireEvent.submit(nameField().closest("form") as HTMLFormElement);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Tick the box to confirm you want access now.");
+    expect(startGuestCourseCheckout).not.toHaveBeenCalled();
+
+    fireEvent.click(consent);
+    fireEvent.submit(nameField().closest("form") as HTMLFormElement);
+
+    await waitFor(() => expect(startGuestCourseCheckout).toHaveBeenCalledWith(
+      expect.objectContaining({ courseId: "course-1", withdrawalConsent: true }),
+    ));
+  });
+});
 
 describe("GuestCheckoutForm: os campos da casa", () => {
   it("nome e e-mail usam o campo da casa, com rótulo em frase e os mesmos atributos de antes", () => {

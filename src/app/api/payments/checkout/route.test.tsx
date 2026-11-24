@@ -519,6 +519,54 @@ describe("course checkout subscription exclusivity", () => {
     }
   });
 
+  // UE, EEE e Reino Unido: sem a caixa do acesso imediato a compra não abre;
+  // com ela, o aceite viaja com o pagamento. Fora dali nada muda.
+  describe("immediate-access consent for EU, EEA and UK buyers", () => {
+    const from = (country: string | null, body: Record<string, unknown>) =>
+      new Request("http://localhost/api/payments/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(country ? { "x-vercel-ip-country": country } : {}) },
+        body: JSON.stringify(body),
+      });
+
+    beforeEach(() => {
+      mocks.getAdmin.mockReturnValue(createAdmin({ lockReplies: [{ action: "claim", checkout_url: null }] }));
+      mocks.getCourseRow.mockResolvedValue(course("one_time"));
+      mocks.normalizePrice.mockReturnValue({ amountMinor: 12000, currency: "usd", paymentType: "one_time", source: "legacy" });
+    });
+
+    it.each(["DE", "GB", "NO"])("refuses a %s buyer who did not tick the box, before any session exists", async (country) => {
+      const response = await POST(from(country, { courseId: "course" }));
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({
+        error: "Confirm that you want access now to continue.",
+        code: "withdrawal_consent_required",
+      });
+      expect(mocks.createSession).not.toHaveBeenCalled();
+    });
+
+    it("opens checkout once the box is ticked and records the consent on the session and the payment", async () => {
+      expect((await POST(from("DE", { courseId: "course", withdrawalConsent: true }))).status).toBe(200);
+
+      const [params] = mocks.createSession.mock.calls.at(-1) as [{
+        metadata: Record<string, string>;
+        payment_intent_data: { metadata: Record<string, string> };
+      }];
+      for (const metadata of [params.metadata, params.payment_intent_data.metadata]) {
+        expect(metadata).toMatchObject({ withdrawalConsent: "accepted", withdrawalConsentCountry: "DE" });
+        expect(Number.isNaN(Date.parse(metadata.withdrawalConsentAt))).toBe(false);
+      }
+    });
+
+    it.each(["US", "BR", null])("asks nothing of a buyer from %s and records no consent", async (country) => {
+      expect((await POST(from(country, { courseId: "course" }))).status).toBe(200);
+
+      const [params] = mocks.createSession.mock.calls.at(-1) as [{ metadata: Record<string, string> }];
+      expect(params.metadata).not.toHaveProperty("withdrawalConsent");
+    });
+  });
+
   it("blocks a second subscription when a non-terminal subscription already exists", async () => {
     const admin = createAdmin({ subscription: { id: "sub_active", status: "active" } });
     mocks.getAdmin.mockReturnValue(admin);

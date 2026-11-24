@@ -3,6 +3,7 @@ import {
   createCourseCheckoutSession,
   type CourseCheckoutBody,
 } from "@/lib/payments/server/course-checkout";
+import { buyerCountryFromRequest } from "@/lib/payments/withdrawal-consent";
 
 // POST /api/payments/checkout — opens a Stripe Checkout Session for a paid
 // course, for the signed-in buyer. The session itself (price, offer, coupon,
@@ -16,5 +17,7 @@ export async function POST(request: Request) {
     return paymentErrorResponse(error);
   }
   const body = (await request.json().catch(() => ({}))) as CourseCheckoutBody;
-  return createCourseCheckoutSession(userId, body);
+  return createCourseCheckoutSession(userId, body, {
+    buyerCountry: buyerCountryFromRequest(request),
+  });
 }

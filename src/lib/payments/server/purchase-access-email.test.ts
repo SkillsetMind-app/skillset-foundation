@@ -54,6 +54,19 @@ describe("purchase access email", () => {
     expect(spanish.text).toContain("elige «Cancelar suscripción» en Suscripción");
   });
 
+  // UE, EEE e Reino Unido: a confirmação do acesso imediato em meio durável.
+  it("confirms the immediate-access consent only when it was given, in both languages", () => {
+    const english = buildPurchaseAccessEmail({ ...sale, withdrawalConsent: true });
+    const sentence = "At checkout you asked for access to start right away and acknowledged that you lose your 14-day right of withdrawal once access starts.";
+    expect(english.text).toContain(sentence);
+    expect(english.html).toContain(sentence);
+
+    expect(buildPurchaseAccessEmail({ ...sale, locale: "es", withdrawalConsent: true }).text)
+      .toContain("reconociste que pierdes tu derecho de desistimiento de 14 días cuando empieza el acceso.");
+
+    expect(buildPurchaseAccessEmail(sale).text).not.toMatch(/withdrawal/i);
+  });
+
   it("says nothing about renewal on a one-time purchase", () => {
     const email = buildPurchaseAccessEmail(sale);
     expect(email.text).not.toMatch(/renews|subscription/i);

@@ -21,6 +21,7 @@ import {
   verifyTurnstileToken,
 } from "@/lib/payments/server/guest-checkout";
 import { getCourseRow } from "@/lib/payments/server/stripe-helpers";
+import { buyerCountryFromRequest } from "@/lib/payments/withdrawal-consent";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { rateLimitKeyFromIp, rateLimitKeyFromValue } from "@/lib/supabase/rate-limit";
 
@@ -123,7 +124,10 @@ export async function POST(request: NextRequest) {
     const openedHere = pending?.email === email && pending.courseId === courseId;
     let response: NextResponse;
     try {
-      response = await answerForBuyer(admin, { userId: buyer.userId, courseId, ownerId: course.owner_id, email, body, openedHere });
+      response = await answerForBuyer(admin, {
+        userId: buyer.userId, courseId, ownerId: course.owner_id, email, body, openedHere,
+        buyerCountry: buyerCountryFromRequest(request),
+      });
     } catch (error) {
       // Thrown before the shared builder ran.
       if (buyer.created) await discardNewGuestBuyer(admin, buyer.userId);
@@ -144,7 +148,7 @@ export async function POST(request: NextRequest) {
 
 async function answerForBuyer(
   admin: ReturnType<typeof getSupabaseAdminClient>,
-  input: { userId: string; courseId: string; ownerId: string; email: string; body: Record<string, unknown>; openedHere: boolean },
+  input: { userId: string; courseId: string; ownerId: string; email: string; body: Record<string, unknown>; openedHere: boolean; buyerCountry: string | null },
 ): Promise<NextResponse> {
   const { userId, courseId, email, body } = input;
   const { data: enrollment, error: enrollmentError } = await admin
@@ -165,8 +169,10 @@ async function answerForBuyer(
       offerId: body.offerId,
       offerCode: body.offerCode,
       priceId: body.priceId,
+      withdrawalConsent: body.withdrawalConsent,
     },
     {
+      buyerCountry: input.buyerCountry,
       // Not the classroom: the buyer is not signed in.
       successUrl: `${getAppUrl()}/checkout/thanks?course=${encodeURIComponent(courseId)}`,
       // The address typed here, which found the account. Never the profile

@@ -10,6 +10,8 @@ export async function startCourseCheckout(
     offerId?: string;
     offerCode?: string;
     priceId?: string;
+    /** A caixa do acesso imediato (UE, EEE e Reino Unido) foi marcada. */
+    withdrawalConsent?: boolean;
   },
 ) {
   const { url } = await postPaymentRoute<{ url: string }>(
@@ -20,6 +22,7 @@ export async function startCourseCheckout(
       ...(options?.offerId ? { offerId: options.offerId } : {}),
       ...(options?.offerCode ? { offerCode: options.offerCode } : {}),
       ...(options?.priceId ? { priceId: options.priceId } : {}),
+      ...(options?.withdrawalConsent ? { withdrawalConsent: true } : {}),
     },
   );
 
@@ -40,8 +43,10 @@ export async function startGuestCourseCheckout(input: {
   offerId?: string;
   offerCode?: string;
   priceId?: string;
+  /** A caixa do acesso imediato (UE, EEE e Reino Unido) foi marcada. */
+  withdrawalConsent?: boolean;
 }): Promise<"redirected" | "access_link_sent"> {
-  const { courseId, name, email, captchaToken, offerId, offerCode, priceId } = input;
+  const { courseId, name, email, captchaToken, offerId, offerCode, priceId, withdrawalConsent } = input;
   const { url, status } = await postPaymentRoute<{ url?: string; status?: string }>(
     "/api/payments/guest-checkout",
     {
@@ -53,6 +58,7 @@ export async function startGuestCourseCheckout(input: {
       ...(offerId ? { offerId } : {}),
       ...(offerCode ? { offerCode } : {}),
       ...(priceId ? { priceId } : {}),
+      ...(withdrawalConsent ? { withdrawalConsent: true } : {}),
     },
   );
 

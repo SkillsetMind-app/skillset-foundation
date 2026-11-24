@@ -3077,6 +3077,8 @@
     "checkoutLater": "Checkout is not available yet. You can preview this course now and enroll once purchasing opens on SkillsetMind.",
     "freeAccess": "Free enrollment attaches this course to your learning workspace immediately.",
     "paidAccess": "Paid access opens automatically once your payment is confirmed — usually within seconds.",
+    "withdrawalConsent": "I want access now and I understand I lose my 14-day withdrawal right once access starts.",
+    "withdrawalConsentRequired": "Tick the box to confirm you want access now.",
     "refundTitle": "7-day refund guarantee.",
     "refundBody": "Not the right fit? Request a refund within 7 days, once per course, as long as you have completed less than half of it and no certificate has been issued.",
     "sellerTitle": "Sold by your instructor, not by SkillsetMind.",
