@@ -1944,6 +1944,12 @@ async function handleCourseSubscriptionInvoiceCreated(
   );
   const meta = subscription.metadata ?? {};
   if (meta.purpose !== "course_subscription" || !meta.teacherId) return;
+  // Same ownership check as invoice.paid: the fee follows the course owner's
+  // plan, so the course must belong to teacherId and to this account.
+  if (await isForeignCourseEvent(admin, eventAccountId, meta.courseId ?? null, meta.teacherId)) {
+    reportForeignCourseSubscription(subscription.id, eventAccountId);
+    return;
+  }
 
   const { data: owner, error } = await admin
     .from("users")
@@ -2197,14 +2203,14 @@ async function handleInvoicePaymentFailed(
     return;
   }
 
+  // Plan subscriptions only ever live on the platform; a connected-account
+  // event here is a teacher's own Stripe subscription and has no plan row.
+  if (eventAccountId) return;
+
   // A zero-row update is a silent success in PostgREST, so past_due would be
-  // lost for good. Retry only when the row can still show up, which needs BOTH:
-  //   - the subscription still exists in Stripe. A deleted one 404s above and
-  //     leaves `subscription` null; retrying that would loop until Stripe gives
-  //     up. This is the upgrade path the old comment here described.
-  //   - the event came from the platform. Plan subscriptions only ever live
-  //     here; a connected-account event is a teacher's own Stripe subscription
-  //     and has no row in this table, so retrying it would also loop forever.
+  // lost for good. Retry only while the subscription still exists in Stripe: a
+  // deleted one 404s above and leaves `subscription` null, and retrying that
+  // would loop until Stripe gives up.
   const { data: updatedPlan, error: planError } = await admin
     .from("subscriptions")
     .update({ past_due: true, updated_at: ts })
@@ -2214,7 +2220,7 @@ async function handleInvoicePaymentFailed(
   if (planError) {
     throw new Error(`Mark plan subscription past due: ${planError.message}`);
   }
-  if (!updatedPlan && subscription && !eventAccountId) {
+  if (!updatedPlan && subscription) {
     throw new Error(
       `Mark plan subscription past due: no row for ${subscriptionId} yet`,
     );
@@ -2423,7 +2429,10 @@ export async function POST(request: Request) {
           subscriptionObject,
           eventAccountId,
         );
-        if (!handledAsCourse) {
+        // Plan subscriptions are sold only on the platform account. On a
+        // connected account anything that is not a course subscription is the
+        // teacher's own, and never touches a plan or a trial.
+        if (!handledAsCourse && !eventAccountId) {
           await syncSubscriptionFromStripe(admin, subscriptionObject);
         }
         break;

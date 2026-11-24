@@ -26,20 +26,42 @@ vi.mock("@/lib/payments/server/stripe", () => ({
 
 import { POST } from "@/app/api/webhooks/stripe/route";
 
+// course_1 e de teacher_1 (no plano do teste) na conta acct_teacher;
+// course_pro e de teacher_pro, um professor Pro em outra conta.
 function createDb(planId: string) {
-  const query = (data: unknown) => {
+  const rows: Record<string, Record<string, Record<string, unknown>>> = {
+    users: {
+      teacher_1: { current_plan_id: planId, stripe_connected_account_id: "acct_teacher" },
+      teacher_pro: { current_plan_id: "pro", stripe_connected_account_id: "acct_pro" },
+    },
+    courses: {
+      course_1: { owner_id: "teacher_1", stripe_connected_account_id: "acct_teacher" },
+      course_pro: { owner_id: "teacher_pro", stripe_connected_account_id: "acct_pro" },
+    },
+  };
+  const query = (table: string) => {
+    const filters: Record<string, unknown> = {};
     const q = {
       select: () => q,
-      eq: () => q,
+      eq: (column: string, value: unknown) => {
+        filters[column] = value;
+        return q;
+      },
       upsert: () => q,
       update: () => q,
-      maybeSingle: async () => ({ data, error: null }),
+      // users por uid, courses por id: coluna errada nao acha a linha.
+      maybeSingle: async () => ({
+        data: rows[table]?.[String(table === "users" ? filters.uid : filters.id)] ?? null,
+        error: null,
+      }),
       then: (ok: (v: unknown) => unknown) => Promise.resolve({ data: [{ stripe_event_id: "evt" }], error: null }).then(ok),
     };
     return q;
   };
-  return { from: (table: string) => query(table === "users" ? { current_plan_id: planId } : null) };
+  return { from: (table: string) => query(table) };
 }
+
+const ownCourse = { purpose: "course_subscription", courseId: "course_1", teacherId: "teacher_1" };
 
 let counter = 0;
 function deliver(invoice: Record<string, unknown>, account: string | null = "acct_teacher") {
@@ -75,7 +97,7 @@ describe("invoice.created on a student-subscription renewal", () => {
     vi.stubEnv("STRIPE_CONNECT_WEBHOOK_SECRET", "whsec_fixture");
     mocks.retrieve.mockReset().mockResolvedValue({
       id: "sub_student_1",
-      metadata: { purpose: "course_subscription", teacherId: "teacher_1" },
+      metadata: ownCourse,
     });
     mocks.updateInvoice.mockReset().mockResolvedValue({});
     mocks.updateSubscription.mockReset().mockResolvedValue({});
@@ -102,6 +124,8 @@ describe("invoice.created on a student-subscription renewal", () => {
       { application_fee_amount: fee },
       { stripeAccount: "acct_teacher" },
     );
+    // A paid-commission plan keeps the subscription's percent.
+    expect(mocks.updateSubscription).not.toHaveBeenCalled();
   });
 
   // Pro is 0% since 2026-11-13: no percent and no fixed part.
@@ -118,7 +142,7 @@ describe("invoice.created on a student-subscription renewal", () => {
     mocks.retrieve.mockResolvedValue({
       id: "sub_student_1",
       application_fee_percent: 6.4,
-      metadata: { purpose: "course_subscription", teacherId: "teacher_1" },
+      metadata: ownCourse,
     });
     expect((await deliver(renewal())).status).toBe(200);
     // The subscription stops carrying the old percent, so later renewals and
@@ -142,7 +166,7 @@ describe("invoice.created on a student-subscription renewal", () => {
     mocks.retrieve.mockResolvedValue({
       id: "sub_student_1",
       application_fee_percent: 6.4,
-      metadata: { purpose: "course_subscription", teacherId: "teacher_1" },
+      metadata: ownCourse,
     });
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
     expect((await deliver(renewal())).status).toBe(200);
@@ -186,6 +210,29 @@ describe("invoice.created on a student-subscription renewal", () => {
     expect((await deliver(renewal(), null)).status).toBe(200);
     expect(mocks.retrieve).not.toHaveBeenCalled();
     expect(mocks.updateInvoice).not.toHaveBeenCalled();
+  });
+
+  // teacherId e courseId vivem no metadata, que o professor edita no painel dele.
+  it.each([
+    ["a Pro teacher's id on the account's own course", { courseId: "course_1", teacherId: "teacher_pro" }],
+    ["a Pro teacher's id and course", { courseId: "course_pro", teacherId: "teacher_pro" }],
+    ["no course at all", { courseId: "", teacherId: "teacher_pro" }],
+  ])("touches no fee when the metadata names %s, and tells ops", async (_label, forged) => {
+    mocks.getAdmin.mockReturnValue(createDb("starter"));
+    mocks.retrieve.mockResolvedValue({
+      id: "sub_student_1",
+      application_fee_percent: 6.4,
+      metadata: { ...ownCourse, ...forged },
+    });
+
+    expect((await deliver(renewal())).status).toBe(200);
+
+    expect(mocks.updateSubscription).not.toHaveBeenCalled();
+    expect(mocks.updateInvoice).not.toHaveBeenCalled();
+    expect(mocks.notifyOps).toHaveBeenCalledWith(expect.objectContaining({
+      event: "stripe.course_subscription.foreign_account",
+      severity: "critical",
+    }));
   });
 
   it("leaves a connected account's own subscriptions alone", async () => {
