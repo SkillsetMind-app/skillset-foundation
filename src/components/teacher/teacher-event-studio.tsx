@@ -1084,9 +1084,12 @@ function TeacherEventRsvpSummary({
         {t(`${copy}.rsvp`)}
       </p>
       {isLoading ? (
-        <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
-          {t(`${copy}.rsvpLoading`)}
-        </p>
+        // A forma das duas contagens que vem; a frase fica para o leitor de tela.
+        <div className="mt-2 flex gap-2">
+          <span className="sr-only">{t(`${copy}.rsvpLoading`)}</span>
+          <span aria-hidden="true" className="h-7 w-20 animate-pulse rounded-md bg-[var(--color-surface-strong)]" />
+          <span aria-hidden="true" className="h-7 w-24 animate-pulse rounded-md bg-[var(--color-surface-strong)]" />
+        </div>
       ) : error ? (
         // Aviso (polite), não erro: a linha se repete em cada cartão de evento,
         // e oito erros assertivos interrompiam o leitor de tela oito vezes.

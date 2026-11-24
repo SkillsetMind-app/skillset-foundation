@@ -347,6 +347,10 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
       </I18nProvider>,
     );
     expect(screen.getByRole("button", { name: "Publicar producto" })).toBeDisabled();
+    // O motivo diz o que fazer: corrigir o preco, nao "terminar os itens".
+    expect(screen.getByRole("button", { name: "Publicar producto" })).toHaveAccessibleDescription(
+      "Corrige el precio en Precios para publicar.",
+    );
     expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
   });
 
@@ -552,6 +556,21 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
 
     await act(async () => { failPublish(new Error("network")); });
     expect(await screen.findByRole("button", { name: "Publish product" })).toBe(idle);
+  });
+
+  // O botão apagado sempre diz por quê: no curso de outra pessoa ele apagava
+  // em silêncio (a frase dependia só da prontidão).
+  it("curso de outra pessoa: o Publish apagado diz que só o dono publica", async () => {
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emit({ ...mocks.course, ownerId: "another-teacher", paymentType: "free", priceAmountMinor: 0, modules: [{ id: "m1", title: "Start here", lessons: [{ id: "l1", title: "Welcome", description: "", type: "text", contentText: "Read this first." }] }] });
+      return Object.assign(() => {}, { reload: async () => {} });
+    });
+    renderBuilder("review");
+    await screen.findByRole("heading", { name: mocks.course.title });
+
+    const publish = screen.getByRole("button", { name: "Publish product" });
+    expect(publish).toBeDisabled();
+    expect(publish).toHaveAccessibleDescription("Only the course owner can publish it.");
   });
 
   // O "Save draft" do topo não vira "Saving..." (o selo ao lado já diz): só o
@@ -1246,12 +1265,14 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
   });
 
   // A chave da comunidade era feita a mao (48x28, botao por `left`): agora e a
-  // mesma da Conta, num alvo de 44px.
+  // mesma da Conta. E a linha inteira e a chave: o texto ao lado tambem liga.
   it("comunidade: a chave da Conta liga e desliga com o mesmo estado", async () => {
     renderMembers();
     const toggle = await screen.findByRole("switch", { name: "Enable course community" });
     expect(toggle).toHaveAttribute("aria-checked", "false");
-    expect(toggle).toHaveClass("min-h-11", "min-w-11");
+    expect(toggle).toHaveClass("min-h-11", "w-full");
+    expect(toggle).toContainElement(screen.getByText("Course community"));
+    expect(toggle).toHaveAccessibleDescription(/./);
     expect(toggle.querySelector(".settings-toggle:not(.settings-toggle--on)")).not.toBeNull();
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute("aria-checked", "true");

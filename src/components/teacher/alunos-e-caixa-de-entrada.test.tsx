@@ -134,6 +134,9 @@ describe("Alunos: todos os produtos numa lista", () => {
 
     const search = await screen.findByLabelText("Search students by name, e-mail or product");
     const bodyRows = () => screen.getAllByRole("row").slice(1);
+    // A região viva já existe, vazia, antes de não sobrar ninguém: inserida
+    // já com o texto, muitos leitores de tela não a anunciavam.
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
     fireEvent.change(search, { target: { value: "BRUNO@" } });
     expect(bodyRows()).toHaveLength(1);
     expect(bodyRows()[0]).toHaveTextContent("Bruno");
