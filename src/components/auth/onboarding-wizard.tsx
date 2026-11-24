@@ -2,7 +2,7 @@
 
 import { Check, GraduationCap, Presentation } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { OnboardingProgress } from "@/components/auth/onboarding-progress";
@@ -386,7 +386,10 @@ export function OnboardingWizard() {
     setLoadAttempt((attempt) => attempt + 1);
   }
 
-  useEffect(() => {
+  // Layout effect: o ouvinte novo entra junto com a tela que ele atende. Com
+  // useEffect ele entrava depois da pintura; o campo ja aparecia e o primeiro
+  // Enter caia no ouvinte anterior, que ainda via a tela "carregando".
+  useLayoutEffect(() => {
     function handleKeydown(event: KeyboardEvent) {
       // Na espera da chegada (e na do "Try again") a tela ainda nao tem as
       // respostas salvas: um Enter ali gravaria o estado velho por cima delas.
