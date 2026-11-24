@@ -216,7 +216,6 @@ describe("invoice.created on a student-subscription renewal", () => {
   it.each([
     ["a Pro teacher's id on the account's own course", { courseId: "course_1", teacherId: "teacher_pro" }],
     ["a Pro teacher's id and course", { courseId: "course_pro", teacherId: "teacher_pro" }],
-    ["no course at all", { courseId: "", teacherId: "teacher_pro" }],
   ])("touches no fee when the metadata names %s, and tells ops", async (_label, forged) => {
     mocks.getAdmin.mockReturnValue(createDb("starter"));
     mocks.retrieve.mockResolvedValue({
@@ -233,6 +232,26 @@ describe("invoice.created on a student-subscription renewal", () => {
       event: "stripe.course_subscription.foreign_account",
       severity: "critical",
     }));
+  });
+
+  // Curso que nao existe aqui e assinatura do proprio professor: so log, sem alerta.
+  it.each([
+    ["no course", ""],
+    ["a course that does not exist here", "course_unknown"],
+  ])("touches no fee and sends no alert for %s", async (_label, courseId) => {
+    mocks.getAdmin.mockReturnValue(createDb("starter"));
+    vi.spyOn(console, "info").mockImplementation(() => undefined);
+    mocks.retrieve.mockResolvedValue({
+      id: "sub_student_1",
+      application_fee_percent: 6.4,
+      metadata: { ...ownCourse, courseId, teacherId: "teacher_pro" },
+    });
+
+    expect((await deliver(renewal())).status).toBe(200);
+
+    expect(mocks.updateSubscription).not.toHaveBeenCalled();
+    expect(mocks.updateInvoice).not.toHaveBeenCalled();
+    expect(mocks.notifyOps).not.toHaveBeenCalled();
   });
 
   it("leaves a connected account's own subscriptions alone", async () => {

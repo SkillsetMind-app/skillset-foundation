@@ -404,7 +404,8 @@ function createAdmin(
         state.afterCheckoutLockRead = undefined;
         afterRead?.();
       } else if (this.table === "courses") {
-        data = {
+        // So course_1 existe; outro id nao acha curso.
+        data = this.filterValue("id") !== "course_1" ? null : {
           id: "course_1",
           owner_id: "teacher_1",
           title: "Course",
@@ -3439,6 +3440,86 @@ describe("Stripe webhook financial integrity", () => {
       expect((await postEvent(failedInvoiceEvent())).status).toBe(200);
       expect(admin.from).not.toHaveBeenCalledWith("subscriptions");
       expect(admin.state.doneEvents).toContain("evt_invoice_failed");
+    });
+
+    // Assinatura do proprio professor marcada como de curso, com um curso que
+    // nao existe aqui: 2xx, nada gravado, so log (sem alerta).
+    function unknownCourseSubscription() {
+      return {
+        id: "sub_unknown_course", status: "active", customer: "cus_x", cancel_at_period_end: false,
+        metadata: { purpose: "course_subscription", courseId: "course_unknown", userId: "user_1", teacherId: "teacher_1" },
+        items: { data: [{ price: { recurring: { interval: "month" } }, current_period_end: 1_900_000_000 }] },
+      };
+    }
+
+    function expectNothingRecorded(admin: ReturnType<typeof createAdmin>, eventId: string) {
+      expect(admin.state.doneEvents).toContain(eventId);
+      expect(fulfillCalls(admin)).toEqual([]);
+      expect(admin.state.orderWrites).toEqual([]);
+      expect(admin.state.paymentWrites).toEqual([]);
+      expect(admin.state.ledgerIds.size).toBe(0);
+      expect(admin.from).not.toHaveBeenCalledWith("course_subscriptions");
+      expect(mocks.notifyOps).not.toHaveBeenCalled();
+    }
+
+    it("acknowledges a paid invoice for an unknown course on a connected account", async () => {
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+      vi.spyOn(console, "info").mockImplementation(() => undefined);
+      mocks.subscriptionRetrieve.mockResolvedValue(unknownCourseSubscription());
+
+      expect((await postEvent(paidInvoiceEvent())).status).toBe(200);
+      expectNothingRecorded(admin, "evt_invoice_paid");
+    });
+
+    it("still retries a platform paid invoice whose course is missing", async () => {
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+      mocks.subscriptionRetrieve.mockResolvedValue(unknownCourseSubscription());
+      const event = paidInvoiceEvent();
+      delete (event as { account?: string }).account;
+
+      expect((await postEvent(event)).status).toBe(500);
+      expect(admin.state.doneEvents).not.toContain(event.id);
+    });
+
+    it("acknowledges a lifecycle event for an unknown course on a connected account", async () => {
+      const admin = createAdmin("checkout");
+      admin.state.enrollmentRow = { status: "revoked", source: "subscription", subscription_id: "sub_unknown_course" };
+      mocks.getAdmin.mockReturnValue(admin);
+      vi.spyOn(console, "info").mockImplementation(() => undefined);
+      mocks.subscriptionRetrieve.mockResolvedValue(unknownCourseSubscription());
+
+      const response = await postEvent({
+        id: "evt_unknown_course_sub", type: "customer.subscription.updated", account: "acct_teacher",
+        data: { object: unknownCourseSubscription() },
+      });
+
+      expect(response.status).toBe(200);
+      expectNothingRecorded(admin, "evt_unknown_course_sub");
+      expect(admin.state.enrollmentUpdates).toEqual([]);
+    });
+
+    it.each([
+      ["an unknown course", "course_unknown", 200],
+      ["our course, before its sale records", "course_1", 500],
+    ])("on a connected refund of a subscription invoice for %s (%s) answers %i", async (_label, courseId, status) => {
+      const admin = createAdmin("checkout");
+      admin.state.saleRows = { orders: [], payments: [], payout_ledger: [] };
+      mocks.getAdmin.mockReturnValue(admin);
+      const metadata = { ...unknownCourseSubscription().metadata, courseId };
+      mocks.invoicePaymentsList.mockImplementation(async function* () {
+        yield { invoice: { id: "in_x", parent: { subscription_details: { subscription: "sub_unknown_course", metadata } } } };
+      });
+      const event = refundEvent("evt_unknown_course_refund", 10000);
+
+      const response = await postEvent({
+        ...event, account: "acct_teacher",
+        data: { object: { ...event.data.object, payment_intent: "pi_teacher_sub", refunded: true } },
+      });
+
+      expect(response.status).toBe(status);
+      expect(admin.state.saleRows).toEqual({ orders: [], payments: [], payout_ledger: [] });
     });
   });
 });
