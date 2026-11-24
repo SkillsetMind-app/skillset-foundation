@@ -76,6 +76,7 @@ evento é confirmado e ignorado.
 
 **Conta conectada:**
 - [ ] `account.updated` — sincroniza se a conta do professor pode cobrar e receber (`handleConnectedAccountUpdated`).
+- [ ] `account.application.deauthorized` — **endpoint Connect**: o professor desconectou a plataforma; marca a conta como sem cobrança e sem repasse, sem apagar o id (`handleConnectedAccountDeauthorized`).
 
 > ⚠️ **Sem os eventos de assinatura, uma assinatura COBRA mas o acesso não é concedido nem
 > revogado**, e o plano pago do professor não é aplicado — quem pagou continua no Free (`.env.example`).

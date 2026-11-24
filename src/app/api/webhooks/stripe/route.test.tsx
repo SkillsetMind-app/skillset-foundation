@@ -82,6 +82,8 @@ type AdminState = {
   planSubscriptions: Array<Record<string, unknown>>;
   orderRow: Record<string, unknown>;
   couponReservation?: "reserved" | "released" | "redeemed";
+  // Curso e comprador gravados na reserva; padrao: esta venda (course_1/user_1).
+  reservationSale?: { course_id: string; user_id: string };
   checkoutLock?: { lock_key: string; order_id: string } | null;
   afterCheckoutLockRead?: () => void;
   // Outra transacao commita depois da leitura do handler e antes de a RPC
@@ -390,6 +392,12 @@ function createAdmin(
         };
       } else if (this.table === "enrollments") {
         data = state.enrollmentRow ?? null;
+      } else if (this.table === "course_coupon_reservations") {
+        data = state.couponReservation
+          ? { coupon_id: "coupon_1", user_id: state.reservationSale?.user_id ?? "user_1" }
+          : null;
+      } else if (this.table === "course_coupons") {
+        data = { id: "coupon_1", course_id: state.reservationSale?.course_id ?? "course_1" };
       } else if (
         this.table === "payments"
         && state.mode === "refund"
@@ -3036,6 +3044,236 @@ describe("Stripe webhook financial integrity", () => {
       expect(mocks.reversalCreate).not.toHaveBeenCalled();
       expect(mocks.subscriptionCancel).not.toHaveBeenCalled();
       expect(mocks.refundCreate).not.toHaveBeenCalled();
+    });
+  });
+
+  // Contas com o painel completo do Stripe: o professor tem chaves proprias,
+  // desconecta a plataforma, vende por fora e escreve metadata.
+  describe("full-Dashboard connected accounts", () => {
+    function deauthorizedEvent(id: string, account?: string) {
+      return {
+        id,
+        type: "account.application.deauthorized",
+        ...(account ? { account } : {}),
+        data: { object: { id: "ca_platform", object: "application" } },
+      };
+    }
+
+    // Os valores gravados em `users`, antes do fake anotar o filtro.
+    function userWriteValues(admin: ReturnType<typeof createAdmin>) {
+      return admin.from.mock.results
+        .map((result) => result.value as unknown as { table: string; operation: string; values: Record<string, unknown> })
+        .filter((query) => query.table === "users" && query.operation === "update")
+        .map((query) => query.values);
+    }
+
+    it("marks a deauthorized account as unable to charge or pay out, keeping its id", async () => {
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(deauthorizedEvent("evt_deauth_1", "acct_teacher"))).status).toBe(200);
+      expect((await postEvent(deauthorizedEvent("evt_deauth_2", "acct_teacher"))).status).toBe(200);
+
+      expect(admin.state.userUpdates).toEqual([1, 2].map(() => expect.objectContaining({
+        stripe_connected_account_id: "acct_teacher",
+        stripe_connect_status: "disconnected",
+        stripe_connect_charges_enabled: false,
+        stripe_connect_payouts_enabled: false,
+      })));
+      expect(userWriteValues(admin).every((values) => !("stripe_connected_account_id" in values))).toBe(true);
+      expect(admin.state.doneEvents).toEqual(new Set(["evt_deauth_1", "evt_deauth_2"]));
+      expect(mocks.subscriptionRetrieve).not.toHaveBeenCalled();
+    });
+
+    it("acknowledges a deauthorization for an unknown account and touches no one else", async () => {
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(deauthorizedEvent("evt_deauth_unknown", "acct_unknown"))).status).toBe(200);
+      // Sem conta no evento nao ha o que procurar.
+      expect((await postEvent(deauthorizedEvent("evt_deauth_no_account"))).status).toBe(200);
+
+      expect(admin.state.userUpdates).toEqual([
+        expect.objectContaining({ stripe_connected_account_id: "acct_unknown" }),
+      ]);
+      expect(admin.state.doneEvents).toEqual(new Set(["evt_deauth_unknown", "evt_deauth_no_account"]));
+    });
+
+    function outsideSale(metadata: Record<string, string>) {
+      const event = checkoutEvent();
+      event.id = "evt_outside_sale";
+      event.data.object.id = "cs_teacher_own_link";
+      event.data.object.metadata = metadata;
+      return event;
+    }
+
+    it.each([
+      ["a payment link with no metadata", {}],
+      ["the teacher's own order id", { orderId: "their_order_42", courseId: "x", userId: "y" }],
+    ])("acknowledges %s on a connected account and records nothing", async (_label, metadata) => {
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+      vi.spyOn(console, "info").mockImplementation(() => undefined);
+      const event = outsideSale(metadata);
+
+      expect((await postEvent(event)).status).toBe(200);
+
+      expect(admin.state.doneEvents).toContain(event.id);
+      expect(admin.state.rpcCalls).toEqual([]);
+      expect(admin.state.paymentWrites).toEqual([]);
+      expect(admin.state.orderWrites).toEqual([]);
+      expect(admin.state.ledgerIds.size).toBe(0);
+      expect(mocks.notifyOps).not.toHaveBeenCalled();
+    });
+
+    it("still fails a platform checkout with no order: that account is only ours", async () => {
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+      const event = outsideSale({});
+      delete (event as { account?: string }).account;
+
+      expect((await postEvent(event)).status).toBe(500);
+      expect(admin.state.doneEvents).not.toContain(event.id);
+    });
+
+    it("still fulfils a real platform sale, and still retries it when a write fails", async () => {
+      const failing = createAdmin("checkout", "payments.upsert");
+      mocks.getAdmin.mockReturnValue(failing);
+      expect((await postEvent(checkoutEvent())).status).toBe(500);
+      expect(failing.state.doneEvents).not.toContain("evt_checkout");
+
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+      expect((await postEvent(checkoutEvent())).status).toBe(200);
+      expect(fulfillCalls(admin)).toHaveLength(1);
+      expect(admin.state.ledgerIds.has("order_1")).toBe(true);
+    });
+
+    it.each([
+      ["the teacher's own order id", "their_order_42", 200],
+      ["our order, before its payment row", "order_1", 500],
+    ])("on a connected refund carrying %s (%s) answers %i", async (_label, orderId, status) => {
+      const admin = createAdmin("refund");
+      admin.state.paymentRowMissing = true;
+      mocks.getAdmin.mockReturnValue(admin);
+      const event = refundEvent("evt_connected_refund", 10000) as unknown as {
+        account: string; data: { object: Record<string, unknown> };
+      };
+      event.account = "acct_teacher";
+      event.data.object.payment_intent = "pi_teacher_own";
+      event.data.object.metadata = { orderId };
+
+      expect((await postEvent(event as unknown as Record<string, unknown>)).status).toBe(status);
+      expect(admin.state.orderWrites).toEqual([]);
+      expect(admin.state.enrollmentUpdates).toEqual([]);
+    });
+
+    function couponSubscription(metadata: Record<string, string> = {}) {
+      return {
+        metadata: {
+          purpose: "course_subscription", courseId: "course_1", userId: "user_1", teacherId: "teacher_1",
+          couponReservationId: "res_1", ...metadata,
+        },
+        items: { data: [{ current_period_end: 1_800_000_000 }] },
+        customer: "cus_1",
+        status: "active",
+        cancel_at_period_end: false,
+      };
+    }
+
+    function firstCouponInvoice(account = "acct_teacher") {
+      const event = paidInvoiceEvent();
+      event.account = account;
+      Object.assign(event.data.object, { billing_reason: "subscription_create" });
+      return event;
+    }
+
+    const foreignReservationAlert = expect.objectContaining({
+      event: "stripe.webhook.foreign_coupon_reservation",
+      severity: "critical",
+      context: expect.objectContaining({ reservationId: "res_1" }),
+    });
+
+    it("still redeems this sale's own reservation on the first invoice", async () => {
+      const admin = createAdmin("checkout");
+      admin.state.couponReservation = "reserved";
+      mocks.getAdmin.mockReturnValue(admin);
+      mocks.subscriptionRetrieve.mockResolvedValue(couponSubscription());
+
+      expect((await postEvent(firstCouponInvoice())).status).toBe(200);
+      expect(admin.state.couponReservation).toBe("redeemed");
+      expect(mocks.notifyOps).not.toHaveBeenCalledWith(foreignReservationAlert);
+    });
+
+    it.each([
+      ["another course", { course_id: "course_other", user_id: "user_1" }],
+      ["another buyer", { course_id: "course_1", user_id: "user_other" }],
+    ])("does not redeem a reservation from %s and alerts ops", async (_label, reservationSale) => {
+      const admin = createAdmin("checkout");
+      admin.state.couponReservation = "reserved";
+      admin.state.reservationSale = reservationSale;
+      mocks.getAdmin.mockReturnValue(admin);
+      mocks.subscriptionRetrieve.mockResolvedValue(couponSubscription());
+
+      expect((await postEvent(firstCouponInvoice())).status).toBe(200);
+      expect(admin.state.couponReservation).toBe("reserved");
+      expect(admin.state.rpcCalls.map((call) => call.name)).not.toContain("finalize_course_coupon_reservation");
+      expect(mocks.notifyOps).toHaveBeenCalledWith(foreignReservationAlert);
+      // A venda em si segue registrada: so a reserva alheia fica de fora.
+      expect(fulfillCalls(admin)).toHaveLength(1);
+    });
+
+    it("does not redeem anything for an invoice from an account that does not own the course", async () => {
+      const admin = createAdmin("checkout");
+      admin.state.couponReservation = "reserved";
+      mocks.getAdmin.mockReturnValue(admin);
+      mocks.subscriptionRetrieve.mockResolvedValue(couponSubscription());
+
+      expect((await postEvent(firstCouponInvoice("acct_attacker"))).status).toBe(200);
+      expect(admin.state.couponReservation).toBe("reserved");
+      expect(admin.state.rpcCalls.map((call) => call.name)).not.toContain("finalize_course_coupon_reservation");
+    });
+
+    function expiredSubscriptionCheckout(account = "acct_teacher") {
+      return {
+        id: "evt_sub_checkout_expired",
+        type: "checkout.session.expired",
+        account,
+        data: { object: {
+          id: "cs_sub_1",
+          mode: "subscription",
+          payment_status: "unpaid",
+          metadata: {
+            purpose: "course_subscription", courseId: "course_1", userId: "user_1", teacherId: "teacher_1",
+            couponReservationId: "res_1",
+          },
+        } },
+      };
+    }
+
+    it("still releases this checkout's own reservation when it expires", async () => {
+      const admin = createAdmin("checkout");
+      admin.state.couponReservation = "reserved";
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(expiredSubscriptionCheckout())).status).toBe(200);
+      expect(admin.state.couponReservation).toBe("released");
+      expect(mocks.notifyOps).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["from an account that does not own the course", "acct_attacker", undefined],
+      ["for another course", "acct_teacher", { course_id: "course_other", user_id: "user_1" }],
+    ])("does not release a reservation %s and alerts ops", async (_label, account, reservationSale) => {
+      const admin = createAdmin("checkout");
+      admin.state.couponReservation = "reserved";
+      admin.state.reservationSale = reservationSale;
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(expiredSubscriptionCheckout(account))).status).toBe(200);
+      expect(admin.state.couponReservation).toBe("reserved");
+      expect(admin.state.rpcCalls.map((call) => call.name)).not.toContain("release_course_coupon_reservation");
+      expect(mocks.notifyOps).toHaveBeenCalledWith(foreignReservationAlert);
     });
   });
 });

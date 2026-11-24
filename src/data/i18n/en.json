@@ -3254,7 +3254,7 @@
       "international_cards_non_usd_use_stripe": "International cards (non-USD) use Stripe's international rate of 5.4% + $0.30 estimated instead of 2.9% + $0.30. Everything else is identical. Both figures are Stripe's US pricing — your own rates are the ones Stripe sets in the country your account is registered in.",
       "refund_window": "Refund window",
       "learners_can_self_refund_within": "Learners can self-refund within ",
-      "days_of_purchase_if_they_ve": " days of purchase if they've completed less than half the course and no certificate has been issued — once per course. A refund reverses the sale automatically, SkillsetMind's commission included.",
+      "days_of_purchase_if_they_ve": " days of purchase if they've completed less than half the course and no certificate has been issued — once per course. A refund made through SkillsetMind reverses the sale automatically, SkillsetMind's commission included. A refund you make directly in your Stripe dashboard does not return that commission.",
       "payouts": "Payouts",
       "buyers_pay_your_stripe_account_directly": "Buyers pay your Stripe account directly. We never hold your money, so there is nothing for us to release — Stripe settles and pays out to your bank from your own Stripe balance on its own timing, which depends on your country and the payment method. A brand-new account waits on Stripe's verification before its first payout.",
       "plan_changes": "Plan changes",
@@ -3267,7 +3267,7 @@
       "how_do_the_fees_work_on": "How do the fees work on a subscription sale?",
       "two_fees_come_out_of_each": "Up to two fees come out of each sale, shown separately so the math is never hidden. SkillsetMind takes its plan commission (10% + $0.30 on Basic, 4.9% + $0.30 on Starter, 0% on Pro; the $0.30 is charged as its local equivalent in other currencies), and Stripe's standard processing fee (2.9% + $0.30 for USD cards, an estimated 5.4% + $0.30 for non-USD) is passed through to you on every plan. Everything left over is yours.",
       "when_can_a_sale_be_refunded": "When can a sale be refunded, and does it affect my payout?",
-      "learners_can_self_refund_within_days": "Learners can self-refund within {value0} days of purchase if they've completed less than half the course. Because the buyer paid your Stripe account directly, the refund is debited from your own balance — and SkillsetMind's commission on that sale is returned to you with it, so you never pay a fee on a sale that was undone.",
+      "learners_can_self_refund_within_days": "Learners can self-refund within {value0} days of purchase if they've completed less than half the course. Because the buyer paid your Stripe account directly, the refund is debited from your own balance. When the refund is made through SkillsetMind, SkillsetMind's commission on that sale is returned to you with it. A refund you make directly in your Stripe dashboard does not return that commission.",
       "ready_to_publish_on_skillsetmind": "Ready to publish on SkillsetMind?",
       "creator_overview": "Creator overview",
       "start_free": "Create account",
@@ -3495,7 +3495,7 @@
       "stripe_processing_fee": "Stripe processing fee",
       "charged_by_stripe_to_your_account": "Charged by Stripe to your account on every sale. US Stripe pricing is 2.9% + $0.30 for USD card payments and an estimated 5.4% + $0.30 for non-USD; your own rates are the ones Stripe sets in the country your account is registered in. On accounts connected with the full Stripe Dashboard, Stripe also charges its other fees to your account, such as its fee on subscription sales, and supports you directly. Never hidden inside the platform percentage.",
       "refund_window": "Refund window",
-      "self_serve_for_days_from_purchase": "Self-serve for {value0} days from purchase, subject to course progress and certificate status. A refund is debited from your Stripe balance, and our commission on that sale is returned with it — you never pay a fee on a sale that was undone.",
+      "self_serve_for_days_from_purchase": "Self-serve for {value0} days from purchase, subject to course progress and certificate status. A refund is debited from your Stripe balance. When it is made through SkillsetMind, our commission on that sale is returned with it. A refund you make directly in your Stripe dashboard does not return our commission.",
       "payout_schedule": "Payout schedule",
       "there_is_no_platform_clearance_period": "There is no platform clearance period, because there is nothing for us to clear. The sale lands in your own Stripe balance, and Stripe pays it to your bank on your connected account's payout schedule. The account is yours. On accounts connected with the full Stripe Dashboard you choose the payout schedule yourself in Stripe. On older Stripe Express accounts opened through SkillsetMind, the payout interval is a platform setting rather than one you pick, and in some countries the interval cannot be changed at all. Stripe applies its usual verification delay before a brand-new account's first payout, and settlement timing depends on your country and payment method. Marketplaces that collect your sales into their own account have to clear that money before they release it; we never collect it, so there is nothing to release.",
       "payout_account": "Payout account",
@@ -3607,7 +3607,7 @@
           },
           "1": {
             "q": "How are creator payouts handled?",
-            "a": "Stripe pays you from your own connected account; SkillsetMind is never in the middle. Every sale, our platform fee, and every refund is recorded in the earnings ledger inside Studio so you can reconcile it against your Stripe dashboard. Refunds and lost disputes are debited from your Stripe balance — and when a sale is refunded, our platform fee comes back to you with it."
+            "a": "Stripe pays you from your own connected account; SkillsetMind is never in the middle. Every sale, our platform fee, and every refund is recorded in the earnings ledger inside Studio so you can reconcile it against your Stripe dashboard. Refunds and lost disputes are debited from your Stripe balance. When a sale is refunded through SkillsetMind, our platform fee comes back to you with it; a refund you make directly in your Stripe dashboard does not return it."
           }
         }
       },
@@ -3616,7 +3616,7 @@
         "items": {
           "0": {
             "q": "How are refunds handled?",
-            "a": "Learners can request a refund within 7 days of purchase if they have completed less than half the course and have not received a certificate. The self-serve refund is available once per course; after that the request goes to support. The request is made directly from the order and processes automatically. Because the creator is the merchant of record, the refund is created on the creator's own Stripe account and debited from their Stripe balance — and SkillsetMind's platform fee on that sale is returned to the creator with it. The reversal is recorded in the creator's earnings ledger within minutes so it can be reconciled against their Stripe dashboard; the money movement itself is Stripe's, on the creator's own account."
+            "a": "Learners can request a refund within 7 days of purchase if they have completed less than half the course and have not received a certificate. The self-serve refund is available once per course; after that the request goes to support. The request is made directly from the order and processes automatically. Because the creator is the merchant of record, the refund is created on the creator's own Stripe account and debited from their Stripe balance — and SkillsetMind's platform fee on that sale is returned to the creator with it. A refund the creator makes directly in their own Stripe dashboard does not return that fee. The reversal is recorded in the creator's earnings ledger within minutes so it can be reconciled against their Stripe dashboard; the money movement itself is Stripe's, on the creator's own account."
           }
         }
       },
@@ -5270,7 +5270,7 @@
     "signInAction": "Sign in",
     "rateLimit": "Too many attempts. Wait before trying again.",
     "support": "Contact support",
-    "refundGuidance": "Open your Stripe dashboard to find the payment. You can issue a refund there if that feature is enabled. If the payment or refund option is missing, contact support with the order ID.",
+    "refundGuidance": "Open your Stripe dashboard to find the payment. You can issue a refund there if that feature is enabled. A refund made there does not return the SkillsetMind fee. If the payment or refund option is missing, contact support with the order ID.",
     "refundHelp": "Refund options",
     "refundSupport": "Get refund help"
   },
@@ -5568,7 +5568,7 @@
     "chargeCreated": "Charge created on your Stripe account",
     "chargeDetail": "The buyer paid your Stripe account directly, so there was no SkillsetMind hold. Stripe settles the charge into your available balance on its own timeline — that depends on your country and the payment method used — then pays it out to your bank on your connected account's payout schedule. A brand-new account also waits on Stripe's verification before its first payout.",
     "refundRecorded": "Refund recorded",
-    "refundDetail": "A full or partial refund was issued. It was debited from your own Stripe balance, and the SkillsetMind fee on that sale was returned to you.",
+    "refundDetail": "A full or partial refund was issued. It was debited from your own Stripe balance. If the refund was made through SkillsetMind, the SkillsetMind fee on that sale was returned to you; a refund made directly in your Stripe dashboard does not return it.",
     "notFound": "Sale not found.",
     "amount": "Amount",
     "fee": "SkillsetMind fee",

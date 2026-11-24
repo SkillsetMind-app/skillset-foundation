@@ -47,6 +47,8 @@ const EVENTS = [
   "invoice.payment_failed",
   "invoice.paid",
   "account.updated",
+  // A teacher with the full Stripe Dashboard can disconnect the platform.
+  "account.application.deauthorized",
 ];
 
 // www is required: the apex answers 308 and Stripe does not follow redirects.
