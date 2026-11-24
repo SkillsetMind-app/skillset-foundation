@@ -94,7 +94,7 @@ export function NextLessonCard({
     <div
       role="region"
       aria-label={t("learn.classroom.nextLesson.title")}
-      className={`member-next-lesson ${leaving ? "is-leaving" : ""} absolute inset-x-3 bottom-3 z-10 flex flex-wrap items-center gap-3 rounded-lg bg-[rgba(15,39,68,0.92)] p-3 text-white shadow-[0_18px_36px_rgba(15,39,68,0.35)] backdrop-blur sm:inset-x-auto sm:right-3 sm:max-w-[360px]`}
+      className={`member-next-lesson ${leaving ? "is-leaving" : ""} absolute inset-x-3 bottom-3 z-10 flex flex-wrap items-center gap-3 sm:flex-nowrap rounded-lg bg-[rgba(15,39,68,0.92)] p-3 text-white shadow-[0_18px_36px_rgba(15,39,68,0.35)] backdrop-blur sm:inset-x-auto sm:right-3 sm:max-w-[360px]`}
     >
       <div
         aria-hidden="true"
@@ -112,15 +112,16 @@ export function NextLessonCard({
       </p>
       {/* basis-28 + flex-wrap: no celular o título ficava com 63 a 103px numa
           linha só ("1.2 What Em…"). Agora ele ocupa a linha, em até duas
-          linhas, e os botões descem para a direita; no cartão de 360px do
-          computador tudo continua numa linha. */}
+          linhas, e os botões descem para a direita. Do sm para cima o cartão
+          se ajusta ao conteúdo e não quebra (sm:flex-nowrap): com título
+          curto os botões desciam à toa. */}
       <div className="min-w-0 flex-1 basis-28">
         {/* A contagem fica só no anel; aqui, "Next lesson" parado (o mesmo
             nome da região, por isso fora da árvore de acessibilidade). */}
         <p aria-hidden="true" className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/70">
           {t("learn.classroom.nextLesson.title")}
         </p>
-        <p className="line-clamp-2 text-sm font-semibold">{lesson.title}</p>
+        <p className="line-clamp-2 break-words text-sm font-semibold">{lesson.title}</p>
       </div>
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
         {/* button-solid: na sala ele pinta com a cor do curso e o texto que
