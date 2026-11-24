@@ -502,7 +502,8 @@
       "planPrice": "{monthly} al mes o {yearly} al año",
       "planFee": "{fee} por venta",
       "planFeeZero": "0% de comisión",
-      "plansNote": "Prueba gratis de 14 días, con tarjeta. El procesamiento de tarjetas de Stripe se sigue aplicando."
+      "plansNote": "Prueba gratis de 14 días, con tarjeta. El procesamiento de tarjetas de Stripe se sigue aplicando.",
+      "photoAlt": "Una mujer graba una clase en el escritorio de su casa"
     },
     "realCourse": {
       "kicker": "Un curso real",
@@ -521,6 +522,11 @@
     },
     "faq": {
       "more": "Más sobre esto en el Centro de ayuda"
+    },
+    "who": {
+      "coachAlt": "Una coach en una sesión por video en la mesa de su cocina",
+      "teacherAlt": "Un profesor jubilado explica una idea en una pizarra pequeña",
+      "educatorAlt": "Una educadora lee un cuaderno de trabajo en un sillón"
     }
   },
   "platform": {
