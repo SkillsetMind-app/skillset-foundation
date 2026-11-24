@@ -101,7 +101,7 @@ describe("legal document translation from the request cookie", () => {
   });
 
   it.each(pages)("$key defaults to English for absent or unsupported cookies", async ({ Page, key }) => {
-    const effective = key === "teacherTerms" ? "Effective November 13, 2026" : "Effective September 24, 2026";
+    const effective = "Effective November 24, 2026";
     for (const cookie of [undefined, "pt-BR", "invalid"]) {
       request.locale = cookie;
       const view = render(await Page());
@@ -131,7 +131,7 @@ describe("legal document translation from the request cookie", () => {
         expect(translated).not.toMatch(/<[^>]+\s[^>]*>|<\/?(?:script|iframe|img|Link|a)\b/);
       }
     }
-    expect(es.common.effectiveDate).toBe("24 de septiembre de 2026");
+    expect(es.common.effectiveDate).toBe("24 de noviembre de 2026");
   });
 
   it.each(["en", "es"] as const)("discloses provider data and conditional use in %s, without promising prompt redaction", async (locale) => {

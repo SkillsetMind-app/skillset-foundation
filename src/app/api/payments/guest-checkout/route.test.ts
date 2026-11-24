@@ -457,8 +457,8 @@ describe("guest checkout", () => {
     });
     expect(admin.usersUpdates).toEqual([
       expect.objectContaining({
-        terms_version: "2026-09-24",
-        privacy_version: "2026-09-24",
+        terms_version: "2026-11-24",
+        privacy_version: "2026-11-24",
         terms_accepted_at: expect.any(String),
         privacy_accepted_at: expect.any(String),
       }),
@@ -498,7 +498,7 @@ describe("guest checkout", () => {
 
     expect(response.status).toBe(200);
     expect(admin.usersUpdates).toEqual([
-      expect.objectContaining({ terms_version: "2026-09-24", privacy_version: "2026-09-24" }),
+      expect.objectContaining({ terms_version: "2026-11-24", privacy_version: "2026-11-24" }),
     ]);
     expect(admin.auth.admin.createUser).not.toHaveBeenCalled();
     expect(mocks.createSession).toHaveBeenCalledTimes(1);
@@ -556,7 +556,7 @@ describe("guest checkout", () => {
 
     expect(response.status).toBe(200);
     expect(admin.usersUpdates).toEqual([
-      expect.objectContaining({ terms_version: "2026-09-24", privacy_version: "2026-09-24" }),
+      expect.objectContaining({ terms_version: "2026-11-24", privacy_version: "2026-11-24" }),
     ]);
     expect(mocks.createSession.mock.calls[0][0].client_reference_id).toBe("raced-user");
   });
