@@ -30,9 +30,13 @@ const cormorant = Cormorant_Garamond({
 });
 
 // Design V2: Inter for tabular numeric display (--font-num / .num utility).
+// Not preloaded: it only draws numbers, and on a slow connection its 48 kB
+// competed with the stylesheet for the first paint. It loads when a number
+// that uses it is on the page.
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
+  preload: false,
 });
 
 // Also stamps html.js: globals.css hides .reveal-on-view sections only under
