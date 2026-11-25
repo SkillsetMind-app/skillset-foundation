@@ -1,10 +1,10 @@
 \set ON_ERROR_STOP on
--- Banco descartavel. Fixtures desfeitas no rollback final.
+-- Disposable database. Fixtures undone in the final rollback.
 --
--- Mais de uma area por professor: Starter fica so com a principal, Pro cria ate
--- 2 extras. O produto B vai para a extra "turma-2": o aluno so de A ve a
--- principal e nao a extra; o aluno so de B ve a extra e nao a principal. Plano
--- caiu: a extra segue no ar para o aluno e travada para o professor.
+-- More than one area per teacher: Starter keeps only the main one, Pro creates up to
+-- 2 extras. Product B goes to the extra "turma-2": the learner of A only sees the
+-- main one and not the extra; the learner of B only sees the extra and not the main one. Plan
+-- dropped: the extra stays live for the learner and locked for the teacher.
 begin;
 
 create function pg_temp.assert_true(ok boolean, message text) returns void language plpgsql as $$
@@ -35,8 +35,8 @@ begin
   perform pg_temp.act_as(null, 'service_role');
   perform set_config('skillset.trusted_write', 'on', true);
   update public.users set current_plan_id = p_plan where uid = pg_temp.uid(1)::text;
-  -- Mexer em users refaz o perfil público, e conta @example.test não tem perfil:
-  -- sem ele o "@smoke-member-areas" não resolve.
+  -- Touching users rebuilds the public profile, and an @example.test account has no profile:
+  -- without it "@smoke-member-areas" does not resolve.
   insert into public.public_profiles(uid, display_name, username)
   values (pg_temp.uid(1)::text, 'Areas Teacher', 'smoke-member-areas')
   on conflict (uid) do update set display_name = excluded.display_name, username = excluded.username;
@@ -45,7 +45,7 @@ create function pg_temp.ids(products jsonb) returns text[] language sql immutabl
   select coalesce(array_agg(p ->> 'course_id' order by n), '{}') from jsonb_array_elements(products) with ordinality t(p, n);
 $$;
 
--- 1 professor, 2 aluno so de A, 3 aluno so de B, 4 outro professor.
+-- 1 teacher, 2 learner of A only, 3 learner of B only, 4 other teacher.
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
@@ -80,19 +80,19 @@ values (pg_temp.uid(2)::text || '__smoke-ma-a', pg_temp.uid(2)::text, 'smoke-ma-
   'Smoke areas B', 'smoke', '', 'active', 'admin');
 select pg_temp.plan('basic');
 
--- 1) O espelho do plano.
+-- 1) The plan mirror.
 select pg_temp.assert_true(public.member_area_limit_for_plan(null) = 1 and public.member_area_limit_for_plan('basic') = 1
   and public.member_area_limit_for_plan('starter') = 1 and public.member_area_limit_for_plan('pro') = 3
   and public.member_area_limit_for_plan('plus') = 3, 'plan limits');
 
--- 2) Starter: so a principal.
+-- 2) Starter: only the main one.
 select pg_temp.plan('starter');
 select pg_temp.act_as(pg_temp.uid(1));
 set local role authenticated;
 select pg_temp.refused($$select public.create_my_member_area('Turma 2', 'turma-2')$$, 'P0001');
 reset role;
 
--- 3) Pro: ate 2 extras, endereco valido e unico.
+-- 3) Pro: up to 2 extras, valid and unique address.
 select pg_temp.plan('pro');
 select pg_temp.act_as(pg_temp.uid(1));
 set local role authenticated;
@@ -103,7 +103,7 @@ select set_config('smoke.area2', public.create_my_member_area('Turma 2', 'turma-
 select pg_temp.refused($$select public.create_my_member_area('x', 'turma-2')$$, '23505');
 select public.create_my_member_area('Turma 3', 'turma-3');
 select pg_temp.refused($$select public.create_my_member_area('x', 'turma-4')$$, 'P0001');
--- B vai para a turma-2; C e a comunidade dela.
+-- B goes to turma-2; C is its community.
 select public.save_my_member_area_products('[{"course_id": "smoke-ma-b"}]',
   (select id from public.member_areas where slug = 'turma-2'));
 select public.set_my_member_area_community('smoke-ma-c', (select id from public.member_areas where slug = 'turma-2'));
@@ -113,7 +113,7 @@ select pg_temp.assert_true(pg_temp.ids(public.get_member_area_home('@smoke-membe
 select pg_temp.assert_true(pg_temp.ids(public.get_member_area_home('@smoke-member-areas', 'turma-2') -> 'more_products')
   = array['smoke-ma-b'], 'turma-2 holds only B');
 select pg_temp.assert_true(public.get_member_area_home('@smoke-member-areas', 'nope') is null, 'unknown slug');
--- Salvar a principal com todos os produtos (aba velha) não puxa B da turma-2.
+-- Saving the main one with all products (stale tab) does not pull B out of turma-2.
 select public.save_my_member_area_products(
   '[{"course_id": "smoke-ma-b"}, {"course_id": "smoke-ma-a"}, {"course_id": "smoke-ma-c"}]');
 select pg_temp.assert_true(pg_temp.ids(public.get_member_area_home('@smoke-member-areas', 'turma-2') -> 'more_products')
@@ -122,7 +122,7 @@ select pg_temp.assert_true(pg_temp.ids(public.get_member_area_home('@smoke-membe
   = array['smoke-ma-a', 'smoke-ma-c'], 'main keeps its saved order without B');
 reset role;
 
--- 4) Outro professor nao mexe nas areas do primeiro.
+-- 4) Another teacher does not touch the first one's areas.
 select pg_temp.act_as(pg_temp.uid(4));
 set local role authenticated;
 select pg_temp.refused(format($$select public.save_my_member_area('x', 'dark', null, null, %L)$$,
@@ -130,7 +130,7 @@ select pg_temp.refused(format($$select public.save_my_member_area('x', 'dark', n
 select pg_temp.refused(format($$select public.delete_my_member_area(%L)$$, current_setting('smoke.area2')), '22023');
 reset role;
 
--- 5) Cada aluno ve a area do que comprou.
+-- 5) Each learner sees the area of what they bought.
 select pg_temp.act_as(pg_temp.uid(2));
 set local role authenticated;
 select pg_temp.assert_true(pg_temp.ids(public.get_member_area_home('@smoke-member-areas') -> 'my_products')
@@ -152,7 +152,7 @@ select pg_temp.assert_true((select array_agg(s.slug) = array['turma-2']
   from public.get_member_area_slugs(array['smoke-ma-a', 'smoke-ma-b']) s), 'link of B points to turma-2');
 reset role;
 
--- 6) Plano caiu: a extra segue no ar, travada para o professor.
+-- 6) Plan dropped: the extra stays live, locked for the teacher.
 select pg_temp.plan('starter');
 select pg_temp.act_as(pg_temp.uid(1));
 set local role authenticated;
@@ -170,7 +170,7 @@ select pg_temp.assert_true(public.get_member_area_home('@smoke-member-areas') is
   'B stays in the locked area');
 reset role;
 
--- 7) Apagar a extra devolve B para a principal.
+-- 7) Deleting the extra gives B back to the main one.
 select pg_temp.act_as(pg_temp.uid(1));
 set local role authenticated;
 select public.delete_my_member_area((select id from public.member_areas where slug = 'turma-2'));

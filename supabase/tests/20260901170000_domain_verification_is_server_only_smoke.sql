@@ -1,6 +1,6 @@
 \set ON_ERROR_STOP on
 
--- Seguro contra banco vivo: só lê catálogo de permissões, não escreve nada.
+-- Safe against a live database: it only reads the permissions catalog and writes nothing.
 BEGIN;
 
 CREATE OR REPLACE FUNCTION pg_temp.assert_true(
@@ -16,13 +16,13 @@ BEGIN
 END;
 $$;
 
--- `claim_custom_domain` promete, no próprio corpo, que um domínio "nunca nasce
--- active — a Vercel é quem decide". `sync_own_custom_domain` desfazia isso:
--- era EXECUTE para `authenticated` e gravava o status vindo do argumento, então
--- o criador podia chamá-la pelo PostgREST com o próprio JWT e declarar
--- verificado um hostname que nunca passou pela Vercel — entrando em
--- `public_domains`, que é o que o proxy lê para decidir de quem é a vitrine
--- servida naquele host.
+-- `claim_custom_domain` promises, in its own body, that a domain "is never born
+-- active -- Vercel is the one who decides". `sync_own_custom_domain` undid that:
+-- it was EXECUTE for `authenticated` and wrote the status coming from the argument, so
+-- the creator could call it through PostgREST with their own JWT and declare
+-- verified a hostname that never went through Vercel -- getting it into
+-- `public_domains`, which is what the proxy reads to decide whose storefront is
+-- served on that host.
 SELECT pg_temp.assert_true(
   NOT has_function_privilege(
     'authenticated',
@@ -37,8 +37,8 @@ SELECT pg_temp.assert_true(
   'sync_own_custom_domain must not be reachable by an end-user role'
 );
 
--- A substituta é service-role apenas: o status de verificação é fato do
--- servidor (a rota acabou de perguntar à Vercel), nunca declaração do dono.
+-- The replacement is service-role only: the verification status is a fact of the
+-- server (the route just asked Vercel), never a declaration by the owner.
 SELECT pg_temp.assert_true(
   NOT has_function_privilege(
     'authenticated',

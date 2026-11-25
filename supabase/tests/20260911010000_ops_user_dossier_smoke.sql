@@ -1,8 +1,8 @@
 \set ON_ERROR_STOP on
--- Banco descartavel. Fixtures e reversao sao desfeitas no rollback final.
+-- Disposable database. Fixtures and reversion are undone at the final rollback.
 begin;
 \if :{?without_user_dossier_admin_gate}
--- Reversao da prova: a mesma funcao, sem o portao de admin e 2FA.
+-- Reversion of the proof: the same function, without the admin and 2FA gate.
 create or replace function public.admin_get_user_dossier(p_uid text) returns jsonb
 language sql stable security definer set search_path = public, pg_temp as $$
   select jsonb_build_object('identity', jsonb_build_object('uid', p_uid));
@@ -32,7 +32,7 @@ begin
   raise exception 'OPS_USER_DOSSIER_REGRESSION: %', 'refused call succeeded: ' || statement;
 end $$;
 
--- Fixtures: 1 admin, 2 alvo (aluno e professor), 3 aluno, 4 admin suspenso.
+-- Fixtures: 1 admin, 2 target (learner and teacher), 3 learner, 4 suspended admin.
 select set_config('skillset.trusted_write', 'on', true);
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 select pg_temp.uid(n), 'authenticated', 'authenticated', 'ops-dossier-' || n || '@example.test',
@@ -60,7 +60,7 @@ insert into public.audit_log(id, action, actor_id, actor_email, target_type, tar
 values (gen_random_uuid()::text, 'user.account_suspend', pg_temp.uid(1)::text, 'ops-dossier-1@example.test', 'user',
   pg_temp.uid(2)::text, 'user.account_suspend', jsonb_build_object('reason', 'Synthetic reason'), clock_timestamp());
 
--- 1) Aluno nao le o dossie de outra pessoa. A prova vermelha mira esta linha.
+-- 1) A learner does not read another person's dossier. The red proof aims at this line.
 select pg_temp.actor(3);
 set local role authenticated;
 do $$
@@ -72,20 +72,20 @@ end $$;
 select pg_temp.refused($q$select * from public.admin_search_users()$q$, 'OPS_ADMIN_MFA_REQUIRED', '42501');
 reset role;
 
--- 2) Admin sem 2FA (aal1) e recusado nas duas.
+-- 2) An admin without 2FA (aal1) is refused on both.
 select pg_temp.actor(1, 'aal1');
 set local role authenticated;
 select pg_temp.refused($q$select public.admin_get_user_dossier(pg_temp.uid(2)::text)$q$, 'OPS_ADMIN_MFA_REQUIRED', '42501');
 select pg_temp.refused($q$select * from public.admin_search_users()$q$, 'OPS_ADMIN_MFA_REQUIRED', '42501');
 reset role;
 
--- 3) Admin suspenso, mesmo com aal2, e recusado.
+-- 3) A suspended admin, even with aal2, is refused.
 select pg_temp.actor(4);
 set local role authenticated;
 select pg_temp.refused($q$select public.admin_get_user_dossier(pg_temp.uid(2)::text)$q$, 'OPS_ADMIN_MFA_REQUIRED', '42501');
 reset role;
 
--- 4) Admin com 2FA le o dossie inteiro, com os fatos das fixtures.
+-- 4) An admin with 2FA reads the whole dossier, with the facts from the fixtures.
 select pg_temp.actor(1);
 set local role authenticated;
 select pg_temp.assert_true((select d ?& array['identity','onboarding','access','learning','behavior','timeline',
@@ -108,7 +108,7 @@ select pg_temp.assert_true((select d::text !~* '"[a-z_]*(secret|token|password|e
   from (select public.admin_get_user_dossier(pg_temp.uid(2)::text) as d) x), 'dossier exposes a credential-shaped key');
 select pg_temp.refused($q$select public.admin_get_user_dossier('does-not-exist')$q$, 'USER_DOSSIER_USER_MISSING', '23503');
 
--- 5) Lista: busca, total que ignora a pagina, filtros e filtro invalido.
+-- 5) List: search, total that ignores the page, filters and an invalid filter.
 select pg_temp.assert_true((select count(*) from public.admin_search_users('ops-dossier-')) = 4, 'search by email');
 select pg_temp.assert_true((select max(total_count) from public.admin_search_users('ops-dossier-', null, null, 1, 0)) = 4,
   'total_count follows the filter, not the page');

@@ -30,12 +30,12 @@ jobs:
         uses: trufflesecurity/trufflehog@e76dff8a7e57d6df0c60ad8cbf5d5cba505a8fc9
         with:
           path: ./
-          # Num push para main e no cron semanal, `base` e `head` seriam o MESMO
-          # commit: o intervalo main..main é vazio, o TruffleHog inspeciona zero
-          # commits e o job termina VERDE sem ter varrido nada — o oposto do que
-          # o `fetch-depth: 0` acima e o comentário "full history" prometem.
-          # Deixar os dois vazios fora de PR faz a varredura completa do
-          # histórico, que é a intenção original.
+          # On a push to main and on the weekly cron, `base` and `head` would be
+          # the SAME commit: the main..main range is empty, TruffleHog inspects
+          # zero commits and the job ends GREEN without having scanned anything —
+          # the opposite of what the `fetch-depth: 0` above and the "full
+          # history" comment promise. Leaving both empty outside a PR makes it
+          # scan the full history, which is the original intent.
           base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
           head: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || '' }}
           extra_args: --only-verified --results=verified
@@ -45,9 +45,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     container:
-      # Fixada por digest pela mesma razao das actions acima: sem tag nem digest
-      # o runner puxa o que estiver no registry naquele minuto, e um SAST que
-      # muda sozinho nao e um portao, e uma superficie.
+      # Pinned by digest for the same reason as the actions above: with no tag
+      # or digest the runner pulls whatever is in the registry at that minute,
+      # and a SAST that changes by itself is not a gate, it is an attack surface.
       image: semgrep/semgrep@sha256:51c9f53a4fce0d55e9abd08d7b96968654248a4b1122e77f20e0a49c0072446c # 1.175.1
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -76,39 +76,41 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: package-lock.json
-      # O npm que vem com o Node 22 fala com o endpoint legado de auditoria
-      # (/-/npm/v1/security/audits/quick), que o registry esta aposentando e ja
-      # responde 400. O npm insiste, o job estoura os 10 minutos e morre com a
-      # mensagem generica "Invalid package tree, run npm install" -- que nao tem
-      # nada a ver com o lockfile e mandou mais de um leitor regenerar o lock a
-      # toa. O npm 11 usa o endpoint bulk e passa com o mesmo lock.
+      # The npm that ships with Node 22 talks to the legacy audit endpoint
+      # (/-/npm/v1/security/audits/quick), which the registry is retiring and
+      # already answers with 400. npm keeps insisting, the job blows the 10
+      # minutes and dies with the generic message "Invalid package tree, run npm
+      # install" -- which has nothing to do with the lockfile and sent more than
+      # one reader to regenerate the lock for nothing. npm 11 uses the bulk
+      # endpoint and passes with the same lock.
       - name: Use npm 11 (the legacy audit endpoint 400s on npm 10)
         run: npm i -g npm@^11
       - name: Install dependencies
         run: npm ci
       - name: Audit production deps (high and critical)
-        # Bloqueia por VULNERABILIDADE, nunca por indisponibilidade de terceiro.
+        # Block on a VULNERABILITY, never on a third party being unavailable.
         #
-        # Os dois endpoints de auditoria do npm andam instaveis: o legado
-        # (security/audits/quick) responde 400 porque esta sendo aposentado, e o
-        # atual (security/advisories/bulk) devolveu 503 em 04/09 com exatamente o
-        # mesmo lockfile que passa na maquina do dev. Um portao que fecha porque
-        # o registry caiu nao mede seguranca, mede sorte -- e o custo real e pior
-        # que o falso vermelho: ensina o time a ignorar vermelho.
+        # Both npm audit endpoints have been unstable: the legacy one
+        # (security/audits/quick) answers 400 because it is being retired, and the
+        # current one (security/advisories/bulk) returned 503 on 04/09 with exactly
+        # the same lockfile that passes on the dev's machine. A gate that closes
+        # because the registry went down does not measure security, it measures
+        # luck -- and the real cost is worse than a false red: it teaches the team
+        # to ignore red.
         #
-        # Entao a distincao e explicita. Achou vulnerabilidade high/critical:
-        # fecha. Nao conseguiu perguntar: tenta de novo, e depois avisa alto sem
-        # travar o merge. O Dependabot cobre o mesmo repo por outro caminho e nao
-        # depende deste endpoint.
+        # So the distinction is explicit. Found a high/critical vulnerability:
+        # close the gate. Could not ask: try again, and then warn loudly without
+        # blocking the merge. Dependabot covers the same repo by another path and
+        # does not depend on this endpoint.
         #
-        # As duas travas de tempo importam tanto quanto o retry. Com 400 o npm
-        # desiste em 3 segundos, mas com 503 ele entende "tente de novo" e entra
-        # num backoff interno de CINCO minutos -- que multiplicado por um retry
-        # externo ingenuo estoura o teto do job e volta como "cancelled", que e
-        # pior que vermelho: nao diz nada. --fetch-retries=0 tira o backoff de
-        # dentro, e o timeout de 60s e a rede embaixo, para o caso de a conexao
-        # ficar pendurada sem erro nenhum. Pior caso: 3 x 70s, com folga sobre
-        # os 10 minutos do job mesmo somando o npm ci.
+        # The two time limits matter as much as the retry. With a 400 npm gives
+        # up in 3 seconds, but with a 503 it reads "try again" and enters an
+        # internal backoff of FIVE minutes -- which, multiplied by a naive
+        # external retry, blows the job cap and comes back as "cancelled", which
+        # is worse than red: it says nothing. --fetch-retries=0 removes the inner
+        # backoff, and the 60s timeout is the network underneath, for the case
+        # where the connection hangs with no error at all. Worst case: 3 x 70s,
+        # with room to spare under the job's 10 minutes even counting npm ci.
         run: |
           set +e
           for tentativa in 1 2 3; do
@@ -128,8 +130,8 @@ jobs:
               sleep 10
               continue
             fi
-            # Chegou aqui: o npm conseguiu perguntar e a resposta foi ruim.
-            # Este e o portao, e e agora que ele fecha.
+            # Got here: npm managed to ask and the answer was bad.
+            # This is the gate, and now is when it closes.
             echo "$saida"
             exit 1
           done

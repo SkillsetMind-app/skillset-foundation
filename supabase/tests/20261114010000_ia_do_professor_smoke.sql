@@ -1,14 +1,14 @@
 \set ON_ERROR_STOP on
--- Banco descartável apenas. Fixtures voltam no ROLLBACK.
+-- Disposable database only. Fixtures go back on ROLLBACK.
 --
--- Ferramentas de IA do professor:
---   1. teto mensal por plano: sem plano 2 h, concessão (conta da casa) vale
---      antes da assinatura, uso do mês passado não conta, e o pedido que
---      passaria do teto volta sem reserva;
---   2. browser não lê uso nem legenda e não chama a reserva;
---   3. quiz: aluno matriculado lê só o publicado; quem não é matriculado, nada;
---      o dono lê o rascunho; o mesmo id de aula em OUTRO curso é outra linha
---      (não toma a do dono) e não aparece para o aluno do primeiro curso.
+-- Teacher AI tools:
+--   1. monthly cap per plan: no plan 2 h, a grant (house account) counts
+--      before the subscription, last month's usage does not count, and the request that
+--      would go over the cap comes back with no reservation;
+--   2. the browser reads neither usage nor captions and does not call the reservation;
+--   3. quiz: an enrolled learner reads only what is published; someone not enrolled, nothing;
+--      the owner reads the draft; the same lesson id in ANOTHER course is another row
+--      (it does not take the owner's) and does not show up for the learner of the first course.
 begin;
 create function pg_temp.uid(n int) returns uuid language sql immutable as $$
   select ('31140000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid;
@@ -24,9 +24,9 @@ end $$;
 
 select set_config('request.jwt.claim.sub', '', true), set_config('request.jwt.claim.role', 'service_role', true),
   set_config('request.jwt.claims', '{"role":"service_role"}', true), set_config('skillset.trusted_write', 'on', true);
--- 1 = sem plano, 2 = Basic com concessão Pro, 3 = Starter com uso só no mês
--- passado, 4 = aluno matriculado, 5 = aluno sem matrícula, 6 = Pro com
--- concessão Basic (o plano pago maior vence).
+-- 1 = no plan, 2 = Basic with a Pro grant, 3 = Starter with usage only in the
+-- past month, 4 = enrolled learner, 5 = learner without enrollment, 6 = Pro with a
+-- Basic grant (the larger paid plan wins).
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 select pg_temp.uid(n), 'authenticated', 'authenticated', 'ia-prof-' || n || '@example.test',
   now(), '{}', '{}', now(), now()
@@ -44,7 +44,7 @@ insert into public.courses(id, owner_id, slug, title, summary, category, status,
 values ('smoke-ia-course', pg_temp.uid(1)::text, 'smoke-ia-course', 'Smoke IA', 'Curso usado só por este smoke.',
   'smoke', 'draft', 'usd', 0,
   '[{"id":"m1","title":"Module","summary":"","lessons":[{"id":"l1","title":"Lesson","type":"video","description":""}]}]');
--- Outro professor copia o id da aula l1 para o curso dele.
+-- Another teacher copies the id of lesson l1 into their course.
 insert into public.courses(id, owner_id, slug, title, summary, category, status, currency, price_amount_minor, modules)
 values ('smoke-ia-copycat', pg_temp.uid(2)::text, 'smoke-ia-copycat', 'Smoke IA copy', 'Curso usado só por este smoke.',
   'smoke', 'draft', 'usd', 0,
@@ -57,15 +57,15 @@ values ('l1', 'smoke-ia-course', pg_temp.uid(1)::text,
   '[{"question":"Q?","options":["a","b"],"answer":0,"explanation":"e"}]', 'draft');
 insert into public.lesson_captions(lesson_id, language, course_id, owner_id, video_id, vtt)
 values ('l1', 'en', 'smoke-ia-course', pg_temp.uid(1)::text, 'video-1', 'WEBVTT');
--- O upsert do copiador (mesma chave que a rota usa) cai na linha DELE.
+-- The copier's upsert (same key the route uses) lands on THEIR row.
 insert into public.lesson_quizzes(lesson_id, course_id, owner_id, questions, status)
 values ('l1', 'smoke-ia-copycat', pg_temp.uid(2)::text,
   '[{"question":"X?","options":["a","b"],"answer":1,"explanation":"x"}]', 'published')
 on conflict (course_id, lesson_id) do update set questions = excluded.questions, status = excluded.status;
 select set_config('skillset.trusted_write', 'off', true);
 
--- 1. Teto -----------------------------------------------------------------------
--- Um comando por reserva: cada uma tem de ver a anterior.
+-- 1. Cap --------------------------------------------------------------------------
+-- One command per reservation: each one has to see the previous one.
 select usage_id is not null as first_hour_ok
   from public.claim_ai_video_seconds(pg_temp.uid(1)::text, 'smoke-ia-course', 'l1', 3600) \gset
 select usage_id is null and used_seconds = 3600 and limit_seconds = 7200 as over_cap_refused
@@ -81,7 +81,7 @@ select
      from public.lesson_quizzes where lesson_id = 'l1') as copy_is_separate_row
   \gset
 
--- 2. Browser ---------------------------------------------------------------------
+-- 2. Browser -----------------------------------------------------------------------
 select
   not has_function_privilege('authenticated', 'public.claim_ai_video_seconds(text,text,text,integer)', 'execute')
     and not has_function_privilege('anon', 'public.claim_ai_video_seconds(text,text,text,integer)', 'execute')
@@ -95,7 +95,7 @@ select
     and has_table_privilege('service_role', 'public.ai_usage', 'delete')
     as browser_locked \gset
 
--- 3. Quiz ------------------------------------------------------------------------
+-- 3. Quiz -------------------------------------------------------------------------
 select pg_temp.act_as(pg_temp.uid(4));
 set local role authenticated;
 select count(*) = 0 as student_no_draft from public.lesson_quizzes \gset

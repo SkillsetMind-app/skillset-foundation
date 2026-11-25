@@ -16,20 +16,20 @@ BEGIN
 END;
 $$;
 
--- Fixtures que este arquivo sempre pressupôs e nunca criou. Ele foi escrito
--- contra um staging semeado à mão: as linhas `hardening-smoke-*` de users e
--- courses já estavam lá. Num banco montado a partir do repositório elas não
--- existem, e os INSERTs adiante batem nas FKs
--- course_subscriptions.user_id/course_id e course_lesson_content.course_id.
--- Ninguém tinha percebido porque este teste nunca tinha sido executado.
--- Tudo aqui é desfeito no ROLLBACK do fim do arquivo.
+-- Fixtures this file always assumed and never created. It was written
+-- against a hand-seeded staging: the `hardening-smoke-*` rows of users and
+-- courses were already there. In a database built from the repository they do not
+-- exist, and the INSERTs below hit the FKs
+-- course_subscriptions.user_id/course_id and course_lesson_content.course_id.
+-- Nobody noticed because this test had never been run.
+-- Everything here is undone in the ROLLBACK at the end of the file.
 DO $$
 DECLARE
   v_sufixo text;
 BEGIN
-  -- Os seis primeiros são os status do laço de assinaturas adiante, já com o
-  -- '_' trocado por '-' como aquele laço faz; 'a' e 'b' são os dois cursos do
-  -- teste de posse de aula.
+  -- The first six are the statuses of the subscriptions loop below, with the
+  -- '_' already swapped for '-' as that loop does; 'a' and 'b' are the two courses of the
+  -- lesson ownership test.
   FOREACH v_sufixo IN ARRAY ARRAY[
     'active', 'trialing', 'past-due', 'unpaid', 'incomplete', 'paused',
     'canceled', 'a', 'b'
@@ -53,8 +53,8 @@ BEGIN
     ON CONFLICT (id) DO NOTHING;
   END LOOP;
 
-  -- O bloco de assinaturas canceladas usa nomes próprios, fora do padrão do
-  -- laço acima.
+  -- The canceled subscriptions block uses its own names, outside the pattern of the
+  -- loop above.
   INSERT INTO public.users (uid, email, display_name)
   VALUES (
     'hardening-smoke-canceled-user',
@@ -152,10 +152,10 @@ SELECT pg_temp.assert_true(
   'enforce_rate_limit must be service-role-only'
 );
 
--- is_service_role() lê o claim do JWT, não o papel do Postgres: numa chamada com
--- a chave de serviço o PostgREST manda os dois. O teste mandava só o papel, então
--- server_write_only() recusava a escrita e o caminho positivo nunca era
--- exercido -- ninguém percebeu porque este arquivo nunca tinha sido executado.
+-- is_service_role() reads the JWT claim, not the Postgres role: in a call with
+-- the service key PostgREST sends both. The test sent only the role, so
+-- server_write_only() refused the write and the positive path was never
+-- exercised -- nobody noticed because this file had never been run.
 SELECT set_config('request.jwt.claim.role', 'service_role', true);
 SET LOCAL ROLE service_role;
 DO $$
@@ -226,10 +226,10 @@ DECLARE
 BEGIN
   DELETE FROM public.payout_ledger
   WHERE id = 'hardening-smoke-reversal-ledger';
-  -- O fixture abaixo nunca tinha sido validado contra o schema real, porque
-  -- este arquivo nunca tinha sido executado: faltavam as três colunas NOT NULL
-  -- sem default (amount_minor, currency, status) e o dono referenciado pela FK
-  -- payout_ledger.teacher_id -> public.users(uid). Tudo desfeito no ROLLBACK.
+  -- The fixture below had never been validated against the real schema, because
+  -- this file had never been run: it lacked the three NOT NULL columns
+  -- without a default (amount_minor, currency, status) and the owner referenced by the FK
+  -- payout_ledger.teacher_id -> public.users(uid). Everything undone in the ROLLBACK.
   INSERT INTO public.users (uid, email, display_name)
   VALUES (
     'hardening-smoke-owner',
@@ -547,8 +547,8 @@ BEGIN
   WHERE id IN ('hardening-smoke-offer', 'hardening-smoke-rollback-offer');
   DELETE FROM public.courses
   WHERE id = 'hardening-smoke-offer-course';
-  -- courses.title/summary/category são NOT NULL sem default; o INSERT original
-  -- só trazia id e owner_id.
+  -- courses.title/summary/category are NOT NULL with no default; the original INSERT
+  -- only had id and owner_id.
   INSERT INTO public.courses (id, owner_id, title, summary, category)
   VALUES (
     'hardening-smoke-offer-course',

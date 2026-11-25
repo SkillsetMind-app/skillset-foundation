@@ -1,12 +1,12 @@
 \set ON_ERROR_STOP on
--- Banco descartável apenas. Fixtures voltam no ROLLBACK.
+-- Disposable database only. Fixtures are undone in the ROLLBACK.
 --
--- P2-5: a ativação (#303) vale também no banco, não só na rota. Com a
--- exigência ligada, quem não pagou nem tem isenção pronta é recusado ao dar
--- acesso manual, criar cupom, ativar cupom e conectar domínio, mesmo chamando
--- a RPC direto pelo PostgREST. Quem pagou, quem tem isenção pronta e admin
--- passam. Com a exigência desligada, todos passam. Pausar cupom continua
--- valendo para quem foi barrado.
+-- P2-5: activation (#303) also holds in the database, not just in the route. With the
+-- requirement on, whoever has not paid and has no ready waiver is refused when granting
+-- manual access, creating a coupon, activating a coupon and connecting a domain, even when calling
+-- the RPC directly through PostgREST. Whoever paid, whoever has a ready waiver and admin
+-- pass. With the requirement off, everyone passes. Pausing a coupon still
+-- works for whoever was blocked.
 begin;
 create temp table activation_checks (name text, passed boolean);
 grant insert, select on activation_checks to authenticated;
@@ -23,7 +23,7 @@ begin
     jsonb_build_object('sub', p_uid, 'role', p_role, 'aal', 'aal2')::text, true);
   perform set_config('skillset.trusted_write', 'off', true);
 end $$;
--- true só quando a chamada foi recusada com esta mensagem; a que passou é desfeita.
+-- true only when the call was refused with this message; the one that went through is undone.
 create function pg_temp.refused(p_sql text, p_message text) returns boolean language plpgsql as $$
 begin
   execute p_sql;
@@ -32,7 +32,7 @@ exception
   when sqlstate 'Z0001' then return false;
   when others then return sqlerrm = p_message;
 end $$;
--- true quando a chamada passou; a recusa inesperada vai para o log.
+-- true when the call went through; the unexpected refusal goes to the log.
 create function pg_temp.passed(p_sql text) returns boolean language plpgsql as $$
 begin
   execute p_sql;
@@ -41,8 +41,8 @@ exception when others then
   raise warning 'unexpected refusal: %', sqlerrm;
   return false;
 end $$;
--- As quatro portas, chamadas por quem está logado, como faria o PostgREST.
--- p_phase separa as duas rodadas: e-mail, código e domínio novos em cada uma.
+-- The four doors, called by whoever is logged in, as PostgREST would.
+-- p_phase separates the two rounds: new email, code and domain in each one.
 create function pg_temp.try_gates(p_phase text, p_who text, n int, p_coupon uuid, p_allowed boolean)
 returns void language plpgsql as $$
 declare g record;
@@ -71,10 +71,10 @@ begin
   end loop;
 end $$;
 
--- 1 sem ativação, 2 pagou, 3 isenção pronta, 4 admin sem taxa (concede as
--- isenções), 5 isenção pendente. Cada um com curso publicado, plano com domínio
--- e um cupom pausado. A exigência de verificação fica desligada para isolar a
--- ativação.
+-- 1 without activation, 2 paid, 3 ready waiver, 4 admin without fee (grants the
+-- waivers), 5 pending waiver. Each one with a published course, a plan with a domain
+-- and a paused coupon. The verification requirement stays off to isolate
+-- activation.
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
@@ -109,7 +109,7 @@ delete from public.platform_settings where key in ('require_activation_fee', 're
 insert into public.platform_settings(key, value) values
   ('require_activation_fee', 'true'::jsonb), ('require_creator_verification', 'false'::jsonb);
 
--- Exigência ligada.
+-- Requirement on.
 select pg_temp.act_as(pg_temp.uid(1), 'authenticated');
 set local role authenticated;
 select pg_temp.try_gates('on', 'creator without activation', 1, :'coupon_1', false);
@@ -133,7 +133,7 @@ set local role authenticated;
 select pg_temp.try_gates('on', 'creator with a pending waiver', 5, :'coupon_5', false);
 reset role;
 
--- Exigência desligada: todos passam.
+-- Requirement off: everyone passes.
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 update public.platform_settings set value = 'false'::jsonb where key = 'require_activation_fee';
@@ -158,7 +158,7 @@ set local role authenticated;
 select pg_temp.try_gates('off', 'creator with a pending waiver', 5, :'coupon_5', true);
 reset role;
 
--- 5 contas x 4 portas x 2 rodadas + a pausa: nenhuma rodada pode sumir calada.
+-- 5 accounts x 4 doors x 2 rounds + the pause: no round can disappear silently.
 select pg_temp.check_gate('every gate ran in both rounds', (select count(*) = 41 from activation_checks));
 
 select name, passed from activation_checks order by name;

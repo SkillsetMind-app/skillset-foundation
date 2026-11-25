@@ -15,9 +15,9 @@ BEGIN
 END;
 $$;
 
--- O bucket privado aceita o que o app envia (PDF, vídeo, áudio, download) e
--- recusa conteúdo ativo. allowed_mime_types nulo (o estado de antes, "qualquer
--- tipo") reprova o @>, então isto também pega a migration não aplicada.
+-- The private bucket accepts what the app sends (PDF, video, audio, download) and
+-- refuses active content. A null allowed_mime_types (the state before, "any
+-- type") fails the @>, so this also catches the migration not being applied.
 SELECT pg_temp.assert_true(
   EXISTS (
     SELECT 1
@@ -32,7 +32,7 @@ SELECT pg_temp.assert_true(
   'course-content must accept app uploads and reject svg/html/xml (no image/*, text/* or application/* wildcard)'
 );
 
--- A trava é de tipo; o bucket continua privado.
+-- The lock is on type; the bucket stays private.
 SELECT pg_temp.assert_true(
   EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'course-content' AND public = false),
   'course-content must stay private'

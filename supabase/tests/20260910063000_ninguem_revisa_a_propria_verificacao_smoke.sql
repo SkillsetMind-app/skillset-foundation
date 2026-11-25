@@ -1,8 +1,8 @@
 \set ON_ERROR_STOP on
--- Banco descartável apenas. Fixtures voltam no ROLLBACK.
+-- Disposable database only. Fixtures go back on ROLLBACK.
 --
--- P2-7: quem revisa não decide o próprio caso de verificação de criador, nem
--- ops nem admin. A revisão do caso de outra pessoa continua funcionando.
+-- P2-7: a reviewer does not decide their own creator verification case, neither
+-- ops nor admin. Reviewing someone else's case keeps working.
 begin;
 create temp table self_review_checks (name text, passed boolean);
 grant insert, select on self_review_checks to authenticated;
@@ -19,7 +19,7 @@ begin
     jsonb_build_object('sub', p_uid, 'role', p_role, 'aal', 'aal2')::text, true);
   perform set_config('skillset.trusted_write', 'off', true);
 end $$;
--- true só quando a chamada foi recusada com esta mensagem; a que passou é desfeita.
+-- true only when the call was refused with this message; the one that passed is undone.
 create function pg_temp.refused(p_sql text, p_message text) returns boolean language plpgsql as $$
 begin
   execute p_sql;
@@ -29,7 +29,7 @@ exception
   when others then return sqlerrm = p_message;
 end $$;
 
--- 1 ops que também pediu verificação, 2 criador comum, 3 admin que também pediu.
+-- 1 ops who also asked for verification, 2 ordinary creator, 3 admin who also asked.
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
@@ -48,7 +48,7 @@ select id as own_case from public.creator_verification_cases where creator_id = 
 select id as other_case from public.creator_verification_cases where creator_id = pg_temp.uid(2)::text \gset
 select id as admin_case from public.creator_verification_cases where creator_id = pg_temp.uid(3)::text \gset
 
--- Ops, pela RPC que o painel usa.
+-- Ops, through the RPC the panel uses.
 select pg_temp.act_as(pg_temp.uid(1), 'authenticated');
 set local role authenticated;
 select pg_temp.check_review('ops cannot approve the own verification case',
@@ -67,7 +67,7 @@ select pg_temp.check_review('reviewed case records the reviewer',
   (select status = 'approved' and reviewed_by = pg_temp.uid(1)::text
      from public.creator_verification_cases where id = :'other_case'));
 
--- Admin também não decide o próprio caso.
+-- Admin does not decide their own case either.
 select pg_temp.act_as(pg_temp.uid(3), 'authenticated');
 set local role authenticated;
 select pg_temp.check_review('admin cannot approve the own verification case either',

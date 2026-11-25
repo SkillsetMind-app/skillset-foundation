@@ -1,18 +1,18 @@
 \set ON_ERROR_STOP on
--- Banco descartável apenas. Fixtures voltam no ROLLBACK.
+-- Disposable database only. Fixtures are undone in the ROLLBACK.
 --
--- Selo "profissional verificado" em public_profiles
+-- "Verified professional" badge in public_profiles
 -- (20261006010000_selo_profissional_verificado.sql):
---   - o selo exige status 'approved' E um caso aprovado; a data é só a da
---     revisão (reviewed_at), nunca inventada;
---   - para o público só existem duas espécies: 'license' e 'evidence';
---   - revogar ou apagar o caso tira o selo; a aprovação pela RPC da fila e a
---     correção direta do caso reprojetam;
---   - "none" e "pending" são testados com linha de verdade em public_profiles
---     (desde 20261006020000 todo professor com o cadastro completo tem a
---     linha), para a ausência do selo não passar só porque a linha não existe;
---   - o selo não mexe em updated_at (o diretório ordena por ele);
---   - anon lê as colunas novas e continua sem ler o que é privado.
+--   - the badge requires status 'approved' AND an approved case; the date is only that of the
+--     review (reviewed_at), never made up;
+--   - for the public there are only two kinds: 'license' and 'evidence';
+--   - revoking or deleting the case removes the badge; approval through the queue RPC and
+--     a direct fix of the case both reproject;
+--   - "none" and "pending" are tested with a real row in public_profiles
+--     (since 20261006020000 every teacher with a complete signup has the
+--     row), so that the absence of the badge does not pass just because the row does not exist;
+--   - the badge does not touch updated_at (the directory sorts by it);
+--   - anon reads the new columns and still cannot read what is private.
 begin;
 create temp table badge_checks (name text, passed boolean);
 grant insert, select on badge_checks to anon, authenticated;
@@ -29,11 +29,11 @@ begin
     jsonb_build_object('sub', p_uid, 'role', p_role, 'aal', 'aal2')::text, true);
   perform set_config('skillset.trusted_write', 'off', true);
 end $$;
--- Linha pública do professor n, ou null se não existe.
+-- Public row of teacher n, or null if it does not exist.
 create function pg_temp.pp(n int) returns public.public_profiles language sql as $$
   select * from public.public_profiles where uid = pg_temp.uid(n)::text;
 $$;
--- Número de linhas que a consulta devolveu, ou -1 se ela foi recusada.
+-- Number of rows the query returned, or -1 if it was refused.
 create function pg_temp.rows_or_denied(p_sql text) returns int language plpgsql as $$
 declare n int;
 begin
@@ -42,7 +42,7 @@ begin
 exception when insufficient_privilege then
   return -1;
 end $$;
--- true só quando o banco recusou a escrita pela constraint; a que passou é desfeita.
+-- true only when the database refused the write through the constraint; the one that went through is undone.
 create function pg_temp.violates_check(p_sql text) returns boolean language plpgsql as $$
 begin
   execute p_sql;
@@ -52,14 +52,14 @@ exception
   when sqlstate 'Z0001' then return false;
 end $$;
 
--- 1 psicólogo aprovado · 2 professor "none" · 3 coach com pedido pendente
--- 4 aprovado com caso sem reviewed_at (legacy) · 5 aprovado sem caso nenhum
--- 6 ops que revisa · 7 holístico aprovado
+-- 1 approved psychologist · 2 teacher "none" · 3 coach with a pending request
+-- 4 approved with a case without reviewed_at (legacy) · 5 approved with no case at all
+-- 6 ops who reviews · 7 holistic approved
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
--- Domínio fora dos reservados para teste: conta de teste nunca ganha perfil
--- público (20261006020000), e aqui as linhas precisam existir.
+-- Domain outside the ones reserved for tests: a test account never gets a public
+-- profile (20261006020000), and here the rows need to exist.
 select pg_temp.uid(n), 'authenticated', 'authenticated', 'selo-' || n || '@smoke.skillsetmind.com',
   now(), '{}', '{}', now(), now()
 from generate_series(1, 7) n;
@@ -76,7 +76,7 @@ values
    '2026-09-01 12:00:00+00'),
   (pg_temp.uid(3)::text, 'pending', 'coach', 'Coach', '', '', '', null),
   (pg_temp.uid(7)::text, 'approved', 'holistic', 'Reiki', '', '', '', '2026-09-03 12:00:00+00');
--- Admissão antiga: espécie 'legacy' (default) e sem reviewed_at.
+-- Old admission: kind 'legacy' (default) and no reviewed_at.
 insert into public.creator_verification_cases
   (creator_id, status, profession, registration_type, registration_id, registration_region)
 values (pg_temp.uid(4)::text, 'approved', 'Psychologist', 'Registry', 'SMOKE-REG-0004', 'NY');
@@ -99,16 +99,16 @@ select pg_temp.check_badge('the registration number never reaches the public row
   not exists (select 1 from public.public_profiles pp
                where to_jsonb(pp)::text like '%SMOKE-REG%'));
 
--- "none" e "pending" com linha de verdade: professor com o cadastro completo
--- tem perfil público sem verificação (20261006020000).
+-- "none" and "pending" with a real row: a teacher with a complete signup
+-- has a public profile without verification (20261006020000).
 select pg_temp.check_badge('none and pending teachers have a public row',
   (pg_temp.pp(2)).uid is not null and (pg_temp.pp(3)).uid is not null);
--- Caso aprovado com o usuário ainda em "none": o status manda, sem selo.
+-- Approved case with the user still at "none": the status rules, no badge.
 insert into public.creator_verification_cases
   (creator_id, status, verification_kind, profession, registration_type, registration_id,
    registration_region, reviewed_at)
 values (pg_temp.uid(2)::text, 'approved', 'psychologist', 'Psychologist', '', 'SMOKE-REG-0002', 'NY', now());
--- Pendente: mexer no caso dispara o trigger novo, e o selo continua ausente.
+-- Pending: touching the case fires the new trigger, and the badge stays absent.
 update public.creator_verification_cases set verification_kind = 'holistic'
   where creator_id = pg_temp.uid(3)::text;
 select pg_temp.check_badge('status none with an approved case: row exists, no badge',
@@ -116,7 +116,7 @@ select pg_temp.check_badge('status none with an approved case: row exists, no ba
 select pg_temp.check_badge('pending: row exists, no badge',
   (select not verified_professional and verification_kind is null from pg_temp.pp(3)));
 
--- A aprovação pelo caminho real: a RPC da fila, chamada por ops.
+-- Approval through the real path: the queue RPC, called by ops.
 select id as coach_case from public.creator_verification_cases
   where creator_id = pg_temp.uid(3)::text \gset
 select pg_temp.act_as(pg_temp.uid(6), 'authenticated');
@@ -131,9 +131,9 @@ select pg_temp.check_badge('approval through the RPC: evidence with the review d
      join public.creator_verification_cases c on c.creator_id = pp.uid
     where pp.uid = pg_temp.uid(3)::text));
 
--- Correção direta no caso, sem tocar em users: o trigger novo reprojeta, e o
--- selo não mexe em updated_at. A data antiga vem antes: dentro da transação
--- now() é constante, e comparar com o valor de agora passaria mesmo com bump.
+-- Direct fix on the case, without touching users: the new trigger reprojects, and the
+-- badge does not touch updated_at. The old date comes first: inside the transaction
+-- now() is constant, and comparing with the current value would pass even with a bump.
 update public.public_profiles set updated_at = '2020-01-01 00:00:00+00'
   where uid = pg_temp.uid(3)::text;
 select pg_temp.act_as(null, 'service_role');
@@ -144,27 +144,27 @@ select pg_temp.check_badge('fixing the case kind reprojects the badge',
 select pg_temp.check_badge('the badge does not touch updated_at (directory order)',
   (select updated_at = '2020-01-01 00:00:00+00' from pg_temp.pp(3)));
 
--- Revogar o caso (approved -> rejected) com o usuário ainda aprovado.
+-- Revoke the case (approved -> rejected) with the user still approved.
 update public.creator_verification_cases set status = 'rejected'
   where creator_id = pg_temp.uid(1)::text;
 select pg_temp.check_badge('revoking the case clears the badge',
   (select not verified_professional and verification_kind is null and verified_at is null
      from pg_temp.pp(1)));
 
--- Apagar o caso.
+-- Delete the case.
 delete from public.creator_verification_cases where id = :'coach_case';
 select pg_temp.check_badge('deleting the case clears the badge',
   (select not verified_professional and verification_kind is null and verified_at is null
      from pg_temp.pp(3)));
 
--- Saiu da aprovação: sai o selo, e a linha fica (o perfil não depende dela).
+-- Left the approval: the badge goes away, and the row stays (the profile does not depend on it).
 select set_config('skillset.trusted_write', 'on', true);
 update public.users set creator_verification_status = 'rejected' where uid = pg_temp.uid(7)::text;
 select pg_temp.check_badge('losing the approval removes the badge, not the profile',
   (select not verified_professional and verification_kind is null and verified_at is null
      from pg_temp.pp(7)));
 
--- O invariante vive no banco.
+-- The invariant lives in the database.
 select pg_temp.check_badge('constraint refuses a badge without a kind',
   pg_temp.violates_check(format(
     'update public.public_profiles set verification_kind = null where uid = %L', pg_temp.uid(4)::text)));
@@ -178,7 +178,7 @@ select pg_temp.check_badge('only license or evidence reach the public row',
   not exists (select 1 from public.public_profiles
                where verification_kind is not null and verification_kind not in ('license', 'evidence')));
 
--- Nada privado vira coluna pública.
+-- Nothing private becomes a public column.
 select pg_temp.check_badge('public_profiles has no private verification column',
   not exists (select 1 from information_schema.columns
                where table_schema = 'public' and table_name = 'public_profiles'
@@ -194,7 +194,7 @@ select pg_temp.check_badge('the projection owner can call the badge helper',
     (select proowner from pg_proc where oid = 'public.sync_public_profile()'::regprocedure),
     'public.public_professional_badge(text)', 'EXECUTE'));
 
--- Visitante anônimo.
+-- Anonymous visitor.
 select pg_temp.act_as(null, 'anon');
 set local role anon;
 select pg_temp.check_badge('anon reads the new columns',

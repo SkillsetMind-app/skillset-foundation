@@ -1,10 +1,10 @@
 \set ON_ERROR_STOP on
--- Banco descartável apenas. Fixtures voltam no ROLLBACK.
+-- Disposable database only. Fixtures go back on ROLLBACK.
 --
--- Desde 20260927010000 a taxa de ativação é cobrada ao publicar. Com a
--- exigência ligada, o criador que não pagou cria rascunho, monta módulos e
--- aulas e salva; o Publicar (pela RPC ou escrevendo status direto) continua
--- recusado. Quem pagou publica.
+-- Since 20260927010000 the activation fee is charged on publishing. With the
+-- requirement on, a creator who has not paid creates a draft, builds modules and
+-- lessons and saves; Publish (through the RPC or by writing status directly) stays
+-- refused. Whoever paid publishes.
 begin;
 create temp table publish_only_checks (name text, passed boolean);
 grant insert, select on publish_only_checks to authenticated;
@@ -29,8 +29,8 @@ exception
   when sqlstate 'Z0001' then return false;
   when others then return sqlerrm = p_message;
 end $$;
--- Recusa com qualquer mensagem: a escrita direta de status pode cair antes no
--- guarda de campos; o que importa é não publicar.
+-- Refused with any message: the direct status write may fall earlier into the
+-- field guard; what matters is that it does not publish.
 create function pg_temp.refused_any(p_sql text) returns boolean language plpgsql as $$
 begin
   execute p_sql;
@@ -48,7 +48,7 @@ exception when others then
   return false;
 end $$;
 
--- 1 não pagou, 2 pagou. Ambos criadores com os termos aceitos.
+-- 1 did not pay, 2 paid. Both are creators with the terms accepted.
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
@@ -88,7 +88,7 @@ begin
   );
 end $$;
 
--- Sem pagar: rascunho, currículo e salvar passam.
+-- Without paying: draft, curriculum and save pass.
 select pg_temp.act_as(pg_temp.uid(1), 'authenticated');
 set local role authenticated;
 select pg_temp.check_gate('unpaid creator creates and builds a draft',
@@ -98,7 +98,7 @@ select pg_temp.check_gate('unpaid creator edits the draft directly',
     current_setting('smoke.course_1', true))));
 select pg_temp.check_gate('unpaid creator still sees the studio tour',
   public.claim_welcome_tour(pg_temp.uid(1)::text, 'teacher'));
--- Publicar continua fechado, pela RPC e pela escrita direta.
+-- Publish stays closed, through the RPC and through the direct write.
 select pg_temp.check_gate('unpaid creator cannot publish through the RPC',
   pg_temp.refused(format('select public.publish_teacher_course(%L)', current_setting('smoke.course_1', true)),
     'Pay the one-time activation fee before publishing your first course.'));
@@ -107,7 +107,7 @@ select pg_temp.check_gate('unpaid creator cannot publish by writing status',
     current_setting('smoke.course_1', true))));
 reset role;
 
--- O gatilho sozinho, sem a RPC e sem o guarda de campos na frente.
+-- The trigger alone, without the RPC and without the field guard in front.
 select pg_temp.act_as(pg_temp.uid(1), 'authenticated');
 select set_config('skillset.trusted_write', 'on', true);
 select pg_temp.check_gate('trigger alone refuses the unpaid owner publishing',
@@ -116,8 +116,8 @@ select pg_temp.check_gate('trigger alone refuses the unpaid owner publishing',
     'Pay the one-time activation fee before publishing your first course.'));
 select set_config('skillset.trusted_write', 'off', true);
 
--- Ativação revogada (estorno limpa activation_fee_paid_at): o dono não edita
--- mais o curso que ficou publicado.
+-- Activation revoked (a refund clears activation_fee_paid_at): the owner no longer edits
+-- the course that stayed published.
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 update public.courses set status = 'published' where id = current_setting('smoke.course_1', true);
@@ -142,7 +142,7 @@ select set_config('skillset.trusted_write', 'on', true);
 update public.courses set status = 'draft' where id = current_setting('smoke.course_1', true);
 select set_config('skillset.trusted_write', 'off', true);
 
--- Quem pagou publica.
+-- Whoever paid publishes.
 select pg_temp.act_as(pg_temp.uid(2), 'authenticated');
 set local role authenticated;
 select pg_temp.check_gate('paid creator builds a draft', pg_temp.passed('select pg_temp.build(2)'));

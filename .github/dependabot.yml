@@ -1,11 +1,11 @@
 version: 2
 updates:
-  # Um grupo único com `patterns: ["*"]` junta tudo num PR só: basta um bump
-  # transitivo quebrar o build para o lote inteiro travar — e um patch de
-  # segurança fica esperando atrás dele, sem ninguém perceber, contra um teto de
-  # 5 PRs abertos. Por isso patch e minor viajam separados: patch é onde moram
-  # as correções de segurança e quase nunca quebra, então segue sozinho e rápido;
-  # minor pode carregar comportamento novo e merece revisão própria.
+  # A single group with `patterns: ["*"]` bundles everything into one PR: one
+  # transitive bump that breaks the build is enough to stall the whole batch,
+  # and a security patch ends up waiting behind it, unnoticed, against a cap of
+  # 5 open PRs. That is why patch and minor travel separately: patch is where
+  # the security fixes live and it almost never breaks, so it goes on its own,
+  # fast; minor can carry new behavior and deserves its own review.
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
@@ -14,8 +14,8 @@ updates:
     commit-message:
       prefix: "chore(deps)"
     ignore:
-      # jsdom preso na versão atual: a minor nova quebra um teste; revisar à
-      # parte. Patches continuam passando.
+      # jsdom is pinned to the current version: the new minor breaks a test;
+      # review it separately. Patches still go through.
       - dependency-name: "jsdom"
         update-types:
           - "version-update:semver-minor"

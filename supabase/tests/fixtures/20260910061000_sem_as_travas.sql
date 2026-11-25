@@ -1,7 +1,7 @@
--- O banco como ficaria sem as travas que só viviam no snapshot de 21/07.
--- Derruba as 13 que ficam em tabelas public. on_auth_user_created fica: só o
--- dono de auth.users (o Supabase Auth) derruba trigger nela.
--- Sem IF EXISTS de propósito: se uma já faltar, é erro de setup, não prova.
+-- The database as it would be without the guards that only lived in the Jul 21 snapshot.
+-- Drops the 13 that sit on public tables. on_auth_user_created stays: only the
+-- owner of auth.users (Supabase Auth) drops a trigger on it.
+-- No IF EXISTS on purpose: if one is already missing, it is a setup error, not proof.
 drop trigger community_comments_update_guard on public.community_comments;
 drop trigger community_posts_update_guard on public.community_posts;
 drop trigger community_reports_update_guard on public.community_reports;

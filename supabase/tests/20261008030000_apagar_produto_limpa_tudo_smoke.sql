@@ -1,27 +1,27 @@
 \set ON_ERROR_STOP on
--- Banco descartavel apenas. Fixtures voltam no ROLLBACK.
+-- Disposable database only. Fixtures go back on ROLLBACK.
 --
--- Apagar produto limpa tudo (20261008030000_apagar_produto_limpa_tudo.sql):
---   - rascunho com post e comentario do professor, convite pendente, sessao,
---     desejo e video: apaga, e a fila guarda o video com o recibo (e nao o
---     material, que nao e video);
---   - a linha da fila nasce na mesma transacao: DELETE que falha nao deixa
---     linha; DELETE direto pela tabela tambem deixa linha;
---   - curso com matricula (mesmo reembolsada) ou assinatura: arquiva;
---   - outro professor recebe o mesmo "nao achei" de um id que nao existe;
---   - a fila e so do service role: o cliente nao le nem grava; o dono ve as
---     proprias linhas pela funcao do selo (so as pending), e mais ninguem ve;
---   - a funcao antiga delete_teacher_course_draft nao e mais do cliente;
---   - a lista de arquivos e so do service role, so da pasta certa (com a
---     barra final), so do que nasceu enquanto o curso existia, marca o arquivo
---     que outro curso vivo usa, e recusa id perigoso, id sem pedido, id
---     reaproveitado e limpeza cancelada;
---   - o cliente nunca cria nem renomeia curso para um id que ja passou pela
---     fila (pending, cancelled ou done); quem nem poderia inserir a linha
---     recebe o erro da RLS, sem descobrir se o id esta na fila; a equipe
---     (service role) ainda recria para restaurar;
---   - video so pode sair com a fila pending, o id sem dono e ninguem citando;
---   - o admin apaga pelo mesmo caminho, com post do dono no curso.
+-- Deleting a product cleans up everything (20261008030000_apagar_produto_limpa_tudo.sql):
+--   - a draft with a teacher's post and comment, a pending invite, a session,
+--     a wish and a video: deletes, and the queue keeps the video with the receipt (and not the
+--     material, which is not a video);
+--   - the queue row is born in the same transaction: a DELETE that fails leaves no
+--     row; a direct DELETE on the table also leaves a row;
+--   - a course with an enrollment (even refunded) or a subscription: archives;
+--   - another teacher gets the same "not found" as for an id that does not exist;
+--   - the queue belongs to the service role only: the client neither reads nor writes; the owner sees their
+--     own rows through the badge function (only the pending ones), and nobody else sees them;
+--   - the old function delete_teacher_course_draft no longer belongs to the client;
+--   - the file list belongs to the service role only, only of the right folder (with the
+--     trailing slash), only of what was born while the course existed, marks the file
+--     that another live course uses, and refuses a dangerous id, an id with no request, a reused
+--     id and a canceled cleanup;
+--   - the client never creates or renames a course to an id that already went through the
+--     queue (pending, cancelled or done); someone who could not even insert the row
+--     gets the RLS error, without finding out whether the id is in the queue; the staff
+--     (service role) still recreates it to restore;
+--   - a video can only go out with the queue pending, the id with no owner and nobody citing it;
+--   - the admin deletes through the same path, with the owner's post in the course.
 begin;
 create temp table del_checks (name text, passed boolean);
 grant insert, select on del_checks to authenticated, service_role;
@@ -38,7 +38,7 @@ begin
     jsonb_build_object('sub', p_uid, 'role', p_role, 'aal', 'aal2')::text, true);
   perform set_config('skillset.trusted_write', 'off', true);
 end $$;
--- Linhas que o comando mudou. A RLS recusa DELETE em silencio (0 linhas).
+-- Rows the command changed. RLS refuses DELETE silently (0 rows).
 create function pg_temp.affected(p_sql text) returns int language plpgsql as $$
 declare n int;
 begin
@@ -46,7 +46,7 @@ begin
   get diagnostics n = row_count;
   return n;
 end $$;
--- 'SQLSTATE: mensagem' do erro. Se passar, e desfeito e devolve 'Z0001: no error'.
+-- 'SQLSTATE: message' of the error. If it passes, it is undone and returns 'Z0001: no error'.
 create function pg_temp.error_of(p_sql text) returns text language plpgsql as $$
 begin
   execute p_sql;
@@ -55,7 +55,7 @@ exception when others then
   return sqlstate || ': ' || sqlerrm;
 end $$;
 
--- 1 professor dono · 2 outro professor · 3 admin · 4 aluno
+-- 1 owner teacher · 2 other teacher · 3 admin · 4 learner
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
@@ -79,8 +79,8 @@ insert into public.courses(id, owner_id, slug, title, title_key, summary, catego
 values
   ('smoke-del-a', pg_temp.uid(1)::text, 'smoke-del-a-slug', 'Smoke del A', 'smoke-del-a',
    'Curso usado so por este smoke.', 'smoke', 'draft', 'free', 0, 'USD', true, null),
-  -- Prefixo vizinho: 'courses/smoke-del-a-b/' comeca com 'courses/smoke-del-a'.
-  -- E a capa dele e "emprestada" do A: a limpeza do A nao pode apagar.
+  -- Neighbor prefix: 'courses/smoke-del-a-b/' starts with 'courses/smoke-del-a'.
+  -- And its cover is "borrowed" from A: the cleanup of A must not delete it.
   ('smoke-del-a-b', pg_temp.uid(2)::text, 'smoke-del-a-b-slug', 'Smoke del A-B', 'smoke-del-a-b',
    'Curso usado so por este smoke.', 'smoke', 'draft', 'free', 0, 'USD', true,
    'https://example.supabase.co/storage/v1/object/public/public-media/courses/smoke-del-a/landing/hero.webp'),
@@ -93,15 +93,15 @@ values
   ('smoke-del-direct', pg_temp.uid(1)::text, 'smoke-del-direct-slug', 'Smoke del direct', 'smoke-del-direct',
    'Curso usado so por este smoke.', 'smoke', 'draft', 'free', 0, 'USD', false, null);
 
--- So o aluno 4 comprou: matricula reembolsada no 'buyer', assinatura no 'sub'.
+-- Only learner 4 bought: refunded enrollment on 'buyer', subscription on 'sub'.
 insert into public.enrollments(id, user_id, course_id, course_slug, course_title, course_category, course_image, status, source)
 values (pg_temp.uid(4)::text || '__smoke-del-buyer', pg_temp.uid(4)::text, 'smoke-del-buyer',
   'smoke-del-buyer', 'Smoke del buyer', 'smoke', '', 'refunded', 'admin');
 insert into public.course_subscriptions(id, user_id, course_id, course_slug, status)
 values ('smoke-del-sub-1', pg_temp.uid(4)::text, 'smoke-del-sub', 'smoke-del-sub-slug', 'active');
 
--- O que travava o DELETE: post e comentario do proprio professor, sessao,
--- convite pendente. Mais um desejo (sem FK) e os arquivos.
+-- What blocked the DELETE: the teacher's own post and comment, session,
+-- pending invite. Plus a wish (no FK) and the files.
 insert into public.community_posts(id, course_slug, author_id, author_name, author_role, category, title, body)
 values
   ('smoke-del-post-a', 'smoke-del-a', pg_temp.uid(1)::text, 'Del 1', 'teacher', 'discussion', null, 'Welcome.'),
@@ -117,7 +117,7 @@ values ('smoke-del-event-a', 'smoke-del-a', 'smoke-del-a', 'Smoke del A', pg_tem
   'https://example.invalid/live');
 insert into public.course_access_grants(course_id, learner_email, granted_by)
 values ('smoke-del-a', 'del-smoke-pending@example.test', pg_temp.uid(1)::text);
--- A regra do banco: id = user_id || '__' || course_id (wishlists_id_shape).
+-- The database rule: id = user_id || '__' || course_id (wishlists_id_shape).
 insert into public.wishlists(id, user_id, course_id, course_slug)
 values (pg_temp.uid(4)::text || '__smoke-del-a', pg_temp.uid(4)::text, 'smoke-del-a', 'smoke-del-a-slug');
 insert into public.course_assets(id, course_id, owner_id, kind, file_name, content_type, size,
@@ -127,7 +127,7 @@ values
    'bunny/smoke-del-vid-1/receipt-1', 'smoke-del-vid-1'),
   ('smoke-del-file-a', 'smoke-del-a', pg_temp.uid(1)::text, 'lesson_material', 'workbook.pdf',
    'application/pdf', 1024, 'courses/smoke-del-a/assets/u/1/workbook.pdf', null),
-  -- Um video que um curso VIVO usa: nunca sai.
+  -- A video that a LIVE course uses: never goes out.
   ('smoke-del-video-shared', 'smoke-del-a-b', pg_temp.uid(2)::text, 'lesson_video', 'shared.mp4', 'video/mp4', 1024,
    'bunny/smoke-del-vid-shared/receipt-2', 'smoke-del-vid-shared');
 insert into storage.objects(bucket_id, name, created_at)
@@ -136,12 +136,12 @@ values
   ('public-media', 'courses/smoke-del-a/landing/hero.webp', now()),
   ('public-media', 'courses/smoke-del-a-b/landing/other.webp', now()),
   ('course-content', 'elsewhere/smoke-del-a/stray.pdf', now()),
-  -- Mais velho que o curso (pasta orfa adotada) e mais novo que o pedido.
+  -- Older than the course (adopted orphan folder) and newer than the request.
   ('course-content', 'courses/smoke-del-a/assets/old/orphan.pdf', now() - interval '2 days'),
   ('public-media', 'courses/smoke-del-a/landing/late.webp', now() + interval '1 hour');
 select set_config('skillset.trusted_write', 'off', true);
 
--- O dono apaga o rascunho pela funcao, como a tela faz.
+-- The owner deletes the draft through the function, as the screen does.
 select pg_temp.act_as(pg_temp.uid(1), 'authenticated');
 set local role authenticated;
 select pg_temp.check_del('the owner deletes a draft with posts, a session, an invitation and a video',
@@ -163,7 +163,7 @@ select pg_temp.check_del('the client cannot call the old delete_teacher_course_d
   pg_temp.error_of($q$select public.delete_teacher_course_draft('smoke-del-admin')$q$) like '42501:%');
 reset role;
 
--- Quem nao e dono nao trava a linha nem descobre se o id existe.
+-- Someone who is not the owner does not lock the row nor find out whether the id exists.
 select pg_temp.act_as(pg_temp.uid(2), 'authenticated');
 set local role authenticated;
 select pg_temp.check_del('another creator sees no deletion of someone else',
@@ -201,7 +201,7 @@ select pg_temp.check_del('the queue keeps the video and its receipt, only the vi
         'ownerId', pg_temp.uid(1)::text))
      from public.course_deletions where course_id = 'smoke-del-a'));
 
--- A lista de arquivos: so service role, so a pasta exata.
+-- The file list: service role only, the exact folder only.
 set local role service_role;
 select pg_temp.check_del('the cleanup lists exactly the two files under courses/<id>/',
   (select count(*) = 2
@@ -229,9 +229,9 @@ select pg_temp.check_del('a video a live course still uses never goes',
   not public.course_cleanup_video_deletable('smoke-del-a', 'smoke-del-vid-shared'));
 reset role;
 
--- Id escolhido a mao: para o cliente, o id que passou pela fila e reservado.
--- O gatilho e AFTER: o aluno que tenta um id alheio para na RLS (42501) e
--- nao descobre se o id esta na fila.
+-- Hand-picked id: for the client, the id that went through the queue is reserved.
+-- The trigger is AFTER: a learner who tries someone else's id stops at RLS (42501) and
+-- does not find out whether the id is in the queue.
 select pg_temp.act_as(pg_temp.uid(4), 'authenticated');
 set local role authenticated;
 select pg_temp.check_del('a student probing an id being deleted gets the RLS error, not the queue error',
@@ -240,8 +240,8 @@ select pg_temp.check_del('a student probing an id being deleted gets the RLS err
     values (%L, %L, %L, 'Smoke del again', %L, 'Curso usado so por este smoke.', 'smoke', 'draft', 'free', 0, 'USD')$q$,
     'smoke-del-a', pg_temp.uid(1)::text, 'smoke-del-a-probe', 'smoke-del-a-probe')) like '42501:%');
 reset role;
--- Curso sem filhos do professor 2, para o caso do renomear (um filho com FK
--- sem ON UPDATE daria 23503 antes deste gatilho).
+-- A course without children from teacher 2, for the rename case (a child with an FK
+-- without ON UPDATE would give 23503 before this trigger).
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 insert into public.courses(id, owner_id, slug, title, title_key, summary, category, status, payment_type,
@@ -262,8 +262,8 @@ reset role;
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 
--- Defesa em profundidade: se o id voltar mesmo assim (aqui, pela equipe, com
--- a fila cancelada e reaberta a mao), a lista e o video recusam.
+-- Defense in depth: if the id comes back anyway (here, by the staff, with
+-- the queue canceled and reopened by hand), the list and the video refuse.
 update public.course_deletions set status = 'cancelled' where course_id = 'smoke-del-a';
 insert into public.courses(id, owner_id, slug, title, title_key, summary, category, status, payment_type,
   price_amount_minor, currency)
@@ -279,7 +279,7 @@ select pg_temp.check_del('an id in use again keeps its videos',
   not public.course_cleanup_video_deletable('smoke-del-a', 'smoke-del-vid-1'));
 reset role;
 
--- Com comprador, arquiva: matricula reembolsada conta; assinatura tambem.
+-- With a buyer, it archives: a refunded enrollment counts; a subscription too.
 select pg_temp.act_as(pg_temp.uid(1), 'authenticated');
 set local role authenticated;
 select pg_temp.check_del('a refunded buyer still means archive',
@@ -293,12 +293,12 @@ select pg_temp.check_del('the archived course stays, inactive, with its post and
   and exists (select 1 from public.community_posts where id = 'smoke-del-post-buyer')
   and not exists (select 1 from public.course_deletions where course_id in ('smoke-del-buyer', 'smoke-del-sub')));
 
--- Mesma transacao: um DELETE que falha (a matricula trava a FK) nao deixa linha.
+-- Same transaction: a DELETE that fails (the enrollment blocks the FK) leaves no row.
 select pg_temp.check_del('a failed delete leaves no queue row',
   pg_temp.error_of($q$delete from public.courses where id = 'smoke-del-buyer'$q$) like '23503:%'
   and not exists (select 1 from public.course_deletions where course_id = 'smoke-del-buyer'));
 
--- DELETE direto pela tabela (a policy do dono deixa): a linha nasce igual.
+-- Direct DELETE on the table (the owner's policy allows it): the row is born the same.
 select pg_temp.act_as(pg_temp.uid(1), 'authenticated');
 set local role authenticated;
 select pg_temp.check_del('a direct delete by the owner also queues the cleanup',
@@ -308,7 +308,7 @@ select pg_temp.act_as(null, 'service_role');
 select pg_temp.check_del('the direct delete wrote its queue row',
   exists (select 1 from public.course_deletions where course_id = 'smoke-del-direct' and status = 'pending'));
 
--- O admin apaga pelo mesmo caminho: o post do dono nao trava mais.
+-- The admin deletes through the same path: the owner's post no longer blocks.
 select pg_temp.act_as(pg_temp.uid(3), 'authenticated');
 set local role authenticated;
 select public.delete_course_as_admin('smoke-del-admin');
@@ -319,8 +319,8 @@ select pg_temp.check_del('the admin deletes a course with the owner''s post, and
   and not exists (select 1 from public.community_posts where id = 'smoke-del-post-admin')
   and exists (select 1 from public.course_deletions where course_id = 'smoke-del-admin'));
 
--- "Apaguei o produto errado": a equipe cancela (docs/COMO-TRABALHAR.md). E a
--- 5a falha vira failed. Nenhum dos dois mostra selo para sempre.
+-- "I deleted the wrong product": the staff cancels (docs/ONBOARDING.md). The
+-- 5th failure becomes failed. Neither of the two shows the badge forever.
 update public.course_deletions set status = 'cancelled' where course_id = 'smoke-del-direct';
 update public.course_deletions set status = 'failed', attempts = 5 where course_id = 'smoke-del-admin';
 select pg_temp.act_as(pg_temp.uid(1), 'authenticated');
@@ -329,8 +329,8 @@ select pg_temp.check_del('the chip shows only pending rows, never failed or canc
   (select coalesce(array_agg(course_id order by course_id), '{}') = array['smoke-del-a']
      from public.list_my_courses_being_deleted()));
 reset role;
--- O cliente nunca recria um id cancelado nem terminado: quem recriasse viraria
--- dono da pasta e dos arquivos que a equipe guardou.
+-- The client never recreates a canceled or finished id: whoever recreated it would become
+-- owner of the folder and of the files that the staff kept.
 select pg_temp.act_as(null, 'service_role');
 update public.course_deletions set status = 'done' where course_id = 'smoke-del-admin';
 select pg_temp.act_as(pg_temp.uid(2), 'authenticated');

@@ -1,14 +1,14 @@
 \set ON_ERROR_STOP on
--- Banco descartável apenas. Fixtures e reversões voltam no ROLLBACK.
+-- Disposable database only. Fixtures and reversions go back on ROLLBACK.
 --
--- As 14 travas de 20260910061000 existem, estão ligadas às funções certas e
--- barram de verdade. A maior parte dos testes roda como o dono das tabelas
--- (sem RLS e sem grant no caminho) com o JWT de um cliente comum: o único
--- obstáculo que sobra é o trigger. Um teste repete o ataque real da auditoria
--- pelo RLS: o aluno muda o status da própria matrícula.
+-- The 14 guards from 20260910061000 exist, are attached to the right functions and
+-- really block. Most tests run as the table owner
+-- (no RLS and no grant in the way) with the JWT of an ordinary client: the only
+-- obstacle left is the trigger. One test repeats the real attack from the audit
+-- through RLS: the learner changes the status of their own enrollment.
 --
--- Reversão (scripts/build-test-db.sh): -v without_production_guards=1 derruba
--- as 13 travas de tabelas public dentro desta transação e exige RED exato.
+-- Reversion (scripts/build-test-db.sh): -v without_production_guards=1 drops
+-- the 13 guards on public tables inside this transaction and requires an exact RED.
 begin;
 \if :{?without_production_guards}
 \ir fixtures/20260910061000_sem_as_travas.sql
@@ -29,8 +29,8 @@ begin
     jsonb_build_object('sub', p_uid, 'role', p_role, 'aal', 'aal1')::text, true);
   perform set_config('skillset.trusted_write', 'off', true);
 end $$;
--- true só quando ESTA trava recusou, com a mensagem dela. Sucesso ou qualquer
--- outro erro contam como falha; a escrita que passou é desfeita.
+-- true only when THIS guard refused, with its message. Success or any
+-- other error counts as a failure; the write that went through is undone.
 create function pg_temp.refused(p_sql text, p_message text) returns boolean language plpgsql as $$
 begin
   execute p_sql;
@@ -39,7 +39,7 @@ exception
   when sqlstate 'Z0001' then return false;
   when others then return sqlerrm = p_message;
 end $$;
--- Controle positivo: a trava não barra o que continua permitido.
+-- Positive control: the guard does not block what is still allowed.
 create function pg_temp.accepted(p_sql text) returns boolean language plpgsql as $$
 begin
   execute p_sql;
@@ -49,7 +49,7 @@ exception
   when others then return false;
 end $$;
 
--- Fixtures pelo servidor, como o app faz: service_role e escrita confiável.
+-- Fixtures through the server, as the app does: service_role and trusted writes.
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
@@ -78,7 +78,7 @@ values ('production-guard-notification', pg_temp.uid(2)::text, 'system', 'Synthe
 insert into public.support_tickets(id, user_id, category, subject, message)
 values ('production-guard-ticket', pg_temp.uid(2)::text, 'account', 'Synthetic subject', 'Synthetic support message.');
 
--- Aluno comum.
+-- Ordinary learner.
 select pg_temp.act_as(pg_temp.uid(2), 'authenticated');
 select pg_temp.check_guard('client cannot insert payments',
   pg_temp.refused('insert into public.payments default values',
@@ -94,8 +94,8 @@ select pg_temp.check_guard('student can still mark a notification as read',
 select pg_temp.check_guard('student cannot rewrite a support ticket',
   pg_temp.refused($q$update public.support_tickets set subject = 'Forged subject' where id = 'production-guard-ticket'$q$,
     'support_tickets: only status/admin_response/responded_by/responded_at may change'));
--- O ataque da auditoria, pelo caminho real: RLS deixa o dono atualizar a
--- própria matrícula em qualquer coluna; só o trigger segura status/course_id.
+-- The audit attack, through the real path: RLS lets the owner update their
+-- own enrollment in any column; only the trigger holds status/course_id.
 set local role authenticated;
 select pg_temp.check_guard('student cannot change the status of the own enrollment through RLS',
   pg_temp.refused($q$update public.enrollments set status = 'completed' where id = 'production-guard-enrollment'$q$,
@@ -104,7 +104,7 @@ select pg_temp.check_guard('student can still record the last lesson',
   pg_temp.accepted($q$update public.enrollments set last_lesson_id = 'production-guard-lesson' where id = 'production-guard-enrollment'$q$));
 reset role;
 
--- Dono do curso: não publica escrevendo status; edita o que é dele.
+-- Course owner: cannot publish by writing status; edits what is theirs.
 select pg_temp.act_as(pg_temp.uid(1), 'authenticated');
 select pg_temp.check_guard('owner cannot publish by writing status',
   pg_temp.refused($q$update public.courses set status = 'published' where id = 'production-guard-course'$q$,
@@ -112,7 +112,7 @@ select pg_temp.check_guard('owner cannot publish by writing status',
 select pg_temp.check_guard('owner can still edit the title',
   pg_temp.accepted($q$update public.courses set title = 'Renamed production guard fixture' where id = 'production-guard-course'$q$));
 
--- Catálogo: as 14, habilitadas, com a função e o momento de produção.
+-- Catalog: all 14, enabled, with the function and the production timing.
 select pg_temp.check_guard('all fourteen production guards are installed and bound', (
   select count(*) = 14
   from (values

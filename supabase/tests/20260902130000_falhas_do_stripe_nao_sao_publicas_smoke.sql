@@ -1,7 +1,7 @@
 \set ON_ERROR_STOP on
 
--- Seguro contra banco vivo: nada é escrito. As trocas de papel são `set local`
--- e morrem no ROLLBACK junto com a transação.
+-- Safe against a live database: nothing is written. The role switches are `set local`
+-- and die in the ROLLBACK together with the transaction.
 BEGIN;
 
 CREATE OR REPLACE FUNCTION pg_temp.assert_true(
@@ -17,9 +17,9 @@ BEGIN
 END;
 $$;
 
--- (1) A propriedade estrutural: a view consulta o RLS da tabela-base em vez de
--- atravessá-lo com os privilégios do dono. Sem isto, um grant acidental volta a
--- expor a tabela inteira em vez de zero linhas.
+-- (1) The structural property: the view consults the base table's RLS instead of
+-- crossing it with the owner's privileges. Without this, an accidental grant brings back
+-- the exposure of the whole table instead of zero rows.
 SELECT pg_temp.assert_true(
   COALESCE((
     SELECT option_value
@@ -32,8 +32,8 @@ FROM pg_class c
 JOIN pg_namespace n ON n.oid = c.relnamespace
 WHERE n.nspname = 'public' AND c.relname = 'stripe_events_needing_attention';
 
--- (2) A propriedade de privilégio: nenhum dos quatro verbos sobra para os dois
--- papéis que o PostgREST expõe sem credencial de servidor.
+-- (2) The privilege property: none of the four verbs is left for the two
+-- roles that PostgREST exposes without a server credential.
 SELECT pg_temp.assert_true(
   NOT has_table_privilege(
     papel.nome, 'public.stripe_events_needing_attention', p.priv
@@ -43,9 +43,9 @@ SELECT pg_temp.assert_true(
 FROM (VALUES ('anon'), ('authenticated')) AS papel(nome)
 CROSS JOIN (VALUES ('SELECT'), ('INSERT'), ('UPDATE'), ('DELETE')) AS p(priv);
 
--- (3) A prova de comportamento, e não só de catálogo: como anon, a view precisa
--- recusar a leitura. `permission denied` (42501) é o resultado esperado;
--- qualquer linha devolvida aqui é a regressão que esta migration fecha.
+-- (3) The behavior proof, not just a catalog one: as anon, the view must
+-- refuse the read. `permission denied` (42501) is the expected result;
+-- any row returned here is the regression this migration closes.
 DO $$
 DECLARE
   linhas int;
@@ -62,9 +62,9 @@ BEGIN
 END;
 $$;
 
--- (4) O caminho legítimo continua de pé: o service role enxerga a view. A
--- contagem não importa (zero é o estado saudável); o que se afirma é que a
--- consulta roda sem erro de privilégio.
+-- (4) The legitimate path still stands: the service role sees the view. The
+-- count does not matter (zero is the healthy state); what is asserted is that the
+-- query runs without a privilege error.
 DO $$
 DECLARE
   linhas int;

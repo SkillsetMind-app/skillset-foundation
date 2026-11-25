@@ -1,10 +1,10 @@
 \set ON_ERROR_STOP on
--- Banco descartável apenas. Fixtures voltam no ROLLBACK.
+-- Throwaway database only. Fixtures are undone by the ROLLBACK.
 --
--- P2-9: posts, comentários, denúncias e tickets entram direto pelo PostgREST.
--- Cada pessoa tem um teto por hora em cada tabela: a gravação seguinte ao teto
--- é recusada com RATE_LIMIT, outra pessoa continua gravando, e o servidor e a
--- escrita confiável do banco não têm teto.
+-- P2-9: posts, comments, reports and tickets go straight in through PostgREST.
+-- Each person has an hourly cap on each table: the write after the cap
+-- is refused with RATE_LIMIT, another person keeps writing, and the server and the
+-- database's trusted write have no cap.
 begin;
 create temp table write_rate_checks (name text, passed boolean);
 grant insert, select on write_rate_checks to authenticated, service_role;
@@ -22,7 +22,7 @@ begin
   perform set_config('skillset.trusted_write', 'off', true);
 end $$;
 
--- 1 dono do curso; 2 e 3 alunos matriculados.
+-- 1 course owner; 2 and 3 enrolled learners.
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
@@ -49,14 +49,14 @@ from generate_series(2, 3) n;
 insert into public.community_posts(id, course_slug, author_id, author_name, author_role, category, body)
 values ('write-rate-post', 'write-rate-course', pg_temp.uid(1)::text, 'Rate owner', 'teacher',
   'question', 'Target for replies and reports.');
--- Um post por denúncia: a mesma pessoa não abre duas denúncias abertas do
--- mesmo alvo (20261008010000), então cada denúncia do teste mira outro post.
+-- One post per report: the same person does not open two open reports on the
+-- same target (20261008010000), so each report in the test aims at a different post.
 insert into public.community_posts(id, course_slug, author_id, author_name, author_role, category, body)
 select 'write-rate-report-' || n, 'write-rate-course', pg_temp.uid(1)::text, 'Rate owner', 'teacher',
   'discussion', 'Target for report ' || n || '.'
 from generate_series(1, 21) n;
 
--- Um INSERT por tabela, do jeito que o navegador grava; p_n só muda o texto.
+-- One INSERT per table, the way the browser writes; p_n only changes the text.
 create function pg_temp.write_post(p_author uuid, p_n int) returns void language sql as $$
   insert into public.community_posts(course_slug, author_id, author_name, author_role, category, body)
   values ('write-rate-course', p_author::text, 'Rate member', 'student', 'discussion',
@@ -82,8 +82,8 @@ create function pg_temp.write_ticket(p_author uuid, p_n int) returns void langua
   insert into public.support_tickets(user_id, category, subject, message)
   values (p_author::text, 'technical', 'Ticket ' || p_n, 'Synthetic support request ' || p_n || '.');
 $$;
--- Quantas de p_times gravações passaram antes da primeira recusa por
--- RATE_LIMIT. Outro erro derruba o teste: é fixture quebrada, não teto.
+-- How many of p_times writes went through before the first refusal by
+-- RATE_LIMIT. Any other error fails the test: it is a broken fixture, not a cap.
 create function pg_temp.writes_before_limit(p_write text, p_author uuid, p_times int) returns int
 language plpgsql as $$
 declare v_done int := 0;
@@ -102,7 +102,7 @@ begin
   return v_done;
 end $$;
 
--- Aluno 2 grava até o teto de cada tabela; a gravação seguinte é recusada.
+-- Learner 2 writes up to the cap of each table; the next write is refused.
 select pg_temp.act_as(pg_temp.uid(2), 'authenticated');
 set local role authenticated;
 select pg_temp.check_rate('learner: 21st post in the hour is refused',
@@ -117,7 +117,7 @@ select pg_temp.check_rate('learner: 11th support ticket in the hour is refused',
   pg_temp.writes_before_limit('write_ticket', pg_temp.uid(2), 11) = 10);
 reset role;
 
--- Aluno 3 não herda o teto do aluno 2.
+-- Learner 3 does not inherit learner 2's cap.
 select pg_temp.act_as(pg_temp.uid(3), 'authenticated');
 set local role authenticated;
 select pg_temp.check_rate('another learner still posts',
@@ -132,8 +132,8 @@ select pg_temp.check_rate('another learner still opens a ticket',
   pg_temp.writes_before_limit('write_ticket', pg_temp.uid(3), 1) = 1);
 reset role;
 
--- Escrita confiável do banco (RPC que liga skillset.trusted_write) não conta,
--- nem para quem já estourou.
+-- Trusted database writes (RPC that sets skillset.trusted_write) do not count,
+-- not even for someone who already hit the cap.
 select pg_temp.act_as(pg_temp.uid(2), 'authenticated');
 select set_config('skillset.trusted_write', 'on', true);
 set local role authenticated;
@@ -141,9 +141,9 @@ select pg_temp.check_rate('trusted database write is not limited',
   pg_temp.writes_before_limit('write_post', pg_temp.uid(2), 1) = 1);
 reset role;
 
--- O servidor (service_role) não tem teto, nem gravando pelo aluno que estourou.
--- Antes, a equipe fecha as denúncias abertas do aluno 2: a denúncia aberta
--- repetida no mesmo alvo é recusada para todo mundo, servidor incluído.
+-- The server (service_role) has no cap, not even when writing as the learner who hit it.
+-- First, the staff close learner 2's open reports: a repeated open report
+-- on the same target is refused for everyone, the server included.
 select pg_temp.act_as(pg_temp.uid(2), 'service_role');
 update public.community_reports set status = 'dismissed'
   where reporter_id = pg_temp.uid(2)::text and status = 'open';

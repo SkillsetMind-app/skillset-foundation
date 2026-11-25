@@ -1,6 +1,6 @@
 \set ON_ERROR_STOP on
 
--- Seguro contra banco vivo: só lê o catálogo de políticas, não escreve nada.
+-- Safe against a live database: it only reads the policy catalog, it writes nothing.
 BEGIN;
 
 CREATE OR REPLACE FUNCTION pg_temp.assert_true(
@@ -16,10 +16,10 @@ BEGIN
 END;
 $$;
 
--- A escrita na sala de aula paga precisa do mesmo direito que a leitura. Sem
--- isto, um ex-aluno (reembolsado, revogado, expirado) continua publicando num
--- lugar que ele já não pode ler — a linha de `enrollments` nunca é apagada, só
--- muda de status, e o predicado antigo só perguntava se ela existia.
+-- Writing to the paid classroom needs the same right as reading. Without
+-- this, a former learner (refunded, revoked, expired) keeps posting in a
+-- place he can no longer read — the `enrollments` row is never deleted, it only
+-- changes status, and the old predicate only asked whether it existed.
 SELECT pg_temp.assert_true(
   COALESCE(
     pg_get_expr(p.polwithcheck, p.polrelid) ILIKE '%e.status%',
@@ -32,8 +32,8 @@ JOIN pg_class c ON c.oid = p.polrelid
 WHERE c.relname = 'lesson_comments'
   AND p.polname = 'lesson_comments_insert';
 
--- E a política tem de existir: um SELECT sem linhas não roda a asserção acima,
--- então o zero-row seria um verde falso.
+-- And the policy has to exist: a SELECT with no rows does not run the assertion above,
+-- so the zero-row result would be a false green.
 SELECT pg_temp.assert_true(
   EXISTS (
     SELECT 1
@@ -45,10 +45,10 @@ SELECT pg_temp.assert_true(
   'lesson_comments_insert policy is missing'
 );
 
--- A guarda inteira, contra o banco de verdade: nenhuma política pode consultar
--- `enrollments` sem consultar o status junto — em USING **ou** em WITH CHECK.
--- A versão de 20260809080000 lia só `polqual` (USING) e por isso passava por
--- cima de toda política de INSERT.
+-- The whole guard, against the real database: no policy may query
+-- `enrollments` without also checking the status — in USING **or** in WITH CHECK.
+-- The version from 20260809080000 read only `polqual` (USING) and so it walked
+-- right over every INSERT policy.
 SELECT pg_temp.assert_true(
   NOT EXISTS (
     SELECT 1
@@ -61,19 +61,19 @@ SELECT pg_temp.assert_true(
     ) x
     WHERE x.predicado ILIKE '%enrollments%'
       AND x.predicado NOT ILIKE '%e.status%'
-      -- Exceção documentada: devolve o histórico do PRÓPRIO usuário, que é dele
-      -- qualquer que seja o status da matrícula.
+      -- Documented exception: it returns the user's OWN history, which is theirs
+      -- whatever the enrollment status is.
       AND p.polname <> 'lesson_progress_select_owner'
-      -- Exceção documentada: é a única política de DELETE aqui, e nela a
-      -- pergunta é a inversa. As outras consultam `enrollments` para LIBERAR
-      -- acesso, e aí uma linha morta não pode valer. Esta consulta para
-      -- RECUSAR: matrícula reembolsada, revogada ou expirada continua sendo
-      -- registro do aluno, e `enrollments_course_id_fkey` é RESTRICT — o banco
-      -- já barraria o DELETE com um 23503. A política diz a mesma regra onde
-      -- quem lê RLS procura, e devolve zero linhas em vez de um erro de chave
-      -- estrangeira. Filtrar por status aqui ABRIRIA o buraco em vez de
-      -- fechá-lo: um curso com matrícula morta voltaria a ser apagável.
-      -- Ver 20260908120000_excluir_ou_arquivar_curso_do_professor.sql.
+      -- Documented exception: it is the only DELETE policy here, and in it the
+      -- question is the inverse. The others query `enrollments` to GRANT
+      -- access, and there a dead row cannot count. This query is used to
+      -- REFUSE: a refunded, revoked or expired enrollment is still
+      -- the learner's record, and `enrollments_course_id_fkey` is RESTRICT — the database
+      -- would already block the DELETE with a 23503. The policy states the same rule where
+      -- whoever reads RLS looks, and returns zero rows instead of a foreign key
+      -- error. Filtering by status here would OPEN the hole instead of
+      -- closing it: a course with a dead enrollment would become deletable again.
+      -- See 20260908120000_excluir_ou_arquivar_curso_do_professor.sql.
       AND p.polname <> 'courses_delete_owner'
   ),
   'some RLS policy reads enrollments without checking status'

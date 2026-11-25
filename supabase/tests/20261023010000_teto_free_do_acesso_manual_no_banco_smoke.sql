@@ -1,12 +1,12 @@
 \set ON_ERROR_STOP on
--- Banco descartável apenas. Fixtures voltam no ROLLBACK.
+-- Disposable database only. Fixtures go back on ROLLBACK.
 --
--- O teto Free do acesso manual vale no banco: um criador sem plano pago que
--- chama grant_course_access direto (como faria o PostgREST) passa 10 vezes no
--- dia e a 11ª é recusada com RATE_LIMIT. Um criador com plano pago faz 11 sem
--- recusa. E claim_checkout_lock segue só do servidor (achado da auditoria de
--- 23/10: na ordem dos arquivos o último grant é TO authenticated; produção e
--- este banco, que nasce do baseline de 21/07, estão certos — isto trava a volta).
+-- The Free cap on manual access holds in the database: a creator without a paid plan who
+-- calls grant_course_access directly (as PostgREST would) gets through 10 times in the
+-- day and the 11th is refused with RATE_LIMIT. A creator with a paid plan does 11 without
+-- refusal. And claim_checkout_lock stays server-only (audit finding of
+-- Oct 23: in file order the last grant is TO authenticated; production and
+-- this database, which is born from the Jul 21 baseline, are right — this locks the regression).
 begin;
 create function pg_temp.uid(n int) returns uuid language sql immutable as $$
   select ('23100000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid;
@@ -19,7 +19,7 @@ begin
     jsonb_build_object('sub', p_uid, 'role', 'authenticated', 'aal', 'aal2')::text, true);
   perform set_config('skillset.trusted_write', 'off', true);
 end $$;
--- Quantas das p_n chamadas passaram, parando na primeira recusa (que tem de ser RATE_LIMIT).
+-- How many of the p_n calls passed, stopping at the first refusal (which has to be RATE_LIMIT).
 create function pg_temp.grants_until_refused(p_owner int, p_n int) returns int language plpgsql as $$
 declare i int;
 begin
@@ -35,7 +35,7 @@ begin
 end $$;
 grant execute on function pg_temp.grants_until_refused(int, int) to authenticated;
 
--- 1 = Free (sem current_plan_id), 2 = plano pago. Os dois pagaram a ativação.
+-- 1 = Free (no current_plan_id), 2 = paid plan. Both paid the activation.
 select set_config('request.jwt.claim.sub', '', true), set_config('request.jwt.claim.role', 'service_role', true),
   set_config('request.jwt.claims', '{"role":"service_role"}', true), set_config('skillset.trusted_write', 'on', true);
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
@@ -50,9 +50,9 @@ update public.users
   set roles = '["student","teacher"]', teacher_terms_accepted_at = now(), teacher_terms_version = 'smoke',
       activation_fee_paid_at = now(), current_plan_id = 'basic'
   where uid = pg_temp.uid(2)::text;
--- Publicar exige plano vigente, então o criador Free real é o que publicou
--- assinando e deixou a assinatura caducar: os dois publicam com assinatura e a
--- do 1 some em seguida (current_plan_id dele já é null).
+-- Publishing requires a current plan, so the real Free creator is the one who published
+-- while subscribed and let the subscription lapse: both publish with a subscription and
+-- 1's disappears right after (their current_plan_id is already null).
 insert into public.subscriptions(id, user_id, plan_id, status, current_period_end)
 select 'smoke-free-cap-plan-' || n, pg_temp.uid(n)::text, 'basic', 'active', now() + interval '1 day'
 from generate_series(1, 2) n;

@@ -10,7 +10,7 @@ begin
 end;
 $$;
 
--- Controle negativo restrito a esta transacao descartavel.
+-- Negative control restricted to this disposable transaction.
 \if :{?without_certificate_refund_trigger}
 alter table public.enrollments disable trigger enrollments_refund_certificate;
 \endif
@@ -49,13 +49,13 @@ select pg_temp.assert_true(not (public.verify_skillset_certificate(
   (select verification_code from public.certificates where id = :'enrollment'),
   'atomic-refund-smoke')->>'valid')::boolean, 'refund still publicly valid');
 
--- Repeticao nao muda certificado nem rebaixa decisao de Ops.
+-- Repeat does not change the certificate nor downgrade an Ops decision.
 update public.certificates set status = 'revoked' where id = :'enrollment';
 update public.enrollments set status = 'refunded' where id = :'enrollment';
 select pg_temp.assert_true((select status = 'revoked' from public.certificates
   where id = :'enrollment'), 'refund downgraded ops revocation');
 
--- Falha de escrita do certificado tem de reverter tambem a matricula.
+-- A certificate write failure must also roll back the enrollment.
 update public.enrollments set status = 'completed' where id = :'enrollment';
 update public.certificates set status = 'issued' where id = :'enrollment';
 create function pg_temp.fail_certificate_write() returns trigger language plpgsql as $$
@@ -82,7 +82,7 @@ select pg_temp.assert_true((select status = 'issued' from public.certificates
   where id = :'enrollment'), 'certificate failure changed certificate');
 drop trigger test_certificate_write_failure on public.certificates;
 
--- A mesma atualizacao e segura sem certificado e repara uma linha legada.
+-- The same update is safe without a certificate and repairs a legacy row.
 update public.enrollments set status = 'refunded' where id = :'enrollment';
 update public.certificates set status = 'issued' where id = :'enrollment';
 update public.enrollments set status = 'refunded' where id = :'enrollment';

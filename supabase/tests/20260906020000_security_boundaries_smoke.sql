@@ -134,10 +134,10 @@ SELECT pg_temp.check_security('event prevents deleting a referenced course',pg_t
  $$DELETE FROM public.courses WHERE id='audit-retained-event'$$));
 SELECT pg_temp.check_security('event prevents changing a referenced course ID',pg_temp.foreign_key_denied(
  $$UPDATE public.courses SET id='audit-reused-event-id' WHERE id='audit-retained-event'$$));
--- 20261008030000 tirou o EXECUTE do cliente na delete_teacher_course_draft; o
--- app apaga pela delete_or_archive_own_course. Este arquivo tambem roda ANTES
--- de 20260908120000 (prova RED em scripts/build-test-db.sh), quando so a
--- antiga existe: chama a que houver.
+-- 20261008030000 removed the client's EXECUTE on delete_teacher_course_draft; the
+-- app deletes through delete_or_archive_own_course. This file also runs BEFORE
+-- 20260908120000 (RED proof in scripts/build-test-db.sh), when only the
+-- old one exists: it calls whichever one exists.
 SELECT pg_temp.assume_session(:'teacher_uid','authenticated','aal2');
 DO $$ BEGIN
   EXECUTE format('SELECT public.%I(%L)',

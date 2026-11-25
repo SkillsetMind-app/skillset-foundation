@@ -1,42 +1,42 @@
 #!/usr/bin/env bash
 #
-# Monta um banco de teste descartável com o esquema do repositório, para os
-# smoke tests de RLS de supabase/tests/.
+# Builds a disposable test database with the repository schema, for the RLS
+# smoke tests in supabase/tests/.
 #
-# POR QUE ISTO NÃO É SÓ `supabase db reset`
+# WHY THIS IS NOT JUST `supabase db reset`
 # -----------------------------------------
-# A cadeia de supabase/migrations/ NÃO replica do zero. As duas migrations de
-# 2026-07-04 alteram policies de public.course_assets, mas a tabela só nasce no
-# baseline de 2026-07-15 — que, por ordem de nome, roda depois. `supabase db
-# reset` morre na segunda migration com
+# The supabase/migrations/ chain does NOT replay from scratch. The two
+# migrations of 2026-07-04 alter policies on public.course_assets, but the
+# table only appears in the 2026-07-15 baseline — which, by name order, runs
+# later. `supabase db reset` dies on the second migration with
 # `relation "public.course_assets" does not exist`.
 #
-# Isso é conhecido e está escrito no próprio repositório
-# (supabase/SCHEMA_BASELINE_REPORT.md): o histórico versionado ficou para trás
-# do que foi aplicado em produção. A resposta da casa é
-# supabase/schema/remote_schema_2026-07-21.sql — nas palavras do arquivo, "um
-# snapshot COMPLETO da ESTRUTURA do schema public [...] reconstruido em SQL
-# replayavel. Ele existe porque o repositorio nao conseguia mais reconstruir o
-# banco".
+# This is known and is written in the repository itself
+# (supabase/SCHEMA_BASELINE_REPORT.md): the versioned history fell behind what
+# was applied in production. The house answer is
+# supabase/schema/remote_schema_2026-07-21.sql — in the file's own words, "a
+# COMPLETE snapshot of the STRUCTURE of the public schema [...] rebuilt as
+# replayable SQL. It exists because the repository could no longer rebuild the
+# database".
 #
-# Então a verdade replayável deste repositório é:
+# So the replayable truth of this repository is:
 #
-#     baseline de 2026-07-21  +  as migrations posteriores a ele
+#     2026-07-21 baseline  +  the migrations after it
 #
-# É exatamente isso que este script aplica. As migrations anteriores ao baseline
-# continuam versionadas como registro histórico; elas já estão dentro do
-# baseline e não são reaplicadas.
+# That is exactly what this script applies. The migrations before the baseline
+# stay versioned as a historical record; they are already inside the baseline
+# and are not replayed.
 #
-# USO
+# USAGE
 #   DATABASE_URL='postgresql://...' scripts/build-test-db.sh
 #
-# NUNCA aponte para produção: o seed escreve.
+# NEVER point it at production: the seed writes.
 
 set -euo pipefail
 
 BASELINE="supabase/schema/remote_schema_2026-07-21.sql"
-# Prefixo do baseline. Migrations com nome estritamente maior que isto são
-# posteriores a ele e precisam ser aplicadas por cima.
+# Baseline prefix. Migrations whose name is strictly greater than this are
+# later than it and must be applied on top.
 CORTE="20260721"
 
 if [ -z "${DATABASE_URL:-}" ]; then
@@ -49,9 +49,10 @@ aplica() {
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$1"
 }
 
-# Uma falha de setup/SQL não prova regressão. Confira somente a linha ERROR,
-# nunca nomes de checks que também aparecem no stdout quando passam.
-# O subshell remove a captura temporária em qualquer saída, sem publicar log cru.
+# A setup/SQL failure does not prove a regression. Check only the ERROR line,
+# never check names, which also appear in stdout when they pass.
+# The subshell removes the temporary capture on any exit, without publishing
+# the raw log.
 prova_red() (
   local descricao="$1" esperado="$2"
   shift 2
@@ -67,7 +68,8 @@ prova_red() (
   trap 'rm -f -- "$saida"' EXIT
   "$@" >"$saida" 2>&1 || status=$?
   erro="$(sed -n 's/^.*ERROR:[[:space:]]*//p' "$saida")"
-  # esperado é um padrão glob: só o agregado de checks aceita um sufixo.
+  # esperado (expected) is a glob pattern: only the checks aggregate accepts a
+  # suffix.
   if [[ "$status" -eq 0 || "$erro" == *$'\n'* || "$erro" != $esperado ]]; then
     echo "RED não comprovado ($descricao): saída ou erro diferente do esperado." >&2
     printf '  Banco descartável (fixtures sintéticas), ERROR: %s\n' "${erro%%$'\n'*}" >&2
@@ -82,29 +84,30 @@ prova_red() (
   echo "  RED comprovado: $descricao"
 )
 
-# Duas diferenças entre um Postgres do Supabase recém-criado e produção. Elas
-# não são detalhe de setup: sem corrigir, dois smoke tests reprovam sem que haja
-# regressão nenhuma no repositório — e um portão que reprova por motivo errado
-# vira ruído até alguém desligá-lo.
+# Two differences between a freshly created Supabase Postgres and production.
+# They are not a setup detail: without fixing them, two smoke tests fail with
+# no regression at all in the repository — and a gate that fails for the wrong
+# reason becomes noise until someone turns it off.
 echo "Ambiente:"
 
-# (1) A imagem local traz default privileges que dão EXECUTE a anon/authenticated
-# em TODA função nova do schema public. Produção não tem isso: lá cada função
-# carrega só o grant que alguma migration escreveu, e é isso que o baseline
-# registra. Sem desligar os defaults, tudo que o baseline cria nasce mais aberto
-# do que em produção — e 20260716000400 reprova em claim_payout_transfer_reversal,
-# que deve ser service-role-only.
+# (1) The local image ships default privileges that give EXECUTE to
+# anon/authenticated on EVERY new function in the public schema. Production
+# does not have this: there each function carries only the grant that some
+# migration wrote, and that is what the baseline records. Without turning the
+# defaults off, everything the baseline creates is born more open than in
+# production — and 20260716000400 fails on claim_payout_transfer_reversal,
+# which must be service-role-only.
 echo "  default privileges de funções em public"
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -c "
   alter default privileges in schema public
     revoke execute on functions from anon, authenticated;
 "
 
-# (2) Buckets do Storage nascem pela API, não por migration. O hardening de
-# 20260723000100 é um `update storage.buckets ... where id = 'public-media'`:
-# sem a linha ele é no-op silencioso e o smoke test correspondente reprova. As
-# propriedades (limite de tamanho, mime types) continuam vindo da migration —
-# aqui só existe a linha que ela precisa encontrar.
+# (2) Storage buckets are born through the API, not through a migration. The
+# hardening in 20260723000100 is an `update storage.buckets ... where id =
+# 'public-media'`: without the row it is a silent no-op and the matching smoke
+# test fails. The properties (size limit, mime types) still come from the
+# migration — here there is only the row it needs to find.
 echo "  buckets do Storage"
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -c "
   insert into storage.buckets (id, name, public) values
@@ -122,8 +125,8 @@ for arquivo in supabase/migrations/*.sql; do
   nome="$(basename "$arquivo")"
   if [[ "$nome" > "$CORTE" ]]; then
     if [[ "$nome" == "20260906020000_security_boundaries.sql" ]]; then
-      # Mesmos testes com a correção removida, antes de aplicar o SQL real.
-      # Cada conexão falha e reverte sua transação/fixtures por completo.
+      # The same tests with the fix removed, before applying the real SQL.
+      # Each connection fails and fully rolls back its transaction/fixtures.
       prova_red "smoke sem 0200 (currículo público, Stripe e MFA)" 'SECURITY_BOUNDARY_REGRESSION: *' \
         'public curriculum contains no lesson text or URLs' \
         'teacher cannot change the connected account' \
@@ -133,8 +136,8 @@ for arquivo in supabase/migrations/*.sql; do
         psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q --single-transaction \
         -f "supabase/tests/fixtures/20260906020000_before.sql" \
         -f "supabase/tests/fixtures/20260906020000_after.sql"
-      # Dados legados persistem ANTES da tentativa: uma recusa tem de reverter
-      # todo o DDL e manter as copias inline/privadas exatamente como estavam.
+      # Legacy data persists BEFORE the attempt: a refusal must roll back all
+      # the DDL and keep the inline/private copies exactly as they were.
       for caso in duplicate_courses duplicate_same_course duplicate_public_reference missing_id null_id empty_id whitespace_id nonstring_id; do
         if [[ "$caso" == duplicate_* ]]; then
           erro_esperado='Unsafe lesson backfill: an inline lesson ID has multiple curriculum references'
@@ -155,17 +158,19 @@ for arquivo in supabase/migrations/*.sql; do
           -f "supabase/tests/fixtures/20260906020000_cleanup.sql"
         echo "  Rollback comprovado: $caso (conteudo preservado e fixtures removidas)"
       done
-      # Prova de upgrade com dados anteriores à mudança, no banco descartável.
-      # A mesma transação aplica a migration, valida e remove as fixtures.
+      # Upgrade proof with data from before the change, in the disposable
+      # database. The same transaction applies the migration, validates and
+      # removes the fixtures.
       echo "  $arquivo (upgrade/backfill com fixtures)"
       psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q --single-transaction \
         -f "supabase/tests/fixtures/20260906020000_before.sql" \
         -f "$arquivo" \
         -f "supabase/tests/fixtures/20260906020000_after.sql"
     elif [[ "$nome" == "20260910061000_as_travas_de_producao_nascem_com_o_banco.sql" ]]; then
-      # O baseline já traz estas travas; sem derrubá-las antes, o ramo que cria
-      # cada trigger não rodaria em lugar nenhum. Aqui a migration recebe um
-      # banco sem elas e tem de reconstruí-las (a asserção dela falha se não).
+      # The baseline already ships these locks; without dropping them first, the
+      # branch that creates each trigger would not run anywhere. Here the
+      # migration gets a database without them and has to rebuild them (its
+      # assertion fails if it does not).
       echo "  $arquivo (sobre um banco sem as travas do snapshot)"
       psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q --single-transaction \
         -f "supabase/tests/fixtures/20260910061000_sem_as_travas.sql" \
@@ -189,9 +194,9 @@ for arquivo in supabase/migrations/*.sql; do
   fi
 done
 
-# Se o corte parar de casar com os nomes (renomeação, squash), o banco sairia
-# com o esquema de julho e os smoke tests reprovariam por motivo errado. Melhor
-# parar aqui e dizer o porquê.
+# If the cutoff stops matching the names (rename, squash), the database would
+# end up with the July schema and the smoke tests would fail for the wrong
+# reason. Better to stop here and say why.
 if [ "$aplicadas" -eq 0 ]; then
   echo "Nenhuma migration posterior a $CORTE foi encontrada; o corte não bate mais com os nomes em supabase/migrations/." >&2
   exit 2

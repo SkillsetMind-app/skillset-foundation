@@ -1,9 +1,9 @@
 \set ON_ERROR_STOP on
--- Banco descartável apenas. Fixtures voltam no ROLLBACK.
+-- Disposable database only. Fixtures go back on ROLLBACK.
 --
--- P2-3 e P2-4: a loja fecha para dono suspenso e para dono cuja ativação foi
--- desfeita, quando a ativação é exigida. Admin dono e isenção pronta seguem
--- vendendo; isenção pendente não. Só a service role pergunta.
+-- P2-3 and P2-4: the storefront closes for a suspended owner and for an owner whose activation was
+-- undone, when activation is required. An admin owner and a ready exemption keep
+-- selling; a pending exemption does not. Only the service role asks.
 begin;
 create temp table seller_checks (name text, passed boolean);
 create function pg_temp.check_seller(p_name text, p_ok boolean) returns void
@@ -20,8 +20,8 @@ select pg_temp.uid(n), 'authenticated', 'authenticated', 'course-seller-' || n |
   now(), '{}', '{}', now(), now()
 from generate_series(1, 7) n;
 select set_config('skillset.trusted_write', 'on', true);
--- 1 pagou; 2 teve a taxa reembolsada; 3 pagou e está suspenso; 4 admin sem
--- taxa; 5 isenção pronta; 6 isenção pendente; 7 admin que concede isenções.
+-- 1 paid; 2 had the fee refunded; 3 paid and is suspended; 4 admin without a
+-- fee; 5 ready exemption; 6 pending exemption; 7 admin who grants exemptions.
 -- This smoke isolates activation/content; creator plans are already current.
 insert into public.subscriptions(id, user_id, plan_id, status, current_period_end)
 select 'plan-' || pg_temp.uid(n)::text, pg_temp.uid(n)::text, 'basic', 'active', now() + interval '1 day'
@@ -47,7 +47,7 @@ select pg_temp.check_seller('admin owner without activation fee can sell', publi
 select pg_temp.check_seller('ready waiver can sell', public.course_owner_can_sell(pg_temp.uid(5)::text));
 select pg_temp.check_seller('pending waiver cannot sell', not public.course_owner_can_sell(pg_temp.uid(6)::text));
 
--- Sem ativação exigida, só a suspensão fecha a loja.
+-- Without required activation, only suspension closes the storefront.
 update public.platform_settings set value = 'false'::jsonb where key = 'require_activation_fee';
 select pg_temp.check_seller('without the activation requirement a refunded creator can sell',
   public.course_owner_can_sell(pg_temp.uid(2)::text));

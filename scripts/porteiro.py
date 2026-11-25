@@ -1,58 +1,62 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""porteiro.py -- o porteiro de PR: lê o diff, pergunta ao GLM-5 se ele abre
-alguma porta, e responde com um PLACAR. O detalhe nunca sai daqui em claro.
+"""porteiro.py -- the PR gatekeeper: reads the diff, asks GLM-5 whether it opens
+any door, and answers with a SCOREBOARD. The detail never leaves here in the clear.
 
-Este repositório é PÚBLICO. Tudo o que este script imprime vai parar num log
-que qualquer pessoa lê. Por isso a regra que governa o arquivo inteiro:
+This repository is PUBLIC. Everything this script prints ends up in a log that
+anyone can read. That is why the rule that governs the whole file is:
 
-    O VEREDITO é público. O DETALHE não é.
+    The VERDICT is public. The DETAIL is not.
 
-  - stdout e o comentário no PR recebem só o placar: quantos achados, quantos
-    bloqueantes, modo. Nunca o que é, onde, nem como explorar.
-  - o detalhe (arquivo, linha, título, como explorar) vai SÓ para o canal
-    privado: o webhook ops-alert do n8n, que relaya para o Telegram. Se o canal
-    não estiver configurado, o detalhe é descartado -- não cai no log.
+  - stdout and the PR comment get only the scoreboard: how many findings, how
+    many blocking, mode. Never what it is, where, or how to exploit it.
+  - the detail (file, line, title, how to exploit) goes ONLY to the private
+    channel: the n8n ops-alert webhook, which relays to Telegram. If the channel
+    is not configured, the detail is discarded -- it does not fall into the log.
 
-Cadeia de reserva: se a IA da vez não dá veredito (sem saldo, chave recusada,
-rate limit/5xx/timeout depois das repetições, resposta fora do formato), a
-próxima da cadeia analisa: z.ai GLM -> Kimi k3 -> Kimi k2.6 -> OpenAI. Um
-veredito válido NUNCA cai para a próxima: "bloqueante" de qualquer uma barra.
-Resposta cortada que já aponta achado também não cai (a próxima IA poderia
-devolver lista vazia e aprovar) -- nem quando o JSON veio pela metade: vale
-cada achado que chegou inteiro, e "severidade" critica/alta no texto cru já
-encerra com 3. Filtro de conteúdo/recusa encerra a cadeia com 3 (texto
-plantado no diff não escolhe o analisador).
-Se nenhuma der veredito, o script NÃO passa verde: escreve "NÃO ANALISADO" e
-sai com 3. Um portão que aprova por omissão é pior que portão nenhum (o check
-de RLS ficou dois meses verde sem rodar por exatamente isso).
+Fallback chain: if the AI of the moment gives no verdict (no balance, key
+refused, rate limit/5xx/timeout after the retries, response outside the
+format), the next one in the chain analyzes: z.ai GLM -> Kimi k3 -> Kimi k2.6 ->
+OpenAI. A valid verdict NEVER falls through to the next one: a "blocking" from
+any of them blocks.
+A truncated response that already points to a finding does not fall through
+either (the next AI could return an empty list and approve) -- not even when
+the JSON came back half-finished: every finding that arrived whole counts, and
+a critical/high "severidade" in the raw text already ends with 3. A content
+filter/refusal ends the chain with 3 (text planted in the diff does not choose
+the analyzer).
+If none gives a verdict, the script does NOT go green: it writes "NÃO ANALISADO"
+(NOT ANALYZED) and exits with 3. A gate that approves by omission is worse than
+no gate (the RLS check stayed green for two months without running for exactly
+this reason).
 
-Uso (GitHub Action ou local):
+Usage (GitHub Action or local):
     python3 scripts/porteiro.py --diff pr.diff --placar placar.md
-    python3 scripts/porteiro.py --demo          # auto-teste, sem rede
+    python3 scripts/porteiro.py --demo          # self-test, no network
 
-Ambiente:
-    GLM_API_KEY              IA primária (secret do repo; fork não recebe)
-    KIMI_API_KEY             reserva Moonshot; vazia = pulada ("sem chave")
-    OPENAI_API_KEY           reserva OpenAI; vazia = pulada ("sem chave")
-    PORTEIRO_MODO            avisa (padrão) | barra  -- em "barra", bloqueante => exit 1
-    PORTEIRO_MODELO          glm-5 (medido: 20/20 no controle, ~$0,009/análise)
-    PORTEIRO_CADEIA          opcional; ordem e modelos, ex. "zai:glm-5,kimi:kimi-k3,openai:gpt-5.5"
-    PORTEIRO_MAX_DIFF_KB     120 -- acima disso só os caminhos de risco entram
-    OPS_ALERT_WEBHOOK_URL    canal privado (n8n -> Telegram); opcional
-    OPS_ALERT_WEBHOOK_SECRET vai no cabeçalho x-ops-secret; opcional
-    PR_NUMBER / PR_URL / REPO  só para o texto do alerta
+Environment:
+    GLM_API_KEY              primary AI (repo secret; a fork does not get it)
+    KIMI_API_KEY             Moonshot fallback; empty = skipped ("sem chave", no key)
+    OPENAI_API_KEY           OpenAI fallback; empty = skipped ("sem chave", no key)
+    PORTEIRO_MODO            avisa (warn, default) | barra (block)  -- in "barra", blocking => exit 1
+    PORTEIRO_MODELO          glm-5 (measured: 20/20 in the control, ~$0.009/analysis)
+    PORTEIRO_CADEIA          optional; order and models, e.g. "zai:glm-5,kimi:kimi-k3,openai:gpt-5.5"
+    PORTEIRO_MAX_DIFF_KB     120 -- above this only the risk paths go in
+    OPS_ALERT_WEBHOOK_URL    private channel (n8n -> Telegram); optional
+    OPS_ALERT_WEBHOOK_SECRET goes in the x-ops-secret header; optional
+    PR_NUMBER / PR_URL / REPO  only for the alert text
 
-Arquivo que o analisador não leu nunca dá 0: binário que não é imagem/fonte
-(inclusive o que o .gitattributes marca -diff), submódulo, link simbólico, ou
-arquivo que o `git diff --name-only` lista e o diff não traz saem com 3.
-Imagem/fonte só fica de fora quando todos os nomes do bloco (antes e depois do
-rename) são de imagem/fonte e o lado NOVO é binário e começa num byte que JS
-não aceita (ver asset_de_verdade); PR só com isso dá 0.
+A file the analyzer did not read never gives 0: a binary that is not an
+image/font (including one that .gitattributes marks -diff), a submodule, a
+symbolic link, or a file that `git diff --name-only` lists and the diff does
+not carry all exit with 3.
+An image/font is only left out when every name in the block (before and after
+the rename) is an image/font name and the NEW side is binary and starts with a
+byte that JS does not accept (see asset_de_verdade); a PR with only that gives 0.
 
-Saídas: 0 ok · 1 bloqueante em modo "barra" · 3 não analisado (nenhuma IA
-com chave e saldo deu veredito, cabeçalho do diff ilegível, binário,
-submódulo ou link, ou PARCIAL: arquivo que ficou sem ler) · 2 erro de uso.
+Exits: 0 ok · 1 blocking in "barra" mode · 3 not analyzed (no AI with a key and
+balance gave a verdict, unreadable diff header, binary, submodule or link, or
+PARTIAL: a file that was left unread) · 2 usage error.
 """
 from __future__ import annotations
 
@@ -70,15 +74,15 @@ from typing import NamedTuple
 
 URL = "https://api.z.ai/api/paas/v4/chat/completions"
 MODELO_PADRAO = "glm-5"
-# glm-5 é modelo de RACIOCÍNIO: gasta centenas de reasoning_tokens antes do
-# content. Teto baixo pode esgotar no raciocínio antes de produzir o JSON.
+# glm-5 is a REASONING model: it spends hundreds of reasoning_tokens before the
+# content. A low cap can run out during reasoning before producing the JSON.
 
 
 class Provedor(NamedTuple):
-    id: str      # zai | kimi | openai -- escolhe o formato do pedido
-    nome: str    # como aparece no placar
+    id: str      # zai | kimi | openai -- picks the request format
+    nome: str    # how it appears in the scoreboard
     url: str
-    var: str     # variável da chave; vazia => pulado ("sem chave")
+    var: str     # key variable; empty => skipped ("sem chave", no key)
     modelo: str
 
     @property
@@ -91,27 +95,29 @@ PROVEDORES = {
     "kimi": ("Kimi", "https://api.moonshot.ai/v1/chat/completions", "KIMI_API_KEY"),
     "openai": ("OpenAI", "https://api.openai.com/v1/chat/completions", "OPENAI_API_KEY"),
 }
-# Ordem = prioridade. O 1º é o primário; os outros só entram sem veredito dele.
-# Só entra aqui reserva que passou no controle adversarial do portão (15/09/2026:
-# as quatro, 8/8 cada; glm-5 20/20 em 02/09). gpt-5.5 fica por último caso o
-# gpt-6-astra saia do preview. Ordem diferente: PORTEIRO_CADEIA, sem mexer no código.
+# Order = priority. The 1st is the primary; the others only come in without a
+# verdict from it. Only a fallback that passed the gate's adversarial control
+# gets in here (15/09/2026: all four, 8/8 each; glm-5 20/20 on 02/09). gpt-5.5
+# stays last in case gpt-6-astra leaves the preview. A different order:
+# PORTEIRO_CADEIA, without touching the code.
 CADEIA_PADRAO = "zai:{primario},kimi:kimi-k3,kimi:kimi-k2.6,openai:gpt-6-astra,openai:gpt-5.5"
-# Sem saldo/cota: repetir não adianta, vai direto para a próxima IA.
+# No balance/quota: retrying does not help, go straight to the next AI.
 SEM_SALDO = {"1113", "insufficient_quota", "exceeded_current_quota_error"}
-# Filtro de conteúdo / recusa de segurança: fail-closed, nunca a próxima IA.
-# z.ai 1301 (HTTP 400) e finish "sensitive"; Moonshot type content_filter;
-# OpenAI invalid_prompt / content_policy_violation e message.refusal.
+# Content filter / safety refusal: fail-closed, never the next AI.
+# z.ai 1301 (HTTP 400) and finish "sensitive"; Moonshot type content_filter;
+# OpenAI invalid_prompt / content_policy_violation and message.refusal.
 FILTRO = {"1301", "content_filter", "content_policy_violation", "invalid_prompt"}
 FINISH = ("stop", "length", "tool_calls", "content_filter", "sensitive", "network_error")
 FINISH_FILTRADO = {"content_filter", "sensitive"}
-# Tempo: o job tem 30 min e o passo de análise 27. 4 provedores x 6 min = 24
-# cabem em PRAZO_TOTAL; sem teto, um provedor sozinho levava 6x300 s + backoff.
-# ponytail: se todos travam, o 5º (gpt-5.5) só tem o 1 min que sobra (média
-# medida: 16 s). Mais reservas pedem PRAZO_TOTAL e timeout-minutes maiores.
-TIMEOUT_HTTP = 180     # por chamada; o teto de 32k tokens do glm-5 precisa de folga
-PRAZO_PROVEDOR = 360   # para de repetir um provedor depois disso
-PRAZO_TOTAL = 25 * 60  # a cadeia inteira
-MIN_CHAMADA = 30       # menos que isso de prazo restante: nem começa a chamada
+# Time: the job has 30 min and the analysis step 27. 4 providers x 6 min = 24
+# fit in PRAZO_TOTAL; with no cap, one provider alone took 6x300 s + backoff.
+# ponytail: if all of them hang, the 5th (gpt-5.5) only has the 1 min that is
+# left (measured average: 16 s). More fallbacks need a larger PRAZO_TOTAL and
+# timeout-minutes.
+TIMEOUT_HTTP = 180     # per call; the 32k-token cap of glm-5 needs slack
+PRAZO_PROVEDOR = 360   # stop retrying a provider after this
+PRAZO_TOTAL = 25 * 60  # the whole chain
+MIN_CHAMADA = 30       # less than this deadline left: do not even start the call
 
 
 def le_cadeia(env) -> list[Provedor]:
@@ -127,29 +133,30 @@ def le_cadeia(env) -> list[Provedor]:
     padrao = CADEIA_PADRAO.format(primario=env.get("PORTEIRO_MODELO") or MODELO_PADRAO)
     return monta(env.get("PORTEIRO_CADEIA") or "") or monta(padrao)
 
-# Quando o diff passa do teto, só o que toca auth, dinheiro e política entra.
+# When the diff goes over the cap, only what touches auth, money and policy goes in.
 CAMINHOS_DE_RISCO = (
     "src/lib/payments/*", "src/app/api/*", "src/proxy.ts", "supabase/*",
     "*auth*", "*policy*", "*policies*", "src/lib/ops/*", "src/lib/supabase/*",
     ".github/workflows/*",
-    # Todo scripts/*, não só os dois do portão: o CI executa vários (o
-    # backup-supabase.sh roda no backup.yml com o acesso do banco; o ci.yml roda
-    # build-test-db.sh e os check-*.mjs) e os setup-*/create-*.mjs mexem na
-    # Stripe. Fora da lista, num diff grande, nenhum deles chegava ao modelo.
+    # All of scripts/*, not just the two of the gate: CI runs several (the
+    # backup-supabase.sh runs in backup.yml with database access; ci.yml runs
+    # build-test-db.sh and the check-*.mjs) and the setup-*/create-*.mjs touch
+    # Stripe. Left off the list, in a big diff, none of them reached the model.
     "scripts/*",
 )
-# Lockfile decide de onde vem o código instalado ("resolved"/"integrity"):
-# é caminho de risco, lido pelo nome do arquivo em qualquer pasta.
+# A lockfile decides where the installed code comes from ("resolved"/"integrity"):
+# it is a risk path, read by file name in any folder.
 LOCKFILES = {"package-lock.json", "npm-shrinkwrap.json", "yarn.lock", "pnpm-lock.yaml", "bun.lock", "bun.lockb"}
-# Imagem/fonte: fora da análise só pela regra de asset_de_verdade. Casado com o
-# ÚLTIMO segmento do caminho (src/app/api/x.png/route.ts é código). SVG carrega
-# script e o vitest executa .snap (new Function no conteúdo): os dois são código.
-# Só formatos cuja assinatura começa num byte que torna JS/TS SyntaxError no
-# byte 0 (o Node faz require() de .png como JS): PNG \x89 e JPEG \xFF (não são
-# UTF-8, viram U+FFFD), ICO/TTF/AVIF \x00. GIF ("GIF8"), WebP ("RIFF"), WOFF
-# ("wOFF"), WOFF2 ("wOF2") e OTF ("OTTO") começam em texto e cabem num poliglota
-# JS: são código, e binário que é código dá 3. O repo tem 14 .webp; PR que mexa
-# num deles fica NÃO ANALISADO (raro, um humano decide).
+# Image/font: left out of the analysis only by the asset_de_verdade rule. Matched
+# against the LAST path segment (src/app/api/x.png/route.ts is code). SVG carries
+# script and vitest executes .snap (new Function on the content): both are code.
+# Only formats whose signature starts with a byte that makes JS/TS a SyntaxError
+# at byte 0 (Node require()s a .png as JS): PNG \x89 and JPEG \xFF (not UTF-8,
+# they become U+FFFD), ICO/TTF/AVIF \x00. GIF ("GIF8"), WebP ("RIFF"), WOFF
+# ("wOFF"), WOFF2 ("wOF2") and OTF ("OTTO") start with text and fit in a JS
+# polyglot: they are code, and a binary that is code gives 3. The repo has 14
+# .webp; a PR that touches one of them is left unanalyzed (exit 3)
+# (rare, a human decides).
 ASSETS = {".png", ".jpg", ".jpeg", ".ico", ".ttf", ".avif"}
 INICIO_ASSET = ("\ufffd", "\x00")
 
@@ -176,16 +183,16 @@ confianca e float 0.0-1.0. Sem achados: {"achados":[]}"""
 VAZIO = {"achados": []}
 SEVERIDADES = {"critica", "alta", "media", "baixa"}
 CERCA = re.compile(r"^```(?:json)?|```$", re.M)
-# O git põe entre aspas (escape estilo C) o caminho com aspas, barra invertida,
-# caractere de controle e -- sem core.quotePath=false -- qualquer não-ASCII.
+# Git puts a path with quotes, backslash, a control character and -- without
+# core.quotePath=false -- any non-ASCII in quotes (C-style escape).
 CABECALHO = re.compile(r"^diff --git (.*)$", re.M)
 LADOS = re.compile(r'("a/(?:[^"\\]|\\.)*"|a/.+?) ("b/(?:[^"\\]|\\.)*"|b/.+)')
-# Chaves aceitas por campo (o modelo às vezes responde em inglês).
+# Keys accepted per field (the model sometimes answers in English).
 CHAVES = {"severidade": ("severidade", "severity", "nivel", "gravidade"), "titulo": ("titulo", "title"),
           "arquivo": ("arquivo", "file"), "confianca": ("confianca", "confidence"), "linha": ("linha", "line")}
-# Severidade no texto cru de uma resposta que não fechou o JSON. Sem a aspa
-# final (cortou dentro do valor) é ilegível: conta como grave.
-# Sem caixa, como o GRAVE da main: "Severidade"/"SEVERITY"/"Achados" também contam.
+# Severity in the raw text of a response that did not close the JSON. Without the
+# closing quote (cut inside the value) it is unreadable: it counts as serious.
+# Case-insensitive, like the GRAVE of main: "Severidade"/"SEVERITY"/"Achados" count too.
 SEV_CRU = re.compile(r'"(?:%s)"\s*:\s*"([^"]*)("?)' % "|".join(CHAVES["severidade"]), re.I)
 ABRE_ACHADOS = re.compile(r'"(?:achados|findings)"\s*:\s*\[', re.I)
 SEV_SINONIMOS = {
@@ -196,28 +203,28 @@ SEV_SINONIMOS = {
     "trivial": "baixa", "negligible": "baixa", "n/a": "baixa", "nit": "baixa", "note": "baixa",
 }
 ORDEM = ("critica", "alta", "media", "baixa")
-# Metadado do git (coluna 0; linha de conteúdo sempre começa com + - espaço \).
+# Git metadata (column 0; a content line always starts with + - space \).
 BINARIO = re.compile(r"^(?:Binary files |GIT binary patch)", re.M)
 MODO_GIT = re.compile(r"^(?:(?:new file|deleted file|old|new) mode|index \S+) (\d{6})$", re.M)
 RENOMEADO = re.compile(r"^(?:rename|copy) from (.+)$", re.M)
 
 
 # --------------------------------------------------------------------------
-# GLM (mesma mecânica medida em skillset-ops/protecao-glm/analisa.py)
+# GLM (same mechanics measured in skillset-ops/protecao-glm/analisa.py)
 # --------------------------------------------------------------------------
 class SaldoZerado(RuntimeError):
-    """Sem saldo/cota (z.ai 1113, OpenAI insufficient_quota, Moonshot
-    exceeded_current_quota_error). Repetir só queima 93 s."""
+    """No balance/quota (z.ai 1113, OpenAI insufficient_quota, Moonshot
+    exceeded_current_quota_error). Retrying only burns 93 s."""
 
 
 class Recusado(Exception):
-    """Filtro de conteúdo ou recusa de segurança. NÃO é RuntimeError de
-    propósito: não cai para a próxima IA, encerra a cadeia com 3."""
+    """Content filter or safety refusal. It is deliberately NOT a RuntimeError:
+    it does not fall through to the next AI, it ends the chain with 3."""
 
 
 def codigo_erro(e: urllib.error.HTTPError) -> str:
-    """error.code (z.ai 1113/1302, OpenAI) ou error.type (Moonshot) do corpo
-    de erro. Só um identificador curto sai daqui: o corpo nunca chega ao log."""
+    """error.code (z.ai 1113/1302, OpenAI) or error.type (Moonshot) from the error
+    body. Only a short identifier leaves here: the body never reaches the log."""
     try:
         err = json.loads(e.read())["error"]
         c = str(err.get("code") or err.get("type") or "")
@@ -238,9 +245,9 @@ def corpo_pedido(diff: str, prov: Provedor, max_tokens: int) -> dict:
     if prov.id == "zai":
         c.update(max_tokens=max_tokens, temperature=0.1)
     else:
-        # Kimi (k3, k2.6) e OpenAI (gpt-5.x) raciocinam: o teto é raciocínio +
-        # resposta (piso 8192, senão volta em branco com HTTP 200) e temperature
-        # diferente de 1 dá HTTP 400. Por isso temperature não vai.
+        # Kimi (k3, k2.6) and OpenAI (gpt-5.x) reason: the cap is reasoning +
+        # answer (floor 8192, otherwise it comes back blank with HTTP 200) and a
+        # temperature other than 1 gives HTTP 400. That is why temperature is left out.
         c["max_completion_tokens" if prov.id == "openai" else "max_tokens"] = max(max_tokens, 8192)
     return c
 
@@ -257,8 +264,8 @@ def chama(diff: str, prov: Provedor, max_tokens: int, chave: str, prazo: float) 
         if restante < MIN_CHAMADA:
             raise RuntimeError(f"prazo esgotado ({ultimo or 'antes da chamada'})")
         try:
-            # ponytail: timeout é por operação de socket, não total; um servidor
-            # que pinga byte a byte passa do prazo. Stream + relógio se acontecer.
+            # ponytail: the timeout is per socket operation, not total; a server
+            # that drips byte by byte goes past the deadline. Stream + clock if it happens.
             with urllib.request.urlopen(req, timeout=min(TIMEOUT_HTTP, restante)) as r:
                 dados = json.load(r)
             break
@@ -272,12 +279,12 @@ def chama(diff: str, prov: Provedor, max_tokens: int, chave: str, prazo: float) 
             if e.code not in (408, 429, 500, 502, 503, 504):
                 raise RuntimeError(f"API recusou ({ultimo})")
         except (OSError, ValueError, http.client.HTTPException) as e:
-            # ValueError cobre JSONDecodeError e UnicodeDecodeError.
+            # ValueError covers JSONDecodeError and UnicodeDecodeError.
             ultimo = type(e).__name__
         if tentativa == 5:
             raise RuntimeError(f"API falhou 6 vezes seguidas ({ultimo})")
         time.sleep(min(2 ** tentativa * 3, 60, max(0.0, prazo - time.monotonic())))
-    # Corpo de formato estranho (null, lista, message string) = tentativa vazia.
+    # A body of odd shape (null, list, message string) = empty attempt.
     dados = dados if isinstance(dados, dict) else {}
     esc = dados.get("choices")
     esc = esc[0] if isinstance(esc, list) and esc and isinstance(esc[0], dict) else {}
@@ -293,12 +300,13 @@ def chama(diff: str, prov: Provedor, max_tokens: int, chave: str, prazo: float) 
 
 
 def _junta(pares) -> dict:
-    """object_pairs_hook: "achados"/"findings" repetidos SOMAM as listas (com o
-    padrão do json, um `"achados":[]` no fim apagaria o bloqueante de antes);
-    um deles que não seja lista estraga a resposta (None fica). Chave de
-    severidade repetida fica com a mais grave; de confiança, com a maior.
-    Toda chave vira minúscula aqui ("Severidade", "TITLE", "Achados"), e é por
-    este gancho que passa todo JSON lido: o resto do arquivo compara minúsculas."""
+    """object_pairs_hook: repeated "achados"/"findings" ADD UP their lists (with
+    the json default, a trailing `"achados":[]` would erase an earlier blocking
+    one); if one of them is not a list it spoils the response (None stays). A
+    repeated severity key keeps the most serious; a repeated confidence key,
+    the largest. Every key becomes lowercase here ("Severidade", "TITLE",
+    "Achados"), and every JSON read goes through this hook: the rest of the
+    file compares lowercase."""
     d = {}
     for k, v in pares:
         k = k.lower()
@@ -317,8 +325,8 @@ def _junta(pares) -> dict:
 def extrai_json(texto: str) -> dict | None:
     if not texto:
         return None
-    # ValueError cobre JSONDecodeError e o teto de 4300 dígitos de int;
-    # RecursionError (é RuntimeError!) vem de aninhamento fundo.
+    # ValueError covers JSONDecodeError and the 4300-digit int cap;
+    # RecursionError (it is a RuntimeError!) comes from deep nesting.
     for cand in (texto, CERCA.sub("", texto).strip()):
         try:
             return json.loads(cand, object_pairs_hook=_junta)
@@ -334,18 +342,18 @@ def extrai_json(texto: str) -> dict | None:
 
 
 def _texto(v) -> str:
-    # str() de lista aninhada recursa; o campo que não é escalar vira vazio.
+    # str() of a nested list recurses; a field that is not a scalar becomes empty.
     return v if isinstance(v, str) else "" if v is None or isinstance(v, (list, dict)) else str(v)
 
 
 def _sev(v) -> str:
     """'Crítica', 'HIGH', 'baixo', 'moderate', 'info' -> critica/alta/media/baixa.
-    Vazio -> media. 'Low (informational)' vale pelo que vem antes do '(';
-    'low/critical' pela mais grave das opções. Palavra de severidade em
-    qualquer ponto (inclusive entre parênteses) só SOBE: 'Low (escalates to
-    critical)' -> critica. Qualquer outra coisa (inclusive não-texto e texto
-    sem letra latina, '严重') -> alta: severidade que o portão não reconhece
-    não vira aviso."""
+    Empty -> media. 'Low (informational)' counts for what comes before the '(';
+    'low/critical' for the most serious of the options. A severity word
+    anywhere (even inside parentheses) only RAISES it: 'Low (escalates to
+    critical)' -> critica. Anything else (including non-text and text with no
+    Latin letter, '严重') -> alta: a severity the gate does not recognize does
+    not become a warning."""
     if v is None or isinstance(v, str) and not v.strip():
         return "media"
     s = unicodedata.normalize("NFKD", v).encode("ascii", "ignore").decode().lower().strip() if isinstance(v, str) else "?"
@@ -356,7 +364,7 @@ def _sev(v) -> str:
 
 
 def _conf(v, padrao: float) -> float:
-    """Confiança 0.0-1.0; ilegível ("95%", "alta", NaN, estouro) -> padrao."""
+    """Confidence 0.0-1.0; unreadable ("95%", "alta", NaN, overflow) -> the default."""
     try:
         c = float(v)
     except (TypeError, ValueError, OverflowError):
@@ -369,9 +377,9 @@ def _preenchido(v) -> bool:
 
 
 def _tem_achado(v) -> bool:
-    """Alguma LISTA dentro de v com objeto com cara de achado (severidade ou
-    título, em qualquer grafia). Objeto solto com essas chaves ("resumo":
-    {"titulo": ...}, "stats": {"severity": ...}) não é achado."""
+    """Any LIST inside v with an object that looks like a finding (severity or
+    title, in any spelling). A loose object with those keys ("resumo":
+    {"titulo": ...}, "stats": {"severity": ...}) is not a finding."""
     if isinstance(v, dict):
         return any(map(_tem_achado, v.values()))
     return isinstance(v, list) and any(
@@ -380,8 +388,8 @@ def _tem_achado(v) -> bool:
 
 
 def _grave_solto(v) -> bool:
-    """Severidade crítica/alta (em TEXTO, qualquer grafia de chave) em qualquer
-    ponto de v. "stats":{"severity":{"critica":0}} não é texto: não conta."""
+    """Critical/high severity (as TEXT, any spelling of the key) anywhere in v.
+    "stats":{"severity":{"critica":0}} is not text: it does not count."""
     if isinstance(v, dict):
         return (any(isinstance(v.get(k), str) and _sev(v[k]) in ("critica", "alta") for k in CHAVES["severidade"])
                 or any(map(_grave_solto, v.values())))
@@ -389,22 +397,23 @@ def _grave_solto(v) -> bool:
 
 
 def _pega(a: dict, campo: str, padrao=None):
-    """1º valor preenchido entre as chaves aceitas do campo (pt ou inglês)."""
+    """1st filled value among the accepted keys of the field (pt or English)."""
     return next((a[k] for k in CHAVES[campo] if _preenchido(a.get(k))), padrao)
 
 
 def normaliza(bruto: dict | None) -> dict | None:
-    """Entrada inválida é pulada, não derruba a lista (um bloqueante bom ao lado
-    de um `null` continua valendo). Crítica/alta sem título não some: vira
-    "(sem título)" e ainda barra. Título sem severidade legível é alta.
-    Chaves em inglês (severity/title/file/confidence/line) valem; com duas
-    severidades, vale a mais grave. Lista só com entradas inválidas => None.
-    Entrada com campos mas sem severidade e sem título em nenhuma grafia
-    => None, a menos que haja bloqueante: não é "nenhum achado". Achado fora
-    da lista (outra chave do topo, ex. "vulnerabilities":[...]) => None.
-    Severidade crítica/alta fora da lista, em qualquer profundidade (inclusive
-    no próprio topo: {"findings":[],"severidade":"critica"}) => None: a main
-    lia isso como grave (3), então nunca é resposta limpa."""
+    """An invalid entry is skipped, it does not bring the list down (a good
+    blocking one next to a `null` still counts). Critical/high without a title
+    does not vanish: it becomes "(sem título)" and still blocks. A title with no
+    readable severity is alta.
+    English keys (severity/title/file/confidence/line) count; with two
+    severities, the most serious wins. A list with only invalid entries => None.
+    An entry with fields but no severity and no title in any spelling
+    => None, unless there is a blocking one: it is not "no findings". A finding
+    outside the list (another top-level key, e.g. "vulnerabilities":[...]) => None.
+    Critical/high severity outside the list, at any depth (including at the top
+    itself: {"findings":[],"severidade":"critica"}) => None: main read that as
+    serious (3), so it is never a clean response."""
     if not isinstance(bruto, dict) or not isinstance(bruto.get("achados"), list):
         return None
     resto = {k: v for k, v in bruto.items() if k != "achados"}
@@ -426,8 +435,8 @@ def normaliza(bruto: dict | None) -> dict | None:
             if not grave:
                 continue
             titulo = "(sem título)"
-        # Grave sem confiança legível ("95%", "alta", NaN, estouro) barra: 1.0.
-        # Com confianca e confidence, vale a maior.
+        # Serious without a readable confidence ("95%", "alta", NaN, overflow) blocks: 1.0.
+        # With both confianca and confidence, the larger one counts.
         padrao = 1.0 if grave else 0.5
         conf = max((_conf(a[k], padrao) for k in CHAVES["confianca"] if _preenchido(a.get(k))), default=padrao)
         try:
@@ -451,9 +460,9 @@ def normaliza(bruto: dict | None) -> dict | None:
 
 
 def _le_listas(texto: str) -> tuple[list, bool]:
-    """Cada lista "achados"/"findings" do texto, objeto a objeto: os que
-    chegaram inteiros, e se alguma parou num "{" que não fecha (achado que
-    começou e foi cortado antes de dizer a severidade)."""
+    """Each "achados"/"findings" list in the text, object by object: the ones
+    that arrived whole, and whether any stopped at an unclosed "{" (a finding
+    that started and was cut before saying the severity)."""
     dec, objs, aberto = json.JSONDecoder(object_pairs_hook=_junta), [], False
     for m in ABRE_ACHADOS.finditer(texto):
         i = m.end()
@@ -470,19 +479,19 @@ def _le_listas(texto: str) -> tuple[list, bool]:
 
 
 def resgata(texto: str) -> dict | None:
-    """Resposta cortada no meio da lista: lê os achados objeto a objeto e fica
-    com os que chegaram inteiros. O pedaço pela metade não conta aqui (ele é
-    indício: ver analisa)."""
+    """Response cut in the middle of the list: reads the findings object by object
+    and keeps the ones that arrived whole. The half-finished piece does not count
+    here (it is a hint: see analisa)."""
     objs, _ = _le_listas(texto)
     return normaliza({"achados": objs}) if objs else None
 
 
 def analisa(diff: str, prov: Provedor, chave: str, arquivos=(), prazo: float | None = None) -> tuple[dict, dict]:
-    """Três tetos para raciocínio + JSON final. Esgotou => falhou=True.
-    Resposta cortada ou ilegível que JÁ aponta achado é o veredito
-    (tel["cortado"]): pedir de novo, aqui ou à próxima IA, seria procurar quem
-    aprove. Vale o achado que chegou inteiro e, sem ele, o indício cru de
-    crítica/alta (tel["indicio"])."""
+    """Three caps for reasoning + final JSON. Ran out => falhou=True.
+    A truncated or unreadable response that ALREADY points to a finding is the
+    verdict (tel["cortado"]): asking again, here or of the next AI, would be
+    looking for someone who approves. The finding that arrived whole counts and,
+    without it, the raw hint of critical/high (tel["indicio"])."""
     prazo = prazo or time.monotonic() + PRAZO_PROVEDOR
     tel = {"modelo": prov.rotulo, "tentativas": [], "segundos": 0.0, "tokens": 0}
     t0 = time.monotonic()
@@ -496,7 +505,7 @@ def analisa(diff: str, prov: Provedor, chave: str, arquivos=(), prazo: float | N
                   else "truncado" if fim == "length"
                   else "interrompido" if fim != "stop" else "ok")
         tel["tentativas"].append(estado)
-        # Só enums e contagens. Nunca content, reasoning, erro ou achados.
+        # Only enums and counts. Never content, reasoning, error or findings.
         print("tentativa: " + json.dumps({
             "tentativa": tentativa, "teto": teto, "chars": len(content),
             "tokens": usage["total_tokens"], "finish_reason": usage["finish_reason"],
@@ -505,19 +514,19 @@ def analisa(diff: str, prov: Provedor, chave: str, arquivos=(), prazo: float | N
         if estado != "ok":
             parcial = r if r is not None else resgata(content)
             bloq, aviso, _ = classifica(parcial["achados"], list(arquivos)) if parcial else ([], [], 0)
-            # Achado que começou e não fechou (título primeiro, chave em inglês,
-            # corte no nome da chave ou antes da aspa do valor) também é
-            # indício: a severidade dele nunca chegou, e ninguém pode apagá-lo.
-            # SEV_CRU e _le_listas leem o texto CRU: nome de campo escrito em
-            # escape ("severity") passa por fora dos dois. No objeto já
-            # decodificado o escape virou o campo de verdade, então _grave_solto
-            # vê o que o texto escondeu — senão a 2ª tentativa reabre a votação.
+            # A finding that started and did not close (title first, English key,
+            # cut in the key name or before the value's quote) is also a hint:
+            # its severity never arrived, and nobody can erase it.
+            # SEV_CRU and _le_listas read the RAW text: a field name written as
+            # an escape ("severity") slips past both. In the already decoded
+            # object the escape became the real field, so _grave_solto sees what
+            # the text hid — otherwise the 2nd attempt reopens the vote.
             grave = r is None and (any(not aspa or _sev(s) in ("critica", "alta")
                                        for s, aspa in SEV_CRU.findall(content))
                                    or _le_listas(content)[1] or _grave_solto(j))
             if bloq or aviso or grave:
-                # ponytail: para no 1º corte com achado, sem tentar teto maior;
-                # achado leve cortado vira 3. Mesclar tentativas se isso for comum.
+                # ponytail: stops at the 1st cut with a finding, without trying a
+                # bigger cap; a light cut finding becomes 3. Merge attempts if this is common.
                 tel["cortado"] = estado
                 if grave and not bloq:
                     tel["indicio"] = True
@@ -533,11 +542,11 @@ def analisa(diff: str, prov: Provedor, chave: str, arquivos=(), prazo: float | N
 
 
 # --------------------------------------------------------------------------
-# Diff: quais arquivos, e o corte pelos caminhos de risco
+# Diff: which files, and the cut by risk paths
 # --------------------------------------------------------------------------
 def desaspa(tok: str) -> str | None:
-    """'"b/a\\303\\247.ts"' -> 'b/aç.ts' (o inverso do quote_c_style do git:
-    \\ooo são bytes UTF-8; \\t \\n \\" \\\\ os de sempre)."""
+    """'"b/a\\303\\247.ts"' -> 'b/aç.ts' (the inverse of git's quote_c_style:
+    \\ooo are UTF-8 bytes; \\t \\n \\" \\\\ the usual ones)."""
     try:
         return tok[1:-1].encode("utf-8").decode("unicode_escape").encode("latin-1").decode("utf-8", "replace")
     except UnicodeError:
@@ -545,13 +554,13 @@ def desaspa(tok: str) -> str | None:
 
 
 def arquivos_do_diff(diff: str) -> list[str | None]:
-    """Um item por cabeçalho `diff --git`; None onde o cabeçalho não se lê
-    (quem chama decide -- main não aprova com arquivo que ficou sem nome)."""
+    """One item per `diff --git` header; None where the header cannot be read
+    (the caller decides -- main does not approve with a file left without a name)."""
     return [_lados(m.group(1))[1] for m in CABECALHO.finditer(diff)]
 
 
 def _lados(cabecalho: str) -> tuple[str | None, str | None]:
-    """'a/x b/y' -> ('x', 'y'); None no lado que não se lê."""
+    """'a/x b/y' -> ('x', 'y'); None on the side that cannot be read."""
     def nome(tok):
         t = desaspa(tok) if tok.startswith('"') else tok
         return t[2:] if t and t[2:] else None
@@ -564,8 +573,8 @@ def _ultimo(caminho: str) -> str:
 
 
 def eh_de_risco(caminho: str) -> bool:
-    # fnmatch.fnmatch diferencia caixa no Linux (o CI) e não no Windows: sem o
-    # lower(), src/lib/OAuth.ts ou Supabase/x.sql saíam do corte num diff grande.
+    # fnmatch.fnmatch is case-sensitive on Linux (CI) and not on Windows: without
+    # the lower(), src/lib/OAuth.ts or Supabase/x.sql would drop out of the cut in a big diff.
     c = caminho.lower()
     return _ultimo(c) in LOCKFILES or any(fnmatch.fnmatchcase(c, g) for g in CAMINHOS_DE_RISCO)
 
@@ -575,17 +584,17 @@ def eh_asset(caminho: str) -> bool:
 
 
 def blocos(diff: str) -> list[tuple[str | None, str]]:
-    """(arquivo, texto) de cada bloco `diff --git`; o que vem antes do 1º cai."""
+    """(file, text) of each `diff --git` block; whatever comes before the 1st is dropped."""
     return [(a[0], p) for p in re.split(r"(?m)^(?=diff --git )", diff) if (a := arquivos_do_diff(p))]
 
 
 def renomeados(diff: str) -> list[str]:
-    """Nomes de antes do rename/copy: o modelo pode citar o arquivo por eles."""
+    """Names from before the rename/copy: the model may cite the file by them."""
     return [desaspa(n) or n if n.startswith('"') else n for n in RENOMEADO.findall(diff)]
 
 
 def _conteudo(bloco: str) -> str:
-    """Os hunks do bloco (do 1º @@ em diante); antes disso só vem metadado do git."""
+    """The hunks of the block (from the 1st @@ on); before that there is only git metadata."""
     i = bloco.find("\n@@")
     return bloco[i:] if i != -1 else ""
 
@@ -595,17 +604,17 @@ def modos(bloco: str) -> set[str]:
 
 
 def _novas(bloco: str) -> list[str]:
-    """As linhas acrescentadas (+) do bloco, sem o sinal: o conteúdo que o PR traz."""
+    """The added (+) lines of the block, without the sign: the content the PR brings."""
     return [l[1:] for l in _conteudo(bloco).split("\n") if l.startswith("+")]
 
 
 def _tem_binario(linhas: list[str]) -> bool:
-    # NUL, ou U+FFFD: byte que não é UTF-8, trocado na leitura com errors=replace.
+    # NUL, or U+FFFD: a byte that is not UTF-8, replaced on read with errors=replace.
     return any("\x00" in l or "\ufffd" in l for l in linhas)
 
 
 def _primeira_nova(bloco: str) -> str | None:
-    """A 1ª linha do arquivo novo, se o 1º hunk começa nela; senão None."""
+    """The 1st line of the new file, if the 1st hunk starts at it; otherwise None."""
     c = _conteudo(bloco).lstrip("\n").split("\n")
     m = re.match(r"@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@", c[0])
     if not m or m.group(1) != "1":
@@ -614,48 +623,48 @@ def _primeira_nova(bloco: str) -> str | None:
 
 
 def asset_de_verdade(bloco: str) -> bool:
-    """Imagem/fonte que pode ficar fora da análise: todos os nomes do bloco
-    (lado a, lado b, rename/copy from) com extensão de imagem/fonte, só modo
-    100644 (nada de link 120000 nem submódulo 160000), e decidido pelo lado
-    NOVO: arquivo apagado sai; senão as linhas acrescentadas são binárias E a
-    1ª linha do arquivo novo começa em U+FFFD ou NUL (INICIO_ASSET), que o
-    Node não aceita como JS. As linhas "-" da imagem antiga não contam: PNG
-    sobrescrito por JS em texto é código. Imagem alterada cujo 1º hunk não
-    mostra a linha 1 não se prova: fica código, e binário dá 3."""
+    """An image/font that may stay out of the analysis: every name in the block
+    (side a, side b, rename/copy from) with an image/font extension, only mode
+    100644 (no 120000 link or 160000 submodule), and decided by the NEW side: a
+    deleted file goes out; otherwise the added lines are binary AND the 1st line
+    of the new file starts with U+FFFD or NUL (INICIO_ASSET), which Node does not
+    accept as JS. The "-" lines of the old image do not count: a PNG overwritten
+    by JS in plain text is code. A changed image whose 1st hunk does not show
+    line 1 cannot be proven: it stays code, and binary gives 3."""
     m = CABECALHO.match(bloco)
     nomes = [*_lados(m.group(1)), *renomeados(bloco)] if m else [None]
     if not (all(n and eh_asset(n) for n in nomes) and modos(bloco) <= {"100644"}):
         return False
-    # ponytail: "Binary files" só aparece sem --text (execução local); o
-    # workflow sempre passa --text, e aí só o conteúdo decide.
+    # ponytail: "Binary files" only shows up without --text (local run); the
+    # workflow always passes --text, and then only the content decides.
     if BINARIO.search(bloco) or re.search(r"^deleted file mode ", bloco, re.M):
         return True
     primeira = _primeira_nova(bloco)
-    # O pathspec da main (':(exclude)*.png') tem caixa: x.PNG, x.Jpg, .ttf e
-    # .avif iam ao modelo. Nesses só NUL prova binário (um \x89 na frente de um
-    # script não); U+FFFD só vale nos nomes que a main excluía, em minúsculas.
+    # main's pathspec (':(exclude)*.png') is case-sensitive: x.PNG, x.Jpg, .ttf and
+    # .avif went to the model. For those only NUL proves binary (a \x89 in front of
+    # a script does not); U+FFFD only counts for the names main excluded, in lowercase.
     inicio = INICIO_ASSET if nomes[1].endswith((".png", ".jpg", ".jpeg", ".ico")) else ("\x00",)
     return _tem_binario(_novas(bloco)) and primeira is not None and primeira.startswith(inicio)
 
 
 def binario(bloco: str) -> bool:
-    """Bloco que o modelo não leria: o git não mostrou o texto, ou as linhas
-    acrescentadas têm NUL ou U+FFFD. Contexto e linhas "-" são da base: um
-    U+FFFD que já estava lá não impede ler a mudança."""
+    """A block the model would not read: git did not show the text, or the added
+    lines have NUL or U+FFFD. Context and "-" lines belong to the base: a
+    U+FFFD that was already there does not prevent reading the change."""
     return bool(BINARIO.search(bloco)) or _tem_binario(_novas(bloco))
 
 
 def filtra_risco(diff: str) -> str:
-    """Mantém só os blocos `diff --git` cujo arquivo casa com CAMINHOS_DE_RISCO."""
+    """Keeps only the `diff --git` blocks whose file matches CAMINHOS_DE_RISCO."""
     return "".join(p for a, p in blocos(diff) if a and eh_de_risco(a))
 
 
 # --------------------------------------------------------------------------
-# Classificação: só dois níveis existem
+# Classification: only two levels exist
 # --------------------------------------------------------------------------
 def _caminho(arq: str) -> str:
-    """"b/src/X.ts:42", "src\\x.ts", "./src/x.ts" e "/home/.../src/x.ts" viram
-    algo que casa com o src/x.ts do diff (comparação sem caixa)."""
+    """"b/src/X.ts:42", "src\\x.ts", "./src/x.ts" and "/home/.../src/x.ts" become
+    something that matches the diff's src/x.ts (case-insensitive comparison)."""
     arq = re.sub(r"(?::\d+(?:[-:]\d+)*)+$", "", arq.strip().replace("\\", "/")).lower()
     while arq.startswith("./"):
         arq = arq[2:]
@@ -664,11 +673,12 @@ def _caminho(arq: str) -> str:
 
 
 def classifica(achados: list[dict], arquivos: list[str]) -> tuple[list[dict], list[dict], int]:
-    """Descarta achado leve em arquivo que o PR não toca (o modelo às vezes
-    cita a base, que ele nem viu). Crítico/alto nunca some: sem arquivo
-    reconhecido vira "(arquivo não identificado)" e ainda barra. O resto vira
-    bloqueante ou aviso. Devolve também quantos foram descartados (só o canal
-    privado vê a contagem). `arquivos` inclui os nomes de antes do rename."""
+    """Drops a light finding in a file the PR does not touch (the model sometimes
+    cites the base, which it never saw). Critical/high never vanishes: with no
+    recognized file it becomes "(arquivo não identificado)" and still blocks.
+    The rest becomes blocking or a warning. It also returns how many were
+    dropped (only the private channel sees the count). `arquivos` includes the
+    names from before the rename."""
     tocados = {_caminho(t) for t in arquivos if t}
     bloq, aviso, fora = [], [], 0
     for a in achados:
@@ -687,7 +697,7 @@ def classifica(achados: list[dict], arquivos: list[str]) -> tuple[list[dict], li
 
 
 # --------------------------------------------------------------------------
-# Saídas
+# Outputs
 # --------------------------------------------------------------------------
 def placar(bloq: int, aviso: int, modo: str, tel: dict, canal: str, nota: str = "", parcial: int = 0,
            por: str = "diff grande") -> str:
@@ -697,7 +707,7 @@ def placar(bloq: int, aviso: int, modo: str, tel: dict, canal: str, nota: str = 
     else:
         linha = f"{'🛑' if bloq else '⚠️'} **{total} achado{'s' if total != 1 else ''} · {bloq} bloqueante{'s' if bloq != 1 else ''}** · detalhe {canal}"
     if parcial:
-        # Parte do PR ficou sem ler: nunca "✅", e o check falha (um humano decide).
+        # Part of the PR was left unread: never "✅", and the check fails (a human decides).
         linha = f"🟡 **PARCIAL — {parcial} arquivo(s) não lidos ({por})** · o check falha: um humano decide\n\n{linha}"
     efeito = ("barra o merge" if bloq and modo == "barra"
               else "só avisa" if modo == "avisa" else "barra se houver bloqueante")
@@ -713,15 +723,15 @@ def nao_analisado(motivo: str, modo: str) -> str:
             f"modo `{modo}` · o check falha de propósito: portão que aprova por omissão não é portão.\n")
 
 
-TETO_RELAY = 500     # o nó "Formatar mensagem" do n8n descarta >600 e corta o summary em 500
-TETO_DETALHE = 3000  # o mesmo nó corta `detalhe` em 3000 (teto do Telegram é 4096)
+TETO_RELAY = 500     # the n8n "Formatar mensagem" node drops >600 and cuts the summary at 500
+TETO_DETALHE = 3000  # the same node cuts `detalhe` at 3000 (the Telegram cap is 4096)
 
 
 def resumo_telegram(bloq: list[dict], aviso: list[dict], pr: str, pr_url: str, sem_veredito: int = 0) -> str:
-    """O `summary` é a manchete: quantos achados, onde e o quê. O relay do n8n
-    exige source=skillsetmind, descarta acima de 600 caracteres e corta em 500,
-    então isto nunca passa de TETO_RELAY. O porquê e o como explorar vão no
-    campo `detalhe` (ver detalhe_telegram)."""
+    """The `summary` is the headline: how many findings, where and what. The n8n
+    relay requires source=skillsetmind, drops anything above 600 characters and
+    cuts at 500, so this never goes over TETO_RELAY. The why and how to exploit
+    go in the `detalhe` field (see detalhe_telegram)."""
     cabeca = (f"Porteiro PR #{pr}: {len(bloq)} bloqueante(s), {len(aviso)} aviso(s)"
               + (f", {sem_veredito} IA(s) sem veredito" if sem_veredito else "") + f"\n{pr_url}\n")
     linhas, resto = [], 0
@@ -739,10 +749,10 @@ def resumo_telegram(bloq: list[dict], aviso: list[dict], pr: str, pr_url: str, s
 
 
 def detalhe_telegram(bloq: list[dict], aviso: list[dict]) -> str:
-    """O corpo do alerta: para cada achado, POR QUÊ é vulnerável e COMO se
-    explora. Este canal é privado — é o único lugar onde isso pode aparecer,
-    já que o repositório é público e o comentário do PR leva só o placar.
-    Nunca passa de TETO_DETALHE; o que não couber vira uma linha de contagem."""
+    """The alert body: for each finding, WHY it is vulnerable and HOW it is
+    exploited. This channel is private — it is the only place where that can
+    appear, since the repository is public and the PR comment carries only the
+    scoreboard. It never goes over TETO_DETALHE; what does not fit becomes a count line."""
     linhas, resto = [], 0
     for tag, grupo in (("!!", bloq), ("!", aviso)):
         for a in grupo:
@@ -762,11 +772,12 @@ def detalhe_telegram(bloq: list[dict], aviso: list[dict]) -> str:
 
 
 def corpo_alerta(bloq: list[dict], aviso: list[dict], pr: str, pr_url: str, falhas=(), fora: int = 0) -> dict:
-    """O JSON que vai ao relay. Função pura, para o auto-teste conferir o
-    contrato sem rede: `source` é o que o porteiro do nó exige, e `detalhe` é
-    o campo que carrega o porquê e o ataque. `falhas` (saldo, chave, código de
-    erro de cada IA sem veredito) e `fora` (achados descartados por citar
-    arquivo que o PR não toca) também só existem aqui, nunca no placar."""
+    """The JSON that goes to the relay. A pure function, so the self-test can check
+    the contract without a network: `source` is what the node's gatekeeper
+    requires, and `detalhe` is the field that carries the why and the attack.
+    `falhas` (balance, key, error code of each AI with no verdict) and `fora`
+    (findings dropped for citing a file the PR does not touch) also exist only
+    here, never in the scoreboard."""
     detalhe = detalhe_telegram(bloq, aviso)
     if fora:
         detalhe = (f"descartados: {fora} achado(s) em arquivo que o PR não toca"
@@ -784,7 +795,7 @@ def corpo_alerta(bloq: list[dict], aviso: list[dict], pr: str, pr_url: str, falh
 
 
 def manda_detalhe(bloq: list[dict], aviso: list[dict], falhas=(), fora: int = 0) -> str:
-    """Canal privado. Devolve o texto para o placar ('no Telegram' / 'indisponível')."""
+    """Private channel. Returns the text for the scoreboard ('no Telegram' / 'indisponível')."""
     url = os.environ.get("OPS_ALERT_WEBHOOK_URL")
     if not url:
         return "indisponível (canal privado não configurado)"
@@ -811,16 +822,16 @@ def escreve(caminho: str, texto: str) -> None:
 
 
 def log_falhas(falhas, canal: str) -> None:
-    """Log público. O código curto de cada IA sem veredito só aparece quando o
-    canal privado NÃO recebeu o motivo -- aí é o único rastro que sobra. Nunca
-    a frase (saldo, chave): só HTTP n / código x / classe do erro."""
+    """Public log. The short code of each AI with no verdict only shows up when the
+    private channel did NOT receive the reason -- then it is the only trace left.
+    Never the sentence (balance, key): only HTTP n / code x / error class."""
     if not falhas or canal == "no Telegram":
         return
     curtos = []
     for f in falhas:
         rotulo, _, motivo = f.partition(": ")
         cod = re.findall(r"HTTP \d+|código [\w.-]+|finish_reason \w+|\b[A-Z]\w*Error\b", motivo)
-        # Sem código, nada da frase: "sem chave" viraria rastro público.
+        # No code, nothing of the sentence: "sem chave" would become a public trace.
         curtos.append(f"{rotulo}: {', '.join(cod) or 'sem código'}")
     print(f"sem veredito, detalhe {canal}: " + " · ".join(curtos), flush=True)
 
@@ -835,8 +846,8 @@ def main(argv: list[str]) -> int:
         elif argv[i] == "--placar":
             placar_path, i = argv[i + 1], i + 2
         elif argv[i] == "--nomes":
-            # saída de `git diff --name-only -z`: o que o PR toca, para conferir
-            # que nenhum arquivo ficou fora do diff lido.
+            # output of `git diff --name-only -z`: what the PR touches, to check
+            # that no file was left out of the diff that was read.
             nomes_path, i = argv[i + 1], i + 2
         else:
             print(f"argumento desconhecido: {argv[i]}", file=sys.stderr)
@@ -857,11 +868,11 @@ def main(argv: list[str]) -> int:
         print("NAO ANALISADO: nenhuma chave de IA neste job")
         return 3
 
-    # newline="": um "\r" solto no conteúdo não vira quebra de linha, senão
-    # "\rdiff --git a/x.png b/x.png" dentro de um arquivo forjaria um cabeçalho
-    # e o filtro abaixo jogaria fora o resto do bloco verdadeiro.
+    # newline="": a stray "\r" in the content does not become a line break,
+    # otherwise "\rdiff --git a/x.png b/x.png" inside a file would forge a header
+    # and the filter below would throw away the rest of the real block.
     with open(diff_path, encoding="utf-8", errors="replace", newline="") as f:
-        diff = f.read().replace("\r\n", "\n")  # CRLF sim; "\r" sozinho fica
+        diff = f.read().replace("\r\n", "\n")  # CRLF yes; a lone "\r" stays
     nomes = []
     if nomes_path:
         with open(nomes_path, "rb") as f:
@@ -877,14 +888,14 @@ def main(argv: list[str]) -> int:
         return 0
     arquivos = arquivos_do_diff(diff)
     if not arquivos or None in arquivos:
-        # Diff com conteúdo e arquivo sem nome legível: aprovar seria às cegas.
+        # A diff with content and a file with no readable name: approving would be blind.
         motivo = (f"{arquivos.count(None)} arquivo(s) do diff com cabeçalho não reconhecido" if arquivos
                   else "diff sem nenhum cabeçalho de arquivo reconhecido")
         escreve(placar_path, nao_analisado(motivo, modo))
         print(f"NAO ANALISADO: {motivo}")
         return 3
-    # O que o modelo não vê não pode aprovar. Submódulo e link simbólico, em
-    # QUALQUER bloco (inclusive com nome de imagem): o código apontado nunca vem.
+    # What the model does not see cannot approve. Submodule and symbolic link, in
+    # ANY block (even one with an image name): the code pointed to never comes.
     todos = blocos(diff)
     for rotulo, modo_git in (("submódulo", "160000"), ("link simbólico", "120000")):
         n = sum(1 for _, p in todos if modo_git in modos(p))
@@ -892,9 +903,9 @@ def main(argv: list[str]) -> int:
             escreve(placar_path, nao_analisado(f"{rotulo} ({n} arquivo(s)): o analisador não vê o código", modo))
             print(f"NAO ANALISADO: {rotulo} ({n})")
             return 3
-    # Imagem/fonte binária de verdade sai; todo o resto é código. Binário que
-    # sobrar (o .gitattributes pode marcar código como -diff; wasm, zip, pdf)
-    # chega ao modelo como lixo: não lido.
+    # A truly binary image/font goes out; everything else is code. A binary that
+    # is left (.gitattributes can mark code as -diff; wasm, zip, pdf) reaches the
+    # model as garbage: not read.
     codigo = [(a, p) for a, p in todos if not asset_de_verdade(p)]
     n = sum(1 for _, p in codigo if binario(p))
     if n:
@@ -910,7 +921,7 @@ def main(argv: list[str]) -> int:
         notas.append(f"{ignorados} arquivo(s) de imagem/fonte fora da análise (binários, não são código).")
     if not codigo:
         if not parcial:
-            # Todos passaram por asset_de_verdade: nada de código, nada escondido.
+            # All of them passed asset_de_verdade: no code, nothing hidden.
             escreve(placar_path, placar(0, 0, modo, vazio, "",
                                         f"PR só com arquivos de imagem/fonte ({ignorados}): nada de código para ler."))
             print(f"só imagem/fonte ({ignorados})")
@@ -930,18 +941,18 @@ def main(argv: list[str]) -> int:
             print(f"PARCIAL: {parcial} arquivo(s) não lidos (diff grande), nenhum caminho de risco")
             return 3
         if len(diff.encode()) > max_kb * 1024:
-            # Nem só os de risco cabem: o modelo não é chamado, nada foi lido.
+            # Not even the risk ones alone fit: the model is not called, nothing was read.
             parcial += len(arquivos)
             notas[-1] = f"Diff acima de {max_kb} KB mesmo só com os caminhos de risco: nenhum arquivo foi lido."
             escreve(placar_path, placar(0, 0, modo, vazio, "", "\n\n".join(notas), parcial, " + ".join(por)))
             print(f"PARCIAL: {parcial} arquivo(s) não lidos (diff grande, até os de risco)")
             return 3
-    # O modelo pode citar o arquivo pelo nome de antes do rename.
+    # The model may cite the file by its name from before the rename.
     tocados = arquivos + renomeados(diff)
 
-    # Só "sem veredito" passa adiante. Veredito válido (inclusive bloqueante),
-    # resposta cortada com achado e filtro de conteúdo param aqui: cair para a
-    # próxima IA seria procurar quem aprove.
+    # Only "no verdict" moves on. A valid verdict (even a blocking one), a
+    # truncated response with a finding and a content filter stop here: falling
+    # through to the next AI would be looking for someone who approves.
     fim = time.monotonic() + PRAZO_TOTAL
     falhas = []
     for n, prov in enumerate(cadeia):
@@ -955,7 +966,7 @@ def main(argv: list[str]) -> int:
                 break
             raise RuntimeError("não devolveu JSON em 3 tentativas")
         except Recusado as e:
-            # Motivo (inclusive das IAs antes desta) vai ao canal privado antes do placar.
+            # The reason (including from the AIs before this one) goes to the private channel before the scoreboard.
             falhas.append(f"{prov.rotulo}: {e}")
             canal = manda_detalhe([], [], falhas)
             log_falhas(falhas, canal)
@@ -965,7 +976,7 @@ def main(argv: list[str]) -> int:
             print(f"NAO ANALISADO: {prov.rotulo} recusou o diff (filtro de conteúdo)")
             return 3
         except RecursionError:
-            # É RuntimeError: sem esta linha cairia para a próxima IA.
+            # It is a RuntimeError: without this line it would fall through to the next AI.
             escreve(placar_path, nao_analisado(
                 f"{prov.rotulo} devolveu resposta aninhada demais para ler. Nenhuma outra IA é consultada", modo))
             print(f"NAO ANALISADO: {prov.rotulo} resposta aninhada demais")
@@ -974,7 +985,7 @@ def main(argv: list[str]) -> int:
             falhas.append(f"{prov.rotulo}: {e}")
             print(f"sem veredito: {prov.rotulo} (motivo no canal privado)", flush=True)
     else:
-        # Motivo de cada IA (saldo, chave) só no canal privado; o placar é público.
+        # The reason of each AI (balance, key) only in the private channel; the scoreboard is public.
         canal = manda_detalhe([], [], falhas)
         log_falhas(falhas, canal)
         k = len(falhas)
@@ -1001,7 +1012,7 @@ def main(argv: list[str]) -> int:
             return 3
         notas.append(f"Resposta cortada ({tel['cortado']}): o bloqueante vale e nenhuma outra IA é consultada.")
     escreve(placar_path, placar(len(bloq), len(aviso), modo, tel, canal, "\n\n".join(notas), parcial, " + ".join(por)))
-    # Só contagens no log público. Nunca o achado.
+    # Only counts in the public log. Never the finding.
     print(f"placar: {len(bloq)} bloqueante(s), {len(aviso)} aviso(s); modo={modo}; "
           f"{tel['segundos']}s; {tel['tokens']} tokens; detalhe {canal or 'n/a'}"
           + (f"; PARCIAL: {parcial} arquivo(s) não lidos" if parcial else ""))
@@ -1012,27 +1023,27 @@ def main(argv: list[str]) -> int:
 
 # --------------------------------------------------------------------------
 def demo() -> None:
-    """Auto-teste sem rede: parsing do diff, corte de risco, classificação, placar."""
+    """Self-test with no network: diff parsing, risk cut, classification, scoreboard."""
     d = ("diff --git a/src/app/api/pay/route.ts b/src/app/api/pay/route.ts\n--- a\n+++ b\n@@ -1 +1 @@\n+x\n"
          "diff --git a/README.md b/README.md\n--- a\n+++ b\n@@ -1 +1 @@\n+y\n")
     assert arquivos_do_diff(d) == ["src/app/api/pay/route.ts", "README.md"]
     assert arquivos_do_diff(filtra_risco(d)) == ["src/app/api/pay/route.ts"]
-    # Cabeçalho entre aspas do git (não-ASCII em octal, aspas escapadas).
+    # A quoted git header (non-ASCII in octal, escaped quotes).
     q = 'diff --git "a/src/a\\303\\247\\303\\243o.ts" "b/src/a\\303\\247\\303\\243o.ts"\n+x\n'
     assert arquivos_do_diff(q + 'diff --git "a/x\\"y" "b/x\\"y"\n+z\n') == ["src/ação.ts", 'x"y']
     assert arquivos_do_diff("diff --git c/x d/x\n+x\n") == [None]
     assert eh_de_risco("supabase/migrations/x.sql") and not eh_de_risco("README.md")
     assert eh_de_risco("apps/web/package-lock.json") and eh_de_risco("yarn.lock")
-    # Extensão só no último segmento: a pasta x.png de uma rota não é imagem.
+    # Extension only on the last segment: the x.png folder of a route is not an image.
     assert eh_asset("public/logo.PNG") and not eh_asset("src/app/api/x.png/route.ts") and not eh_asset("a.svg")
-    assert eh_asset("f.ttf") and not eh_asset("x.test.ts.snap")  # o vitest executa .snap
+    assert eh_asset("f.ttf") and not eh_asset("x.test.ts.snap")  # vitest executes .snap
     png = "diff --git a/i.png b/i.png\nnew file mode 100644\n--- /dev/null\n+++ b/i.png\n@@ -0,0 +1 @@\n+\ufffdPNG\x00\n"
-    assert asset_de_verdade(png) and not asset_de_verdade(png.replace("\ufffdPNG\x00", "texto"))  # texto é código
-    assert not asset_de_verdade(png.replace("\ufffdPNG", "/*"))  # começa em texto: poliglota JS
+    assert asset_de_verdade(png) and not asset_de_verdade(png.replace("\ufffdPNG\x00", "texto"))  # text is code
+    assert not asset_de_verdade(png.replace("\ufffdPNG", "/*"))  # starts with text: JS polyglot
     assert not asset_de_verdade(png.replace("100644", "120000"))
     assert not asset_de_verdade("diff --git a/p.ts b/p.png\nrename from p.ts\nrename to p.png\nBinary files a/p.ts and b/p.png differ\n")
     assert binario(png) and not binario(png.replace("\ufffd", "").replace("\x00", ""))
-    assert not binario(png.replace("+\ufffd", " \ufffd").replace("@@\n", "@@\n+ok\n"))  # U+FFFD da base não conta
+    assert not binario(png.replace("+\ufffd", " \ufffd").replace("@@\n", "@@\n+ok\n"))  # the base's U+FFFD does not count
     assert [_sev(s) for s in ("Crítica", "HIGH", "medium", "urgente", "", None, "baixo", "moderado", "info")] == [
         "critica", "alta", "media", "alta", "media", "media", "baixa", "media", "baixa"]
     assert normaliza({"achados": [{"title": "t", "severity": "critical"}]})["achados"][0]["severidade"] == "critica"
@@ -1050,7 +1061,7 @@ def demo() -> None:
     assert bloq[1]["arquivo"].startswith("(arquivo não identificado)"), bloq
     assert [a["titulo"] for a in aviso] == ["fraco", "leve"], aviso
     assert fora == 1
-    # Resposta cortada no meio da lista: o achado inteiro sobrevive.
+    # A response cut in the middle of the list: the whole finding survives.
     corte = '{"achados":[{"titulo":"IDOR","severidade":"alta","confianca":0.9,"arquivo":"a"},{"titulo":"x'
     assert extrai_json(corte) is None and [a["titulo"] for a in resgata(corte)["achados"]] == ["IDOR"]
 
@@ -1059,7 +1070,7 @@ def demo() -> None:
     assert len(r) <= TETO_RELAY and "+" in r and "Porteiro PR #999" in r, len(r)
     assert len(resumo_telegram([], achados[3:], "1", "u")) <= TETO_RELAY
 
-    # O detalhe carrega o porquê e o ataque — que o placar público nunca mostra.
+    # The detail carries the why and the attack — which the public scoreboard never shows.
     rico = normaliza({"achados": [{"titulo": "IDOR", "severidade": "alta", "confianca": 0.9,
                                    "arquivo": "src/app/api/pay/route.ts", "linha": 3,
                                    "porque": "o id vem do cliente sem checar dono",
@@ -1071,8 +1082,8 @@ def demo() -> None:
     assert len(grande) <= TETO_DETALHE and "sem espaço aqui" in grande, len(grande)
     assert detalhe_telegram([], []) == ""
 
-    # O contrato com o relay: sem `source` ele descarta calado; sem `detalhe`
-    # o ataque nunca sai do log do job.
+    # The contract with the relay: without `source` it drops silently; without `detalhe`
+    # the attack never leaves the job log.
     c = corpo_alerta(rico, [], "7", "https://github.com/x/y/pull/7")
     assert c["source"] == "skillsetmind" and c["event"] == "porteiro_pr", c
     assert c["severity"] == "critical" and "ataque:" in c["detalhe"], c
@@ -1087,7 +1098,7 @@ def demo() -> None:
     assert "0 achados" in placar(0, 0, "barra", {}, "")
     assert "NÃO ANALISADO" in nao_analisado("x", "avisa")
     assert normaliza(extrai_json("desculpe")) is None and normaliza(extrai_json('```json\n{"achados":[]}\n```')) == VAZIO
-    # Contrato HTTP e fail-closed: nenhuma chamada sai da máquina neste demo.
+    # HTTP contract and fail-closed: no call leaves the machine in this demo.
     import io
     from contextlib import redirect_stdout
     from unittest.mock import patch, mock_open
@@ -1097,7 +1108,7 @@ def demo() -> None:
             "content": content, "reasoning_content": "PRIVATE_SENTINEL"},
             "finish_reason": finish}], "usage": {"total_tokens": tokens}}).encode())
 
-    # Reproduz o diff cujo raciocínio consome mais de 16k antes do JSON final.
+    # Reproduces the diff whose reasoning consumes more than 16k before the final JSON.
     def resposta_longa(req, **kwargs):
         if json.loads(req.data)["max_tokens"] < 20000:
             return resposta("", "length")
@@ -1114,12 +1125,12 @@ def demo() -> None:
         ([("", "length", 12), ('{"achados":', "length", 12),
           ('{"achados":[]}', "stop", 12)], 0, ["vazio", "json_malformado", "ok"]),
         ([('{"achados":[{}]}', "stop", 12)] * 3, 3, ["json_malformado"] * 3),
-        # Campo de gravidade escrito em escape: o texto cru esconde, o objeto
-        # decodificado não. Uma resposta só — não pode haver 2ª tentativa.
+        # Severity field written as an escape: the raw text hides it, the decoded
+        # object does not. A single response — there must be no 2nd attempt.
         ([('{"achados":[],"' + chr(92) + 'u0073everity":"critical"}', "stop", 12)], 3, ["json_malformado"]),
         ([("", "length", 12)] * 3, 3, ["vazio"] * 3),
         ([('{"achados":[]}', "length", 12)] * 3, 3, ["truncado"] * 3),
-        # Filtro de conteúdo encerra na 1ª resposta, sem teto maior nem reserva.
+        # A content filter ends on the 1st response, with no bigger cap or fallback.
         ([('{"achados":[]}', "content_filter", 12)], 3, ["interrompido"]),
         ([('{"achados":[]}', "unknown", 12)] * 3, 3, ["interrompido"] * 3),
         ([("PRIVATE_SENTINEL", "PRIVATE_SENTINEL", "PRIVATE_SENTINEL")] * 3,
@@ -1161,7 +1172,7 @@ def demo() -> None:
              redirect_stdout(io.StringIO()):
             assert main(["--diff", "demo", "--placar", "demo"]) == expected_exit
 
-    # Nem o corpo de erro HTTP pode chegar ao placar público.
+    # Not even the HTTP error body can reach the public scoreboard.
     output = io.StringIO()
     with patch.dict(os.environ, {"GLM_API_KEY": "demo"}, clear=True), \
          patch("builtins.open", mock_open(read_data="diff --git a/a b/a\n+x")), \

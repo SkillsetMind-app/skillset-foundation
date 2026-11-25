@@ -1,15 +1,15 @@
 \set ON_ERROR_STOP on
 -- Banco descartável apenas. Fixtures voltam no ROLLBACK.
 --
--- A liberação da aula (drip) vale também no banco. Antes de 20260915020000 só
--- o vídeo respeitava o calendário (rota video-token); o texto, o link e o
--- material de uma aula ainda fechada saíam direto pelo cliente do Supabase para
--- qualquer aluno ativo. Aqui: aluno ativo lê só o que já abriu, dono lê tudo,
--- reembolsado não lê nada além da amostra, a amostra continua pública.
+-- Lesson release (drip) also holds in the database. Before 20260915020000 only
+-- the video respected the calendar (video-token route); the text, the link and the
+-- material of a still-closed lesson came straight through the Supabase client to
+-- any active learner. Here: an active learner reads only what has already opened, the owner reads everything,
+-- a refunded learner reads nothing beyond the sample, the sample stays public.
 --
--- A segunda metade roda a tabela de src/domain/drip-policy-parity-cases.ts em
--- public.lesson_is_released. O vitest (drip-policy-parity.test.ts) confere que
--- o bloco drip-parity-cases abaixo é exatamente aquela tabela.
+-- The second half runs the table in src/domain/drip-policy-parity-cases.ts through
+-- public.lesson_is_released. Vitest (drip-policy-parity.test.ts) checks that
+-- the drip-parity-cases block below is exactly that table.
 begin;
 create temp table drip_checks (name text, passed boolean);
 grant insert, select on drip_checks to anon, authenticated;
@@ -26,8 +26,8 @@ begin
     jsonb_build_object('sub', p_uid, 'role', p_role, 'aal', 'aal2')::text, true);
   perform set_config('skillset.trusted_write', 'off', true);
 end $$;
--- Mesmo currículo de dripParityModules: a (0 dias), b (7), p (30, amostra) no
--- módulo 1; c (1) no módulo 2. Os ids levam o prefixo do curso.
+-- Same curriculum as dripParityModules: a (0 days), b (7), p (30, sample) in
+-- module 1; c (1) in module 2. The ids carry the course prefix.
 create function pg_temp.curriculum(p text) returns jsonb language sql immutable as $$
   select jsonb_build_array(
     jsonb_build_object('id', p || '-m1', 'title', 'Modulo 1', 'lessons', jsonb_build_array(
@@ -41,7 +41,7 @@ create function pg_temp.file_path(p_course text, p_asset text) returns text lang
   select 'courses/smoke-drip-' || p_course || '/assets/' || pg_temp.uid(1)::text
     || '/' || p_course || '-asset-' || p_asset || '/material.pdf';
 $$;
--- O que o papel corrente enxerga, pela RLS (funções invoker).
+-- What the current role sees, through RLS (invoker functions).
 create function pg_temp.lessons_seen(p_course text) returns text[] language sql stable as $$
   select coalesce(array_agg(lesson_id order by lesson_id), '{}')
   from public.course_lesson_content where course_id = 'smoke-drip-' || p_course;
@@ -56,8 +56,8 @@ create function pg_temp.files_seen(p_course text) returns text[] language sql st
   where bucket_id = 'course-content' and name like 'courses/smoke-drip-' || p_course || '/%';
 $$;
 
--- 1 dono, 2 aluno ativo, 3 aluno reembolsado, 4 aluno da tabela de paridade,
--- 5 ninguém matriculado (a data de entrada falta).
+-- 1 owner, 2 active learner, 3 refunded learner, 4 learner from the parity table,
+-- 5 nobody enrolled (the join date is missing).
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
@@ -72,7 +72,7 @@ update public.users
   set roles = '["student","teacher"]', teacher_terms_accepted_at = now(), teacher_terms_version = 'smoke',
       activation_fee_paid_at = now()
   where uid = pg_temp.uid(1)::text;
--- A amostra (free_preview_lesson_id) de todos os cursos é a aula p.
+-- The sample (free_preview_lesson_id) of every course is lesson p.
 insert into public.courses(id, owner_id, slug, title, summary, category, status, currency,
   price_amount_minor, payment_type, modules, drip_strategy, drip_interval_days, free_preview_lesson_id)
 select 'smoke-drip-' || k.key, pg_temp.uid(1)::text, 'smoke-drip-' || k.key, 'Smoke drip ' || k.key,
@@ -98,9 +98,9 @@ from (values
 insert into public.course_lesson_content(lesson_id, course_id, content_text)
 select k || '-' || x, 'smoke-drip-' || k, 'Texto protegido da aula ' || x
 from unnest(array['custom', 'sequential']) k, unnest(array['a', 'b', 'p', 'c']) x;
--- Material por aula (a, b) e um do curso inteiro (sem aula), com o arquivo no
--- bucket privado; e a miniatura pública da aula b (o arquivo dela mora em
--- public-media, aqui só a linha importa).
+-- Material per lesson (a, b) and one for the whole course (no lesson), with the file in the
+-- private bucket; and the public thumbnail of lesson b (its file lives in
+-- public-media, only the row matters here).
 insert into public.course_assets(id, course_id, owner_id, kind, file_name, content_type, size,
   storage_path, lesson_id, created_at)
 select a.k || '-asset-' || a.x, 'smoke-drip-' || a.k, pg_temp.uid(1)::text, a.kind,
@@ -116,7 +116,7 @@ insert into storage.objects(bucket_id, name)
 select 'course-content', storage_path from public.course_assets
 where course_id like 'smoke-drip-%' and kind = 'lesson_material';
 
--- Aluno ativo, matriculado hoje, no curso com prazo por aula.
+-- Active learner, enrolled today, in the course with a per-lesson deadline.
 select pg_temp.act_as(pg_temp.uid(2), 'authenticated');
 set local role authenticated;
 select pg_temp.check_drip('active student reads the 0-day lesson on enrollment day',
@@ -141,7 +141,7 @@ select pg_temp.check_drip('active student opens the course-level file',
   'custom-asset-course' = any(pg_temp.files_seen('custom')));
 reset role;
 
--- Dono: tudo, qualquer que seja o calendário.
+-- Owner: everything, whatever the calendar.
 select pg_temp.act_as(pg_temp.uid(1), 'authenticated');
 set local role authenticated;
 select pg_temp.check_drip('owner reads every lesson',
@@ -152,14 +152,14 @@ select pg_temp.check_drip('owner opens every file',
   pg_temp.files_seen('custom') = array['custom-asset-a', 'custom-asset-b', 'custom-asset-course']);
 reset role;
 
--- Visitante sem sessão: a amostra continua pública, e a leitura não aborta.
+-- Visitor with no session: the sample stays public, and the read does not abort.
 select pg_temp.act_as(null, 'anon');
 set local role anon;
 select pg_temp.check_drip('anonymous visitor still reads the free preview lesson',
   pg_temp.lessons_seen('custom') = array['custom-p']);
 reset role;
 
--- Reembolsado: só a amostra, como já era.
+-- Refunded: only the sample, as it already was.
 select pg_temp.act_as(pg_temp.uid(3), 'authenticated');
 set local role authenticated;
 select pg_temp.check_drip('refunded student reads only the free preview',
@@ -170,7 +170,7 @@ select pg_temp.check_drip('refunded student opens no file',
   pg_temp.files_seen('custom') = '{}');
 reset role;
 
--- Oito dias depois da matrícula, a aula de 7 dias abre para quem tem direito.
+-- Eight days after enrollment, the 7-day lesson opens for whoever is entitled.
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 update public.enrollments set created_at = now() - 8 * interval '24 hours'
@@ -192,7 +192,7 @@ select pg_temp.check_drip('refunded student still sees no material on day 8',
   pg_temp.assets_seen('custom') = '{}');
 reset role;
 
--- Sequencial: a aula 2 só abre com a aula 1 concluída (linha em lesson_progress).
+-- Sequential: lesson 2 only opens once lesson 1 is completed (row in lesson_progress).
 select pg_temp.act_as(pg_temp.uid(2), 'authenticated');
 set local role authenticated;
 select pg_temp.check_drip('sequential: first lesson is open',
@@ -219,8 +219,8 @@ select pg_temp.check_drip('sequential: lesson 4 stays closed without its previou
   not 'sequential-c' = any(pg_temp.lessons_seen('sequential')));
 reset role;
 
--- Paridade com o JS: cada caso da tabela em public.lesson_is_released.
--- Sem a função (antes da migration), o caso responde nulo e reprova.
+-- Parity with JS: each case of the table in public.lesson_is_released.
+-- Without the function (before the migration), the case answers null and fails.
 create function pg_temp.released(p_course text, p_lesson text, p_uid text) returns boolean
 language plpgsql as $$
 declare r boolean;
@@ -276,8 +276,8 @@ begin
   end loop;
 end $$;
 
--- Chamada direta não é oráculo: quem não é dono nem matriculado recebe false
--- tanto para um curso instant que existe quanto para um id que não existe.
+-- A direct call is not an oracle: whoever is neither owner nor enrolled gets false
+-- both for an instant course that exists and for an id that does not exist.
 select pg_temp.act_as(pg_temp.uid(5), 'authenticated');
 set local role authenticated;
 select pg_temp.check_drip('direct call: a stranger gets false for an existing instant course',
@@ -296,7 +296,7 @@ select pg_temp.check_drip('direct call: an enrolled student gets the own schedul
   pg_temp.released('smoke-drip-instant', 'instant-c', null));
 reset role;
 
--- 34 checks fora da tabela + um por caso da tabela: nenhum pode sumir calado.
+-- 34 checks outside the table + one per table case: none may vanish silently.
 select pg_temp.check_drip('every case ran',
   (select count(*) = 34 + (select count(*) from drip_cases) from drip_checks));
 

@@ -1,7 +1,7 @@
 \set ON_ERROR_STOP on
 
--- Seguro contra banco vivo: a troca de plano e os domínios reivindicados ficam
--- dentro desta transação e são desfeitos no ROLLBACK.
+-- Safe against a live database: the plan change and the claimed domains stay
+-- inside this transaction and are undone in the ROLLBACK.
 BEGIN;
 
 CREATE OR REPLACE FUNCTION pg_temp.assert_true(
@@ -17,25 +17,25 @@ BEGIN
 END;
 $$;
 
--- `claim_custom_domain` contava os domínios do dono e inseria sem travar nada
--- no meio. Em READ COMMITTED, duas chamadas simultâneas liam o mesmo count, as
--- duas passavam pela cota e as duas inseriam: um professor em starter (cota 1)
--- ficava com N domínios, cada um anexado ao projeto Vercel da plataforma.
+-- `claim_custom_domain` counted the owner's domains and inserted without locking anything
+-- in between. In READ COMMITTED, two simultaneous calls read the same count, both
+-- passed the quota and both inserted: a teacher on starter (quota 1)
+-- ended up with N domains, each one attached to the platform's Vercel project.
 --
--- A corrida em si não cabe numa sessão só de psql. O que ESTA sessão prova, no
--- banco de verdade: (1) a definição viva trava a linha do dono em `users` com
--- `for update` ANTES da contagem — `.` casa quebra de linha no regex padrão do
--- Postgres, então a ordem faz parte da asserção; e (2) a cota continua valendo
--- depois da redefinição, como o professor logado a enxerga.
+-- The race itself does not fit in a single psql session. What THIS session proves, on the
+-- real database: (1) the live definition locks the owner's row in `users` with
+-- `for update` BEFORE the count -- `.` matches a line break in Postgres's default regex,
+-- so the order is part of the assertion; and (2) the quota still holds
+-- after the redefinition, as the logged-in teacher sees it.
 SELECT pg_temp.assert_true(
   pg_get_functiondef('public.claim_custom_domain(text)'::regprocedure)
     ~* 'from\s+public\.users\s+where\s+uid\s*=\s*v_uid\s+for\s+update.*count\(\*\)',
   'claim_custom_domain must lock the owner row (for update) before counting domains'
 );
 
--- Um usuário sem domínio, posto em starter (cota 1) só dentro desta transação.
--- O trigger users_field_guard recusa mudar o plano sem a flag de escrita
--- confiável; ela é local à transação e morre no ROLLBACK junto com o resto.
+-- A user with no domain, put on starter (quota 1) only inside this transaction.
+-- The users_field_guard trigger refuses to change the plan without the trusted
+-- write flag; it is local to the transaction and dies in the ROLLBACK with the rest.
 SELECT u.uid AS test_uid
 FROM public.users u
 WHERE NOT EXISTS (

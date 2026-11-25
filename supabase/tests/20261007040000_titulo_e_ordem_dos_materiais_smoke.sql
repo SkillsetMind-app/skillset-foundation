@@ -1,16 +1,16 @@
 \set ON_ERROR_STOP on
--- Banco descartável apenas. Fixtures voltam no ROLLBACK.
+-- Disposable database only. Fixtures are undone in the ROLLBACK.
 --
--- course_assets ganha title e position (20261007040000). Aqui:
--- - o backfill dá título = nome do arquivo e posição = ordem alfabética de
---   hoje dentro de cada aula, sem tocar no que já tinha valor;
--- - rodar a migration de novo não muda nada (idempotente);
--- - o envio de hoje (sem título nem posição) continua entrando;
--- - o banco recusa título vazio, título comprido e posição fora de 0..10000,
---   e aceita título de exatamente 180 caracteres;
--- - o dono renomeia e reordena pela própria sessão; professor de outro curso não;
--- - o acesso continua igual: quem não é matriculado não vê linha nem arquivo;
---   o matriculado não vê o material da aula ainda fechada e não renomeia nada.
+-- course_assets gets title and position (20261007040000). Here:
+-- - the backfill sets title = file name and position = today's alphabetical order of
+--   the files inside each lesson, without touching what already had a value;
+-- - running the migration again changes nothing (idempotent);
+-- - today's upload (with no title or position) still goes in;
+-- - the database refuses an empty title, a long title and a position outside 0..10000,
+--   and accepts a title of exactly 180 characters;
+-- - the owner renames and reorders from their own session; a teacher of another course cannot;
+-- - access stays the same: whoever is not enrolled sees neither row nor file;
+--   the enrolled learner does not see the material of a still-closed lesson and renames nothing.
 begin;
 create temp table material_checks (name text, passed boolean);
 grant insert, select on material_checks to authenticated;
@@ -37,7 +37,7 @@ end $$;
 create function pg_temp.file_path(p_asset text) returns text language sql immutable as $$
   select 'courses/smoke-materiais/assets/' || pg_temp.uid(1)::text || '/' || p_asset || '/material.pdf';
 $$;
--- O que o papel corrente enxerga, pela RLS.
+-- What the current role sees, through RLS.
 create function pg_temp.assets_seen() returns text[] language sql stable as $$
   select coalesce(array_agg(id order by id), '{}')
   from public.course_assets where course_id = 'smoke-materiais';
@@ -48,8 +48,8 @@ create function pg_temp.files_seen() returns text[] language sql stable as $$
   where bucket_id = 'course-content' and name like 'courses/smoke-materiais/%';
 $$;
 
--- 1 dono, 2 aluno ativo (matriculado hoje), 3 ninguém matriculado,
--- 4 professor dono de outro curso.
+-- 1 owner, 2 active learner (enrolled today), 3 nobody enrolled,
+-- 4 teacher who owns another course.
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
@@ -64,7 +64,7 @@ update public.users
   set roles = '["student","teacher"]', teacher_terms_accepted_at = now(), teacher_terms_version = 'smoke',
       activation_fee_paid_at = now()
   where uid in (pg_temp.uid(1)::text, pg_temp.uid(4)::text);
--- Aula a abre no dia da matrícula; aula b, 7 dias depois; aula c, também no dia.
+-- Lesson a opens on the enrollment day; lesson b, 7 days later; lesson c, also on the day.
 insert into public.courses(id, owner_id, slug, title, summary, category, status, currency,
   price_amount_minor, payment_type, modules, drip_strategy)
 values ('smoke-materiais', pg_temp.uid(1)::text, 'smoke-materiais', 'Smoke materiais',
@@ -83,9 +83,9 @@ insert into public.enrollments(id, user_id, course_id, course_slug, course_title
 values (pg_temp.uid(2)::text || '__smoke-materiais', pg_temp.uid(2)::text, 'smoke-materiais',
   'smoke-materiais', 'Smoke materiais', 'smoke', '', 'active', 'admin');
 
--- Linhas "de antes": sem título e sem posição. Na aula a, três arquivos fora
--- de ordem e com maiúscula misturada; um nome só de espaços; na aula b
--- (fechada) um arquivo; na aula c uma linha que já tem título e posição.
+-- "Before" rows: no title and no position. In lesson a, three files out
+-- of order and with mixed capitalization; a name made only of spaces; in lesson b
+-- (closed) one file; in lesson c a row that already has a title and position.
 insert into public.course_assets(id, course_id, owner_id, kind, file_name, content_type, size,
   storage_path, lesson_id, title, position, created_at)
 select x.id, 'smoke-materiais', pg_temp.uid(1)::text, 'lesson_material', x.file_name,
@@ -102,7 +102,7 @@ insert into storage.objects(bucket_id, name)
 select 'course-content', storage_path from public.course_assets where course_id = 'smoke-materiais';
 select set_config('skillset.trusted_write', 'off', true);
 
--- A migration roda de novo aqui dentro, como roda num banco com linhas antigas.
+-- The migration runs again in here, as it runs on a database with old rows.
 \ir ../migrations/20261007040000_titulo_e_ordem_dos_materiais.sql
 
 select pg_temp.check_material('backfill: title is the file name',
@@ -110,8 +110,8 @@ select pg_temp.check_material('backfill: title is the file name',
   and (select title from public.course_assets where id = 'sm-closed') = 'notes.pdf');
 select pg_temp.check_material('backfill: a blank file name keeps a null title',
   (select title is null from public.course_assets where id = 'sm-blank'));
--- O nome só de espaços fica fora da comparação: onde ele cai depende da
--- collation do banco.
+-- The name made only of spaces stays out of the comparison: where it lands depends on the
+-- database collation.
 select pg_temp.check_material('backfill: position follows the old alphabetical order inside the lesson',
   (select array_agg(id order by position) from public.course_assets
     where lesson_id = 'sm-a' and id <> 'sm-blank') = array['sm-alpha', 'sm-beta', 'sm-zeta']
@@ -122,7 +122,7 @@ select pg_temp.check_material('backfill: positions start at 0 in each lesson',
 select pg_temp.check_material('backfill: a row that already had a title and position is untouched',
   (select title = 'Workbook' and position = 5 from public.course_assets where id = 'sm-kept'));
 
--- Idempotente: a segunda passada não muda nada.
+-- Idempotent: the second pass changes nothing.
 create temp table material_snapshot as
   select id, title, position from public.course_assets where course_id = 'smoke-materiais';
 \ir ../migrations/20261007040000_titulo_e_ordem_dos_materiais.sql
@@ -134,7 +134,7 @@ select pg_temp.check_material('running the migration again changes nothing',
     (select * from material_snapshot
      except select id, title, position from public.course_assets where course_id = 'smoke-materiais')));
 
--- O envio de hoje não manda título nem posição, e continua entrando.
+-- Today's upload sends neither title nor position, and still goes in.
 select pg_temp.act_as(pg_temp.uid(1), 'authenticated');
 set local role authenticated;
 insert into public.course_assets(id, course_id, owner_id, kind, file_name, content_type, size,
@@ -144,7 +144,7 @@ values ('sm-new', 'smoke-materiais', pg_temp.uid(1)::text, 'lesson_material', 'm
 select pg_temp.check_material('an upload without title or position still goes in',
   (select title is null and position is null from public.course_assets where id = 'sm-new'));
 
--- O dono renomeia e reordena pela própria sessão (policy de update do dono).
+-- The owner renames and reorders from their own session (the owner's update policy).
 update public.course_assets set title = 'Guia de estudo' where id = 'sm-zeta';
 update public.course_assets set position = 0 where id = 'sm-zeta';
 update public.course_assets set position = 3 where id = 'sm-blank';
@@ -154,7 +154,7 @@ select pg_temp.check_material('the owner reorders files',
   (select position from public.course_assets where id = 'sm-zeta') = 0
   and (select position from public.course_assets where id = 'sm-blank') = 3);
 
--- Limites.
+-- Limits.
 select pg_temp.check_material('an empty title is refused',
   pg_temp.refused($q$update public.course_assets set title = '   ' where id = 'sm-alpha'$q$));
 select pg_temp.check_material('a title over 180 characters is refused',
@@ -168,7 +168,7 @@ select pg_temp.check_material('a title of exactly 180 characters and position 10
   (select char_length(title) = 180 and position = 10000 from public.course_assets where id = 'sm-beta'));
 reset role;
 
--- Professor de outro curso: a policy de update do dono filtra a linha, nada muda.
+-- Teacher of another course: the owner's update policy filters the row, nothing changes.
 select pg_temp.act_as(pg_temp.uid(4), 'authenticated');
 set local role authenticated;
 update public.course_assets set title = 'Outro professor', position = 1 where id = 'sm-beta';
@@ -177,8 +177,8 @@ select pg_temp.act_as(null, 'service_role');
 select pg_temp.check_material('another teacher cannot rename or reorder',
   (select title = repeat('y', 180) and position = 10000 from public.course_assets where id = 'sm-beta'));
 
--- O acesso não mudou. Sem matrícula: nem a linha nem o arquivo (sem linha não
--- há link assinado; o storage confere a mesma policy ao assinar).
+-- Access did not change. Without enrollment: neither the row nor the file (with no row there is
+-- no signed link; storage checks the same policy when signing).
 select pg_temp.act_as(pg_temp.uid(3), 'authenticated');
 set local role authenticated;
 select pg_temp.check_material('not enrolled: sees no file row',
@@ -187,7 +187,7 @@ select pg_temp.check_material('not enrolled: opens no stored file',
   pg_temp.files_seen() = '{}');
 reset role;
 
--- Matriculado hoje: a aula a e a c estão abertas, a b ainda não.
+-- Enrolled today: lessons a and c are open, b is not yet.
 select pg_temp.act_as(pg_temp.uid(2), 'authenticated');
 set local role authenticated;
 select pg_temp.check_material('enrolled: sees the files of the open lesson',
