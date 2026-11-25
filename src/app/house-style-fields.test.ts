@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 // C-05: the last fields with a hand-copied skin (thin 1px border in
 // --color-line, which disappeared on the white card, and heights from 38 to 46px) moved
-// to the house field, the .field-input. Source read, as in revisao-pr494:
+// to the house field, the .field-input. Source read, as in pr494-review:
 // jsdom does not paint, so what can be proven is the class in place and that the
 // field still has a name (the tests of each screen that look up by label
 // check the real name).

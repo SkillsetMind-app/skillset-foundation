@@ -60,7 +60,7 @@ Check commands (the same ones the robot runs):
 | `npm run test:db` | runs the database security tests on a throwaway database (see `scripts/build-test-db.sh`; never point it at production) |
 
 On a machine with little memory, run **one test file at a time**:
-`npx vitest run src/app/documentacao-caminhos.test.ts --pool=forks --maxWorkers=1`.
+`npx vitest run src/app/documentation-paths.test.ts --pool=forks --maxWorkers=1`.
 
 ## How a change reaches the site
 
@@ -91,6 +91,6 @@ It is applied by hand, never by merging. See "Database" in `docs/ARCHITECTURE.md
 - `AGENTS.md` — rules that have already caused defects in production; required reading before you touch a screen.
 - `STRIPE_CHECKLIST.md` — step-by-step Stripe setup.
 
-The test `src/app/documentacao-caminhos.test.ts` checks that every path cited
+The test `src/app/documentation-paths.test.ts` checks that every path cited
 between backticks in this README, in `docs/ARCHITECTURE.md`, in `docs/README.md` and in
 `docs/ONBOARDING.md` really exists. If you move a file, update the document at the same time.

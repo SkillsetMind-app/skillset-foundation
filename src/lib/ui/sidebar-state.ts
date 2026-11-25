@@ -6,7 +6,7 @@ import { parseSidebarPref, SIDEBAR_COOKIE, type SidebarPref } from "@/lib/ui/sid
 import { SidebarPrefContext } from "@/lib/ui/sidebar-preference";
 
 /** 768–1023px: always the rail. Open, the sidebar would leave ~465px of content and the
- *  top bar does not fit (the math is in src/app/barra-do-topo-cabe.test.ts). */
+ *  top bar does not fit (the math is in src/app/top-bar-fits.test.ts). */
 const TABLET_QUERY = "(min-width: 768px) and (width < 1024px)";
 /** 1024–1179px: the rail is the default for anyone who never chose; whoever opened it stays open. */
 const LAPTOP_QUERY = "(min-width: 1024px) and (width < 1180px)";
