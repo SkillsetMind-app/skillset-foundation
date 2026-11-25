@@ -14,8 +14,8 @@ type AuthShellProps = {
 export async function AuthShell({ title, description, children, footer }: AuthShellProps) {
   const { t } = await getServerTranslation();
 
-  // Titulo e descricao sao os da pagina, ate a tela de baixo dizer outro (a
-  // ativacao curta do ensino em /onboarding, por exemplo): page-heading.tsx.
+  // Title and description are the page's, until the screen below says otherwise (the
+  // short teaching activation in /onboarding, for example): page-heading.tsx.
   return (
     <AuthFrame homeLabel={t("auth.page.backToHome")}>
       <PageHeadingProvider>

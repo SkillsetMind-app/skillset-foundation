@@ -21,7 +21,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/components/auth/auth-provider", () => ({ useAuth: () => mocks.auth }));
 vi.mock("@/lib/auth/providers", () => ({
-  // Getter, e nao valor: a flag do Google muda entre os casos deste arquivo.
+  // A getter, not a value: the Google flag changes between the cases in this file.
   get isGoogleAuthEnabled() {
     return mocks.googleEnabled;
   },
@@ -50,16 +50,16 @@ function renderAt(query: string, locale: Locale = "en") {
   );
 }
 
-// A tela ja era dividida por papel, mas o papel so aparecia num eyebrow miudo
-// sob um titulo generico, e nao havia como trocar. Quem entrava pela porta
-// errada nao percebia.
-describe("entrada de login por papel", () => {
+// The screen was already split by role, but the role only showed in a tiny eyebrow
+// under a generic title, and there was no way to switch. Whoever came in through the
+// wrong door did not notice.
+describe("login entry by role", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.auth = { status: "unauthenticated", user: null };
     mocks.googleEnabled = false;
     mocks.getPendingSecondFactor.mockResolvedValue(null);
-    // A chamada real navega para fora e nunca resolve.
+    // The real call navigates away and never resolves.
     mocks.signInWithGoogle.mockReturnValue(new Promise(() => {}));
   });
 
@@ -86,7 +86,7 @@ describe("entrada de login por papel", () => {
       "Create your teacher account.",
       "Crea tu cuenta de profesor.",
     ],
-  ])("o titulo diz o papel em %s (EN e ES)", (query, emIngles, emEspanhol) => {
+  ])("the title states the role on %s (EN and ES)", (query, emIngles, emEspanhol) => {
     renderAt(query);
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(emIngles);
 
@@ -101,7 +101,7 @@ describe("entrada de login por papel", () => {
     ["student", "teacher", "Are you a teacher? Sign in here"],
     ["teacher", "student", "Are you a learner? Sign in here"],
   ])(
-    "de %s oferece a troca para %s sem perder o destino capturado",
+    "from %s offers the switch to %s without losing the captured destination",
     (papel, outroPapel, rotulo) => {
       renderAt(`mode=signin&path=${papel}&returnTo=${checkoutEncoded}`);
 
@@ -116,7 +116,7 @@ describe("entrada de login por papel", () => {
     },
   );
 
-  it("esconde o Google enquanto a flag do provedor estiver desligada", () => {
+  it("hides Google while the provider flag is off", () => {
     renderAt("mode=signin&path=teacher");
 
     expect(
@@ -126,8 +126,8 @@ describe("entrada de login por papel", () => {
     expect(mocks.signInWithGoogle).not.toHaveBeenCalled();
   });
 
-  // A mesma ordem do cadastro: e-mail primeiro, "ou", Google por ultimo.
-  it("com a flag ligada, o Google vem depois do e-mail e leva papel e destino", () => {
+  // The same order as signup: email first, "or", Google last.
+  it("with the flag on, Google comes after email and carries role and destination", () => {
     mocks.googleEnabled = true;
     const view = renderAt(`mode=signin&path=teacher&returnTo=${checkoutEncoded}`);
 
@@ -149,8 +149,8 @@ describe("entrada de login por papel", () => {
     );
   });
 
-  // So o botao clicado diz que esta trabalhando; os dois seguem travados.
-  it("clicar no Google muda so o rotulo do Google e trava os dois botoes", () => {
+  // Only the clicked button says it is working; both stay locked.
+  it("clicking Google changes only the Google label and locks both buttons", () => {
     mocks.googleEnabled = true;
     renderAt("mode=signin&path=student");
 

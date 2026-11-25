@@ -6,10 +6,10 @@ import type { Course } from "@/domain/learning";
 import { resolveLessonContent } from "@/lib/data/lesson-content";
 
 /**
- * Aula sem capa própria (lesson_thumbnail) e com link do YouTube aparecia sem
- * miniatura na playlist. Agora a sala usa a capa do próprio YouTube
- * (i.ytimg.com/vi/<id>/hqdefault.jpg), só para a aula ABERTA: o link de uma
- * aula trancada nunca chega à página, e a sala não inventa capa para ela.
+ * A lesson with no cover of its own (lesson_thumbnail) and with a YouTube link showed up with no
+ * thumbnail in the playlist. Now the classroom uses YouTube's own cover
+ * (i.ytimg.com/vi/<id>/hqdefault.jpg), only for the OPEN lesson: a locked
+ * lesson's link never reaches the page, and the classroom does not invent a cover for it.
  */
 
 const mocks = vi.hoisted(() => ({
@@ -41,10 +41,10 @@ vi.mock("@/lib/data/lesson-progress", () => ({
   subscribeToCompletedLessons: vi.fn(() => vi.fn()),
 }));
 
-// O texto e o link da aula chegam pelo mesmo caminho da sala de verdade
-// (resolveLessonContent); só a assinatura do banco é dublada.
-// resolveLessonContent é o de verdade embrulhado num vi.fn: um teste força o
-// null que o preview do professor recebe em preview-tabs.test.tsx.
+// The lesson's text and link arrive by the same path as the real classroom
+// (resolveLessonContent); only the database subscription is stubbed.
+// resolveLessonContent is the real one wrapped in a vi.fn: one test forces the
+// null that the teacher's preview receives in preview-tabs.test.tsx.
 vi.mock("@/lib/data/lesson-content", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/data/lesson-content")>();
   return {
@@ -73,8 +73,8 @@ vi.mock("@/lib/posthog/events", () => ({
   track: new Proxy({}, { get: () => vi.fn() }),
 }));
 
-// Sequencial: aula 1 aberta, aula 2 trancada. As duas com link do YouTube e
-// nenhuma com capa própria.
+// Sequential: lesson 1 open, lesson 2 locked. Both with a YouTube link and
+// neither with a cover of its own.
 const course = {
   id: "course-1",
   slug: "demo-course",
@@ -114,9 +114,9 @@ const course = {
   ],
 } as unknown as Course;
 
-describe("a capa da aula cai na do YouTube", () => {
+describe("the lesson cover falls back to the YouTube one", () => {
   beforeEach(() => {
-    // Volta ao resolveLessonContent de verdade entre os testes.
+    // Back to the real resolveLessonContent between tests.
     vi.mocked(resolveLessonContent).mockReset();
     Element.prototype.scrollIntoView = vi.fn();
     window.requestAnimationFrame = (cb: FrameRequestCallback) => {
@@ -125,7 +125,7 @@ describe("a capa da aula cai na do YouTube", () => {
     };
   });
 
-  it("aula aberta sem capa usa a do YouTube; a trancada fica sem", () => {
+  it("an open lesson without a cover uses the YouTube one; the locked one gets none", () => {
     mocks.searchParams = new URLSearchParams("lesson=l1");
     render(<EnrolledCourseWorkspace course={course} previewMode enableFirestoreAssets />);
 
@@ -135,9 +135,9 @@ describe("a capa da aula cai na do YouTube", () => {
     expect(document.querySelector('img[src*="lockedVid02"]')).toBeNull();
   });
 
-  // preview-tabs.test.tsx dubla resolveLessonContent devolvendo null; a volta
-  // da capa lia .externalUrl dele e derrubava a sala inteira do preview.
-  it("no preview, conteúdo nulo não derruba a sala nem inventa capa", () => {
+  // preview-tabs.test.tsx stubs resolveLessonContent to return null; the cover
+  // fallback read .externalUrl from it and took down the whole preview classroom.
+  it("in preview, null content does not crash the classroom or invent a cover", () => {
     vi.mocked(resolveLessonContent).mockReturnValue(
       null as unknown as ReturnType<typeof resolveLessonContent>,
     );

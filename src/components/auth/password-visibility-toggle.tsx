@@ -4,14 +4,14 @@ import { Eye, EyeOff } from "lucide-react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 
-// O olho de mostrar a senha, o mesmo em todo campo de senha (entrar, cadastro,
-// troca de senha e aba Segurança). Só alterna o `type` do campo, que fica com
-// o mesmo valor. Vai dentro de um `relative` em volta do campo, que reserva o
-// espaço com `pr-11`. A largura de 44px é cravada aqui: na aba Segurança, fora
-// das telas de entrada, nenhuma regra garantia o alvo de toque. O nome e um
-// so ("Show password") e o estado vem do aria-pressed: trocar os dois dava
-// "Hide password, pressed", que se contradiz. Fica FORA do <label> do campo,
-// senao o nome do botao entra no nome do campo.
+// The eye that shows the password, the same on every password field (sign in, signup,
+// password change and Security tab). It only toggles the field `type`, which keeps
+// the same value. It goes inside a `relative` around the field, which reserves the
+// space with `pr-11`. The 44px width is fixed here: on the Security tab, outside
+// the entry screens, no rule guaranteed the touch target. The name is a
+// single one ("Show password") and the state comes from aria-pressed: swapping both gave
+// "Hide password, pressed", which contradicts itself. It stays OUTSIDE the field <label>,
+// otherwise the button name enters the field name.
 export function PasswordVisibilityToggle({
   visible,
   onToggle,

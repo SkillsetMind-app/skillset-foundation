@@ -50,9 +50,9 @@ function buildSteps(
 
 type WelcomeTourProps = { userId: string; firstName: string };
 
-// A janela dos termos vem antes: com as duas abertas, dois Tabs presos
-// brigavam e o foco podia ficar no tour, atrás dela. Enquanto ela está na tela
-// (ou ainda não se sabe), o tour nem monta, então também não marca "visto".
+// The terms dialog comes first: with both open, two trapped Tabs fought each
+// other and focus could end up on the tour, behind it. While it is on screen
+// (or not yet known), the tour does not even mount, so it does not mark "seen" either.
 export function WelcomeTour(props: WelcomeTourProps) {
   return useLegalGateWaiting() ? null : <WelcomeTourDialog {...props} />;
 }
@@ -61,9 +61,9 @@ function WelcomeTourDialog({ userId, firstName }: WelcomeTourProps) {
   const { t } = useTranslation();
   const { open, dismiss } = useWelcomeTour(userId, "student");
   const [stepIndex, setStepIndex] = useState(0);
-  // true depois da primeira troca de passo. Na abertura a própria janela já
-  // entra com motion-panel-in (.modal-panel); o texto subir junto dava a
-  // mesma animação duas vezes.
+  // true after the first step change. On open, the dialog itself already
+  // enters with motion-panel-in (.modal-panel); having the text rise too gave
+  // the same animation twice.
   const [stepChanged, setStepChanged] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -76,9 +76,9 @@ function WelcomeTourDialog({ userId, firstName }: WelcomeTourProps) {
     setStepIndex(Math.max(0, Math.min(steps.length - 1, next)));
   }
 
-  // Trocou de passo: o foco vai para o título novo. Sem isso, voltar ao passo
-  // 1 tirava o "Back" da tela com o foco nele, e o foco caía no corpo da
-  // página, atrás da janela. Na abertura quem foca é o useModalFocus.
+  // Changed step: focus moves to the new title. Without this, going back to
+  // step 1 removed "Back" from the screen with focus on it, and focus fell on
+  // the page body, behind the dialog. On open, useModalFocus does the focusing.
   useEffect(() => {
     if (stepChanged) titleRef.current?.focus();
   }, [stepIndex, stepChanged]);
@@ -119,20 +119,20 @@ function WelcomeTourDialog({ userId, firstName }: WelcomeTourProps) {
         className="dialog-panel modal-panel modal-panel-scroll overflow-hidden outline-none"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        {/* Um controle de pular só, o "Skip" do rodapé (e o Esc). O X do
-            topo ("Skip the tour") fazia a mesma coisa. */}
+        {/* A single skip control, the "Skip" in the footer (and Esc). The X at
+            the top ("Skip the tour") did the same thing. */}
         <div className="px-6 pt-6">
           <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
             <Icon className="h-5 w-5" aria-hidden="true" />
           </span>
         </div>
 
-        {/* Os quatro passos empilhados na mesma célula da grade: a caixa tem
-            a altura do passo mais longo, então trocar de passo não muda a
-            altura da janela nem tira os botões de baixo do mouse. Só o passo
-            atual aparece (e existe para o leitor de tela); a partir da
-            primeira troca ele entra subindo 8px (motion-panel-in, só com
-            movimento liberado). */}
+        {/* The four steps stacked in the same grid cell: the box has the height
+            of the longest step, so changing step does not change the dialog
+            height or move the buttons out from under the mouse. Only the
+            current step appears (and exists for the screen reader); from the
+            first change on it enters rising 8px (motion-panel-in, only when
+            motion is allowed). */}
         <div className="grid px-6 pb-2 pt-4">
           {steps.map((item, index) => {
             const current = index === stepIndex;
@@ -156,8 +156,8 @@ function WelcomeTourDialog({ userId, firstName }: WelcomeTourProps) {
           })}
         </div>
 
-        {/* Traços de largura fixa: só a cor do atual muda. Antes o ativo
-            crescia de 6 para 24px (transition-all, refazia o layout). */}
+        {/* Fixed-width dashes: only the color of the current one changes. Before,
+            the active one grew from 6 to 24px (transition-all, which redid the layout). */}
         <div className="flex items-center gap-2 px-6 py-3" aria-hidden="true">
           {steps.map((item, index) => (
             <span
@@ -170,9 +170,10 @@ function WelcomeTourDialog({ userId, firstName }: WelcomeTourProps) {
           ))}
         </div>
 
-        {/* O rodapé da casa (filete, respiro), mas sem empilhar no celular:
-            o Back só aparece do 2º passo, e empilhado ele mudaria a altura
-            da janela entre os passos. O Skip fica à esquerda. */}
+        {/* The house footer (hairline rule, breathing room), but without
+            stacking on a phone: Back only appears from the 2nd step, and
+            stacked it would change the dialog height between steps. Skip stays
+            on the left. */}
         <div className="dialog-footer flex-row flex-wrap items-center justify-between">
           <button
             type="button"

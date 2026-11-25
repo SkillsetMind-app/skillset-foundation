@@ -17,7 +17,7 @@ vi.mock("@/components/learn/member-area-shell", () => ({
     <div data-testid="shell" data-members-theme={theme ?? undefined}>{children}</div>
   ),
 }));
-// O feed tem testes próprios; aqui só importa a superfície em volta dele.
+// The feed has its own tests; here only the surface around it matters.
 vi.mock("@/components/learn/community-feed", () => ({
   CommunityFeed: () => <p>feed</p>,
 }));
@@ -34,18 +34,18 @@ function renderView() {
   );
 }
 
-// Antes a comunidade da área nunca recebia o tema: a mesma área era escura na
-// capa e clara aqui, e o feed ficava nos tons da plataforma.
+// Before, the area's community never received the theme: the same area was dark on the
+// cover and light here, and the feed stayed in the platform's tones.
 describe("MemberAreaCommunityView", () => {
   beforeEach(() => {
     window.localStorage.clear();
     mocks.getMemberAreaCommunity.mockReset().mockResolvedValue({ courseId: "c-1", title: "Eton Circle", isOwner: false });
   });
 
-  it("abre no tema que a área mostrou, com o feed na superfície temática da sala", async () => {
+  it("opens in the theme the area showed, with the feed on the classroom's themed surface", async () => {
     rememberMemberAreaTheme("@eton", null, "dark");
     renderView();
-    // Já carregando, no tema certo.
+    // Already loading, in the right theme.
     expect(screen.getByRole("status")).toHaveTextContent("Loading the members area...");
     expect(screen.getByTestId("shell").getAttribute("data-members-theme")).toBe("dark");
 
@@ -55,9 +55,9 @@ describe("MemberAreaCommunityView", () => {
     expect(surface).toHaveAttribute("data-members-theme", "dark");
   });
 
-  // O erro era um beco (só a frase): "Try again" chama a mesma leitura, trava
-  // enquanto ela corre e o aviso só sai quando a comunidade chega.
-  it("a falha oferece Try again, que lê de novo e abre a comunidade com o foco na moldura", async () => {
+  // The error used to be a dead end (just the sentence): "Try again" calls the same read, locks
+  // while it runs, and the notice only goes away when the community arrives.
+  it("the failure offers Try again, which reads again and opens the community with focus on the frame", async () => {
     mocks.getMemberAreaCommunity.mockRejectedValueOnce(new Error("offline"));
     renderView();
     expect(await screen.findByRole("alert")).toHaveTextContent("We could not load this members area. Please try again.");
@@ -73,7 +73,7 @@ describe("MemberAreaCommunityView", () => {
     expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1 }).parentElement);
   });
 
-  it("dois cliques antes de redesenhar abrem uma releitura só", async () => {
+  it("two clicks before redrawing start a single reread", async () => {
     mocks.getMemberAreaCommunity.mockRejectedValueOnce(new Error("offline"));
     renderView();
     const button = await screen.findByRole("button", { name: "Try again" });
@@ -85,16 +85,16 @@ describe("MemberAreaCommunityView", () => {
     expect(mocks.getMemberAreaCommunity).toHaveBeenCalledTimes(2);
   });
 
-  // Com a regra de link do globals.css sem cor fora de camada, a cor pedida
-  // chega à tela: o --ma-accent (fundo de botão) dava 2,9:1 num curso escuro.
-  it("o link de volta pede o texto de destaque do curso, não o fundo de botão", async () => {
+  // With the globals.css link rule carrying no color outside a layer, the requested color
+  // reaches the screen: --ma-accent (button background) gave 2.9:1 on a dark course.
+  it("the back link asks for the course's accent text color, not the button background", async () => {
     renderView();
     const back = await screen.findByRole("link", { name: /Back to the area/ });
     expect(back).toHaveClass("text-[var(--ma-accent-ink)]");
     expect(back).not.toHaveClass("text-[var(--ma-accent)]");
   });
 
-  it("sem tema guardado: espera neutra e abre no claro padrão", async () => {
+  it("with no saved theme: neutral wait and opens in the default light theme", async () => {
     renderView();
     expect(screen.getByTestId("shell")).not.toHaveAttribute("data-members-theme");
     expect(await screen.findByRole("heading", { level: 1, name: "Eton Circle" })).toBeTruthy();

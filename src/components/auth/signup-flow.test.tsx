@@ -4,11 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SignupForm } from "@/components/auth/signup-form";
 
 /**
- * O que a pessoa pedia no cadastro:
- *  - o olhinho nas DUAS senhas (o login tinha; o cadastro, onde mais importa,
- *    nao tinha);
- *  - depois de criar a conta, a porta "confirme seu e-mail" com REENVIAR e
- *    "trocar o e-mail" — antes era um beco sem saida ("va para o login").
+ * What the person asked for on signup:
+ *  - the little eye on BOTH passwords (login had it; signup, where it matters most,
+ *    did not);
+ *  - after creating the account, the "confirm your email" gate with RESEND and
+ *    "change the email" — before it was a dead end ("go to login").
  */
 
 const mocks = vi.hoisted(() => ({
@@ -76,7 +76,7 @@ function fillStepTwoAndSubmit() {
   fireEvent.click(screen.getByRole("button", { name: "auth.signup.createAccount" }));
 }
 
-describe("SignupForm: o olhinho e a porta de confirmacao", () => {
+describe("SignupForm: the little eye and the confirmation gate", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.searchParams = new URLSearchParams();
@@ -89,7 +89,7 @@ describe("SignupForm: o olhinho e a porta de confirmacao", () => {
 
   afterEach(cleanup);
 
-  it("cada senha tem o seu olhinho, e ele mostra so aquele campo", () => {
+  it("each password has its own little eye, and it shows only that field", () => {
     render(<SignupForm />);
     fillStepOne();
 
@@ -103,22 +103,22 @@ describe("SignupForm: o olhinho e a porta de confirmacao", () => {
     fireEvent.click(eyes[0]);
     expect(first.type).toBe("text");
     expect(second.type).toBe(secretField);
-    // Um nome so; o estado vem do aria-pressed.
+    // A single name; the state comes from aria-pressed.
     expect(eyes[0]).toHaveAttribute("aria-pressed", "true");
     expect(eyes[1]).toHaveAttribute("aria-pressed", "false");
     expect(screen.getAllByRole("button", { name: "auth.showPassword" })).toHaveLength(2);
 
     fireEvent.click(eyes[1]);
     expect(second.type).toBe("text");
-    // O nome acessivel do campo e so o rotulo, sem o do botao.
+    // The accessible name of the field is only the label, without the button's.
     expect(screen.getByRole("textbox", { name: "auth." + secretField })).toBe(first);
     expect(screen.getByRole("textbox", { name: "auth.signup.confirmPassword" })).toBe(second);
   });
 
-  // A-09: o rotulo de espera segue o metodo clicado. "Back" segue ativo
-  // durante a criacao da conta; voltando ao passo 1 no meio do pedido, o
-  // Google dizia "Opening Google..." sem ter sido clicado.
-  it("so o Google clicado diz 'Opening Google...'; voltar no meio da criacao nao", async () => {
+  // A-09: the wait label follows the clicked method. "Back" stays active
+  // during account creation; going back to step 1 in the middle of the request, the
+  // Google button said "Opening Google..." without having been clicked.
+  it("only the clicked Google says 'Opening Google...'; going back mid-creation does not", async () => {
     mocks.signUpWithEmail.mockReturnValue(new Promise(() => {}));
     render(<SignupForm />);
     fillStepOne();
@@ -130,7 +130,7 @@ describe("SignupForm: o olhinho e a porta de confirmacao", () => {
     expect(screen.queryByRole("button", { name: /auth\.openingGoogle/ })).toBeNull();
   });
 
-  it("clicar no Google muda o rotulo dele", () => {
+  it("clicking Google changes its label", () => {
     mocks.signInWithGoogle.mockReturnValue(new Promise(() => {}));
     render(<SignupForm />);
     fireEvent.click(screen.getByRole("checkbox"));
@@ -140,8 +140,8 @@ describe("SignupForm: o olhinho e a porta de confirmacao", () => {
     expect(screen.getByRole("button", { name: "auth.signup.continue" })).toBeDisabled();
   });
 
-  // A-10: dentro do <label>, a frase virava parte do nome do campo.
-  it("senhas diferentes: o aviso fica fora do rotulo e descreve o campo", () => {
+  // A-10: inside the <label>, the sentence became part of the field name.
+  it("different passwords: the notice stays outside the label and describes the field", () => {
     render(<SignupForm />);
     fillStepOne();
 
@@ -157,9 +157,9 @@ describe("SignupForm: o olhinho e a porta de confirmacao", () => {
     expect(confirm).toHaveAttribute("aria-describedby", warning.id);
   });
 
-  // F-12: "Create account" apagado dizia nada. Agora diz o que falta, ligado
-  // ao botao; senhas diferentes apontam para o aviso que ja existe.
-  it("o botao apagado da etapa 2 diz o que falta, ligado a ele", () => {
+  // F-12: a grayed-out "Create account" said nothing. Now it says what is missing, tied
+  // to the button; different passwords point to the notice that already exists.
+  it("the grayed-out button of step 2 says what is missing, tied to it", () => {
     render(<SignupForm />);
     fillStepOne();
     const create = screen.getByRole("button", { name: "auth.signup.createAccount" });
@@ -179,7 +179,7 @@ describe("SignupForm: o olhinho e a porta de confirmacao", () => {
     expect(create).not.toHaveAttribute("aria-describedby");
   });
 
-  it("conta criada sem sessao: a porta de confirmacao, com reenviar e espera de 60 s", async () => {
+  it("account created without a session: the confirmation gate, with resend and a 60 s wait", async () => {
     render(<SignupForm />);
     fillStepOne();
     fillStepTwoAndSubmit();
@@ -202,7 +202,7 @@ describe("SignupForm: o olhinho e a porta de confirmacao", () => {
     ).toBeDisabled();
   });
 
-  it("'e-mail errado?' volta ao formulario com o que a pessoa ja digitou", async () => {
+  it("'wrong email?' goes back to the form with what the person already typed", async () => {
     render(<SignupForm />);
     fillStepOne();
     fillStepTwoAndSubmit();

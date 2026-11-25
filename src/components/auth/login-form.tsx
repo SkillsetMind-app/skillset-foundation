@@ -51,8 +51,8 @@ export function LoginForm() {
   // for onboarded accounts — first-time users still go through /welcome.
   const returnTo = useMemo(() => getEntryReturnTo(searchParams), [searchParams]);
   const signupHref = getAuthRoute("signup", pathIntent, returnTo);
-  // Quem chegou pela entrada errada troca de papel aqui, levando junto o
-  // destino que a porta de login capturou.
+  // Whoever arrived through the wrong entry switches role here, carrying along the
+  // destination that the login gate captured.
   const isEducator = pathIntent === "teacher";
   const switchHref = getAuthRoute(
     "signin",
@@ -74,7 +74,7 @@ export function LoginForm() {
     if (reason === "session_revoked") {
       return { key: "authFlow.errors.sessionRevoked" };
     }
-    // Tem tela propria (abaixo), nao uma linha vermelha.
+    // It has its own screen (below), not a red line.
     if (reason === "confirm_expired") {
       return null;
     }
@@ -90,18 +90,18 @@ export function LoginForm() {
   const errorMessage = error
     ? "key" in error ? t(error.key) : getAuthErrorMessage(error.cause, t)
     : "";
-  // Conta criada, e-mail nunca confirmado: em vez de uma frase de erro, a
-  // mesma porta do cadastro (com "reenviar o link").
+  // Account created, email never confirmed: instead of an error sentence, the
+  // same gate as signup (with "resend the link").
   const [unconfirmedEmail, setUnconfirmedEmail] = useState("");
-  // Link de confirmacao vencido ou ja usado: primeiro a tela de pedir outro,
-  // com "ja confirmei? entrar" para quem so precisa do formulario.
+  // Expired or already used confirmation link: first the screen to ask for another,
+  // with "already confirmed? sign in" for whoever only needs the form.
   const [expiredLink, setExpiredLink] = useState(
     () => searchParams.get("error") === "confirm_expired",
   );
   const [isLoading, setIsLoading] = useState(false);
-  // Qual entrada foi apertada, so para o rotulo: os dois botoes seguem
-  // travados juntos por isLoading, mas so o clicado diz que esta trabalhando
-  // (antes o Google fazia o botao de e-mail dizer "Signing in...").
+  // Which entry was pressed, only for the label: both buttons stay
+  // locked together by isLoading, but only the clicked one says it is working
+  // (before, Google made the email button say "Signing in...").
   const [pendingMethod, setPendingMethod] = useState<"email" | "google" | null>(null);
   // Set when a sign-in succeeds at the password step but the account also
   // requires a TOTP second factor. Holds the original error the resolver needs.
@@ -111,10 +111,10 @@ export function LoginForm() {
   const [captchaToken, setCaptchaToken] = useState("");
   const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
 
-  // Sessão aal1 deixada no cookie por quem fechou a tela do código (o provider
-  // a expõe como `mfa_required`): retoma o desafio em vez de pedir a senha de
-  // novo. É a única saída desse estado. Se a leitura falhar, fica o formulário
-  // de senha, que era o caminho de sempre.
+  // aal1 session left in the cookie by whoever closed the code screen (the provider
+  // exposes it as `mfa_required`): resumes the challenge instead of asking for the password
+  // again. It is the only exit from that state. If the read fails, the password form
+  // stays, which was the usual path.
   useEffect(() => {
     let cancelled = false;
 
@@ -219,9 +219,9 @@ export function LoginForm() {
     setError(null);
     setIsLoading(true);
     try {
-      // Sair de verdade. A sessão aal1 está no cookie desde a senha; só
-      // esconder a tela do código deixava essa sessão viva para o próximo
-      // acesso.
+      // Really sign out. The aal1 session has been in the cookie since the password; only
+      // hiding the code screen left that session alive for the next
+      // access.
       await signOutOfSkillsetMind();
       setMfaError(null);
       setMfaCode("");
@@ -315,8 +315,8 @@ export function LoginForm() {
     );
   }
 
-  // A mesma ordem do cadastro: e-mail primeiro, depois "ou" e o Google. Antes
-  // o Google vinha em cima aqui e embaixo no cadastro.
+  // The same order as signup: email first, then "or" and Google. Before,
+  // Google came on top here and at the bottom on signup.
   return (
     <form className="mt-5 grid gap-3.5" onSubmit={handleSubmit}>
       <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
@@ -331,8 +331,8 @@ export function LoginForm() {
           className="field-input"
         />
       </label>
-      {/* "Forgot password?" mora fora do <label>: dentro dele o leitor de tela
-          anunciava o campo como "Password Forgot password?". */}
+      {/* "Forgot password?" lives outside the <label>: inside it the screen reader
+          announced the field as "Password Forgot password?". */}
       <div className="grid gap-2">
         <div className="flex items-center justify-between gap-2">
           <label
@@ -365,7 +365,7 @@ export function LoginForm() {
           />
         </span>
       </div>
-      {/* O aviso da casa (com ícone) anuncia igual: role="alert", assertive. */}
+      {/* The house notice (with icon) announces the same way: role="alert", assertive. */}
       {error ? <InlineAlert tone="error">{errorMessage}</InlineAlert> : null}
       <TurnstileWidget onToken={setCaptchaToken} resetSignal={captchaResetSignal} />
       <button

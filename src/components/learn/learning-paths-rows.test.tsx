@@ -7,11 +7,11 @@ import type { LearningPath } from "@/domain/learning-path";
 import type { TeacherCourse } from "@/domain/teacher-course";
 
 /**
- * As fileiras do painel baixavam o catalogo publico inteiro (200 cursos com o
- * curriculo, e de novo a cada alteracao em qualquer curso) so para descobrir o
- * professor de cada matricula. Agora recebem do painel os cursos da pessoa e
- * pedem ao banco so o que oferecem: os passos das trilhas e o resto de cada
- * professor que ela ja conhece.
+ * The dashboard rows used to download the entire public catalog (200 courses with
+ * the curriculum, and again on every change to any course) just to find out the
+ * teacher of each enrollment. Now they receive the person's courses from the dashboard
+ * and ask the database only for what they offer: the learning path steps and the rest of each
+ * teacher the person already knows.
  */
 
 const { fixtures } = vi.hoisted(() => {
@@ -72,8 +72,8 @@ describe("LearningPathsRows", () => {
     fixtures.rowCalls = [];
   });
 
-  it("oferece o resto do professor a partir dos cursos que o painel ja tem", async () => {
-    // O curso comprado pode nem estar publicado: o dono sai dele mesmo assim.
+  it("offers the rest of the teacher's courses based on the courses the dashboard already has", async () => {
+    // The purchased course may not even be published: the owner is still derived from it.
     const own = { ...fixtures.course("own-course", "Own Course"), status: "inactive" as const };
     fixtures.offered = [fixtures.course("second-course", "Second Course")];
 
@@ -86,7 +86,7 @@ describe("LearningPathsRows", () => {
     expect(fixtures.rowCalls.at(-1)).toEqual([[], ["teacher-1"]]);
   });
 
-  it("uma trilha mostra o passo ja comprado e o passo publicado, pedindo so os ids da trilha", async () => {
+  it("a learning path shows the already purchased step and the published step, asking only for the path's ids", async () => {
     fixtures.paths = [
       { id: "path-1", title: "Coach path", description: "", courseIds: ["own-course", "path-course"] },
     ];
@@ -108,8 +108,8 @@ describe("LearningPathsRows", () => {
     );
     expect(fixtures.rowCalls.at(-1)).toEqual([["own-course", "path-course"], ["teacher-1"]]);
 
-    // O progresso é lido uma vez só: a barra leva a frase inteira e a linha
-    // visível com o mesmo texto fica calada para o leitor de tela.
+    // Progress is read only once: the bar carries the whole sentence and the visible
+    // line with the same text is silent for the screen reader.
     const bar = within(path).getByRole("progressbar");
     const label = bar.getAttribute("aria-label")!;
     expect(label).toMatch(/^\d+\/2 completed · \d+%$/);

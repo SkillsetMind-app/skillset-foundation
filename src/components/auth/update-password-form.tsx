@@ -44,9 +44,9 @@ export function UpdatePasswordForm({
   const passwordReady = isStrongPassword(password);
   const passwordsMatch = password === confirmPassword;
   const showMismatch = confirmPassword.length > 0 && !passwordsMatch;
-  // Por que "Update password" está apagado (a trava é a mesma; só passa a ser
-  // dita). Senhas diferentes já têm a frase delas embaixo da confirmação: o
-  // botão aponta para ela, em vez de repeti-la.
+  // Why "Update password" is dimmed (the lock is the same; it just gets
+  // stated now). Mismatched passwords already have their own sentence under the
+  // confirmation: the button points to it instead of repeating it.
   const updateBlockedReason = !passwordReady
     ? t("auth.signup.choosePasswordFirst")
     : !passwordsMatch && !showMismatch
@@ -84,8 +84,8 @@ export function UpdatePasswordForm({
     }
   }
 
-  // O titulo grande da pagina diz o estado (A-12): antes "Choose a new
-  // password" ficava fixo em cima do link vencido e do "senha atualizada".
+  // The page's big title states the state (A-12): before, "Choose a new
+  // password" stayed fixed above the expired link and the "password updated" message.
   const choosingHeading = (
     <>
       <h1 className="auth-title display-title">{t("authFlow.recovery.choosePassword")}</h1>
@@ -148,8 +148,8 @@ export function UpdatePasswordForm({
     <>
       {choosingHeading}
       <form className="mt-6 grid gap-4" onSubmit={handleSubmit}>
-        {/* Rotulo e campo lado a lado (htmlFor), com o olho fora do
-            <label>: dentro dele, o nome do botao entrava no nome do campo. */}
+        {/* Label and field side by side (htmlFor), with the eye outside the
+            <label>: inside it, the button's name became part of the field's name. */}
         <div className="grid gap-2">
           <label htmlFor="reset-new-password" className="text-sm font-semibold text-[var(--color-ink)]">
             {t("authFlow.recovery.newPassword")}
@@ -174,9 +174,9 @@ export function UpdatePasswordForm({
             />
           </span>
         </div>
-        {/* As regras desde o inicio (as que faltam, apagadas) e fora do <label>,
-            como no cadastro: antes surgiam na 1a letra, empurravam o resto e
-            entravam no nome do campo. */}
+        {/* The rules show from the start (the missing ones dimmed) and sit outside the <label>,
+            as in sign-up: before, they appeared at the 1st letter, pushed the rest down and
+            became part of the field's name. */}
         <div id="reset-password-rules" className="-mt-2">
           <PasswordStrengthChecklist password={password} />
         </div>

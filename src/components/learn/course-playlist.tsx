@@ -16,22 +16,22 @@ type CoursePlaylistProps = {
   completedLessonIds: string[];
   unlockStateById: Map<string, LessonUnlockState>;
   onSelect: (lessonId: string) => void;
-  /** Só o check da aula concluída é clicável — para desfazer. Concluir mora
-   *  num lugar só: o botão sob o vídeo (e o avanço automático). */
+  /** Only the completed lesson's check is clickable — to undo. Completing lives
+   *  in one place only: the button under the video (and the auto-advance). */
   onUncomplete?: (lessonId: string) => void;
-  /** Aulas concluidas com a sala aberta: o check delas se desenha. */
+  /** Lessons completed with the classroom open: their check gets drawn. */
   justCompletedIds?: ReadonlySet<string>;
 };
 
-// A playlist ao lado do vídeo.
+// The playlist beside the video.
 //
 // POR QUE ISTO EXISTE
 //
-// A lista de aulas existia três vezes na sala — cartão "Continuar", trilho de
-// módulos + grade de cartões, e a janela "Todas as aulas" — e nenhuma ficava
-// visível enquanto o vídeo tocava. Ao lado do vídeo havia um cartão de números
-// ("Aula 3/12 · Arquivos 2"). O que o aluno quer ali é a lista: módulos em
-// acordeão, aula atual destacada, check e cadeado por aula, busca no topo.
+// The lesson list existed three times in the classroom — the "Continue" card, a module
+// rail + card grid, and the "All lessons" dialog — and none was
+// visible while the video played. Beside the video there was a card of numbers
+// ("Lesson 3/12 · Files 2"). What the learner wants there is the list: modules in an
+// accordion, current lesson highlighted, check and lock per lesson, search at the top.
 export function CoursePlaylist({
   thumbnailUrlByLessonId,
   modules,
@@ -44,10 +44,10 @@ export function CoursePlaylist({
 }: CoursePlaylistProps) {
   const { t, locale } = useTranslation();
   const [query, setQuery] = useState("");
-  // A aula atual era destacada mas a lista nao rolava ate ela: trocar de aula
-  // (ou o avanco automatico) deixava o destaque fora da area visivel da
-  // playlist e a pessoa perdia o lugar. `block: "nearest"` rola o minimo — e
-  // nao mexe em nada se a linha ja estiver a vista.
+  // The current lesson was highlighted but the list did not scroll to it: switching lessons
+  // (or the auto-advance) left the highlight outside the visible area of the
+  // playlist and the person lost their place. `block: "nearest"` scrolls the minimum — and
+  // does not move anything if the row is already in view.
   const currentLessonRef = useRef<HTMLLIElement | null>(null);
   useEffect(() => {
     currentLessonRef.current?.scrollIntoView({
@@ -57,8 +57,8 @@ export function CoursePlaylist({
         : "smooth",
     });
   }, [selectedLessonId]);
-  // Módulos fechados pela pessoa. O módulo da aula atual abre sozinho; os
-  // demais começam fechados, e a busca abre tudo que tiver resultado.
+  // Modules closed by the person. The current lesson's module opens on its own; the
+  // others start closed, and search opens everything that has a result.
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   const normalizedQuery = query.trim().toLowerCase();
@@ -67,7 +67,7 @@ export function CoursePlaylist({
       module.lessons.some((lesson) => lesson.id === selectedLessonId),
     )?.id ?? modules[0]?.id ?? null;
 
-  // Numeração absoluta no curso inteiro: filtrar nunca renumera.
+  // Absolute numbering across the whole course: filtering never renumbers.
   const groups = useMemo(() => {
     let position = 0;
     return modules.map((module) => {
@@ -140,8 +140,8 @@ export function CoursePlaylist({
                   <span className="member-playlist__module-eyebrow">
                     {t("learn.classroom.curriculum.module").replace("{number}", () => String(moduleIndex + 1))}
                   </span>
-                  {/* O espaço separa "Módulo 1" do título no nome acessível
-                      do botão; o grid do título não o desenha. */}
+                  {/* The space separates "Module 1" from the title in the button's
+                      accessible name; the title grid does not draw it. */}
                   {" "}
                   {group.module.title}
                 </span>
@@ -163,7 +163,7 @@ export function CoursePlaylist({
                     const isSelected = selectedLessonId === lesson.id;
                     const unlockState = unlockStateById.get(lesson.id);
                     const unlocked = unlockState?.unlocked ?? true;
-                    // Aula agendada: a data em que abre, não só "Locked".
+                    // Scheduled lesson: the date it opens, not just "Locked".
                     const lockedLabel = unlockState?.unlocksAt
                       ? t("learn.classroom.lesson.unlocks").replace("{date}", () =>
                           formatUnlockDate(unlockState.unlocksAt!, locale))
@@ -211,16 +211,16 @@ export function CoursePlaylist({
                             <span className="min-w-0">
                               <span className="member-playlist__lesson-title">{lesson.title}</span>
                               <span className="member-playlist__lesson-meta">
-                                {/* "Tocando agora" (paridade Hotmart): a cor
-                                    da linha sozinha nao dizia "e esta" a quem
-                                    nao distingue cor; aria-current ja avisava
-                                    o leitor de tela, faltava o texto. */}
+                                {/* "Now playing" (Hotmart parity): the row's
+                                    color alone did not say "this one" to someone who
+                                    does not distinguish color; aria-current already told
+                                    the screen reader, the text was missing. */}
                                 {isSelected ? (
                                   <span className="member-playlist__now">
                                     {t("learn.classroom.curriculum.playingNow")}
                                   </span>
                                 ) : null}
-                                {/* Sem duracao, a linha nao comeca com "·". */}
+                                {/* With no duration, the row does not start with "·". */}
                                 {[
                                   lesson.duration,
                                   isCompleted ? t("learn.classroom.curriculum.completed") : "",

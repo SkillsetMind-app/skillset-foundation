@@ -5,9 +5,9 @@ import { ConfirmEmailGate, ExpiredConfirmationLink } from "@/components/auth/con
 import { getAuthErrorMessage } from "@/lib/auth/supabase-auth";
 
 /**
- * Quem confirma o e-mail em outra aba (o link abre ao lado) deixava a aba do
- * cadastro parada para sempre em "confirme seu e-mail". A porta agora olha de
- * novo, sozinha, de tempos em tempos e quando a aba volta ao foco.
+ * Whoever confirmed the email in another tab (the link opens next to it) left the signup
+ * tab stuck forever on "confirm your email". The gate now checks again,
+ * on its own, from time to time and when the tab regains focus.
  */
 
 const mocks = vi.hoisted(() => ({
@@ -126,29 +126,29 @@ describe("ConfirmEmailGate notices a confirmation made elsewhere", () => {
   });
 });
 
-// O leitor de tela lia "Resend in 59s... 58s..." a cada segundo. O numero fica
-// so no botao (fora de regiao viva) e a espera e anunciada duas vezes: enviado,
-// e depois "ja pode pedir outro", na mesma linha de status.
+// The screen reader read "Resend in 59s... 58s..." every second. The number stays
+// only on the button (outside a live region) and the wait is announced twice: sent,
+// and later "you can ask for another", on the same status line.
 describe("ConfirmEmailGate resend countdown for screen readers", () => {
   it("keeps the ticking number out of live regions and announces once when resend is back", async () => {
     render(<ConfirmEmailGate email="learner@example.com" />);
 
-    // A regiao ja existe, vazia, antes do primeiro envio: regiao que nasce
-    // cheia costuma nao ser lida.
+    // The region already exists, empty, before the first send: a region that is born
+    // full is usually not read.
     const status = screen.getAllByRole("status").find((element) => element.textContent === "");
     expect(status).toBeDefined();
 
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "auth.signup.confirmResend" }));
     });
-    // O texto entra no MESMO elemento.
+    // The text enters the SAME element.
     expect(screen.getByText("auth.signup.confirmResent")).toBe(status);
     expect(status).not.toHaveTextContent("auth.signup.confirmResendReady");
     const countdown = screen.getByRole("button", { name: "auth.signup.confirmResendIn" });
     expect(countdown).toBeDisabled();
     expect(countdown.closest("[role='status'], [aria-live]")).toBeNull();
 
-    // A espera de 60 s continua a mesma.
+    // The 60 s wait stays the same.
     for (let second = 0; second < 59; second += 1) await tick(1000);
     expect(status).not.toHaveTextContent("auth.signup.confirmResendReady");
     await tick(1000);
@@ -159,14 +159,14 @@ describe("ConfirmEmailGate resend countdown for screen readers", () => {
   });
 });
 
-// F-07: a falha do reenvio era uma frase vermelha solta; agora é o aviso da
-// casa (caixa e ícone), com a mesma frase e o mesmo anúncio, uma vez só.
-// I-2: a espera desenha o anel da casa, nos mesmos 16px.
-describe("ConfirmEmailGate: o aviso e o anel da casa", () => {
+// F-07: the resend failure was a loose red sentence; now it is the house notice
+// (box and icon), with the same sentence and the same announcement, just once.
+// I-2: the wait draws the house ring, at the same 16px.
+describe("ConfirmEmailGate: the house notice and ring", () => {
   const offline = new Error("Failed to fetch");
   const message = getAuthErrorMessage(offline, (key) => key);
 
-  it("a falha do reenvio aparece no aviso da casa, com role=alert e a mesma frase", async () => {
+  it("the resend failure shows in the house notice, with role=alert and the same sentence", async () => {
     mocks.resendSignupConfirmation.mockRejectedValue(offline);
     render(<ConfirmEmailGate email="learner@example.com" />);
     expect(screen.queryByRole("alert")).toBeNull();
@@ -182,7 +182,7 @@ describe("ConfirmEmailGate: o aviso e o anel da casa", () => {
     expect(alerts[0].querySelector("svg[aria-hidden='true']")).not.toBeNull();
   });
 
-  it("no link vencido, a falha do envio também vira o aviso da casa", async () => {
+  it("on the expired link, the send failure also becomes the house notice", async () => {
     mocks.resendSignupConfirmation.mockRejectedValue(offline);
     render(<ExpiredConfirmationLink onSignIn={vi.fn()} />);
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "learner@example.com" } });
@@ -197,7 +197,7 @@ describe("ConfirmEmailGate: o aviso e o anel da casa", () => {
     expect(alerts[0].querySelector("svg[aria-hidden='true']")).not.toBeNull();
   });
 
-  it("a espera usa o anel da casa, escondido do leitor, com 16px e giro só com movimento", () => {
+  it("the wait uses the house ring, hidden from the screen reader, at 16px and spinning only with motion", () => {
     render(<ConfirmEmailGate email="learner@example.com" />);
     const waiting = screen.getByText("auth.signup.confirmWaiting");
     const ring = waiting.querySelector("span[aria-hidden='true']");

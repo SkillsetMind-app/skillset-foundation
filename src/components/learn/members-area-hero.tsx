@@ -16,21 +16,21 @@ export interface MembersAreaHeroProps {
   studioName?: string | null;
   studioInitials?: string | null;
   progressPercent?: number | null;
-  /** "N de M aulas · X%" junto da barra (paridade Hotmart). Sem os dois, a
-   *  linha continua "X% complete" como sempre foi. */
+  /** "N of M lessons · X%" next to the bar (Hotmart parity). Without both, the
+   *  line stays "X% complete" as it always was. */
   completedCount?: number | null;
   totalCount?: number | null;
-  /** So aparece com 100%: quem terminou ve o certificado no proprio hero,
-   *  nao so na aba de credenciais. null (whitelabel, preview) = nada. */
+  /** Only shows at 100%: whoever finished sees the certificate right in the hero,
+   *  not only in the credentials tab. null (whitelabel, preview) = nothing. */
   certificateHref?: string | null;
   backHref?: string | null;
-  /** A acao principal da capa: "Start lesson 1" ou "Continue: <aula>". A sala
-   *  ja sabe qual aula abrir; o hero so desenha o botao. */
+  /** The cover's main action: "Start lesson 1" or "Continue: <lesson>". The room
+   *  already knows which lesson to open; the hero only draws the button. */
   primaryAction?: { href: string; label: string } | null;
-  /** Para onde o "voltar" leva. Na aba About da sala ele sobe UM nivel — para
-   *  a aula — em vez de sair do curso inteiro. */
+  /** Where the "back" leads. On the room's About tab it goes up ONE level — to
+   *  the lesson — instead of leaving the whole course. */
   backTo?: "courses" | "lesson";
-  /** Rotulo do "voltar" quando ele leva para outro lugar (a area do criador). */
+  /** Label of the "back" when it leads somewhere else (the creator's area). */
   backLabel?: string | null;
 }
 
@@ -64,12 +64,12 @@ export function MembersAreaHero({
 }: MembersAreaHeroProps) {
   const { t } = useTranslation();
   const [showFullDescription, setShowFullDescription] = useState(false);
-  // "Show more" só quando a descrição está de fato cortada nas 2 linhas. Antes
-  // o botão aparecia até embaixo de uma frase de uma linha. Mede fechado: uma
-  // vez antes da primeira pintura (layout effect, sem o botão piscar) e de
-  // novo quando a caixa muda de tamanho (largura da tela) ou a fonte termina
-  // de carregar (a quebra de linha muda). Aberto não mede: ali o texto cabe
-  // sempre, e o "Show less" precisa continuar.
+  // "Show more" only when the description is actually clipped at 2 lines. Before,
+  // the button appeared even under a one-line sentence. It measures closed: once
+  // before the first paint (layout effect, so the button does not flicker) and
+  // again when the box changes size (screen width) or the font finishes
+  // loading (the line break changes). Open does not measure: there the text always
+  // fits, and "Show less" has to stay.
   const descriptionId = useId();
   const descriptionRef = useRef<HTMLParagraphElement>(null);
   const [descriptionClamped, setDescriptionClamped] = useState(false);
@@ -184,8 +184,8 @@ export function MembersAreaHero({
                 </>
               )}
             </span>
-            {/* A barra da casa (ui/progress-bar): o trilho claro sobre a foto
-                vem do .members-hero__bar, o preenchimento no acento do curso. */}
+            {/* The house bar (ui/progress-bar): the light track over the photo
+                comes from .members-hero__bar, the fill in the course accent. */}
             <ProgressBar
               value={pct}
               label={t("learn.paths.percentComplete").replace("{percent}", () => String(pct))}
@@ -195,10 +195,10 @@ export function MembersAreaHero({
           </div>
         ) : null}
 
-        {/* Terminou o curso: a acao principal e o certificado. Mesmo rotulo da
-            barra de abas e do botao da ultima aula. button-solid: o botao
-            primario da sala (cor do curso, sombra, sobe 1px no hover em 180ms);
-            antes so trocava de cor, sem o retorno dos outros botoes. */}
+        {/* Finished the course: the main action is the certificate. Same label as the
+            tab bar and the last-lesson button. button-solid: the room's
+            primary button (course color, shadow, rises 1px on hover in 180ms);
+            before it only changed color, without the feedback of the other buttons. */}
         {pct === 100 && certificateHref ? (
           <Link className="members-hero__cta button-solid" href={certificateHref}>
             {t("learn.classroom.workspace.certificate")}

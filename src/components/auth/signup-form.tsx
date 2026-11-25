@@ -101,9 +101,9 @@ export function SignupForm() {
   // can only fail the same way again.
   const [accountExists, setAccountExists] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  // Qual entrada foi apertada, so para o rotulo (isLoading segue travando os
-  // dois). "Back" no meio da criacao da conta mostrava o Google dizendo
-  // "Opening Google..." sem ninguem ter clicado nele.
+  // Which button was pressed, only for the label (isLoading still locks both).
+  // "Back" in the middle of creating the account showed Google saying
+  // "Opening Google..." when nobody had clicked it.
   const [pendingMethod, setPendingMethod] = useState<"email" | "google" | null>(null);
   // Turnstile token — empty unless the widget is enabled. Shown on step 2 where
   // the account is actually created (Google OAuth doesn't use a captcha token).
@@ -116,17 +116,17 @@ export function SignupForm() {
   const [step, setStep] = useState<1 | 2>(1);
   const [focusIdentityOnReturn, setFocusIdentityOnReturn] = useState(false);
   const [confirmSent, setConfirmSent] = useState(false);
-  // O olhinho, um por campo: quem cria senha quer conferir o que digitou nos
-  // DOIS campos — o login ja tinha o seu; o cadastro, onde ele mais importa,
-  // nao tinha.
+  // The eye icon, one per field: someone creating a password wants to check
+  // what they typed in BOTH fields. Login already had its own; sign-up, where
+  // it matters most, did not.
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const passwordReady = isStrongPassword(password);
   const passwordsMatch = password === confirmPassword;
   const showMismatch = confirmPassword.length > 0 && !passwordsMatch;
-  // Por que "Create account" está apagado (a trava é a mesma; só passa a ser
-  // dita). Senhas diferentes já têm a frase delas embaixo da confirmação: o
-  // botão aponta para ela. A verificação de segurança mostra o próprio estado.
+  // Why "Create account" is dimmed (the lock is the same; it just gets
+  // stated now). Mismatched passwords already have their own sentence under the
+  // confirmation: the button points to it. The security check shows its own state.
   const createBlockedReason = !legalAccepted
     ? t("auth.signup.acceptTermsToCreate")
     : !passwordReady
@@ -182,7 +182,7 @@ export function SignupForm() {
 
     try {
       const { user, needsEmailConfirmation } = await signUpWithEmail(
-        // legalAccepted e exigido acima: o tique vai junto com a conta.
+        // legalAccepted is required above: the checkmark goes along with the account.
         { displayName, email, password, locale, acceptedTerms: true },
         captchaToken || undefined,
         // The confirmation link carries the destination itself, so it survives
@@ -194,12 +194,12 @@ export function SignupForm() {
         source: "email",
       });
 
-      // Ainda sem sessao: toda gravacao de perfil abaixo seria filtrada pela RLS
-      // (sucesso silencioso com zero linhas) e /welcome mandaria direto para o
-      // login sem explicar. Fica na tela de confirmar. Os termos marcados aqui
-      // vao nos metadados da conta e a porta dos termos grava na primeira
-      // pagina logada (sem perguntar de novo) se ela abrir neste navegador; o
-      // @ fica para o onboarding.
+      // Still no session: every profile write below would be filtered by RLS
+      // (silent success with zero rows) and /welcome would send them straight to
+      // login with no explanation. They stay on the confirm screen. The terms checked here
+      // go into the account metadata, and the terms gate records them on the first
+      // signed-in page (without asking again) if it opens in this browser; the
+      // @ handle is left for onboarding.
       if (needsEmailConfirmation) {
         markSignupTerms(user.uid);
         setConfirmSent(true);
@@ -298,8 +298,8 @@ export function SignupForm() {
   );
 
   const errorNode = error ? (
-    // Só a caixa mudou (o aviso da casa, com ícone): texto, link e anúncio
-    // (role="alert", aria-live="assertive") são os mesmos de antes.
+    // Only the box changed (the app's own notice, with an icon): text, link and announcement
+    // (role="alert", aria-live="assertive") are the same as before.
     <InlineAlert tone="error">
       {errorMessage}
       {accountExists ? (
@@ -316,7 +316,7 @@ export function SignupForm() {
   // Account created, session pending confirmation. The form is done — replacing
   // it (rather than routing to /welcome) keeps the user on a screen that
   // explains the next step instead of an unexplained sign-in page. A porta
-  // tem "reenviar" e "trocar o e-mail": antes era um beco sem saida.
+  // has "resend" and "change the email": before, it was a dead end.
   if (confirmSent) {
     return (
       <ConfirmEmailGate
@@ -333,9 +333,9 @@ export function SignupForm() {
 
   return (
     <form className="mt-5 grid gap-3" onSubmit={handleEmailSignup}>
-      {/* Os pontinhos feitos à mão viraram a barra da casa (a da sala e a do
-          construtor). O texto visível sai do leitor de tela: a barra já diz
-          "Step 1 of 2", com o passo de 1 a 2, como antes. */}
+      {/* The hand-made dots became the app's own progress bar (the one in the classroom and the
+          builder). The visible text is hidden from screen readers: the bar already says
+          "Step 1 of 2", with the step from 1 to 2, as before. */}
       <div className="flex items-center gap-3 text-xs font-semibold text-[var(--color-ink-soft)]">
         <span aria-hidden="true">{stepLabel}</span>
         <ProgressBar value={step * 50} step={{ current: step, total: 2 }} label={stepLabel} className="w-16" />
@@ -399,14 +399,14 @@ export function SignupForm() {
             </label>
           </div>
 
-          {/* O aceite e o que destrava o cadastro: letra de corpo, nao de rodape. */}
+          {/* Accepting is what unlocks sign-up: body text, not footer text. */}
           <label className="flex items-start gap-2.5 text-sm leading-6 text-[var(--color-ink)]">
             <input
               type="checkbox"
               checked={legalAccepted}
               onChange={(event) => setLegalAccepted(event.target.checked)}
-              // O balao do navegador vem na lingua do navegador e some sozinho:
-              // o aviso da pagina fica, na lingua da pagina.
+              // The browser's bubble comes in the browser's language and disappears on its own:
+              // the page's notice stays, in the page's language.
               onInvalid={() => setError({ key: "auth.signup.acceptTermsToCreate" })}
               className="mt-0.5 size-5 shrink-0 accent-[var(--color-primary)]"
               required
@@ -426,9 +426,9 @@ export function SignupForm() {
 
           {errorNode}
 
-          {/* Sem o aceite o botao continua clicavel: apagado, ele nao dizia o
-              porque. O clique agora aponta a caixa (required) ou mostra o aviso
-              que handleEmailSignup/handleGoogleSignup ja tinham. */}
+          {/* Without accepting, the button stays clickable: when dimmed, it did not say
+              why. The click now points to the checkbox (required) or shows the notice
+              that handleEmailSignup/handleGoogleSignup already had. */}
           <button
             key="identity-continue"
             type="submit"
@@ -468,8 +468,8 @@ export function SignupForm() {
       ) : (
         <>
           {intent === "teacher" ? introNode : null}
-          {/* Rotulo e campo lado a lado (htmlFor), com o olho fora do
-              <label>: dentro dele, o nome do botao entrava no nome do campo. */}
+          {/* Label and field side by side (htmlFor), with the eye outside the
+              <label>: inside it, the button's name became part of the field's name. */}
           <div className="grid gap-1.5">
             <label htmlFor="signup-password" className="text-sm font-semibold text-[var(--color-ink)]">
               {t("auth.password")}
@@ -494,10 +494,10 @@ export function SignupForm() {
               />
             </span>
           </div>
-          {/* As regras aparecem desde o inicio (as que faltam, apagadas): antes
-              surgiam no 1o caractere e empurravam o resto do formulario. Fora
-              do <label>, para o nome do campo continuar sendo so "Password";
-              o campo aponta para elas como descricao. */}
+          {/* The rules show from the start (the missing ones dimmed): before, they
+              appeared at the 1st character and pushed the rest of the form down. Outside
+              the <label>, so the field's name stays just "Password";
+              the field points to them as its description. */}
           <div id="signup-password-rules">
             <PasswordStrengthChecklist password={password} />
           </div>
@@ -525,8 +525,8 @@ export function SignupForm() {
               />
             </span>
           </div>
-          {/* Fora do <label>: dentro dele a frase virava parte do nome do campo.
-              O campo aponta para ela como descricao enquanto ela aparece. */}
+          {/* Outside the <label>: inside it the sentence became part of the field's name.
+              The field points to it as its description while it is shown. */}
           {showMismatch ? (
             <span
               id="signup-password-mismatch"

@@ -21,10 +21,10 @@ const bone = "animate-pulse rounded-lg bg-[var(--ma-line,var(--color-surface-str
 type State = { status: "loading" } | { status: "error" } | { status: "ready"; community: MemberAreaCommunity };
 
 /**
- * A comunidade da área inteira. O feed é o mesmo da sala de aula; quem entra é
- * decidido no banco (has_community_access), então o portão de matrícula do feed
- * fica desligado aqui: o aluno de outro produto do professor não tem matrícula
- * neste, e mesmo assim é membro.
+ * The community of the whole area. The feed is the same as the classroom's; who gets in is
+ * decided in the database (has_community_access), so the feed's enrollment gate
+ * is turned off here: a learner from another product by the teacher has no enrollment
+ * in this one, and is still a member.
  */
 export function MemberAreaCommunityView({
   areaRef,
@@ -33,7 +33,7 @@ export function MemberAreaCommunityView({
   openPostId = null,
 }: {
   areaRef: string;
-  /** Área extra; null = a principal. */
+  /** Extra area; null = the main one. */
   slug?: string | null;
   brand?: MemberAreaBrand | null;
   openPostId?: string | null;
@@ -48,8 +48,8 @@ export function MemberAreaCommunityView({
     getMemberAreaCommunity(areaRef, slug)
       .then((community) => {
         if (cancelled) return;
-        // Sem comunidade escolhida, ou quem pede não é membro: volta à área,
-        // que por sua vez manda para a vitrine quem não é aluno.
+        // No community chosen, or the requester is not a member: go back to the area,
+        // which in turn sends anyone who is not a learner to the storefront.
         if (!community) {
           router.replace(areaPath);
           return;
@@ -64,10 +64,10 @@ export function MemberAreaCommunityView({
     };
   }, [areaPath, areaRef, slug, router]);
 
-  // "Try again" chama a mesma leitura; o aviso só sai quando ela dá certo, e
-  // o botão trava enquanto ela corre (a função também: um segundo clique antes
-  // de redesenhar não abre outra leitura). O foco vai para a moldura (o botão
-  // travado o perde, e some se der certo).
+  // "Try again" calls the same read; the notice only goes away when it succeeds, and
+  // the button locks while it runs (the function does too: a second click before
+  // redrawing does not start another read). Focus goes to the frame (the locked
+  // button loses it, and disappears if it works).
   const [retrying, setRetrying] = useState(false);
   const retryInFlight = useRef(false);
   const frameRef = useRef<HTMLDivElement>(null);
@@ -84,17 +84,17 @@ export function MemberAreaCommunityView({
       }
       setState({ status: "ready", community });
     } catch {
-      // O aviso fica, com o botão de novo.
+      // The notice stays, with the button again.
     } finally {
       retryInFlight.current = false;
       setRetrying(false);
     }
   }
 
-  // A leitura da comunidade não traz o tema da área; vale o último visto na
-  // área (gravado quando ela abre). Antes a comunidade nunca recebia o tema:
-  // a mesma área era escura na capa e clara aqui. Sem tema guardado, espera
-  // na moldura neutra e abre no claro padrão.
+  // The community read does not bring the area's theme; the last one seen in the
+  // area counts (saved when it opens). Before, the community never received the theme:
+  // the same area was dark on the cover and light here. With no saved theme, it waits
+  // in the neutral frame and opens in the default light theme.
   const remembered = rememberedMemberAreaTheme(areaRef, slug);
 
   if (state.status === "loading") {
@@ -113,7 +113,7 @@ export function MemberAreaCommunityView({
   const theme = remembered ?? "light";
 
   if (state.status === "error") {
-    // Nos tons do tema da área, como o erro da capa da área (member-area-home).
+    // In the area theme's tones, like the area cover's error (member-area-home).
     return (
       <MemberAreaShell brand={brand} theme={theme}>
         <div ref={frameRef} tabIndex={-1} className="grid justify-items-start gap-3 px-4 md:px-0">
@@ -146,20 +146,20 @@ export function MemberAreaCommunityView({
 
   return (
     <MemberAreaShell brand={brand} theme={theme}>
-      {/* O mesmo nó da moldura do erro: depois do "Try again" o foco fica aqui. */}
+      {/* The same node as the error frame: after "Try again" focus stays here. */}
       <div ref={frameRef} tabIndex={-1} className="grid gap-4 px-4 md:px-0">
-        {/* --ma-accent é o fundo dos botões (e a cor que o professor escolhe):
-            como texto dava 2,9:1 num curso escuro. Texto de destaque da área
-            é --ma-accent-ink, como o link do início da área. */}
+        {/* --ma-accent is the button background (and the color the teacher picks):
+            as text it gave 2.9:1 on a dark course. The area's accent text
+            is --ma-accent-ink, like the link at the start of the area. */}
         <Link href={areaPath} className="text-sm font-semibold text-[var(--ma-accent-ink)] underline-offset-2 hover:underline">
           ← {t("learn.memberArea.communityBack")}
         </Link>
         <h1 className="display-title text-3xl text-[var(--ma-ink)]">{community.title}</h1>
-        {/* A mesma superfície da aba Comunidade da sala: dentro de
-            .member-classroom[data-members-theme] o feed e a gaveta trocam os
-            tons da plataforma pelos do tema (globals.css). Fora dela o feed
-            ficava nos tons da plataforma, alheio ao tema da área. No celular
-            vai de borda a borda, como a sala. */}
+        {/* The same surface as the classroom's Community tab: inside
+            .member-classroom[data-members-theme] the feed and the drawer swap the
+            platform's tones for the theme's (globals.css). Outside it the feed
+            stayed in the platform's tones, ignoring the area's theme. On the phone
+            it runs edge to edge, like the classroom. */}
         <section className="member-classroom member-resource-panel -mx-4 md:mx-0" data-members-theme={theme}>
           <CommunityFeed space={space} openPostId={openPostId} canModerate={community.isOwner} skipEnrollmentGate />
         </section>

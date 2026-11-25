@@ -82,8 +82,8 @@ export function ResetPasswordForm() {
         />
       </label>
       {error ? (
-        // A chave remonta a caixa a cada tentativa (o aviso volta a ser lido);
-        // o InlineAlert nao repassa ref, entao quem rola e a caixa de fora.
+        // The key remounts the box on every attempt (the notice is read again);
+        // InlineAlert does not forward a ref, so the outer box is what scrolls.
         <div key={`error-${feedbackSeq}`} ref={revealFeedback}>
           <InlineAlert tone="error">{getAuthErrorMessage(error.cause, t)}</InlineAlert>
         </div>

@@ -24,20 +24,20 @@ vi.mock("@/lib/data/user-profiles", () => ({
   getUserProfile: mocks.getUserProfile,
 }));
 
-// /loading segura o spinner por 1.4s antes de rotear; esperar alem disso.
+// /loading holds the spinner for 1.4s before routing; wait longer than that.
 const ROUTED = { timeout: 4000 };
 
-// A-17: o roteador pos-login mandava qualquer sessao com usuario para o
-// conteudo. Senha aceita e codigo ainda nao apresentado tem que cair na tela
-// do codigo — levando caminho e deep link junto, para nao se perderem.
-describe("LoadingScreen com segundo fator pendente", () => {
+// A-17: the post-login router sent any session with a user to the
+// content. Password accepted and code not yet presented must land on the
+// code screen — carrying the path and deep link along, so they are not lost.
+describe("LoadingScreen with a pending second factor", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   afterEach(cleanup);
 
-  it("manda para a tela do codigo com caminho e deep link, nunca para o conteudo", async () => {
+  it("sends to the code screen with path and deep link, never to the content", async () => {
     render(<LoadingScreen />);
 
     await waitFor(

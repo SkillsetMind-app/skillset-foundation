@@ -14,14 +14,14 @@ import { setCommunityPostLike } from "@/lib/data/gamification";
 /**
  * Mockup 5, rodada 11 — o feed simplificado, renderizado de verdade:
  *  - tres filtros (All · Questions com abertas · From <instrutor>), busca;
- *  - "Ask a question" expande no lugar, com a aula anexada e perguntas
- *    parecidas ja respondidas;
- *  - cartao leve: instrutor, pinned, "from lesson 5", Question -> Answered,
- *    a primeira resposta DENTRO do cartao (a aceita em verde);
- *  - posts de outras pessoas viram a pilula "N new posts" em vez de empurrar
- *    a tela; os proprios entram na hora;
- *  - coluna lateral: live que vira "Join", quem esta online, "Say hi" so na
- *    primeira semana.
+ *  - "Ask a question" expands in place, with the lesson attached and similar
+ *    questions already answered;
+ *  - light card: instructor, pinned, "from lesson 5", Question -> Answered,
+ *    the first answer INSIDE the card (the accepted one in green);
+ *  - posts by other people become the "N new posts" pill instead of pushing
+ *    the screen; your own go in right away;
+ *  - side column: live that becomes "Join", who is online, "Say hi" only in the
+ *    first week.
  */
 
 const NOW = Date.parse("2026-09-02T12:00:00.000Z");
@@ -36,7 +36,7 @@ const mocks = vi.hoisted(() => ({
   commentsCallback: null as null | ((comments: CommunityComment[]) => void),
   presenceCallback: null as null | ((members: { uid: string; name: string }[]) => void),
   eventsCallback: null as null | ((events: unknown[]) => void),
-  // vi.hoisted roda antes das constantes do modulo: data literal (NOW - 2 dias).
+  // vi.hoisted runs before the module constants: literal date (NOW - 2 days).
   enrollmentCreatedAt: "2026-08-31T12:00:00.000Z",
   subscriptions: 0,
   pathname: "/learn/courses/course-1/community",
@@ -56,7 +56,7 @@ vi.mock("@/lib/data/enrollments", () => ({
   subscribeToEnrollment: vi.fn((_uid: string, _slug: string, onNext: (e: unknown) => void) => {
     mocks.subscriptions += 1;
     if (mocks.subscriptions > 20) {
-      throw new Error("subscribeToEnrollment em laco");
+      throw new Error("subscribeToEnrollment in a loop");
     }
     onNext({
       id: "enr-1",
@@ -236,7 +236,7 @@ async function renderFeed(props: Partial<Parameters<typeof CommunityFeed>[0]> = 
   return view;
 }
 
-describe("feed da comunidade (rodada 11)", () => {
+describe("community feed (round 11)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers({ shouldAdvanceTime: true, now: NOW });
@@ -253,9 +253,9 @@ describe("feed da comunidade (rodada 11)", () => {
     vi.useRealTimers();
   });
 
-  // F-03: a espera tem a forma dos posts, com a frase só para o leitor de tela.
-  // C-04: o filtro no desenho do seletor segmentado (pastilha clara, não navy cheio).
-  it("espera com a forma dos posts e filtro no desenho segmentado", async () => {
+  // F-03: the wait has the shape of the posts, with the sentence only for the screen reader.
+  // C-04: the filter in the segmented selector design (light pill, not solid navy).
+  it("loading state shaped like the posts, and filter in the segmented design", async () => {
     render(<I18nProvider initialLocale="en"><CommunityFeed space={space} instructorName="Patrick" /></I18nProvider>);
     await waitFor(() => expect(mocks.postsCallback).not.toBeNull());
     const waiting = screen.getByText("Loading community feed...");
@@ -334,7 +334,7 @@ describe("feed da comunidade (rodada 11)", () => {
   });
 
   it.each([
-    // Sem botão "Share": o campo de mentira abre o mesmo formulário.
+    // No "Share" button: the fake field opens the same form.
     ["Ask the cohort or share something...", "Compartir", "Tu publicación", "Publicar", "discussion"],
     ["Post an update", "Publicar un aviso", "Tu publicación", "Publicar aviso", "announcement"],
   ])("preserves the %s draft and payload while translating", async (entry, formName, label, submit, category) => {
@@ -350,10 +350,10 @@ describe("feed da comunidade (rodada 11)", () => {
     expect(createCommunityPost).toHaveBeenCalledWith(expect.objectContaining({ category, body: "Original content $$50 $&", title: null, lessonId: null, lessonTitle: null }));
   });
 
-  // A lista nao e mais aria-live, o proprio post entra direto nela e o
-  // formulario fecha: sem isto, quem usa leitor de tela nao ouvia nada e o
-  // foco caia no corpo da pagina.
-  it("depois de publicar: 'Posted.' na regiao de status e o foco volta ao campo do compositor", async () => {
+  // The list is no longer aria-live, the post itself goes straight into it and the
+  // form closes: without this, screen reader users heard nothing and
+  // focus fell to the page body.
+  it("after posting: 'Posted.' in the status region and focus returns to the composer field", async () => {
     await renderFeed({}, "en");
     fireEvent.click(screen.getByRole("button", { name: "Ask the cohort or share something..." }));
     fireEvent.change(screen.getByRole("textbox", { name: "Your post" }), { target: { value: "Sharing my worksheet notes." } });
@@ -400,9 +400,9 @@ describe("feed da comunidade (rodada 11)", () => {
     expect(createCommunityPost).not.toHaveBeenCalled();
   });
 
-  // As falhas de leitura eram becos: "Try again" relê pelo mesmo canal, sem
-  // reinscrever, e o aviso só sai quando a leitura volta.
-  it("a falha do acesso oferece Try again; quando a matrícula chega o feed abre com o foco no título", async () => {
+  // Read failures were dead ends: "Try again" re-reads through the same channel, without
+  // re-subscribing, and the notice only goes away when the read comes back.
+  it("an access failure offers Try again; when the enrollment arrives the feed opens with focus on the title", async () => {
     let deliver: (enrollment: Enrollment | null) => void = () => {};
     const reload = vi.fn(async () => deliver(enrollmentFixture));
     vi.mocked(subscribeToEnrollment).mockImplementationOnce((_uid, _slug, next, onError) => {
@@ -421,7 +421,7 @@ describe("feed da comunidade (rodada 11)", () => {
     expect(document.activeElement).toHaveAttribute("data-community-heading");
   });
 
-  it("um Try again do acesso que falha de novo desarma o foco: a matrícula que chega depois não o puxa", async () => {
+  it("an access Try again that fails again disarms the focus: the enrollment that arrives later does not pull it", async () => {
     let deliver: (enrollment: Enrollment | null) => void = () => {};
     let fail: (error: Error) => void = () => {};
     const reload = vi.fn(async () => fail(new Error("still down")));
@@ -442,7 +442,7 @@ describe("feed da comunidade (rodada 11)", () => {
     expect(document.activeElement).not.toHaveAttribute("data-community-heading");
   });
 
-  it("a falha dos posts oferece Try again sem o vazio, e os posts entram direto quando chegam", async () => {
+  it("a posts failure offers Try again without the empty state, and the posts go straight in when they arrive", async () => {
     let onError: (error: Error) => void = () => {};
     const reload = vi.fn(async () => undefined);
     vi.mocked(subscribeToCommunityPosts).mockImplementationOnce((_slug, next, fail) => {
@@ -463,12 +463,12 @@ describe("feed da comunidade (rodada 11)", () => {
 
     await act(async () => mocks.postsCallback?.(posts));
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-    // A primeira leitura boa entra na lista, não na pílula "N new posts".
+    // The first good read goes into the list, not into the "N new posts" pill.
     expect(screen.getAllByRole("article")).toHaveLength(posts.length);
     expect(screen.queryByRole("button", { name: /new post/ })).not.toBeInTheDocument();
     expect(document.activeElement).toHaveAttribute("data-community-heading");
 
-    // Uma releitura do canal que falhe depois não tira os posts da tela.
+    // A channel re-read that fails afterwards does not remove the posts from the screen.
     act(() => onError(new Error("offline")));
     expect(screen.getByRole("alert")).toHaveTextContent("We could not load community posts.");
     expect(screen.getAllByRole("article")).toHaveLength(posts.length);
@@ -495,8 +495,8 @@ describe("feed da comunidade (rodada 11)", () => {
     expect(within(card).queryByRole("textbox")).not.toBeInTheDocument();
   });
 
-  // O banco recusa com RATE_LIMIT quando a pessoa passa do teto por hora
-  // (P2-9): a tela pede para esperar, em vez de mandar tentar de novo na hora.
+  // The database refuses with RATE_LIMIT when the person goes over the hourly cap
+  // (P2-9): the screen asks them to wait, instead of telling them to try again right away.
   it("asks the member to wait when the database refuses a post over the hourly cap, keeping the draft", async () => {
     await renderFeed({}, "en");
     vi.mocked(createCommunityPost).mockRejectedValueOnce({ code: "P0001", message: "RATE_LIMIT" });
@@ -543,7 +543,7 @@ describe("feed da comunidade (rodada 11)", () => {
     expect(subscribeToCommunityPosts).toHaveBeenCalledTimes(1);
   });
 
-  it("tres filtros: All com o fixado no topo; Questions conta as abertas; From Patrick so o instrutor", async () => {
+  it("three filters: All with the pinned one on top; Questions counts the open ones; the From filter shows only the instructor", async () => {
     await renderFeed();
 
     const cards = screen.getAllByRole("article");
@@ -567,7 +567,7 @@ describe("feed da comunidade (rodada 11)", () => {
     expect(screen.getByRole("article")).toHaveTextContent("Portuguese version");
   });
 
-  it("cartao: Answered com a resposta aceita DENTRO (em verde), 'from lesson 5', 'View 3 replies'; a aberta diz Question", async () => {
+  it("card: Answered with the accepted reply INSIDE (in green), 'from lesson 5', 'View 3 replies'; the open one says Question", async () => {
     await renderFeed();
 
     const answered = screen.getByRole("article", { name: /real deadline/ });
@@ -576,7 +576,7 @@ describe("feed da comunidade (rodada 11)", () => {
     expect(within(answered).getByText("Show the constraint, not the pressure.")).toBeInTheDocument();
     expect(within(answered).queryByText("Following, same problem here.")).toBeNull();
     expect(within(answered).getByText("answer")).toBeInTheDocument();
-    // "View 3 replies" abre a gaveta (11b) — nao expande no cartao.
+    // "View 3 replies" opens the drawer (11b) — it does not expand in the card.
     expect(within(answered).getByRole("button", { name: "View 3 replies" })).toBeInTheDocument();
 
     const open = screen.getByRole("article", { name: /Portuguese version/ });
@@ -584,7 +584,7 @@ describe("feed da comunidade (rodada 11)", () => {
     expect(open).not.toHaveTextContent("Answered");
   });
 
-  it("Ask a question: expande no lugar, com a aula anexada (removivel) e perguntas parecidas ja respondidas", async () => {
+  it("Ask a question: expands in place, with the lesson attached (removable) and similar questions already answered", async () => {
     await renderFeed({ currentLesson: { id: "l3", title: "Bias checklist", number: 3 } });
 
     fireEvent.click(screen.getByRole("button", { name: "Ask a question" }));
@@ -610,7 +610,7 @@ describe("feed da comunidade (rodada 11)", () => {
     );
   });
 
-  it("tirar a aula anexada manda a pergunta sem aula", async () => {
+  it("removing the attached lesson sends the question without a lesson", async () => {
     await renderFeed({ currentLesson: { id: "l3", title: "Bias checklist", number: 3 } });
 
     fireEvent.click(screen.getByRole("button", { name: "Ask a question" }));
@@ -628,7 +628,7 @@ describe("feed da comunidade (rodada 11)", () => {
     );
   });
 
-  it("post novo de OUTRA pessoa vira a pilula '1 new post'; o meu entra na hora", async () => {
+  it("a new post from SOMEONE ELSE becomes the '1 new post' pill; mine shows up right away", async () => {
     await renderFeed();
     expect(screen.getAllByRole("article")).toHaveLength(4);
 
@@ -638,7 +638,7 @@ describe("feed da comunidade (rodada 11)", () => {
     });
     expect(screen.getAllByRole("article")).toHaveLength(4);
     expect(screen.queryByText("Anyone tried the worksheet?")).toBeNull();
-    // So a linha "1 new post" e anunciada; a lista nao e mais regiao viva.
+    // Only the "1 new post" line is announced; the list is no longer a live region.
     const feedStatus = screen.getAllByRole("status").find((node) => node.textContent === "1 new post");
     expect(feedStatus).toBeDefined();
     expect(screen.getAllByRole("article")[0].closest("[aria-live]")).toBeNull();
@@ -656,8 +656,8 @@ describe("feed da comunidade (rodada 11)", () => {
     expect(screen.queryByRole("button", { name: /new post/ })).toBeNull();
   });
 
-  // O "Like" do próprio post fica travado; antes nada dizia por quê.
-  it("o Like travado do próprio post diz o motivo; o dos outros, não", async () => {
+  // The "Like" on your own post is locked; before, nothing said why.
+  it("the locked Like on your own post says why; on others' posts it does not", async () => {
     await renderFeed();
     const mine = post({ id: "mine", authorId: "student-1", authorName: "Ana Ribeiro", category: "discussion", body: "My own share." });
     await act(async () => {
@@ -667,14 +667,14 @@ describe("feed da comunidade (rodada 11)", () => {
     const own = within(screen.getByText("My own share.").closest("article")!).getByRole("button", { name: /^Like · \d+$/ });
     expect(own).toBeDisabled();
     expect(own).toHaveAccessibleDescription("You can't like your own post.");
-    // O motivo também à vista, não só para o leitor de tela.
+    // The reason is also in plain sight, not only for the screen reader.
     expect(screen.getByText("You can't like your own post.")).not.toHaveClass("sr-only");
     const other = within(screen.getAllByRole("article").find((card) => !card.textContent?.includes("My own share."))!).getByRole("button", { name: /^Like · \d+$/ });
     expect(other).not.toHaveAttribute("aria-describedby");
   });
 
-  // O vazio da lista é o EmptyState da plataforma, com h3 como os posts.
-  it("sem posts, o vazio é o EmptyState com título h3", async () => {
+  // The empty list is the platform's EmptyState, with h3 like the posts.
+  it("with no posts, the empty state is the EmptyState with an h3 title", async () => {
     render(<CommunityFeed space={space} instructorName="Patrick" />);
     await waitFor(() => expect(mocks.postsCallback).not.toBeNull());
     await act(async () => {
@@ -688,13 +688,13 @@ describe("feed da comunidade (rodada 11)", () => {
     expect(heading.closest("div.border-dashed")).not.toBeNull();
   });
 
-  // Antes: eyebrow "COMMUNITY" + h2 de 24px com o nome do curso (repetindo o
-  // h1 e a aba), "Share" fazendo o mesmo que o campo, e um cartão vazio
-  // "No live scheduled yet." sempre na lateral.
-  it("cromo enxuto: titulo so para leitor de tela, uma entrada por tarefa, sem cartao de live vazio", async () => {
+  // Before: eyebrow "COMMUNITY" + 24px h2 with the course name (repeating the
+  // h1 and the tab), "Share" doing the same as the field, and an empty card
+  // "No live scheduled yet." always on the side.
+  it("lean chrome: title only for the screen reader, one entry per task, no empty live card", async () => {
     await renderFeed({ canModerate: true });
 
-    // Escondido, mas aparece quando recebe o foco (depois de apagar o ultimo post).
+    // Hidden, but it shows up when it receives focus (after deleting the last post).
     expect(screen.getByRole("heading", { level: 2, name: "Leading Teams Through Change" })).toHaveClass("sr-only", "focus:not-sr-only");
     expect(screen.queryByText("Community")).toBeNull();
     expect(screen.getByRole("button", { name: "Ask the cohort or share something..." })).toBeInTheDocument();
@@ -703,13 +703,13 @@ describe("feed da comunidade (rodada 11)", () => {
     expect(screen.queryByRole("button", { name: "Share" })).toBeNull();
     expect(screen.queryByRole("region", { name: "Next live" })).toBeNull();
     expect(screen.queryByText("No live scheduled yet.")).toBeNull();
-    // Reacao com icone (nao emoji) e post do instrutor sem a borda colorida.
+    // Reaction with an icon (not an emoji) and an instructor post without the colored border.
     expect(document.body.textContent).not.toContain("👏");
     expect(screen.getAllByRole("button", { name: /^Like · \d+$/ }).length).toBeGreaterThan(0);
     for (const card of screen.getAllByRole("article")) expect(card.className).not.toContain("border-l-4");
   });
 
-  it("lateral: 'Live in 40 min' vira 'Join' quando comeca; quem esta online; 'Say hi' so na primeira semana", async () => {
+  it("sidebar: 'Live in 40 min' becomes 'Join' when it starts; who is online; 'Say hi' only in the first week", async () => {
     await renderFeed();
 
     await act(async () => {
@@ -742,8 +742,8 @@ describe("feed da comunidade (rodada 11)", () => {
     expect(screen.getByText(/2 online/)).toBeInTheDocument();
     expect(screen.getByText("New here? Say hi 👋")).toBeInTheDocument();
 
-    // 10 min antes ja e "comecando": o link de entrar aparece, como nas
-    // outras telas (antes so depois do inicio). Data e fuso na frase comum.
+    // 10 min before it is already "starting": the join link shows up, as on the
+    // other screens (before, only after the start). Date and time zone in the common sentence.
     await act(async () => {
       vi.setSystemTime(NOW + 30 * 60_000);
       await vi.advanceTimersByTimeAsync(30_000);
@@ -762,13 +762,13 @@ describe("feed da comunidade (rodada 11)", () => {
     );
   });
 
-  // Webinar as 6:00 e plantao as 7:30 (90 min depois): o cartao mostra a de
-  // inicio mais perto de agora. A mais antiga ficava "ao vivo" por 3 h e
-  // escondia a seguinte. Prazo nao e live: fica fora do cartao.
+  // Webinar at 6:00 and office hours at 7:30 (90 min later): the card shows the one
+  // whose start is nearest to now. The oldest stayed "live" for 3 h and
+  // hid the next one. A deadline is not live: it stays out of the card.
   it.each([
     ["7:20", 80, "Office hours", "Live in 10 min"],
     ["6:10", 10, "Webinar", "Live now"],
-  ])("duas sessoes a 90 min, as %s: o cartao mostra a mais perto de agora", async (_label, offset, title, chip) => {
+  ])("two sessions 90 min apart, at %s: the card shows the one closest to now", async (_label, offset, title, chip) => {
     await renderFeed();
     const session = (id: string, name: string, minutes: number, type = "live_class") => ({
       id, title: name, type, status: "scheduled", startsAt: new Date(NOW + minutes * 60_000).toISOString(),
@@ -794,7 +794,7 @@ describe("feed da comunidade (rodada 11)", () => {
     );
   });
 
-  it("quem esta ha mais de uma semana nao ve o 'Say hi'", async () => {
+  it("anyone who has been here for more than a week does not see 'Say hi'", async () => {
     mocks.enrollmentCreatedAt = new Date(NOW - 30 * 24 * HOUR).toISOString();
     await renderFeed();
 
@@ -817,7 +817,7 @@ describe("feed da comunidade (rodada 11)", () => {
     },
   );
 
-  it("o dono do curso desafixa e apaga o post de um aluno, que some sem esperar o realtime", async () => {
+  it("the course owner unpins and deletes a learner's post, which disappears without waiting for realtime", async () => {
     await renderFeed({ canModerate: true });
 
     const [pinned] = screen.getAllByRole("article");
@@ -834,7 +834,7 @@ describe("feed da comunidade (rodada 11)", () => {
     expect(subscribeToCommunityPosts).toHaveBeenCalledTimes(1);
   });
 
-  it("um membro denuncia o post de outra pessoa; nao ve Apagar nem Desafixar", async () => {
+  it("a member reports someone else's post; does not see Delete or Unpin", async () => {
     await renderFeed();
 
     const open = screen.getByRole("article", { name: /Portuguese version/ });
@@ -867,12 +867,12 @@ describe("feed da comunidade (rodada 11)", () => {
 });
 
 /**
- * 11b — a gaveta da pergunta: abre por cima do feed com URL propria
- * (.../community/q/<post>), a resposta aceita em verde no topo, Esc e
- * o X ("Close") fecham (voltando ao endereco da aba), e quem pode marca
+ * 11b — the question drawer: opens over the feed with its own URL
+ * (.../community/q/<post>), the accepted answer in green at the top, Esc and
+ * the X ("Close") close it (going back to the tab's address), and whoever can marks
  * "Mark as the answer".
  */
-describe("gaveta da pergunta (11b)", () => {
+describe("question drawer (11b)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers({ shouldAdvanceTime: true, now: NOW });
@@ -920,7 +920,7 @@ describe("gaveta da pergunta (11b)", () => {
     vi.mocked(createCommunityComment).mockReturnValueOnce(new Promise((done) => { resolve = done; }));
     fireEvent.click(within(drawer).getByRole("button", { name: "Reply" }));
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    // Enviando diz o que faz, em palavra, e acompanha o idioma.
+    // Sending says what it does, in a word, and follows the language.
     expect(within(drawer).getByRole("button", { name: "Enviando..." })).toBeDisabled();
     expect(field).toHaveValue("Draft $$ $&");
     expect(createCommunityComment).toHaveBeenCalledExactlyOnceWith({ postId: "answered", courseSlug: space.courseSlug, body: "Draft $$ $&", user: mocks.auth.user });
@@ -953,7 +953,7 @@ describe("gaveta da pergunta (11b)", () => {
     expect(within(drawer).getByRole("textbox", { name: "Añade tu respuesta" })).toHaveValue("Draft $$ $&");
   });
 
-  it("o titulo e 'View N replies' abrem a gaveta pelo endereco, sem trocar de pagina", async () => {
+  it("the title and 'View N replies' open the drawer via the address, without changing page", async () => {
     await renderFeed();
 
     fireEvent.click(screen.getByRole("button", { name: "View 3 replies" }));
@@ -963,12 +963,12 @@ describe("gaveta da pergunta (11b)", () => {
     expect(mocks.push).toHaveBeenCalledWith("/learn/courses/course-1/community/q/open");
   });
 
-  it("com ?q no endereco: gaveta aberta, resposta aceita primeiro; Esc devolve a aba", async () => {
+  it("with ?q in the address: drawer open, accepted reply first; Esc returns to the tab", async () => {
     mocks.pathname = "/learn/courses/course-1/community/q/answered";
     await renderFeed({ openPostId: "answered" });
 
     const drawer = screen.getByRole("dialog", { name: /real deadline/ });
-    // O foco entra na gaveta (tabIndex -1), nao fica no feed atras dela.
+    // Focus goes into the drawer (tabIndex -1), it does not stay on the feed behind it.
     expect(drawer).toHaveFocus();
     const replies = within(drawer).getAllByRole("listitem");
     expect(replies[0]).toHaveTextContent("Show the constraint, not the pressure.");
@@ -979,13 +979,13 @@ describe("gaveta da pergunta (11b)", () => {
     fireEvent.keyDown(document, { key: "Escape" });
     expect(mocks.push).toHaveBeenCalledWith("/learn/courses/course-1/community");
 
-    // Um fechar so: o X. O "Back to feed" duplicado saiu do cabecalho.
+    // Only one close: the X. The duplicate "Back to feed" is gone from the header.
     expect(within(drawer).queryByRole("button", { name: "Back to feed" })).toBeNull();
     fireEvent.click(within(drawer).getByRole("button", { name: "Close" }));
     expect(mocks.push).toHaveBeenLastCalledWith("/learn/courses/course-1/community");
   });
 
-  it("na gaveta o dono apaga a resposta aceita (some) e depois o post (a gaveta fecha)", async () => {
+  it("in the drawer the owner deletes the accepted reply (it disappears) and then the post (the drawer closes)", async () => {
     mocks.pathname = "/learn/courses/course-1/community/q/answered";
     await renderFeed({ openPostId: "answered", canModerate: true });
     const drawer = screen.getByRole("dialog", { name: /real deadline/ });
@@ -999,7 +999,7 @@ describe("gaveta da pergunta (11b)", () => {
     expect(within(drawer).getAllByRole("listitem")).toHaveLength(2);
     expect(within(drawer).queryByText("Show the constraint, not the pressure.")).toBeNull();
 
-    // O primeiro "Delete" da gaveta e o do post (logo abaixo do autor).
+    // The first "Delete" in the drawer is the post's (right below the author).
     fireEvent.click(within(drawer).getAllByRole("button", { name: "Delete" })[0]);
     expect(within(drawer).getByRole("group", { name: /Delete this post for everyone/ })).toBeInTheDocument();
     await act(async () => { fireEvent.click(within(drawer).getByRole("button", { name: "Yes, delete" })); });
@@ -1010,7 +1010,7 @@ describe("gaveta da pergunta (11b)", () => {
     expect(screen.queryByRole("article", { name: /real deadline/ })).toBeNull();
   });
 
-  it("quem NAO e o autor nem modera nao marca resposta; quem modera desmarca e marca", async () => {
+  it("anyone who is NOT the author or a moderator cannot mark a reply; a moderator unmarks and marks", async () => {
     mocks.pathname = "/learn/courses/course-1/community/q/answered";
     const { unmount } = await renderFeed({ openPostId: "answered" });
     expect(screen.queryByRole("button", { name: /as the answer/ })).toBeNull();

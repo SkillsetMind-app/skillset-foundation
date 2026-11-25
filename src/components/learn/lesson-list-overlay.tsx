@@ -100,14 +100,14 @@ export function LessonListOverlay({
         aria-label={t("learn.classroom.curriculum.close")}
         onClick={onClose}
       />
-      {/* No celular o painel ocupa a altura toda, como antes (um teto em
-          100svh deixava uma faixa de fundo embaixo com a barra do Safari
-          recolhida, e tocar nela fechava a lista). Do sm em diante, o teto
-          das janelas em svh (o 86vh contava a barra do navegador). A entrada
-          (motion-panel-in) só sem "reduzir movimento"; antes aparecia num
-          corte seco. A lista rola por dentro. O painel é o da casa do sm em
-          diante; bg-white e a borda por classe ficam porque a sala troca as
-          cores do curso por esses nomes. */}
+      {/* On the phone the panel takes the full height, as before (a cap at
+          100svh left a strip of background at the bottom with the Safari bar
+          collapsed, and tapping it closed the list). From sm up, the cap
+          of the dialogs in svh (86vh counted the browser bar). The entrance
+          (motion-panel-in) only without "reduce motion"; before, it appeared with
+          a hard cut. The list scrolls inside. The panel is the house one from sm
+          up; bg-white and the border by class stay because the classroom swaps the
+          course colors using those names. */}
       <div className="dialog-panel dialog-panel--lg motion-panel-in relative z-[75] flex flex-col overflow-hidden border-[var(--color-line)] bg-white max-sm:rounded-none max-sm:border-0 sm:max-h-[calc(100svh-3rem)]">
         <header className="flex items-start justify-between gap-3 border-b border-[var(--color-line)] px-5 py-4 sm:px-6">
           <div className="min-w-0">
@@ -177,7 +177,7 @@ export function LessonListOverlay({
                         const isSelected = selectedLessonId === lesson.id;
                         const unlockState = unlockStateById.get(lesson.id);
                         const unlocked = unlockState?.unlocked ?? true;
-                        // Aula agendada: a data em que abre, não só "Locked".
+                        // Scheduled lesson: the date it opens, not just "Locked".
                         const lockedLabel = unlockState?.unlocksAt
                           ? t("learn.classroom.lesson.unlocks").replace("{date}", () =>
                               formatUnlockDate(unlockState.unlocksAt!, locale))

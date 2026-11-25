@@ -21,16 +21,16 @@ import {
   subscribeToStudentMessages,
 } from "@/lib/data/course-messages";
 
-// A caixa de mensagens do aluno (/learn/messages).
+// The learner's message inbox (/learn/messages).
 //
-// POR QUE ISTO EXISTE
+// WHY THIS EXISTS
 //
-// Para responder ao professor era preciso rolar quatro ou cinco telas ate o
-// fim da pagina da aula, depois da comunidade. Com tres cursos, tres lugares.
-// O aluno nao tinha uma lista de conversas; o professor tinha
-// (teacher-messages-inbox.tsx, o molde deste arquivo). Uma conversa por curso;
-// a conversa aberta vai no endereco (?course=) — compartilhar abre a mesma,
-// e o voltar do navegador devolve a lista.
+// To reply to the teacher you had to scroll four or five screens to the
+// bottom of the lesson page, after the community. With three courses, three
+// places. The learner had no list of conversations; the teacher did
+// (teacher-messages-inbox.tsx, the model for this file). One conversation per
+// course; the open conversation goes in the address (?course=), so sharing it
+// opens the same one, and the browser's back button returns to the list.
 export function StudentMessagesInbox() {
   const { user } = useAuth();
   const { t, locale } = useTranslation();
@@ -40,14 +40,15 @@ export function StudentMessagesInbox() {
   const courseParam = searchParams?.get("course") ?? null;
 
   const [messages, setMessages] = useState<CourseMessage[]>([]);
-  // Até a primeira leitura chegar a lista está "carregando", não "vazia":
-  // antes toda visita mostrava "No conversations yet" e depois trocava pelas
-  // conversas. Se a primeira leitura falha, o erro com "Try again" fica no
-  // lugar do vazio (uma falha não é "você não tem conversas").
+  // Until the first read arrives, the list is "loading", not "empty":
+  // before, every visit showed "No conversations yet" and then swapped in the
+  // conversations. If the first read fails, the error with "Try again" takes
+  // the place of the empty state (a failure is not "you have no conversations").
   const [ready, setReady] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
-  // Uma releitura falhou com a lista já na tela: aviso no topo, com ou sem
-  // conversa aberta, e some quando uma leitura seguinte dá certo.
+  // A re-read failed while the list is already on screen: a notice at the top,
+  // with or without an open conversation, and it goes away when a later read
+  // succeeds.
   const [reloadFailed, setReloadFailed] = useState(false);
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -70,8 +71,8 @@ export function StudentMessagesInbox() {
         setReloadFailed(false);
       },
       () => {
-        // Falha numa releitura (o canal em tempo real recarrega) não apaga a
-        // lista que já está na tela: vira só o aviso.
+        // A failure on a re-read (the realtime channel reloads) does not wipe
+        // the list already on screen: it only becomes the notice.
         if (loaded) {
           setReloadFailed(true);
         } else {
@@ -86,14 +87,14 @@ export function StudentMessagesInbox() {
     };
   }, [user]);
 
-  // "Try again" lê de novo pelo mesmo canal, sem sair e entrar de novo no
-  // Realtime (no intervalo, uma mensagem nova se perderia).
+  // "Try again" reads again through the same channel, without leaving and
+  // rejoining Realtime (in the gap, a new message would be lost).
   function retryLoad() {
     setLoadFailed(false);
     void subscription.current?.reload();
   }
 
-  // Para o aluno, cada thread e um curso (a chave e curso + o proprio aluno).
+  // For the learner, each thread is a course (the key is course + the learner).
   const threads = useMemo(() => groupCourseMessageThreads(messages), [messages]);
   const selectedThread =
     threads.find((thread) => thread.courseId === courseParam) ?? null;
@@ -124,8 +125,8 @@ export function StudentMessagesInbox() {
     }
   }
 
-  // Voltar e sempre a seta no canto superior esquerdo, um nivel acima:
-  // conversa -> lista -> painel.
+  // Back is always the arrow in the top left corner, one level up:
+  // conversation -> list -> dashboard.
   const backHref = selectedThread ? pathname : "/learn";
   const backLabel = selectedThread ? t("learnWave2.messages.all") : t("learnWave2.messages.back");
 
@@ -162,7 +163,7 @@ export function StudentMessagesInbox() {
           </div>
         </div>
       ) : threads.length === 0 ? (
-        // O vazio da plataforma (EmptyState), em h2 logo abaixo do h1 do shell.
+        // The platform's empty state (EmptyState), as an h2 right below the shell's h1.
         <EmptyState
           as="h2"
           title={t("learnWave2.messages.empty")}
@@ -170,9 +171,10 @@ export function StudentMessagesInbox() {
         />
       ) : (
         <div className="grid gap-5 lg:grid-cols-[minmax(240px,320px)_1fr]">
-          {/* No celular a lista ou a conversa: com uma aberta, a lista sai e a
-              conversa sobe (antes ela ficava embaixo de todas as outras). A
-              seta "All conversations" lá em cima volta para a lista. */}
+          {/* On a phone, either the list or the conversation: with one open, the
+              list is hidden and the conversation moves up (before, it sat below
+              all the others). The "All conversations" arrow at the top goes
+              back to the list. */}
           <nav
             aria-label={t("learnWave2.messages.conversations")}
             className={`${selectedThread ? "hidden lg:grid" : "grid"} content-start gap-2`}
@@ -279,7 +281,7 @@ export function StudentMessagesInbox() {
               </form>
             </section>
           ) : (
-            // "Escolha à esquerda" só faz sentido com a lista ao lado.
+            // "Pick one on the left" only makes sense with the list beside it.
             <section className="hidden rounded-lg border fine-rule bg-white p-5 text-sm leading-6 text-[var(--color-ink-soft)] lg:block">
               {t("learnWave2.messages.pick")}
             </section>

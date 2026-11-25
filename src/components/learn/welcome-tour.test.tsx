@@ -5,18 +5,18 @@ import { WelcomeTour } from "@/components/learn/welcome-tour";
 
 const mocks = vi.hoisted(() => ({ dismiss: vi.fn() }));
 
-// Quem decide se o tour abre (e grava que já foi visto) é o hook; aqui só a
-// janela. A regra do "visto" não muda neste arquivo.
+// The hook decides whether the tour opens (and records that it was seen); here
+// only the dialog is tested. The "seen" rule does not change in this file.
 vi.mock("@/lib/ui/use-welcome-tour", () => ({
   useWelcomeTour: () => ({ open: true, dismiss: mocks.dismiss }),
 }));
 
-describe("WelcomeTour do aluno", () => {
+describe("learner WelcomeTour", () => {
   beforeEach(() => {
     mocks.dismiss.mockReset();
   });
 
-  it("um controle de pular só; Skip fecha", () => {
+  it("has a single skip control; Skip closes it", () => {
     render(<WelcomeTour userId="u-1" firstName="Ana" />);
 
     expect(screen.getAllByRole("button", { name: /skip/i })).toHaveLength(1);
@@ -24,16 +24,16 @@ describe("WelcomeTour do aluno", () => {
     expect(mocks.dismiss).toHaveBeenCalledTimes(1);
   });
 
-  // Antes o texto trocava e a janela crescia ou encolhia a cada passo, e os
-  // botões saíam de baixo do mouse. Agora os quatro passos ocupam a mesma
-  // célula (a altura é a do mais longo) e só o atual é lido.
-  it("todos os passos reservam a altura; só o atual aparece, e o foco vai para o título dele", () => {
+  // Before, the text swapped and the dialog grew or shrank at every step, and
+  // the buttons moved out from under the mouse. Now the four steps occupy the
+  // same cell (the height is that of the longest) and only the current one is read.
+  it("all steps reserve the height; only the current one shows, and focus goes to its title", () => {
     render(<WelcomeTour userId="u-1" firstName="Ana" />);
 
     expect(screen.getByText("Manage your account")).toBeInTheDocument();
     expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(1);
     expect(screen.getByRole("dialog", { name: "Welcome, Ana" })).toBeInTheDocument();
-    // Na abertura quem entra é a janela; o texto do 1º passo não anima de novo.
+    // On open, the dialog is what animates in; the 1st step's text does not animate again.
     expect(screen.getByRole("heading", { level: 2, name: "Welcome, Ana" }).parentElement).not.toHaveClass("motion-panel-in");
 
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
@@ -43,7 +43,7 @@ describe("WelcomeTour do aluno", () => {
     expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(1);
     expect(screen.getByRole("dialog", { name: "Pick up where you left off" })).toBeInTheDocument();
 
-    // Voltar ao 1º passo tira o "Back" da tela: o foco não fica perdido nele.
+    // Going back to the 1st step removes "Back" from the screen: focus is not lost on it.
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
     expect(screen.queryByRole("button", { name: "Back" })).toBeNull();
     expect(screen.getByRole("heading", { level: 2, name: "Welcome, Ana" })).toHaveFocus();

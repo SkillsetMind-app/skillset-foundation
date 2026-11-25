@@ -5,15 +5,15 @@ import { getVisibleQuestions, OnboardingWizard } from "@/components/auth/onboard
 import type { SkillsetUser } from "@/domain/auth";
 
 /**
- * O primeiro passo depois de confirmar o e-mail e se apresentar: nome
- * (pre-preenchido do cadastro) e telefone — que nunca era pedido em lugar
- * nenhum. So depois vem "como voce vai usar a SkillsetMind".
+ * The first step after confirming the email and introducing yourself: name
+ * (prefilled from signup) and phone — which was never asked for anywhere
+ * before. Only then comes "how will you use SkillsetMind".
  */
 
 const mocks = vi.hoisted(() => ({
   router: { push: vi.fn(), replace: vi.fn() },
   searchParams: new URLSearchParams(),
-  // Objeto estavel: um novo por render reinscreve efeitos e entra em laco.
+  // Stable object: a new one per render resubscribes effects and loops.
   auth: {
     status: "authenticated",
     user: { uid: "u-1", email: "patrick@example.com", displayName: "Patrick Simon", roles: ["student"] } as
@@ -51,7 +51,7 @@ beforeEach(() => {
   };
 });
 
-describe("boas-vindas: o passo de perfil vem primeiro", () => {
+describe("welcome: the profile step comes first", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.searchParams = new URLSearchParams();
@@ -63,7 +63,7 @@ describe("boas-vindas: o passo de perfil vem primeiro", () => {
 
   afterEach(cleanup);
 
-  it("professor: abre pedindo nome (ja preenchido) e telefone; sem telefone nao passa", async () => {
+  it("teacher: opens asking for name (already filled in) and phone; without a phone it does not pass", async () => {
     mocks.searchParams = new URLSearchParams("path=teacher");
     render(<OnboardingWizard />);
 
@@ -78,7 +78,7 @@ describe("boas-vindas: o passo de perfil vem primeiro", () => {
     expect(screen.queryByText("How will you use SkillsetMind first?")).toBeNull();
   });
 
-  it("aluno: o telefone e opcional — vazio passa, e nada e inventado no perfil", async () => {
+  it("learner: the phone is optional — empty passes, and nothing is invented in the profile", async () => {
     mocks.searchParams = new URLSearchParams("path=student");
     render(<OnboardingWizard />);
     await screen.findByText("First, tell us who you are.");
@@ -92,12 +92,12 @@ describe("boas-vindas: o passo de perfil vem primeiro", () => {
         phoneNumber: null,
       }),
     );
-    // O papel ja veio do cadastro (?path=): nao pergunta de novo.
+    // The role already came from signup (?path=): does not ask again.
     expect(await screen.findByText("What do you want to learn first?")).toBeInTheDocument();
     expect(screen.queryByText("How will you use SkillsetMind first?")).toBeNull();
   });
 
-  it("aluno que digita um telefone torto nao passa com ele", async () => {
+  it("a learner who types a malformed phone does not pass with it", async () => {
     mocks.searchParams = new URLSearchParams("path=student");
     render(<OnboardingWizard />);
     await screen.findByText("First, tell us who you are.");
@@ -109,7 +109,7 @@ describe("boas-vindas: o passo de perfil vem primeiro", () => {
     expect(mocks.updateUserIdentity).not.toHaveBeenCalled();
   });
 
-  it("com nome e telefone: grava no perfil, marca o passo e segue para o proximo", async () => {
+  it("with name and phone: writes to the profile, marks the step and moves on to the next", async () => {
     mocks.searchParams = new URLSearchParams("path=teacher");
     render(<OnboardingWizard />);
     await screen.findByText("First, tell us who you are.");
@@ -132,7 +132,7 @@ describe("boas-vindas: o passo de perfil vem primeiro", () => {
     expect(screen.queryByText("How will you use SkillsetMind first?")).toBeNull();
   });
 
-  it("quem chegou com o papel errado no link volta um passo e troca", async () => {
+  it("whoever arrived with the wrong role in the link goes back a step and switches", async () => {
     mocks.searchParams = new URLSearchParams("path=teacher");
     mocks.profile = {
       displayName: "Patrick Simon",
@@ -155,7 +155,7 @@ describe("boas-vindas: o passo de perfil vem primeiro", () => {
     expect(await screen.findByText("What do you want to learn first?")).toBeInTheDocument();
   });
 
-  it("sem papel definido (nem no link, nem salvo), ainda pergunta o caminho", async () => {
+  it("with no role defined (neither in the link nor saved), it still asks for the path", async () => {
     render(<OnboardingWizard />);
     await screen.findByText("First, tell us who you are.");
 
@@ -164,7 +164,7 @@ describe("boas-vindas: o passo de perfil vem primeiro", () => {
     expect(await screen.findByText("How will you use SkillsetMind first?")).toBeInTheDocument();
   });
 
-  it("quem ja se apresentou nao ve o passo de novo ao voltar", async () => {
+  it("whoever already introduced themselves does not see the step again when going back", async () => {
     mocks.profile = {
       displayName: "Patrick Simon",
       phoneNumber: "+55 16 99999-1234",
@@ -177,10 +177,10 @@ describe("boas-vindas: o passo de perfil vem primeiro", () => {
   });
 });
 
-// A outra metade do bug do "voltar para o curso": mesmo carregando o endereco
-// ate aqui, o fim do onboarding sempre despejava a pessoa em /learn. O curso
-// que ela ia comprar sumia no ultimo passo.
-describe("boas-vindas: o fim leva de volta para onde a pessoa estava", () => {
+// The other half of the "back to the course" bug: even carrying the address
+// this far, the end of onboarding always dumped the person on /learn. The course
+// they were about to buy vanished on the last step.
+describe("welcome: the end takes the person back to where they were", () => {
   const respostasDeAluno = {
     profileConfirmed: true,
     path: "student",
@@ -203,7 +203,7 @@ describe("boas-vindas: o fim leva de volta para onde a pessoa estava", () => {
 
   afterEach(cleanup);
 
-  // O ultimo passo do aluno; daqui o "Continue" encerra o onboarding.
+  // The learner's last step; from here "Continue" ends onboarding.
   async function terminar() {
     render(<OnboardingWizard />);
     expect(
@@ -212,7 +212,7 @@ describe("boas-vindas: o fim leva de volta para onde a pessoa estava", () => {
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
   }
 
-  it("volta para o curso quando a pessoa veio de um", async () => {
+  it("goes back to the course when the person came from one", async () => {
     mocks.searchParams = new URLSearchParams("returnTo=/courses/focus");
 
     await terminar();
@@ -223,7 +223,7 @@ describe("boas-vindas: o fim leva de volta para onde a pessoa estava", () => {
     );
   });
 
-  it("sem destino, termina onde sempre terminou", async () => {
+  it("without a destination, ends where it always ended", async () => {
     await terminar();
 
     await waitFor(
@@ -232,9 +232,9 @@ describe("boas-vindas: o fim leva de volta para onde a pessoa estava", () => {
     );
   });
 
-  it("um nome com $& no 'You're all set' aparece literal, sem virar '{name}'", async () => {
-    // Num replace sem callback, "$&" vira o trecho casado ("{name}") e "$'" o
-    // resto da frase. O nome vem do cadastro: e texto da pessoa, nao nosso.
+  it("a name with $& in the 'You're all set' appears literally, without turning into '{name}'", async () => {
+    // In a replace without a callback, "$&" becomes the matched piece ("{name}") and "$'" the
+    // rest of the sentence. The name comes from signup: it is the person's text, not ours.
     mocks.auth = {
       status: "authenticated",
       user: { uid: "u-1", email: "patrick@example.com", displayName: "Mc$&Donald Simon", roles: ["student"] },
@@ -251,10 +251,10 @@ describe("boas-vindas: o fim leva de volta para onde a pessoa estava", () => {
     );
   });
 
-  // O-18/F-10: o "You're all set" segurava a pessoa 1,8s sem nenhum botao.
-  // Agora o "Continue" chega focado e vai na hora para o MESMO destino, e a
-  // pausa automatica (1500ms) nao navega uma segunda vez depois do clique.
-  it("'Continue' no fim chega focado e vai na hora para o mesmo destino, uma vez so", async () => {
+  // O-18/F-10: the "You're all set" held the person for 1.8s with no button.
+  // Now "Continue" arrives focused and goes right away to the SAME destination, and the
+  // automatic pause (1500ms) does not navigate a second time after the click.
+  it("'Continue' at the end arrives focused and goes right away to the same destination, only once", async () => {
     mocks.searchParams = new URLSearchParams("returnTo=/courses/focus");
 
     await terminar();
@@ -262,7 +262,7 @@ describe("boas-vindas: o fim leva de volta para onde a pessoa estava", () => {
     await screen.findByRole("heading", { level: 1, name: /all set/ });
     const continuar = screen.getByRole("button", { name: "Continue" });
     expect(continuar).toHaveFocus();
-    // O leitor de tela ouve o titulo e a frase junto com o botao focado.
+    // The screen reader hears the title and the sentence along with the focused button.
     expect(continuar).toHaveAccessibleDescription(/You're all set, Patrick\..*Taking you there now\./);
     expect(mocks.router.replace).not.toHaveBeenCalled();
     fireEvent.click(continuar);
@@ -272,7 +272,7 @@ describe("boas-vindas: o fim leva de volta para onde a pessoa estava", () => {
     expect(mocks.router.replace).toHaveBeenCalledTimes(1);
   });
 
-  it("sem clique, segue sozinho depois de 1500ms, nao antes", async () => {
+  it("without a click, moves on by itself after 1500ms, not before", async () => {
     await terminar();
 
     await screen.findByRole("heading", { level: 1, name: /all set/ });
@@ -281,9 +281,9 @@ describe("boas-vindas: o fim leva de volta para onde a pessoa estava", () => {
     await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledExactlyOnceWith("/learn"), { timeout: 2000 });
   });
 
-  // Voltar do navegador durante a pausa desmonta a tela: a pausa que ainda
-  // corre nao pode puxar a pessoa de volta para frente.
-  it("desmontada antes do fim da pausa, nao navega", async () => {
+  // Browser Back during the pause unmounts the screen: the pause still
+  // running must not pull the person forward again.
+  it("unmounted before the end of the pause, does not navigate", async () => {
     await terminar();
     await screen.findByRole("heading", { level: 1, name: /all set/ });
 
@@ -292,7 +292,7 @@ describe("boas-vindas: o fim leva de volta para onde a pessoa estava", () => {
     expect(mocks.router.replace).not.toHaveBeenCalled();
   });
 
-  it("descarta destino de outro dominio", async () => {
+  it("discards a destination on another domain", async () => {
     mocks.searchParams = new URLSearchParams("returnTo=https://outro.com/pego");
 
     await terminar();
@@ -303,9 +303,9 @@ describe("boas-vindas: o fim leva de volta para onde a pessoa estava", () => {
     );
   });
 
-  // O professor e a excecao de proposito: /onboarding?path=teacher e um passo
-  // obrigatorio da conta, nao um destino que da para trocar por um link.
-  it("professor ainda vai para o cadastro de professor, com destino ou sem", async () => {
+  // The teacher is the exception on purpose: /onboarding?path=teacher is a required
+  // account step, not a destination that can be swapped for a link.
+  it("a teacher still goes to the teacher signup, with or without a destination", async () => {
     mocks.searchParams = new URLSearchParams("path=teacher&returnTo=/courses/focus");
     mocks.profile = {
       displayName: "Patrick Simon",
@@ -333,11 +333,11 @@ describe("boas-vindas: o fim leva de volta para onde a pessoa estava", () => {
     );
   });
 
-  // A unica coisa que segue com o professor para /onboarding e o plano que ele
-  // escolheu em /pricing: la, o ultimo botao abre o cartao desse plano.
+  // The only thing that goes with the teacher to /onboarding is the plan they
+  // chose on /pricing: there, the last button opens that plan's card screen.
   const cartao = "/account/billing/upgrade?plan=pro&cycle=monthly";
 
-  it("professor que escolheu um plano em /pricing leva o plano para o cadastro de professor", async () => {
+  it("a teacher who chose a plan on /pricing carries the plan to the teacher signup", async () => {
     mocks.searchParams = new URLSearchParams({ path: "teacher", returnTo: cartao });
     mocks.profile = {
       displayName: "Patrick Simon",
@@ -367,8 +367,8 @@ describe("boas-vindas: o fim leva de volta para onde a pessoa estava", () => {
     );
   });
 
-  // Plano e de quem ensina: quem terminou como aluno nao cai na tela de cartao.
-  it("aluno com um plano no endereco termina em /learn, nao no cartao", async () => {
+  // A plan belongs to those who teach: whoever finished as a learner does not land on the card screen.
+  it("a learner with a plan in the address ends on /learn, not on the card screen", async () => {
     mocks.searchParams = new URLSearchParams({ returnTo: cartao });
 
     await terminar();
@@ -380,9 +380,9 @@ describe("boas-vindas: o fim leva de volta para onde a pessoa estava", () => {
   });
 });
 
-// So o caminho do aluno perguntava "onde conheceu a SkillsetMind"; do professor
-// — quem mais importa saber — nunca. Mesma pergunta, opcional, mesmo lugar.
-describe("boas-vindas: o professor tambem diz onde nos conheceu", () => {
+// Only the learner path used to ask "where did you hear about SkillsetMind"; the teacher
+// — who matters most to know — never. Same question, optional, same place.
+describe("welcome: the teacher also says where they heard about us", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.searchParams = new URLSearchParams("path=teacher");
@@ -427,10 +427,10 @@ describe("boas-vindas: o professor tambem diz onde nos conheceu", () => {
   });
 });
 
-// O-07/O-08/O-21: o total da entrevista aparece e e anunciado; cada pergunta
-// remonta (a entrada animada roda em todas); Enter num botao e do botao e Esc
-// nao volta uma pergunta.
-describe("boas-vindas: progresso, troca de pergunta e teclado", () => {
+// O-07/O-08/O-21: the interview total shows and is announced; each question
+// remounts (the animated entrance runs on all of them); Enter on a button belongs to the button and Esc
+// does not go back a question.
+describe("welcome: progress, question change and keyboard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.searchParams = new URLSearchParams("path=teacher");
@@ -446,7 +446,7 @@ describe("boas-vindas: progresso, troca de pergunta e teclado", () => {
 
   afterEach(cleanup);
 
-  it("mostra 'Question 2 of 8' e expoe a barra de progresso", async () => {
+  it("shows 'Question 2 of 8' and exposes the progress bar", async () => {
     render(<OnboardingWizard />);
     await screen.findByText("What best describes your work?");
 
@@ -456,7 +456,7 @@ describe("boas-vindas: progresso, troca de pergunta e teclado", () => {
     expect(bar).toHaveAttribute("aria-valuemax", "8");
   });
 
-  it("cada pergunta nova e um elemento novo (a entrada roda de novo)", async () => {
+  it("each new question is a new element (the entrance runs again)", async () => {
     const view = render(<OnboardingWizard />);
     await screen.findByText("What best describes your work?");
     const first = view.container.querySelector(".welcome-question");
@@ -468,7 +468,7 @@ describe("boas-vindas: progresso, troca de pergunta e teclado", () => {
     expect(screen.getByText("Question 3 of 8")).toBeInTheDocument();
   });
 
-  it("Enter numa opcao nao tenta seguir e Esc nao volta", async () => {
+  it("Enter on an option does not try to continue and Esc does not go back", async () => {
     render(<OnboardingWizard />);
     const coach = await screen.findByRole("button", { name: "Coach" });
 
@@ -480,7 +480,7 @@ describe("boas-vindas: progresso, troca de pergunta e teclado", () => {
     expect(screen.queryByText("How will you use SkillsetMind first?")).toBeNull();
   });
 
-  it("Enter num campo de texto continua seguindo em frente", async () => {
+  it("Enter in a text field still moves forward", async () => {
     mocks.profile = { displayName: "Patrick Simon", phoneNumber: null, onboardingAnswers: {} };
     render(<OnboardingWizard />);
     const phone = await screen.findByLabelText("Phone");
@@ -489,9 +489,9 @@ describe("boas-vindas: progresso, troca de pergunta e teclado", () => {
     expect(await screen.findByText(/Enter a phone number/)).toBeInTheDocument();
   });
 
-  // No celular a barra do Continue fica presa embaixo: o aviso tem de vir
-  // para o meio da tela, senao nasce atras dela e o toque parece nao fazer nada.
-  it("leva o aviso de erro para a vista quando ele aparece", async () => {
+  // On the phone the Continue bar stays pinned at the bottom: the notice has to come
+  // to the middle of the screen, otherwise it is born behind it and the tap seems to do nothing.
+  it("scrolls the error notice into view when it appears", async () => {
     const scrollIntoView = vi.fn();
     Element.prototype.scrollIntoView = scrollIntoView;
     try {
@@ -504,16 +504,16 @@ describe("boas-vindas: progresso, troca de pergunta e teclado", () => {
       const alert = await screen.findByRole("alert");
       expect(alert).toHaveTextContent(/Enter a phone number/);
       expect(scrollIntoView).toHaveBeenCalledWith(expect.objectContaining({ block: "center" }));
-      // A caixa que rola e a de fora do aviso (o InlineAlert nao repassa ref).
+      // The box that scrolls is the one outside the notice (InlineAlert does not forward a ref).
       expect(scrollIntoView.mock.contexts).toContain(alert.parentElement);
     } finally {
       delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
     }
   });
 
-  // Dois toques rapidos na mesma opcao (ou Enter duas vezes) avancavam duas
-  // perguntas e pulavam a de temas, que e obrigatoria.
-  it("dois toques rapidos numa opcao avancam uma pergunta so", async () => {
+  // Two quick taps on the same option (or Enter twice) used to advance two
+  // questions and skip the topics one, which is required.
+  it("two quick taps on an option advance only one question", async () => {
     render(<OnboardingWizard />);
     const coach = await screen.findByRole("button", { name: "Coach" });
 
@@ -527,7 +527,7 @@ describe("boas-vindas: progresso, troca de pergunta e teclado", () => {
     expect(screen.getByText("Question 3 of 8")).toBeInTheDocument();
   });
 
-  it("o foco vai para o titulo da pergunta nova, mas nao na chegada", async () => {
+  it("focus goes to the new question title, but not on arrival", async () => {
     render(<OnboardingWizard />);
     const title = await screen.findByRole("heading", { level: 1, name: "What best describes your work?" });
     expect(title).not.toHaveFocus();
@@ -539,7 +539,7 @@ describe("boas-vindas: progresso, troca de pergunta e teclado", () => {
     expect(next).toHaveAttribute("tabindex", "-1");
   });
 
-  it("a resposta marcada fica marcada para o leitor de tela", async () => {
+  it("the selected answer stays selected for the screen reader", async () => {
     mocks.profile.onboardingAnswers = { profileConfirmed: true, path: "teacher", profession: "Coach" };
     render(<OnboardingWizard />);
     await screen.findByText("What kind of program will you publish?");
@@ -550,7 +550,7 @@ describe("boas-vindas: progresso, troca de pergunta e teclado", () => {
   });
 });
 
-describe("boas-vindas: retoma o checkout depois de perder a sessão", () => {
+describe("welcome: resumes checkout after losing the session", () => {
   const checkout = "/courses/focus/checkout?offer=LAUNCH&priceId=price-1";
 
   beforeEach(() => {
@@ -614,7 +614,7 @@ describe("boas-vindas: retoma o checkout depois de perder a sessão", () => {
   });
 });
 
-describe("H3: pais declarado do professor", () => {
+describe("H3: the teacher's declared country", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.searchParams = new URLSearchParams("path=teacher");
@@ -631,7 +631,7 @@ describe("H3: pais declarado do professor", () => {
   });
   afterEach(cleanup);
 
-  it("exige uma escolha sem inferir pais do idioma ou do telefone", async () => {
+  it("requires a choice without inferring the country from the language or the phone", async () => {
     render(<OnboardingWizard />);
     expect(await screen.findByLabelText("Country of your bank account")).toHaveValue("");
     expect(screen.queryByRole("button", { name: "Skip for now" })).toBeNull();
@@ -640,7 +640,7 @@ describe("H3: pais declarado do professor", () => {
     expect(mocks.updateOnboardingAnswers).not.toHaveBeenCalled();
   });
 
-  it.each(["CA", "other"])("persiste %s apenas nas respostas, conserva as anteriores e retoma sem perder o pais", async (country) => {
+  it.each(["CA", "other"])("persists %s only in the answers, keeps the previous ones and resumes without losing the country", async (country) => {
     const view = render(<OnboardingWizard />);
     fireEvent.change(await screen.findByLabelText("Country of your bank account"), { target: { value: country } });
     if (country === "other") {
@@ -663,7 +663,7 @@ describe("H3: pais declarado do professor", () => {
     expect(screen.getByLabelText("Country of your bank account")).toHaveValue(country);
   });
 
-  it("nao avanca quando a persistencia falha e permite tentar de novo", async () => {
+  it("does not advance when persistence fails and allows trying again", async () => {
     mocks.updateOnboardingAnswers.mockRejectedValueOnce(new Error("offline"));
     render(<OnboardingWizard />);
     fireEvent.change(await screen.findByLabelText("Country of your bank account"), { target: { value: "GB" } });
@@ -674,7 +674,7 @@ describe("H3: pais declarado do professor", () => {
     await screen.findByText("Do you already have an audience?");
   });
 
-  it("aluno nao recebe a pergunta mesmo com declaracao antiga", async () => {
+  it("a learner does not get the question even with an old declaration", async () => {
     mocks.profile.onboardingAnswers = { profileConfirmed: true, path: "student", payoutCountry: "other" };
     render(<OnboardingWizard />);
     await screen.findByText("What do you want to learn first?");
@@ -685,7 +685,7 @@ describe("H3: pais declarado do professor", () => {
     expect(screen.queryByLabelText("Country of your bank account")).toBeNull();
   });
 
-  it("troca de aluno para professor passa a exigir a pergunta", async () => {
+  it("switching from learner to teacher starts requiring the question", async () => {
     mocks.searchParams = new URLSearchParams();
     mocks.profile.onboardingAnswers = { profileConfirmed: true, primaryGoal: ["Business"], profession: "Coach", alreadySold: "no" };
     render(<OnboardingWizard />);
@@ -697,7 +697,7 @@ describe("H3: pais declarado do professor", () => {
     expect(await screen.findByLabelText("Country of your bank account")).toHaveValue("");
   });
 
-  it("Enter no seletor nao salva nem avanca antes de confirmar a escolha", async () => {
+  it("Enter on the selector neither saves nor advances before confirming the choice", async () => {
     render(<OnboardingWizard />);
     const select = await screen.findByLabelText("Country of your bank account");
     fireEvent.change(select, { target: { value: "CA" } });
@@ -707,10 +707,10 @@ describe("H3: pais declarado do professor", () => {
   });
 });
 
-// O-09: quem criou a conta no meio de uma compra vai pagar, nao responder
-// "o que quer aprender". Com destino, o interesse do aluno vira opcional; sem
-// destino, e o professor em qualquer caso, nada muda.
-describe("boas-vindas: o comprador segue para o checkout sem responder o interesse", () => {
+// O-09: whoever created the account in the middle of a purchase is going to pay, not answer
+// "what do you want to learn". With a destination, the learner's interest becomes optional; without a
+// destination, and for the teacher in any case, nothing changes.
+describe("welcome: the buyer goes on to checkout without answering the interest question", () => {
   const checkout = "/courses/focus/checkout?offer=LAUNCH";
   const plano = "/account/billing/upgrade?plan=pro&cycle=monthly";
 
@@ -724,7 +724,7 @@ describe("boas-vindas: o comprador segue para o checkout sem responder o interes
 
   afterEach(cleanup);
 
-  it("aluno vindo do checkout pode pular o interesse e termina no checkout", async () => {
+  it("a learner coming from checkout can skip the interest and ends at checkout", async () => {
     mocks.searchParams = new URLSearchParams({ path: "student", returnTo: checkout });
     render(<OnboardingWizard />);
     await screen.findByText("First, tell us who you are.");
@@ -744,12 +744,12 @@ describe("boas-vindas: o comprador segue para o checkout sem responder o interes
     );
   });
 
-  // O plano de /pricing nao e destino para o aluno (ele termina em /learn):
-  // o interesse segue obrigatorio, como hoje.
+  // The /pricing plan is not a destination for the learner (they end on /learn):
+  // the interest stays required, as today.
   it.each([
     ["sem destino", null],
     ["com o plano de /pricing", plano],
-  ])("aluno %s continua tendo de responder o interesse", async (_label, returnTo) => {
+  ])("learner %s still has to answer the interest question", async (_label, returnTo) => {
     mocks.searchParams = new URLSearchParams({ path: "student", ...(returnTo ? { returnTo } : {}) });
     mocks.profile.onboardingAnswers = { profileConfirmed: true, path: "student" };
     render(<OnboardingWizard />);
@@ -765,7 +765,7 @@ describe("boas-vindas: o comprador segue para o checkout sem responder o interes
     ["sem destino", null],
     ["com o checkout de um curso", checkout],
     ["com o plano de /pricing", plano],
-  ])("professor %s: o programa continua obrigatorio, na mesma posicao", async (_label, returnTo) => {
+  ])("teacher %s: the program question stays required, in the same position", async (_label, returnTo) => {
     mocks.searchParams = new URLSearchParams({ path: "teacher", ...(returnTo ? { returnTo } : {}) });
     mocks.profile = {
       displayName: "Patrick Simon",
@@ -782,14 +782,14 @@ describe("boas-vindas: o comprador segue para o checkout sem responder o interes
     expect(mocks.updateOnboardingAnswers).not.toHaveBeenCalled();
   });
 
-  it.each([false, true])("ramo do professor identico com e sem destino (papel ja conhecido: %s)", (pathKnown) => {
+  it.each([false, true])("teacher branch identical with and without a destination (role already known: %s)", (pathKnown) => {
     for (const alreadySold of [undefined, "no", "yes"] as const) {
       const answers = { path: "teacher" as const, alreadySold };
       expect(getVisibleQuestions(answers, pathKnown, true)).toEqual(getVisibleQuestions(answers, pathKnown, false));
     }
   });
 
-  it("ramo do aluno: com destino, so o interesse muda, e so de obrigatorio para opcional", () => {
+  it("learner branch: with a destination, only the interest changes, and only from required to optional", () => {
     const semDestino = getVisibleQuestions({ path: "student" }, true, false);
     const comDestino = getVisibleQuestions({ path: "student" }, true, true);
 
@@ -800,11 +800,11 @@ describe("boas-vindas: o comprador segue para o checkout sem responder o interes
   });
 });
 
-// F-09: os pontinhos da entrevista viraram a barra da casa (a da sala e a do
-// construtor). O que o leitor de tela ouve (o passo, de 1 ao total, e
-// "Question N of M") e a frase visível seguem iguais no primeiro, num do meio
-// e no último passo dos dois caminhos.
-describe("F-09: a barra da entrevista é a da casa, com os mesmos valores", () => {
+// F-09: the interview dots became the house bar (the classroom one and the
+// builder one). What the screen reader hears (the step, from 1 to the total, and
+// "Question N of M") and the visible sentence stay the same on the first, a middle
+// and the last step of both paths.
+describe("F-09: the interview bar is the house bar, with the same values", () => {
   const professorCompleto = {
     profileConfirmed: true,
     path: "teacher",
@@ -830,7 +830,7 @@ describe("F-09: a barra da entrevista é a da casa, com os mesmos valores", () =
     ["professor, primeiro passo", "teacher", {}, 1, 8, "First, tell us who you are."],
     ["professor, passo do meio", "teacher", { profileConfirmed: true, path: "teacher", profession: "Coach" }, 3, 8, "What kind of program will you publish?"],
     ["professor, último passo", "teacher", professorCompleto, 8, 8, /Instagram handle/],
-  ])("%s: Question N of M na frase e na barra", async (_label, path, answers, current, total, title) => {
+  ])("%s: Question N of M in the sentence and in the bar", async (_label, path, answers, current, total, title) => {
     mocks.searchParams = new URLSearchParams({ path });
     mocks.profile = { displayName: "Patrick Simon", phoneNumber: "+1 555 123 4567", onboardingAnswers: { ...answers } };
     render(<OnboardingWizard />);
@@ -843,15 +843,15 @@ describe("F-09: a barra da entrevista é a da casa, com os mesmos valores", () =
     expect(bar).toHaveAttribute("aria-valuemin", "1");
     expect(bar).toHaveAttribute("aria-valuemax", String(total));
     expect(bar).toHaveAttribute("aria-valuetext", text);
-    // O desenho é o da ProgressBar: trilho que segue o tema, latão de texto.
+    // The design is ProgressBar's: a track that follows the theme, brass text.
     expect(bar).toHaveClass("h-1.5", "rounded-full", "bg-[var(--color-line)]");
     expect(bar.firstElementChild).toHaveClass("bg-[var(--color-accent-fg)]");
     expect(screen.getAllByRole("progressbar")).toHaveLength(1);
   });
 
-  // A lista de perguntas, a ordem e o obrigatório de cada uma, escritas aqui
-  // por extenso: o pacote só trocou o desenho da barra.
-  it("as perguntas, a ordem e o obrigatório de cada caminho seguem os mesmos", () => {
+  // The question list, the order and the required flag of each one, written out here
+  // in full: the bundle only changed the bar design.
+  it("the questions, the order and the required flag of each path stay the same", () => {
     const lista = (...args: Parameters<typeof getVisibleQuestions>) =>
       getVisibleQuestions(...args).map(({ number, id, required }) => `${number}:${id}:${required ? "obrigatória" : "opcional"}`);
 
@@ -890,10 +890,10 @@ describe("F-09: a barra da entrevista é a da casa, com os mesmos valores", () =
   });
 });
 
-// F-04: o "Continue" que espera não muda de largura (e não empurra o "Skip").
-// F-11: a leitura das respostas salvas que falha na chegada ganha "Try again";
-// as falhas de salvar, não (repetir ali é o próprio "Continue").
-describe("boas-vindas: 'Continue' esperando e a leitura que falhou na chegada", () => {
+// F-04: the waiting "Continue" does not change width (and does not push "Skip").
+// F-11: the read of saved answers that fails on arrival gets "Try again";
+// save failures do not (repeating there is "Continue" itself).
+describe("welcome: 'Continue' waiting and the read that failed on arrival", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.searchParams = new URLSearchParams("path=student");
@@ -905,7 +905,7 @@ describe("boas-vindas: 'Continue' esperando e a leitura que falhou na chegada", 
 
   afterEach(cleanup);
 
-  it("'Continue' esperando: nome 'Saving...', trava, e os dois rótulos na mesma célula", async () => {
+  it("'Continue' waiting: name 'Saving...', lock, and both labels in the same cell", async () => {
     let release!: () => void;
     mocks.updateUserIdentity.mockReturnValue(new Promise<void>((resolve) => { release = () => resolve(); }));
     render(<OnboardingWizard />);
@@ -928,7 +928,7 @@ describe("boas-vindas: 'Continue' esperando e a leitura que falhou na chegada", 
     expect(mocks.updateUserIdentity).toHaveBeenCalledTimes(1);
   });
 
-  it("a leitura falhou na chegada: 'Try again' repete a leitura uma vez e retoma de onde a pessoa parou", async () => {
+  it("the read failed on arrival: 'Try again' repeats the read once and resumes where the person left off", async () => {
     mocks.profile = {
       displayName: "Patrick Simon",
       phoneNumber: null,
@@ -947,14 +947,14 @@ describe("boas-vindas: 'Continue' esperando e a leitura que falhou na chegada", 
     expect(await screen.findByText("What do you want to learn first?")).toBeInTheDocument();
     expect(mocks.getUserProfile).toHaveBeenCalledTimes(2);
     expect(screen.queryByRole("alert")).toBeNull();
-    // Só leitura: nada foi gravado no caminho.
+    // Read only: nothing was written along the way.
     expect(mocks.updateOnboardingAnswers).not.toHaveBeenCalled();
     expect(mocks.updateUserIdentity).not.toHaveBeenCalled();
   });
 
-  // A espera do "Try again" ainda não tem as respostas salvas: um Enter ali
-  // gravava o estado velho (nome digitado, respostas vazias) por cima delas.
-  it("Enter na espera do 'Try again' não grava nada; com a entrevista de volta, o foco vai ao título e Enter segue", async () => {
+  // The "Try again" wait does not have the saved answers yet: an Enter there
+  // would write the old state (typed name, empty answers) over them.
+  it("Enter during the 'Try again' wait writes nothing; with the interview back, focus goes to the title and Enter proceeds", async () => {
     mocks.getUserProfile.mockRejectedValueOnce(new Error("offline"));
     render(<OnboardingWizard />);
     await screen.findByRole("alert");
@@ -964,12 +964,12 @@ describe("boas-vindas: 'Continue' esperando e a leitura que falhou na chegada", 
     mocks.getUserProfile.mockReturnValueOnce(new Promise((resolve) => { finishRead = () => resolve(mocks.profile); }));
     const retry = screen.getByRole("button", { name: "Try again" });
     retry.focus();
-    // Enter num botão é do próprio botão: o navegador o vira clique.
+    // Enter on a button belongs to the button itself: the browser turns it into a click.
     fireEvent.keyDown(retry, { key: "Enter" });
     fireEvent.click(retry);
     expect(await screen.findByText("Opening SkillsetMind...")).toBeInTheDocument();
 
-    // Um segundo Enter (ou a tecla presa) com a leitura ainda correndo.
+    // A second Enter (or the key held down) with the read still running.
     fireEvent.keyDown(document.body, { key: "Enter" });
     fireEvent.keyDown(document.body, { key: "Enter" });
     await act(async () => {});
@@ -981,13 +981,13 @@ describe("boas-vindas: 'Continue' esperando e a leitura que falhou na chegada", 
     expect(screen.queryByRole("alert")).toBeNull();
     expect(document.activeElement).toBe(title.closest("#onboarding-question-title"));
 
-    // De volta, Enter segue como antes.
+    // Back again, Enter proceeds as before.
     fireEvent.keyDown(document.body, { key: "Enter" });
     await waitFor(() => expect(mocks.updateUserIdentity).toHaveBeenCalledTimes(1));
     expect(mocks.getUserProfile).toHaveBeenCalledTimes(2);
   });
 
-  it("Enter na espera da chegada não grava nem deixa aviso velho", async () => {
+  it("Enter during the arrival wait neither writes nor leaves a stale notice", async () => {
     let finishRead!: () => void;
     mocks.getUserProfile.mockReturnValueOnce(new Promise((resolve) => { finishRead = () => resolve(mocks.profile); }));
     render(<OnboardingWizard />);
@@ -1002,7 +1002,7 @@ describe("boas-vindas: 'Continue' esperando e a leitura que falhou na chegada", 
     expect(mocks.updateOnboardingAnswers).not.toHaveBeenCalled();
   });
 
-  it("falha de salvar não ganha 'Try again'", async () => {
+  it("a save failure does not get 'Try again'", async () => {
     mocks.updateUserIdentity.mockRejectedValueOnce(new Error("offline"));
     render(<OnboardingWizard />);
     await screen.findByText("First, tell us who you are.");

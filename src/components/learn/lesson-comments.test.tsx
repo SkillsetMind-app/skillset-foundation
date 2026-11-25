@@ -14,19 +14,19 @@ import {
 import { recordLessonProgress } from "@/lib/data/lesson-progress";
 
 /**
- * P3 da paridade com a Hotmart (§4.3 do relatorio de 2026-09-06): comentarios
- * da aula SOB o player, reusando o feed da comunidade filtrado pela aula:
- *   - so os posts desta aula, com contagem no titulo, autor, hora relativa,
- *     numero de respostas e "Ver na comunidade" (a gaveta do post);
- *   - trocar de aula troca a lista sem reabrir o canal (um canal por curso);
- *   - comunidade desligada esconde a secao; preview desabilita a caixa;
- *   - publicar e o MESMO caminho da pergunta com aula anexada (createCommunityPost
- *     com lessonId e "lesson N"); erros ficam como chave e traduzem;
- *   - EN e ES.
+ * P3 of the Hotmart parity work (§4.3 of the 2026-09-06 report): lesson comments
+ * UNDER the player, reusing the community feed filtered by lesson:
+ *   - only the posts for this lesson, with a count in the title, author, relative time,
+ *     number of replies and "View in community" (the post drawer);
+ *   - switching lessons swaps the list without reopening the channel (one channel per course);
+ *   - community turned off hides the section; preview disables the box;
+ *   - posting is the SAME path as the question with a lesson attached (createCommunityPost
+ *     with lessonId and "lesson N"); errors stay as keys and get translated;
+ *   - EN and ES.
  *
- * Arquivo proprio: classroom-home.test.tsx ja e pesado. Os mocks sao os
- * MESMOS de la — em especial o `auth` unico por sessao (um objeto novo por
- * render reinscreve a matricula em laco) e o fusivel das inscricoes.
+ * Its own file: classroom-home.test.tsx is already heavy. The mocks are the
+ * SAME as there — in particular the single `auth` per session (a new object on every
+ * render resubscribes the enrollment in a loop) and the subscription fuse.
  */
 
 const HOUR = 3_600_000;
@@ -60,11 +60,11 @@ vi.mock("@/components/auth/auth-provider", () => ({
 
 vi.mock("@/lib/data/enrollments", () => ({
   subscribeToEnrollment: vi.fn((...args: unknown[]) => {
-    // Fusivel: um laco de inscricao e sincrono dentro do render — nem o
-    // timeout do vitest alcanca. Vira falha que termina, nao travamento.
+    // Fuse: a subscription loop is synchronous inside the render — not even the
+    // vitest timeout can reach it. It becomes a failure that ends, not a hang.
     mocks.enrollmentSubscriptions += 1;
     if (mocks.enrollmentSubscriptions > 20) {
-      throw new Error("subscribeToEnrollment chamado mais de 20 vezes: laco de render");
+      throw new Error("subscribeToEnrollment called more than 20 times: render loop");
     }
     const onNext = args.find((arg) => typeof arg === "function") as (
       enrollment: unknown,
@@ -115,16 +115,16 @@ vi.mock("@/lib/data/course-assets", () => ({
   getProtectedCourseAssetObjectUrl: vi.fn(),
 }));
 
-// A MESMA fonte do feed: as inscricoes por curso de community-posts.ts. O
-// teste entrega os posts pelo callback, como o Supabase faria; o fusivel
-// pega um laco de reinscricao antes de a maquina travar.
+// The SAME source as the feed: the per-course subscriptions from community-posts.ts. The
+// test delivers the posts through the callback, as Supabase would; the fuse
+// catches a resubscription loop before the machine hangs.
 vi.mock("@/lib/data/community-posts", () => ({
   countOpenCommunityQuestions: vi.fn(() => new Promise<number>(() => {})),
   subscribeToCommunityPosts: vi.fn(
     (_slug: string, onNext: (posts: CommunityPost[]) => void, onError: (error: Error) => void) => {
       mocks.postSubscriptions += 1;
       if (mocks.postSubscriptions > 20) {
-        throw new Error("subscribeToCommunityPosts chamado mais de 20 vezes: laco de render");
+        throw new Error("subscribeToCommunityPosts called more than 20 times: render loop");
       }
       mocks.postsCallback = onNext;
       mocks.postsError = onError;
@@ -195,13 +195,13 @@ function post(overrides: Partial<CommunityPost>): CommunityPost {
     authorRole: "student",
     category: "question",
     body: "",
-    // 2 h e uns minutos: "2h ago" mesmo que o teste demore.
+    // 2 h and a few minutes: "2h ago" even if the test is slow.
     createdAt: new Date(Date.now() - 2 * HOUR - 5 * 60_000).toISOString(),
     ...overrides,
   };
 }
 
-// Uma pergunta na aula 1, uma na aula 2, um compartilhamento sem aula.
+// One question on lesson 1, one on lesson 2, one share with no lesson.
 const posts: CommunityPost[] = [
   post({ id: "q-l1", title: "Where is the template for step 3?", lessonId: "l1", lessonTitle: "lesson 1" }),
   post({
@@ -258,7 +258,7 @@ function deliverFeed() {
 
 function head() {
   const element = document.querySelector(".member-classroom-head");
-  if (!element) throw new Error("cabecalho curto da aula nao renderizou");
+  if (!element) throw new Error("short lesson header did not render");
   return element as HTMLElement;
 }
 
@@ -282,10 +282,10 @@ beforeEach(() => {
   };
 });
 
-describe("comentarios da aula: erro de leitura", () => {
-  // A falha era um beco ("We could not load community posts." e o vazio
-  // embaixo): agora "Try again" rele pelo mesmo canal.
-  it("a falha oferece Try again, sem o vazio, e os comentarios chegam sem reinscrever", () => {
+describe("lesson comments: read error", () => {
+  // The failure used to be a dead end ("We could not load community posts." and the empty state
+  // below it): now "Try again" rereads through the same channel.
+  it("the failure offers Try again, without the empty state, and the comments arrive without resubscribing", () => {
     renderClassroom("lesson=l1");
     act(() => mocks.postsError?.(new Error("offline")));
 
@@ -302,18 +302,18 @@ describe("comentarios da aula: erro de leitura", () => {
     const loaded = screen.getByRole("region", { name: "Lesson comments · 1" });
     expect(within(loaded).queryByRole("alert")).not.toBeInTheDocument();
     expect(within(loaded).getByText("Carla Souza")).toBeInTheDocument();
-    // O botao sumiu: o foco ficou na secao, nao no <body>.
+    // The button disappeared: focus stayed on the section, not on the <body>.
     expect(loaded).toHaveFocus();
   });
 });
 
-describe("comentarios da aula sob o player", () => {
-  it("mostra so os posts desta aula, com contagem, autor, hora, respostas e o link para a gaveta", () => {
+describe("lesson comments under the player", () => {
+  it("shows only the posts for this lesson, with count, author, time, replies and the link to the drawer", () => {
     renderClassroom("lesson=l1");
 
-    // Enquanto o feed nao chega: titulo sem numero e, na tela, uma linha de
-    // espera no formato do comentario, nao o texto. O "carregando" e um so, o
-    // do painel da aula (F-02): o aviso daqui fica mudo ate o "posted".
+    // While the feed has not arrived: a title without a number and, on the screen, a
+    // placeholder line shaped like the comment, not the text. There is only one "loading", the
+    // one from the lesson panel (F-02): the notice here stays silent until "posted".
     const loading = screen.getByRole("region", { name: "Lesson comments" });
     expect(within(loading).getByRole("status")).toBeEmptyDOMElement();
     expect(within(loading).queryByText(/Loading/)).toBeNull();
@@ -335,26 +335,26 @@ describe("comentarios da aula sob o player", () => {
       "href",
       "/learn/courses/demo-course/community/q/q-l1?lesson=l1",
     );
-    // A pergunta da outra aula e o compartilhamento sem aula ficam de fora.
+    // The question from the other lesson and the share with no lesson stay out.
     expect(within(region).queryByText("Does the checklist apply to remote teams?")).toBeNull();
     expect(within(region).queryByText(/honest-scarcity/)).toBeNull();
-    // Sem respostas inline, sem curtidas: isso segue no feed.
+    // No inline replies, no likes: that stays in the feed.
     expect(within(region).queryByText("Found it, thanks!")).toBeNull();
     expect(within(region).queryByRole("button", { name: /reply|like|clap|👏/i })).toBeNull();
 
-    // Posicao: depois do titulo da aula ("Lesson information" saiu). Aula de
-    // texto (esta): o corpo vem antes dos comentarios — sem video, o que se le
-    // e o texto.
+    // Position: after the lesson title ("Lesson information" is gone). For a text
+    // lesson (this one): the body comes before the comments — with no video, what is read
+    // is the text.
     const title = document.querySelector(".member-lesson-panel__head h2") as HTMLElement;
     const body = document.getElementById("member-lesson-content") as HTMLElement;
     expect(title.compareDocumentPosition(region) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(body.compareDocumentPosition(region) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    // O contador da aba Community nao muda: uma leitura, a de sempre.
+    // The Community tab counter does not change: one read, the usual one.
     expect(countOpenCommunityQuestions).toHaveBeenCalledExactlyOnceWith("course-1");
     expect(recordLessonProgress).not.toHaveBeenCalled();
   });
 
-  it("trocar de aula troca a lista sem reabrir o canal (um canal por curso)", () => {
+  it("switching lessons swaps the list without reopening the channel (one channel per course)", () => {
     renderClassroom("lesson=l1");
     deliverFeed();
     expect(screen.getByRole("region", { name: "Lesson comments · 1" })).toBeInTheDocument();
@@ -376,18 +376,18 @@ describe("comentarios da aula sob o player", () => {
     expect(mocks.enrollmentSubscriptions).toBe(1);
   });
 
-  it("comunidade desligada no curso: a secao inteira some e nada e inscrito", () => {
+  it("community turned off for the course: the whole section disappears and nothing is subscribed", () => {
     renderClassroom("lesson=l1", { course: { ...course, communityEnabled: false } });
 
     expect(screen.queryByRole("region", { name: /Lesson comments/ })).toBeNull();
     expect(screen.queryByRole("button", { name: "Comment on the lesson." })).toBeNull();
     expect(subscribeToCommunityPosts).not.toHaveBeenCalled();
     expect(subscribeToCourseCommunityComments).not.toHaveBeenCalled();
-    // O resto da aula segue no lugar.
+    // The rest of the lesson stays in place.
     expect(document.getElementById("member-lesson-content")).toBeInTheDocument();
   });
 
-  it("preview do professor: caixa desabilitada com a porta do feed, sem inscricao e sem lista", () => {
+  it("teacher preview: disabled box with the door to the feed, no subscription and no list", () => {
     renderClassroom("lesson=l1", { previewMode: true });
 
     const region = screen.getByRole("region", { name: "Lesson comments" });
@@ -402,7 +402,7 @@ describe("comentarios da aula sob o player", () => {
     expect(createCommunityPost).not.toHaveBeenCalled();
   });
 
-  it("publicar usa o mesmo caminho da pergunta com a aula anexada", async () => {
+  it("posting uses the same path as the question with the lesson attached", async () => {
     renderClassroom("lesson=l1");
     deliverFeed();
     let resolve!: (value: { id: string }) => void;
@@ -410,12 +410,12 @@ describe("comentarios da aula sob o player", () => {
       new Promise<{ id: string }>((done) => { resolve = done; }),
     );
 
-    // Em repouso a caixa e um botao: nenhum textbox na aula.
+    // At rest the box is a button: no textbox on the lesson.
     fireEvent.click(screen.getByRole("button", { name: "Comment on the lesson." }));
     const field = screen.getByRole("textbox", { name: "Your comment on this lesson" });
     expect(field).toHaveAttribute("placeholder", "Comment on the lesson.");
 
-    // Curto demais: a mesma regra e a mesma mensagem do feed, nada publicado.
+    // Too short: the same rule and the same message as the feed, nothing published.
     fireEvent.change(field, { target: { value: "Short" } });
     fireEvent.click(screen.getByRole("button", { name: "Comment" }));
     expect(
@@ -423,7 +423,7 @@ describe("comentarios da aula sob o player", () => {
     ).toBeInTheDocument();
     expect(createCommunityPost).not.toHaveBeenCalled();
 
-    // Primeira linha = a pergunta (titulo do feed); o resto = detalhes.
+    // First line = the question (feed title); the rest = details.
     fireEvent.change(field, {
       target: { value: "Where is the template for step 3? $$50 $&\nI looked in the module resources." },
     });
@@ -442,18 +442,18 @@ describe("comentarios da aula sob o player", () => {
     await act(async () => resolve({ id: "post-new" }));
     expect(screen.queryByRole("textbox", { name: "Your comment on this lesson" })).toBeNull();
     expect(screen.getByRole("button", { name: "Comment on the lesson." })).toBeInTheDocument();
-    // A caixa de texto sumiu: o foco volta para a caixa em repouso, nao cai
-    // no <body>.
+    // The text box is gone: focus returns to the box at rest, it does not fall
+    // to the <body>.
     expect(screen.getByRole("button", { name: "Comment on the lesson." })).toHaveFocus();
-    // O leitor de tela ouve o proprio comentario publicado, uma linha so.
+    // The screen reader hears the posted comment itself, in a single line.
     const region = screen.getByRole("region", { name: /Lesson comments/ });
     expect(within(region).getByRole("status")).toHaveTextContent("Comment posted.");
     expect(recordLessonProgress).not.toHaveBeenCalled();
   });
 
-  // A lista inteira era aria-live: numa conversa movimentada, cada post que
-  // chegava era lido em voz alta.
-  it("a lista nao e regiao viva: so o aviso de uma linha fala", () => {
+  // The whole list used to be aria-live: in a busy conversation, every post that
+  // arrived was read aloud.
+  it("the list is not a live region: only the one-line notice speaks", () => {
     renderClassroom("lesson=l1");
     deliverFeed();
     const region = screen.getByRole("region", { name: "Lesson comments · 1" });
@@ -462,7 +462,7 @@ describe("comentarios da aula sob o player", () => {
     expect(within(region).getByRole("heading", { level: 3, name: "Lesson comments · 1" })).toBeInTheDocument();
   });
 
-  it("erro de publicacao fica como chave e traduz; EN <-> ES sem trocar de aula nem reinscrever", async () => {
+  it("a posting error stays as a key and gets translated; EN <-> ES without changing lesson or resubscribing", async () => {
     mocks.searchParams = new URLSearchParams("lesson=l1");
     mocks.pathname = "/learn/courses/demo-course";
     mocks.completed = [];
@@ -508,9 +508,9 @@ describe("comentarios da aula sob o player", () => {
     expect(createCommunityPost).toHaveBeenCalledTimes(1);
   });
 
-  // O banco recusa com RATE_LIMIT quando a pessoa passa do teto por hora
-  // (P2-9): a caixa pede para esperar, em vez do erro generico.
-  it("teto por hora do banco vira 'espere um pouco' traduzido, com o rascunho no lugar", async () => {
+  // The database refuses with RATE_LIMIT when the person goes over the hourly cap
+  // (P2-9): the box asks them to wait, instead of showing the generic error.
+  it("the database hourly cap becomes a translated 'wait a little', with the draft kept in place", async () => {
     mocks.searchParams = new URLSearchParams("lesson=l1");
     mocks.pathname = "/learn/courses/demo-course";
     mocks.completed = [];
@@ -541,20 +541,20 @@ describe("comentarios da aula sob o player", () => {
     expect(screen.getByRole("textbox", { name: "Tu comentario sobre esta lección" })).toHaveValue(draft);
   });
 
-  it("uma caixa so por aula (decisao 07/09): a antiga, da tabela lesson_comments, saiu", () => {
+  it("only one box per lesson (September 7 decision): the old one, from the lesson_comments table, is gone", () => {
     renderClassroom("lesson=l1");
     deliverFeed();
 
-    // Em repouso: nenhum textbox na aula e um so botao de comentar.
+    // At rest: no textbox on the lesson and a single comment button.
     expect(screen.queryAllByRole("textbox")).toHaveLength(0);
     expect(screen.getAllByRole("button", { name: /comment/i })).toHaveLength(1);
 
     fireEvent.click(screen.getByRole("button", { name: "Comment on the lesson." }));
 
-    // Aberta: UM textbox e UM "Comment" — os da caixa nova, sob o player.
+    // Open: ONE textbox and ONE "Comment" — the ones from the new box, under the player.
     expect(screen.getAllByRole("textbox")).toHaveLength(1);
     expect(screen.getAllByRole("button", { name: /comment/i })).toHaveLength(1);
-    // O bloco do fim do corpo (a caixa antiga) nao existe.
+    // The block at the end of the body (the old box) does not exist.
     expect(document.getElementById("member-lesson-discussion")).toBeNull();
   });
 });

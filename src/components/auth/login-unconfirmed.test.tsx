@@ -4,8 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LoginForm } from "@/components/auth/login-form";
 
 /**
- * Quem criou a conta e nunca clicou no link recebia, ao entrar, uma frase de
- * erro e ponto. Agora ve a mesma porta do cadastro — com "reenviar o link".
+ * Whoever created the account and never clicked the link used to get, on signing in, an
+ * error sentence and nothing else. Now they see the same gate as signup — with "resend the link".
  */
 
 const mocks = vi.hoisted(() => ({
@@ -45,7 +45,7 @@ vi.mock("@/lib/auth/supabase-auth", async (importOriginal) => ({
 
 vi.mock("@/lib/data/user-profiles", () => ({ getUserProfile: vi.fn() }));
 
-describe("LoginForm: e-mail nunca confirmado", () => {
+describe("LoginForm: email never confirmed", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.searchParams = new URLSearchParams();
@@ -58,7 +58,7 @@ describe("LoginForm: e-mail nunca confirmado", () => {
 
   afterEach(cleanup);
 
-  it("mostra a porta de confirmacao com reenviar, nao uma frase de erro", async () => {
+  it("shows the confirmation gate with resend, not an error sentence", async () => {
     render(<LoginForm />);
 
     fireEvent.change(screen.getByLabelText("auth.email"), {
@@ -82,7 +82,7 @@ describe("LoginForm: e-mail nunca confirmado", () => {
     );
   });
 
-  it("'e-mail errado?' devolve o formulario de entrada", async () => {
+  it("'wrong email?' returns the sign-in form", async () => {
     render(<LoginForm />);
 
     fireEvent.change(screen.getByLabelText("auth.email"), {

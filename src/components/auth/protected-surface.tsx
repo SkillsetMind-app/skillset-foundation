@@ -27,13 +27,13 @@ export function ProtectedSurface({ permissions, contactWhenSignedOut = false, ch
   const pathname = usePathname() ?? "";
 
   if (status === "loading") {
-    // Esta espera só aparece na carga inteira da página (atualizar, aba nova,
-    // link de e-mail) e é o que o servidor manda: vindo de /loading ou de
-    // /welcome a sessão já resolveu antes da troca de rota (o AuthProvider
-    // mora no layout raiz e sobrevive a ela), e a página abre direto. Por
-    // isso, nas telas da plataforma, a espera tem a forma da casca que vem, e
-    // não o anel: a página é a melhor ponte para a página. No resto, o anel.
-    // A frase é a mesma de sempre, para o leitor de tela.
+    // This wait only shows on a full page load (refresh, new tab,
+    // email link) and is what the server sends: coming from /loading or
+    // /welcome the session already resolved before the route change (the AuthProvider
+    // lives in the root layout and survives it), and the page opens directly. So,
+    // on the platform screens, the wait has the shape of the shell that comes, and
+    // not the ring: the page is the best bridge to the page. Everywhere else, the ring.
+    // The sentence is the same as always, for the screen reader.
     const label = t("authFlow.loading.title");
     const shell = shellWaitFor(pathname);
     return shell ? <ShellWait label={label} framed={shell.framed} /> : <SkillsetSpinner title={label} />;
@@ -59,9 +59,9 @@ export function ProtectedSurface({ permissions, contactWhenSignedOut = false, ch
       : "/login";
 
     if (status === "mfa_required") {
-      // A senha passou, o código não: sessão aal1 de conta com segundo fator.
-      // Nunca é conteúdo. A tela de login retoma o desafio ao montar e volta
-      // para cá pelo returnTo — sem este ramo o TOTP era decorativo (A-17).
+      // The password passed, the code did not: aal1 session of an account with a second factor.
+      // Never content. The login screen resumes the challenge on mount and returns
+      // here through returnTo — without this branch the TOTP was decorative (A-17).
       return (
         <AccessPanel
           eyebrow={t("auth.guard.signInEyebrow")}
@@ -86,9 +86,9 @@ export function ProtectedSurface({ permissions, contactWhenSignedOut = false, ch
   }
 
   if (!hasAnyPermission({ roles: user.roles }, permissions)) {
-    // Barrado na area de ensino = professor que pulou a ativacao. Sem o
-    // ?path=teacher, /onboarding abria o cadastro antigo de 3 passos, com
-    // "aprender" marcado, no lugar da ativacao de um passo que ele pulou.
+    // Blocked in the teaching area = a teacher who skipped the activation. Without
+    // ?path=teacher, /onboarding opened the old 3-step signup, with
+    // "learn" checked, in place of the one-step activation they skipped.
     const teacherArea =
       permissions.some((permission) => permission.startsWith("teacherStudio."))
       || pathname === "/teach"
@@ -110,16 +110,16 @@ export function ProtectedSurface({ permissions, contactWhenSignedOut = false, ch
   return children;
 }
 
-// Que espera mostrar, só pelo endereço (nunca por dado da pessoa): as regras
-// moram em platform-routes.ts, as mesmas que a PlatformShell lê. Rota fora da
-// lista fica com o anel.
+// Which wait to show, by address only (never by the person's data): the rules
+// live in platform-routes.ts, the same ones PlatformShell reads. A route outside the
+// list gets the ring.
 function shellWaitFor(pathname: string) {
   return opensInPlatformShell(pathname) ? { framed: isFramedPlatformRoute(pathname) } : null;
 }
 
-// A barra recolhida é lida como a PlatformShell lê: o cookie que o layout leu
-// no servidor vale no HTML e na hidratação (sem window na renderização), então
-// a largura da coluna não muda quando a casca de verdade entra.
+// The collapsed bar is read the way PlatformShell reads it: the cookie the layout read
+// on the server holds in the HTML and in hydration (no window while rendering), so
+// the column width does not change when the real shell comes in.
 function ShellWait({ label, framed }: { label: string; framed: boolean }) {
   const { isCollapsed, isAuto } = useSidebarState();
   return <PlatformShellSkeleton label={label} collapsed={isCollapsed} auto={isAuto} framed={framed} />;
@@ -140,9 +140,9 @@ function AccessPanel({
 }) {
   const { t } = useTranslation();
 
-  // A mesma moldura e o mesmo tamanho de titulo das telas de entrada (logo,
-  // idioma, volta ao inicio). Antes era um cartao solto, sem logo, com um
-  // titulo de 48px que gritava.
+  // The same frame and the same title size as the entry screens (logo,
+  // language, back to home). Before, it was a loose card, with no logo, with a
+  // 48px title that shouted.
   return (
     <AuthFrame homeLabel={t("auth.page.backToHome")}>
       <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">

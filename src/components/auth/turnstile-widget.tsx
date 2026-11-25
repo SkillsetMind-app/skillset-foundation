@@ -170,17 +170,17 @@ export function TurnstileWidget({
   if (!SITE_KEY) return null;
   if (loadFailed) {
     return (
-      // Mesmo nó na troca de idioma: o texto muda, o aviso não é lido de novo.
+      // Same node when the language changes: the text changes, the notice is not read again.
       <InlineAlert tone="error">{t(loadErrorCopy)}</InlineAlert>
     );
   }
   return (
     <div className="grid min-w-0 gap-3">
-      {/* Manter o widget montado permite recuperacao sem apagar o formulario. */}
+      {/* Keeping the widget mounted allows recovery without wiping the form. */}
       <div ref={containerRef} className="flex justify-center" />
       {challengeFailed ? (
-        // O aviso e, logo abaixo, o botão que o resolve (como no LoadErrorAlert);
-        // o botão fica fora da região lida, que anuncia só a frase.
+        // The notice and, right below it, the button that resolves it (as in LoadErrorAlert);
+        // the button stays outside the region that is read aloud, which announces only the sentence.
         <div className="grid gap-3">
           <InlineAlert tone="error">{t("authCaptcha.challengeError")}</InlineAlert>
           <button type="button" onClick={retryChallenge} className="button-outline min-h-11 gap-2 justify-self-start px-3 py-2 text-sm">

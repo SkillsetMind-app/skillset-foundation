@@ -5,9 +5,9 @@ import { EnrolledCourseWorkspace } from "@/components/learn/enrolled-course-work
 import type { Course } from "@/domain/learning";
 
 /**
- * A aula trancada pelo sequencial dizia só "Complete the previous lesson to
- * unlock": o aluno tinha de achar sozinho qual era a anterior. Agora a tela diz
- * o nome da aula e tem um botão que leva até ela.
+ * A lesson locked by the sequential order only said "Complete the previous lesson to
+ * unlock": the learner had to figure out on their own which one was the previous lesson. Now the screen says
+ * the lesson's name and has a button that takes them to it.
  */
 
 const mocks = vi.hoisted(() => ({
@@ -61,7 +61,7 @@ vi.mock("@/lib/posthog/events", () => ({
   track: new Proxy({}, { get: () => vi.fn() }),
 }));
 
-// Sequencial: a aula 2 só abre com a aula 1 concluída.
+// Sequential: lesson 2 only opens once lesson 1 is completed.
 const course = {
   id: "course-1",
   slug: "demo-course",
@@ -85,14 +85,14 @@ const course = {
   ],
 } as unknown as Course;
 
-// O título da aula aberta é o h2 do cabeçalho do painel, dentro do player.
+// The open lesson's title is the h2 in the panel header, inside the player.
 function playerHeading() {
   return document
     .getElementById("member-lesson-player")
     ?.querySelector(".member-lesson-panel__head h2")?.textContent;
 }
 
-describe("a aula trancada diz qual aula terminar", () => {
+describe("the locked lesson says which lesson to finish", () => {
   beforeEach(() => {
     mocks.replace.mockReset();
     Element.prototype.scrollIntoView = vi.fn();
@@ -102,7 +102,7 @@ describe("a aula trancada diz qual aula terminar", () => {
     };
   });
 
-  it("mostra o nome da aula anterior e o botão leva até ela", () => {
+  it("shows the name of the previous lesson and the button takes you to it", () => {
     mocks.searchParams = new URLSearchParams("lesson=l2");
     render(<EnrolledCourseWorkspace course={course} previewMode />);
 

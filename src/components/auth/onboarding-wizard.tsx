@@ -123,7 +123,7 @@ const alreadySoldLabels: Record<"yes" | "no", string> = {
   no: "authFlow.onboarding.notSellingYet",
 };
 
-// A tela "You're all set" e uma so por pagina: ids fixos, como o do titulo da pergunta.
+// The "You're all set" screen is one per page: fixed ids, like the question title's.
 const DONE_TITLE_ID = "onboarding-done-title";
 const DONE_DESCRIPTION_ID = "onboarding-done-description";
 
@@ -137,15 +137,15 @@ function wait(ms: number) {
 // and outreach; students answer the minimum (interest + discovery source).
 // Follow-ups past the required core are skippable, so friction stays low.
 //
-// `pathKnown`: o papel ja foi escolhido no cadastro (?path=) ou salvo antes —
-// perguntar "como vai usar" de novo era a mesma pergunta duas vezes seguidas.
-// Decidido uma vez ao carregar, nunca a partir da resposta dada aqui: senao a
-// pergunta sumiria da lista no instante em que fosse respondida. "Voltar" ate
-// ela a traz de volta (goBack).
+// `pathKnown`: the role was already chosen at signup (?path=) or saved before —
+// asking "how will you use it" again was the same question twice in a row.
+// Decided once on load, never from the answer given here: otherwise the
+// question would vanish from the list the moment it was answered. "Back" until
+// it brings it back (goBack).
 //
-// `hasReturnTo`: o aluno tem para onde voltar (ex.: o checkout do curso que ia
-// comprar). Ai o interesse vira opcional, para seguir e pagar sem responder.
-// So o ramo do aluno le isso; o do professor nao muda.
+// `hasReturnTo`: the learner has somewhere to go back to (e.g. the checkout of the course they were about to
+// buy). Then the interest becomes optional, to go on and pay without answering.
+// Only the learner branch reads this; the teacher one does not change.
 export function getVisibleQuestions(
   answers: OnboardingAnswers,
   pathKnown = false,
@@ -153,9 +153,9 @@ export function getVisibleQuestions(
 ): QuestionDefinition[] {
   const isTeacher = answers.path === "teacher";
 
-  // "profile" (nome + telefone) vem ANTES de tudo, para os dois caminhos: e o
-  // primeiro passo depois de confirmar o e-mail — antes de ter acesso a conta,
-  // a pessoa se apresenta. O telefone nunca era pedido em lugar nenhum.
+  // "profile" (name + phone) comes BEFORE everything, for both paths: it is the
+  // first step after confirming the email — before getting access to the account,
+  // the person introduces themselves. The phone was never asked for anywhere.
   const ids: { id: QuestionId; required: boolean }[] = isTeacher
     ? [
         { id: "profile", required: true },
@@ -188,9 +188,9 @@ function isAnswered(question: QuestionDefinition, answers: OnboardingAnswers) {
     return true;
   }
 
-  // O perfil mora nas colunas do usuario (display_name, phone_number), nao
-  // nas respostas; a marca `profileConfirmed` e o que diz "ja passou por aqui"
-  // — inclusive quando a pessoa volta ao /welcome dias depois.
+  // The profile lives in the user columns (display_name, phone_number), not
+  // in the answers; the `profileConfirmed` mark is what says "already been through here"
+  // — including when the person returns to /welcome days later.
   if (question.id === "profile") {
     return Boolean(answers.profileConfirmed);
   }
@@ -269,37 +269,37 @@ export function OnboardingWizard() {
     () => getAuthPathIntentFromSearchParams(searchParams),
     [searchParams],
   );
-  // O curso de onde a pessoa veio, se veio de algum. Passa pelo mesmo filtro do
-  // login: so caminho interno, nunca URL de outro dominio.
+  // The course the person came from, if any. It goes through the same filter as the
+  // login: only an internal path, never a URL on another domain.
   const returnTo = useMemo(() => getSafeReturnTo(searchParams), [searchParams]);
-  // O plano de /pricing nao conta: o aluno que chega com ele termina em /learn,
-  // entao nao tem para onde voltar e o interesse segue obrigatorio.
+  // The /pricing plan does not count: the learner who arrives with it ends on /learn,
+  // so has nowhere to go back to and the interest stays required.
   const hasReturnTo = Boolean(returnTo) && !getPlanCheckoutReturnTo(returnTo);
   const [answers, setAnswers] = useState<OnboardingAnswers>(() => ({
     ...(pathIntent ? { path: pathIntent } : {}),
   }));
   const [currentIndex, setCurrentIndex] = useState(0);
   const [pathKnown, setPathKnown] = useState(false);
-  // O passo de perfil: nome vem pre-preenchido do cadastro; telefone e novo.
+  // The profile step: the name comes prefilled from signup; the phone is new.
   const [profileName, setProfileName] = useState("");
   const [profilePhone, setProfilePhone] = useState("");
   const [isBootstrapping, setIsBootstrapping] = useState(true);
-  // Cada "Try again" da leitura de entrada soma 1 e roda a mesma leitura de novo.
+  // Each "Try again" of the entry read adds 1 and runs the same read again.
   const [loadAttempt, setLoadAttempt] = useState(0);
-  // O "Try again" some junto com a tela (vira a espera) e o foco caia no
-  // <body>; quando a entrevista volta, o foco vai para o titulo da pergunta.
+  // "Try again" vanishes together with the screen (it becomes the wait) and focus fell on
+  // <body>; when the interview comes back, focus goes to the question title.
   const refocusAfterLoad = useRef(false);
   const [isSaving, setIsSaving] = useState(false);
-  // Destino do fim da entrevista; preenchido = a tela "You're all set".
+  // Destination at the end of the interview; filled in = the "You're all set" screen.
   const [doneHref, setDoneHref] = useState<string | null>(null);
   const isComplete = doneHref !== null;
   const leftRef = useRef(false);
   const continueRef = useRef<HTMLButtonElement>(null);
   const [error, setError] = useState("");
 
-  // Saiu da tela (ex.: Voltar do navegador durante a pausa): a pausa que ainda
-  // corre nao puxa a pessoa para frente. O reset no setup cobre o StrictMode,
-  // que desmonta e remonta o efeito uma vez em desenvolvimento.
+  // Left the screen (e.g. browser Back during the pause): the pause still
+  // running does not pull the person forward. The reset in setup covers StrictMode,
+  // which unmounts and remounts the effect once in development.
   useEffect(() => {
     leftRef.current = false;
     return () => {
@@ -307,8 +307,8 @@ export function OnboardingWizard() {
     };
   }, []);
 
-  // A tela "You're all set" chega com o foco no "Continue": Enter funciona e
-  // o leitor de tela le o titulo e a frase pelo aria-describedby do botao.
+  // The "You're all set" screen arrives with focus on "Continue": Enter works and
+  // the screen reader reads the title and the sentence through the button's aria-describedby.
   useEffect(() => {
     if (isComplete) {
       continueRef.current?.focus();
@@ -376,9 +376,9 @@ export function OnboardingWizard() {
     };
   }, [hasReturnTo, pathIntent, returnTo, router, status, user, loadAttempt]);
 
-  // A leitura das respostas salvas falhou na chegada. "Try again" volta a
-  // espera da chegada e repete a MESMA leitura, uma vez: so leitura, nada e
-  // gravado. A espera tambem impede responder enquanto a leitura corre.
+  // The read of the saved answers failed on arrival. "Try again" goes back to the
+  // arrival wait and repeats the SAME read, once: read only, nothing is
+  // written. The wait also prevents answering while the read is running.
   function retryLoad() {
     refocusAfterLoad.current = true;
     setError("");
@@ -386,24 +386,24 @@ export function OnboardingWizard() {
     setLoadAttempt((attempt) => attempt + 1);
   }
 
-  // Layout effect: o ouvinte novo entra junto com a tela que ele atende. Com
-  // useEffect ele entrava depois da pintura; o campo ja aparecia e o primeiro
-  // Enter caia no ouvinte anterior, que ainda via a tela "carregando".
+  // Layout effect: the new listener enters together with the screen it serves. With
+  // useEffect it entered after the paint; the field already showed and the first
+  // Enter fell on the previous listener, which still saw the "loading" screen.
   useLayoutEffect(() => {
     function handleKeydown(event: KeyboardEvent) {
-      // Na espera da chegada (e na do "Try again") a tela ainda nao tem as
-      // respostas salvas: um Enter ali gravaria o estado velho por cima delas.
+      // During the arrival wait (and the "Try again" one) the screen does not yet have the
+      // saved answers: an Enter there would write the old state over them.
       if (isSaving || isComplete || isBootstrapping) {
         return;
       }
 
-      // Sem Esc global: ele voltava uma pergunta de qualquer lugar da tela, e
-      // "Back" ja e um botao.
+      // No global Esc: it used to go back a question from anywhere on the screen, and
+      // "Back" is already a button.
       if (event.key === "Enter") {
         const target = event.target as HTMLElement | null;
 
-        // Enter num botao ou link e do proprio botao (marcar a opcao, voltar,
-        // pular). Antes o atalho engolia o clique e tentava seguir em frente.
+        // Enter on a button or link belongs to the button itself (check the option, go back,
+        // skip). Before, the shortcut swallowed the click and tried to move forward.
         if (["TEXTAREA", "SELECT", "BUTTON", "A"].includes(target?.tagName ?? "")) {
           return;
         }
@@ -417,10 +417,10 @@ export function OnboardingWizard() {
     return () => window.removeEventListener("keydown", handleKeydown);
   });
 
-  // A troca de pergunta remonta a tela e o botao focado some: o foco caia no
-  // <body> e nada anunciava a pergunta nova. Leva o foco ao titulo dela, a
-  // partir da segunda pergunta vista (na chegada a pagina o foco fica onde
-  // o navegador o pos).
+  // Changing the question remounts the screen and the focused button vanishes: focus fell on
+  // <body> and nothing announced the new question. Takes focus to its title, from
+  // the second question seen on (on arrival at the page focus stays where
+  // the browser put it).
   const activeQuestionId = activeQuestion?.id ?? null;
   const shownQuestionId = useRef<QuestionId | null>(null);
   useEffect(() => {
@@ -449,9 +449,9 @@ export function OnboardingWizard() {
 
   async function updateAnswer(nextAnswers: OnboardingAnswers, autoAdvance = false) {
     const cleanedAnswers = compactAnswers(nextAnswers);
-    // A pergunta em que a resposta foi dada. Dois toques rapidos na mesma
-    // opcao (ou Enter duas vezes) avancavam duas vezes e pulavam a proxima
-    // pergunta obrigatoria; so avanca quem ainda esta nesta pergunta.
+    // The question where the answer was given. Two quick taps on the same
+    // option (or Enter twice) used to advance twice and skip the next
+    // required question; only whoever is still on this question advances.
     const from = currentIndex;
 
     setError("");
@@ -469,9 +469,9 @@ export function OnboardingWizard() {
     }
   }
 
-  // Voltar ate onde o papel foi pulado traz o passo de volta, ja marcado: quem
-  // chegou por um ?path= errado consegue trocar. A pergunta volta exatamente no
-  // indice em que esta, entao o passo atual vira ela e a numeracao segue certa.
+  // Going back to where the role was skipped brings the step back, already checked: whoever
+  // arrived through a wrong ?path= can switch. The question comes back exactly at the
+  // index where it is, so the current step becomes it and the numbering stays right.
   function goBack() {
     const pathIndex = getVisibleQuestions(answers, false, hasReturnTo).findIndex(
       (question) => question.id === "path",
@@ -510,13 +510,13 @@ export function OnboardingWizard() {
     return "";
   }
 
-  // O caminho ja vem do cadastro (?path=) na maioria dos casos; sem ele,
-  // trata como aluno (o menos exigente).
+  // The path usually already comes from signup (?path=); without it,
+  // treat as a learner (the least demanding).
   const phoneRequired = answers.path === "teacher";
 
-  // O passo de perfil grava nas colunas do usuario (nao nas respostas) e so
-  // entao marca `profileConfirmed` e avanca. Validacao aqui, nao em
-  // validateCurrentQuestion: nome e telefone vivem em estado proprio.
+  // The profile step writes to the user columns (not the answers) and only
+  // then marks `profileConfirmed` and advances. Validation here, not in
+  // validateCurrentQuestion: name and phone live in their own state.
   async function saveProfileAndContinue() {
     if (!user) {
       router.replace(getAuthRoute("signin", pathIntent, returnTo));
@@ -528,9 +528,9 @@ export function OnboardingWizard() {
       setError("authFlow.onboarding.invalidName");
       return;
     }
-    // Telefone: obrigatorio para quem vai VENDER (suporte, pagamentos,
-    // verificacao); opcional para o aluno — pedir e ok, exigir e friccao.
-    // Quando preenchido, tem que ser um numero de verdade.
+    // Phone: required for whoever is going to SELL (support, payments,
+    // verification); optional for the learner — asking is fine, demanding is friction.
+    // When filled in, it has to be a real number.
     const phone = profilePhone.trim();
     if (phone ? !isValidPhoneNumber(phone) : phoneRequired) {
       setError("authFlow.onboarding.invalidPhone");
@@ -613,19 +613,19 @@ export function OnboardingWizard() {
 
     try {
       await persistAnswers(answers, true);
-      // Fim da linha do deep link: quem chegou aqui vindo de um curso volta
-      // para ELE, nao para o painel. O professor e a excecao — /onboarding e
-      // um passo obrigatorio da conta, nao um destino que da para trocar. So o
-      // plano escolhido em /pricing segue com ele, para abrir o cartao no fim.
-      // Plano e de quem ensina: no caminho de aluno essa tela nao abre.
+      // End of the deep link line: whoever got here coming from a course goes back
+      // to IT, not to the dashboard. The teacher is the exception — /onboarding is
+      // a required account step, not a destination that can be swapped. Only the
+      // plan chosen on /pricing goes with them, to open the card screen at the end.
+      // A plan belongs to those who teach: on the learner path that screen does not open.
       const destination =
         answers.path === "teacher"
           ? getTeacherOnboardingRoute(returnTo)
           : (getPlanCheckoutReturnTo(returnTo) ? null : returnTo) ?? "/learn";
       setDoneHref(destination);
-      // Eram 1800ms presos na tela, sem botao. O "Continue" da tela vai na
-      // hora; a pausa automatica fica em 1500ms para quem le devagar (e para
-      // um toque atrasado nao cair na tela seguinte).
+      // It used to be 1800ms stuck on the screen, with no button. The screen's "Continue" goes
+      // right away; the automatic pause stays at 1500ms for whoever reads slowly (and so
+      // a late tap does not land on the next screen).
       await wait(1500);
       leaveTo(destination);
     } catch {
@@ -634,8 +634,8 @@ export function OnboardingWizard() {
     }
   }
 
-  // O "Continue" e a pausa automatica chegam aqui; so a primeira navega, e
-  // nenhuma depois que a tela foi desmontada.
+  // "Continue" and the automatic pause both arrive here; only the first one navigates, and
+  // none after the screen was unmounted.
   function leaveTo(href: string | null) {
     if (!href || leftRef.current) {
       return;
@@ -654,7 +654,7 @@ export function OnboardingWizard() {
   }
 
   if (isBootstrapping || status === "loading") {
-    // Igual ao fallback de /welcome que vem logo antes: uma espera só.
+    // Same as the /welcome fallback right before it: a single wait.
     return <SkillsetSpinner title={t("authFlow.loading.title")} />;
   }
 
@@ -724,8 +724,8 @@ export function OnboardingWizard() {
               ))}
             </dl>
           ) : null}
-          {/* Antes um giro sem texto e 1,8s sem nenhum controle. A pausa
-              continua (dá para ler o resumo); o botão leva ao mesmo destino já. */}
+          {/* Before, a spinner with no text and 1.8s with no control. The pause
+              continues (the summary can be read); the button goes to the same destination right away. */}
           <button
             ref={continueRef}
             type="button"
@@ -750,13 +750,13 @@ export function OnboardingWizard() {
         />
       </header>
 
-      {/* Do tablet para cima, pergunta e botoes formam um bloco so, centrado
-          na altura (margens automaticas): antes Back e Continue ficavam nos
-          cantos da tela, longe da pergunta. No celular segue a barra presa ao
-          pe (globals.css, .onboarding-footer). */}
+      {/* From tablet up, question and buttons form a single block, vertically centered
+          (auto margins): before, Back and Continue stayed in the corners of the screen,
+          far from the question. On the phone the bar stays pinned to the
+          bottom (globals.css, .onboarding-footer). */}
       <div className="grid flex-1 place-items-center px-4 py-8 sm:mt-auto sm:flex-none sm:px-5">
-        {/* A key remonta a pergunta a cada troca: sem ela o React reaproveitava
-            a mesma <section> e a entrada animada so rodava na primeira. */}
+        {/* The key remounts the question on every change: without it React reused
+            the same <section> and the animated entrance only ran the first time. */}
         {activeQuestion ? (
           <Fragment key={activeQuestion.id}>{renderQuestion(activeQuestion)}</Fragment>
         ) : null}
@@ -783,7 +783,7 @@ export function OnboardingWizard() {
               {t("authFlow.onboarding.skip")}
             </button>
           ) : null}
-          {/* Mesma acao principal das telas de cadastro (azul, 48px). */}
+          {/* Same primary action as the signup screens (blue, 48px). */}
           <button
             type="button"
             onClick={() => void handleContinue()}
@@ -1032,8 +1032,8 @@ export function OnboardingWizard() {
             }
             lead={t("authFlow.onboarding.instagramLead")}
           >
-            {/* A pele do .field-input no invólucro (o "@" fica dentro dela),
-                com os mesmos tokens do campo de telefone. */}
+            {/* The skin of .field-input on the wrapper (the "@" stays inside it),
+                with the same tokens as the phone field. */}
             <div className="flex overflow-hidden rounded-md border-[1.5px] border-[var(--color-field-border)] bg-[var(--color-surface-soft)] focus-within:border-[var(--color-primary)] focus-within:bg-[var(--color-surface)]">
               <span className="grid place-items-center border-r border-[var(--color-line)] px-4 text-sm font-semibold text-[var(--color-ink-soft)]">
                 @
@@ -1117,7 +1117,7 @@ function PathCard({
         </span>
         <SelectionDot selected={selected} />
       </span>
-      {/* Manrope como as outras respostas: o serifado fica so no titulo. */}
+      {/* Manrope like the other answers: the serif stays only on the title. */}
       <span className="block text-base font-bold leading-tight text-[var(--color-primary)]">
         {title}
       </span>
@@ -1159,10 +1159,10 @@ function LargeRadio({
   );
 }
 
-// Um so jeito de mostrar "marcado" nas respostas de escolha unica (cartoes e
-// linhas): antes cada pergunta tinha o seu — azul cheio, borda dourada, tom
-// rosado — e o circulo da receita nunca enchia. Borda e anel azuis, fundo
-// claro e o circulo com check. O hover so mexe na que nao esta marcada.
+// A single way to show "selected" on single-choice answers (cards and
+// rows): before, each question had its own — solid blue, gold border, pinkish
+// tone — and the recipe circle never filled. Blue border and ring, light background
+// and the circle with a check. Hover only affects the one that is not selected.
 function choiceTone(selected: boolean) {
   return [
     "rounded-lg border text-left transition duration-[var(--duration-base)]",
@@ -1202,8 +1202,8 @@ function OptionGrid({
   selected: string[];
 }) {
   return (
-    // Os 8 temas (multi) tem nomes longos: em duas colunas no celular quebravam
-    // em 3 linhas. Uma coluna no celular, duas a partir do tablet.
+    // The 8 topics (multi) have long names: in two columns on the phone they broke
+    // into 3 lines. One column on the phone, two from tablet up.
     <div className={multi ? "grid grid-cols-1 gap-2 sm:grid-cols-2" : "grid grid-cols-2 gap-2 sm:grid-cols-3"}>
       {options.map((option) => {
         const isSelected = selected.includes(option);
@@ -1215,8 +1215,8 @@ function OptionGrid({
             aria-pressed={isSelected}
             onClick={() => onSelect(option)}
             className={[
-              // O hover claro so vale para a opcao nao marcada: na marcada ele
-              // trocava o fundo azul por um claro e o texto claro sumia.
+              // The light hover only applies to the unselected option: on the selected one it
+              // swapped the blue background for a light one and the light text vanished.
               "rounded-md border-[1.5px] px-4 py-3 text-sm font-semibold transition",
               isSelected
                 ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-base)]"
@@ -1238,10 +1238,10 @@ function OptionGrid({
 function ErrorMessage({ error, onRetry }: { error: string; onRetry: () => void }) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
-  // No celular a barra do "Continue" fica presa embaixo e o aviso nascia atras
-  // dela (ou abaixo da dobra): o toque nao mudava nada visivel. Leva o aviso
-  // ao meio da tela quando ele aparece; sem animacao para quem pediu menos
-  // movimento.
+  // On the phone the "Continue" bar stays pinned at the bottom and the notice was born behind
+  // it (or below the fold): the tap changed nothing visible. Takes the notice
+  // to the middle of the screen when it appears; no animation for whoever asked for less
+  // motion.
   useEffect(() => {
     if (error) {
       ref.current?.scrollIntoView?.({ block: "center", behavior: scrollBehavior() });
@@ -1253,13 +1253,13 @@ function ErrorMessage({ error, onRetry }: { error: string; onRetry: () => void }
   }
 
   return (
-    // O InlineAlert nao repassa ref: a caixa de fora (so com o aviso dentro)
-    // e quem rola para a vista.
+    // InlineAlert does not forward a ref: the outer box (only with the notice inside)
+    // is what scrolls into view.
     <div ref={ref} className="mt-5">
-      {/* So o erro de LEITURA ganha "Try again". Os de salvar seguem sem ele:
-          repetir ali e o proprio "Continue", e um segundo botao gravaria duas vezes.
-          O foco: esta caixa some junto com a tela (vira a espera da chegada), entao
-          o focusRef daqui nao segura nada; quem leva o foco e o efeito do titulo. */}
+      {/* Only the read error gets "Try again". The save ones stay without it:
+          repeating there is "Continue" itself, and a second button would write twice.
+          Focus: this box vanishes together with the screen (it becomes the arrival wait), so
+          the focusRef here holds nothing; what carries the focus is the title effect. */}
       {error === "authFlow.onboarding.loadError" ? (
         <LoadErrorAlert onRetry={onRetry} focusRef={ref} alertClassName="justify-center text-center">
           {t(error)}

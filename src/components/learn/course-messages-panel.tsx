@@ -57,17 +57,17 @@ export function CourseMessagesPanel({
   const { t, locale } = useTranslation();
   const { user } = useAuth();
   const [messages, setMessages] = useState<CourseMessage[]>([]);
-  // A conversa ainda não chegou: o histórico surgia de repente ACIMA do
-  // formulário e empurrava a caixa de texto. Até a primeira leitura (ou a
-  // falha), linhas de espera no lugar dele.
+  // The conversation has not arrived yet: the history showed up suddenly ABOVE the
+  // form and pushed the text box. Until the first read (or the
+  // failure), wait rows in its place.
   const [ready, setReady] = useState(false);
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
   // A dictionary key, never rendered text: the locale can change while the
   // notice is on screen.
   const [notice, setNotice] = useState("");
-  // A falha da leitura fica no lugar da conversa, com "Try again" (que assina
-  // de novo); o aviso de baixo é só do envio.
+  // The read failure stays in place of the conversation, with "Try again" (which subscribes
+  // again); the notice below is only for sending.
   const [loadFailed, setLoadFailed] = useState(false);
   const [threadAttempt, setThreadAttempt] = useState(0);
   const panelRef = useRef<HTMLElement>(null);
@@ -134,9 +134,9 @@ export function CourseMessagesPanel({
       </div>
 
       {canSend && !ready ? (
-        // Uma linha só, dentro do vão de 20px acima do formulário (altura
-        // zero no fluxo): a maioria das conversas chega vazia, e duas bolhas
-        // de espera faziam o formulário subir ~124px quando o vazio chegava.
+        // One line only, inside the 20px gap above the form (zero
+        // height in the flow): most conversations arrive empty, and two wait
+        // bubbles made the form jump up ~124px when the empty state arrived.
         <div role="status" className="relative h-0">
           <span className="sr-only">{t("learn.classroom.messages.loading")}</span>
           <span
@@ -200,8 +200,8 @@ export function CourseMessagesPanel({
           </p>
         ) : null}
 
-        {/* Erro com cara de erro (caixa da casa, com ícone, lida em voz alta):
-            antes era a mesma pílula navy de um aviso neutro. */}
+        {/* An error that looks like an error (the app's own box, with an icon, read aloud):
+            before it was the same navy pill as a neutral notice. */}
         {notice ? <InlineAlert tone="error">{t(notice)}</InlineAlert> : null}
 
         <button

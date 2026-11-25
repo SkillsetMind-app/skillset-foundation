@@ -5,15 +5,15 @@ import { EnrolledCourseWorkspace } from "@/components/learn/enrolled-course-work
 import type { Course } from "@/domain/learning";
 
 /**
- * A RLS só entrega o texto, o link e o material da aula que já abriu
- * (migration 20260915020000), e nada no banco muda quando uma aula abre. A
- * sala tem de buscar de novo, mas só quando alguma aula abre de fato, sem
- * reinscrever os canais realtime e sem trocar o objeto de um anexo que não
- * mudou (o player de vídeo enviado reassinaria a URL e recomeçaria no meio).
+ * RLS only delivers the text, link and material of a lesson that has already opened
+ * (migration 20260915020000), and nothing in the database changes when a lesson opens. The
+ * classroom has to fetch again, but only when some lesson actually opens, without
+ * resubscribing the realtime channels and without replacing the object of an attachment that did not
+ * change (the uploaded video player would re-sign the URL and restart in the middle).
  *
- * Aqui os módulos de dados são os de verdade, sobre um Supabase falso que
- * aplica a "RLS" (serverOpen) e conta cada select, cada subscribe de canal e
- * cada assinatura de URL.
+ * Here the data modules are the real ones, on top of a fake Supabase that
+ * applies the "RLS" (serverOpen) and counts every select, every channel subscribe and
+ * every URL signing.
  */
 
 type Row = Record<string, unknown>;
@@ -38,11 +38,11 @@ function makeEnrollment() {
 const db = vi.hoisted(() => {
   const state = {
     tables: {} as Record<string, Row[]>,
-    // Aulas que a RLS do banco já libera (o relógio do servidor).
+    // Lessons the database RLS already releases (the server clock).
     serverOpen: new Set<string>(),
-    // Tabelas cujo próximo select volta com erro.
+    // Tables whose next select comes back with an error.
     failNext: new Set<string>(),
-    // Com hold, as respostas ficam paradas até o teste soltar (recarga "no ar").
+    // With hold, the responses stay parked until the test releases them (reload "in flight").
     hold: false,
     held: [] as Array<() => void>,
     selects: {} as Record<string, number>,
@@ -51,7 +51,7 @@ const db = vi.hoisted(() => {
     realtime: new Map<string, () => void>(),
     searchParams: new URLSearchParams(),
     completed: null as null | ((ids: string[]) => void),
-    // Matrícula: entregue na hora, ou segurada até o teste emitir.
+    // Enrollment: delivered right away, or held until the test emits.
     holdEnrollment: false,
     emitEnrollment: null as null | ((value: unknown) => void),
     enrollment: null as unknown,
@@ -64,8 +64,8 @@ const db = vi.hoisted(() => {
     (state.tables[table] ?? []).filter(
       (row) => row.lesson_id == null || state.serverOpen.has(String(row.lesson_id)),
     );
-  // Qualquer cadeia .select().eq()... termina num await que devolve as linhas
-  // visíveis naquele momento.
+  // Any .select().eq()... chain ends in an await that returns the rows
+  // visible at that moment.
   const from = (table: string) => {
     state.selects[table] = (state.selects[table] ?? 0) + 1;
     const failed = state.failNext.delete(table);
@@ -75,7 +75,7 @@ const db = vi.hoisted(() => {
         get: (_target, prop) =>
           prop === "then"
             ? (resolve: (value: unknown) => void) => {
-                // As linhas saem na hora da entrega, com a "RLS" de então.
+                // The rows are computed at delivery time, with the "RLS" of that moment.
                 const deliver = () =>
                   resolve(
                     failed
@@ -163,8 +163,8 @@ vi.mock("@/lib/posthog/events", () => ({
   track: new Proxy({}, { get: () => vi.fn() }),
 }));
 
-// Aula 1 (vídeo enviado, sem Bunny) aberta; aula 2 abre 24h depois da
-// matrícula (time_drip_lesson, intervalo 1).
+// Lesson 1 (uploaded video, no Bunny) open; lesson 2 opens 24h after
+// enrollment (time_drip_lesson, interval 1).
 const timeDripCourse = {
   id: "course-1",
   slug: "demo-course",
@@ -231,7 +231,7 @@ async function flush(ms = 0) {
   });
 }
 
-// Solta as respostas paradas pelo hold e deixa a sala assentar.
+// Releases the responses parked by hold and lets the classroom settle.
 async function releaseHeld() {
   db.state.hold = false;
   await act(async () => {
@@ -257,10 +257,10 @@ function counts() {
   };
 }
 
-describe("a sala busca de novo só quando uma aula abre", () => {
+describe("the classroom fetches again only when a lesson opens", () => {
   beforeEach(() => {
-    // Só o relógio e o setTimeout: o player com marca d'água arma setInterval
-    // curtos, e avançar 24h com eles falsos roda dezenas de milhares de renders.
+    // Only the clock and setTimeout: the watermarked player sets up short
+    // setIntervals, and advancing 24h with them faked runs tens of thousands of renders.
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
     vi.setSystemTime(new Date("2026-03-01T12:00:00.000Z"));
     db.state.tables = {
@@ -294,7 +294,7 @@ describe("a sala busca de novo só quando uma aula abre", () => {
     vi.restoreAllMocks();
   });
 
-  it("volta para a aba sem aula nova liberada: nada é buscado e o vídeo não é reassinado", async () => {
+  it("returning to the tab with no new lesson released: nothing is fetched and the video is not re-signed", async () => {
     await mount(timeDripCourse);
     expect(db.state.signs).toBe(1);
     const before = counts();
@@ -308,12 +308,12 @@ describe("a sala busca de novo só quando uma aula abre", () => {
     expect(counts()).toEqual(before);
   });
 
-  it("o prazo que libera uma aula dispara uma recarga só, sem reinscrever o canal", async () => {
+  it("the deadline that releases a lesson triggers a single reload, without resubscribing the channel", async () => {
     await mount(timeDripCourse);
     const before = counts();
     db.state.serverOpen.add("l2");
 
-    // Folga de 5s depois do prazo.
+    // 5s of slack after the deadline.
     await flush(day + 4 * second);
     expect(counts()).toEqual(before);
 
@@ -322,16 +322,16 @@ describe("a sala busca de novo só quando uma aula abre", () => {
       assets: before.assets + 1,
       content: before.content + 1,
       subscribes: before.subscribes,
-      // O vídeo da aula 1 voltou igual: o mesmo objeto, sem assinar de novo.
+      // The video for lesson 1 came back the same: the same object, with no new signing.
       signs: before.signs,
     });
 
-    // A aula chegou: nenhuma tentativa extra.
+    // The lesson arrived: no extra attempt.
     await flush(10 * minute);
     expect(counts().content).toBe(before.content + 1);
   });
 
-  it("relógio do aparelho adiantado: tenta de novo em 30s e mostra o conteúdo", async () => {
+  it("device clock running ahead: tries again in 30s and shows the content", async () => {
     await mount(timeDripCourse, "l2");
     const before = counts();
 
@@ -348,7 +348,7 @@ describe("a sala busca de novo só quando uma aula abre", () => {
     expect(counts().content).toBe(before.content + 2);
   });
 
-  it("perto do prazo, sem a aula no banco, para depois de 3 tentativas extras", async () => {
+  it("near the deadline, with the lesson not in the database, stops after 3 extra attempts", async () => {
     await mount(timeDripCourse, "l2");
     const before = counts();
 
@@ -359,7 +359,7 @@ describe("a sala busca de novo só quando uma aula abre", () => {
     expect(counts().subscribes).toBe(before.subscribes);
   });
 
-  it("o realtime continua entregando depois de uma recarga", async () => {
+  it("realtime keeps delivering after a reload", async () => {
     await mount(timeDripCourse, "l2");
     const before = counts();
     db.state.serverOpen.add("l2");
@@ -379,7 +379,7 @@ describe("a sala busca de novo só quando uma aula abre", () => {
     expect(counts().subscribes).toBe(before.subscribes);
   });
 
-  it("o conjunto de concluídas mudando recarrega uma vez, sem reinscrever", async () => {
+  it("the set of completed lessons changing reloads once, without resubscribing", async () => {
     await mount(sequentialCourse);
     const before = counts();
 
@@ -395,7 +395,7 @@ describe("a sala busca de novo só quando uma aula abre", () => {
       signs: before.signs,
     });
 
-    // O mesmo conjunto de novo (outra lista, mesmo conteúdo): nada.
+    // The same set again (another list, same content): nothing.
     await act(async () => {
       db.state.completed?.(["l1"]);
     });
@@ -403,12 +403,12 @@ describe("a sala busca de novo só quando uma aula abre", () => {
     expect(counts().content).toBe(before.content + 1);
   });
 
-  it("concluir uma aula traz a matrícula de novo (objeto novo): sem reinscrever os canais nem reassinar o vídeo", async () => {
+  it("completing a lesson brings the enrollment again (new object): without resubscribing the channels or re-signing the video", async () => {
     await mount(sequentialCourse);
     const before = counts();
 
-    // record_lesson_progress grava em enrollments, e a matrícula chega de novo
-    // pelo realtime como outro objeto.
+    // record_lesson_progress writes to enrollments, and the enrollment arrives again
+    // through realtime as another object.
     db.state.serverOpen.add("l2");
     await act(async () => {
       db.state.completed?.(["l1"]);
@@ -426,12 +426,12 @@ describe("a sala busca de novo só quando uma aula abre", () => {
     });
   });
 
-  it("matrícula que chega depois da montagem: a aula 1 abre na hora, sem recarga extra", async () => {
+  it("an enrollment that arrives after mounting: lesson 1 opens right away, with no extra reload", async () => {
     db.state.holdEnrollment = true;
     await mount(timeDripCourse);
     await flush(10 * minute);
 
-    // Fluxo do checkout: a matrícula nasce agora, depois da montagem.
+    // Checkout flow: the enrollment is created now, after mounting.
     db.state.enrollment = { ...makeEnrollment(), createdAt: new Date(Date.now()).toISOString() };
     await act(async () => {
       db.state.emitEnrollment?.(db.state.enrollment);
@@ -444,14 +444,14 @@ describe("a sala busca de novo só quando uma aula abre", () => {
     expect(counts()).toEqual(afterArrival);
   });
 
-  it("uma conclusão dentro da janela de 30s não cancela a nova tentativa da aula que falta", async () => {
+  it("a completion inside the 30s window does not cancel the retry for the missing lesson", async () => {
     await mount(timeDripCourse, "l2");
 
-    // Prazo: a recarga volta sem a aula 2 (relógio do aparelho adiantado).
+    // Deadline: the reload comes back without lesson 2 (device clock running ahead).
     await flush(day + 6 * second);
     expect(screen.queryByText("Texto da aula dois")).toBeNull();
 
-    // Outra mudança dentro da janela da nova tentativa.
+    // Another change inside the retry window.
     await act(async () => {
       db.state.completed?.(["l1"]);
     });
@@ -462,7 +462,7 @@ describe("a sala busca de novo só quando uma aula abre", () => {
     expect(screen.getByText("Texto da aula dois")).toBeTruthy();
   });
 
-  it("aula aberta sem conteúdo protegido (sequencial) gasta no máximo uma tentativa extra", async () => {
+  it("an open lesson without protected content (sequential) spends at most one extra attempt", async () => {
     db.state.tables = {
       course_assets: [assetRow("video-l1", "l1", "lesson_video", "video/mp4")],
       course_lesson_content: [contentRow("l1", "Texto da aula um")],
@@ -479,7 +479,7 @@ describe("a sala busca de novo só quando uma aula abre", () => {
     expect(counts().content).toBe(before.content + 1 + 1);
   });
 
-  it("recarga que falha mantém os anexos na tela, sem estado de erro", async () => {
+  it("a reload that fails keeps the attachments on screen, with no error state", async () => {
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
     await mount(timeDripCourse);
     const before = counts();
@@ -492,8 +492,8 @@ describe("a sala busca de novo só quando uma aula abre", () => {
     expect(counts().signs).toBe(before.signs);
   });
 
-  // O aviso grande do player (h3): fechada, carregando, ou o vazio de verdade.
-  // Aula de leitura pronta nao tem caixa de video: null.
+  // The player's big notice (h3): locked, loading, or the real empty state.
+  // A ready reading lesson has no video box: null.
   function playerNotice() {
     return (
       document
@@ -502,10 +502,10 @@ describe("a sala busca de novo só quando uma aula abre", () => {
     );
   }
 
-  it("a aula que abre pelo prazo mostra carregando enquanto a recarga está no ar", async () => {
+  it("a lesson that opens by deadline shows loading while the reload is in flight", async () => {
     await mount(timeDripCourse, "l2");
 
-    // Prazo + folga; a recarga sai e fica no ar.
+    // Deadline + slack; the reload is sent and stays in flight.
     db.state.serverOpen.add("l2");
     db.state.hold = true;
     await flush(day + 6 * second);
@@ -516,7 +516,7 @@ describe("a sala busca de novo só quando uma aula abre", () => {
     expect(playerNotice()).toBeNull();
   });
 
-  it("uma aula que já estava aberta não pisca carregando enquanto outra aula abre", async () => {
+  it("a lesson that was already open does not flash loading while another lesson opens", async () => {
     const textFirstCourse = {
       ...timeDripCourse,
       modules: [
@@ -536,30 +536,30 @@ describe("a sala busca de novo só quando uma aula abre", () => {
     await mount(textFirstCourse, "l1");
     expect(playerNotice()).toBeNull();
 
-    // A aula 2 abre e fica na fila (banco atrasado); a aula 1 não muda.
+    // Lesson 2 opens and stays queued (database behind); lesson 1 does not change.
     await flush(day + 6 * second);
     expect(playerNotice()).toBeNull();
     await flush(minute);
     expect(playerNotice()).toBeNull();
   });
 
-  it("a aula que volta vazia mostra o estado real logo depois da primeira recarga", async () => {
+  it("a lesson that comes back empty shows the real state right after the first reload", async () => {
     await mount(timeDripCourse, "l2");
 
     db.state.hold = true;
     await flush(day + 6 * second);
     expect(playerNotice()).toBe("Loading lesson content...");
 
-    // Banco ainda fechado: a recarga volta sem a aula. A tela mostra o real na
-    // hora; as tentativas seguem por trás sem segurar o "carregando".
+    // Database still closed: the reload comes back without the lesson. The screen shows the real state
+    // right away; the retries continue behind the scenes without holding the "loading".
     await releaseHeld();
     expect(playerNotice()).toBeNull();
     await flush(10 * minute);
     expect(playerNotice()).toBeNull();
   });
 
-  it("no sequencial, a próxima aula sem conteúdo protegido mostra o estado real logo depois da primeira recarga", async () => {
-    // Aula 2 sem linha protegida: quiz, texto só no currículo ou embed.
+  it("in sequential mode, the next lesson without protected content shows the real state right after the first reload", async () => {
+    // Lesson 2 without a protected row: quiz, text only in the curriculum, or embed.
     db.state.tables = {
       course_assets: [assetRow("video-l1", "l1", "lesson_video", "video/mp4")],
       course_lesson_content: [contentRow("l1", "Texto da aula um")],
@@ -575,7 +575,7 @@ describe("a sala busca de novo só quando uma aula abre", () => {
     expect(playerNotice()).toBeNull();
   });
 
-  it("a aula que abre com o texto no próprio currículo não mostra carregando", async () => {
+  it("a lesson that opens with its text in the curriculum itself does not show loading", async () => {
     const inlineTextCourse = {
       ...timeDripCourse,
       modules: [

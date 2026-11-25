@@ -3,9 +3,9 @@ import { describe, expect, it, vi } from "vitest";
 
 import { MemberAreaShell } from "@/components/learn/member-area-shell";
 
-// A sala de aula usa esta casca (sem barra lateral) e ela nao tinha sino: o
-// painel de mensagens dizia "a resposta cai no sino" numa tela onde o sino nao
-// existia. Mesmo componente da plataforma, mesma lista de avisos.
+// The classroom uses this shell (no sidebar) and it had no bell: the
+// messages panel said "the reply lands in the bell" on a screen where the bell did not
+// exist. Same component as the platform, same list of notices.
 
 vi.mock("@/components/auth/auth-provider", () => ({
   useAuth: () => ({
@@ -40,11 +40,11 @@ vi.mock("@/lib/data/notifications", () => ({
   markAllNotificationsAsRead: vi.fn(),
 }));
 
-// Com o t() identidade, o nome acessivel do sino e a propria chave.
+// With an identity t(), the bell's accessible name is the key itself.
 const bellName = /platform\.notifications\.open/;
 
-describe("o sino na barra da area de membros", () => {
-  it("aparece na barra da plataforma — sozinho: a saida da sala mora na capa/cabecalho", () => {
+describe("the bell in the members area bar", () => {
+  it("shows up in the platform bar — alone: the classroom exit lives in the cover/header", () => {
     render(
       <MemberAreaShell>
         <p>Lesson</p>
@@ -52,14 +52,14 @@ describe("o sino na barra da area de membros", () => {
     );
 
     expect(screen.getByRole("button", { name: bellName })).toBeInTheDocument();
-    // "Exit to dashboard" era a terceira saida para /learn (reanalise item 8).
+    // "Exit to dashboard" was the third exit to /learn (reanalysis item 8).
     expect(screen.queryByText("Exit to dashboard")).toBeNull();
   });
 
-  // Antes o sino ficava fora da area com marca do professor, e o aluno dela
-  // nunca sabia que o professor tinha respondido (o painel de mensagens diz
-  // que a resposta "cai no sino"). Agora aparece nos dois modos.
-  it("aparece tambem na area com marca do professor", () => {
+  // Before, the bell was left out of the teacher-branded area, and that area's learner
+  // never knew the teacher had replied (the messages panel says
+  // the reply "lands in the bell"). Now it shows up in both modes.
+  it("also shows up in the teacher-branded area", () => {
     render(
       <MemberAreaShell brand={{ name: "Atelier Curie" }}>
         <p>Lesson</p>

@@ -197,8 +197,8 @@ export function LearningPathsRows({
                 ) : null}
               </div>
               <div className="w-full max-w-[260px]">
-                {/* Uma leitura só: a barra leva a frase inteira ("2/5 completed
-                    · 40%") e a linha visível fica calada para o leitor de tela. */}
+                {/* Read only once: the bar carries the whole sentence ("2/5 completed
+                    · 40%") and the visible line is silent for the screen reader. */}
                 <p aria-hidden="true" className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-primary)]">
                   {progressLabel}
                 </p>

@@ -8,12 +8,12 @@ import type { MemberAreaHome } from "@/lib/data/member-areas";
 
 const mocks = vi.hoisted(() => {
   const replace = vi.fn();
-  // Estável como o do Next: o efeito depende dele.
+  // Stable like Next's: the effect depends on it.
   return { getMemberAreaHome: vi.fn(), getMemberAreaCommunity: vi.fn(), replace, router: { replace, refresh: () => undefined } };
 });
 
 vi.mock("next/navigation", () => ({ useRouter: () => mocks.router }));
-// A casca real traz ajuda, conta e sino; aqui só importa o tema que ela recebe.
+// The real shell brings help, account and bell; here only the theme it receives matters.
 vi.mock("@/components/learn/member-area-shell", () => ({
   MemberAreaShell: ({ theme = "light", children }: { theme?: string; children: ReactNode }) => (
     <div data-testid="shell" data-members-theme={theme}>{children}</div>
@@ -62,10 +62,10 @@ describe("MemberAreaHomeView", () => {
     window.localStorage.clear();
   });
 
-  // Antes a casca nascia clara durante a leitura e uma área escura virava
-  // escura um instante depois. O tema só chega com a leitura: na primeira
-  // visita a espera é neutra (sem tema), na volta já sai no tema guardado.
-  it("carregando: moldura neutra na primeira visita, tema guardado na volta", async () => {
+  // Before, the shell was born light during the read and a dark area turned
+  // dark a moment later. The theme only arrives with the read: on the first
+  // visit the wait is neutral (no theme), on a return it already comes out in the stored theme.
+  it("loading: a neutral frame on the first visit, the stored theme on a return", async () => {
     mocks.getMemberAreaHome.mockResolvedValue(home);
     const first = renderView();
     expect(screen.getByTestId("shell")).not.toHaveAttribute("data-members-theme");
@@ -80,9 +80,9 @@ describe("MemberAreaHomeView", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Eton Academy" })).toBeTruthy();
   });
 
-  // Comunidade da área inteira: cartão no topo quando o professor escolheu uma;
-  // se a leitura dela falhar, a área abre igual, sem o cartão.
-  it("mostra o cartão da comunidade da área e o tipo de cada produto", async () => {
+  // Community of the whole area: a card at the top when the teacher chose one;
+  // if its read fails, the area opens the same, without the card.
+  it("shows the area's community card and the type of each product", async () => {
     mocks.getMemberAreaHome.mockResolvedValue(home);
     mocks.getMemberAreaCommunity.mockResolvedValue({ courseId: "c-club", title: "Inner circle", isOwner: false });
     renderView();
@@ -90,14 +90,14 @@ describe("MemberAreaHomeView", () => {
     expect(card.getAttribute("href")).toBe("/learn/areas/%40eton/community");
     expect(card.textContent).toContain("Talk with everyone learning with Eton Simon.");
     expect(within(screen.getByRole("region", { name: "My products" })).getByRole("link").textContent).toContain("Course");
-    // "Open the community" é texto de 14px: pede o destaque legível do curso,
-    // não o fundo de botão (2,9:1 num curso escuro).
+    // "Open the community" is 14px text: it asks for the course's readable highlight,
+    // not the button background (2.9:1 on a dark course).
     const open = within(card).getByText("Open the community");
     expect(open).toHaveClass("text-[var(--ma-accent-ink)]");
     expect(open).not.toHaveClass("text-[var(--ma-accent)]");
   });
 
-  it("abre a área mesmo se a comunidade falhar", async () => {
+  it("opens the area even if the community fails", async () => {
     mocks.getMemberAreaHome.mockResolvedValue(home);
     mocks.getMemberAreaCommunity.mockRejectedValue(new Error("boom"));
     renderView();
@@ -106,7 +106,7 @@ describe("MemberAreaHomeView", () => {
   });
   afterEach(cleanup);
 
-  it("mostra a área no tema dela, com as três seções", async () => {
+  it("shows the area in its own theme, with the three sections", async () => {
     mocks.getMemberAreaHome.mockResolvedValue(home);
     renderView();
     expect(await screen.findByRole("heading", { level: 1, name: "Eton Academy" })).toBeTruthy();
@@ -122,7 +122,7 @@ describe("MemberAreaHomeView", () => {
     const mine = screen.getByRole("region", { name: "My products" });
     expect(within(mine).getByRole("link").getAttribute("href")).toBe("/learn/courses/c-a");
     expect(within(mine).getByText("12% complete")).toBeTruthy();
-    // A barra da casa, anunciada como barra (antes era só um traço mudo).
+    // The house bar, announced as a bar (before it was just a mute stroke).
     expect(within(mine).getByRole("progressbar", { name: "12% complete" }).getAttribute("aria-valuenow")).toBe("12");
 
     const more = screen.getByRole("region", { name: "More from this creator" });
@@ -130,13 +130,13 @@ describe("MemberAreaHomeView", () => {
     expect(within(more).getByText("$97.00")).toBeTruthy();
     expect(within(more).getByRole("link", { name: "See details" }).getAttribute("href"))
       .toBe("/courses/leadership-blind-spots");
-    // O produto não comprado nunca leva à sala: todo link da vitrine é página de vendas.
+    // A product that was not purchased never leads to the room: every storefront link is a sales page.
     for (const link of within(more).getAllByRole("link")) {
       expect(link.getAttribute("href")).toMatch(/^\/courses\//);
     }
   });
 
-  it("quem não é aluno nem dono vai para a vitrine pública", async () => {
+  it("whoever is neither a learner nor the owner goes to the public storefront", async () => {
     mocks.getMemberAreaHome.mockResolvedValue(null);
     renderView("@eton");
     await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith("/@eton"));
@@ -145,7 +145,7 @@ describe("MemberAreaHomeView", () => {
     await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith("/instructors/u-1"));
   });
 
-  it("estados vazios e a prévia do dono", async () => {
+  it("empty states and the owner's preview", async () => {
     mocks.getMemberAreaHome.mockResolvedValue({
       ...home,
       area: { ...home.area, isOwnerPreview: true, coverPath: null, welcomeText: null },
@@ -156,8 +156,8 @@ describe("MemberAreaHomeView", () => {
     renderView();
     expect(await screen.findByText(/Preview: this is what your students see/)).toBeTruthy();
     expect(screen.getByRole("link", { name: "Edit members area" }).getAttribute("href")).toBe("/teach/member-area");
-    // Seção vazia some (título + "nada aqui" eram uma seção sem conteúdo);
-    // só "My products" fica, com o aviso de vazio.
+    // An empty section goes away (a title + "nothing here" were a section with no content);
+    // only "My products" stays, with the empty notice.
     expect(screen.queryByRole("region", { name: "Continue where you left off" })).toBeNull();
     expect(screen.queryByText("Open one of your products below to start.")).toBeNull();
     expect(screen.getByText("You have no products from this creator yet.")).toBeTruthy();
@@ -166,7 +166,7 @@ describe("MemberAreaHomeView", () => {
     expect(screen.queryByText("You already have every product from this creator.")).toBeNull();
   });
 
-  it("quem já tem tudo não vê a vitrine vazia; assinatura mostra o intervalo", async () => {
+  it("whoever already has everything does not see the empty storefront; a subscription shows the interval", async () => {
     mocks.getMemberAreaHome.mockResolvedValueOnce({ ...home, moreProducts: [] });
     renderView();
     expect(await screen.findByRole("region", { name: "My products" })).toBeTruthy();
@@ -185,7 +185,7 @@ describe("MemberAreaHomeView", () => {
     expect(screen.getByText("$190.00 / year")).toBeTruthy();
   });
 
-  it("erro de leitura pede nova tentativa", async () => {
+  it("a read error asks for another try", async () => {
     mocks.getMemberAreaHome.mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce(home);
     renderView();
     expect(await screen.findByRole("alert")).toBeTruthy();
@@ -193,7 +193,7 @@ describe("MemberAreaHomeView", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Eton Academy" })).toBeTruthy();
   });
 
-  it("em espanhol", async () => {
+  it("in Spanish", async () => {
     mocks.getMemberAreaHome.mockResolvedValue(home);
     renderView("@eton", "es");
     expect(await screen.findByRole("region", { name: "Más de este creador" })).toBeTruthy();

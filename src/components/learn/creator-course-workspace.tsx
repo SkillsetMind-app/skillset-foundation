@@ -28,9 +28,9 @@ export function CreatorCourseWorkspace({
   /** Forwarded from the member-area shell: the course is opening under a
    *  teacher's own brand, so every link back into our platform stays hidden. */
   whitelabel?: boolean;
-  /** A aba da sala aberta pela rota (lesson | materials | community...). */
+  /** The tab of the classroom opened by the route (lesson | materials | community...). */
   tab?: ClassroomTab;
-  /** Um post da comunidade aberto na gaveta. */
+  /** A community post opened in the drawer. */
   openPostId?: string | null;
 }) {
   const { t } = useTranslation();
@@ -43,11 +43,11 @@ export function CreatorCourseWorkspace({
   const cameFromCheckout = searchParams.get("checkout") === "success";
   const [checkoutGraceExpired, setCheckoutGraceExpired] = useState(false);
   const [enrollmentRecheck, setEnrollmentRecheck] = useState(0);
-  // "Try again" da leitura do curso: o mesmo contador-nas-dependências do
-  // enrollmentRecheck, para a assinatura do curso (só leitura, nada é gravado).
+  // "Try again" for the course read: the same dependency counter as
+  // enrollmentRecheck, for the course subscription (read only, nothing is written).
   const [courseRecheck, setCourseRecheck] = useState(0);
-  // Depois de um "Try again" que deu certo, a sala recebe o foco no título:
-  // o botão some com a espera e o foco caía no <body>.
+  // After a "Try again" that worked, the classroom gets focus on the title:
+  // the button disappears with the wait state and focus used to fall on <body>.
   const [focusClassroom, setFocusClassroom] = useState(false);
   const hasBackendConfig = Boolean(getSupabaseClientConfig());
   const { user, signOut } = useAuth();
@@ -89,10 +89,10 @@ export function CreatorCourseWorkspace({
   const isLoadingCourse = Boolean(
     canOpenCourse && (!courseState.ready || courseState.key !== courseId),
   );
-  // O pedido de foco do "Try again" vale para UMA abertura: a sala o lê ao
-  // montar. Quando ela fecha (espera, erro, sem acesso), o pedido acaba; uma
-  // reabertura sem "Try again" não puxa o foco para o título de novo. Ajuste
-  // no render, com o valor anterior guardado (sem setState em efeito).
+  // The "Try again" focus request is good for ONE opening: the classroom reads it
+  // on mount. When it closes (wait, error, no access), the request ends; a
+  // reopening without "Try again" does not pull focus to the title again. Adjusted
+  // during render, with the previous value stored (no setState in an effect).
   const classroomOpen = canOpenCourse && course !== null;
   const [classroomWasOpen, setClassroomWasOpen] = useState(false);
   if (classroomOpen !== classroomWasOpen) {
@@ -142,16 +142,16 @@ export function CreatorCourseWorkspace({
       return;
     }
 
-    // O poll NÃO para aos 90s. Antes parava — `checkoutGraceExpired` era
-    // condição de saída daqui — e isso desligava o fallback exatamente no
-    // instante em que ele passa a ser a única coisa que pode funcionar: passar
-    // dos 90s é justamente o sinal de que o WebSocket não entregou. Depois da
-    // carência a tela promete "it opens automatically the moment your
-    // enrollment is confirmed", e o socket morto era o único caminho restante
-    // para cumprir isso. Quem já pagou ficava preso até recarregar na mão.
+    // The poll does NOT stop at 90s. It used to stop — `checkoutGraceExpired` was
+    // an exit condition here — and that turned off the fallback exactly at the
+    // moment it becomes the only thing that can work: going past 90s is precisely
+    // the sign that the WebSocket did not deliver. After the grace period the
+    // screen promises "it opens automatically the moment your
+    // enrollment is confirmed", and the dead socket was the only remaining way
+    // to keep that promise. Someone who had already paid stayed stuck until they reloaded by hand.
     //
-    // A carência agora só muda o RITMO: 5s enquanto é rápido, 20s depois — um
-    // webhook atrasado (retry do Stripe, fila cheia) ainda aterrissa.
+    // The grace period now only changes the PACE: 5s while it is fast, 20s after — a
+    // late webhook (Stripe retry, full queue) still lands.
     const interval = window.setInterval(
       () => setEnrollmentRecheck((tick) => tick + 1),
       checkoutGraceExpired ? 20_000 : 5_000,
@@ -234,8 +234,8 @@ export function CreatorCourseWorkspace({
   }
 
   if (isLoadingEnrollment || isLoadingCourse) {
-    // Mesma forma da espera do workspace logo depois: aula no endereço =
-    // cabeçalho curto (enrolled-course-workspace.tsx, isCourseHome).
+    // Same shape as the workspace wait state right after: lesson in the address =
+    // short header (enrolled-course-workspace.tsx, isCourseHome).
     return (
       <ClassroomLoading
         label={t("learnWave2.courseLoading.title")}
@@ -245,9 +245,9 @@ export function CreatorCourseWorkspace({
   }
 
   if (error) {
-    // Só a FALHA de leitura ganha "Try again" (sem acesso, sem matrícula e
-    // curso inexistente seguem como estão). Ele zera a leitura que falhou (a
-    // espera da sala volta à tela) e refaz a mesma leitura uma vez.
+    // Only a read FAILURE gets "Try again" (no access, no enrollment and a
+    // nonexistent course stay as they are). It clears the read that failed (the
+    // classroom wait state comes back on screen) and redoes the same read once.
     const retryRead = () => {
       setFocusClassroom(true);
       if (enrollmentState.key === courseId && enrollmentState.error) {
@@ -268,7 +268,7 @@ export function CreatorCourseWorkspace({
     );
   }
 
-  // Sem acesso, a saída é a página pública do curso (e sair da conta, se for a conta errada).
+  // Without access, the way out is the course's public page (and signing out, if it is the wrong account).
   const coursePage = {
     href: `/courses/${encodeURIComponent(courseId)}`,
     label: t("learnWave2.workspace.seeCourse"),
@@ -369,7 +369,7 @@ function CreatorWorkspaceState({
   /** The course's own public page: the main way out when there is no access. */
   coursePage?: { href: string; label: string };
   onSignOut?: () => void;
-  /** Falha de LEITURA: o detalhe vira o aviso da casa com "Try again". */
+  /** READ failure: the detail becomes the house notice with "Try again". */
   onRetry?: () => void;
 }) {
   const { t } = useTranslation();
@@ -379,12 +379,12 @@ function CreatorWorkspaceState({
       <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
         {t("learnWave2.workspace.eyebrow")}
       </p>
-      {/* h1: nestes estados esta seção É a página inteira. O caminho feliz
-          delega ao EnrolledCourseWorkspace, que traz o MembersAreaHero com o
-          h1 — mas carregando, com erro, sem matrícula e, o que mais importa,
-          na tela de "pagamento recebido", nada disso renderiza. O comprador
-          que acabou de pagar ficava num documento cujo único cabeçalho era um
-          h3 solto, sem título de página nenhum. */}
+      {/* h1: in these states this section IS the whole page. The happy path
+          hands off to EnrolledCourseWorkspace, which brings the MembersAreaHero with the
+          h1 — but while loading, on error, with no enrollment and, most important,
+          on the "payment received" screen, none of that renders. The buyer
+          who had just paid was left in a document whose only heading was a
+          loose h3, with no page title at all. */}
       <h1 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
         {title}
       </h1>

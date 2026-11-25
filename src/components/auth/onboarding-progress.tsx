@@ -16,10 +16,10 @@ export function OnboardingProgress({
   const label = t("authFlow.onboarding.progress")
     .replace("{current}", String(activeQuestion))
     .replace("{total}", String(totalQuestions));
-  // Eram pontinhos feitos à mão (latão de fundo, navy a 50%, largura animada
-  // com transition-all): agora a barra da casa, a mesma da sala e do
-  // construtor. O leitor de tela segue anunciando "pergunta 3 de 8" (passo de
-  // 1 ao total, como no signup-form), e não uma porcentagem.
+  // They used to be hand-made dots (brass background, navy at 50%, animated width
+  // with transition-all): now the house bar, the same as the classroom and the
+  // builder. The screen reader still announces "question 3 of 8" (step from
+  // 1 to the total, as in signup-form), and not a percentage.
   return (
     <ProgressBar
       value={(activeQuestion / totalQuestions) * 100}

@@ -46,12 +46,12 @@ import {
 
 const dayMillis = 24 * 60 * 60 * 1000;
 const weekMillis = 7 * dayMillis;
-// O que o painel destaca no topo: as tres aulas mais recentes para retomar,
-// as tres proximas lives e as tres ultimas novidades. O resto fica na grade
-// "My courses", no sino e na agenda.
+// What the dashboard highlights at the top: the three most recent lessons to resume,
+// the three next lives and the three latest news items. The rest stays in the
+// "My courses" grid, in the bell and in the schedule.
 const TOP_ITEMS = 3;
-// Busca e filtro de "My courses" so aparecem acima disto: com poucos cursos
-// eles so empurram os cartoes para baixo.
+// Search and filter in "My courses" only show above this: with few courses
+// they just push the cards down.
 const COURSE_CONTROLS_AFTER = 6;
 
 const courseFilters = ["in_progress", "completed"] as const;
@@ -69,27 +69,27 @@ export function LearnDashboard() {
   const [hasError, setHasError] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [eventBuckets, setEventBuckets] = useState<Record<string, CourseEvent[]>>({});
-  // Relógio que anda: a live fica no painel enquanto acontece, com "Happening now".
+  // A clock that ticks: the live stays on the dashboard while it happens, with "Happening now".
   const now = useNow();
-  // Os cursos REAIS da pessoa. Sem isto o painel só enxergava os 6 cursos de
-  // demonstração de `catalog.ts`, e uma matrícula real nunca carrega slug de
-  // demonstração — `enrollments.ts:115` e o webhook do Stripe gravam o id do
-  // curso em `course_slug`. Resultado: `getCourseBySlug` devolvia undefined para
-  // 100% das compras reais e o cartão caía no texto de espaço reservado
-  // ("Private modules"), justamente na primeira tela depois de pagar.
-  // Buscados por id (não o catálogo inteiro) e repassados às fileiras de baixo.
+  // The person's REAL courses. Without this the dashboard only saw the 6 demo
+  // courses from `catalog.ts`, and a real enrollment never carries a demo
+  // slug — `enrollments.ts:115` and the Stripe webhook write the course id
+  // in `course_slug`. Result: `getCourseBySlug` returned undefined for
+  // 100% of real purchases and the card fell back to the placeholder text
+  // ("Private modules"), right on the first screen after paying.
+  // Fetched by id (not the whole catalog) and passed down to the rows below.
   const [realCourses, setRealCourses] = useState<TeacherCourse[]>([]);
-  // De qual lista de matriculas a leitura dos cursos ja voltou (bem ou mal).
+  // For which enrollment list the courses read has already come back (well or badly).
   const [coursesReadKey, setCoursesReadKey] = useState("");
   const firstName = user?.displayName?.trim().split(/\s+/)[0] ?? "";
 
-  // Casa a matrícula com o curso, seja de demonstração ou real.
+  // Matches the enrollment with the course, demo or real.
   //
-  // `course_slug` guarda ora o id ora o slug, dependendo do caminho de escrita
-  // (`enrollments.ts:69` grava slug, `:115` e o webhook gravam id) — por isso
-  // testa as duas formas em vez de assumir uma. Uma migration de hoje já tolera
-  // essa ambiguidade no banco; aqui o cliente precisa tolerar igual, senão a
-  // metade que resolve o acesso funciona e a que mostra o curso não.
+  // `course_slug` holds sometimes the id and sometimes the slug, depending on the write path
+  // (`enrollments.ts:69` writes the slug, `:115` and the webhook write the id) — that is why it
+  // tests both forms instead of assuming one. A migration today already tolerates
+  // this ambiguity in the database; the client has to tolerate it the same way, otherwise the
+  // half that resolves access works and the half that shows the course does not.
   const resolveCourse = (enrollment: Enrollment) => {
     const demo = getCourseBySlug(enrollment.courseSlug);
     if (demo) return demo;
@@ -102,10 +102,10 @@ export function LearnDashboard() {
     return real ? teacherCourseToLearningCourse(real) : undefined;
   };
 
-  // Antes: os 200 primeiros cursos publicados, inteiros, rebaixados a cada
-  // alteração em qualquer curso da plataforma — e um curso despublicado ou fora
-  // desses 200 nunca aparecia. Agora só os cursos da pessoa, por id; a chave
-  // ignora a re-emissão das matrículas a cada aula salva.
+  // Before: the first 200 published courses, whole, downloaded again on every
+  // change to any course on the platform — and a course that was unpublished or outside
+  // those 200 never showed up. Now only the person's courses, by id; the key
+  // ignores the re-emission of the enrollments on every saved lesson.
   const enrolledCourseKey = Array.from(
     new Set(enrollments.map((enrollment) => enrollment.courseId).filter(Boolean)),
   )
@@ -124,9 +124,9 @@ export function LearnDashboard() {
           setCoursesReadKey(enrolledCourseKey);
         }
       })
-      // Falha aqui não pode derrubar o painel: sem os cursos reais o cartão
-      // volta ao texto genérico, que é ruim, mas melhor que uma tela de erro
-      // sobre uma compra que existe.
+      // A failure here must not take the dashboard down: without the real courses the card
+      // goes back to the generic text, which is bad, but better than an error screen
+      // over a purchase that exists.
       .catch(() => {
         if (!cancelled) setCoursesReadKey(enrolledCourseKey);
       });
@@ -161,17 +161,17 @@ export function LearnDashboard() {
     };
   }, [user]);
 
-  // "Try again" le de novo pelo mesmo canal. Antes a unica saida do erro era
-  // recarregar a pagina no navegador.
+  // "Try again" reads again through the same channel. Before, the only way out of the error was to
+  // reload the page in the browser.
   function retryLoad() {
     setHasError(false);
     setIsLoading(true);
     void enrollmentsSubscription.current?.reload();
   }
 
-  // Mesma fonte do sino: o que chegou de novo (resposta na comunidade,
-  // mensagem do professor, certificado) so aparecia atras de um clique no
-  // sino; agora as tres ultimas ficam na cara, no painel.
+  // Same source as the bell: what arrived new (a reply in the community,
+  // a teacher's message, a certificate) only showed behind a click on the
+  // bell; now the last three are up front, on the dashboard.
   useEffect(() => {
     if (!user) {
       return;
@@ -205,15 +205,15 @@ export function LearnDashboard() {
 
       return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
     } catch (error) {
-      // A agenda e complemento: sem ela a coluna diz que nao ha live, e o
-      // resto do painel segue de pe.
+      // The schedule is a complement: without it the column says there is no live, and the
+      // rest of the dashboard stays standing.
       console.warn("LearnDashboard: course events subscription unavailable", error);
     }
   }, [enrollments]);
 
-  // A live fica até acabar (a janela comum de course-event.ts). Antes ela
-  // saía do painel no minuto em que começava, levando o "Join" junto. O prazo
-  // sai na hora em que vence e nunca fica "Happening now".
+  // The live stays until it ends (the common window from course-event.ts). Before, it
+  // left the dashboard the minute it started, taking the "Join" with it. A deadline
+  // leaves the moment it is overdue and is never "Happening now".
   const upcomingEvents = useMemo(() => {
     return Object.values(eventBuckets)
       .flat()
@@ -232,13 +232,13 @@ export function LearnDashboard() {
       }));
   }, [eventBuckets, now]);
 
-  // O aviso de reembolso aparecia em toda visita. Agora so enquanto serve:
-  // ha uma compra paga ainda dentro das regras do reembolso automatico. So
-  // "payment": assinatura nao gera pedido, entao nao ha o que reembolsar em
-  // Purchases. A janela usa createdAt da matricula, nao o paid_at do pedido
-  // que o servidor usa: um acesso reconcedido mantem o createdAt antigo e o
-  // aviso pode faltar numa recompra elegivel. Billing segue sendo a fonte da
-  // verdade; isto e so um atalho.
+  // The refund notice used to show on every visit. Now only while it is useful:
+  // there is a paid purchase still inside the automatic refund rules. Only
+  // "payment": a subscription generates no order, so there is nothing to refund in
+  // Purchases. The window uses the enrollment's createdAt, not the order's paid_at
+  // that the server uses: a re-granted access keeps the old createdAt and the
+  // notice may be missing on an eligible repurchase. Billing remains the source of
+  // truth; this is just a shortcut.
   const hasRefundablePurchase = useMemo(() => {
     // Same wall-clock read as above: display-only, staleness is harmless.
     // eslint-disable-next-line react-hooks/purity
@@ -262,10 +262,10 @@ export function LearnDashboard() {
   );
 
   if (isLoading) {
-    // O esqueleto tem o formato da tela carregada: linha do cabeçalho e o
-    // quadro de "My courses" com três cartões (capa 16:10, duas linhas e a
-    // barra). Antes eram três caixas soltas sem o quadro, e a página pulava
-    // quando as matrículas chegavam.
+    // The skeleton has the shape of the loaded screen: the header row and the
+    // "My courses" frame with three cards (16:10 cover, two lines and the
+    // bar). Before, they were three loose boxes without the frame, and the page jumped
+    // when the enrollments arrived.
     const bone = "animate-pulse rounded-md bg-[var(--color-surface-strong)]";
     return (
       <div aria-busy="true" aria-live="polite" className="grid gap-8">
@@ -299,7 +299,7 @@ export function LearnDashboard() {
         {greeting}
         <div className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
           <InlineAlert tone="error">{t("learn.dashboard.loadError")}</InlineAlert>
-          {/* "Try again" e a acao principal; explorar e suporte ficam ao lado. */}
+          {/* "Try again" is the main action; explore and support stay beside it. */}
           <div className="mt-4 flex flex-wrap gap-3">
             <button type="button" onClick={retryLoad} className="button-solid px-4 py-2.5 text-sm">
               {t("appErrors.retry")}
@@ -348,8 +348,8 @@ export function LearnDashboard() {
     canContinueEnrollment(enrollment.status),
   ).length;
   const liveThisWeekCount = upcomingEvents.filter((event) => event.isThisWeek).length;
-  // Os tres cartoes de metrica ("1 · 0 · 0") ocupavam uma linha inteira antes
-  // dos cursos. Viram uma frase sob a saudacao; a live so entra quando existe.
+  // The three metric cards ("1 · 0 · 0") used to take a whole row before
+  // the courses. They became a sentence under the greeting; the live only enters when it exists.
   const summaryParts = [
     t(
       inProgressCount === 1
@@ -365,10 +365,10 @@ export function LearnDashboard() {
       : null,
   ].filter(Boolean);
 
-  // Um destino so por curso, nos dois lugares em que ele aparece: a area de
-  // membros, ja na aula de retomar — direto na aula, nao na capa (?lesson= e
-  // o endereco da aula na sala). Antes "My courses" abria a capa. Curso
-  // concluido nao tem o que retomar: abre na capa, como antes.
+  // One destination per course, in both places where it shows up: the members
+  // area, already on the lesson to resume — straight to the lesson, not the cover (?lesson= is
+  // the lesson address in the classroom). Before, "My courses" opened the cover. A
+  // completed course has nothing to resume: it opens on the cover, as before.
   const courseLink = (enrollment: Enrollment) => {
     const course = resolveCourse(enrollment);
     const resume = course && canContinueEnrollment(enrollment.status)
@@ -383,9 +383,9 @@ export function LearnDashboard() {
     };
   };
 
-  // "Continue watching": o mais recente primeiro, como numa fila de video.
-  // updatedAt e ISO vindo do Postgres, entao a comparacao de texto ordena por
-  // data; matriculas sem carimbo empatam e caem para o progresso.
+  // "Continue watching": the most recent first, like a video queue.
+  // updatedAt is ISO coming from Postgres, so the text comparison sorts by
+  // date; enrollments without a timestamp tie and fall back to progress.
   const continueItems = enrollments
     .filter((enrollment) => canContinueEnrollment(enrollment.status))
     .sort(
@@ -405,9 +405,9 @@ export function LearnDashboard() {
         href,
       };
     });
-  // Com ate TOP_ITEMS cursos, "My courses" logo abaixo ja mostra cada um, com
-  // o mesmo destino: a fila de retomar so repetiria os mesmos cartoes. Ela
-  // volta quando ha mais cursos do que cabem nela.
+  // With up to TOP_ITEMS courses, "My courses" right below already shows each one, with
+  // the same destination: the resume queue would only repeat the same cards. It
+  // comes back when there are more courses than fit in it.
   const showContinue = continueItems.length > 0 && enrollments.length > TOP_ITEMS;
 
   const latestNotifications = notifications.slice(0, TOP_ITEMS);
@@ -415,10 +415,10 @@ export function LearnDashboard() {
 
   const showCourseControls = enrollments.length > COURSE_CONTROLS_AFTER;
   const normalizedEnrollmentQuery = enrollmentQuery.toLowerCase().trim();
-  // "In progress" reune tudo que nao esta concluido, inclusive uma matricula
-  // estornada ou expirada: o chip diz o status, e sumir com ela deixaria a
-  // pessoa sem saber por que o curso travou. Sem os controles na tela, nada e
-  // filtrado: o concluido aparece junto, em vez de sumir atras de uma aba.
+  // "In progress" gathers everything that is not completed, including a refunded
+  // or expired enrollment: the chip says the status, and making it vanish would leave the
+  // person not knowing why the course got stuck. Without the controls on screen, nothing is
+  // filtered: the completed one shows together, instead of vanishing behind a tab.
   const visibleEnrollments = !showCourseControls
     ? enrollments
     : enrollments
@@ -445,9 +445,9 @@ export function LearnDashboard() {
             {summaryParts.join(" · ")}
           </p>
         </div>
-        {/* A agenda saiu da barra lateral (o aluno tem quatro itens fixos):
-            o caminho ate ela fica aqui, sempre, com ou sem live marcada —
-            e em /learn/events que estao as lives que ja passaram. */}
+        {/* The schedule left the sidebar (the learner has four fixed items):
+            the path to it stays here, always, with or without a live scheduled —
+            the lives that already passed are in /learn/events. */}
         <div className="flex flex-wrap items-center gap-2">
           <MemberAreaLinks
             courses={realCourses}
@@ -505,9 +505,9 @@ export function LearnDashboard() {
                       <span className="absolute inset-0 grid place-items-center bg-[rgba(15,39,68,0.28)] text-white transition group-hover:bg-[rgba(15,39,68,0.4)]">
                         <PlayCircle aria-hidden="true" size={40} strokeWidth={1.6} />
                       </span>
-                      {/* Sobre a foto: a barra da plataforma, recuada e com cantos
-                          redondos (antes colada na borda e reta). O número vai
-                          em texto no fim do cartão, então a barra fica calada. */}
+                      {/* Over the photo: the platform bar, inset and with rounded
+                          corners (before, stuck to the edge and square). The number goes
+                          as text at the end of the card, so the bar stays quiet. */}
                       <div aria-hidden="true" className="absolute inset-x-3 bottom-3">
                         <ProgressBar
                           value={percent}
@@ -537,9 +537,9 @@ export function LearnDashboard() {
         </section>
       ) : null}
 
-      {/* Sem live marcada a coluna gastava meia linha dizendo isso; agora
-          some. "What's new" vazio some do mesmo jeito: o "Nothing new yet."
-          empurrava "My courses" para baixo a cada visita. */}
+      {/* With no live scheduled the column used to spend half a line saying so; now it
+          disappears. An empty "What's new" disappears the same way: the "Nothing new yet."
+          pushed "My courses" down on every visit. */}
       {nextEvents.length > 0 || latestNotifications.length > 0 ? (
       <div
         className={
@@ -658,8 +658,8 @@ export function LearnDashboard() {
           </h2>
           {showCourseControls ? (
             <div className="flex flex-wrap items-center gap-3">
-              {/* Filtro de uma lista, nao abas de secao: o seletor segmentado
-                  da casa (aria-pressed), o mesmo das credenciais. */}
+              {/* A filter for a list, not section tabs: the house segmented
+                  selector (aria-pressed), the same as in credentials. */}
               <PeriodTabs
                 options={courseFilters}
                 value={courseFilter}
@@ -686,9 +686,9 @@ export function LearnDashboard() {
             {visibleEnrollments.map((enrollment) => {
               const percent = clampPercent(enrollment.progressPercent);
               const { resume, href } = courseLink(enrollment);
-              // O cartão inteiro abre o curso (antes: um botão cheio "Open" por
-              // cartão, seis botões azuis iguais com seis cursos). Estornado ou
-              // expirado não abre: fica um cartão parado com o selo do status.
+              // The whole card opens the course (before: a full "Open" button per
+              // card, six identical blue buttons with six courses). A refunded or
+              // expired one does not open: it stays a stopped card with the status badge.
               const cardClass = "flex h-full flex-col rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-3";
               const card = (
                 <>
@@ -710,22 +710,22 @@ export function LearnDashboard() {
                     <h3 className="mt-1 line-clamp-2 text-base font-semibold leading-5 text-[var(--color-primary)]">
                       {enrollment.courseTitle}
                     </h3>
-                    {/* O progresso uma vez só: a barra com o número ao lado.
-                        Antes "40% COMPLETE", o selo "ACTIVE" e a barra diziam
-                        a mesma coisa três vezes. */}
+                    {/* Progress once only: the bar with the number beside it.
+                        Before, "40% COMPLETE", the "ACTIVE" badge and the bar said
+                        the same thing three times. */}
                     <div className="mt-2.5 flex items-center gap-2.5">
                       <ProgressBar
                         value={percent}
                         label={t("learn.dashboard.percentComplete").replace("{percent}", String(percent))}
                         className="flex-1"
                       />
-                      {/* O leitor de tela ouve o valor pela própria barra. */}
+                      {/* The screen reader hears the value from the bar itself. */}
                       <span aria-hidden="true" className="text-xs font-bold tabular-nums text-[var(--color-primary)]">
                         {percent}%
                       </span>
                     </div>
-                    {/* O selo só aparece quando há algo a dizer (concluído,
-                        estornado, expirado); "ativo" é o normal. */}
+                    {/* The badge only shows when there is something to say (completed,
+                        refunded, expired); "active" is the normal state. */}
                     {enrollment.status !== "active" ? (
                       <StatusChip status={enrollment.status} className="mt-2 self-start" />
                     ) : resume ? (
@@ -755,10 +755,10 @@ export function LearnDashboard() {
             })}
           </ul>
         )}
-        {/* O "Request refund" saiu do cartao: dividia a linha com "Open" e
-            aparecia toda vez que a pessoa vinha estudar. O pedido ja existe
-            em Billing → Purchases, junto do recibo da compra — e o aviso so
-            aparece enquanto ha uma compra que ainda pode ser reembolsada. */}
+        {/* The "Request refund" left the card: it shared the row with "Open" and
+            showed up every time the person came to study. The request already exists
+            in Billing → Purchases, next to the purchase receipt — and the notice only
+            shows while there is a purchase that can still be refunded. */}
         {hasRefundablePurchase ? (
           <p className="mt-5 text-xs leading-5 text-[var(--color-ink-soft)]">
             {t("learn.dashboard.refundsMoved")}{" "}

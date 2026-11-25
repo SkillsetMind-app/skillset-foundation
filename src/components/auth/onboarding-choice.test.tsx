@@ -93,7 +93,7 @@ describe("OnboardingChoice bootstrap", () => {
   });
 });
 
-describe("H3: pais na ativacao do professor", () => {
+describe("H3: country in the teacher activation", () => {
   const previousAnswers = { profileConfirmed: true, primaryGoal: ["Business"], sourceOfDiscovery: "Podcast" };
   const profile = {
     displayName: "Patrick", username: "patrick", bio: "", timezone: "America/Sao_Paulo",
@@ -114,13 +114,13 @@ describe("H3: pais na ativacao do professor", () => {
     await act(async () => emitAuthenticated());
   }
 
-  it.each(["teacher", "student"])("quem terminou como %s ativa ensino sem repetir o questionario", async (path) => {
+  it.each(["teacher", "student"])("someone who finished as %s activates teaching without repeating the questionnaire", async (path) => {
     mocks.getUserProfile.mockResolvedValue({ ...profile, onboardingPath: path });
     await mount();
     expect(screen.getByRole("button", { name: "onboarding.activateTeaching" })).toBeInTheDocument();
     expect(screen.queryByLabelText("onboarding.publicName")).toBeNull();
-    // E-mail ja verificado: o cartao de verificacao nao aparece de novo, e o
-    // texto da caixa nao pede para verificar o que ja esta verificado.
+    // Email already verified: the verification card does not show again, and the
+    // box text does not ask to verify what is already verified.
     expect(screen.queryByText("onboarding.emailVerificationTitle")).toBeNull();
     expect(screen.getByText("onboarding.streamlinedDescVerified")).toBeInTheDocument();
     expect(screen.queryByText("onboarding.streamlinedDesc")).toBeNull();
@@ -140,10 +140,10 @@ describe("H3: pais na ativacao do professor", () => {
       .toBeLessThan(mocks.completeUserOnboarding.mock.invocationCallOrder[0]);
   });
 
-  // A-20 / O-06: o titulo segue a tela que o perfil decide, nao o endereco.
-  // Com ?path=teacher tambem abre o cadastro de 3 passos (quem nao terminou o
-  // cadastro, convite novo, perfil que nao carregou), e ali o titulo da pagina
-  // continua o padrao.
+  // A-20 / O-06: the title follows the screen the profile decides, not the address.
+  // With ?path=teacher the 3-step signup also opens (someone who did not finish the
+  // signup, a new invite, a profile that did not load), and there the page title
+  // stays the default.
   function mountOnPage() {
     render(
       <PageHeadingProvider>
@@ -155,7 +155,7 @@ describe("H3: pais na ativacao do professor", () => {
     return act(async () => emitAuthenticated());
   }
 
-  it("a ativacao curta troca o titulo e a descricao da pagina", async () => {
+  it("the short activation swaps the page title and description", async () => {
     await mountOnPage();
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("onboarding.streamlinedTitle");
@@ -166,7 +166,7 @@ describe("H3: pais na ativacao do professor", () => {
   it.each([
     ["quem nao terminou o cadastro", () => mocks.getUserProfile.mockResolvedValue({ ...profile, onboardingCompleted: false })],
     ["perfil que nao carregou", () => mocks.getUserProfile.mockRejectedValueOnce(new Error("offline"))],
-  ])("%s ve o cadastro de 3 passos sob o titulo padrao", async (_caso, arrange) => {
+  ])("%s sees the 3-step signup under the default title", async (_caso, arrange) => {
     arrange();
     await mountOnPage();
 
@@ -176,9 +176,9 @@ describe("H3: pais na ativacao do professor", () => {
     expect(screen.queryByText("onboarding.streamlinedTitle")).toBeNull();
   });
 
-  // A-20: "Activate teaching" ficava cinza sem dizer o que faltava. A trava e
-  // a mesma; o motivo agora aparece e descreve o botao.
-  it("diz por que 'Activate teaching' esta apagado, sem mudar a trava", async () => {
+  // A-20: "Activate teaching" was grayed out without saying what was missing. The lock is
+  // the same; the reason now shows and describes the button.
+  it("says why 'Activate teaching' is grayed out, without changing the lock", async () => {
     await mount();
     const finish = screen.getByRole("button", { name: "onboarding.activateTeaching" });
     expect(finish).toBeDisabled();
@@ -191,8 +191,8 @@ describe("H3: pais na ativacao do professor", () => {
     expect(screen.queryByText("onboarding.payoutCountryRequired")).toBeNull();
   });
 
-  // O plano escolhido em /pricing chega aqui como returnTo. Antes o fim era
-  // sempre /teach e o professor tinha de achar os planos e escolher de novo.
+  // The plan chosen on /pricing arrives here as returnTo. Before, the end was
+  // always /teach and the teacher had to find the plans and choose again.
   async function ativar(query: string) {
     mocks.searchParams = new URLSearchParams(query);
     await mount();
@@ -204,17 +204,17 @@ describe("H3: pais na ativacao do professor", () => {
   }
   const cartao = "/account/billing/upgrade?plan=starter&cycle=yearly";
 
-  it("com plano escolhido em /pricing, o fim abre a tela de cartao desse plano", async () => {
+  it("with a plan chosen on /pricing, the end opens that plan's card screen", async () => {
     expect(await ativar(new URLSearchParams({ path: "teacher", returnTo: cartao }).toString())).toBe(cartao);
   });
 
-  it("sem plano escolhido, o fim continua em /teach", async () => {
+  it("without a chosen plan, the end stays on /teach", async () => {
     expect(await ativar("path=teacher")).toBe("/teach");
   });
 
-  // A ativacao curta so pergunta o que falta: o pais ja respondido na
-  // entrevista nao volta, e segue gravado igual na ativacao.
-  it("pais ja respondido nao aparece de novo e continua gravado", async () => {
+  // The short activation only asks what is missing: the country already answered in the
+  // interview does not come back, and stays saved the same in the activation.
+  it("a country already answered does not show again and stays saved", async () => {
     mocks.getUserProfile.mockResolvedValue({
       ...profile, onboardingAnswers: { ...previousAnswers, payoutCountry: "US" },
     });
@@ -227,7 +227,7 @@ describe("H3: pais na ativacao do professor", () => {
     });
   });
 
-  it("o campo do pais nao some no meio da escolha", async () => {
+  it("the country field does not vanish in the middle of the choice", async () => {
     await mount();
     fireEvent.change(screen.getByLabelText("connectOnboarding.countryLabel"), { target: { value: "CA" } });
     expect(screen.getByLabelText("connectOnboarding.countryLabel")).toHaveValue("CA");
@@ -239,11 +239,11 @@ describe("H3: pais na ativacao do professor", () => {
     "/account/billing/upgrade?plan=starter",
     "/courses/focus",
     "https://evil.example/account/billing/upgrade?plan=pro&cycle=yearly",
-  ])("destino que nao e um plano publico e ignorado: %s", async (returnTo) => {
+  ])("a destination that is not a public plan is ignored: %s", async (returnTo) => {
     expect(await ativar(new URLSearchParams({ path: "teacher", returnTo }).toString())).toBe("/teach");
   });
 
-  it("quem pula a ativacao nao abre o cartao", async () => {
+  it("whoever skips the activation does not open the card screen", async () => {
     mocks.searchParams = new URLSearchParams({ path: "teacher", returnTo: cartao });
     await mount();
     fireEvent.click(screen.getByRole("button", { name: "onboarding.skipForNow" }));
@@ -251,7 +251,7 @@ describe("H3: pais na ativacao do professor", () => {
     expect(mocks.completeUserOnboarding).not.toHaveBeenCalled();
   });
 
-  it("retoma outro pais com aviso, sem alterar a resposta num evento de autenticacao", async () => {
+  it("resumes another country with a notice, without changing the answer on an auth event", async () => {
     mocks.getUserProfile.mockResolvedValue({ ...profile, onboardingAnswers: { ...previousAnswers, payoutCountry: "other" } });
     await mount();
     const country = screen.getByLabelText("connectOnboarding.countryLabel");
@@ -267,7 +267,7 @@ describe("H3: pais na ativacao do professor", () => {
     }));
   });
 
-  it("nao ativa nem navega quando salvar o pais falha", async () => {
+  it("neither activates nor navigates when saving the country fails", async () => {
     mocks.updateOnboardingAnswers.mockRejectedValueOnce(new Error("offline"));
     await mount();
     fireEvent.change(screen.getByLabelText("connectOnboarding.countryLabel"), { target: { value: "US" } });
@@ -279,11 +279,11 @@ describe("H3: pais na ativacao do professor", () => {
     await waitFor(() => expect(mocks.router.push).toHaveBeenCalledWith("/teach"));
   });
 
-  // Sem a leitura do perfil, concluir gravava por cima do perfil guardado
-  // (papeis, nome, @, bio, fuso e objetivos) com o que estava na tela. Agora
-  // nada e gravado e ninguem passa do passo 0: o "Continue" deixa o aviso de
-  // leitura e o "Try again" no lugar.
-  it("leitura do perfil falhou: Continue nao sai do passo 0 e nada e gravado", async () => {
+  // Without the profile read, finishing wrote over the saved profile
+  // (roles, name, @, bio, timezone and goals) with what was on screen. Now
+  // nothing is written and nobody gets past step 0: "Continue" leaves the read notice
+  // and "Try again" in place.
+  it("profile read failed: Continue does not leave step 0 and nothing is written", async () => {
     mocks.getUserProfile.mockRejectedValueOnce(new Error("offline"));
     await mount();
     expect(screen.getByText("onboarding.errorProfileLoadRetry")).toBeInTheDocument();
@@ -303,7 +303,7 @@ describe("H3: pais na ativacao do professor", () => {
     expect(screen.getByRole("button", { name: "appErrors.retry" })).toBeEnabled();
   });
 
-  it.each(["teacher", "student"])("fluxo direto %s mostra e grava pais somente para professor", async (path) => {
+  it.each(["teacher", "student"])("direct flow %s shows and writes the country only for teachers", async (path) => {
     mocks.searchParams = new URLSearchParams(`path=${path}`);
     mocks.getUserProfile.mockResolvedValue({ ...profile, onboardingCompleted: false });
     await mount();
@@ -328,12 +328,12 @@ describe("H3: pais na ativacao do professor", () => {
     }
   });
 
-  // O cadastro completo (3 passos) termina no mesmo lugar que a ativacao curta;
-  // o aluno nao abre cartao de plano mesmo que o endereco traga um.
+  // The full signup (3 steps) ends in the same place as the short activation;
+  // the learner does not open a plan card even if the address carries one.
   it.each([
     ["teacher", cartao],
     ["student", "/learn"],
-  ])("fluxo direto %s com plano escolhido termina em %s", async (path, destino) => {
+  ])("direct flow %s with a chosen plan ends at %s", async (path, destino) => {
     mocks.searchParams = new URLSearchParams({ path, returnTo: cartao });
     mocks.getUserProfile.mockResolvedValue({ ...profile, onboardingCompleted: false });
     await mount();
@@ -346,13 +346,13 @@ describe("H3: pais na ativacao do professor", () => {
     await waitFor(() => expect(mocks.router.push).toHaveBeenCalledExactlyOnceWith(destino));
   });
 
-  // F-04: o botão que espera não muda de largura. Os dois rótulos moram na
-  // mesma célula; o que não vale fica escondido do leitor, então o nome do
-  // botão é sempre o texto à vista. Trava, tipo e ação seguem os mesmos.
+  // F-04: the waiting button does not change width. Both labels live in the
+  // same cell; the one that does not apply is hidden from the reader, so the button
+  // name is always the visible text. Lock, type and action stay the same.
   it.each([
     ["ativação curta", true, "onboarding.activateTeaching", "onboarding.activating"],
     ["cadastro completo", false, "onboarding.finishSetup", "onboarding.saving"],
-  ] as const)("%s: o botão final diz a espera sem trocar de largura", async (_label, onboardingCompleted, idle, busy) => {
+  ] as const)("%s: the final button states the wait without changing width", async (_label, onboardingCompleted, idle, busy) => {
     let release!: () => void;
     mocks.updateOnboardingAnswers.mockReturnValue(new Promise<void>((resolve) => { release = () => resolve(); }));
     mocks.getUserProfile.mockResolvedValue({ ...profile, onboardingCompleted });
@@ -371,7 +371,7 @@ describe("H3: pais na ativacao do professor", () => {
     fireEvent.click(button);
     expect(button).toHaveAccessibleName(busy);
     expect(button).toBeDisabled();
-    // Repouso e espera na mesma célula da grade: a largura é a do maior.
+    // Rest and wait in the same grid cell: the width is the larger one's.
     const idleFace = within(button).getByText(idle);
     expect(idleFace).toHaveAttribute("aria-hidden", "true");
     expect(idleFace.parentElement).toBe(within(button).getByText(busy).parentElement);

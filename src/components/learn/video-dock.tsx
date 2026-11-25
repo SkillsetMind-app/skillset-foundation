@@ -4,19 +4,21 @@ import { X } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 /**
- * No celular, rolar a sala para ler a descrição ou a discussão fazia o vídeo
- * sumir da tela — pausar, subir de volta, achar o ponto, descer de novo.
- * Passado o player, o quadro se prende no alto da tela, pequeno, com o nome da
- * aula e um X. Rolou de volta, ele volta ao tamanho sozinho.
+ * On a phone, scrolling the room to read the description or the discussion
+ * made the video disappear from the screen: pause, scroll back up, find the
+ * spot, scroll down again. Once the player is scrolled past, the frame pins to
+ * the top of the screen, small, with the lesson name and an X. Scroll back and
+ * it returns to full size on its own.
  *
- * A REGRA que decide o desenho: o vídeo NUNCA muda de lugar no DOM. Um iframe
- * arrancado e recolocado recarrega, e a aula recomeçaria do zero. Aqui só
- * entra e sai uma classe; quem fixa e encolhe é o CSS (globals.css,
- * .member-video-dock--mini, dentro de @media (max-width: 767.98px)). O React
- * não desmonta nada — nem no telefone, nem no computador.
+ * THE RULE that shapes the design: the video NEVER moves in the DOM. An iframe
+ * that is pulled out and put back reloads, and the lesson would restart from
+ * zero. Here only a class goes on and off; the CSS does the pinning and
+ * shrinking (globals.css, .member-video-dock--mini, inside
+ * @media (max-width: 767.98px)). React unmounts nothing, on the phone or on the
+ * computer.
  *
- * Acima de 768px o estado continua sendo calculado, mas o CSS do mini vive
- * inteiro dentro da media query: a classe fica inerte.
+ * Above 768px the state is still computed, but the mini CSS lives entirely
+ * inside the media query: the class is inert.
  */
 export function VideoDock({
   children,
@@ -26,16 +28,16 @@ export function VideoDock({
 }: {
   children: ReactNode;
   closeLabel?: string;
-  /** Aula sem vídeo (texto, mídia ainda não anexada, aula trancada) não tem o
-   *  que prender no topo: só o quadro vazio subiria junto. */
+  /** A lesson without video (text, media not attached yet, locked lesson) has
+   *  nothing to pin to the top: only the empty frame would go up with it. */
   enabled?: boolean;
   title: string;
 }) {
   const dockRef = useRef<HTMLDivElement | null>(null);
   const [scrolledPast, setScrolledPast] = useState(false);
   const [dismissed, setDismissed] = useState(false);
-  // O quadro sai do fluxo ao prender; sem reservar a altura dele, a página
-  // inteira salta para cima no instante em que o mini liga.
+  // The frame leaves the flow when it pins; without reserving its height, the
+  // whole page jumps up the moment the mini turns on.
   const [reservedHeight, setReservedHeight] = useState(0);
 
   useEffect(() => {
@@ -51,19 +53,20 @@ export function VideoDock({
           return;
         }
 
-        // `top < 0` é o que separa "passei do vídeo" de "ainda não cheguei
-        // nele": chegar ao rodapé da página não pode acender o mini, e a
-        // primeira leitura, com a sala fora da tela, também não.
+        // `top < 0` is what separates "I scrolled past the video" from "I have
+        // not reached it yet": reaching the page footer must not turn the mini
+        // on, and neither must the first reading with the room off screen.
         const next = !entry.isIntersecting && entry.boundingClientRect.top < 0;
 
         if (next && entry.boundingClientRect.height > 0) {
           setReservedHeight(entry.boundingClientRect.height);
         }
 
-        // Fechar vale até o vídeo voltar à tela — não para sempre. Quem fecha
-        // quer silêncio agora, não desligar o recurso. O reset mora aqui, no
-        // retorno do observador, e não num efeito que reage a `scrolledPast`:
-        // efeito que chama setState em cadeia é render extra a cada rolagem.
+        // Closing lasts until the video comes back on screen, not forever.
+        // Whoever closes it wants quiet now, not to turn the feature off. The
+        // reset lives here, in the observer callback, and not in an effect that
+        // reacts to `scrolledPast`: an effect that chains setState is an extra
+        // render on every scroll.
         if (!next) {
           setDismissed(false);
         }

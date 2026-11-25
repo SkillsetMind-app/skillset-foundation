@@ -26,8 +26,8 @@ function renderForm(recoveryVerified = true) {
   );
 }
 
-// A-10 e A-12 na troca de senha pelo link do e-mail: regras antes de digitar,
-// fora do <label>; o olho nos dois campos; e o titulo grande dizendo o estado.
+// A-10 and A-12 on the password change from the email link: rules before typing,
+// outside the <label>; the eye on both fields; and the big title stating the state.
 describe("UpdatePasswordForm", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -35,7 +35,7 @@ describe("UpdatePasswordForm", () => {
   });
   afterEach(cleanup);
 
-  it("mostra as regras antes da primeira letra, ligadas ao campo, e um olho por campo", () => {
+  it("shows the rules before the first letter, tied to the field, and one eye per field", () => {
     renderForm();
 
     expect(screen.getByRole("heading", { level: 1, name: "Choose a new password" })).toBeInTheDocument();
@@ -49,15 +49,15 @@ describe("UpdatePasswordForm", () => {
     fireEvent.click(eyes[0]);
     expect(field).toHaveAttribute("type", "text");
     expect(screen.getByLabelText("Confirm new password")).toHaveAttribute("type", "password");
-    // Um nome so, estado no aria-pressed; e o nome do campo e so o rotulo
-    // (com o olho dentro do <label> ele virava "New password Show password").
+    // One name only, state in aria-pressed; and the field's name is just the label
+    // (with the eye inside the <label> it became "New password Show password").
     expect(eyes[0]).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("textbox", { name: "New password" })).toBe(field);
     fireEvent.click(eyes[1]);
     expect(screen.getByRole("textbox", { name: "Confirm new password" })).toHaveAttribute("autocomplete", "new-password");
   });
 
-  it("senhas diferentes: o aviso fica fora do rotulo e descreve o campo", () => {
+  it("different passwords: the notice stays outside the label and describes the field", () => {
     renderForm();
     fireEvent.change(screen.getByLabelText("New password"), { target: { value: newSecret } });
     const confirm = screen.getByLabelText("Confirm new password");
@@ -68,13 +68,13 @@ describe("UpdatePasswordForm", () => {
     expect(confirm).toHaveAttribute("aria-describedby", warning.id);
   });
 
-  // F-12: o botao apagado diz por que, ligado a ele, e a frase some quando
-  // a trava sai. Senhas diferentes: aponta para o aviso que ja existe.
-  it("o botao apagado diz o que falta, ligado a ele", () => {
+  // F-12: the dimmed button says why, tied to it, and the sentence goes away when
+  // the lock is lifted. Mismatched passwords: it points to the notice that already exists.
+  it("the dimmed button says what is missing, tied to it", () => {
     renderForm();
     const update = screen.getByRole("button", { name: "Update password" });
     expect(update).toBeDisabled();
-    // Antes de digitar, um convite, nao a frase de erro.
+    // Before typing, an invitation, not the error sentence.
     expect(update).toHaveAccessibleDescription("Choose a password that meets the rules above.");
 
     fireEvent.change(screen.getByLabelText("New password"), { target: { value: newSecret } });
@@ -90,7 +90,7 @@ describe("UpdatePasswordForm", () => {
     expect(update).not.toHaveAttribute("aria-describedby");
   });
 
-  it("link vencido: o titulo diz isso, e o formulario nao aparece", () => {
+  it("expired link: the title says so, and the form does not appear", () => {
     renderForm(false);
 
     expect(screen.getByRole("heading", { level: 1, name: "This link has expired" })).toBeInTheDocument();
@@ -98,7 +98,7 @@ describe("UpdatePasswordForm", () => {
     expect(screen.queryByLabelText("New password")).toBeNull();
   });
 
-  it("senha trocada: o titulo diz que deu certo", async () => {
+  it("password changed: the title says it worked", async () => {
     mocks.completePasswordRecovery.mockResolvedValue(undefined);
     renderForm();
     fireEvent.change(screen.getByLabelText("New password"), { target: { value: newSecret } });

@@ -1,30 +1,30 @@
-// A ÚNICA tela de espera da sala de aula.
+// The ONLY waiting screen of the classroom.
 //
-// Abrir um curso passava por até quatro: a do arquivo de rota (escura, com os
-// cursos nascendo claros), a do Suspense, um cartão branco no workspace do
-// criador e o esqueleto do workspace. Agora as quatro são esta.
+// Opening a course went through up to four: the route file's (dark, with the
+// courses appearing light), the Suspense one, a white card in the creator's
+// workspace and the workspace skeleton. Now all four are this one.
 //
-// Sem "use client" e sem hooks: o arquivo de rota (servidor) e os workspaces
-// (cliente) desenham a mesma marcação, e quem chama traduz o texto. Cores --ma-*
-// com reserva nas da plataforma: dentro da casca da área de membros vale o tema
-// do curso; no arquivo de rota, antes da casca e sem tema conhecido, valem as
-// cores neutras da plataforma.
+// No "use client" and no hooks: the route file (server) and the workspaces
+// (client) draw the same markup, and the caller translates the text. --ma-* colors
+// with a fallback to the platform's: inside the members area shell the course
+// theme applies; in the route file, before the shell and with no known theme, the
+// platform's neutral colors apply.
 //
-// `short`: quem já sabe que a aula abre com o cabeçalho curto (52px, aula no
-// endereço) pede o bloco do topo nessa altura; sem isso ele tem a altura da
-// capa do curso (members-hero, globals.css), que é o que a primeira visita vê.
+// `short`: whoever already knows the lesson opens with the short header (52px, lesson in the
+// address) asks for the top block at that height; without it, it has the height of the
+// course cover (members-hero, globals.css), which is what a first visit sees.
 export function ClassroomLoading({ label, short = false }: { label: string; short?: boolean }) {
   const block = "animate-pulse bg-[var(--ma-line,var(--color-surface-strong))]";
 
   return (
-    // px-4 só no celular: abaixo de md a casca não tem margem lateral (a sala
-    // vai de ponta a ponta), e a espera encostava na borda da tela.
+    // px-4 only on the phone: below md the shell has no side margin (the classroom
+    // goes edge to edge), and the wait touched the screen edge.
     <section aria-busy="true" className="grid gap-4 px-4 md:px-0">
       <p role="status" className="text-sm text-[var(--ma-ink-soft,var(--color-ink-soft))]">
         {label}
       </p>
-      {/* Os cantos dos cartoes de verdade (12px; 8px nas linhas da lista):
-          com canto reto, tudo "mudava de forma" quando o curso chegava. */}
+      {/* The corners of the real cards (12px; 8px on the list rows):
+          with square corners, everything "changed shape" when the course arrived. */}
       <div
         className={`${short ? "h-[52px]" : "min-h-[clamp(300px,min(43vw,48svh),520px)]"} rounded-lg ${block}`}
       />

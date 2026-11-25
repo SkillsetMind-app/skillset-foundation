@@ -13,13 +13,13 @@ import {
 } from "@/lib/data/community-posts";
 
 /**
- * Moderar a comunidade: quem ve cada botao e o que cada um faz.
- *   autor -> Apagar · dono do curso -> Fixar/Desafixar e Apagar ·
- *   outro membro -> Denunciar · sem login -> nada.
- * Apagar pede confirmacao; Denunciar abre um formulario no lugar.
+ * Moderating the community: who sees each button and what each one does.
+ *   author -> Delete · course owner -> Pin/Unpin and Delete ·
+ *   another member -> Report · not signed in -> nothing.
+ * Delete asks for confirmation; Report opens a form in its place.
  */
 
-// O I18nProvider chama useRouter() para o refresh ao trocar de idioma.
+// The I18nProvider calls useRouter() for the refresh when the language changes.
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }) }));
 
 vi.mock("@/lib/data/community-posts", () => ({
@@ -72,7 +72,7 @@ function buttonNames() {
   return within(screen.getByTestId("actions")).queryAllByRole("button").map((button) => button.textContent);
 }
 
-describe("acoes de moderacao da comunidade", () => {
+describe("community moderation actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -111,7 +111,7 @@ describe("acoes de moderacao da comunidade", () => {
     ["en", "Unpin", "We could not change the pin. Try again."],
     ["es", "Desfijar", "No pudimos cambiar el fijado. Inténtalo de nuevo."],
   ] as const)("a refused pin says so instead of failing silently (%s)", async (locale, unpin, message) => {
-    // 0 linhas (RLS) vira erro em setCommunityPostPinned; a tela mostra.
+    // 0 rows (RLS) becomes an error in setCommunityPostPinned; the screen shows it.
     vi.mocked(setCommunityPostPinned).mockRejectedValueOnce(new Error("community_pin_refused"));
     show({ currentUser: owner, canModerate: true }, locale);
 
@@ -138,7 +138,7 @@ describe("acoes de moderacao da comunidade", () => {
   });
 
   it("the delete confirmation takes the focus, and Escape closes only it", () => {
-    // A gaveta em volta tambem fecha com Esc (ouve no document).
+    // The drawer around it also closes with Esc (it listens on the document).
     const drawerEscape = vi.fn();
     document.addEventListener("keydown", drawerEscape);
     try {
@@ -256,7 +256,7 @@ describe("acoes de moderacao da comunidade", () => {
     const form = screen.getByRole("form", { name: "Report this post" });
     const reason = within(form).getByRole("combobox", { name: "Reason" });
     const note = within(form).getByRole("textbox", { name: "Anything else? (optional)" });
-    // Campo com 16px no celular (sem zoom do iPhone).
+    // Field with 16px on the phone (no iPhone zoom).
     expect(reason).toHaveClass("field-input");
     expect(note).toHaveClass("field-input");
     expect(note).toHaveAttribute("maxlength", "500");
@@ -337,7 +337,7 @@ describe("acoes de moderacao da comunidade", () => {
     ["en", "Report", "Send report", "You already reported this. Our team will review it."],
     ["es", "Denunciar", "Enviar denuncia", "Ya lo denunciaste. Nuestro equipo lo revisará."],
   ] as const)("reporting the same thing again is a friendly note, not an error (%s)", async (locale, report, send, message) => {
-    // O banco recusa a segunda denuncia aberta do mesmo alvo.
+    // The database refuses a second open report of the same target.
     vi.mocked(createCommunityReport).mockRejectedValueOnce({ code: "23505", message: "COMMUNITY_REPORT_DUPLICATE" });
     show({ currentUser: member }, locale);
 

@@ -3,14 +3,14 @@
 import { createContext, useContext } from "react";
 
 /**
- * true enquanto a janela dos termos está na tela, ou enquanto ainda não se
- * sabe se ela vai aparecer (sessão carregando, perfil da conta não lido). Os
- * tours de boas-vindas esperam por isto: abertos junto com a janela, os dois
- * prendiam o Tab e o foco podia ficar no tour, atrás da janela.
+ * true while the terms dialog is on screen, or while it is still not
+ * known whether it will appear (session loading, account profile not read). The
+ * welcome tours wait for this: opened together with the dialog, both
+ * trapped Tab and focus could stay on the tour, behind the dialog.
  *
- * Arquivo próprio, fora do auth-provider, de propósito: dezenas de testes
- * trocam o auth-provider inteiro por um mock, e um export novo lá faltaria
- * em todos eles. Sem provedor (testes, páginas sem AuthProvider) vale false.
+ * Own file, outside auth-provider, on purpose: dozens of tests
+ * replace the whole auth-provider with a mock, and a new export there would be missing
+ * in all of them. Without a provider (tests, pages without AuthProvider) it is false.
  */
 export const LegalGateContext = createContext(false);
 

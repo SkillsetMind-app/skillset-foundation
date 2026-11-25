@@ -37,27 +37,27 @@ function renderGuarded() {
   );
 }
 
-// A-17: o unico guard de rota olhava loading, user e papeis — nunca o nivel de
-// garantia. Uma sessao aal1 de conta com TOTP tinha `user` preenchido e papeis
-// validos, entao o conteudo abria sem o codigo.
-describe("ProtectedSurface — senha aceita, codigo ainda nao", () => {
+// A-17: the only route guard looked at loading, user and roles — never the assurance
+// level. An aal1 session of an account with TOTP had `user` filled in and valid
+// roles, so the content opened without the code.
+describe("ProtectedSurface — password accepted, code not yet", () => {
   afterEach(cleanup);
 
-  it("mfa_required nunca abre o conteudo, mesmo com user e papeis presentes", () => {
-    // Defensivo de proposito: ainda que um provider futuro anexe o usuario a
-    // este estado, o guard decide pelo status, nao pelo `user`.
+  it("mfa_required never opens the content, even with user and roles present", () => {
+    // Defensive on purpose: even if a future provider attaches the user to
+    // this state, the guard decides by status, not by `user`.
     mocks.session = { status: "mfa_required", user: learner };
 
     renderGuarded();
 
     expect(screen.queryByText("conteudo protegido")).toBeNull();
-    // A saida e a tela do codigo, que retoma o desafio e devolve para ca.
+    // The exit is the code screen, which resumes the challenge and sends back here.
     expect(
       screen.getByRole("link", { name: "auth.verify" }).getAttribute("href"),
     ).toBe("/login?returnTo=%2Faccount");
   });
 
-  it("a mesma pessoa, com o codigo apresentado, ve o conteudo", () => {
+  it("the same person, with the code presented, sees the content", () => {
     mocks.session = { status: "authenticated", user: learner };
 
     renderGuarded();
@@ -65,8 +65,8 @@ describe("ProtectedSurface — senha aceita, codigo ainda nao", () => {
     expect(screen.getByText("conteudo protegido")).toBeTruthy();
   });
 
-  // A-21: o muro era um cartao solto, sem logo, com titulo de 48px.
-  it("o muro usa a moldura e o titulo das telas de entrada", () => {
+  // A-21: the wall was a loose card, with no logo, with a 48px title.
+  it("the wall uses the frame and title of the entry screens", () => {
     mocks.session = { status: "unauthenticated", user: null };
     const { container } = renderGuarded();
 
@@ -109,8 +109,8 @@ describe("ProtectedSurface — senha aceita, codigo ainda nao", () => {
     expect(screen.queryByText("conteudo protegido")).toBeNull();
   });
 
-  // O-16: o professor que pulou a ativacao e barrado no /teach; o botao tem
-  // de levar a ativacao de professor, nao ao cadastro antigo de aluno.
+  // O-16: the teacher who skipped the activation is blocked at /teach; the button has
+  // to lead to the teacher activation, not to the old learner signup.
   it.each([
     [["teacherStudio.access"], "/onboarding?path=teacher"],
     [["users.manage"], "/onboarding"],
@@ -137,9 +137,9 @@ describe("ProtectedSurface — senha aceita, codigo ainda nao", () => {
   });
 });
 
-// F-03, estagio 0: a espera de toda pagina protegida era um anel numa pagina
-// vazia, e a casca (barra lateral, topo, conteudo) entrava depois de uma vez.
-describe("ProtectedSurface — a espera tem a forma do que vem", () => {
+// F-03, stage 0: the wait on every protected page was a ring on an empty page,
+// and the shell (sidebar, top bar, content) came in afterwards all at once.
+describe("ProtectedSurface — the wait has the shape of what comes next", () => {
   afterEach(() => {
     cleanup();
     mocks.pathname = "/account";
@@ -164,27 +164,27 @@ describe("ProtectedSurface — a espera tem a forma do que vem", () => {
     "/ops",
     "/ops/users/u-1",
     "/support",
-  ])("%s espera com a casca da plataforma: inerte, um aviso so", (pathname) => {
+  ])("%s waits with the platform shell: inert, a single notice", (pathname) => {
     const container = renderLoading(pathname);
 
     for (const piece of [".platform-grid", ".platform-sidebar", ".platform-topbar", ".platform-content", ".platform-mobile-nav"]) {
       expect(container.querySelector(piece), piece).toBeInTheDocument();
     }
-    // Um role="status" so, com a frase de antes, e nada mais escrito na tela:
-    // nem nome da pessoa nem rotulo do menu.
+    // A single role="status", with the same sentence as before, and nothing else written on screen:
+    // neither the person's name nor the menu label.
     expect(screen.getAllByRole("status")).toHaveLength(1);
     expect(screen.getByRole("status")).toHaveTextContent("authFlow.loading.title");
     expect(container.textContent).toBe("authFlow.loading.title");
-    // Quem anda pelos titulos acha o mesmo h1 do anel, so que sem aparecer.
+    // Whoever walks through the headings finds the same h1 as the ring, just not visible.
     expect(screen.getAllByRole("heading")).toHaveLength(1);
     const heading = screen.getByRole("heading", { level: 1, name: "authFlow.loading.title" });
     expect(heading).toHaveClass("sr-only");
     expect(screen.getByRole("status")).toContainElement(heading);
-    // Nada que o teclado alcance.
+    // Nothing the keyboard can reach.
     expect(container.querySelectorAll("a, button, input, select, textarea, [tabindex]")).toHaveLength(0);
     expect(screen.queryAllByRole("link")).toHaveLength(0);
     expect(screen.queryAllByRole("button")).toHaveLength(0);
-    // As formas sao decorativas: fora da arvore do leitor de tela.
+    // The shapes are decorative: outside the screen reader tree.
     for (const piece of [".platform-sidebar", ".platform-topbar", ".platform-mobile-nav"]) {
       expect(container.querySelector(piece)).toHaveAttribute("aria-hidden", "true");
     }
@@ -195,9 +195,9 @@ describe("ProtectedSurface — a espera tem a forma do que vem", () => {
     expect(screen.queryByText("conteudo protegido")).toBeNull();
   });
 
-  // Na duvida, o anel: a sala de aula e a area de membros tem outra casca, a
-  // previa do curso tambem, o certificado nao tem casca, e rota fora da lista
-  // (checkout, cadastro) nao e adivinhada.
+  // When in doubt, the ring: the classroom and the members area have another shell, the
+  // course preview too, the certificate has no shell, and a route outside the list
+  // (checkout, signup) is not guessed.
   it.each([
     "/learn/courses/intro",
     "/learn/areas/maria/ana",
@@ -207,7 +207,7 @@ describe("ProtectedSurface — a espera tem a forma do que vem", () => {
     "/onboarding",
     "/teaching",
     "",
-  ])("%s mantem o anel de sempre", (pathname) => {
+  ])("%s keeps the usual ring", (pathname) => {
     const container = renderLoading(pathname);
 
     expect(container.querySelector(".platform-grid")).toBeNull();
@@ -216,7 +216,7 @@ describe("ProtectedSurface — a espera tem a forma do que vem", () => {
     );
   });
 
-  it("le a barra recolhida como a casca le (o cookie da escolha)", () => {
+  it("reads the collapsed bar the way the shell does (the choice cookie)", () => {
     document.cookie = "skillset_sidebar=collapsed; path=/";
     const container = renderLoading("/teach/sales");
 
@@ -225,7 +225,7 @@ describe("ProtectedSurface — a espera tem a forma do que vem", () => {
     expect(container.querySelector(".platform-sidebar")).toHaveClass("sidebar-collapsed");
   });
 
-  it("sem escolha salva, a largura do 1o quadro fica com o CSS", () => {
+  it("with no saved choice, the width of the 1st frame is left to CSS", () => {
     const container = renderLoading("/teach/sales");
 
     expect(container.querySelector(".platform-grid")).toHaveClass("platform-grid--auto");
@@ -233,10 +233,10 @@ describe("ProtectedSurface — a espera tem a forma do que vem", () => {
   });
 });
 
-// F-03, estagio 0: so o que a espera desenha mudou. Os muros (sem conta, codigo
-// pendente, sem permissao) foram gravados ANTES da mudanca e tem de sair iguais,
-// letra por letra, numa rota da casca e numa da sala de aula.
-describe("ProtectedSurface — os muros nao mudam com a espera nova", () => {
+// F-03, stage 0: only what the wait draws changed. The walls (no account, code
+// pending, no permission) were recorded BEFORE the change and must come out the same,
+// letter by letter, on a shell route and on a classroom one.
+describe("ProtectedSurface — the walls do not change with the new wait", () => {
   afterEach(() => {
     cleanup();
     mocks.pathname = "/account";
@@ -253,7 +253,7 @@ describe("ProtectedSurface — os muros nao mudam com a espera nova", () => {
     return container.querySelector(".auth-card")!.innerHTML;
   }
 
-  it("numa rota da casca da plataforma (/teach/sales)", () => {
+  it("on a platform shell route (/teach/sales)", () => {
     mocks.pathname = "/teach/sales";
     expect(wall({ status: "unauthenticated", user: null })).toMatchInlineSnapshot(`"<p class="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">auth.guard.signInEyebrow</p><h1 class="auth-title display-title">auth.guard.signInTitle</h1><p class="auth-description">auth.guard.signInDescription</p><div class="mt-6 flex flex-wrap gap-3"><a class="button-solid px-4 py-2.5 text-sm" href="/login?returnTo=%2Fteach%2Fsales">auth.guard.signIn</a><a class="button-outline px-4 py-2.5 text-sm" href="/auth?mode=signup&amp;returnTo=%2Fteach%2Fsales">auth.guard.createAccount</a></div>"`);
     cleanup();
@@ -264,7 +264,7 @@ describe("ProtectedSurface — os muros nao mudam com a espera nova", () => {
     expect(wall({ status: "authenticated", user: learner }, ["teacherStudio.access"])).toMatchInlineSnapshot(`"<p class="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">auth.guard.limitedEyebrow</p><h1 class="auth-title display-title">auth.guard.limitedTitle</h1><p class="auth-description">auth.guard.limitedDescription</p><div class="mt-6 flex flex-wrap gap-3"><a class="button-solid px-4 py-2.5 text-sm" href="/onboarding?path=teacher">auth.guard.updateOnboarding</a><a class="button-outline px-4 py-2.5 text-sm" href="/contact">auth.guard.contactSupport</a></div>"`);
   });
 
-  it("numa rota da sala de aula (/learn/courses/intro)", () => {
+  it("on a classroom route (/learn/courses/intro)", () => {
     mocks.pathname = "/learn/courses/intro";
     expect(wall({ status: "unauthenticated", user: null })).toMatchInlineSnapshot(`"<p class="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">auth.guard.signInEyebrow</p><h1 class="auth-title display-title">auth.guard.signInTitle</h1><p class="auth-description">auth.guard.signInDescription</p><div class="mt-6 flex flex-wrap gap-3"><a class="button-solid px-4 py-2.5 text-sm" href="/login?returnTo=%2Flearn%2Fcourses%2Fintro">auth.guard.signIn</a><a class="button-outline px-4 py-2.5 text-sm" href="/auth?mode=signup&amp;returnTo=%2Flearn%2Fcourses%2Fintro">auth.guard.createAccount</a></div>"`);
     cleanup();

@@ -63,11 +63,11 @@ export type CourseUnlockModalCourse = Pick<
 >;
 
 /**
- * O verbo do botão e o aviso pelo preço que o curso já traz. "Unlock" é
- * palavra que a marca evita, mas trocar por "Buy" em todo lugar punha "Buy
- * course" num curso grátis. Pago compra; grátis se inscreve (o mesmo texto da
- * página do curso); sem preço conhecido fica o "Unlock course" neutro. Botão e
- * aviso saem do mesmo par, para nunca discordarem.
+ * The button's verb and the notice come from the price the course already carries. "Unlock" is
+ * a word the brand avoids, but swapping it for "Buy" everywhere put "Buy
+ * course" on a free course. Paid buys; free enrolls (the same text as the
+ * course page); with no known price the neutral "Unlock course" stays. Button and
+ * notice come from the same pair, so they never disagree.
  */
 export function unlockCopyKeys(priceAmountMinor: number | null | undefined): { label: string; note: string } {
   if (typeof priceAmountMinor !== "number") {
@@ -169,17 +169,17 @@ export function CourseUnlockModal({
         aria-label={t("learn.paths.close")}
         onClick={onClose}
       />
-      {/* O painel da casa do sm em diante (no celular, tela cheia). O
-          bg-white e a borda por classe ficam: dentro da sala é por esses
-          nomes que o fundo e o filete passam às cores do curso. */}
+      {/* The app's own panel from sm up (on the phone, full screen). The
+          bg-white and the border by class stay: inside the classroom it is through these
+          names that the background and the thin line pass to the course colors. */}
       <div className="dialog-panel dialog-panel--md modal-panel relative z-[75] flex flex-col overflow-hidden border-[var(--color-line)] bg-white max-sm:rounded-none max-sm:border-0">
         <div className="relative aspect-[16/9] w-full overflow-hidden">
           <CourseCover course={course} sizes="(min-width: 640px) 576px, 100vw" />
           <button
             type="button"
             onClick={onClose}
-            // O X de todas as janelas (.button-icon, 44px, canto de 8px), com
-            // fundo claro por estar em cima da capa. Era um círculo navy só aqui.
+            // The X of all dialogs (.button-icon, 44px, 8px corner), with
+            // a light background because it sits on top of the cover. It was a navy circle only here.
             className="button-icon absolute right-3 top-3 bg-[var(--color-surface)] shadow-[var(--shadow-soft)] hover:bg-[var(--color-surface-soft)]"
             aria-label={t("learn.paths.close")}
           >

@@ -4,13 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { OnboardingChoice } from "@/components/auth/onboarding-choice";
 import { PageHeadingProvider, PageHeadingText } from "@/components/auth/page-heading";
 
-// A leitura do perfil na entrada da ativacao/escolha de caminho: o que ela chama,
-// quantas vezes, e que tela sai de cada perfil. Escrito ANTES do "Try again"
-// para provar que a carga normal continua igual depois dele.
+// Reading the profile on entry to the activation/path choice: what it calls,
+// how many times, and which screen comes out of each profile. Written BEFORE "Try again"
+// to prove that the normal load stays the same after it.
 
 const mocks = vi.hoisted(() => ({
-  // Identidades estaveis, como as do Next: um literal novo a cada render mudaria
-  // as dependencias do efeito e reinscreveria a sessao.
+  // Stable identities, like Next's: a new literal on every render would change
+  // the effect dependencies and resubscribe the session.
   router: { push: vi.fn(), replace: vi.fn() },
   searchParams: new URLSearchParams(),
   listenToAuthState: vi.fn(),
@@ -73,7 +73,7 @@ function mountOnPage() {
   );
 }
 
-// Nenhuma gravacao, nenhuma navegacao: so a leitura (e a inscricao na sessao).
+// No writes, no navigation: only the read (and the session subscription).
 function expectOnlyTheRead(reads: number) {
   expect(mocks.listenToAuthState).toHaveBeenCalledTimes(1);
   expect(mocks.getUserProfile).toHaveBeenCalledTimes(reads);
@@ -103,8 +103,8 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-describe("OnboardingChoice: a carga normal (caracterizacao)", () => {
-  it("espera a sessao, le o perfil uma vez e so entao mostra a tela", async () => {
+describe("OnboardingChoice: the normal load (characterization)", () => {
+  it("waits for the session, reads the profile once and only then shows the screen", async () => {
     let resolve!: (profile: unknown) => void;
     mocks.getUserProfile.mockReturnValue(new Promise((done) => { resolve = done; }));
     mountOnPage();
@@ -119,11 +119,11 @@ describe("OnboardingChoice: a carga normal (caracterizacao)", () => {
     await act(async () => resolve(null));
     expect(screen.queryByText("authFlow.loading.title")).toBeNull();
     expect(screen.getByRole("button", { name: "onboarding.continue" })).toBeInTheDocument();
-    // A carga normal nao mexe no titulo da pagina nem no foco.
+    // The normal load does not touch the page title or the focus.
     expect(screen.getByRole("heading", { level: 1 })).not.toHaveAttribute("tabindex");
     expect(document.body).toHaveFocus();
 
-    // Eventos seguintes da sessao (renovacao do token, foco na aba) nao releem.
+    // Later session events (token renewal, tab focus) do not re-read.
     await act(async () => {
       emit({ status: "authenticated", user: authedUser });
       emit({ status: "authenticated", user: { ...authedUser, displayName: "Outro" } });
@@ -132,14 +132,14 @@ describe("OnboardingChoice: a carga normal (caracterizacao)", () => {
     expect(mocks.router.push).not.toHaveBeenCalled();
   });
 
-  it("sem sessao: vai para /login e nao le perfil", async () => {
+  it("without a session: goes to /login and does not read the profile", async () => {
     mountOnPage();
     await act(async () => emit({ status: "unauthenticated", user: null }));
     expect(mocks.router.push).toHaveBeenCalledExactlyOnceWith("/login");
     expectOnlyTheRead(0);
   });
 
-  it("aluno novo: cadastro de 3 passos com o caminho de aluno marcado", async () => {
+  it("new learner: 3-step signup with the learner path selected", async () => {
     mocks.getUserProfile.mockResolvedValue(null);
     mountOnPage();
     await act(async () => emit({ status: "authenticated", user: authedUser }));
@@ -159,7 +159,7 @@ describe("OnboardingChoice: a carga normal (caracterizacao)", () => {
     expect(mocks.router.push).not.toHaveBeenCalled();
   });
 
-  it("professor novo (?path=teacher): cadastro de 3 passos com ensino marcado, pais e termos em aberto", async () => {
+  it("new teacher (?path=teacher): 3-step signup with teaching selected, country and terms still open", async () => {
     mocks.searchParams = new URLSearchParams("path=teacher");
     mocks.getUserProfile.mockResolvedValue(null);
     mountOnPage();
@@ -174,7 +174,7 @@ describe("OnboardingChoice: a carga normal (caracterizacao)", () => {
     expect(mocks.router.push).not.toHaveBeenCalled();
   });
 
-  it("quem terminou como aluno e volta para ensinar: ativacao curta", async () => {
+  it("someone who finished as a learner and comes back to teach: short activation", async () => {
     mocks.searchParams = new URLSearchParams("path=teacher");
     mocks.getUserProfile.mockResolvedValue(learnerProfile);
     mountOnPage();
@@ -189,7 +189,7 @@ describe("OnboardingChoice: a carga normal (caracterizacao)", () => {
     expect(mocks.router.push).not.toHaveBeenCalled();
   });
 
-  it("professor que ja ensina: cadastro com ensino marcado e termos ja aceitos", async () => {
+  it("a teacher who already teaches: signup with teaching selected and terms already accepted", async () => {
     mocks.searchParams = new URLSearchParams("path=teacher");
     mocks.getUserProfile.mockResolvedValue(teacherProfile);
     mountOnPage();
@@ -203,7 +203,7 @@ describe("OnboardingChoice: a carga normal (caracterizacao)", () => {
     expect(mocks.router.push).not.toHaveBeenCalled();
   });
 
-  it("com plano escolhido (returnTo): a mesma ativacao curta, sem navegar na carga", async () => {
+  it("with a chosen plan (returnTo): the same short activation, without navigating on load", async () => {
     mocks.searchParams = new URLSearchParams({ path: "teacher", returnTo: plan });
     mocks.getUserProfile.mockResolvedValue(learnerProfile);
     mountOnPage();
@@ -220,9 +220,9 @@ describe("OnboardingChoice: a carga normal (caracterizacao)", () => {
     expect(mocks.router.push).toHaveBeenCalledExactlyOnceWith(plan);
   });
 
-  // Cadastro novo de ponta a ponta. A leitura que volta vazia (sem linha, ou a
-  // linha recem-criada pelo gatilho do cadastro) conclui como sempre: mesmas
-  // chamadas, mesmo conteudo, mesmo destino.
+  // A brand-new signup from end to end. A read that comes back empty (no row, or the
+  // row just created by the signup trigger) concludes as always: same
+  // calls, same content, same destination.
   const freshRow = {
     uid: "learner-1", email: "patrick@example.com", displayName: null, username: null, bio: null,
     timezone: null, roles: ["student"], onboardingCompleted: false,
@@ -241,7 +241,7 @@ describe("OnboardingChoice: a carga normal (caracterizacao)", () => {
   it.each([
     ["sem linha", null],
     ["linha recem-criada", freshRow],
-  ])("aluno novo (%s) conclui o cadastro e vai para /learn", async (_caso, profile) => {
+  ])("new learner (%s) finishes the signup and goes to /learn", async (_caso, profile) => {
     mocks.getUserProfile.mockResolvedValue(profile);
     mountOnPage();
     await act(async () => emit({ status: "authenticated", user: authedUser }));
@@ -260,7 +260,7 @@ describe("OnboardingChoice: a carga normal (caracterizacao)", () => {
   it.each([
     ["sem linha", null],
     ["linha recem-criada", freshRow],
-  ])("professor novo (%s) conclui o cadastro e vai para /teach", async (_caso, profile) => {
+  ])("new teacher (%s) finishes the signup and goes to /teach", async (_caso, profile) => {
     mocks.searchParams = new URLSearchParams("path=teacher");
     mocks.getUserProfile.mockResolvedValue(profile);
     mountOnPage();
@@ -282,9 +282,9 @@ describe("OnboardingChoice: a carga normal (caracterizacao)", () => {
     expect(mocks.router.push).toHaveBeenCalledExactlyOnceWith("/teach");
   });
 
-  // Mudanca deliberada, so do estado de leitura falhada: antes o "Continue"
-  // tirava o aviso e abria os passos 1 e 2 sem o perfil lido.
-  it("leitura que falha: o aviso com \"Try again\", e o Continue nao sai do passo 0", async () => {
+  // Deliberate change, only for the failed-read state: before, "Continue"
+  // removed the notice and opened steps 1 and 2 without the profile read.
+  it("a read that fails: the notice with \"Try again\", and Continue does not leave step 0", async () => {
     mocks.searchParams = new URLSearchParams("path=teacher");
     mocks.getUserProfile.mockRejectedValue(new Error("offline"));
     mountOnPage();
@@ -303,10 +303,10 @@ describe("OnboardingChoice: a carga normal (caracterizacao)", () => {
   });
 });
 
-describe("OnboardingChoice: \"Try again\" da leitura do perfil", () => {
+describe("OnboardingChoice: \"Try again\" for the profile read", () => {
   const activation = new URLSearchParams("path=teacher");
 
-  // A tela que uma carga limpa deixa, para comparar com a que sai do "Try again".
+  // The screen a clean load leaves, to compare with the one that comes out of "Try again".
   async function cleanLoad(profile: unknown) {
     mocks.getUserProfile.mockResolvedValueOnce(profile);
     const { container } = mountOnPage();
@@ -331,21 +331,21 @@ describe("OnboardingChoice: \"Try again\" da leitura do perfil", () => {
     return { ...view, resolve, reject };
   }
 
-  it("relê só o perfil, uma vez, sem gravar nem reinscrever, e chega à tela de uma carga limpa", async () => {
+  it("re-reads only the profile, once, without writing or resubscribing, and reaches the screen of a clean load", async () => {
     mocks.searchParams = activation;
     const clean = await cleanLoad(learnerProfile);
 
     const { container, resolve } = await failFirstRead();
     const heading = screen.getByRole("heading", { level: 1 });
     const retry = screen.getByRole("button", { name: "appErrors.retry" });
-    // Os dois cliques antes de a tela redesenhar (o botao ainda esta la): quem
-    // segura o segundo e a trava do proprio LoadErrorAlert, nao o botao sumir.
+    // Both clicks before the screen redraws (the button is still there): what
+    // holds the second one is the lock in LoadErrorAlert itself, not the button vanishing.
     act(() => {
       retry.click();
       retry.click();
     });
 
-    // A espera da entrada: nada para ativar, e o foco no titulo, que fica.
+    // The entry wait: nothing to activate, and focus on the title, which stays.
     expect(screen.getByRole("status")).toHaveTextContent("authFlow.loading.title");
     expect(screen.queryAllByRole("button")).toHaveLength(0);
     expect(heading).toHaveFocus();
@@ -358,12 +358,12 @@ describe("OnboardingChoice: \"Try again\" da leitura do perfil", () => {
     expectOnlyTheRead(2);
     expect(mocks.router.push).not.toHaveBeenCalled();
 
-    // A trava de "semear uma vez" segue valendo depois do "Try again".
+    // The "seed once" lock still holds after "Try again".
     await act(async () => emit({ status: "authenticated", user: authedUser }));
     expectOnlyTheRead(2);
   });
 
-  it("no cadastro de 3 passos tambem: a mesma tela de uma carga limpa", async () => {
+  it("in the 3-step signup too: the same screen as a clean load", async () => {
     mocks.searchParams = activation;
     const clean = await cleanLoad(null);
     const { container, resolve } = await failFirstRead();
@@ -373,7 +373,7 @@ describe("OnboardingChoice: \"Try again\" da leitura do perfil", () => {
     expectOnlyTheRead(2);
   });
 
-  it("depois de um \"Try again\" que da certo, o cadastro conclui e grava uma vez", async () => {
+  it("after a \"Try again\" that works, the signup finishes and writes once", async () => {
     mocks.searchParams = activation;
     const { resolve } = await failFirstRead();
     fireEvent.click(screen.getByRole("button", { name: "appErrors.retry" }));
@@ -399,10 +399,10 @@ describe("OnboardingChoice: \"Try again\" da leitura do perfil", () => {
     expect(mocks.getUserProfile).toHaveBeenCalledTimes(2);
   });
 
-  it("na troca de conta o \"Try again\" nao le o id da conta anterior", async () => {
+  it("on an account switch \"Try again\" does not read the previous account id", async () => {
     mocks.searchParams = activation;
     const { reject } = await failFirstRead();
-    // A sessao troca de conta: primeiro "loading", depois a outra pessoa.
+    // The session switches account: first "loading", then the other person.
     await act(async () => emit({ status: "loading", user: null }));
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "appErrors.retry" }));
@@ -410,8 +410,8 @@ describe("OnboardingChoice: \"Try again\" da leitura do perfil", () => {
     expect(mocks.getUserProfile).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("alert")).toHaveTextContent("onboarding.errorProfileLoadRetry");
 
-    // A conta nova e lida pela propria troca, com o id dela. Se essa leitura
-    // falha, o "Try again" rele a conta nova.
+    // The new account is read by the switch itself, with its own id. If that read
+    // fails, "Try again" re-reads the new account.
     await act(async () => emit({ status: "authenticated", user: { ...authedUser, uid: "learner-2" } }));
     expect(mocks.getUserProfile).toHaveBeenCalledTimes(2);
     expect(mocks.getUserProfile).toHaveBeenLastCalledWith("learner-2");
@@ -423,7 +423,7 @@ describe("OnboardingChoice: \"Try again\" da leitura do perfil", () => {
     expect(mocks.getUserProfile).toHaveBeenLastCalledWith("learner-2");
   });
 
-  it("releitura que falha de novo: o aviso volta, com o botao", async () => {
+  it("a re-read that fails again: the notice comes back, with the button", async () => {
     mocks.searchParams = activation;
     const { reject } = await failFirstRead();
     fireEvent.click(screen.getByRole("button", { name: "appErrors.retry" }));
@@ -433,13 +433,13 @@ describe("OnboardingChoice: \"Try again\" da leitura do perfil", () => {
     expectOnlyTheRead(2);
   });
 
-  it("resposta atrasada do \"Try again\" nao passa por cima de uma leitura mais nova", async () => {
+  it("a late response from \"Try again\" does not overwrite a newer read", async () => {
     mocks.searchParams = activation;
     const { resolve, rerender } = await failFirstRead();
     fireEvent.click(screen.getByRole("button", { name: "appErrors.retry" }));
 
-    // Enquanto o "Try again" espera, o endereco muda de caminho: a sessao e
-    // reinscrita (como hoje) e le de novo. Essa leitura e a mais nova.
+    // While "Try again" waits, the address changes path: the session is
+    // resubscribed (as today) and reads again. That read is the newest one.
     mocks.getUserProfile.mockResolvedValueOnce(null);
     mocks.searchParams = new URLSearchParams("path=student");
     rerender(
@@ -457,7 +457,7 @@ describe("OnboardingChoice: \"Try again\" da leitura do perfil", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("page.title");
   });
 
-  it("uma leitura seguinte que da certo tira o aviso de leitura que ficou", async () => {
+  it("a following read that works clears the read notice that was left", async () => {
     mocks.searchParams = activation;
     const { rerender } = await failFirstRead();
     mocks.getUserProfile.mockReset();
@@ -475,7 +475,7 @@ describe("OnboardingChoice: \"Try again\" da leitura do perfil", () => {
     expect(screen.queryByRole("button", { name: "appErrors.retry" })).toBeNull();
   });
 
-  it("\"Try again\" que falha de novo: o Continue nao avanca e nada e gravado", async () => {
+  it("\"Try again\" that fails again: Continue does not advance and nothing is written", async () => {
     mocks.searchParams = activation;
     const { reject } = await failFirstRead();
     fireEvent.click(screen.getByRole("button", { name: "appErrors.retry" }));
@@ -488,7 +488,7 @@ describe("OnboardingChoice: \"Try again\" da leitura do perfil", () => {
     fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
     fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
 
-    // Continua no passo 0: sem os campos do passo 1 e sem o "Finish" do 2.
+    // Stays on step 0: without the step 1 fields and without the "Finish" of step 2.
     expect(screen.queryByLabelText("onboarding.publicName")).toBeNull();
     expect(screen.queryByRole("button", { name: "onboarding.finishSetup" })).toBeNull();
     expect(screen.getByRole("alert")).toHaveTextContent("onboarding.errorProfileLoadRetry");
@@ -497,7 +497,7 @@ describe("OnboardingChoice: \"Try again\" da leitura do perfil", () => {
     expect(mocks.router.push).not.toHaveBeenCalled();
   });
 
-  it("erro que nao e de leitura nao ganha \"Try again\": o que toma o lugar do aviso", async () => {
+  it("an error that is not a read error does not get \"Try again\": what takes the notice place", async () => {
     mocks.searchParams = activation;
     mocks.getUserProfile.mockRejectedValueOnce(new Error("offline"));
     mocks.sendSkillsetEmailVerification.mockRejectedValueOnce(new Error("offline"));
@@ -510,13 +510,13 @@ describe("OnboardingChoice: \"Try again\" da leitura do perfil", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("onboarding.verificationSendError");
     expect(screen.queryByRole("button", { name: "appErrors.retry" })).toBeNull();
 
-    // Sem o perfil lido, o Continue traz de volta o aviso de leitura, com o botao.
+    // Without the profile read, Continue brings back the read notice, with the button.
     fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
     expect(screen.getByRole("alert")).toHaveTextContent("onboarding.errorProfileLoadRetry");
     expect(screen.getByRole("button", { name: "appErrors.retry" })).toBeEnabled();
   });
 
-  it("erro que nao e de leitura nao ganha \"Try again\": ativar que falha", async () => {
+  it("an error that is not a read error does not get \"Try again\": activation that fails", async () => {
     mocks.searchParams = activation;
     mocks.getUserProfile.mockResolvedValueOnce(learnerProfile);
     mocks.updateOnboardingAnswers.mockRejectedValueOnce(new Error("offline"));
@@ -532,9 +532,9 @@ describe("OnboardingChoice: \"Try again\" da leitura do perfil", () => {
   });
 });
 
-describe("OnboardingChoice: conta trocada em outra aba", () => {
-  // Saiu e entrou com outra conta em outra aba, com esta tela aberta: a mesma
-  // inscricao recebe "loading" e depois a outra pessoa.
+describe("OnboardingChoice: account switched in another tab", () => {
+  // Signed out and signed in with another account in another tab, with this screen open: the same
+  // subscription receives "loading" and then the other person.
   const otherUser = { uid: "learner-2", displayName: "Bea", emailVerified: true };
   const otherProfile = {
     ...learnerProfile, displayName: "Bea Lima", username: "bea", bio: "Designer",
@@ -547,7 +547,7 @@ describe("OnboardingChoice: conta trocada em outra aba", () => {
     await act(async () => emit({ status: "authenticated", user: otherUser }));
   }
 
-  // So leituras: nenhuma gravacao, nenhuma navegacao, nenhuma inscricao nova.
+  // Reads only: no writes, no navigation, no new subscription.
   function expectNoWrites() {
     expect(mocks.listenToAuthState).toHaveBeenCalledTimes(1);
     expect(mocks.updateOnboardingAnswers).not.toHaveBeenCalled();
@@ -556,7 +556,7 @@ describe("OnboardingChoice: conta trocada em outra aba", () => {
     expect(mocks.router.push).not.toHaveBeenCalled();
   }
 
-  it("rele o perfil da conta nova uma vez e volta ao passo 0 com os valores dela", async () => {
+  it("re-reads the new account profile once and goes back to step 0 with its values", async () => {
     mocks.getUserProfile.mockResolvedValueOnce(learnerProfile).mockResolvedValueOnce(otherProfile);
     mountOnPage();
     await act(async () => emit({ status: "authenticated", user: authedUser }));
@@ -583,7 +583,7 @@ describe("OnboardingChoice: conta trocada em outra aba", () => {
     expectNoWrites();
   });
 
-  it("da ativacao curta de uma conta para uma conta nova sem perfil: o cadastro limpo", async () => {
+  it("from one account's short activation to a new account with no profile: the clean signup", async () => {
     mocks.searchParams = new URLSearchParams("path=teacher");
     mocks.getUserProfile.mockResolvedValueOnce(learnerProfile).mockResolvedValueOnce(null);
     mountOnPage();
@@ -595,7 +595,7 @@ describe("OnboardingChoice: conta trocada em outra aba", () => {
     await switchAccount();
     expect(mocks.getUserProfile).toHaveBeenCalledTimes(2);
     expect(mocks.getUserProfile).toHaveBeenLastCalledWith("learner-2");
-    // A tela de um professor novo numa carga limpa: o cadastro de 3 passos.
+    // The screen of a new teacher on a clean load: the 3-step signup.
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("page.title");
     expect(screen.queryByRole("button", { name: "onboarding.activateTeaching" })).toBeNull();
     expect(pathButton("onboarding.pathTeachTitle")).toHaveClass(selected);
@@ -612,12 +612,12 @@ describe("OnboardingChoice: conta trocada em outra aba", () => {
     expectNoWrites();
   });
 
-  it("depois da troca, concluir grava na conta nova so com os valores dela", async () => {
+  it("after the switch, finishing writes to the new account with only its own values", async () => {
     mocks.searchParams = new URLSearchParams("path=teacher");
     mocks.getUserProfile.mockResolvedValueOnce(teacherProfile).mockResolvedValueOnce(null);
     mountOnPage();
     await act(async () => emit({ status: "authenticated", user: authedUser }));
-    // A conta anterior tinha pais, termos aceitos e respostas salvas.
+    // The previous account had a country, accepted terms and saved answers.
     expect(screen.getByLabelText("connectOnboarding.countryLabel")).toHaveValue("US");
 
     await switchAccount();
@@ -643,10 +643,10 @@ describe("OnboardingChoice: conta trocada em outra aba", () => {
     expect(mocks.getUserProfile).toHaveBeenCalledTimes(2);
   });
 
-  // Sem a volta do answersLoaded a false na troca, o "perfil lido" da conta
-  // anterior deixaria o Continue e o Finish passarem e gravarem por cima das
-  // respostas salvas da conta nova.
-  it("leitura da conta nova que falha: o Continue nao sai do passo 0 nem grava", async () => {
+  // Without answersLoaded going back to false on the switch, the "profile read" of the
+  // previous account would let Continue and Finish go through and write over the
+  // saved answers of the new account.
+  it("a read of the new account that fails: Continue does not leave step 0 or write", async () => {
     mocks.getUserProfile.mockResolvedValueOnce(learnerProfile).mockRejectedValueOnce(new Error("offline"));
     mountOnPage();
     await act(async () => emit({ status: "authenticated", user: authedUser }));
@@ -660,7 +660,7 @@ describe("OnboardingChoice: conta trocada em outra aba", () => {
     fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
 
-    // Continua no passo 0: sem os campos do passo 1 e sem o "Finish" do 2.
+    // Stays on step 0: without the step 1 fields and without the "Finish" of step 2.
     expect(screen.queryByLabelText("onboarding.publicName")).toBeNull();
     expect(screen.queryByRole("button", { name: "onboarding.finishSetup" })).toBeNull();
     expect(screen.getByRole("alert")).toHaveTextContent("onboarding.errorProfileLoadRetry");
@@ -669,7 +669,7 @@ describe("OnboardingChoice: conta trocada em outra aba", () => {
     expectNoWrites();
   });
 
-  it("a mesma conta de novo, com \"loading\" no meio: nao rele nem apaga o que foi digitado", async () => {
+  it("the same account again, with \"loading\" in between: does not re-read or erase what was typed", async () => {
     mocks.getUserProfile.mockResolvedValueOnce(learnerProfile);
     mountOnPage();
     await act(async () => emit({ status: "authenticated", user: authedUser }));
@@ -689,7 +689,7 @@ describe("OnboardingChoice: conta trocada em outra aba", () => {
     expect(mocks.router.push).not.toHaveBeenCalled();
   });
 
-  it("saida sem entrar com outra conta: vai para /login como hoje; a mesma conta depois nao rele", async () => {
+  it("signing out without signing in with another account: goes to /login as today; the same account later does not re-read", async () => {
     mocks.getUserProfile.mockResolvedValueOnce(learnerProfile);
     mountOnPage();
     await act(async () => emit({ status: "authenticated", user: authedUser }));
@@ -705,7 +705,7 @@ describe("OnboardingChoice: conta trocada em outra aba", () => {
   it.each([
     ["antes", true],
     ["depois", false],
-  ])("troca com a leitura da conta anterior no ar: a resposta dela, chegando %s da nova, e ignorada", async (_quando, previousFirst) => {
+  ])("a switch with the previous account read still in flight: its response, arriving %s the new one, is ignored", async (_quando, previousFirst) => {
     let resolvePrevious!: (profile: unknown) => void;
     let resolveNext!: (profile: unknown) => void;
     mocks.getUserProfile
@@ -719,7 +719,7 @@ describe("OnboardingChoice: conta trocada em outra aba", () => {
     expect(mocks.getUserProfile).toHaveBeenNthCalledWith(2, "learner-2");
 
     if (previousFirst) {
-      // A resposta da anterior nao tira a tela da espera.
+      // The previous account's response does not take the screen out of the wait.
       await act(async () => resolvePrevious(learnerProfile));
       expect(screen.getByRole("status")).toHaveTextContent("authFlow.loading.title");
       expect(screen.queryAllByRole("button")).toHaveLength(0);

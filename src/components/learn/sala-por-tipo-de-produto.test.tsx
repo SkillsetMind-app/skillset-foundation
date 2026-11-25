@@ -6,16 +6,16 @@ import type { CourseEvent } from "@/domain/course-event";
 import type { Course } from "@/domain/learning";
 
 /**
- * A sala do aluno para o que nao e curso gravado (courses.product_format).
+ * The learner room for what is not a recorded course (courses.product_format).
  *
- *   - Comunidade e evento ao vivo publicam sem aula: a sala abria em "Lesson"
- *     com "0 of 0 lessons" e uma playlist vazia. Agora abre na comunidade, ou
- *     nas lives, e a aba Lesson sem aula tem um aviso.
- *   - Evento ao vivo depois da data: a aba de lives sumia. Agora diz que a
- *     sessao ja aconteceu e leva a gravacao, quando o professor pos uma.
- *   - E-book: a aula "download" e o arquivo, sem a caixa "sem video"; o botao
- *     da capa abre o arquivo; e nao ha certificado.
- *   - Avaliacao sem trilha de aulas nao cobra 50% de progresso.
+ *   - Community and live event publish without a lesson: the room used to open on "Lesson"
+ *     with "0 of 0 lessons" and an empty playlist. Now it opens on the community, or
+ *     on the live sessions, and the Lesson tab without a lesson has a notice.
+ *   - Live event after its date: the live sessions tab used to disappear. Now it says the
+ *     session already happened and links to the recording, when the teacher added one.
+ *   - E-book: the "download" lesson is the file, without the "no video" box; the cover
+ *     button opens the file; and there is no certificate.
+ *   - An assessment without a lesson track does not charge 50% progress.
  */
 
 const mocks = vi.hoisted(() => ({
@@ -160,7 +160,7 @@ beforeEach(() => {
 });
 
 describe("Sala por tipo de produto", () => {
-  it("comunidade sem aula abre na comunidade, sem aba Lesson e sem '0 of 0 lessons'", () => {
+  it("a community without a lesson opens on the community, with no Lesson tab and no '0 of 0 lessons'", () => {
     render(
       <EnrolledCourseWorkspace
         course={product({ productFormat: "community", communityEnabled: true })}
@@ -175,7 +175,7 @@ describe("Sala por tipo de produto", () => {
     expect(screen.queryByRole("navigation", { name: "Lesson navigation" })).toBeNull();
   });
 
-  it("evento ao vivo sem aula abre nas lives e, depois da data, diz que a sessao ja aconteceu", () => {
+  it("a live event without a lesson opens on the live sessions and, after the date, says the session already happened", () => {
     mocks.events = [pastSession()];
     render(<EnrolledCourseWorkspace course={product({ productFormat: "live_event" })} />);
 
@@ -183,11 +183,11 @@ describe("Sala por tipo de produto", () => {
     expect(tabs.queryByRole("link", { name: "Lesson" })).toBeNull();
     expect(tabs.getByRole("link", { name: "Live sessions" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByText("The session already happened.")).toBeInTheDocument();
-    // Sem aula nao ha gravacao para oferecer.
+    // Without a lesson there is no recording to offer.
     expect(screen.queryByRole("link", { name: /Watch the replay/ })).toBeNull();
   });
 
-  it("evento passado com a gravacao numa aula leva a ela pela aba de lives", () => {
+  it("a past event with the recording in a lesson links to it through the live sessions tab", () => {
     mocks.events = [pastSession()];
     render(
       <EnrolledCourseWorkspace
@@ -206,7 +206,7 @@ describe("Sala por tipo de produto", () => {
     );
   });
 
-  it("a aba Lesson sem aula mostra um aviso, nao uma playlist vazia", () => {
+  it("the Lesson tab without a lesson shows a notice, not an empty playlist", () => {
     render(<EnrolledCourseWorkspace course={product({ productFormat: "course" })} />);
 
     expect(screen.getByText("There are no lessons here yet.")).toBeInTheDocument();
@@ -227,7 +227,7 @@ describe("Sala por tipo de produto", () => {
       ],
     } as Partial<Course>);
 
-    it("a aula do arquivo nao mostra a caixa de video, e a capa diz 'Open your file'", () => {
+    it("the file lesson does not show the video box, and the cover says 'Open your file'", () => {
       render(<EnrolledCourseWorkspace course={ebook} />);
 
       expect(screen.getByRole("link", { name: "Open your file" })).toHaveAttribute(
@@ -238,7 +238,7 @@ describe("Sala por tipo de produto", () => {
       expect(screen.queryByText("Start lesson 1")).toBeNull();
     });
 
-    it("concluido nao oferece certificado", () => {
+    it("completed does not offer a certificate", () => {
       mocks.searchParams = new URLSearchParams("lesson=l1");
       mocks.completed = ["l1"];
       render(<EnrolledCourseWorkspace course={ebook} />);
@@ -248,7 +248,7 @@ describe("Sala por tipo de produto", () => {
     });
   });
 
-  it("sem trilha de aulas a avaliacao abre sem os 50%", () => {
+  it("without a lesson track the assessment opens without the 50%", () => {
     render(
       <EnrolledCourseWorkspace
         course={product({ productFormat: "community", communityEnabled: true })}
@@ -260,7 +260,7 @@ describe("Sala por tipo de produto", () => {
     expect(screen.queryByText(/Reviews open after you complete 50%/)).toBeNull();
   });
 
-  it("curso com aula segue cobrando os 50%", () => {
+  it("a course with a lesson still charges the 50%", () => {
     render(
       <EnrolledCourseWorkspace
         course={product({
