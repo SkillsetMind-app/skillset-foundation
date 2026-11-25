@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => {
 });
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => {} }) }));
 vi.mock("@/lib/theme/theme-provider", () => ({ useTheme: () => ({ resolvedTheme: "light" }) }));
-vi.mock("@stripe/connect-js", () => ({ loadConnectAndInitialize: mocks.initialize }));
+vi.mock("@stripe/connect-js/pure", () => ({ loadConnectAndInitialize: mocks.initialize }));
 vi.mock("@stripe/react-connect-js", () => ({
   ConnectComponentsProvider: ({ children }: { children: ReactNode }) => children,
   ConnectAccountOnboarding: () => <div data-testid="connect-onboarding-fixture" />,

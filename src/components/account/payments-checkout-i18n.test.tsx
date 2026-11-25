@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => {
   return { fetch: vi.fn(), provider: vi.fn(), failed: vi.fn(), refresh: vi.fn() };
 });
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
-vi.mock("@stripe/stripe-js", () => ({
+vi.mock("@stripe/stripe-js/pure", () => ({
   loadStripe: (_key: string, options: { locale: string }) => Promise.resolve(options),
 }));
 vi.mock("@stripe/react-stripe-js", () => ({

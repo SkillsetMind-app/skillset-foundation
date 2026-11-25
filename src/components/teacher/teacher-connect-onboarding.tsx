@@ -5,10 +5,10 @@ import {
   ConnectAccountOnboarding,
   ConnectComponentsProvider,
 } from "@stripe/react-connect-js";
-import {
-  loadConnectAndInitialize,
-  type StripeConnectInstance,
-} from "@stripe/connect-js";
+import type { StripeConnectInstance } from "@stripe/connect-js";
+// "/pure": the plain entry injects Connect.js on import. Here it is fetched
+// by loadConnectAndInitialize, after the account session is known to exist.
+import { loadConnectAndInitialize } from "@stripe/connect-js/pure";
 import { useEffect, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";

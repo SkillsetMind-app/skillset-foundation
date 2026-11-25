@@ -13,9 +13,9 @@ const mocks = vi.hoisted(() => {
   return { fetch: vi.fn(), hosted: vi.fn(), load: vi.fn() };
 });
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => {} }) }));
-vi.mock("@stripe/stripe-js", () => ({ loadStripe: mocks.load }));
+vi.mock("@stripe/stripe-js/pure", () => ({ loadStripe: mocks.load }));
 vi.mock("@stripe/react-stripe-js", () => ({ EmbeddedCheckout: () => null, EmbeddedCheckoutProvider: () => null }));
-vi.mock("@stripe/connect-js", () => ({ loadConnectAndInitialize: mocks.load }));
+vi.mock("@stripe/connect-js/pure", () => ({ loadConnectAndInitialize: mocks.load }));
 vi.mock("@stripe/react-connect-js", () => ({ ConnectAccountOnboarding: () => null, ConnectComponentsProvider: () => null }));
 vi.mock("@/lib/theme/theme-provider", () => ({ useTheme: () => ({ resolvedTheme: "light" }) }));
 vi.mock("@/lib/payments/connect", async (original) => ({ ...await original<object>(), startTeacherStripeOnboarding: mocks.hosted }));

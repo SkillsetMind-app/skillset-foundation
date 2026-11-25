@@ -5,7 +5,10 @@ import {
   EmbeddedCheckout,
   EmbeddedCheckoutProvider,
 } from "@stripe/react-stripe-js";
-import { loadStripe, type Stripe } from "@stripe/stripe-js";
+import type { Stripe } from "@stripe/stripe-js";
+// "/pure": Stripe.js is fetched when the checkout renders, not when this file
+// is imported (see embedded-checkout-panel.tsx).
+import { loadStripe } from "@stripe/stripe-js/pure";
 import { useEffect, useMemo, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";

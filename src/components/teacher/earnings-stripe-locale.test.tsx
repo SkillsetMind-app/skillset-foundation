@@ -29,7 +29,7 @@ vi.mock("@/lib/payments/connect", () => ({
   startTeacherStripeOnboarding: () => Promise.resolve({ url: "" }),
 }));
 
-vi.mock("@stripe/connect-js", () => ({
+vi.mock("@stripe/connect-js/pure", () => ({
   loadConnectAndInitialize: (params: Record<string, unknown>) => {
     mocks.initialized = true;
     mocks.locale = params.locale;
