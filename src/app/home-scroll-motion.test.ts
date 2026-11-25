@@ -24,7 +24,7 @@ function blockRange(opener: string, from = 0): [number, number] {
   return [start, end];
 }
 
-const sectionStart = css.indexOf("Home: coreografia de rolagem");
+const sectionStart = css.indexOf("Home: scroll choreography");
 const [mediaStart, mediaEnd] = blockRange("@media (prefers-reduced-motion: no-preference) {", sectionStart);
 const [supportsStart, supportsEnd] = blockRange(
   "@supports (animation-timeline: view()) and (animation-range: entry 0% cover 30%) and (view-timeline: --x block) {",
@@ -430,7 +430,7 @@ describe("home: cenas do computador", () => {
   // no computador, num bloco de 1024px depois de todas as outras regras. No
   // celular e no tablet nada delas anda.
   it("fotos da home: movimento só no computador, e a foto final assenta antes do título", () => {
-    const [start, end] = blockRange("@media (min-width: 1024px) {", css.indexOf("12. Fotos da home"));
+    const [start, end] = blockRange("@media (min-width: 1024px) {", css.indexOf("12. Home photos"));
     expect(start).toBeGreaterThan(scenesEnd);
     expect(end).toBeLessThan(supportsEnd);
     for (const needle of [/\.home-who/g, /\.home-creators__photo/g]) {
