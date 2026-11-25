@@ -44,15 +44,15 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
   >(null);
   const [message, setMessage] = useState("");
   const [copied, setCopied] = useState(false);
-  // Remover o segundo fator é irreversível sem refazer o cadastro inteiro, e o
-  // controle era um link de ~16px sem confirmação nenhuma — menos protegido que
-  // "Send change confirmation", que só dispara um e-mail. Um clique errado
-  // deixava a conta com senha apenas, em silêncio. Confirmação em dois passos,
-  // inline: window.confirm trava a aba e é ignorável por hábito.
+  // Removing the second factor is irreversible without redoing the whole signup, and the
+  // control was a ~16px link with no confirmation at all — less protected than
+  // "Send change confirmation", which only fires an email. One wrong click
+  // left the account with a password only, silently. Two-step confirmation,
+  // inline: window.confirm freezes the tab and is ignorable out of habit.
   const [confirmingDisable, setConfirmingDisable] = useState<string | null>(null);
-  // A ativação abre numa janela própria: QR, chave e código, sem o resto da
-  // página competindo. Foco preso nela; Esc e Cancelar fecham; ao fechar o
-  // foco volta ao botão que abriu (ou ao cartão, se a 2FA acabou de ligar).
+  // Activation opens in its own dialog: QR, key and code, without the rest of the
+  // page competing. Focus trapped in it; Esc and Cancel close it; on close the
+  // focus returns to the button that opened it (or to the card, if 2FA was just turned on).
   const dialogRef = useRef<HTMLDivElement>(null);
   const setupButtonRef = useRef<HTMLButtonElement>(null);
   const sectionRef = useRef<HTMLDivElement>(null);
@@ -69,9 +69,9 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
   useEffect(() => {
     if (!dialogOpen) {
       if (wasOpen.current) {
-        // O botão que abriu ficou desabilitado enquanto preparava, e alguns
-        // navegadores tiram o foco de um botão desabilitado — então o retorno
-        // é explícito, depois da restauração do useModalFocus.
+        // The button that opened it stayed disabled while preparing, and some
+        // browsers drop the focus from a disabled button — so the return
+        // is explicit, after useModalFocus restores.
         (setupButtonRef.current ?? sectionRef.current)?.focus();
       }
       wasOpen.current = false;
@@ -241,8 +241,8 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                 </p>
               </div>
               {confirmingDisable === factor.uid ? (
-                // Botões do sistema, com 44px: "Yes, turn off" era um botão
-                // feito à mão de 32px e os outros dois, texto de 32px.
+                // System buttons, 44px: "Yes, turn off" was a handmade 32px button
+                // and the other two, 32px text.
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="text-xs text-[var(--color-ink-soft)]">
                     {t("accountSecurity.mfa.disableConfirm")}
@@ -297,7 +297,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
       )}
 
       {setup && !isEnrolled ? (
-        // p-4 no celular: sem ele a janela encostava nas duas bordas da tela.
+        // p-4 on the phone: without it the dialog touched both edges of the screen.
         <div className="dialog-backdrop fixed inset-0 z-[70] flex items-center justify-center p-4 sm:p-6">
           <div
             ref={dialogRef}
@@ -307,8 +307,8 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
             aria-labelledby="totp-setup-title"
             className="dialog-panel modal-panel modal-panel-scroll relative p-6 outline-none"
           >
-            {/* O X é o mesmo Cancelar do rodapé, e some enquanto ele trava
-                (conferindo o código). */}
+            {/* The X is the same Cancel from the footer, and disappears while it locks
+                (checking the code). */}
             {busy ? null : (
               <button
                 type="button"
@@ -355,9 +355,9 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
             </ol>
 
             {setup.qrCode ? (
-              // SVG do Supabase via <img>: num <img> o SVG não roda script, e a
-              // CSP já aceita data: em img-src. Fundo branco fixo para o leitor
-              // do celular achar o contraste.
+              // Supabase SVG via <img>: in an <img> the SVG does not run script, and the
+              // CSP already accepts data: in img-src. Fixed white background so the
+              // phone's scanner finds the contrast.
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={setup.qrCode}
@@ -410,7 +410,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
               }}
             >
               <label className="grid gap-1 text-sm">
-                {/* Rótulo da casa (14px, em frase); era 10px em caixa alta. */}
+                {/* The app's standard label (14px, sentence case); it was 10px uppercase. */}
                 <span className="font-semibold text-[var(--color-ink)]">
                   {t("accountSecurity.mfa.code")}
                 </span>

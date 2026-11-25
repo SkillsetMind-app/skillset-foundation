@@ -11,7 +11,7 @@ import {
 
 // F-03, stage 0: while the session resolves, the login guard waits with the
 // shape of the PlatformShell on the routes that opensInPlatformShell accepts. Source
-// read, as in avisos-esperas-restantes.test.tsx: each protected page of the
+// read, as in remaining-notices-and-loading-states.test.tsx: each protected page of the
 // five areas has to open in the PlatformShell, or be in the outside list
 // (OTHER_SHELL_PREFIXES). A new page with another shell breaks here, instead
 // of waiting with a shape that is not its own.

@@ -3,11 +3,11 @@
 import { ChevronDown } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 
-// Um módulo do currículo da página de venda, que abre e fecha. Botão com
-// aria-expanded DENTRO do título (o padrão de sanfona), e não <details>: o
-// Safari com VoiceOver achata o conteúdo do <summary>, e quem navega por
-// títulos perdia os módulos. O desenho é o mesmo de antes: nome, aulas e
-// duração na linha, seta que gira.
+// A module of the sales page curriculum, which opens and closes. A button with
+// aria-expanded INSIDE the heading (the accordion pattern), and not <details>:
+// Safari with VoiceOver flattens the <summary> content, and people who navigate by
+// headings lost the modules. The design is the same as before: name, lessons and
+// duration on the line, an arrow that rotates.
 export function CourseModuleDisclosure({
   title,
   meta,
@@ -16,7 +16,7 @@ export function CourseModuleDisclosure({
   children,
 }: {
   title: string;
-  /** "3 lessons · 25 min": o que o módulo tem, visível mesmo fechado. */
+  /** "3 lessons · 25 min": what the module has, visible even when closed. */
   meta: string;
   defaultOpen?: boolean;
   headingLevel?: 2 | 3;
@@ -37,8 +37,8 @@ export function CourseModuleDisclosure({
           className="grid min-h-14 w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 rounded-lg px-4 py-3 text-left"
         >
           <span className="text-base font-bold text-[var(--color-ink)]">{title}</span>
-          {/* O espaço não aparece na grade, mas separa nome e dados no nome
-              lido pelo leitor de tela. */}
+          {/* The space does not show in the grid, but it separates name and data in the name
+              read by the screen reader. */}
           {" "}
           <span className="mt-0.5 text-xs font-normal text-[var(--color-ink-soft)]">{meta}</span>
           <ChevronDown
@@ -49,7 +49,7 @@ export function CourseModuleDisclosure({
           />
         </button>
       </Heading>
-      {/* Fechado, as aulas saem da tela e do leitor de tela, como num <details>. */}
+      {/* When closed, the lessons leave the screen and the screen reader, as in a <details>. */}
       <div id={panelId} hidden={!open}>
         {children}
       </div>

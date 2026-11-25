@@ -30,9 +30,9 @@ function deliver(rows = cases) { act(() => mocks.subscribe.mock.calls[0][0](rows
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // Só o Date é falso: o confirmar ignora cliques nos primeiros CONFIRM_GUARD_MS.
+  // Only Date is fake: confirm ignores clicks in the first CONFIRM_GUARD_MS.
   vi.useFakeTimers({ toFake: ["Date"] });
-  // jsdom não tem showModal/close; o mesmo arranjo do teste da janela de conta.
+  // jsdom has no showModal/close; the same setup as the account dialog test.
   HTMLDialogElement.prototype.showModal = function showModal() { this.setAttribute("open", ""); };
   HTMLDialogElement.prototype.close = function close() { this.removeAttribute("open"); this.dispatchEvent(new Event("close")); };
   mocks.subscribe.mockImplementation(() => vi.fn());
@@ -137,7 +137,7 @@ describe("verification queue search, states and language", () => {
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
     const label = { approved: "Aprobar", needs_changes: "Solicitar cambios", rejected: "Rechazar" }[decision];
     fireEvent.click(screen.getByRole("button", { name: label }));
-    // Recusar pergunta antes e só grava depois da confirmação na janela.
+    // Rejecting asks first and only saves after confirmation in the dialog.
     if (decision === "rejected") {
       expect(mocks.review).not.toHaveBeenCalled();
       vi.advanceTimersByTime(CONFIRM_GUARD_MS);
@@ -174,11 +174,11 @@ describe("verification queue search, states and language", () => {
     expect(screen.getByRole("heading", { name: "Ana Rivera" })).toBeInTheDocument();
     expect(screen.queryByRole("status")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    // Só o botão apertado gira; os outros travam e mantêm o nome (I-08).
+    // Only the pressed button spins; the others lock and keep their name (I-08).
     expect(screen.getByRole("button", { name: "Aprobar" })).toHaveAttribute("aria-busy", "true");
     for (const name of ["Aprobar", "Solicitar cambios", "Rechazar"]) expect(screen.getByRole("button", { name })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Rechazar" })).not.toHaveAttribute("aria-busy");
-    // O lugar do aviso já existe antes do resultado: ele entra sem empurrar a lista (I-17).
+    // The notice place already exists before the result: it enters without pushing the list (I-17).
     const slot = document.querySelector("[data-result-slot]")!;
     expect(slot).toHaveClass("min-h-[98px]", "min-[400px]:min-h-[74px]", "sm:min-h-[50px]");
     expect(slot).toBeEmptyDOMElement();

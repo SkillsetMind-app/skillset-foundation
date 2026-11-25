@@ -20,9 +20,9 @@ const invitation: PlatformInvite = {
   created_at: "2026-09-09T00:00:00Z", expires_at: "2099-09-09T00:00:00Z", accepted_at: null, revoked_at: null,
 };
 
-// Revogar e mexer na isenção perguntam na janela da plataforma (não mais no
-// window.confirm). O jsdom não tem showModal/close: o stub faz o mínimo que o
-// navegador faz.
+// Revoking and changing the exemption ask in the platform dialog (no longer in
+// window.confirm). jsdom has no showModal/close: the stub does the minimum the
+// browser does.
 const originalShow = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal");
 const originalClose = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "close");
 
@@ -44,9 +44,9 @@ afterEach(() => {
   else Reflect.deleteProperty(HTMLDialogElement.prototype, "close");
 });
 
-// Responde a pergunta aberta. Pede o Date falso (vi.useFakeTimers({ toFake:
-// ["Date"] }) no começo do teste): o confirmar ignora cliques nos primeiros
-// CONFIRM_GUARD_MS, contra o toque duplo.
+// Answers the open question. Needs the fake Date (vi.useFakeTimers({ toFake:
+// ["Date"] }) at the start of the test): confirm ignores clicks in the first
+// CONFIRM_GUARD_MS, against double taps.
 function answer(button: string) {
   const dialog = screen.getByRole("dialog");
   vi.advanceTimersByTime(CONFIRM_GUARD_MS);
@@ -59,8 +59,8 @@ function fill(level: string) {
 }
 
 describe("Platform invitations", () => {
-  // A pele padrão dos campos (I-14) traz o par de cores do tema claro e do
-  // escuro (globals.css, `.field-input` e `[data-theme="dark"] .field-input`).
+  // The default skin of the fields (I-14) carries the pair of colors for the light and
+  // dark themes (globals.css, `.field-input` and `[data-theme="dark"] .field-input`).
   it("uses the platform field skin for the email and access-level fields", async () => {
     render(<PlatformInviteManager />);
     await screen.findByText("No invitations yet.");
@@ -161,14 +161,14 @@ describe("Platform invitations", () => {
       expect(within(row).getByRole("button", { name: "Resend" })).toBeDisabled();
       expect(within(row).getByRole("button", { name: "Revoke" })).toBeDisabled();
     }
-    // (a) a frase de sempre, na janela; (b) desistir não revoga.
+    // (a) the usual sentence, in the dialog; (b) giving up does not revoke.
     fireEvent.click(within(rows[0]).getByRole("button", { name: "Revoke" }));
     expect(screen.getByRole("dialog", { name: "Revoke this invitation?" }))
       .toHaveTextContent("Revoke the invitation for person@example.com? This link will no longer grant access.");
     answer("Cancel");
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(mocks.revokePlatformInvite).not.toHaveBeenCalled();
-    // (c) confirmar revoga uma vez, o mesmo convite.
+    // (c) confirming revokes once, the same invite.
     fireEvent.click(within(rows[0]).getByRole("button", { name: "Revoke" }));
     answer("Revoke invitation");
     await waitFor(() => expect(within(rows[0]).getByRole("button", { name: "Resend" })).toBeDisabled());

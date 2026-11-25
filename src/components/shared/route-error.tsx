@@ -7,24 +7,24 @@ import { captureException } from "@/lib/posthog/client";
 
 export type RouteErrorProps = {
   error: Error & { digest?: string };
-  /** Só limpa o erro e redesenha com o que o navegador já tem. */
+  /** Only clears the error and redraws with what the browser already has. */
   reset: () => void;
-  /** Recarrega os dados da rota e então limpa o erro (Next 16.4+). */
+  /** Reloads the route's data and then clears the error (Next 16.4+). */
   retry?: () => void;
 };
 
 /**
- * Cartão de erro de uma ÁREA (/teach, /learn). Sem ele, uma página do estúdio
- * que quebrava caía no erro da raiz, cujo "Go home" leva ao site público: o
- * professor saía do produto para se recuperar de um erro dentro dele. Aqui o
- * botão volta ao início da própria área. Mesmo desenho de `app/error.tsx`.
+ * Error card for an AREA (/teach, /learn). Without it, a studio page
+ * that broke fell into the root error, whose "Go home" leads to the public site: the
+ * teacher left the product to recover from an error inside it. Here the
+ * button goes back to the start of the area itself. Same design as `app/error.tsx`.
  *
- * Dois cuidados para os botões funcionarem de verdade:
- * - "Try again" usa `retry`, que busca os dados de novo. Só `reset` redesenha
- *   com o mesmo resultado do servidor, e o erro volta igual.
- * - "Go home" é um <a> comum, com recarga completa. A fronteira de erro só se
- *   desfaz quando o endereço muda; com <Link>, quem já está em /teach
- *   clicaria e nada aconteceria.
+ * Two cares so the buttons really work:
+ * - "Try again" uses `retry`, which fetches the data again. Only `reset` redraws
+ *   with the same server result, and the error comes back the same.
+ * - "Go home" is a plain <a>, with a full reload. The error boundary only
+ *   resets when the address changes; with <Link>, someone already on /teach
+ *   would click and nothing would happen.
  */
 export function RouteError({
   error,
@@ -35,7 +35,7 @@ export function RouteError({
 }: RouteErrorProps & {
   /** Início da área (ex.: "/teach"). */
   homeHref: string;
-  /** Nome que identifica a área no registro do erro. */
+  /** Name that identifies the area in the error log. */
   boundary: string;
 }) {
   const { t } = useTranslation();
@@ -59,7 +59,7 @@ export function RouteError({
           <button type="button" onClick={retry ?? reset} className="button-solid px-4 py-2.5 text-sm">
             {t("appErrors.retry")}
           </button>
-          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- recarga completa de propósito: a fronteira de erro só se desfaz quando o endereço muda, e <Link> para a mesma página não mudaria nada */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- full reload on purpose: the error boundary only resets when the address changes, and <Link> to the same page would change nothing */}
           <a href={homeHref} className="button-outline px-4 py-2.5 text-sm">
             {t("appErrors.home")}
           </a>

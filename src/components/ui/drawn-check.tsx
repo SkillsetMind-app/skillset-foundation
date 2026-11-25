@@ -3,24 +3,24 @@ import { useState } from "react";
 import { cn } from "@/lib/cn";
 
 /**
- * O check e o selo de marco do catálogo de movimento, fora de spot-art.tsx:
- * a sala do aluno importa só isto, sem arrastar as cinco cenas para o chunk
- * dela.
+ * The check and the milestone seal from the motion catalog, kept out of spot-art.tsx:
+ * the learner room imports only this, without dragging the five scenes into its
+ * chunk.
  *
- * Os dois só se mexem com `animate`, e quem passa `animate` é a MUDANÇA (ver
- * useJustDone): abrir a tela com tudo pronto não vira festa.
+ * Both only move with `animate`, and what passes `animate` is the CHANGE (see
+ * useJustDone): opening the screen with everything done is not a celebration.
  */
 
 const empty: ReadonlySet<string> = new Set();
 
 /**
- * Os ids que viraram "feito" com a tela aberta. A primeira leitura com
- * `ready` é a linha de base: o que já estava feito ao abrir não conta, nem o
- * que só chegou atrasado de uma leitura (por isso o `ready`). Desfazer e
- * refazer conta de novo.
+ * The ids that became "done" with the screen open. The first read with
+ * `ready` is the baseline: what was already done on open does not count, nor does
+ * what only arrived late from a read (hence the `ready`). Undoing and
+ * redoing counts again.
  *
- * Guardar a linha de base no estado durante o render é o padrão do React para
- * "valor do render anterior"; o setState só roda quando a lista muda.
+ * Keeping the baseline in state during render is React's pattern for
+ * "value from the previous render"; setState only runs when the list changes.
  */
 export function useJustDone(doneIds: readonly string[], ready = true): ReadonlySet<string> {
   const key = doneIds.join("\n");
@@ -38,9 +38,9 @@ export function useJustDone(doneIds: readonly string[], ready = true): ReadonlyS
 }
 
 /**
- * Check que se desenha (catálogo de movimento, item 5). O mesmo traço do
- * `Check` do lucide; `pathLength=1` deixa o CSS animar o stroke-dashoffset sem
- * medir o caminho. Sem `animate`, ou com "reduzir movimento", nasce inteiro.
+ * A check that draws itself (motion catalog, item 5). The same stroke as lucide's
+ * `Check`; `pathLength=1` lets the CSS animate stroke-dashoffset without
+ * measuring the path. Without `animate`, or with "reduce motion", it is born whole.
  */
 export function DrawnCheck({
   size = 15,
@@ -61,8 +61,8 @@ export function DrawnCheck({
       aria-hidden="true"
       focusable="false"
       data-drawn-check=""
-      // `drawn-check` é a classe que anima: só entra quando o item acabou de
-      // ficar pronto.
+      // `drawn-check` is the class that animates: it only goes in when the item just
+      // became done.
       className={cn("shrink-0", animate && "drawn-check", className)}
       fill="none"
       stroke="currentColor"
@@ -76,9 +76,9 @@ export function DrawnCheck({
 }
 
 /**
- * O selo de marco (barra em 100%): a geometria do VerifiedSeal, em latão com
- * check marinho (6,67:1). Decorativo: o número ao lado já diz "100%". Com
- * `animate`, cresce de 0,6 para 1 com um leve passar do ponto.
+ * The milestone seal (bar at 100%): the geometry of VerifiedSeal, in brass with a
+ * navy check (6.67:1). Decorative: the number beside it already says "100%". With
+ * `animate`, it grows from 0.6 to 1 with a slight overshoot.
  */
 export function MilestoneSeal({ animate = false, className }: { animate?: boolean; className?: string }) {
   return (

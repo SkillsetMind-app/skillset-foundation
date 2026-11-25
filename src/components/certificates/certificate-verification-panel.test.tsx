@@ -39,8 +39,8 @@ describe("certificate verification panel", () => {
     expect(screen.queryByRole("heading", { name: missing })).toBeNull();
   });
 
-  // Loja vazia não ganha atalho; "voltar" segue.
-  it.each([[true, 1], [false, 0]])("leva à loja só quando há curso real (%s)", (value, count) => {
+  // An empty store gets no shortcut; "back" stays.
+  it.each([[true, 1], [false, 0]])("goes to the store only when there is a real course (%s)", (value, count) => {
     render(
       <I18nProvider initialLocale="en">
         <RealCoursesProvider value={value}><CertificateVerificationPanel /></RealCoursesProvider>

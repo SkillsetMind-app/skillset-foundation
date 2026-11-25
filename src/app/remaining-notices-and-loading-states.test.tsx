@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import { CardListSkeleton } from "@/components/shared/page-skeletons";
 
-// Source reads, as in avisos-professor-conta.test.ts: jsdom does not paint
+// Source reads, as in teacher-account-notices.test.ts: jsdom does not paint
 // anything, so what can be proven is that the house piece is in place and the hand-made
 // one did not come back.
 const read = (path: string) => readFileSync(join(process.cwd(), "src", path), "utf8");

@@ -69,9 +69,9 @@ export function PlatformInviteManager() {
     }
   }
 
-  // O revoke chega aqui só pelo confirmar da janela (antes, o OK do
-  // window.confirm). O botão que abre a pergunta já fica travado nos mesmos
-  // casos da trava abaixo.
+  // The revoke arrives here only through the dialog's confirm (before, the OK of
+  // window.confirm). The button that opens the question is already locked in the same
+  // cases as the guard below.
   async function update(invite: PlatformInvite, action: "resend" | "revoke", clickedAt: number) {
     if (busy || invite.accepted_at || invite.revoked_at) return;
     if (action === "resend" && !(Date.parse(invite.expires_at) > clickedAt)) {

@@ -31,7 +31,7 @@ afterEach(cleanup);
 
 describe("residual teacher routes with real server translation and I18nProvider", () => {
   it("requires all residual strings in both real dictionaries without fragment injection", () => {
-    // The coupons sign became a redirect (rotas-removidas-redirecionam.test.ts).
+    // The coupons sign became a redirect (removed-routes-redirect.test.ts).
     for (const key of ["manageLoading"]) {
       const path = `teacherRouteResidual.${key}`;
       const english = translate(getDictionary("en"), path);

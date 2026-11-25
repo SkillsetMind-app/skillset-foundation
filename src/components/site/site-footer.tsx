@@ -49,18 +49,18 @@ const footerColumns = [
   },
 ] as const;
 
-// Vitrine fechada (menos de 12 cursos de 5 professores), loja e diretório de
-// instrutores saem do rodapé, pela mesma regra do menu e da home.
+// Storefront closed (fewer than 12 courses from 5 teachers): the store and the instructor
+// directory leave the footer, by the same rule as the menu and the home.
 const hiddenWithoutRealCourses = new Set(["/courses", "/instructors"]);
 
 export async function SiteFooter() {
-  // Mesma leitura da home: anônima, em cache de 5 min, e falha conta como vazia.
+  // Same read as the home: anonymous, cached for 5 min, and a failure counts as empty.
   const [{ t }, hasRealCourses] = await Promise.all([getServerTranslation(), isMarketplaceOpen()]);
 
   return (
-    // Faixa de largura total com filete no topo. Antes era um cartão com sombra
-    // dentro da página — um bloco que flutuava sobre o fundo e disputava
-    // atenção com o conteúdo, em vez de fechar a página.
+    // Full-width band with a hairline on top. It used to be a card with a shadow
+    // inside the page — a block that floated over the background and competed for
+    // attention with the content, instead of closing the page.
     <footer className="mt-16 w-full border-t border-[var(--color-line)]">
       <div className="mx-auto w-full max-w-7xl px-5 pb-10 pt-12 sm:px-8">
         <div className="grid gap-8 lg:grid-cols-[1fr_2fr]">
@@ -76,9 +76,9 @@ export async function SiteFooter() {
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
                   {t(column.titleKey)}
                 </p>
-                {/* No celular e no tablet cada link é uma linha de toque inteira
-                    (44 px); só no desktop, com mouse, a lista volta a ser
-                    compacta. A partir de sm ela caía para ~20 px no tablet. */}
+                {/* On phones and tablets each link is a full touch row
+                    (44 px); only on desktop, with a mouse, does the list go back to being
+                    compact. From sm up it dropped to ~20 px on tablets. */}
                 <div className="mt-2 grid lg:mt-3 lg:gap-2">
                   {column.links.filter(([, href]) => hasRealCourses || !hiddenWithoutRealCourses.has(href)).map(([labelKey, href]) => (
                     <Link

@@ -73,7 +73,7 @@ describe("profile settings locale", () => {
     let reject!: (reason: Error) => void;
     mocks.getUserProfile.mockReturnValue(new Promise((_, fail) => { reject = fail; }));
     renderProfile();
-    // F-03: o título já entra; só o formulário espera, em esqueleto.
+    // F-03: the title already shows; only the form waits, as a skeleton.
     expect(screen.getByRole("heading", { name: "Ajustes del perfil" })).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("Cargando los ajustes del perfil...");
     changeLanguage();
@@ -122,8 +122,8 @@ describe("profile settings locale", () => {
     expect(screen.getByPlaceholderText("e.g. Professor at University of S\u00e3o Paulo")).toHaveValue("  My English credential $&  ");
     expect(screen.getByRole("combobox")).toHaveValue("Pacific/Auckland");
     expect(screen.getByRole("button", { name: "Team training" })).toHaveAttribute("aria-pressed", "true");
-    // F-04: os dois rótulos moram na mesma célula, então o botão não muda de
-    // largura ao salvar; o nome é sempre o rótulo à vista.
+    // F-04: the two labels live in the same cell, so the button does not change
+    // width when saving; the name is always the visible label.
     const idleSave = screen.getByRole("button", { name: "Save profile" });
     expect(within(idleSave).getByText("Saving...")).toHaveAttribute("aria-hidden", "true");
     expect(within(idleSave).getByText("Save profile")).not.toHaveAttribute("aria-hidden");
@@ -139,8 +139,8 @@ describe("profile settings locale", () => {
     expect(screen.getByText("Perfil actualizado.")).toBeInTheDocument();
     changeLanguage();
     expect(screen.getByText("Profile updated.")).toBeInTheDocument();
-    // F-05: o "salvo" é anunciado e mora DEPOIS do botão, na mesma linha; acima
-    // dele, nascia e empurrava o botão recém-clicado para baixo.
+    // F-05: the "saved" is announced and lives AFTER the button, on the same line; above
+    // it, it appeared and pushed the just-clicked button down.
     const saved = screen.getByRole("status");
     expect(saved).toHaveTextContent("Profile updated.");
     const save = screen.getByRole("button", { name: "Save profile" });
@@ -154,8 +154,8 @@ describe("profile settings locale", () => {
       goals: ["teach_online", "career_growth", "skill_certification", "build_community", "live_mentorship", "business_training"],
     });
 
-    // Editar de novo tira o "salvo": a frase não pode valer para texto que já
-    // não é o gravado. Nada é gravado por isso.
+    // Editing again removes the "saved": the sentence cannot hold for text that
+    // is no longer the saved one. Nothing is saved because of it.
     fireEvent.change(screen.getByLabelText("Public name"), { target: { value: "Ana again" } });
     expect(screen.queryByText("Profile updated.")).toBeNull();
     expect(screen.queryByRole("status")).toBeNull();
@@ -271,7 +271,7 @@ describe.each([
     expect(input.value).toBe("");
     changeLanguage();
     expect(screen.getByLabelText(enLabel)).toBe(input);
-    // F-20: o rótulo do botão não repete o andamento; só a nota o diz.
+    // F-20: the button label does not repeat the progress; only the note says it.
     expect(input.closest("label")).not.toHaveTextContent("Uploading");
     expect(screen.getByRole("status")).toHaveTextContent("Sending...");
     act(() => progress({ bytesTransferred: 1, totalBytes: 3, percent: 33, state: "running" }));
@@ -285,7 +285,7 @@ describe.each([
     expect(screen.getByText(success)).toBeInTheDocument();
     expect(input.closest("label")).toHaveTextContent(replace);
     expect(input).toBeEnabled();
-    // A nota de envio saiu; o único status que fica é o "salvo" ao lado do botão.
+    // The upload note is gone; the only status left is the "saved" next to the button.
     expect(screen.getByRole("status")).toHaveTextContent(success);
     if (upload === mocks.uploadTeacherSignature) {
       expect(screen.getByAltText("Tu firma para los certificados")).toHaveAttribute("src", "https://media.example.test/uploaded.png");

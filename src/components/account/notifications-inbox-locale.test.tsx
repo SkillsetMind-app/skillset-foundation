@@ -19,7 +19,7 @@ afterEach(cleanup);
 it("translates empty state and keeps notification preference destination", () => {
   mount();
   expect(screen.getByText("Aún no hay notificaciones")).toBeTruthy();
-  // F-08: a caixa vazia da casa, com um título só, h2 logo abaixo do h1.
+  // F-08: the app's standard empty inbox, with a single title, h2 right below the h1.
   expect(screen.getByRole("heading", { level: 2, name: "Aún no hay notificaciones" })).toBeTruthy();
   expect(screen.getByRole("tablist", { name: "Filtrar notificaciones" })).toBeTruthy();
   expect(screen.getByRole("link", { name: "Preferencias de notificaciones" }).getAttribute("href")).toBe("/account?tab=notifications");
@@ -27,7 +27,7 @@ it("translates empty state and keeps notification preference destination", () =>
 it("keeps authored notification text, unread ids and selection across language changes", async () => {
   mocks.rows = [{ id: "n-1", type: "community_reply", title: "Original $& title", body: "Author message", read: false }];
   mount();
-  // A contagem fica so na aba; o ponto da linha e lido como "Sin leer".
+  // The count stays only on the tab; the row dot is read as "Sin leer".
   expect(screen.queryByText("1 sin leer")).toBeNull();
   expect(screen.getByRole("img", { name: "Sin leer" })).toBeTruthy();
   fireEvent.click(screen.getByRole("tab", { name: "Sin leer (1)" }));

@@ -2,11 +2,11 @@
 
 import { createContext, useContext, type ReactNode } from "react";
 
-// A vitrine está aberta (12 cursos reais publicados de 5 professores)? Quem
-// decide é o servidor (isMarketplaceOpen, lido uma vez no layout raiz); as ilhas
-// cliente que levam à loja — barra, hero, vitrines de instrutor, verificação de
-// certificado — só leem daqui, sem buscar nada no navegador. Sem provedor vale
-// "não", a mesma resposta de uma leitura que falhou: a loja fica escondida.
+// Is the storefront open (12 real courses published by 5 teachers)? The server
+// decides (isMarketplaceOpen, read once in the root layout); the client
+// islands that lead to the store — bar, hero, instructor storefronts, certificate
+// verification — only read from here, fetching nothing in the browser. Without a provider the value is
+// "no", the same answer as a failed read: the store stays hidden.
 const RealCoursesContext = createContext(false);
 
 export function RealCoursesProvider({ value, children }: { value: boolean; children: ReactNode }) {

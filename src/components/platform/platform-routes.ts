@@ -1,44 +1,44 @@
-// As regras de página da PlatformShell, num lugar só. A casca de verdade
-// (platform-shell.tsx) e a espera da guarda de login (protected-surface.tsx)
-// leem daqui: a coluna da espera e a da página não têm como divergir. Sem
-// "use client" de propósito: funções puras, servem ao servidor e ao cliente.
+// The PlatformShell page rules, in one place. The real shell
+// (platform-shell.tsx) and the login guard's wait screen (protected-surface.tsx)
+// both read from here: the wait column and the page column cannot diverge. Without
+// "use client" on purpose: pure functions, they serve both server and client.
 
 function under(pathname: string, prefix: string) {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
 }
 
-/** As áreas logadas cujas páginas abrem dentro da PlatformShell. */
+/** The logged-in areas whose pages open inside the PlatformShell. */
 export const PLATFORM_SHELL_AREAS = ["/teach", "/learn", "/account", "/ops", "/support"] as const;
 
 /**
- * Dentro dessas áreas, as telas com outra casca: a sala de aula e a área de
- * membros (MemberAreaShell), a prévia do curso no construtor (MemberAreaShell)
- * e o certificado para imprimir (sem casca). src/app/espera-pela-casca.test.ts
- * confere, página a página, que só estas ficam fora.
+ * Inside those areas, the screens with another shell: the classroom and the members
+ * area (MemberAreaShell), the course preview in the builder (MemberAreaShell)
+ * and the printable certificate (no shell). src/app/espera-pela-casca.test.ts
+ * checks, page by page, that only these stay outside.
  */
 export const OTHER_SHELL_PREFIXES = ["/learn/courses/", "/learn/areas/", "/learn/credentials/", "/teach/builder/"] as const;
 
-/** A página abre dentro da PlatformShell? Fora da lista, não (na dúvida, não). */
+/** Does the page open inside the PlatformShell? Outside the list, no (when in doubt, no). */
 export function opensInPlatformShell(pathname: string) {
   return PLATFORM_SHELL_AREAS.some((area) => under(pathname, area))
     && !OTHER_SHELL_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 
 /**
- * Estúdio, conta e listas do aluno: uma coluna de no máximo 1280px, centrada.
- * Num monitor de 1920px a lista de vendas tinha o título na borda esquerda e o
- * valor 1500px depois.
+ * Studio, account and learner lists: a column of at most 1280px, centered.
+ * On a 1920px monitor the sales list had the title at the left edge and the
+ * value 1500px later.
  */
 export function isFramedPlatformRoute(pathname: string) {
   const teachRoute = under(pathname, "/teach");
-  // O construtor usa a largura toda, decidido pelo endereco tambem: pela
-  // classe do editor carregado, o esqueleto (e o erro, e a tela sem curso)
-  // saia na coluna de 1280px e a pagina pulava para a largura toda depois.
+  // The builder uses the full width, decided by the address too: by the
+  // loaded editor's class, the skeleton (and the error, and the screen with no course)
+  // came out in the 1280px column and the page then jumped to full width.
   const builderRoute = under(pathname, "/teach/builder");
-  // A mesma coluna na conta (Ganhos abre pela barra do professor) e nas listas
-  // do aluno. Fora dela, de proposito: a sala de aula (largura toda por
-  // desenho), a area de membros e as telas de pagar plano (checkout, volta do
-  // checkout e a escolha do plano), que ficam como estavam.
+  // The same column in the account (Earnings opens from the teacher bar) and in the learner
+  // lists. Outside it, on purpose: the classroom (full width by
+  // design), the members area and the plan payment screens (checkout, return from
+  // checkout and the plan choice), which stay as they were.
   const learnListRoute = under(pathname, "/learn")
     && !pathname.startsWith("/learn/courses/") && !pathname.startsWith("/learn/areas/");
   const checkoutRoute = pathname.startsWith("/account/billing/upgrade")

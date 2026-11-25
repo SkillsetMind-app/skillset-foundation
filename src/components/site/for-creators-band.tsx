@@ -7,9 +7,9 @@ import { formatUsdWhole } from "@/data/platform";
 import { formatPlanCommission, publicPlans } from "@/data/plans";
 import { getServerTranslation } from "@/lib/i18n/server";
 
-// Server component: texto traduzido e uma foto, nenhum estado. Sai do bundle do
-// navegador; o que precisa do cliente aqui é o RevealSection, que continua
-// cliente e é montado como filho.
+// Server component: translated text and one photo, no state. It stays out of the
+// browser bundle; what needs the client here is RevealSection, which remains a
+// client component and is mounted as a child.
 export async function ForCreatorsBand() {
   const { t } = await getServerTranslation();
 
@@ -19,11 +19,11 @@ export async function ForCreatorsBand() {
     t("home.creators.bullet4"),
   ];
 
-  // A foto da faixa (feita por IA, pessoa que não existe) tem dois cortes: 3:4
-  // no celular, com o texto EMBAIXO dela (nunca letra branca sobre a foto no
-  // celular), e 12:5 do md para cima, com a parede vazia à esquerda para o
-  // título. <picture> com getImageProps: o navegador baixa só um dos dois, e
-  // preguiçoso (a faixa fica no fim da página; o LCP do topo não muda).
+  // The band photo (made by AI, a person who does not exist) has two crops: 3:4
+  // on phones, with the text BELOW it (never white letters over the photo on
+  // phones), and 12:5 from md up, with the empty wall on the left for the
+  // title. <picture> with getImageProps: the browser downloads only one of the
+  // two, and lazily (the band is at the end of the page; the top LCP does not change).
   const photoAlt = t("home.creators.photoAlt");
   const wide = getImageProps({ src: "/brand/home/home-cta-desktop.avif", alt: photoAlt, fill: true, sizes: "100vw" }).props;
   const tall = getImageProps({ src: "/brand/home/home-cta-mobile.avif", alt: photoAlt, fill: true, sizes: "100vw" }).props;
@@ -31,21 +31,21 @@ export async function ForCreatorsBand() {
   return (
     <section className="mx-auto w-full max-w-7xl px-5 py-16 sm:px-8 sm:py-20 lg:max-w-none lg:px-0 lg:py-24">
       <RevealSection className="home-creators">
-        {/* Celular e tablet: o cartão azul de sempre, com a foto no topo dele.
-            Do lg para cima a faixa vai de ponta a ponta: a foto 12:5 fica
-            atrás do título, que mora na parede vazia (metade esquerda), e os
-            planos e os três itens vêm logo abaixo da foto. */}
+        {/* Phone and tablet: the usual blue card, with the photo at the top of it.
+            From lg up the band runs edge to edge: the 12:5 photo sits
+            behind the title, which lives on the empty wall (left half), and the
+            plans and the three items come right below the photo. */}
         <div className="relative overflow-hidden rounded-lg bg-[var(--color-primary)] text-white shadow-[var(--shadow-strong)] [--focus-ring:#fff] lg:rounded-none lg:shadow-none">
           <div className="absolute inset-0 bg-gradient-to-br from-[#07172a] via-[#102944] to-[#1a365d]" />
           <div className="relative lg:flex lg:aspect-[12/5] lg:min-h-[28rem] lg:items-center">
-            {/* No lg a base da foto se dissolve no azul da faixa (máscara) e
-                um degradê escurece a parede atrás do texto. A pessoa fica no
-                terço direito: se a faixa ficar mais alta que 12:5, o corte sai
-                da parede (object-right). */}
+            {/* At lg the bottom of the photo dissolves into the band's blue (mask) and
+                a gradient darkens the wall behind the text. The person stays in the
+                right third: if the band gets taller than 12:5, the crop comes
+                off the wall (object-right). */}
             <div className="home-creators__photo relative aspect-[3/4] overflow-hidden md:aspect-[12/5] lg:absolute lg:inset-0 lg:aspect-auto lg:[mask-image:linear-gradient(to_bottom,#000_80%,transparent)]">
               <picture>
-                {/* 48rem, igual ao md do Tailwind: com fonte padrao maior no navegador,
-                    768px fixos traziam o corte largo para dentro do quadro 3:4. */}
+                {/* 48rem, same as Tailwind's md: with a larger default font in the browser,
+                    a fixed 768px brought the wide crop into the 3:4 frame. */}
                 <source media="(min-width: 48rem)" srcSet={wide.srcSet} sizes={wide.sizes} />
                 <img {...tall} alt={photoAlt} className="object-cover object-right" />
               </picture>
@@ -66,7 +66,7 @@ export async function ForCreatorsBand() {
                 <h2 className="display-title mt-3 text-[clamp(2.25rem,4.2vw,3.25rem)] leading-[1.05] text-white">
                   {t("home.creators.title")}
                 </h2>
-                {/* Alvo de 48px nos dois links (público de 55+). */}
+                {/* 48px target on both links (55+ audience). */}
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Link
                     href="/auth?mode=signup&path=teacher"
@@ -90,13 +90,13 @@ export async function ForCreatorsBand() {
               </div>
             </div>
           </div>
-          {/* Três colunas para os três itens do md para cima (a faixa ocupa a
-              largura toda): em duas, o terceiro ficava sozinho com meia
-              largura. Os planos ficam numa linha inteira acima deles. */}
+          {/* Three columns for the three items from md up (the band takes the
+              full width): with two, the third sat alone at half
+              width. The plans take a full row above them. */}
           <div className="relative z-10 px-6 pb-6 sm:px-8 sm:pb-8 lg:mx-auto lg:max-w-7xl lg:pb-12">
             <div className="grid gap-3 md:grid-cols-3">
-              {/* Os 3 planos com preço, mensal e anual, nas letras miúdas da
-                  home (decisão de 13/11/2026). */}
+              {/* The 3 plans with price, monthly and yearly, in the home's
+                  fine print (decision of 13/11/2026). */}
               <div className="home-creators__item rounded-lg border border-white/16 bg-white/10 p-4 text-sm leading-6 text-white/85 md:col-span-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/75">
                   {t("home.creators.plansLabel")}
@@ -120,10 +120,10 @@ export async function ForCreatorsBand() {
                 </ul>
                 <p className="mt-2 text-xs leading-5 text-white/70">{t("home.creators.plansNote")}</p>
               </div>
-              {/* Sem uma segunda entrada aqui dentro: a faixa inteira já entra
-                  de uma vez, e os itens pingavam um a um. Os três itens são o
-                  texto corrido da faixa: 17/18px, sem mudar o tom claro (a
-                  faixa é azul-marinho). Os planos ficam nas letras miúdas. */}
+              {/* No second entrance inside here: the whole band already enters
+                  at once, and the items used to drip in one by one. The three items are
+                  the running text of the band: 17/18px, without changing the light tone (the
+                  band is navy blue). The plans stay in the fine print. */}
               {trustBullets.map((bullet) => (
                 <div key={bullet} className="home-creators__item flex h-full items-start gap-3 rounded-lg border border-white/16 bg-white/10 p-4 text-[1.0625rem] leading-[1.6] text-white/85 md:text-lg">
                   <span

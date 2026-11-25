@@ -6,7 +6,7 @@ import { AccountSettingsHub } from "./account-settings-hub";
 
 const mocks = vi.hoisted(() => ({
   user: { uid: "creator-test" }, tab: "notifications", replace: vi.fn(), save: vi.fn(), export: vi.fn(), remove: vi.fn(),
-  // "data": o perfil chega na hora; "pending": ainda não chegou; "error": a leitura falhou.
+  // "data": the profile arrives right away; "pending": not here yet; "error": the read failed.
   profileMode: "data" as "data" | "pending" | "error",
   profile: { preferences: {} } as unknown,
   receive: (() => undefined) as (profile: unknown) => void,
@@ -31,7 +31,7 @@ function LocaleControl() {
   const { setLocale } = useTranslation();
   return <button onClick={() => setLocale("en")}>EN test</button>;
 }
-// "Eliminar cuenta" pergunta num <dialog>; o jsdom não tem showModal/close.
+// "Eliminar cuenta" asks in a <dialog>; jsdom has no showModal/close.
 const originalShow = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal");
 const originalClose = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "close");
 function stubDialog() {
@@ -53,17 +53,17 @@ describe("account settings locale", () => {
   beforeEach(() => { vi.clearAllMocks(); stubDialog(); mocks.tab = "notifications"; mocks.profileMode = "data"; mocks.profile = { preferences: {} }; mocks.save.mockResolvedValue(undefined); mocks.export.mockResolvedValue(undefined); mocks.remove.mockResolvedValue(undefined); });
   afterEach(() => { cleanup(); restoreDialog(); vi.useRealTimers(); });
 
-  it("antes do perfil chegar as chaves não mostram posição; depois entram já na escolha salva", () => {
+  it("before the profile arrives the switches show no position; afterwards they come in already on the saved choice", () => {
     mocks.profileMode = "pending";
     show();
-    // O texto já aparece, mas nenhuma chave com o padrão fingindo ser o salvo.
+    // The text already shows, but no switch with the default pretending to be the saved value.
     expect(screen.getByText("Actividad del curso")).toBeVisible();
     expect(screen.queryByRole("switch")).toBeNull();
     act(() => mocks.receive({ preferences: { notifications: { courseActivity: false } } }));
     expect(screen.getByRole("switch", { name: "Actividad del curso" })).toHaveAttribute("aria-checked", "false");
   });
 
-  it("se a leitura falha: erro com 'Intentar de nuevo' e nenhuma chave para gravar o padrão por cima", () => {
+  it("if the read fails: error with 'Intentar de nuevo' and no switch to write the default over the saved value", () => {
     mocks.profileMode = "error";
     show();
     expect(screen.getByRole("alert")).toHaveTextContent("No pudimos cargar tus preferencias guardadas.");
@@ -84,16 +84,16 @@ describe("account settings locale", () => {
     expect(screen.getByRole("switch", { name: "Actividad del curso" })).toBeEnabled();
     fireEvent.click(screen.getByRole("button", { name: /Privacidad y datos/ }));
     expect(mocks.replace).toHaveBeenCalledWith("/account?tab=privacy", { scroll: false });
-    // A linha inteira é a chave: o texto do rótulo e da descrição está dentro do alvo.
+    // The whole row is the switch: the label and description text are inside the target.
     const row = screen.getByRole("switch", { name: "Actividad del curso" });
     expect(row).toHaveTextContent("Reseñas, comentarios");
-    // O nome é só o rótulo; o que a chave faz é lido como descrição.
+    // The name is only the label; what the switch does is read as the description.
     expect(row).toHaveAccessibleDescription("Reseñas, comentarios, actividad de las lecciones y logros de los estudiantes.");
     fireEvent.click(row);
     expect(mocks.save).toHaveBeenCalledWith("creator-test", expect.objectContaining({ notifications: expect.objectContaining({ courseActivity: false }) }));
   });
 
-  it("diz Guardado na linha que mudou e some depois de 2s", async () => {
+  it("says Guardado on the row that changed and disappears after 2s", async () => {
     show();
     fireEvent.click(screen.getByRole("switch", { name: "Actividad del curso" }));
     const saved = await screen.findByRole("status");
@@ -108,7 +108,7 @@ describe("account settings locale", () => {
     fireEvent.click(screen.getByRole("switch", { name: "Actividad del curso" }));
     const failure = await screen.findByRole("alert");
     expect(failure).toHaveTextContent("No pudimos guardar el cambio. Revisa tu conexión e inténtalo de nuevo.");
-    // O erro fica embaixo da chave que falhou, não no topo do cartão.
+    // The error stays under the switch that failed, not at the top of the card.
     expect(failure.previousElementSibling).toBe(screen.getByRole("switch", { name: "Actividad del curso" }));
     fireEvent.click(screen.getByText("EN test"));
     expect(screen.getByText("We could not save that change. Check your connection and try again.")).toBeVisible();
@@ -124,17 +124,17 @@ describe("account settings locale", () => {
 
   it("requires the translated second confirmation before requesting deletion", async () => {
     mocks.tab = "privacy";
-    // Só o Date é falso: o confirmar ignora cliques nos primeiros 500ms.
+    // Only Date is fake: confirm ignores clicks in the first 500ms.
     vi.useFakeTimers({ toFake: ["Date"] });
     show();
     fireEvent.click(screen.getByRole("button", { name: "Eliminar cuenta" }));
     expect(mocks.remove).not.toHaveBeenCalled();
-    // A confirmação mora numa janela, não no lugar do primeiro botão: um
-    // clique duplo em "Eliminar cuenta" não pede mais a exclusão.
+    // The confirmation lives in a dialog, not in place of the first button: a
+    // double click on "Eliminar cuenta" no longer requests the deletion.
     expect(screen.getByRole("button", { name: "Eliminar cuenta" })).toBeInTheDocument();
     const dialog = screen.getByRole("dialog", { name: "¿Eliminar tu cuenta?" });
     expect(dialog).toHaveTextContent("Las solicitudes se gestionan manualmente");
-    // O 2º toque de um toque duplo chega colado na abertura e é descartado.
+    // The 2nd tap of a double tap arrives right on top of the opening and is discarded.
     fireEvent.click(within(dialog).getByRole("button", { name: "Confirmar solicitud de eliminación" }));
     expect(mocks.remove).not.toHaveBeenCalled();
     vi.advanceTimersByTime(CONFIRM_GUARD_MS);
@@ -146,7 +146,7 @@ describe("account settings locale", () => {
     expect(screen.getByText("Account deletion request received. SkillsetMind will process it within 30 days once the request is verified.")).toBeVisible();
   });
 
-  it("cancelar a exclusão fecha a janela sem pedir nada", () => {
+  it("canceling the deletion closes the dialog without requesting anything", () => {
     mocks.tab = "privacy";
     show();
     fireEvent.click(screen.getByRole("button", { name: "Eliminar cuenta" }));

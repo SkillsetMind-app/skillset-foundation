@@ -3,12 +3,12 @@
 import type { ReactNode } from "react";
 
 /**
- * O unico seletor segmentado do Studio (uma entre poucas opcoes, um filtro, nao
- * abas de secao). A home usa 3M/6M/12M/All; a pagina de relatorios usa
- * 7d/30d/90d/12M/All; Membros troca espacos/comunidades. Na area do aluno:
- * cursos em andamento/concluidos, filtros de credenciais e o ciclo de cobranca
- * dos planos. Mesma marcacao, mesmo estado pressionado. Abas que trocam de
- * secao sao o HorizontalTabs.
+ * The only segmented selector in the Studio (one among a few options, a filter, not
+ * section tabs). The home uses 3M/6M/12M/All; the reports page uses
+ * 7d/30d/90d/12M/All; Members switches spaces/communities. In the learner area:
+ * courses in progress/completed, credential filters and the plans' billing
+ * cycle. Same markup, same pressed state. Tabs that switch
+ * sections are HorizontalTabs.
  */
 export function PeriodTabs<Option extends string>({
   options,
@@ -22,11 +22,11 @@ export function PeriodTabs<Option extends string>({
   value: Option;
   onChange: (next: Option) => void;
   label: string;
-  // ReactNode, nao so string: o ciclo de cobranca mostra o desconto do anual
-  // num trecho menor dentro do proprio botao.
+  // ReactNode, not just string: the billing cycle shows the annual discount
+  // in a smaller run inside the button itself.
   renderLabel: (option: Option) => ReactNode;
-  // Quebra a linha em vez de rolar por dentro (opcoes com numero, que na
-  // tela estreita ficavam escondidas atras da rolagem). Padrao: uma linha.
+  // Wraps the line instead of scrolling inside (options with a number, which on a
+  // narrow screen were hidden behind the scroll). Default: one line.
   wrap?: boolean;
 }) {
   return (

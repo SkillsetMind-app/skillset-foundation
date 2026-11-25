@@ -73,9 +73,9 @@ describe("TOTP setup dialog", () => {
     expect(within(dialog).getByRole("link", { name: "open this setup link" })).toHaveAttribute("href", setup.otpauthUrl);
     expect(within(dialog).getByLabelText("Authenticator code")).toBeInTheDocument();
     expect(document.body.style.overflow).toBe("hidden");
-    // A linha do código fica como era: campo, Ativar logo ao lado (perto do
-    // campo, com o teclado numérico aberto) e Cancelar; só os botões sobem
-    // dos 12px para os 14px/44px da casa.
+    // The code row stays as it was: field, Activate right next to it (near the
+    // field, with the numeric keyboard open) and Cancel; only the buttons go up
+    // from 12px to the app's standard 14px/44px.
     const field = within(dialog).getByLabelText("Authenticator code");
     const cancel = within(dialog).getByRole("button", { name: "Cancel" });
     const enable = within(dialog).getByRole("button", { name: "Turn on 2FA" });
@@ -121,7 +121,7 @@ describe("TOTP setup dialog", () => {
     expect(document.activeElement).toBe(trigger);
   });
 
-  // O X do cabeçalho é o mesmo Cancelar: fecha sem ativar e devolve o foco.
+  // The X in the header is the same Cancel: it closes without activating and returns the focus.
   it("closes on the X like Cancel, without enrolling", async () => {
     renderSection();
     const { trigger, dialog } = await openDialog();
@@ -208,8 +208,8 @@ describe("TOTP setup dialog", () => {
     renderSection();
 
     const turnOff = await screen.findByRole("button", { name: "Turn off" });
-    // A-15 / A-22: botões do sistema (44px), vermelho no que desliga; antes
-    // eram 32px feitos à mão.
+    // A-15 / A-22: system buttons (44px), red on the one that turns it off; before
+    // they were handmade 32px.
     expect(turnOff).toHaveClass("button-danger");
     fireEvent.click(turnOff);
     expect(screen.getByRole("button", { name: "Yes, turn off" })).toHaveClass("button-danger", "button-danger-solid");

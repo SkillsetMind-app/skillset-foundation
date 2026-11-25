@@ -5,9 +5,9 @@ import { BrandName } from "@/components/shared/brand-name";
 import { RevealSection } from "@/components/shared/reveal-section";
 import { getServerTranslation } from "@/lib/i18n/server";
 
-// Server component: só texto traduzido, nenhum estado. Sai do bundle do
-// navegador; o que precisa do cliente aqui é o RevealSection, que continua
-// cliente e é montado como filho.
+// Server component: only translated text, no state. It stays out of the
+// browser bundle; what needs the client here is RevealSection, which remains a
+// client component and is mounted as a child.
 export async function PromisePreviewBand() {
   const { t } = await getServerTranslation();
 
@@ -33,9 +33,9 @@ export async function PromisePreviewBand() {
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
                 {t("home.promise.kicker")}
               </p>
-              {/* Título e texto na escala das outras seções. A cor vale para a
-                  faixa clara; com a cortina azul do computador o globals.css
-                  troca as duas pelos tons claros dela (só o tamanho muda lá). */}
+              {/* Title and text at the scale of the other sections. The color applies to the
+                  light band; with the desktop blue curtain, globals.css
+                  swaps both for its light tones (only the size changes there). */}
               <h2 className="display-title mt-3 text-[clamp(2.25rem,4.2vw,3.25rem)] leading-[1.05] text-[var(--color-primary)]">
                 {t("home.promise.title")}
               </h2>

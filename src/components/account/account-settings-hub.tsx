@@ -73,10 +73,10 @@ export function AccountSettingsHub() {
     router.replace(`/account?tab=${nextTab}`, { scroll: false });
   }
 
-  // Sem cartão de abertura: o título curto ("Settings" + uma linha) vem do
-  // PlatformShell, como nas outras telas. O cartão com faixa dourada e brilho
-  // vermelho, mais uma manchete em serifa por aba, empurrava os ajustes para
-  // baixo da primeira tela no celular.
+  // No opening card: the short title ("Settings" + one line) comes from the
+  // PlatformShell, as on the other screens. The card with a gold stripe and red
+  // glow, plus a serif headline per tab, pushed the settings below the first
+  // screen on a phone.
   return (
     <div className="space-y-6">
       <div className="account-settings-grid">
@@ -165,9 +165,9 @@ const learningRows = [
   "dailyDigest",
 ] as const satisfies ReadonlyArray<keyof LearningPreferences>;
 
-// O retorno do salvar mora na linha que mudou: "Saved" por 2s, ou o erro logo
-// embaixo da chave. Antes o sucesso não dizia nada e a falha era uma linha
-// vermelha no topo do cartão, longe do dedo que tocou.
+// The result of saving lives on the row that changed: "Saved" for 2s, or the error right
+// under the switch. Before, success said nothing and failure was a single red
+// line at the top of the card, far from the finger that tapped.
 type RowStatus = { row: string; saved: boolean } | null;
 
 function useRowStatus() {
@@ -180,10 +180,10 @@ function useRowStatus() {
   return [status, setStatus] as const;
 }
 
-// A escolha salva da pessoa. `null` enquanto nao chegou: as chaves nao mostram
-// posicao nenhuma (antes mostravam o padrao e pulavam para o salvo). Se a
-// leitura falha elas ficam travadas, com o erro e "Try again": antes ficavam
-// livres mostrando o padrao, e um toque gravava o padrao por cima do salvo.
+// The person's saved choice. `null` until it arrives: the switches show no
+// position at all (before, they showed the default and jumped to the saved one). If the
+// read fails they stay locked, with the error and "Try again": before, they stayed
+// free showing the default, and one tap wrote the default over the saved value.
 function useSavedPreferences<T>(read: (profile: UserProfile | null) => T) {
   const { user } = useAuth();
   const [prefs, setPrefs] = useState<T | null>(null);
@@ -210,7 +210,7 @@ function useSavedPreferences<T>(read: (profile: UserProfile | null) => T) {
     };
   }, [user, read]);
 
-  // Le de novo pelo mesmo canal (ver subscribeToUserProfile).
+  // Reads again through the same channel (see subscribeToUserProfile).
   function retry() {
     setFailed(false);
     void subscription.current?.reload();
@@ -352,17 +352,17 @@ function ToggleRow({
   onChange,
   saved,
 }: {
-  /** null = a escolha salva ainda não chegou (ou não carregou). */
+  /** null = the saved choice has not arrived yet (or did not load). */
   checked: boolean | null;
   description: string;
   label: string;
   onChange: () => void;
-  /** true = acabou de salvar; false = falhou; undefined = nada a dizer. */
+  /** true = just saved; false = failed; undefined = nothing to say. */
   saved?: boolean;
 }) {
   const { t } = useTranslation();
-  // Nome = só o rótulo; a descrição entra como descrição. Com aria-label o
-  // leitor de tela nunca lia o que cada chave faz.
+  // Name = the label only; the description goes in as the description. With aria-label the
+  // screen reader never read what each switch does.
   const labelId = useId();
   const descriptionId = useId();
   const text = (
@@ -376,8 +376,8 @@ function ToggleRow({
     </span>
   );
 
-  // Sem a escolha salva não há chave para mostrar: o texto e um trilho cinza
-  // do mesmo tamanho, sem posição (nem ligada, nem desligada).
+  // Without the saved choice there is no switch to show: the text and a gray track
+  // of the same size, with no position (neither on nor off).
   if (checked === null) {
     return (
       <div className="py-1">
@@ -391,9 +391,9 @@ function ToggleRow({
 
   return (
     <div className="py-1">
-      {/* A linha inteira é a chave. Antes só o trilho de 46×26 respondia ao
-          toque e o texto ao lado não era clicável. As margens negativas
-          alinham o texto ao título e deixam o fundo do hover respirar. */}
+      {/* The whole row is the switch. Before, only the 46×26 track responded to
+          touch and the text beside it was not clickable. The negative margins
+          align the text with the title and give the hover background room to breathe. */}
       <button
         type="button"
         role="switch"

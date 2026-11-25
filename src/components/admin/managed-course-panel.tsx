@@ -28,7 +28,7 @@ export function ManagedCoursePanel() {
   const [success, setSuccess] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [busyCourseId, setBusyCourseId] = useState<string | null>(null);
-  // Qual botão foi apertado: só ele gira; os outros do cartão só travam (I-08).
+  // Which button was pressed: only it spins; the others on the card only lock (I-08).
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState<TeacherCourse | null>(null);
   const [confirmingUnpublish, setConfirmingUnpublish] = useState<TeacherCourse | null>(null);
@@ -122,9 +122,9 @@ export function ManagedCoursePanel() {
           onClose={() => setConfirmingUnpublish(null)}
         />
       ) : null}
-      {/* Apagar pergunta na mesma janela do Unpublish (I-04): o par "Confirm
-          delete / Cancel" nascia no lugar do botão, e o segundo toque de um
-          duplo clique podia cair no "Confirm delete". */}
+      {/* Delete asks in the same dialog as Unpublish (I-04): the "Confirm
+          delete / Cancel" pair appeared in place of the button, and the second tap of a
+          double click could land on "Confirm delete". */}
       {confirmingDelete ? (
         <ConfirmActionDialog
           title={t(`${copy}.deleteTitle`).replace("{title}", () => confirmingDelete.title)}
@@ -200,7 +200,7 @@ export function ManagedCoursePanel() {
                   </Button>
                 ) : null}
                 {adminCanUnpublishCourse(course.status) ? (
-                  // Tirar do ar é vermelho e pergunta antes: era um clique, igual a "Feature".
+                  // Taking offline is red and asks first: it was one click, same as "Feature".
                   <Button
                     variant="danger"
                     size="sm"

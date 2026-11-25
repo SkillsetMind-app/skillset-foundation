@@ -31,9 +31,9 @@ function select() {
   fireEvent.change(screen.getByRole("combobox", { name: "Published creator course" }), { target: { value: course.id } });
 }
 
-// Revogar pergunta na janela da plataforma (não mais no window.confirm). O
-// jsdom não tem showModal/close: o stub faz o mínimo que o navegador faz. Só o
-// Date é falso: o confirmar ignora cliques nos primeiros CONFIRM_GUARD_MS.
+// Revoke asks in the platform dialog (no longer in window.confirm).
+// jsdom has no showModal/close: the stub does the minimum the browser does. Only
+// Date is fake: confirm ignores clicks in the first CONFIRM_GUARD_MS.
 const originalShow = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal");
 const originalClose = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "close");
 function answer(button: string) {
@@ -85,8 +85,8 @@ describe("administrative enrollment presentation", () => {
     for (const subscribe of [mocks.users, mocks.courses, mocks.grants]) expect(subscribe).toHaveBeenCalledTimes(1);
   });
 
-  // I-13: achar a pessoa digitando, sem perder quem já foi escolhido, e o
-  // botão cinza dizendo o que falta.
+  // I-13: finding the person by typing, without losing who was already chosen, and the
+  // gray button saying what is missing.
   it("filters learners by name or email, keeps the chosen one and says why create is blocked", () => {
     const other: UserProfile = { ...user, uid: "learner-b", displayName: "Bruno Silva", email: "bruno@example.test" };
     render(panel());
@@ -106,7 +106,7 @@ describe("administrative enrollment presentation", () => {
     fireEvent.change(screen.getByRole("combobox", { name: "Published creator course" }), { target: { value: course.id } });
     expect(create).toBeEnabled();
     expect(screen.queryByText("Choose a user and a published creator course.")).toBeNull();
-    // Pronto para clicar: diz para quem vai o acesso.
+    // Ready to click: it says who the access goes to.
     expect(create).toHaveAccessibleDescription("Grants access to Bruno Silva · bruno@example.test");
     fireEvent.change(filter, { target: { value: "" } });
     expect(options()).toHaveLength(3);
@@ -121,7 +121,7 @@ describe("administrative enrollment presentation", () => {
     select();
     const create = screen.getByRole("button", { name: "Create admin enrollment" });
     expect(create).toBeEnabled();
-    // A conta sai da lista (apagada, ou fora das linhas que a leitura traz).
+    // The account leaves the list (deleted, or outside the rows the read returns).
     act(() => mocks.users.mock.calls[0][0]([{ ...user, uid: "someone-else", displayName: "Outra Pessoa" }]));
     expect(screen.getByRole("combobox", { name: "Learner" })).toHaveValue("");
     expect(create).toBeDisabled();
@@ -130,9 +130,9 @@ describe("administrative enrollment presentation", () => {
     expect(mocks.create).not.toHaveBeenCalled();
   });
 
-  // Sem "Try again" a equipe só saía do erro recarregando a página (F-11). O
-  // botão relê só o que falhou, sem fechar e abrir o canal: com o mesmo nome,
-  // o canal novo pegava o velho ainda fechando e a lista parava.
+  // Without "Try again" the staff could only leave the error by reloading the page (F-11). The
+  // button re-reads only what failed, without closing and opening the channel: with the same name,
+  // the new channel caught the old one still closing and the list stalled.
   it("a failed read offers Try again, which reloads only what failed and keeps the channels", async () => {
     const reload = { users: vi.fn(async () => {}), courses: vi.fn(async () => {}), grants: vi.fn(async () => {}) };
     const closed = { users: vi.fn(), courses: vi.fn(), grants: vi.fn() };
@@ -154,7 +154,7 @@ describe("administrative enrollment presentation", () => {
     expect(reload.courses).not.toHaveBeenCalled();
     await act(async () => { fireEvent.click(grantsRetry); });
     expect(reload.grants).toHaveBeenCalledTimes(1);
-    // Nenhuma inscrição nova, nenhuma fechada.
+    // No new enrollment, none closed.
     for (const name of ["users", "courses", "grants"] as const) {
       expect(mocks[name]).toHaveBeenCalledTimes(1);
       expect(closed[name]).not.toHaveBeenCalled();
@@ -199,12 +199,12 @@ describe("administrative enrollment presentation", () => {
     render(panel());
     deliver();
     language();
-    // Tirar o acesso é o botão vermelho pequeno das outras filas (I-04).
+    // Removing access is the small red button of the other queues (I-04).
     expect(screen.getByRole("button", { name: "Revocar acceso" })).toHaveClass("button-danger", "min-h-11");
     fireEvent.click(screen.getByRole("button", { name: "Revocar acceso" }));
     const dialog = screen.getByRole("dialog", { name: "¿Revocar este acceso?" });
     expect(dialog).toHaveTextContent(`¿Revocar el acceso a "${course.title}" de este estudiante? Perderá el acceso de inmediato.`);
-    // Quem perde o acesso, com o nome literal ($$ e $& não viram padrão).
+    // Who loses access, with the literal name ($$ and $& do not become a pattern).
     expect(dialog).toHaveTextContent(`Estudiante: ${user.displayName}`);
     expect(mocks.revoke).not.toHaveBeenCalled();
     if (!confirm) {
@@ -217,7 +217,7 @@ describe("administrative enrollment presentation", () => {
     answer("Revocar acceso");
     expect(mocks.revoke).toHaveBeenCalledWith("grant-a");
     expect(screen.queryByRole("status")).toBeNull();
-    // O botão da lista e o da janela travam enquanto o pedido roda.
+    // The list button and the dialog button lock while the request runs.
     const pending = screen.getAllByRole("button", { name: "Revocando..." });
     expect(pending).toHaveLength(2);
     for (const button of pending) expect(button).toBeDisabled();
@@ -252,7 +252,7 @@ describe("administrative enrollment presentation", () => {
     fireEvent.click(screen.getByRole("button", { name: action === "create" ? "Create admin enrollment" : "Revoke access" }));
     if (action === "revoke") answer("Revoke access");
     await screen.findByRole("alert");
-    // O erro fica no painel, onde já aparecia; a janela fecha.
+    // The error stays in the panel, where it already showed; the dialog closes.
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     language();
     expect(screen.getByRole("alert")).toHaveTextContent(action === "create" ? "No pudimos crear esta inscripción." : "No pudimos revocar esta inscripción.");

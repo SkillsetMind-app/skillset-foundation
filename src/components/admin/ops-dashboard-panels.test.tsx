@@ -3,22 +3,22 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-// Os oito paineis de /ops abriam com uma manchete de 30px em serifa mais um
-// paragrafo de tres linhas: o operador rolava manchete antes de ver a fila
-// (reanalise Ops 4). O titulo virou 16px sem serifa, como o do Audit log.
+// The eight /ops panels opened with a 30px serif headline plus a
+// three-line paragraph: the operator scrolled past a headline before seeing the queue
+// (Ops reanalysis 4). The title became 16px without serif, like the Audit log one.
 
 const adminDir = join(process.cwd(), "src/components/admin");
 
 describe("paineis de /ops", () => {
-  it("nenhum painel abre com manchete em serifa (display-title)", () => {
+  it("no panel opens with a serif headline (display-title)", () => {
     const panels = readdirSync(adminDir).filter(
       (name) => name.endsWith(".tsx") && !name.endsWith(".test.tsx"),
     );
     expect(panels.length).toBeGreaterThan(5);
 
-    // Exceção única: a ficha da pessoa desenha o h1 DA PÁGINA, no lugar do da
-    // casca (que vai com hideHeader), porque o nome só chega no navegador
-    // (I-03). É o título da página, não uma manchete de painel: um uso, num h1.
+    // Single exception: the person's record draws the PAGE's h1, in place of the
+    // shell's (which goes with hideHeader), because the name only arrives in the browser
+    // (I-03). It is the page title, not a panel headline: one use, in an h1.
     const offenders = panels.filter((name) => {
       const source = readFileSync(join(adminDir, name), "utf8");
       const uses = source.match(/display-title/g)?.length ?? 0;
@@ -29,10 +29,10 @@ describe("paineis de /ops", () => {
   });
 });
 
-describe("links internos abrem na mesma aba", () => {
-  // Excecao: termos legais abertos de dentro de um formulario (onboarding).
-  // Navegar na mesma aba perderia o que a pessoa ja preencheu.
-  it("nenhum <Link> para rota interna (href literal com /) pede target _blank", () => {
+describe("internal links open in the same tab", () => {
+  // Exception: legal terms opened from inside a form (onboarding).
+  // Navigating in the same tab would lose what the person already filled in.
+  it("no <Link> to an internal route (literal href with /) asks for target _blank", () => {
     const files = readdirSync(join(process.cwd(), "src/components"), {
       recursive: true,
       withFileTypes: true,

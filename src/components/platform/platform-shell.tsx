@@ -27,8 +27,8 @@ type PlatformShellProps = {
   description?: string;
   /**
    * Compact variant: smaller title, tighter padding. Use for inner pages
-   * where a tab/breadcrumb already gives context. (No estudio o titulo tem um
-   * tamanho so; compact so aperta o espaco.)
+   * where a tab/breadcrumb already gives context. (In the studio the title has a
+   * single size; compact only tightens the spacing.)
    */
   compact?: boolean;
   /** Some surfaces, like Studio and Builder, own their own richer header. */
@@ -57,17 +57,17 @@ export function PlatformShell({
   const pathname = usePathname() ?? "";
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [mobileNavSection, setMobileNavSection] = useState<string>();
-  // O numero de pendentes ao lado de "Inbox", em toda pagina do professor.
+  // The number of pending items next to "Inbox", on every teacher page.
   const teacherSide = Boolean(user) && resolveContext(pathname, { roles: user?.roles ?? ["guest"] }) === "teacher";
   const inboxPending = useTeacherInboxCount(teacherSide ? user?.uid ?? null : null);
   const navigationCounts = inboxPending
     ? { ...pageCounts, "/teach/messages": inboxPending }
     : pageCounts;
-  // Pelo endereco, nao pelo papel: a largura ja vem certa no HTML do servidor,
-  // sem esperar o login carregar (a coluna nao muda de largura na tela).
+  // By address, not by role: the width already comes right in the server HTML,
+  // without waiting for login to load (the column does not change width on screen).
   const teachRoute = pathname === "/teach" || pathname.startsWith("/teach/");
-  // Que telas ganham a coluna de 1280px: a regra mora em platform-routes.ts,
-  // que a espera da guarda de login também lê.
+  // Which screens get the 1280px column: the rule lives in platform-routes.ts,
+  // which the login guard's wait screen also reads.
   const framed = isFramedPlatformRoute(pathname);
 
   return (
@@ -80,7 +80,7 @@ export function PlatformShell({
               className={[
                 "platform-grid",
                 isCollapsed ? "platform-grid--collapsed" : "",
-                // Sem escolha salva, a largura do 1º quadro vem do CSS.
+                // With no saved choice, the 1st frame's width comes from the CSS.
                 isAuto ? "platform-grid--auto" : "",
               ].join(" ")}
             >
@@ -90,8 +90,8 @@ export function PlatformShell({
                 }`}
                 onMouseOver={(event) => placeSidebarTip(event, isCollapsed)}
                 onFocus={(event) => placeSidebarTip(event, isCollapsed)}
-                // A lista rolou: a dica ficaria parada no lugar velho. Some, e
-                // o próximo hover ou foco mede de novo.
+                // The list scrolled: the tooltip would stay in the old place. It disappears, and
+                // the next hover or focus measures again.
                 onScrollCapture={(event) => hideSidebarTips(event.currentTarget)}
               >
                 <SidebarBrand
@@ -119,22 +119,22 @@ export function PlatformShell({
 
               <div className="platform-main-column">
                 <PlatformHeader currentNavigationHref={currentNavigationHref} searchHref={searchHref} />
-                {/* A secao continua sendo a que rola (a barra de rolagem fica na
-                    borda da janela); a moldura de dentro e que limita a largura. */}
+                {/* The section is still the one that scrolls (the scrollbar sits at the
+                    window edge); the inner frame is what limits the width. */}
                 <section className="platform-content">
                   <div
                     className={[
                       compact ? "space-y-4" : "space-y-6",
-                      // Estudio, conta e listas do aluno: uma coluna de no
-                      // maximo 1280px, centrada. Num monitor de 1920px a lista
-                      // de vendas tinha o titulo na borda esquerda e o valor
-                      // 1500px depois. So a partir de 1440px: abaixo disso
-                      // nenhuma tela fica mais estreita que antes.
+                      // Studio, account and learner lists: a column of at most
+                      // 1280px, centered. On a 1920px monitor the sales list
+                      // had the title at the left edge and the value
+                      // 1500px later. Only from 1440px: below that
+                      // no screen gets narrower than before.
                       framed ? "mx-auto w-full min-[1440px]:max-w-7xl" : "",
                     ].join(" ")}
                   >
-                    {/* O cabecalho novo e so do estudio. Sala do aluno, conta,
-                        suporte e painel interno seguem com o de antes. */}
+                    {/* The new header is studio-only. Learner classroom, account,
+                        support and internal panel keep the previous one. */}
                     {hideHeader ? null : teachRoute ? (
                       <PlatformPageHeader
                         eyebrow={eyebrow}
@@ -198,11 +198,11 @@ export function PlatformShell({
   );
 }
 
-// A dica do rail recolhido (o nome do item) é `position: fixed`: a lista rola e
-// cortaria uma dica absoluta. O item diz onde ela fica, no hover e no foco; o
-// CSS só a mostra depois disto (seletor `[style]`). Uma medida por hover.
-// Uma dica por vez: medir um item apaga a medida dos outros, então o foco do
-// teclado num item e o mouse em outro não mostram duas. Aberta, só o ☰ tem dica.
+// The collapsed rail's tooltip (the item name) is `position: fixed`: the list scrolls and
+// would clip an absolute tooltip. The item says where it goes, on hover and on focus; the
+// CSS only shows it after this (`[style]` selector). One measurement per hover.
+// One tooltip at a time: measuring one item erases the measurement of the others, so keyboard
+// focus on one item and the mouse on another do not show two. When open, only the ☰ has a tooltip.
 function placeSidebarTip(event: SyntheticEvent<HTMLElement>, collapsed: boolean) {
   const item = (event.target as Element).closest?.(".platform-nav-link");
   if (!(item instanceof HTMLElement)) return;
@@ -213,19 +213,19 @@ function placeSidebarTip(event: SyntheticEvent<HTMLElement>, collapsed: boolean)
   item.style.setProperty("--tip-y", `${Math.round(box.top + box.height / 2)}px`);
 }
 
-// Sem `style`, o CSS não mostra a dica. Nenhum item da barra tem outro estilo
-// em linha: só esta medida.
+// Without `style`, the CSS does not show the tooltip. No item in the bar has another inline
+// style: only this measurement.
 function hideSidebarTips(sidebar: HTMLElement, keep?: Element) {
   sidebar.querySelectorAll(".platform-nav-link[style]").forEach((item) => {
     if (item !== keep) item.removeAttribute("style");
   });
 }
 
-// O ☰ e a marca. Recolhida, a marca larga sai. A pequena só aparece de 768 a
-// 1023px (CSS), onde o ☰ some e a barra do topo ainda não tem logo: o rail não
-// fica sem marca nem sem caminho para a home. Sem escolha salva ela já vem no
-// HTML do servidor, para o 1º quadro do tablet ter a marca. Sem `priority`:
-// onde está escondida, o navegador não a baixa.
+// The ☰ and the brand. Collapsed, the wide brand goes away. The small one only appears from 768 to
+// 1023px (CSS), where the ☰ disappears and the top bar still has no logo: the rail is never
+// left without a brand or without a path to home. With no saved choice it already comes in the
+// server HTML, so the tablet's 1st frame has the brand. Without `priority`:
+// where it is hidden, the browser does not download it.
 function SidebarBrand({
   collapsed,
   auto,

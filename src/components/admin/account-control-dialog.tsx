@@ -19,7 +19,7 @@ const errors: Record<string, string> = {
   ACCOUNT_CONTROL_INVALID_INPUT: "invalidInput",
 };
 
-// O botão diz o que vai acontecer; "Confirm account change" servia para as três.
+// The button says what will happen; "Confirm account change" served for all three.
 const confirmKeys: Record<AccountAction, string> = {
   suspend: "confirmSuspend",
   block: "confirmBlock",
@@ -35,7 +35,7 @@ export function AccountControlDialog({ uid, label, onClose }: { uid: string; lab
   const dialog = useRef<HTMLDialogElement>(null);
   const pending = useRef(false);
   const [control, setControl] = useState<AccountControl | null>(null);
-  // Abre sem nada marcado: suspender vinha pré-escolhido numa conta ativa (I-02).
+  // Opens with nothing selected: suspend used to come pre-selected on an active account (I-02).
   const [action, setAction] = useState<AccountAction | null>(null);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -78,8 +78,8 @@ export function AccountControlDialog({ uid, label, onClose }: { uid: string; lab
     }
   }
 
-  // Só as ações que mudam algo: o banco ignora suspender quem já está
-  // suspenso e restaurar quem está ativo, então elas nem aparecem.
+  // Only the actions that change something: the database ignores suspending someone already
+  // suspended and restoring someone who is active, so they do not even appear.
   const options = control
     ? (["suspend", "block", "restore"] as const).filter(value => control.suspended ? value !== "suspend" : value !== "restore")
     : [];
@@ -95,7 +95,7 @@ export function AccountControlDialog({ uid, label, onClose }: { uid: string; lab
     </div>
     <div className="mt-1 flex flex-wrap items-center gap-2">
       <p id="account-control-person" className="min-w-0 break-all text-sm text-[var(--color-ink-soft)]">{label}</p>
-      {/* Mesma regra da tabela e da ficha: e-mail bloqueado é "blocked" (vermelho). */}
+      {/* Same rule as the table and the record: a blocked email is "blocked" (red). */}
       {control ? <StatusChip status={accountState(control)} label={t(`accountControls.${accountState(control)}`)} /> : null}
     </div>
     {error ? <InlineAlert tone="error" className="mt-4">{t(`accountControls.${error}`)}</InlineAlert> : null}
@@ -129,7 +129,7 @@ export function AccountControlDialog({ uid, label, onClose }: { uid: string; lab
         </Field>
         <div className="flex flex-wrap items-center justify-end gap-3">
           <Button variant="outline" disabled={busy} onClick={close}>{t("accountControls.cancel")}</Button>
-          {/* Bloquear o e-mail é o mais grave: vermelho cheio. Suspender, contorno vermelho. Restaurar, azul. */}
+          {/* Blocking the email is the most serious: solid red. Suspend, red outline. Restore, blue. */}
           <Button type="submit" variant={action === "restore" ? "solid" : action ? "danger" : "outline"}
             className={cn("whitespace-normal", action === "block" && "button-danger-solid")} loading={busy}
             icon={action === "restore" ? <ShieldCheck size={18} className="shrink-0" aria-hidden /> : action ? <Ban size={18} className="shrink-0" aria-hidden /> : null}

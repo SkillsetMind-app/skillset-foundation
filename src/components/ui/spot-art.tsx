@@ -3,23 +3,23 @@ import type { CSSProperties, ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
 /**
- * As cinco cenas do estúdio, no traço da gravura de cédula que a marca usa no
- * fundo do site (public/brand/hero-engraving-*). O check e o selo de marco
- * moram em ui/drawn-check.tsx. SVG inline, sem rede: cada cena pesa menos de 3 KB, o que conta
- * para quem abre o estúdio com internet ruim.
+ * The five studio scenes, in the banknote-engraving line work the brand uses in
+ * the site background (public/brand/hero-engraving-*). The check and the milestone seal
+ * live in ui/drawn-check.tsx. Inline SVG, no network: each scene weighs under 3 KB, which matters
+ * for people who open the studio on a bad connection.
  *
- * Regras do desenho (o teste confere as que dá para medir):
- * - traço marinho de 1,25 a 1,5px (`vector-effect` no CSS mantém o px em
- *   qualquer tamanho);
- * - a gravura em elipses e ondas a 15–35% de opacidade;
- * - UM elemento em latão por cena; o resto, quando pede cor, é latão claro.
- *   A exceção é o recibo (noSales): ele mora no gráfico de receita, e latão
- *   cheio em gráfico de dinheiro é proibido; lá só entra latão claro;
- * - cantos do token (rx 2 no viewBox ~ raio sm na tela);
- * - sem pessoas, sem dinheiro desenhado, sem número;
- * - `aria-hidden`: o texto ao lado já diz tudo.
+ * Drawing rules (the test checks the ones that can be measured):
+ * - navy stroke of 1.25 to 1.5px (`vector-effect` in the CSS keeps the px at
+ *   any size);
+ * - the engraving in ellipses and waves at 15–35% opacity;
+ * - ONE brass element per scene; the rest, when it needs color, is light brass.
+ *   The exception is the receipt (noSales): it lives in the revenue chart, and solid
+ *   brass in a money chart is forbidden; only light brass goes there;
+ * - token corners (rx 2 in the viewBox ~ sm radius on screen);
+ * - no people, no drawn money, no numbers;
+ * - `aria-hidden`: the text beside it already says everything.
  *
- * `tone="light"` é a versão para fundo marinho (coluna da tela de criar).
+ * `tone="light"` is the version for a navy background (column of the create screen).
  */
 export type SpotArtScene = "firstProduct" | "firstLesson" | "noStudents" | "noSales" | "published";
 
@@ -37,8 +37,8 @@ export type SpotArtProps = {
   className?: string;
 };
 
-// O tom inteiro mora em 5 variáveis no <svg>; as formas só leem as variáveis.
-// No tema escuro, --color-primary e --color-surface já invertem sozinhos.
+// The whole tone lives in 5 variables on the <svg>; the shapes only read the variables.
+// In the dark theme, --color-primary and --color-surface already invert on their own.
 const tones: Record<NonNullable<SpotArtProps["tone"]>, CSSProperties> = {
   default: {
     color: "var(--color-primary,#102a43)",
@@ -49,8 +49,8 @@ const tones: Record<NonNullable<SpotArtProps["tone"]>, CSSProperties> = {
   } as CSSProperties,
   light: {
     color: "#fff",
-    // Papel opaco, um passo acima do marinho da coluna: a roseta passa por
-    // trás do documento, não através dele.
+    // Opaque paper, one step above the column's navy: the rosette passes
+    // behind the document, not through it.
     "--art-paper": "#102a43",
     "--art-soft": "rgba(201,154,70,.24)",
     "--art-brass": "#c99a46",
@@ -58,7 +58,7 @@ const tones: Record<NonNullable<SpotArtProps["tone"]>, CSSProperties> = {
   } as CSSProperties,
 };
 
-/** Roseta de guilhochê: `count` elipses giradas em volta do mesmo centro. */
+/** Guilloche rosette: `count` ellipses rotated around the same center. */
 function rosette(cx: number, cy: number, rx: number, ry: number, count: number) {
   return (
     <g className="spot-art__engraving" opacity=".2" strokeWidth="1.25" transform={`translate(${cx} ${cy})`}>
@@ -69,14 +69,14 @@ function rosette(cx: number, cy: number, rx: number, ry: number, count: number) 
   );
 }
 
-/** Ondas de gravura: uma linha por `y`, cada uma com `segments` cristas. */
+/** Engraving waves: one line per `y`, each with `segments` crests. */
 function waves(x: number, ys: number[], segments: number, opacity = ".3") {
   const d = ys.map((y) => `M${x} ${y}q3-3 6 0${"t6 0".repeat(segments - 1)}`).join("");
   return <path className="spot-art__engraving" d={d} opacity={opacity} strokeWidth="1.25" />;
 }
 
 const scenes: Record<SpotArtScene, ReactNode> = {
-  // Documento gravado com o selo "+" em latão.
+  // Engraved document with the "+" seal in brass.
   firstProduct: (
     <>
       {rosette(80, 58, 46, 20, 9)}
@@ -88,7 +88,7 @@ const scenes: Record<SpotArtScene, ReactNode> = {
       <path d="M103 77v12M97 83h12" stroke="var(--art-on-brass)" strokeWidth="1.5" />
     </>
   ),
-  // Três cartões empilhados; o da frente com o "play" em latão.
+  // Three stacked cards; the front one with the "play" in brass.
   firstLesson: (
     <>
       {waves(28, [100, 105, 110], 17, ".25")}
@@ -100,7 +100,7 @@ const scenes: Record<SpotArtScene, ReactNode> = {
       <path d="M44 78h30" opacity=".35" />
     </>
   ),
-  // Grade de lugares tracejados; o primeiro em latão, com "+".
+  // Grid of dashed seats; the first one in brass, with "+".
   noStudents: (
     <>
       {waves(26, [14, 19, 24], 18, ".25")}
@@ -115,8 +115,8 @@ const scenes: Record<SpotArtScene, ReactNode> = {
       <path d="M46 44v12M40 50h12" />
     </>
   ),
-  // Recibo gravado; a última linha em latão claro, contorno marinho. Sem
-  // moeda, sem número e sem latão cheio (vai no gráfico de receita).
+  // Engraved receipt; the last line in light brass, navy outline. No
+  // coin, no number and no solid brass (it goes in the revenue chart).
   noSales: (
     <>
       {rosette(80, 60, 40, 18, 9)}
@@ -127,7 +127,7 @@ const scenes: Record<SpotArtScene, ReactNode> = {
       <rect className="spot-art__seal" x="62" y="75" width="36" height="7" rx="1.5" fill="var(--art-soft)" />
     </>
   ),
-  // O documento com o selo de check carimbado, a roseta e três losangos.
+  // The document with the check seal stamped on it, the rosette and three diamonds.
   published: (
     <>
       {rosette(80, 58, 50, 22, 12)}

@@ -6,21 +6,21 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { useSidebarState } from "@/lib/ui/sidebar-state";
 
 /**
- * No tablet a navegação era a de CELULAR: numa tela de 1000px de largura, com
- * espaço de sobra, a barra lateral sumia e entrava a barra de baixo. O rail de
- * 64px já existia e só era alcançável acima de 1024px.
+ * On the tablet the navigation was the PHONE one: on a 1000px-wide screen, with
+ * plenty of room, the sidebar disappeared and the bottom bar came in. The 64px rail
+ * already existed and was only reachable above 1024px.
  *
- * Varredura no CSS porque o jsdom não avalia media query nenhuma: `matchMedia`
- * é um esqueleto que sempre responde `false`, e nada aqui tem layout. O que dá
- * para provar é a REGRA — em que faixa cada desenho vale.
+ * Scan of the CSS because jsdom does not evaluate any media query: `matchMedia`
+ * is a stub that always answers `false`, and nothing here has layout. What can be
+ * proven is the RULE — in which range each design applies.
  */
 
 const css = readFileSync(path.join(process.cwd(), "src/app/globals.css"), "utf8");
 
 /**
- * TODOS os blocos `@media (...) { ... }` daquela faixa, colados. A mesma faixa
- * aparece em vários pontos do arquivo (o banner de cookies e a navegação são
- * dois deles); a pergunta que interessa é o que a faixa faz no total.
+ * ALL the `@media (...) { ... }` blocks of that range, glued together. The same range
+ * shows up at several points in the file (the cookie banner and the navigation are
+ * two of them); the question that matters is what the range does in total.
  */
 function mediaBlocks(query: string): string {
   const marker = `@media ${query} {`;
@@ -45,52 +45,52 @@ function mediaBlocks(query: string): string {
     }
   }
 
-  expect(found.length, `bloco não encontrado: @media ${query}`).toBeGreaterThan(0);
+  expect(found.length, `block not found: @media ${query}`).toBeGreaterThan(0);
 
   return found.join("\n");
 }
 
-describe("tablet (768–1023px) usa o rail, não a barra de baixo", () => {
-  it("a barra de baixo e o sumiço da lateral valem só abaixo de 768px", () => {
+describe("tablet (768–1023px) uses the rail, not the bottom bar", () => {
+  it("the bottom bar and the sidebar's disappearance apply only below 768px", () => {
     const phone = mediaBlocks("(max-width: 767.98px)");
 
     expect(phone).toContain(".platform-mobile-nav");
     expect(phone).toContain("display: flex");
     expect(phone).toMatch(/\.platform-sidebar \{\s*display: none/);
 
-    // E não sobrou nenhum bloco de 1023px acendendo a barra de baixo ou
-    // apagando a lateral — que era exatamente o bug.
+    // And no 1023px block is left turning on the bottom bar or
+    // hiding the sidebar — which was exactly the bug.
     const tabletAndBelow = mediaBlocks("(width < 1024px)");
     expect(tabletAndBelow).not.toContain(".platform-mobile-nav");
     expect(tabletAndBelow).not.toContain(".platform-sidebar {");
   });
 
-  it("de 768 a 1023px a coluna da lateral é o rail de 64px, e o botão de recolher some", () => {
+  it("from 768 to 1023px the sidebar column is the 64px rail, and the collapse button disappears", () => {
     const tablet = mediaBlocks("(min-width: 768px) and (width < 1024px)");
 
     expect(tablet).toContain("--platform-sidebar-width: 64px");
     expect(tablet).toMatch(
       /\.platform-sidebar \.platform-sidebar-toggle \{\s*display: none/,
     );
-    // Os rótulos não podem vazar dentro de 64px enquanto a classe não chega.
+    // The labels must not leak out of 64px while the class has not arrived.
     expect(tablet).toContain(".platform-sidebar-label");
   });
 
-  it("o banner de cookies só sobe onde a barra de baixo existe de fato", () => {
-    // Ele sobe 60px para não cobrir a barra. No tablet não há barra, e o
-    // banner ficaria flutuando com um buraco embaixo.
+  it("the cookie banner only moves up where the bottom bar actually exists", () => {
+    // It moves up 60px so as not to cover the bar. On the tablet there is no bar, and the
+    // banner would float with a gap underneath.
     const phone = mediaBlocks("(max-width: 767.98px)");
     expect(phone).toContain("body:has(.platform-mobile-nav) .cookie-consent");
   });
 
-  it("a playlist embaixo do vídeo vai a duas colunas de 768 a 1180px", () => {
+  it("the playlist under the video goes to two columns from 768 to 1180px", () => {
     const strip = mediaBlocks("(min-width: 768px) and (max-width: 1180px)");
 
     expect(strip).toContain(".member-playlist__lessons");
     expect(strip).toContain("grid-template-columns: repeat(2, minmax(0, 1fr))");
 
-    // Abaixo de 1180 a lateral inteira já era uma coluna; a regra nova precisa
-    // vir DEPOIS dela para valer (mesma especificidade, ganha a última).
+    // Below 1180 the whole sidebar was already one column; the new rule must
+    // come AFTER it to apply (same specificity, the last one wins).
     expect(css.indexOf("@media (min-width: 768px) and (max-width: 1180px)")).toBeGreaterThan(
       css.indexOf("@media (max-width: 1180px)"),
     );
@@ -103,7 +103,7 @@ describe("a barra lateral no tablet", () => {
     document.cookie = "skillset_sidebar=; max-age=0; path=/";
   });
 
-  it("na faixa do rail a barra vem recolhida, sem escrever preferência nenhuma", () => {
+  it("in the rail range the bar comes collapsed, writing no preference", () => {
     vi.stubGlobal(
       "matchMedia",
       vi.fn(() => ({ matches: true, addEventListener() {}, removeEventListener() {} })),
@@ -112,12 +112,12 @@ describe("a barra lateral no tablet", () => {
     const { result } = renderHook(() => useSidebarState());
 
     expect(result.current.isCollapsed).toBe(true);
-    // Sem escolha salva: o rail é o padrão da tela, não uma escolha gravada.
+    // With no saved choice: the rail is the screen's default, not a stored choice.
     expect(result.current.isAuto).toBe(true);
     expect(document.cookie).toBe("");
   });
 
-  it("de 768 a 1023px o rail vale até para quem abriu a barra", () => {
+  it("from 768 to 1023px the rail applies even to someone who opened the bar", () => {
     vi.stubGlobal("matchMedia", (query: string) => ({
       matches: query === "(min-width: 768px) and (width < 1024px)",
       addEventListener() {},
@@ -131,10 +131,10 @@ describe("a barra lateral no tablet", () => {
     expect(result.current.isAuto).toBe(false);
   });
 
-  it("sem matchMedia (jsdom cru, navegador antigo) não explode — cai no desenho de sempre", () => {
-    // O que derrubou o CI: `window.matchMedia is not a function` em três telas
-    // que só renderizavam o shell. Explodir no jsdom é explodir em algum
-    // navegador de verdade.
+  it("without matchMedia (bare jsdom, old browser) it does not blow up — it falls back to the usual layout", () => {
+    // What broke CI: `window.matchMedia is not a function` on three screens
+    // that only rendered the shell. Blowing up in jsdom is blowing up in some
+    // real browser.
     vi.stubGlobal("matchMedia", undefined);
 
     const { result } = renderHook(() => useSidebarState());

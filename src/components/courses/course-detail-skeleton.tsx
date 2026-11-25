@@ -2,32 +2,32 @@ import type { ReactNode } from "react";
 
 type CourseDetailSkeletonProps = {
   label: string;
-  /** Na página de compra o cartão é a coluna inteira: só ele. */
+  /** On the purchase page the card is the whole column: only it. */
   checkoutOnly?: boolean;
   /**
-   * Capa, título e resumo do servidor: já são o conteúdo de verdade (o único
-   * h1), então ficam fora do pulso e à vista do leitor de tela.
+   * Cover, title and summary from the server: they are already the real content (the only
+   * h1), so they stay out of the pulse and visible to the screen reader.
    */
   lead?: ReactNode;
 };
 
-// Esqueleto da página de venda enquanto o curso carrega, no servidor (fallback
-// do Suspense) e no cliente (antes da assinatura do curso responder). No lugar
-// dele havia um cartão com um segundo título "Loading course..." e um botão que
-// levava o comprador para fora da página bem na hora da compra; quando os dados
-// chegavam, o cartão sumia e tudo pulava. Aqui é o mesmo grid da página
-// carregada, sem título e sem botão: o leitor de tela ouve só o aviso.
-// Sem hook nem "use client": serve igual ao servidor e ao cliente.
+// Skeleton of the sales page while the course loads, on the server (Suspense
+// fallback) and on the client (before the course subscription answers). In its place
+// there used to be a card with a second title "Loading course..." and a button that
+// took the buyer off the page right at purchase time; when the data
+// arrived, the card vanished and everything jumped. Here it is the same grid as the
+// loaded page, with no title and no button: the screen reader hears only the notice.
+// No hook and no "use client": it serves the server and the client alike.
 export function CourseDetailSkeleton(props: CourseDetailSkeletonProps) {
   return renderCourseDetailSkeleton(props);
 }
 
-// A mesma árvore como função comum (não componente), para o cliente devolvê-la
-// direto do próprio render. Assim ela tem a mesma forma da página carregada
-// (grade > section > [volta, lead, ...]) e o React troca o esqueleto pelo
-// conteúdo sem desmontar o `lead`: a capa não pisca e o cursor do leitor de
-// tela não volta ao começo. Mexeu na ordem? Mantenha o `lead` na 2ª posição
-// da section, como em creator-course-detail.tsx.
+// The same tree as a plain function (not a component), so the client returns it
+// straight from its own render. That way it has the same shape as the loaded page
+// (grid > section > [back, lead, ...]) and React swaps the skeleton for the
+// content without unmounting the `lead`: the cover does not flicker and the screen
+// reader cursor does not go back to the start. Changed the order? Keep `lead` in the 2nd position
+// of the section, as in creator-course-detail.tsx.
 export function renderCourseDetailSkeleton({
   label,
   checkoutOnly = false,
@@ -35,8 +35,8 @@ export function renderCourseDetailSkeleton({
 }: CourseDetailSkeletonProps) {
   const bar = "rounded-md bg-[var(--color-surface-strong)]";
   const buyCard = (
-    // Mesma caixa, mesmas alturas do cartão de compra: o preço e o botão
-    // nascem no lugar que vão ocupar.
+    // Same box, same heights as the purchase card: the price and the button
+    // are born in the place they will occupy.
     <div
       aria-hidden="true"
       className="h-fit min-w-0 animate-pulse self-start rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)] sm:p-6"
@@ -59,13 +59,13 @@ export function renderCourseDetailSkeleton({
       {checkoutOnly ? buyCard : (
         <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
           <section className="min-w-0">
-            {/* A volta ao catálogo, no alto da coluna, como na página pronta. */}
+            {/* The way back to the catalog, at the top of the column, as on the finished page. */}
             <div aria-hidden="true" className="mb-2 flex min-h-11 animate-pulse items-center">
               <div className={`h-3.5 w-36 ${bar}`} />
             </div>
             {lead}
             <div aria-hidden="true" className="animate-pulse">
-              {/* Assinatura do instrutor, menu das seções e os primeiros blocos. */}
+              {/* Instructor signature, section menu and the first blocks. */}
               <div className="mt-5 flex min-h-11 items-center gap-2.5">
                 <div className="size-8 shrink-0 rounded-full bg-[var(--color-surface-strong)]" />
                 <div className={`h-3.5 w-36 ${bar}`} />

@@ -44,9 +44,9 @@ function linkNames(nav: HTMLElement): string[] {
 }
 
 describe("SiteNav", () => {
-  // Quem navega pelo teclado ou por leitor de tela pula a barra inteira: o
-  // primeiro elemento focavel leva ao <main id="conteudo"> da pagina.
-  it("o primeiro elemento focavel e o pular para o conteudo, escondido ate ter foco", () => {
+  // Whoever navigates by keyboard or screen reader skips the whole bar: the
+  // first focusable element leads to the <main id="conteudo"> of the page.
+  it("the first focusable element is the skip to content link, hidden until focused", () => {
     const { container } = render(<SiteNav />);
     const focusable = container.querySelectorAll<HTMLElement>(
       'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])',
@@ -66,8 +66,8 @@ describe("SiteNav", () => {
     expect(dashboard.parentElement).toHaveClass("hidden", "lg:block");
     const compactBrand = document.querySelector(".logo-wordmark__mark");
     expect(compactBrand?.closest("a")?.parentElement).toHaveClass("md:hidden");
-    // O link da marca é alvo de toque: a marca mede 40 (mark) ou 32 (wordmark),
-    // e o link herdava isso — abaixo de 44px no celular e no tablet (QA 07/09).
+    // The brand link is a touch target: the brand measures 40 (mark) or 32 (wordmark),
+    // and the link inherited that — below 44px on phones and tablets (QA 07/09).
     expect(compactBrand?.closest("a")).toHaveClass("min-h-11", "min-w-11");
     expect(document.querySelector(".logo-wordmark__full")?.closest("a")?.parentElement).toHaveClass("hidden", "md:block");
 
@@ -104,8 +104,8 @@ describe("SiteNav", () => {
     );
   });
 
-  // Loja sem curso real publicado não aparece: nem na barra, nem no menu do
-  // celular. Sem provedor vale o mesmo "não" de uma leitura que falhou.
+  // A store with no real published course does not show: neither in the bar nor in the
+  // phone menu. Without a provider the same "no" as a failed read applies.
   it.each([
     ["sem curso real", false],
     ["sem provedor", undefined],
@@ -126,9 +126,9 @@ describe("SiteNav", () => {
     expect(screen.getByRole("link", { name: /Manage my business/ })).not.toHaveAttribute("target");
   });
 
-  // A barra pública é onde o visitante encontra a entrada. Em produção o menu
-  // (desktop e móvel) publica os hosts curtos; o "Get started" de cadastro e o
-  // Dashboard autenticado ficam como estão — só a entrada por intenção muda.
+  // The public bar is where the visitor finds the entry point. In production the menu
+  // (desktop and mobile) publishes the short hosts; the sign-up "Get started" and the
+  // authenticated Dashboard stay as they are — only the entry by intent changes.
   it("publishes the short hosts from both header menus in production", () => {
     vi.stubGlobal("location", { ...window.location, hostname: "www.skillsetmind.com" });
     render(<SiteNav />);
@@ -200,8 +200,8 @@ describe("SiteNav", () => {
     expect(within(menu).getByRole("option", { name: "Español" })).toHaveAttribute("aria-selected", "false");
   });
 
-  // O menu do celular soltava o foco no X, deixava o Tab ir para a página
-  // escurecida atrás, e a página rolava por baixo dele.
+  // The phone menu used to let go of focus on the X, let Tab go to the dimmed
+  // page behind it, and the page scrolled underneath.
   it("moves focus into the mobile menu, locks the page scroll and gives both back on close", () => {
     render(<RealCoursesProvider value><SiteNav /></RealCoursesProvider>);
     const toggle = screen.getByRole("button", { name: "Open menu" });
@@ -210,7 +210,7 @@ describe("SiteNav", () => {
     const mobile = screen.getByRole("navigation", { name: "Mobile navigation" });
     expect(within(mobile).getAllByRole("link")[0]).toHaveFocus();
     expect(document.body.style.overflow).toBe("hidden");
-    // O escuro não é mais um botão "Close menu" no caminho do Tab.
+    // The dimmed backdrop is no longer a "Close menu" button in the Tab path.
     expect(screen.getAllByRole("button", { name: "Close menu" })).toHaveLength(1);
     expect(document.getElementById("site-mobile-menu")).toHaveClass("motion-drop-in");
 
@@ -219,8 +219,8 @@ describe("SiteNav", () => {
     expect(toggle).toHaveFocus();
   });
 
-  // Tablet girado ou janela maximizada com o menu aberto: o painel, o escuro e
-  // o X somem a partir de 1280px, e a página ficava travada sem como soltar.
+  // Rotated tablet or maximized window with the menu open: the panel, the dimmed backdrop and
+  // the X disappear from 1280px up, and the page stayed locked with no way to release it.
   it("closes the mobile menu and frees the page when the window grows past 1280px", () => {
     const listeners = new Set<(event: { matches: boolean }) => void>();
     const desktop = {
@@ -254,7 +254,7 @@ describe("SiteNav", () => {
   });
 
   it("keeps Tab inside the header row while the mobile menu is open", () => {
-    // jsdom não faz layout: aqui todo elemento conta como visível.
+    // jsdom does no layout: here every element counts as visible.
     const rects = vi.spyOn(Element.prototype, "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
     try {
       render(<SiteNav />);
@@ -304,10 +304,10 @@ describe("SiteNav", () => {
     expect(screen.getByRole("button", { name: "Open menu" })).toHaveFocus();
   });
 });
-// A entrada usava três sistemas de botão: dourado na barra, navy no menu do
-// celular. Agora a ação principal é o mesmo .button-solid nos dois lugares.
-describe("SiteNav: os mesmos dois botões na barra e no menu do celular", () => {
-  it("'Create account' é o mesmo botão principal na barra e no menu", () => {
+// The entry point used three button systems: gold in the bar, navy in the phone
+// menu. Now the main action is the same .button-solid in both places.
+describe("SiteNav: the same two buttons in the bar and in the phone menu", () => {
+  it("'Create account' is the same main button in the bar and in the menu", () => {
     render(<SiteNav />);
     fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
     const panel = document.getElementById("site-mobile-menu")!;

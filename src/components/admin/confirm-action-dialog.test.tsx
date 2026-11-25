@@ -8,8 +8,8 @@ import { CONFIRM_GUARD_MS } from "@/components/ui/confirm-dialog";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 beforeEach(() => {
-  // jsdom não tem showModal/close; o mesmo arranjo do teste da janela de conta.
-  // Só o Date é falso: o confirmar ignora cliques nos primeiros CONFIRM_GUARD_MS.
+  // jsdom has no showModal/close; the same setup as the account dialog test.
+  // Only Date is fake: confirm ignores clicks in the first CONFIRM_GUARD_MS.
   vi.useFakeTimers({ toFake: ["Date"] });
   HTMLDialogElement.prototype.showModal = function showModal() { this.setAttribute("open", ""); };
   HTMLDialogElement.prototype.close = function close() { this.removeAttribute("open"); this.dispatchEvent(new Event("close")); };
@@ -40,12 +40,12 @@ describe("ConfirmActionDialog", () => {
     fireEvent.click(confirm);
     fireEvent.click(confirm);
     expect(onConfirm).toHaveBeenCalledTimes(1);
-    // O segundo clique não cai no que está embaixo: a janela continua aberta.
+    // The second click does not land on what is underneath: the dialog stays open.
     expect(dialog).toHaveAttribute("open");
     expect(confirm).toHaveAttribute("aria-busy", "true");
     expect(confirm).toBeDisabled();
     expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
-    // Esc enquanto grava não fecha.
+    // Esc while saving does not close it.
     fireEvent(dialog, new Event("cancel", { bubbles: false, cancelable: true }));
     expect(dialog).toHaveAttribute("open");
     expect(onClose).not.toHaveBeenCalled();
@@ -57,7 +57,7 @@ describe("ConfirmActionDialog", () => {
   it("closes without running the action on Cancel, and Esc works while idle", () => {
     const onConfirm = vi.fn(() => Promise.resolve());
     const onClose = mount(onConfirm);
-    // O foco começa no lado seguro.
+    // The focus starts on the safe side.
     expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus();
     fireEvent(screen.getByRole("dialog"), new Event("cancel", { bubbles: false, cancelable: true }));
     expect(onClose).toHaveBeenCalledTimes(1);
@@ -77,7 +77,7 @@ describe("ConfirmActionDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Unpublish" }));
     await act(async () => {});
     expect(onConfirm).toHaveBeenCalledTimes(1);
-    // Quem chamou mostra o erro no painel: a janela só fecha.
+    // The caller shows the error in the panel: the dialog only closes.
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("alert")).toBeNull();
   });

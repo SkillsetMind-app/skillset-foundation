@@ -90,12 +90,12 @@ function getAccountBanner(
     };
   }
 
-  // O aviso do Stripe MOROU aqui, como faixa amarela fixa em todo /teach: ela
-  // nunca se ia até a conta ficar conectada, então a pessoa passava semanas com
-  // um alerta permanente no topo — e alerta permanente deixa de ser alerta.
-  // Agora ele vive em dois lugares onde tem consequência: um passo da lista
-  // `creatorPanel.home.nextSteps.title`, na Home do professor, e uma linha discreta
-  // e dispensável nas telas de venda (ver `stripe-connect-notice.tsx`). Os dois
-  // somem sozinhos quando a conta conecta.
+  // The Stripe notice USED TO live here, as a fixed yellow strip across all of /teach: it
+  // never went away until the account was connected, so the person spent weeks with
+  // a permanent alert at the top — and a permanent alert stops being an alert.
+  // Now it lives in two places where it has consequences: a step in the list
+  // `creatorPanel.home.nextSteps.title`, on the teacher's Home, and a discreet,
+  // dismissible line on the sales screens (see `stripe-connect-notice.tsx`). Both
+  // go away on their own when the account connects.
   return null;
 }

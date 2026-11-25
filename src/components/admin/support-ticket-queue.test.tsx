@@ -32,7 +32,7 @@ function queue(query = "") {
 function deliver(rows = tickets) {
   act(() => mocks.subscribe.mock.calls[0][0](rows));
 }
-// O texto à vista: a face escondida do BusyLabel (aria-hidden) fica de fora.
+// The visible text: the hidden face of BusyLabel (aria-hidden) is left out.
 const hidden = 'script, style, [aria-hidden="true"]';
 function shown(element: Element) {
   const copy = element.cloneNode(true) as Element;
@@ -81,7 +81,7 @@ describe("support queue search, states and language", () => {
   it("keeps the labelled reply draft through filtering, language and failure, then confirms success", async () => {
     const { rerender } = render(queue("Alpha"));
     deliver();
-    // A caixa abre por "Reply" (I-09).
+    // The box opens through "Reply" (I-09).
     expect(screen.queryByRole("textbox")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Reply" }));
     fireEvent.change(screen.getByRole("textbox", { name: "Reply to user" }), { target: { value: "  Resposta autoral preservada.  " } });
@@ -90,7 +90,7 @@ describe("support queue search, states and language", () => {
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
     expect(screen.getByRole("textbox", { name: "Respuesta al usuario" })).toHaveValue("  Resposta autoral preservada.  ");
     expect(screen.getByText("Curso")).toBeInTheDocument();
-    // A etiqueta e o botão travado do status atual, no lugar de sempre.
+    // The label and the locked button of the current status, in the usual place.
     expect(screen.getAllByText("Abierto", { ignore: hidden })).toHaveLength(2);
     mocks.reply.mockRejectedValueOnce(new Error("Internal operation detail"));
     fireEvent.click(screen.getByRole("button", { name: "Enviar respuesta y resolver" }));
@@ -102,7 +102,7 @@ describe("support queue search, states and language", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send reply and resolve" }));
     expect(await screen.findByRole("status")).toHaveTextContent("Reply sent and ticket resolved.");
     expect(mocks.reply).toHaveBeenLastCalledWith("ticket-a", "Resposta autoral preservada.", "operator");
-    // Enviada, a caixa fecha e o foco volta ao "Reply"; reaberta, vem vazia.
+    // Once sent, the box closes and focus goes back to "Reply"; reopened, it comes up empty.
     expect(screen.queryByRole("textbox")).toBeNull();
     expect(screen.getByRole("button", { name: "Reply" })).toHaveFocus();
     fireEvent.click(screen.getByRole("button", { name: "Reply" }));
@@ -122,9 +122,9 @@ describe("support queue search, states and language", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("No pudimos actualizar este ticket de soporte.");
     expect(mocks.update).toHaveBeenLastCalledWith("ticket-a", "in_review");
     fireEvent.click(screen.getByRole("button", { name: "En revisión" }));
-    // Só o status apertado gira; o nome dele não vira "Actualizando..." (I-08).
+    // Only the pressed status spins; its name does not become "Actualizando..." (I-08).
     expect(screen.getByRole("button", { name: "En revisión" })).toHaveAttribute("aria-busy", "true");
-    // O mesmo nome nas duas faces; a do anel já guardava o lugar em repouso.
+    // The same name on both faces; the ring one already held the place at rest.
     expect(screen.getByRole("button", { name: "En revisión" }).querySelectorAll('[class*="grid-area"]')).toHaveLength(2);
     expect(screen.getAllByRole("button").filter((button) => button.getAttribute("aria-busy") === "true")).toHaveLength(1);
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Estado del ticket actualizado."));
@@ -160,7 +160,7 @@ describe("support queue search, states and language", () => {
     await screen.findByRole("status");
     expect(mocks.update).toHaveBeenCalledWith("ticket-a", "in_review");
     deliver([{ ...tickets[0], status: "in_review" }, tickets[1]]);
-    // O 2º lugar continua "In review" (agora travado); um 2º clique ali não reabre o chamado.
+    // The 2nd place stays "In review" (now locked); a 2nd click there does not reopen the ticket.
     expect(slots()).toEqual([["Open", false], ["In review", true], ["Resolved", false]]);
     fireEvent.click(screen.getByRole("button", { name: "In review" }));
     expect(mocks.update).toHaveBeenCalledTimes(1);

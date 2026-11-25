@@ -37,7 +37,7 @@ beforeEach(() => { vi.clearAllMocks(); mocks.authStatus = "authenticated"; mocks
 afterEach(cleanup);
 
 describe("billing locale with real dictionaries", () => {
-  // A página é de servidor e serve aluno e criador: o texto não fala de plano de criador.
+  // The page is server-rendered and serves learner and creator: the text does not mention a creator plan.
   it("keeps the billing page copy neutral for learners", () => {
     for (const locale of ["en", "es"] as const) {
       const dictionary = getDictionary(locale);
@@ -55,7 +55,7 @@ describe("billing locale with real dictionaries", () => {
     mount(<BillingTabs />);
     expect(screen.getByRole("tablist", { name: "Secciones de facturación" })).toBeTruthy();
     expect(screen.getByText("Gasto total")).toBeTruthy();
-    // Cada numero uma vez: a contagem mora so na linha "Cursos comprados".
+    // Each number once: the count lives only on the "Cursos comprados" row.
     expect(within(screen.getByText("Cursos comprados").parentElement!).getByText("0")).toBeTruthy();
     expect(screen.queryByText(/^\d+ cursos? comprados?$/)).toBeNull();
     fireEvent.click(screen.getByRole("tab", { name: "Compras" }));
@@ -75,7 +75,7 @@ describe("billing locale with real dictionaries", () => {
     expect(screen.getByRole("button", { name: "Gestionar métodos de pago" })).toBeTruthy();
   });
 
-  // Carregando: esqueleto no formato da aba, com a frase so para o leitor de tela.
+  // Loading: skeleton in the shape of the tab, with the phrase only for the screen reader.
   it.each([
     ["overview", "Cargando el resumen de facturación..."],
     ["purchases", "Cargando tus compras..."],
@@ -106,8 +106,8 @@ describe("billing locale with real dictionaries", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  // O X do cabeçalho é o Cancelar: fecha sem pedir nada e some enquanto o
-  // pedido está indo (o Cancelar trava nessa hora).
+  // The X in the header is the Cancel: it closes without asking anything and disappears while the
+  // request is being sent (the Cancel locks at that point).
   it("closes the refund dialog from the X without requesting, and nothing closes it while submitting", async () => {
     mocks.tab = "purchases"; mocks.orders = [order];
     let finish!: () => void;
@@ -126,7 +126,7 @@ describe("billing locale with real dictionaries", () => {
     fireEvent.click(within(modal).getByRole("button", { name: "Solicitar reembolso" }));
     expect(within(modal).getByRole("button", { name: "Cancelar" })).toBeDisabled();
     expect(within(modal).queryByRole("button", { name: "Cerrar" })).toBeNull();
-    // Esc e o clique no fundo (a própria camada do diálogo) também não fecham.
+    // Esc and a click on the backdrop (the dialog's own layer) do not close it either.
     fireEvent.keyDown(document, { key: "Escape" });
     fireEvent.click(modal);
     expect(screen.getByRole("dialog", { name: "Solicitar un reembolso" })).toBe(modal);
@@ -136,9 +136,9 @@ describe("billing locale with real dictionaries", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  // A-15 / A-22 / C-12: pedir dinheiro de volta é um botão de contorno de
-  // 44px (era um link dourado de 24px), o recibo tem alvo de 44px, e a página
-  // de trás para de rolar enquanto a janela está aberta.
+  // A-15 / A-22 / C-12: asking for money back is an outline button of
+  // 44px (it was a 24px gold link), the receipt has a 44px target, and the page
+  // behind stops scrolling while the dialog is open.
   it("refund trigger is a 44px outline button and the page behind stops scrolling", () => {
     mocks.tab = "purchases"; mocks.orders = [order];
     mount(<BillingTabs />);
@@ -154,7 +154,7 @@ describe("billing locale with real dictionaries", () => {
     expect(document.body.style.overflow).toBe("");
   });
 
-  // O número que o aluno manda ao suporte quando "comprei e não entrou".
+  // The number the learner sends to support when "I bought it and did not get access".
   it("shows the short order ID with a copy button in My purchases", () => {
     mocks.tab = "purchases"; mocks.orders = [{ ...order, id: "9b1d4e2a-0c3f-4a5b-8d6e-7f8091a2b3c4" }];
     mount(<BillingTabs />);
@@ -216,7 +216,7 @@ describe("billing locale with real dictionaries", () => {
   it("translates plans and their existing pricing highlights without changing cycle", async () => {
     mount(<PlansPanel />);
     expect(screen.getByText("Plan actual:")).toBeTruthy();
-    // O seletor segmentado da casa (PeriodTabs): grupo com aria-pressed.
+    // The app's own segmented selector (PeriodTabs): group with aria-pressed.
     expect(screen.getByRole("group", { name: "Ciclo de facturación" })).toBeTruthy();
     const annual = screen.getByRole("button", { name: /^Anual/ });
     fireEvent.click(annual);

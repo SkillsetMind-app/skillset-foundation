@@ -97,9 +97,9 @@ describe("creator shell regressions", () => {
     expect(activeLink).toHaveClass("h-11", "min-h-11");
   });
 
-  // Os grupos acumulam: abrir um nao fecha o outro. Sobraram dois grupos,
-  // Vendas (vendas, assinaturas, relatorios) e Promover; o primeiro vem aberto.
-  it("abre o primeiro grupo e deixa vários grupos abertos ao mesmo tempo", () => {
+  // The groups accumulate: opening one does not close the other. Two groups are left,
+  // Sales (sales, subscriptions, reports) and Promote; the first comes open.
+  it("opens the first group and leaves several groups open at the same time", () => {
     render(<PlatformNav />);
 
     const sales = screen.getByRole("button", { name: "Sales" });
@@ -117,7 +117,7 @@ describe("creator shell regressions", () => {
     expect(screen.getByRole("link", { name: "Marketing overview" })).toBeInTheDocument();
   });
 
-  it("fecha um grupo ao clicar nele de novo", () => {
+  it("closes a group when it is clicked again", () => {
     render(<PlatformNav />);
 
     const sales = screen.getByRole("button", { name: "Sales" });
@@ -182,9 +182,9 @@ describe("creator shell regressions", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  // So a cor (dois azuis escuros) nao dizia onde a pessoa esta: a aba atual
-  // leva aria-current, e numa pagina que so existe dentro de "More" a marca
-  // fica no "More".
+  // Color alone (two dark blues) did not say where the person is: the current tab
+  // carries aria-current, and on a page that only exists inside "More" the marker
+  // stays on "More".
   it("marks the current tab of the bottom bar, or More when no tab is the page", () => {
     mocks.pathname = "/teach";
     const home = render(<MobileSidebarDrawer open={false} onOpen={vi.fn()} onClose={vi.fn()} />);
@@ -195,7 +195,7 @@ describe("creator shell regressions", () => {
     expect(bar.querySelector("button")).not.toHaveAttribute("data-current");
     home.unmount();
 
-    // /teach/reports so se alcanca pelo "More": "Home" nao e essa pagina.
+    // /teach/reports can only be reached through "More": "Home" is not that page.
     mocks.pathname = "/teach/reports";
     const inner = render(<MobileSidebarDrawer open={false} onOpen={vi.fn()} onClose={vi.fn()} />);
     const other = screen.getByRole("navigation", { name: "platform.mobile.navLabel" });
@@ -203,7 +203,7 @@ describe("creator shell regressions", () => {
     expect(other.querySelector("button")).toHaveAttribute("data-current", "true");
     inner.unmount();
 
-    // As outras abas valem para as paginas dentro delas.
+    // The other tabs apply to the pages inside them.
     mocks.pathname = "/account/billing";
     render(<MobileSidebarDrawer open={false} onOpen={vi.fn()} onClose={vi.fn()} />);
     const account = screen.getByRole("navigation", { name: "platform.mobile.navLabel" });
@@ -243,10 +243,10 @@ describe("creator shell regressions", () => {
     );
   });
 
-  // O CSS pinta a barra de rolagem em .platform-sidebar .platform-sidebar-nav
-  // (ver sidebar-frame.test.tsx). Se a classe sair daqui, a regra fica orfa e
-  // a barra volta a sumir no navy, sem ninguem reclamar.
-  it("mantem a classe que o CSS usa para pintar a barra de rolagem do menu", () => {
+  // The CSS paints the scrollbar on .platform-sidebar .platform-sidebar-nav
+  // (see sidebar-frame.test.tsx). If the class leaves here, the rule is orphaned and
+  // the bar goes back to vanishing on the navy, with nobody complaining.
+  it("keeps the class that the CSS uses to paint the menu's scrollbar", () => {
     render(<PlatformNav />);
 
     expect(screen.getByRole("navigation", { name: "Workspace" })).toHaveClass(

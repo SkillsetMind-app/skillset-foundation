@@ -11,11 +11,11 @@ describe("hero portrait framing", () => {
     });
   });
 
-  // f0be6ff (05/09) dimensionava o quadro pela proporcao da foto para nunca
-  // cortar — e deixava 439px de gradiente vazio a 1920px, com a foto parada
-  // como um retangulo a direita ("desencaixada do canvas", Patrick 07/09).
-  // O quadro agora e o proprio hero; a imagem cobre e ancora o topo, entao a
-  // cabeca sobrevive ao corte e o corte, quando ha, e embaixo.
+  // f0be6ff (05/09) sized the frame by the photo's aspect ratio so it would never
+  // crop — and left 439px of empty gradient at 1920px, with the photo sitting
+  // like a rectangle on the right ("detached from the canvas", the owner 07/09).
+  // The frame is now the hero itself; the image covers and anchors the top, so the
+  // head survives the crop and the crop, when there is one, is at the bottom.
   it("covers the whole desktop hero instead of standing as a photo-shaped box on the right", () => {
     const declarations: Record<string, string> = {};
     css.walkRules(".hero-portrait-frame", (rule) => {

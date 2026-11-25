@@ -3,12 +3,12 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
 /**
- * O projeto usa 14 valores distintos de tracking. Filtrando só o eyebrow
- * clássico sobram 5, e 0.22em é disparado o mais usado. Um valor só.
+ * The project uses 14 distinct tracking values. Filtering for only the classic
+ * eyebrow leaves 5, and 0.22em is by far the most used. A single value.
  *
- * O tamanho fica em text-xs (12px), que é o que as telas já usam e respeita o
- * piso de 11px: versalete apertado abaixo disso vira carimbo — legível para
- * quem desenhou, ilegível para quem lê.
+ * The size stays at text-xs (12px), which is what the screens already use and respects the
+ * 11px floor: tight small caps below that become a stamp — legible to
+ * whoever designed it, illegible to whoever reads it.
  */
 const toneClass = {
   accent: "text-[var(--color-accent-fg)]",

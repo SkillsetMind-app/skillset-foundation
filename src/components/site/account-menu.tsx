@@ -31,12 +31,12 @@ import { subscribeToUserProfile } from "@/lib/data/user-profiles";
 type AccountMenuProps = {
   user: SkillsetUser;
   onSignOut: () => Promise<void>;
-  /** Sala com a marca do professor: sem portas para dentro da SkillsetMind
+  /** Room with the teacher's brand: no doors into SkillsetMind
    *  ("Become a teacher", "Go to dashboard"). */
   branded?: boolean;
-  /** Dentro da plataforma a barra do topo ja tem o botao de trocar de lado:
-   *  o mesmo destino aqui era a mesma acao duas vezes, lado a lado. O site
-   *  publico nao passa nada e segue com a troca no menu. */
+  /** Inside the platform the top bar already has the switch-sides button:
+   *  the same destination here was the same action twice, side by side. The public
+   *  site passes nothing and keeps the switch in the menu. */
   topBarSwitchHref?: string;
 };
 
@@ -91,7 +91,7 @@ export function AccountMenu({ onSignOut, user, branded = false, topBarSwitchHref
     : "/account/billing";
   // Plans are what a creator pays to sell; same gate as /teach.
   const canTeach = hasPermission({ roles: user.roles }, "teacherStudio.access");
-  // Um nome so para a pagina do dinheiro do professor, o mesmo da barra.
+  // One name for the teacher's money page, the same as the bar's.
   const moneyLabel = user.roles.includes("teacher")
     ? t("platform.nav.earnings")
     : canTeach
@@ -126,8 +126,8 @@ export function AccountMenu({ onSignOut, user, branded = false, topBarSwitchHref
       workspace.href !== topBarSwitchHref &&
       pathname !== workspace.href && !pathname.startsWith(`${workspace.href}/`),
   );
-  // O admin procurava "ver como" aqui, ao lado da troca de espaco; ele mora na
-  // fila de acessos do /ops. Atalho, nao reimplementacao (reanalise Ops 5).
+  // The admin looked for "view as" here, next to the space switch; it lives in the
+  // access queue of /ops. A shortcut, not a reimplementation (Ops reanalysis 5).
   const canViewAs = hasPermission({ roles: user.roles }, "platform.accessAdmin");
 
   // Someone with no studio yet gets the application instead, in the SAME tab:
@@ -328,8 +328,8 @@ export function AccountMenu({ onSignOut, user, branded = false, topBarSwitchHref
               label={moneyLabel}
               onNavigate={() => setIsOpen(false)}
             />
-            {/* As ferramentas do professor que nao sao trabalho do dia saem da
-                barra lateral e moram aqui. */}
+            {/* The teacher's tools that are not day-to-day work leave the
+                sidebar and live here. */}
             {user.roles.includes("teacher") ? (
               <MenuLink
                 href="/teach/verification"
@@ -354,8 +354,8 @@ export function AccountMenu({ onSignOut, user, branded = false, topBarSwitchHref
             ) : null}
           </div>
 
-          {/* A Ajuda nao mora aqui: uma por tela, na barra lateral (ou no
-              topo da sala de aula, que nao tem barra). */}
+          {/* Help does not live here: one per screen, in the sidebar (or at the
+              top of the classroom, which has no bar). */}
           <div className="account-menu-separator" />
           <button
             type="button"

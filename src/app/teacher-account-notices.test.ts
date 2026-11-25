@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-// Source read, as in revisao-pr494.test.ts: jsdom does not paint anything, so
+// Source read, as in pr494-review.test.ts: jsdom does not paint anything, so
 // what can be proven is that the hand-made box did not come back. The box with literal 6% red
 // disappeared in the dark theme, many were not announced and none
 // had an icon; the InlineAlert has all three.

@@ -18,10 +18,10 @@ import { isPlatformNavItemHidden, platformNav } from "@/data/site";
 import { getWorkspaceHomeHref, getWorkspaceSide } from "@/lib/auth/routing";
 import { hasPermission, type PermissionSubject } from "@/lib/permissions";
 
-// O hambúrguer daqui foi embora: abaixo de 640px ele abria EXATAMENTE a mesma
-// gaveta que o "More" da barra de baixo, que está sempre visível e ao alcance
-// do polegar. Duas portas para a mesma sala, uma delas no canto oposto ao da
-// mão. De 640px para cima ele já era `sm:hidden`, então nada muda ali.
+// The hamburger here is gone: below 640px it opened EXACTLY the same
+// drawer as the "More" on the bottom bar, which is always visible and within reach
+// of the thumb. Two doors to the same room, one of them in the corner opposite the
+// hand. From 640px up it was already `sm:hidden`, so nothing changes there.
 export function PlatformHeader({ currentNavigationHref, searchHref }: {
   currentNavigationHref?: string;
   searchHref?: string | null;
@@ -31,8 +31,8 @@ export function PlatformHeader({ currentNavigationHref, searchHref }: {
   const { status, user, signOut } = useAuth();
   const [searchOpen, setSearchOpen] = useState(false);
   const searchToggleRef = useRef<HTMLButtonElement>(null);
-  // Só a faixa do celular fecha; em telas maiores o campo é fixo e
-  // `searchOpen` nunca liga.
+  // Only the phone strip closes; on larger screens the field is fixed and
+  // `searchOpen` is never turned on.
   const dismissSearch = (reason: "escape" | "submit") => {
     if (!searchOpen) return;
     setSearchOpen(false);
@@ -43,9 +43,9 @@ export function PlatformHeader({ currentNavigationHref, searchHref }: {
   const showSearch = searchHref !== null && (!pathname.startsWith("/ops") || Boolean(searchHref));
   const signedIn = status === "authenticated" && Boolean(user);
   const side = getWorkspaceSide(pathname, user);
-  // Trocar de lado era "Switch view", escondido no menu do avatar, e o atalho
-  // do site publico abria ABA NOVA — para quem tem pouca familiaridade com a
-  // internet, aba nova e "o site sumiu". Agora e um botao a vista, na mesma aba.
+  // Switching sides used to be "Switch view", hidden in the avatar menu, and the shortcut
+  // to the public site opened a NEW TAB — for someone with little familiarity with the
+  // internet, a new tab means "the site vanished". Now it is a visible button, in the same tab.
   const switchTo = signedIn && user && hasPermission({ roles: user.roles }, "teacherStudio.access")
     ? side === "teacher"
       ? { href: "/learn", label: t("platform.side.goStudent") }
@@ -74,18 +74,18 @@ export function PlatformHeader({ currentNavigationHref, searchHref }: {
           />
           <span className="cur">{pageLabel}</span>
         </nav>
-        {/* No celular o caminho acima some (falta espaco): fica o nome do lado
-            em que a pessoa esta. */}
+        {/* On a phone the path above goes away (no room): what remains is the name of the side
+            the person is on. */}
         {signedIn ? <p className="platform-topbar__side">{t(`platform.side.${side}`)}</p> : null}
 
         {showSearch ? <PlatformSearch pathname={pathname} open={searchOpen} searchHref={searchHref ?? undefined} onDismiss={dismissSearch} /> : null}
 
         <div className="platform-topbar__actions">
-          {/* Abaixo de 1280px o botao fica so com o icone (o texto continua
-              para leitor de tela): com o texto inteiro ele empurrava o idioma
-              e o menu da conta para fora da tela em tablet e notebook pequeno.
-              A Ajuda nao mora aqui: e uma por tela, na barra lateral (no
-              celular, dentro da gaveta). */}
+          {/* Below 1280px the button keeps only the icon (the text stays
+              for screen readers): with the full text it pushed the language
+              and the account menu off screen on a tablet and a small laptop.
+              Help does not live here: it is one per screen, in the sidebar (on a
+              phone, inside the drawer). */}
           {switchTo ? (
             <Link
               href={switchTo.href}
@@ -97,8 +97,8 @@ export function PlatformHeader({ currentNavigationHref, searchHref }: {
               <span className="platform-topbar__switch-label">{switchTo.label}</span>
             </Link>
           ) : null}
-          {/* No celular o campo não cabe na linha: o ícone o abre logo abaixo
-              da barra. Em telas maiores ele já está aberto e este botão some. */}
+          {/* On a phone the field does not fit in the row: the icon opens it right below
+              the bar. On larger screens it is already open and this button goes away. */}
           {showSearch ? <button
             ref={searchToggleRef}
             type="button"
@@ -124,10 +124,10 @@ export function PlatformHeader({ currentNavigationHref, searchHref }: {
           {status === "authenticated" && user ? (
             <AccountMenu user={user} onSignOut={signOut} topBarSwitchHref={switchTo?.href} />
           ) : null}
-          {/* O idioma só existia no site público: dentro de /teach, /learn,
-              /account e /ops a pessoa tinha que sair da plataforma para trocar.
-              Último item do cluster, no extremo direito — onde o olho procura.
-              Todas as quatro superfícies passam por este mesmo cabeçalho. */}
+          {/* The language only existed on the public site: inside /teach, /learn,
+              /account and /ops the person had to leave the platform to switch.
+              Last item of the cluster, at the far right — where the eye looks.
+              All four surfaces go through this same header. */}
           <LocaleSwitcher variant="compact" />
         </div>
       </div>

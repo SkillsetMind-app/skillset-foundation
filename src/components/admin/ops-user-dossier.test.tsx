@@ -74,7 +74,7 @@ beforeEach(() => mocks.get.mockResolvedValue(dossier()));
 afterEach(() => { cleanup(); vi.resetAllMocks(); });
 
 describe("OpsUserDossierPanel", () => {
-  it("mostra a pessoa, o status, o dinheiro na moeda certa e o motivo da auditoria", async () => {
+  it("shows the person, the status, the money in the right currency and the audit reason", async () => {
     render(panel());
     expect(await screen.findByRole("heading", { name: "Dossier Target" })).toBeInTheDocument();
     expect(mocks.get).toHaveBeenCalledWith("u-2");
@@ -85,7 +85,7 @@ describe("OpsUserDossierPanel", () => {
     expect(screen.getByRole("link", { name: "Back to users" })).toHaveAttribute("href", "/ops?tab=users");
   });
 
-  it("mostra as respostas do cadastro, o comportamento e a linha do tempo", async () => {
+  it("shows the sign-up answers, the behavior and the timeline", async () => {
     render(panel());
     await screen.findByRole("heading", { name: "Dossier Target" });
     expect(screen.getByText("Coach")).toBeInTheDocument();
@@ -97,31 +97,31 @@ describe("OpsUserDossierPanel", () => {
     expect(screen.getByText(/Created a course · Dossier fixture/)).toBeInTheDocument();
   });
 
-  it("abre por acesso e compras, deixa o cadastro no fim e não repete status nem rótulo", async () => {
+  it("opens with access and purchases, leaves sign-up at the end and does not repeat status or label", async () => {
     render(panel());
     await screen.findByRole("heading", { name: "Dossier Target" });
     const section = (key: string) => en(`platform.ops.userDossier.sections.${key}`);
     const titles = screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent);
     expect(titles.slice(0, 2)).toEqual([section("access"), section("purchases")]);
     expect(titles.at(-1)).toBe(section("onboarding"));
-    // O status mora só no cabeçalho; a linha do tempo não repete o título como rótulo.
+    // The status lives only in the header; the timeline does not repeat the title as a label.
     expect(screen.queryByText(en("platform.ops.userDossier.fields.accountStatus"))).toBeNull();
     expect(screen.getAllByText(section("timeline"))).toHaveLength(1);
     expect(screen.getAllByText(section("privacy"))).toHaveLength(1);
-    // Código cru vira texto: tipo do pedido e ação da auditoria (I-10).
+    // Raw codes become text: order type and audit action (I-10).
     expect(screen.getByText(/^Account deletion/)).toBeInTheDocument();
     expect(screen.getByText(/Access suspended and email blocked · admin@example\.test/)).toBeInTheDocument();
     expect(screen.queryByText(/account_deletion|user\.account_block/)).toBeNull();
   });
 
-  // I-03: a pessoa é o título da página (um h1 só), com "Person record" em
-  // cima, e uma faixa de resumo logo abaixo; os cartões viram h2.
-  it("faz do nome o h1, com a faixa de resumo e o nome do plano", async () => {
+  // I-03: the person is the page title (a single h1), with "Person record" above
+  // it, and a summary strip right below; the cards become h2.
+  it("makes the name the h1, with the summary strip and the plan name", async () => {
     mocks.get.mockResolvedValue(dossier({
       purchases: { ...dossier().purchases, plan_subscription: { plan_id: "pro", status: "trialing", current_period_end: null, cancel_at_period_end: false } },
     }));
     render(panel());
-    // Carregando, o h1 é o genérico; ele vira o nome quando a ficha chega.
+    // While loading, the h1 is the generic one; it becomes the name when the record arrives.
     const h1 = await screen.findByRole("heading", { level: 1, name: "Dossier Target" });
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(h1.previousElementSibling).toHaveTextContent("Person record");
@@ -130,20 +130,20 @@ describe("OpsUserDossierPanel", () => {
     const facts = [...strip.querySelectorAll("dt")].map((term) => [term.textContent, term.nextElementSibling?.textContent]);
     const joined = new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date("2026-09-01T00:00:00Z"));
     expect(facts).toEqual([["Status", "Blocked"], ["Level", "Learner, Instructor"], ["Plan", "Pro"], ["Joined", joined]]);
-    // Entrada uma vez só: saiu do cartão de acesso.
+    // Sign-in appears only once: it left the access card.
     expect(screen.getAllByText("Joined")).toHaveLength(1);
-    // Compras: o nome do plano e o código cru só como detalhe, selecionável (I-10).
+    // Purchases: the plan name, and the raw code only as a selectable detail (I-10).
     const raw = screen.getByText("pro");
     expect(raw).toHaveClass("select-all", "font-mono");
     expect(raw.parentElement).toHaveTextContent("Pro");
   });
 
   it.each([
-    // Código que nenhum plano conhece (legado): aparece cru, sem linha extra.
+    // A code no plan knows (legacy): it appears raw, with no extra line.
     ["price_legacy_1", "price_legacy_1"],
-    // Assinatura sem plano gravado: "None", sem quebrar a ficha.
+    // Subscription with no plan stored: "None", without breaking the record.
     [null, "None"],
-  ])("plano %s: mostra %s, sem quebrar", async (planId, shown) => {
+  ])("plan %s: shows %s, without breaking", async (planId, shown) => {
     mocks.get.mockResolvedValue(dossier({
       purchases: { ...dossier().purchases, plan_subscription: { plan_id: planId, status: "active", current_period_end: null, cancel_at_period_end: null } },
     }));
@@ -152,14 +152,14 @@ describe("OpsUserDossierPanel", () => {
     const strip = screen.getByText("Level").closest("dl")!;
     const plan = [...strip.querySelectorAll("dt")].find((term) => term.textContent === "Plan")!;
     expect(plan.nextElementSibling?.textContent).toBe(shown);
-    // No cartão de compras: o status fica, e não há detalhe cru repetido.
+    // In the purchases card: the status stays, and there is no repeated raw detail.
     const purchases = screen.getByRole("heading", { level: 2, name: "Purchases" }).closest("section")!;
     expect(purchases.querySelector(".select-all")).toBeNull();
     expect(purchases).toHaveTextContent("Active");
     if (planId) expect(purchases).toHaveTextContent(planId);
   });
 
-  it("carregando e com erro, o h1 é o genérico", async () => {
+  it("while loading and on error, the h1 is the generic one", async () => {
     let fail!: (reason: unknown) => void;
     mocks.get.mockReturnValue(new Promise((_, reject) => { fail = reject; }));
     render(panel());
@@ -170,7 +170,7 @@ describe("OpsUserDossierPanel", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Person record");
   });
 
-  it("não deixa separador vazio quando falta o status de uma matrícula", async () => {
+  it("does not leave an empty separator when an enrollment has no status", async () => {
     mocks.get.mockResolvedValue(dossier({
       learning: {
         enrollments_by_status: {}, certificates: 0, course_subscriptions_by_status: {},
@@ -183,14 +183,14 @@ describe("OpsUserDossierPanel", () => {
     expect(row.textContent).not.toContain("·  ·");
   });
 
-  it("não oferece o controle de conta na própria conta", async () => {
+  it("does not offer the account control on the user's own account", async () => {
     mocks.get.mockResolvedValue(dossier({ identity: { ...dossier().identity, is_self: true } }));
     render(panel());
     expect(await screen.findByText("This is your own account.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Account access" })).toBeDisabled();
   });
 
-  it("recusa conhecida vira o texto certo; o resto vira erro com nova tentativa, sem vazar o detalhe", async () => {
+  it("a known refusal becomes the right text; anything else becomes an error with a retry, without leaking the detail", async () => {
     mocks.get.mockRejectedValueOnce({ message: "USER_DOSSIER_USER_MISSING" });
     render(panel());
     expect(await screen.findByText("This account no longer exists.")).toBeInTheDocument();
@@ -206,7 +206,7 @@ describe("OpsUserDossierPanel", () => {
     expect(screen.queryByText("provider detail")).toBeNull();
   });
 
-  it("fechar o controle de conta recarrega o dossiê", async () => {
+  it("closing the account control reloads the dossier", async () => {
     render(panel());
     await screen.findByRole("heading", { name: "Dossier Target" });
     fireEvent.click(screen.getByRole("button", { name: "Account access" }));
@@ -214,14 +214,14 @@ describe("OpsUserDossierPanel", () => {
     await waitFor(() => expect(mocks.get).toHaveBeenCalledTimes(2));
   });
 
-  it("fala espanhol", async () => {
+  it("speaks Spanish", async () => {
     render(panel("es"));
     expect(await screen.findByRole("heading", { name: "Dossier Target" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Respuestas del registro" })).toBeInTheDocument();
     expect(screen.getByText(/Creó un curso · Dossier fixture/)).toBeInTheDocument();
   });
 
-  it("EN e ES têm as mesmas chaves na tabela e no dossiê", () => {
+  it("EN and ES have the same keys in the table and in the dossier", () => {
     const keys = (value: unknown, prefix = ""): string[] =>
       value && typeof value === "object"
         ? Object.entries(value).flatMap(([key, child]) => keys(child, `${prefix}${key}.`))

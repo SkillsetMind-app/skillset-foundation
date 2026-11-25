@@ -16,7 +16,7 @@ import {
 } from "@/lib/data/enrollments";
 import { subscribeToPublishedTeacherCourses } from "@/lib/data/published-courses";
 
-// Nome e e-mail juntos: duas "Maria Lopez" só se separam pelo e-mail.
+// Name and email together: two "Maria Lopez" only differ by email.
 function accountLabel(user: UserProfile) {
   return user.displayName && user.email ? `${user.displayName} · ${user.email}` : user.displayName || user.email || user.uid;
 }
@@ -39,17 +39,17 @@ export function AdminEnrollmentPanel() {
   const [isLoadingGranted, setIsLoadingGranted] = useState(true);
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [asking, setAsking] = useState<Enrollment | null>(null);
-  // O "Try again" rele so o que falhou, pelo reload() de cada inscricao, sem
-  // fechar e abrir o canal (com o mesmo nome, o canal novo pegava o velho
-  // ainda fechando e a lista parava de se atualizar).
+  // "Try again" re-reads only what failed, through each enrollment's reload(), without
+  // closing and opening the channel (with the same name, the new channel caught the old one
+  // still closing and the list stopped updating).
   const subscriptions = useRef<{
     users: { reload: () => Promise<void> } | null;
     courses: { reload: () => Promise<void> } | null;
     grants: { reload: () => Promise<void> } | null;
   }>({ users: null, courses: null, grants: null });
   const [retryingFields, setRetryingFields] = useState(false);
-  // O foco vai para o que fica na tela nos dois desfechos: o botao some
-  // quando a leitura da certo.
+  // The focus goes to what stays on screen in both outcomes: the button disappears
+  // when the read succeeds.
   const panelRef = useRef<HTMLElement | null>(null);
   const grantsRef = useRef<HTMLDivElement | null>(null);
 
@@ -127,7 +127,7 @@ export function AdminEnrollmentPanel() {
     };
   }, []);
 
-  // O mesmo rótulo da linha da lista e da janela de revogar.
+  // The same label as the list row and the revoke dialog.
   function learnerLabel(userId: string) {
     const learner = users.find((user) => user.uid === userId);
     return learner?.displayName || learner?.email || userId;
@@ -138,20 +138,20 @@ export function AdminEnrollmentPanel() {
     [courseId, courses],
   );
 
-  // Filtro local sobre as contas que o painel já carregou: achar a pessoa
-  // digitando, em vez de rolar a lista do navegador com todas as contas
-  // (I-13). Quem já está escolhido fica na lista, senão o select perderia o valor.
+  // Local filter over the accounts the panel already loaded: find the person
+  // by typing, instead of scrolling the browser list with all the accounts
+  // (I-13). Whoever is already chosen stays in the list, otherwise the select would lose its value.
   const term = learnerFilter.trim().toLowerCase();
   const matches = (user: UserProfile) =>
     [user.displayName, user.email, user.uid].join(" ").toLowerCase().includes(term);
   const learnerOptions = term ? users.filter((user) => user.uid === userId || matches(user)) : users;
   const noLearnerMatch = term !== "" && !users.some(matches);
-  // Como o curso: a conta escolhida só vale se ainda está na lista carregada.
-  // Se ela sai (apagada, ou fora das linhas que a leitura traz), o select fica
-  // sem nada marcado e o botão não pode dar acesso a uma conta que não se vê.
+  // Like the course: the chosen account only counts if it is still in the loaded list.
+  // If it leaves (deleted, or outside the rows the read returns), the select is left
+  // with nothing selected and the button cannot give access to an account that is not visible.
   const selectedUser = users.find((user) => user.uid === userId) ?? null;
-  // Por que o botão está cinza, dito embaixo dele (I-13). Nada enquanto as
-  // listas carregam; falha de leitura já tem o próprio aviso acima.
+  // Why the button is gray, stated below it (I-13). Nothing while the
+  // lists load; a read failure already has its own notice above.
   const blockedReason = isLoadingUsers || isLoadingCourses || readErrors.users || readErrors.courses ? null
     : courses.length === 0 ? "noCourses"
       : users.length === 0 ? "noUsers"
@@ -177,7 +177,7 @@ export function AdminEnrollmentPanel() {
     }
   }
 
-  // Roda só pelo confirmar da janela, que antes era o OK do window.confirm.
+  // Runs only from the dialog's confirm, which used to be the OK of window.confirm.
   async function handleRevoke(enrollment: Enrollment) {
     setError("");
     setSuccess("");
@@ -264,7 +264,7 @@ export function AdminEnrollmentPanel() {
       </div>
 
       {readErrors.users || readErrors.courses ? (
-        // A frase do erro fica em cada campo; o botão lê de novo os dois.
+        // The error sentence stays on each field; the button reads both again.
         <Button
           variant="outline"
           className="mt-3"
@@ -288,8 +288,8 @@ export function AdminEnrollmentPanel() {
       >
         <BusyLabel busy={isSaving} idle={t(`${copy}.create`)} busyText={t(`${copy}.creating`)} />
       </button>
-      {/* Embaixo do botão: o que falta quando ele está cinza, ou para quem vai o
-          acesso quando está pronto, para conferir antes de clicar. */}
+      {/* Below the button: what is missing when it is gray, or who the
+          access goes to when it is ready, to check before clicking. */}
       <p id="ops-enrollment-create-hint" className="mt-2 break-words text-xs text-[var(--color-ink-soft)]">
         {blockedReason === "choose" ? t(`${copy}.errors.choose`)
           : blockedReason ? t(`${copy}.${blockedReason}`)
@@ -338,8 +338,8 @@ export function AdminEnrollmentPanel() {
                       {t(`${copy}.${enrollment.source === "admin" ? "adminGrant" : "demoGrant"}`)}
                     </p>
                   </div>
-                  {/* Tirar o acesso é vermelho, como Unpublish e Reject (I-04); a
-                      pergunta antes continua a mesma. */}
+                  {/* Removing access is red, like Unpublish and Reject (I-04); the
+                      question beforehand stays the same. */}
                   <Button
                     variant="danger"
                     size="sm"
@@ -360,8 +360,8 @@ export function AdminEnrollmentPanel() {
         </div>
       </div>
 
-      {/* A frase é a mesma do antigo window.confirm; o resultado continua no
-          aviso do painel. */}
+      {/* The sentence is the same as the old window.confirm; the result stays in the
+          panel notice. */}
       {asking ? (
         <ConfirmDialog
           title={t(`${copy}.revokeTitle`)}
@@ -373,8 +373,8 @@ export function AdminEnrollmentPanel() {
           onClose={() => setAsking(null)}
         >
           <p>{t(`${copy}.confirmRevoke`).replace("{title}", () => asking.courseTitle)}</p>
-          {/* Dois estudantes no mesmo curso: sem o nome, não dá para conferir
-              quem perde o acesso. */}
+          {/* Two students in the same course: without the name, you cannot check
+              who loses access. */}
           <p className="mt-2 break-words font-semibold text-[var(--color-ink)]">
             {t(`${copy}.revokeLearner`).replace("{person}", () => learnerLabel(asking.userId))}
           </p>

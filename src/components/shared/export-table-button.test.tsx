@@ -109,7 +109,7 @@ describe("spreadsheet-safe CSV downloads", () => {
   });
 });
 
-describe("menu de exportacao dentro da tela", () => {
+describe("export menu inside the screen", () => {
   let anchor: DOMRect;
   let menuHeight: number;
   let onResize: ResizeObserverCallback;
@@ -126,8 +126,8 @@ describe("menu de exportacao dentro da tela", () => {
       disconnect = disconnect;
     });
     disconnect.mockClear();
-    // jsdom nao faz layout: fornecemos apenas as medidas, como no Tooltip.
-    // Posicao, limites e listeners continuam sendo os do componente real.
+    // jsdom does no layout: we only provide the measurements, as in Tooltip.
+    // Position, limits and listeners remain those of the real component.
     vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
       if (this.getAttribute("role") === "menu") {
         return new DOMRect(0, 0,
@@ -148,7 +148,7 @@ describe("menu de exportacao dentro da tela", () => {
   it.each([320, 390, 768, 1440].flatMap(width => [
     { width, side: "esquerda", x: 4 },
     { width, side: "direita", x: width - 116 },
-  ]))("cabe junto a borda $side em $width px e sai de ancestrais que recortam", ({ width, x }) => {
+  ]))("fits next to the $side edge at $width px and escapes clipping ancestors", ({ width, x }) => {
     vi.stubGlobal("innerWidth", width);
     anchor = new DOMRect(x, 100, 112, 44);
     const { container } = render(<div style={{ overflow: "hidden", height: 44 }}>
@@ -166,14 +166,14 @@ describe("menu de exportacao dentro da tela", () => {
     expect(top + menuHeight).toBeLessThanOrEqual(844 - 8);
   });
 
-  it("abre acima do gatilho perto da borda inferior", () => {
+  it("opens above the trigger near the bottom edge", () => {
     anchor = new DOMRect(45, 780, 112, 44);
     render(<ExportTableButton rows={[{ id: "fixture" }]} filename="fixture" />);
     const { menu } = openMenu();
     expect(Number.parseFloat(menu.style.top) + menuHeight).toBeLessThanOrEqual(anchor.top - 8);
   });
 
-  it("acompanha resize aberto, rolagem e mudanca de tamanho, e remove observadores", () => {
+  it("follows resize while open, scrolling and size changes, and removes observers", () => {
     vi.stubGlobal("innerWidth", 1440);
     anchor = new DOMRect(1300, 600, 112, 44);
     const { container, unmount } = render(<div>
@@ -202,7 +202,7 @@ describe("menu de exportacao dentro da tela", () => {
     expect(HTMLElement.prototype.getBoundingClientRect).not.toHaveBeenCalled();
   });
 
-  it("limita o painel ao viewport visual menor e acompanha seus eventos", () => {
+  it("limits the panel to the smaller visual viewport and follows its events", () => {
     const viewport = Object.assign(new EventTarget(), { width: 160, height: 100, offsetLeft: 10, offsetTop: 20 });
     vi.stubGlobal("visualViewport", viewport);
     anchor = new DOMRect(70, 50, 80, 44);
@@ -221,7 +221,7 @@ describe("menu de exportacao dentro da tela", () => {
     expect(menu.style.maxHeight).toBe("204px");
   });
 
-  it("Escape fecha somente o menu ativo e devolve foco ao botao de exportar", () => {
+  it("Escape closes only the active menu and returns focus to the export button", () => {
     const outerEscape = vi.fn();
     render(<div onKeyDown={outerEscape}>
       <ExportTableButton rows={[{ id: "fixture" }]} filename="fixture" />
@@ -241,7 +241,7 @@ describe("menu de exportacao dentro da tela", () => {
     expect(outerEscape).toHaveBeenCalledOnce();
   });
 
-  it("move foco pelas opcoes com setas, Home e End; Tab sai sem prender a pessoa", () => {
+  it("moves focus through the options with arrows, Home and End; Tab leaves without trapping the person", () => {
     render(<ExportTableButton rows={[{ id: "fixture" }]} filename="fixture" />);
     const { trigger } = openMenu();
     const first = screen.getByRole("menuitem", { name: "Export as CSV" });
@@ -261,7 +261,7 @@ describe("menu de exportacao dentro da tela", () => {
     expect(trigger).toHaveFocus();
   });
 
-  it("clique fora fecha sem roubar foco, mas clicar dentro preserva as opcoes", () => {
+  it("clicking outside closes without stealing focus, but clicking inside keeps the options", () => {
     render(<>
       <ExportTableButton rows={[{ id: "fixture" }]} filename="fixture" />
       <button>Other action</button>
@@ -277,7 +277,7 @@ describe("menu de exportacao dentro da tela", () => {
     expect(createObjectURL).not.toHaveBeenCalled();
   });
 
-  it("fecha apos baixar e devolve o foco ao gatilho", async () => {
+  it("closes after downloading and returns focus to the trigger", async () => {
     await exportText([{ id: "fixture" }]);
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Export" })).toHaveFocus();
@@ -286,7 +286,7 @@ describe("menu de exportacao dentro da tela", () => {
   it.each([
     { rows: [], disabled: false },
     { rows: [{ id: "fixture" }], disabled: true },
-  ])("mantem exportacao indisponivel quando rows=$rows e disabled=$disabled", props => {
+  ])("keeps export unavailable when rows=$rows and disabled=$disabled", props => {
     render(<ExportTableButton {...props} filename="fixture" />);
     const trigger = screen.getByRole("button", { name: "Export" });
     expect(trigger).toBeDisabled();
@@ -295,17 +295,17 @@ describe("menu de exportacao dentro da tela", () => {
     expect(createObjectURL).not.toHaveBeenCalled();
   });
 
-  // Desligado por zero linhas diz por que; desligado por quem chama (carregando,
-  // erro) nao inventa motivo.
-  it("diz o motivo quando nao ha linhas, e so nesse caso", () => {
+  // Disabled because of zero rows says why; disabled by the caller (loading,
+  // error) does not invent a reason.
+  it("states the reason when there are no rows, and only then", () => {
     const { unmount } = render(<I18nProvider initialLocale="es"><ExportTableButton rows={[]} filename="fixture" /></I18nProvider>);
     expect(screen.getByRole("button", { name: "Exportar" })).toHaveAccessibleDescription(
       "Todavía no hay nada para exportar en esta vista.",
     );
-    // T-15: o motivo se le na tela (no toque nao ha title), nao so no leitor.
+    // T-15: the reason is read on screen (on touch there is no title), not only by the reader.
     expect(screen.getByText("Todavía no hay nada para exportar en esta vista.")).not.toHaveClass("sr-only");
     unmount();
-    // Leitura que falhou chega com zero linhas: nao pode dizer "nada para exportar".
+    // A read that failed arrives with zero rows: it must not say "nothing to export".
     const failed = render(<ExportTableButton rows={[]} disabled filename="fixture" />);
     expect(screen.getByRole("button", { name: "Export" })).not.toHaveAttribute("aria-describedby");
     failed.unmount();

@@ -4,14 +4,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { SiteFooter } from "@/components/site/site-footer";
 import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 
-// SiteFooter é server component assíncrono: resolve o idioma pelo cookie.
-// Sem cookie = inglês.
+// SiteFooter is an async server component: it resolves the language from the cookie.
+// No cookie = English.
 vi.mock("next/headers", () => ({
   cookies: async () => ({ get: () => undefined }),
 }));
 
-// Vitrine aberta (12 cursos de 5 professores)? Contrato de isMarketplaceOpen;
-// começa com sim.
+// Storefront open (12 courses from 5 teachers)? Contract of isMarketplaceOpen;
+// starts as yes.
 const state = vi.hoisted(() => ({ hasCourses: true }));
 vi.mock("@/lib/data/server/public-course", () => ({ isMarketplaceOpen: async () => state.hasCourses }));
 
@@ -21,9 +21,9 @@ afterEach(() => {
 });
 
 describe("SiteFooter", () => {
-  // Vitrine fechada não ganha link: o rodapé leva a ela só com 12 cursos de
-  // 5 professores, a mesma regra do menu e da home.
-  it("tira Cursos e Instrutores do rodapé enquanto a vitrine está fechada", async () => {
+  // A closed storefront gets no link: the footer leads to it only with 12 courses from
+  // 5 teachers, the same rule as the menu and the home.
+  it("removes Courses and Instructors from the footer while the storefront is closed", async () => {
     state.hasCourses = false;
     render(await SiteFooter());
 
@@ -34,10 +34,10 @@ describe("SiteFooter", () => {
     expect(screen.getByRole("link", { name: "About" })).toHaveAttribute("href", "/about");
   });
 
-  it("lista Cursos, Instrutores e Sobre, e /promise aparece uma vez só", async () => {
+  it("lists Courses, Instructors and About, and /promise appears only once", async () => {
     render(await SiteFooter());
 
-    // Três páginas públicas que nem o menu de cima lista: o rodapé é a porta.
+    // Three public pages that not even the top menu lists: the footer is the door.
     expect(screen.getByRole("link", { name: "Courses" })).toHaveAttribute(
       "href",
       "/courses",
@@ -51,7 +51,7 @@ describe("SiteFooter", () => {
       "/about",
     );
 
-    // Antes: "The Promise" e "Creator Promise" apontavam para a MESMA página.
+    // Before: "The Promise" and "Creator Promise" pointed to the SAME page.
     const promiseLinks = screen
       .getAllByRole("link")
       .filter((link) => link.getAttribute("href") === "/promise");
@@ -60,21 +60,21 @@ describe("SiteFooter", () => {
     expect(screen.getByRole("link", { name: "Copyright (DMCA)" })).toHaveAttribute("href", "/legal/copyright");
   });
 
-  it("diz que é educação, não terapia", async () => {
+  it("says it is education, not therapy", async () => {
     render(await SiteFooter());
     expect(document.body.textContent).toContain("Education, not therapy.");
   });
 
-  it("abre o menu de idioma para cima, para não cair fora da página", async () => {
+  it("opens the language menu upward, so it does not fall off the page", async () => {
     render(await SiteFooter());
     fireEvent.click(screen.getByRole("button", { name: "Language: English" }));
     expect(screen.getByRole("listbox", { name: "Language" })).toHaveClass("bottom-full", "right-0");
   });
 
-  it("tem os rótulos novos nos dois dicionários", () => {
+  it("has the new labels in both dictionaries", () => {
     const es = getDictionary("es");
-    // translate() cai para o inglês quando falta a chave; se o rótulo em
-    // espanhol saísse igual ao inglês, a chave não estaria em es.json.
+    // translate() falls back to English when the key is missing; if the Spanish
+    // label came out equal to the English one, the key would not be in es.json.
     expect(translate(es, "footer.courses")).toBe("Cursos");
     expect(translate(es, "footer.instructors")).toBe("Instructores");
     expect(translate(es, "footer.about")).not.toBe("About");

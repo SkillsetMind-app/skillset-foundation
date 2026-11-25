@@ -4,7 +4,7 @@ type SkillsetSpinnerProps = {
   title: string;
   /** When true, fills the viewport (centered). Otherwise inline-centered. */
   fullscreen?: boolean;
-  /** Fica abaixo do aviso (ex.: "Try again" de uma espera longa), fora da região lida. */
+  /** Sits below the notice (e.g. "Try again" of a long wait), outside the read region. */
   children?: ReactNode;
 };
 
@@ -13,11 +13,11 @@ type SkillsetSpinnerProps = {
  * spinner with one short line. Used everywhere a loading state is shown so the
  * experience is consistent (no second style).
  *
- * Da entrada ao estúdio a pessoa passa por até cinco telas de espera seguidas
- * (/loading, a montagem do roteador, /welcome, a entrevista, a área protegida).
- * Todas usam este componente com a mesma frase: sem título em serifa de 22px
- * nem descrição que muda, a troca de uma tela para a outra não aparece. O
- * `role="status"` faz o leitor de tela ler a frase, o que nenhuma delas fazia.
+ * From entering to the studio the person goes through up to five waiting screens in a row
+ * (/loading, the router mount, /welcome, the interview, the protected area).
+ * All use this component with the same sentence: without a 22px serif title
+ * or a description that changes, the swap from one screen to the next does not show. The
+ * `role="status"` makes the screen reader read the sentence, which none of them did.
  */
 export function SkillsetSpinner({
   title,
@@ -51,13 +51,13 @@ export function SkillsetSpinner({
 }
 
 /**
- * O anel da casa, sozinho, para quem ja tem a frase e so precisa do sinal
- * (ex.: o icone do cartao de volta do pagamento). Um desenho so de anel: antes
- * havia uma copia a mao com outro trilho.
+ * The house ring, on its own, for whoever already has the sentence and only needs the signal
+ * (e.g. the payment return card's icon). A ring-only drawing: before
+ * there was a hand-made copy with another track.
  *
- * Trilho em `--color-line`: o navy a 12% fixo sumia no tema escuro. O arco
- * latao gira so sem "reduzir movimento"; com ele ligado o anel fica parado e
- * a vista.
+ * Track in `--color-line`: the fixed 12% navy disappeared in the dark theme. The brass
+ * arc spins only without "reduce motion"; with it on the ring stays still and
+ * in view.
  */
 export function SpinnerRing({
   size = "lg",

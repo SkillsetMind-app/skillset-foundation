@@ -37,7 +37,7 @@ function resolveNavItems(
   t: (key: string) => string,
   marketplaceOpen: boolean,
 ): ResolvedNavItem[] {
-  // Vitrine fechada (menos de 12 cursos de 5 professores) não ganha porta no menu.
+  // A closed storefront (fewer than 12 courses from 5 teachers) gets no door in the menu.
   return navItems.filter((item) => marketplaceOpen || item.href !== "/courses").map((item) => ({
     key: item.href,
     label: t(item.labelKey),
@@ -60,12 +60,12 @@ export function SiteNav() {
   const mobilePanelRef = useRef<HTMLDivElement>(null);
   const resolvedNav = resolveNavItems(t, useHasRealCourses());
   const isAuthenticated = status === "authenticated" && user;
-  // Estável, para o efeito do foco não rodar de novo a cada render.
+  // Stable, so the focus effect does not run again on every render.
   const focusMenuToggle = useCallback(() => mobileToggleRef.current, []);
 
-  // Menu aberto se comporta como janela: o Tab anda pelos itens e pela barra
-  // do topo (logo, X, idioma) e volta, sem cair na página escurecida atrás; ao
-  // fechar, o foco volta ao botão do menu.
+  // An open menu behaves like a dialog: Tab moves through the items and the top
+  // bar (logo, X, language) and wraps around, without falling onto the dimmed page behind; on
+  // close, focus returns to the menu button.
   useModalFocus(headerRowRef, mobileOpen, focusMenuToggle);
 
   useEffect(() => {
@@ -93,13 +93,13 @@ export function SiteNav() {
       return;
     }
 
-    // A partir de 1280px o painel, o escuro e o X somem (xl:hidden). Se a
-    // janela cresce com o menu aberto (tablet girado, janela maximizada), o
-    // menu fecha junto: senão a página ficava travada e o Tab preso na barra,
-    // sem botão visível para soltar.
+    // From 1280px up the panel, the dimmed backdrop and the X disappear (xl:hidden). If the
+    // window grows with the menu open (rotated tablet, maximized window), the
+    // menu closes with it: otherwise the page stayed locked and Tab stuck in the bar,
+    // with no visible button to release it.
     const desktop = window.matchMedia?.("(min-width: 1280px)");
     if (desktop?.matches) {
-      // Sincroniza com um sistema externo (a largura da janela).
+      // Sync with an external system (the window width).
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setMobileOpen(false);
       return;
@@ -109,12 +109,12 @@ export function SiteNav() {
     }
     desktop?.addEventListener("change", closeOnDesktop);
 
-    // O foco entra no primeiro item; antes ficava no X e o Tab passava pela
-    // página de trás antes de chegar ao menu.
+    // Focus enters the first item; it used to stay on the X and Tab went through the
+    // page behind before reaching the menu.
     mobilePanelRef.current
       ?.querySelector<HTMLElement>("a[href], button:not([disabled])")
       ?.focus();
-    // A página de trás não rola por baixo do menu aberto.
+    // The page behind does not scroll underneath the open menu.
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
@@ -136,9 +136,9 @@ export function SiteNav() {
 
   return (
     <>
-      {/* Primeiro elemento focável da página: quem navega pelo teclado ou por
-          leitor de tela pula a barra inteira. Invisível até receber foco. O
-          alvo é o <main id="conteudo"> de cada página pública. */}
+      {/* First focusable element on the page: whoever navigates by keyboard or
+          screen reader skips the whole bar. Invisible until it receives focus. The
+          target is the <main id="conteudo"> of each public page. */}
       <a
         href="#conteudo"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-md focus:bg-white focus:px-4 focus:py-3 focus:text-sm focus:font-semibold focus:text-[var(--color-primary)] focus:shadow-[var(--shadow-soft)]"
@@ -172,10 +172,10 @@ export function SiteNav() {
             );
           })}
         </nav>
-        {/* Dois estilos só, iguais na barra e no menu do celular: a ação
-            principal em .button-solid (navy) e "Sign in" em contorno. Antes a
-            barra usava o botão dourado e o menu o navy, e na home o dourado da
-            barra ficava logo acima do dourado do hero (dois primários iguais). */}
+        {/* Only two styles, the same in the bar and in the phone menu: the main
+            action in .button-solid (navy) and "Sign in" as an outline. The bar
+            used to use the gold button and the menu the navy one, and on the home the bar's gold
+            sat right above the hero's gold (two identical primaries). */}
         <div className="site-header__actions">
           {isAuthenticated ? (
             <>
@@ -213,9 +213,9 @@ export function SiteNav() {
               <Menu aria-hidden="true" size={18} strokeWidth={1.8} />
             )}
           </button>
-          {/* Idioma no extremo direito da barra, e não no meio das ações de
-              entrada: é lá que o olho procura. O rodapé mantém a cópia dele
-              para quem rola até o fim. */}
+          {/* Language at the far right of the bar, and not in the middle of the entry
+              actions: that is where the eye looks. The footer keeps its copy
+              for whoever scrolls to the end. */}
           <LocaleSwitcher variant="compact" />
         </div>
 
@@ -282,19 +282,19 @@ export function SiteNav() {
       </div>
       </header>
       {mobileOpen ? (
-        // O escuro fica fora do <header>: o backdrop-filter da barra prende um
-        // `fixed` dentro dela, e o escuro cobria a própria barra. Aqui ele
-        // começa abaixo do topo (logo e X nítidos) e fica sob a barra (z 39 <
-        // 40). Não é focável: o X e o Esc fecham pelo teclado.
+        // The dimmed backdrop stays outside the <header>: the bar's backdrop-filter traps a
+        // `fixed` element inside it, and the backdrop covered the bar itself. Here it
+        // starts below the top (logo and X crisp) and sits under the bar (z 39 <
+        // 40). It is not focusable: the X and Esc close it by keyboard.
         <div
           aria-hidden="true"
           onClick={() => setMobileOpen(false)}
           className="fixed inset-x-0 bottom-0 top-[var(--site-header-height)] z-[39] bg-[rgba(15,39,68,0.4)] xl:hidden"
         />
       ) : null}
-      {/* A barra é fixa, logo saiu do fluxo. Esta faixa devolve a altura dela
-          para a página, de uma vez só, em vez de cada rota lembrar de reservar
-          um padding no topo. */}
+      {/* The bar is fixed, so it left the flow. This strip gives its height back
+          to the page, all at once, instead of each route remembering to reserve
+          top padding. */}
       <div aria-hidden="true" className="site-header-spacer" />
     </>
   );

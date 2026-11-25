@@ -16,23 +16,23 @@ import {
 } from "@/components/ui";
 import { SpotArt } from "@/components/ui/spot-art";
 
-// Um arquivo só para os sete primitivos: são componentes de uma tela cada, e
-// sete arquivos de teste custariam sete inicializações de jsdom sem provar
-// nada a mais.
+// A single file for the seven primitives: they are small components, and
+// seven test files would cost seven jsdom initializations without proving
+// anything more.
 afterEach(cleanup);
 
 describe("Button", () => {
-  it("traz o layout que as classes globais não trazem", () => {
+  it("brings the layout that the global classes do not", () => {
     render(<Button>Salvar</Button>);
 
     const button = screen.getByRole("button", { name: "Salvar" });
-    // A classe global só pinta borda, fundo, cor e sombra. Raio, espaçamento e
-    // alinhamento do ícone estavam copiados em 361 lugares.
+    // The global class only paints border, background, color and shadow. Radius, spacing and
+    // icon alignment were copied in 361 places.
     expect(button).toHaveClass("button-solid", "inline-flex", "items-center", "gap-2");
     expect(button).toHaveClass("rounded-md");
   });
 
-  it("mapeia cada variante na classe global correspondente", () => {
+  it("maps each variant to the matching global class", () => {
     render(
       <>
         <Button variant="outline">Voltar</Button>
@@ -44,7 +44,7 @@ describe("Button", () => {
     expect(screen.getByRole("button", { name: "Excluir" })).toHaveClass("button-danger");
   });
 
-  it("nasce type=button para não enviar o formulário sem querer", () => {
+  it("defaults to type=button so it does not submit the form by accident", () => {
     render(<Button>Adicionar linha</Button>);
 
     expect(screen.getByRole("button", { name: "Adicionar linha" })).toHaveAttribute(
@@ -53,7 +53,7 @@ describe("Button", () => {
     );
   });
 
-  it("latão grande carregando: o spinner toma o lugar do ícone e o botão trava", () => {
+  it("large brass loading: the spinner takes the icon's place and the button locks", () => {
     render(
       <Button variant="accent" size="lg" loading icon={<svg data-testid="icone" />}>
         Publicar
@@ -65,14 +65,14 @@ describe("Button", () => {
     expect(button).toBeDisabled();
     expect(button).toHaveAttribute("aria-busy", "true");
     expect(screen.queryByTestId("icone")).toBeNull();
-    // O anel gira so sem "reduzir movimento"; com ele ligado, fica parado e a
-    // vista (nao some).
+    // The ring only spins without "reduce motion"; with it on, it stays still and in
+    // view (it does not disappear).
     const ring = button.querySelector("svg")!;
     expect(ring).toHaveClass("motion-safe:animate-spin");
     expect(ring).not.toHaveClass("animate-spin");
   });
 
-  it("sem busyLabel, a marcação é a de sempre (spinner ou ícone, depois o texto)", () => {
+  it("without busyLabel, the markup is the usual one (spinner or icon, then the text)", () => {
     const ring = <Loader2 aria-hidden="true" size={16} strokeWidth={2.2} className="shrink-0 motion-safe:animate-spin" />;
     const cases = [
       { loading: false, reference: <svg data-testid="icone" /> },
@@ -86,7 +86,7 @@ describe("Button", () => {
       );
       const html = current.innerHTML;
       unmount();
-      // A cópia literal do que o Button escrevia antes do busyLabel existir.
+      // A literal copy of what the Button wrote before busyLabel existed.
       const { container: before, unmount: unmountBefore } = render(
         <button
           type="button"
@@ -103,7 +103,7 @@ describe("Button", () => {
     }
   });
 
-  it("com busyLabel, os dois rótulos ocupam a mesma célula e o nome é o que está à vista", () => {
+  it("with busyLabel, both labels share the same cell and the name is the visible one", () => {
     const { rerender } = render(
       <Button loading={false} busyLabel="Salvando...">
         Salvar
@@ -113,7 +113,7 @@ describe("Button", () => {
     const button = screen.getByRole("button", { name: "Salvar" });
     expect(button).toBeEnabled();
     expect(button).not.toHaveAttribute("aria-busy");
-    // Os dois rótulos existem sempre, empilhados na mesma célula.
+    // Both labels always exist, stacked in the same cell.
     const idle = screen.getByText("Salvar");
     const busy = screen.getByText("Salvando...");
     expect(idle).toHaveClass("[grid-area:1/1]");
@@ -124,7 +124,7 @@ describe("Button", () => {
     expect(busy).toHaveAttribute("aria-hidden", "true");
     expect(idle).not.toHaveClass("invisible");
     expect(idle).not.toHaveAttribute("aria-hidden");
-    // O lugar do spinner já está reservado em repouso (na face da espera).
+    // The spinner's spot is already reserved at rest (on the waiting face).
     const ring = busy.querySelector("svg")!;
     expect(ring).toHaveClass("motion-safe:animate-spin");
 
@@ -143,11 +143,11 @@ describe("Button", () => {
     expect(idle).toHaveAttribute("aria-hidden", "true");
     expect(busy).not.toHaveClass("invisible");
     expect(busy).not.toHaveAttribute("aria-hidden");
-    // O mesmo spinner, no mesmo lugar: nada entra nem sai do botão.
+    // The same spinner, in the same place: nothing enters or leaves the button.
     expect(busy.querySelector("svg")).toBe(ring);
   });
 
-  it("com busyLabel e ícone: o ícone fica na face de repouso e o spinner na da espera", () => {
+  it("with busyLabel and an icon: the icon stays on the resting face and the spinner on the waiting one", () => {
     render(
       <Button loading busyLabel="Publicando..." icon={<svg data-testid="icone" />}>
         Publicar
@@ -159,14 +159,14 @@ describe("Button", () => {
     expect(screen.getByText("Publicando...").querySelector("svg")).toHaveClass("motion-safe:animate-spin");
   });
 
-  it("expõe a mesma roupa em texto, para Link vestido de botão", () => {
+  it("exposes the same outfit as text, for a Link dressed as a button", () => {
     expect(buttonClasses({ variant: "outline", size: "sm" })).toContain("button-outline");
     expect(buttonClasses({ variant: "outline", size: "sm" })).toContain("text-xs");
   });
 });
 
 describe("BusyLabel", () => {
-  it("guarda a largura do maior rótulo e troca só o que está à vista e o nome", () => {
+  it("keeps the width of the larger label and only swaps what is visible and the name", () => {
     const { rerender } = render(
       <button type="button" className="button-solid">
         <BusyLabel busy={false} idle="Enviar" busyText="Enviando..." />
@@ -181,7 +181,7 @@ describe("BusyLabel", () => {
     expect(idle).toHaveClass("[grid-area:1/1]");
     expect(busy).toHaveClass("[grid-area:1/1]", "invisible");
     expect(busy).toHaveAttribute("aria-hidden", "true");
-    // Sem spinner: esses botões nunca tiveram um.
+    // No spinner: these buttons never had one.
     expect(busy.querySelector("svg")).toBeNull();
 
     rerender(
@@ -207,8 +207,8 @@ describe("Card", () => {
     expect(card.className).toContain("bg-[var(--color-surface)]");
     expect(card).toHaveClass("rounded-lg");
     expect(card.className).toContain("border-[var(--color-line)]");
-    // bg-white é atropelado no tema escuro por uma regra global com
-    // !important que nem a exceção do certificado consegue vencer.
+    // bg-white is trampled in the dark theme by a global rule with
+    // !important that not even the certificate exception can beat.
     expect(card.className).not.toContain("bg-white");
   });
 
@@ -225,9 +225,9 @@ describe("Card", () => {
     expect(card.className).not.toContain("p-4");
   });
 
-  // Cartão de linha de lista não levanta da superfície. Sem esta saída o
-  // primitivo não serviria para os dois lugares que já o usam assim.
-  it("dispensa a sombra quando o cartão vive dentro de outro", () => {
+  // A list-row card does not lift off the surface. Without this escape hatch the
+  // primitive would not suit the two places that already use it that way.
+  it("drops the shadow when the card lives inside another one", () => {
     const { container } = render(<Card shadow={false}>linha</Card>);
 
     expect(container.firstElementChild!.className).not.toContain("shadow-");
@@ -235,9 +235,9 @@ describe("Card", () => {
 });
 
 describe("InlineAlert", () => {
-  // 187 superfícies vermelhas no projeto contra 23 role="alert": a maioria dos
-  // erros nunca chegava a quem usa leitor de tela.
-  it("anuncia o erro em vez de só pintar de vermelho", () => {
+  // 187 red surfaces in the project against 23 role="alert": most errors
+  // never reached people who use a screen reader.
+  it("announces the error instead of just painting it red", () => {
     render(<InlineAlert tone="error">Não foi possível salvar.</InlineAlert>);
 
     const alert = screen.getByRole("alert");
@@ -245,7 +245,7 @@ describe("InlineAlert", () => {
     expect(alert).toHaveAttribute("aria-live", "assertive");
   });
 
-  it("avisa sem interromper nos tons que não são erro", () => {
+  it("notifies without interrupting in the tones that are not errors", () => {
     render(<InlineAlert tone="success">Domínio conectado.</InlineAlert>);
 
     const status = screen.getByRole("status");
@@ -253,9 +253,9 @@ describe("InlineAlert", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  // Sem ícone, a única diferença entre erro, aviso, sucesso e informação era a
-  // cor. O ícone é decorativo: o nome do aviso continua sendo a frase.
-  it.each(["error", "warning", "success", "info"] as const)("tom %s traz o próprio ícone, escondido do leitor de tela", (tone) => {
+  // Without an icon, the only difference between error, warning, success and info was
+  // color. The icon is decorative: the alert's name is still the sentence.
+  it.each(["error", "warning", "success", "info"] as const)("tone %s brings its own icon, hidden from the screen reader", (tone) => {
     const { container } = render(<InlineAlert tone={tone}>Mensagem.</InlineAlert>);
 
     const box = container.firstElementChild!;
@@ -267,7 +267,7 @@ describe("InlineAlert", () => {
     expect(box).toHaveTextContent("Mensagem.");
   });
 
-  it("cada tom tem um ícone diferente", () => {
+  it("each tone has a different icon", () => {
     const { container } = render(
       <>
         {(["error", "warning", "success", "info"] as const).map((tone) => (
@@ -280,16 +280,16 @@ describe("InlineAlert", () => {
     expect(new Set(classes).size).toBe(4);
   });
 
-  // O fundo do erro vem da variável de tema, que sobe para 18% no escuro (o
-  // literal de 6% sumia sobre o quase-preto).
-  it("o fundo do erro segue o tema (--color-danger-soft)", () => {
+  // The error background comes from the theme variable, which rises to 18% in dark (the
+  // literal 6% vanished over the near-black).
+  it("the error background follows the theme (--color-danger-soft)", () => {
     render(<InlineAlert tone="error">Falhou.</InlineAlert>);
     expect(screen.getByRole("alert").className).toContain("bg-[var(--color-danger-soft)]");
-    // Texto do erro em danger-fg, nunca no latão (revisao-pr494.test.ts, C3).
+    // Error text in danger-fg, never in brass (revisao-pr494.test.ts, C3).
     expect(screen.getByRole("alert").className).toContain("text-[var(--color-danger-fg)]");
   });
 
-  it("título e trechos com link ficam num miolo ao lado do ícone, na ordem", () => {
+  it("a title and pieces with a link sit in an inner wrapper beside the icon, in order", () => {
     render(
       <InlineAlert tone="warning" title="Atenção">
         Leia antes. <a href="/x">Abrir</a>
@@ -304,9 +304,9 @@ describe("InlineAlert", () => {
     expect(body.querySelector("a")).toHaveAttribute("href", "/x");
   });
 
-  // Seis telas já arrumam os filhos em flex na própria caixa (uma com o próprio
-  // ícone de aviso): elas seguem sem ícone extra e com os filhos soltos.
-  it("quem arruma os filhos em flex segue como antes: sem ícone extra nem miolo", () => {
+  // Six screens already arrange the children in flex in the box itself (one with its own
+  // warning icon): they carry on with no extra icon and with the children loose.
+  it("whoever arranges the children in flex carries on as before: no extra icon or inner wrapper", () => {
     render(
       <InlineAlert tone="error" className="mt-5 flex flex-wrap items-center justify-between gap-3">
         <span>Falhou.</span>
@@ -323,7 +323,7 @@ describe("InlineAlert", () => {
 });
 
 describe("ProgressBar", () => {
-  it("diz o valor ao leitor de tela, de 0 a 100", () => {
+  it("tells the value to the screen reader, from 0 to 100", () => {
     render(<ProgressBar value={40} label="Progress" />);
 
     const bar = screen.getByRole("progressbar", { name: "Progress" });
@@ -332,7 +332,7 @@ describe("ProgressBar", () => {
     expect(bar).toHaveAttribute("aria-valuemax", "100");
   });
 
-  it("corta o valor nas pontas", () => {
+  it("clamps the value at the ends", () => {
     render(
       <>
         <ProgressBar value={140} label="Acima" />
@@ -344,8 +344,8 @@ describe("ProgressBar", () => {
     expect(screen.getByRole("progressbar", { name: "Abaixo" })).toHaveAttribute("aria-valuenow", "0");
   });
 
-  // Cadastro e entrevista: o leitor de tela ouve o passo, não a porcentagem.
-  it("em passos, diz o passo de 1 ao total e a frase; o valor só desenha", () => {
+  // Sign-up and interview: the screen reader hears the step, not the percentage.
+  it("in steps, tells the step from 1 to the total and the phrase; the value only draws", () => {
     render(<ProgressBar value={50} step={{ current: 1, total: 2 }} label="Step 1 of 2" />);
 
     const bar = screen.getByRole("progressbar", { name: "Step 1 of 2" });
@@ -356,26 +356,26 @@ describe("ProgressBar", () => {
     expect((bar.firstElementChild as HTMLElement).style.transform).toBe("translateX(-50%)");
   });
 
-  it("sem passos, não escreve valuetext", () => {
+  it("without steps, does not write valuetext", () => {
     render(<ProgressBar value={40} label="Progress" />);
     expect(screen.getByRole("progressbar", { name: "Progress" })).not.toHaveAttribute("aria-valuetext");
   });
 
-  // Trilho pela variável de linha (o navy a 12% sumia no escuro) e movimento
-  // só em transform, dentro de motion-safe.
-  it("uma altura, trilho que segue o tema e preenchimento que desliza com transform", () => {
+  // Track from the line variable (navy at 12% vanished in dark) and motion
+  // only in transform, inside motion-safe.
+  it("one height, a track that follows the theme and a fill that slides with transform", () => {
     render(<ProgressBar value={25} label="Curso" />);
 
     const bar = screen.getByRole("progressbar", { name: "Curso" });
     expect(bar).toHaveClass("h-1.5", "rounded-full", "overflow-hidden", "bg-[var(--color-line)]");
     const fill = bar.firstElementChild as HTMLElement;
-    // Latão de TEXTO: o de fundo (--color-accent) dava 1.44:1 contra o trilho.
+    // TEXT brass: the background one (--color-accent) gave 1.44:1 against the track.
     expect(fill).toHaveClass("bg-[var(--color-accent-fg)]", "motion-safe:transition-transform");
     expect(fill.className).not.toMatch(/transition-\[width\]|transition-all/);
     expect(fill.style.transform).toBe("translateX(-75%)");
   });
 
-  it("aceita trilho e preenchimento de uma área com tema próprio", () => {
+  it("accepts the track and fill of an area with its own theme", () => {
     render(
       <ProgressBar
         value={50}
@@ -394,7 +394,7 @@ describe("ProgressBar", () => {
 });
 
 describe("Field", () => {
-  it("liga rótulo, dica e erro ao controle", () => {
+  it("links label, hint and error to the control", () => {
     render(
       <Field id="hostname" label="Adicionar domínio" hint="Sem http." error="Domínio inválido.">
         {(a11y) => <input {...a11y} />}
@@ -403,12 +403,12 @@ describe("Field", () => {
 
     const input = screen.getByLabelText(/Adicionar domínio/);
     expect(input).toHaveAttribute("aria-invalid", "true");
-    // A dica antes do erro: é a ordem em que a pessoa precisa dos dois.
+    // The hint before the error: that is the order in which the person needs both.
     expect(input).toHaveAttribute("aria-describedby", "hostname-hint hostname-error");
     expect(screen.getByRole("alert")).toHaveTextContent("Domínio inválido.");
   });
 
-  it("não marca o campo como inválido enquanto não há erro", () => {
+  it("does not mark the field invalid while there is no error", () => {
     render(
       <Field id="email-field" label="E-mail">
         {(a11y) => <input {...a11y} />}
@@ -422,7 +422,7 @@ describe("Field", () => {
 });
 
 describe("Eyebrow", () => {
-  it("usa um tracking só", () => {
+  it("uses a single tracking value", () => {
     const { container } = render(<Eyebrow>Teacher Studio</Eyebrow>);
 
     const eyebrow = container.firstElementChild!;
@@ -433,7 +433,7 @@ describe("Eyebrow", () => {
 });
 
 describe("SectionHeader", () => {
-  it("monta eyebrow, título e descrição no nível de heading pedido", () => {
+  it("builds the eyebrow, title and description at the requested heading level", () => {
     render(
       <SectionHeader
         eyebrow="Media library"
@@ -448,8 +448,8 @@ describe("SectionHeader", () => {
     expect(screen.getByText("Revise o que foi enviado.")).toBeInTheDocument();
   });
 
-  // A serifa fica para a manchete da pagina; titulo de cartao e o sans.
-  it("em size=card, o titulo e o sans do cartao, nao a serifa da pagina", () => {
+  // The serif is kept for the page headline; a card title is the sans.
+  it("with size=card, the title is the card's sans, not the page's serif", () => {
     render(<SectionHeader title="Your own domain" size="card" />);
 
     const heading = screen.getByRole("heading", { level: 2, name: "Your own domain" });
@@ -459,7 +459,7 @@ describe("SectionHeader", () => {
 });
 
 describe("EmptyState", () => {
-  it("usa uma forma tracejada só e aceita a ação", () => {
+  it("uses a single dashed shape and accepts the action", () => {
     const { container } = render(
       <EmptyState
         title="Crie um curso primeiro."
@@ -474,7 +474,7 @@ describe("EmptyState", () => {
     expect(screen.getByRole("button", { name: "Criar curso" })).toBeInTheDocument();
   });
 
-  it("com cena: a gravura entra antes do texto, escondida do leitor de tela, e o título é sans", () => {
+  it("with a scene: the engraving comes before the text, hidden from the screen reader, and the title is sans", () => {
     const { container } = render(
       <EmptyState
         title="Tu primer producto empieza aquí."
@@ -485,7 +485,7 @@ describe("EmptyState", () => {
 
     const box = container.firstElementChild!;
     const art = box.firstElementChild!;
-    // A cena sobe 6px e acende (catálogo de movimento, item 10).
+    // The scene rises 6px and lights up (motion catalog, item 10).
     expect(art).toHaveClass("empty-state__art", "spot-art-in");
     expect(art.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
     const heading = screen.getByRole("heading", { name: "Tu primer producto empieza aquí." });
@@ -494,7 +494,7 @@ describe("EmptyState", () => {
     expect(screen.getByRole("button", { name: "Crear mi primer producto" })).toBeInTheDocument();
   });
 
-  it("sem cena, nada de moldura de arte", () => {
+  it("without a scene, no art frame", () => {
     const { container } = render(<EmptyState title="Vazio." />);
     expect(container.querySelector(".empty-state__art")).toBeNull();
   });

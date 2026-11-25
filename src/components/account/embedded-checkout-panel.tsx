@@ -195,12 +195,12 @@ export function EmbeddedCheckoutPanel({
       <div className="overflow-hidden rounded-lg border fine-rule bg-white shadow-[var(--shadow-soft)]">
         {error ? (
           <div className="p-6 text-sm">
-            {/* O aviso de erro da casa (ícone, fundo que segue o tema, lido em
-                voz alta); era o título vermelho solto, sem caixa. */}
+            {/* The app's standard error notice (icon, theme-aware background, read
+                aloud); it was a loose red title, with no box. */}
             <InlineAlert tone="error" title={t("activationCheckout.errorTitle")}>
               <p className="mt-1 font-normal">{t(`billingCheckout.error.${error.key}`)}</p>
-              {/* A frase acima diz o que fazer; o codigo da resposta fica so
-                  para o suporte, recolhido (era "Reference: HTTP 409"). */}
+              {/* The sentence above says what to do; the response code stays only
+                  for support, collapsed (it was "Reference: HTTP 409"). */}
               {error.status ? <SupportDetails code={error.status} className="mt-2" /> : null}
             </InlineAlert>
             <Link
@@ -219,9 +219,9 @@ export function EmbeddedCheckoutPanel({
         )}
       </div>
 
-      {/* Abaixo de 1024px a grade vira uma coluna: o resumo (o que se compra,
-          preco, teste gratis e renovacao) vem antes do cartao do Stripe, nao
-          depois do botao de pagar. No computador fica na coluna da direita. */}
+      {/* Below 1024px the grid becomes one column: the summary (what is being bought,
+          price, free trial and renewal) comes before the Stripe card, not
+          after the pay button. On desktop it sits in the right column. */}
       <aside className="order-first h-fit rounded-lg border fine-rule bg-white p-5 shadow-[var(--shadow-soft)] lg:order-none">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
           {t("billingCheckout.subscribing")}
@@ -249,8 +249,8 @@ export function EmbeddedCheckoutPanel({
               .replace("{amount}", () => formatUsdWhole(isYearly ? plan.yearlyUsd : plan.monthlyUsd, locale))}
           </p>
         </div>
-        {/* Letra miúda do resumo em 12px (era 11px; o selo do Stripe, 10px):
-            é o texto da assinatura, lido no celular por gente de 55+. */}
+        {/* Small print in the summary at 12px (was 11px; the Stripe badge, 10px):
+            it is the subscription text, read on a phone by people 55+. */}
         <p className="mt-4 text-xs leading-5 text-[var(--color-ink-muted)]">
           {t("billingCheckout.commission").replace("{plan}", () => plan.name)}{" "}
           <strong className="text-[var(--color-ink)]">
@@ -258,11 +258,11 @@ export function EmbeddedCheckoutPanel({
           </strong>
           {t("billingCheckout.processing")}
         </p>
-        {/* A frase da renovacao chega junto com a resposta do servidor: o
-            lugar dela fica guardado (quatro linhas) enquanto isso, para o resumo
-            nao crescer e empurrar o cartao quando ela aparece. Medido na fonte
-            do site a 12px/20px: com teste gratis, 3 a 4 linhas em ingles e 4
-            em espanhol nas larguras de celular; tres linhas deixavam pular. */}
+        {/* The renewal sentence arrives together with the server response: its
+            place is reserved (four lines) in the meantime, so the summary does
+            not grow and push the card when it appears. Measured in the site font
+            at 12px/20px: with a free trial, 3 to 4 lines in English and 4
+            in Spanish at phone widths; three lines let it jump. */}
         {error ? null : (
           <p className="mt-2 min-h-[5rem] text-xs font-semibold leading-5 text-[var(--color-ink)]">
             {trialDays !== null ? (

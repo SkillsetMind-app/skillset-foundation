@@ -7,16 +7,16 @@ import { PlansPanel } from "@/components/account/plans-panel";
 import { CONFIRM_GUARD_MS } from "@/components/ui/confirm-dialog";
 import { subscribeToUserProfile } from "@/lib/data/user-profiles";
 
-// Na pagina de Planos o plano atual era dito tres vezes ("CURRENT PLAN / Free"
-// flutuando como terceira manchete, o chip "Current" no cartao e o botao "Your
-// plan"), e os quatro cartoes tinham alturas diferentes, entao os botoes
-// "Upgrade" nao se alinhavam.
+// On the Plans page the current plan was stated three times ("CURRENT PLAN / Free"
+// floating as a third headline, the "Current" chip on the card and the "Your
+// plan" button), and the four cards had different heights, so the
+// "Upgrade" buttons did not line up.
 
 vi.mock("@/components/auth/auth-provider", () => ({
   useAuth: () => ({
     status: "authenticated",
     user: {
-      // Lido a cada render: trocar o uid simula uma nova leitura da cobrança.
+      // Read on every render: changing the uid simulates a new billing read.
       uid: state.uid,
       email: "teacher@example.com",
       displayName: "Teacher",
@@ -48,9 +48,9 @@ vi.mock("@/lib/payments/billing", () => ({
   cancelPlanSubscription: state.cancel,
 }));
 
-// O "Cancel plan" pergunta num <dialog> da plataforma (não mais no
-// window.confirm). O jsdom não tem showModal/close: o stub faz o mínimo que o
-// navegador faz.
+// "Cancel plan" asks in a platform <dialog> (no longer in
+// window.confirm). jsdom has no showModal/close: the stub does the minimum the
+// browser does.
 const originalShow = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal");
 const originalClose = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "close");
 
@@ -93,23 +93,23 @@ describe("PlansPanel", () => {
     expect(screen.queryByText(/^Free$/)).not.toBeInTheDocument();
   });
 
-  it("diz o plano atual UMA vez, numa linha, sem manchete", () => {
+  it("states the current plan ONCE, on one line, with no headline", () => {
     render(<PlansPanel />);
 
-    // A linha "Current plan: Starter" existe...
+    // The "Current plan: Starter" line exists...
     expect(screen.getByText("Current plan:")).toBeInTheDocument();
-    // ...e nao ha mais a manchete grande nem o botao desabilitado "Your plan".
+    // ...and there is no longer the big headline or the disabled "Your plan" button.
     expect(
       screen.queryByRole("heading", { name: /^Starter$/ }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Your plan" }),
     ).not.toBeInTheDocument();
-    // O cartao marca o plano com o chip, e so.
+    // The card marks the plan with the chip, and that is all.
     expect(screen.getByText("Your plan tier")).toBeInTheDocument();
   });
 
-  it("alinha os botoes: cartao em coluna flex, acao empurrada para baixo", () => {
+  it("aligns the buttons: card as a flex column, action pushed to the bottom", () => {
     render(<PlansPanel />);
 
     const cards = screen.getAllByRole("article");
@@ -122,11 +122,11 @@ describe("PlansPanel", () => {
     }
   });
 
-  it("mostra o seletor Mensal/Anual em 13px sem caixa alta, na linha do titulo", () => {
+  it("shows the Monthly/Annual selector at 13px with no uppercase, on the title line", () => {
     render(<PlansPanel />);
 
-    // O seletor segmentado da casa (PeriodTabs): a escolha vai no proprio
-    // botao (aria-pressed) e o tamanho vem da regra .studio-range-tabs.
+    // The app's segmented selector (PeriodTabs): the choice goes on the
+    // button itself (aria-pressed) and the size comes from the .studio-range-tabs rule.
     const monthly = screen.getByRole("button", { name: "Monthly" });
     expect(monthly).toHaveAttribute("aria-pressed", "true");
     expect(monthly.closest(".studio-range-tabs")).not.toBeNull();
@@ -138,7 +138,7 @@ describe("PlansPanel", () => {
   });
 });
 
-describe("PlansPanel com os 2 planos e o teste gratis", () => {
+describe("PlansPanel with the 2 plans and the free trial", () => {
   it.each([
     [500, "monthly", false], [5000, "yearly", false],
     [500, "monthly", true], [5000, "yearly", true],
@@ -160,7 +160,7 @@ describe("PlansPanel com os 2 planos e o teste gratis", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Yearly/ }));
     expect(card).toHaveTextContent("$90");
   });
-  it("mostra so Basic, Starter e Pro, mesmo para quem ainda esta sem plano", () => {
+  it("shows only Basic, Starter and Pro, even for people who still have no plan", () => {
     state.planId = "free";
     render(<PlansPanel />);
 
@@ -169,7 +169,7 @@ describe("PlansPanel com os 2 planos e o teste gratis", () => {
     expect(screen.queryByText("Enterprise")).not.toBeInTheDocument();
   });
 
-  it("oferece o teste de 14 dias com os termos de renovacao junto do botao", async () => {
+  it("offers the 14-day trial with the renewal terms next to the button", async () => {
     state.planId = "free";
     render(<PlansPanel />);
 
@@ -179,7 +179,7 @@ describe("PlansPanel com os 2 planos e o teste gratis", () => {
       /14-day free trial, then \$89\/month\. Renews automatically until you cancel\. Cancel anytime in Billing before .+ and you won't be charged\./,
     );
 
-    // O desconto do anual está no próprio botão, não num title invisível.
+    // The annual discount is on the button itself, not in an invisible title.
     const yearly = screen.getByRole("button", { name: /^Yearly/ });
     expect(yearly).toHaveTextContent("~17% off");
     expect(yearly).not.toHaveAttribute("title");
@@ -187,7 +187,7 @@ describe("PlansPanel com os 2 planos e o teste gratis", () => {
     expect(pro).toHaveTextContent("14-day free trial, then $890/year.");
   });
 
-  it("depois do teste usado, o botao volta a ser Upgrade e os termos nao prometem teste", async () => {
+  it("after the trial is used, the button goes back to Upgrade and the terms do not promise a trial", async () => {
     state.planId = "free";
     state.billing = { trialEligible: false, subscription: null };
     render(<PlansPanel />);
@@ -198,7 +198,7 @@ describe("PlansPanel com os 2 planos e o teste gratis", () => {
     expect(pro).not.toHaveTextContent("free trial");
   });
 
-  it("durante o teste mostra quando ele termina e um Cancel plan que funciona", async () => {
+  it("during the trial it shows when it ends and a Cancel plan that works", async () => {
     state.planId = "pro";
     state.billing = {
       trialEligible: false,
@@ -212,25 +212,25 @@ describe("PlansPanel com os 2 planos e o teste gratis", () => {
       },
     };
     state.cancel.mockResolvedValue({ ...(state.billing.subscription as object), cancelAtPeriodEnd: true });
-    // Só o Date é falso: o confirmar ignora cliques nos primeiros 500ms.
+    // Only Date is fake: confirm ignores clicks in the first 500ms.
     vi.useFakeTimers({ toFake: ["Date"] });
     render(<PlansPanel />);
 
     expect(await screen.findByText("Free trial — ends October 20, 2026")).toBeInTheDocument();
-    // Botão de verdade, no vermelho de perigo, e não um link dourado.
+    // A real button, in the danger red, and not a gold link.
     const trigger = screen.getByRole("button", { name: "Cancel plan" });
     expect(trigger).toHaveClass("button-danger");
     fireEvent.click(trigger);
 
-    // (a) a frase de sempre, agora dentro da janela da plataforma;
+    // (a) the usual sentence, now inside the platform dialog;
     const dialog = screen.getByRole("dialog", { name: "Cancel plan" });
     expect(dialog).toHaveTextContent(
       "Cancel your plan? Your free trial runs until October 20, 2026 and you won't be charged.",
     );
-    // (b) abrir a pergunta não cancela nada;
+    // (b) opening the question cancels nothing;
     expect(state.cancel).not.toHaveBeenCalled();
-    // (c) confirmar chama o cancelamento uma vez. Um clique colado na
-    // abertura (toque duplo) é descartado.
+    // (c) confirming calls the cancel once. A click right on the
+    // opening (double tap) is discarded.
     fireEvent.click(within(dialog).getByRole("button", { name: "Cancel plan" }));
     expect(state.cancel).not.toHaveBeenCalled();
     vi.advanceTimersByTime(CONFIRM_GUARD_MS);
@@ -245,7 +245,7 @@ describe("PlansPanel com os 2 planos e o teste gratis", () => {
     ["past_due", "Cancel your plan now? The unpaid invoice won't be retried and the plan ends immediately."],
     ["unpaid", "Cancel your plan now? The unpaid invoice won't be retried and the plan ends immediately."],
     ["active", "Cancel your plan? It stays active until November 3, 2026 and won't renew."],
-  ])("o Cancel plan de uma assinatura %s mostra o aviso certo", async (status, prompt) => {
+  ])("the Cancel plan of a %s subscription shows the right notice", async (status, prompt) => {
     state.planId = "pro";
     state.billing = {
       trialEligible: false,
@@ -265,14 +265,14 @@ describe("PlansPanel com os 2 planos e o teste gratis", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Cancel plan" }));
     expect(screen.getByRole("dialog", { name: "Cancel plan" })).toHaveTextContent(prompt);
     expect(nativeConfirm).not.toHaveBeenCalled();
-    // Desistir ("Keep plan") fecha sem enviar o pedido.
+    // Giving up ("Keep plan") closes without sending the request.
     fireEvent.click(screen.getByRole("button", { name: "Keep plan" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(state.cancel).not.toHaveBeenCalled();
     nativeConfirm.mockRestore();
   });
 
-  it("cancelar agora (past_due) fecha a janela e ela não volta sozinha depois", async () => {
+  it("canceling now (past_due) closes the dialog and it does not come back by itself later", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     state.planId = "pro";
     const pastDue = {
@@ -284,8 +284,8 @@ describe("PlansPanel com os 2 planos e o teste gratis", () => {
       cancelAtPeriodEnd: false,
     };
     state.billing = { trialEligible: false, subscription: pastDue };
-    // A rota encerra na hora e devolve subscription: null — a janela some sem
-    // passar pelo onClose.
+    // The route ends right away and returns subscription: null — the dialog disappears without
+    // going through onClose.
     state.cancel.mockResolvedValue(null);
     const { rerender } = render(<PlansPanel />);
 
@@ -296,8 +296,8 @@ describe("PlansPanel com os 2 planos e o teste gratis", () => {
     expect(state.cancel).toHaveBeenCalledOnce();
     expect(screen.queryByRole("button", { name: "Cancel plan" })).not.toBeInTheDocument();
 
-    // Uma assinatura volta a aparecer numa nova leitura: a pergunta não abre
-    // sozinha, e o botão a abre de novo, limpa.
+    // A subscription shows up again on a new read: the question does not open
+    // by itself, and the button opens it again, clean.
     state.uid = "teacher-2";
     state.billing = { trialEligible: false, subscription: { ...pastDue, status: "active" } };
     rerender(<PlansPanel />);
@@ -310,7 +310,7 @@ describe("PlansPanel com os 2 planos e o teste gratis", () => {
     expect(state.cancel).toHaveBeenCalledOnce();
   });
 
-  it("um assinante Enterprise (ex-Plus) ve o proprio plano, sem cartao Enterprise a venda", () => {
+  it("an Enterprise (ex-Plus) subscriber sees their own plan, with no Enterprise card for sale", () => {
     state.planId = "plus";
     render(<PlansPanel />);
 
@@ -320,27 +320,27 @@ describe("PlansPanel com os 2 planos e o teste gratis", () => {
   });
 });
 
-describe("a pagina de Planos", () => {
-  it("abre nos cartoes: o cartao de abertura com a segunda manchete saiu", () => {
+describe("the Plans page", () => {
+  it("opens on the cards: the opening card with the second headline is gone", () => {
     const page = readFileSync(
       path.join(process.cwd(), "src/app/account/plans/page.tsx"),
       "utf8",
     );
 
-    // A frase inteira e o que o JSX renderizava; o comentario que explica a
-    // remocao cita so o comeco dela.
+    // The whole sentence is what the JSX rendered; the comment that explains the
+    // removal quotes only the beginning of it.
     expect(page).not.toContain("Choose the plan that fits your course business.");
     expect(page).not.toContain("platform-hero-card");
   });
 });
 
-describe("PlansPanel - plano que não carrega", () => {
+describe("PlansPanel - plan that does not load", () => {
   const defaultProfile = vi.mocked(subscribeToUserProfile).getMockImplementation()!;
   afterEach(() => {
     vi.mocked(subscribeToUserProfile).mockImplementation(defaultProfile);
   });
 
-  it("ganha \"Try again\", que lê o perfil de novo uma vez só e mostra o plano", async () => {
+  it("gets \"Try again\", which reads the profile again once and shows the plan", async () => {
     let failing = true;
     const reload = vi.fn();
     vi.mocked(subscribeToUserProfile).mockImplementation((_uid, onNext, onError) => {
@@ -364,7 +364,7 @@ describe("PlansPanel - plano que não carrega", () => {
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
   });
 
-  it("erro de cancelar não ganha \"Try again\"", async () => {
+  it("cancel error does not get \"Try again\"", async () => {
     state.planId = "pro";
     state.billing = {
       trialEligible: false,

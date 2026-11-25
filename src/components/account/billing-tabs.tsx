@@ -65,25 +65,25 @@ export function BillingTabs() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { status, user } = useAuth();
-  // Acesso do criador pode vir de concessao, sem assinatura paga.
+  // Creator access can come from a grant, without a paid subscription.
   const canTeach = hasPermission({ roles: user?.roles }, "teacherStudio.access");
   const requestedTab = searchParams.get("tab") ?? "overview";
   const activeTab = requestedTab === "subscriptions" && !canTeach ? "overview" : requestedTab;
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  // Perfil ausente ou ilegivel nao comprova acesso gratuito.
+  // A missing or unreadable profile does not prove free access.
   const [profileStatus, setProfileStatus] = useState<
     "loading" | "ready" | "error"
   >("loading");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-  // "Try again" das compras (resumo e lista vêm desta leitura): assina de novo.
-  // A limpeza do efeito desfaz a assinatura anterior antes da nova.
+  // "Try again" for purchases (the summary and the list come from this read): subscribes again.
+  // The effect cleanup undoes the previous subscription before the new one.
   const [ordersReadAttempt, setOrdersReadAttempt] = useState(0);
-  // "Try again" do perfil (o cartão do portal no Overview): assina de novo.
+  // "Try again" for the profile (the portal card in Overview): subscribes again.
   const [profileReadAttempt, setProfileReadAttempt] = useState(0);
-  // Fica na tela nos dois desfechos e recebe o foco do "Try again".
+  // Stays on screen in both outcomes and receives the focus from "Try again".
   const panelRef = useRef<HTMLDivElement>(null);
 
   // One real-time listener feeds the Overview and Purchases tabs, so the
@@ -111,15 +111,15 @@ export function BillingTabs() {
     );
   }, [user, ordersReadAttempt]);
 
-  // Volta à espera de sempre (o esqueleto), nunca a "No purchases yet" ou a
-  // valores zerados no lugar do erro, até a leitura nova responder.
+  // Goes back to the usual wait (the skeleton), never to "No purchases yet" or to
+  // zeroed values in place of the error, until the new read responds.
   function retryOrdersRead() {
     setError("");
     setIsLoading(true);
     setOrdersReadAttempt((attempt) => attempt + 1);
   }
 
-  // Customer permite consultar historico; nao comprova uma assinatura.
+  // Customer allows looking up history; it does not prove a subscription.
   useEffect(() => {
     if (!user) {
       return;
@@ -138,7 +138,7 @@ export function BillingTabs() {
     );
   }, [user, profileReadAttempt]);
 
-  // Volta ao esqueleto do Overview até a leitura nova responder.
+  // Goes back to the Overview skeleton until the new read responds.
   function retryProfileRead() {
     setProfileStatus("loading");
     setProfileReadAttempt((attempt) => attempt + 1);
@@ -219,7 +219,7 @@ type OrderTabProps = {
   orders: Order[];
   isLoading: boolean;
   error: string;
-  /** "Try again" do erro: assina a leitura das compras de novo. */
+  /** "Try again" on the error: subscribes to the purchases read again. */
   onRetry: () => void;
   retryFocusRef: RefObject<HTMLDivElement | null>;
   isSignedIn: boolean;
@@ -320,7 +320,7 @@ function OverviewTab({
   const { courseCount, refundCount, spentMinor, currency } =
     summarisePurchases(orders);
   const profileFailed = profileStatus === "error";
-  // Cada leitura pertence ao snapshot do perfil; resposta antiga nao vale como atual.
+  // Each read belongs to the profile snapshot; an old response does not count as current.
   const billing = billingRead?.request === billingRequest ? billingRead.state : undefined;
   const subscription = billing?.subscription;
   const accessPlanName = profileFailed || !profilePlanId
@@ -352,8 +352,8 @@ function OverviewTab({
         <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {t("accountBilling.lifetimeSpend")}
         </p>
-        {/* O valor em letra comum (a serifa e do titulo da pagina). A frase "N
-            cursos comprados" saiu: o numero ja esta na linha logo abaixo. */}
+        {/* The value in plain type (the serif is for the page title). The phrase "N
+            courses purchased" was removed: the number is already on the row right below. */}
         <p className="mt-2 text-3xl font-bold leading-tight tabular-nums text-[var(--color-primary)]">
           {formatMoney(spentMinor, currency, locale)}
         </p>
@@ -425,7 +425,7 @@ function OverviewTab({
             ? subscription ? "accountPlans.manage" : "accountBilling.billingHistory"
             : "accountBilling.openPortal")} />
         ) : profileFailed ? (
-          // O perfil não veio: a frase mandava atualizar a página; agora o botão lê de novo.
+          // The profile did not come: the sentence told the user to refresh the page; now the button reads again.
           <LoadErrorAlert className="mt-3" onRetry={onRetryProfile} focusRef={retryFocusRef}>
             {t("accountBilling.detailsLoadError")}
           </LoadErrorAlert>
@@ -556,8 +556,8 @@ function PurchasesTab({
   // client-side filtering hides real orders here.
   if (orders.length === 0) {
     return (
-      // O vazio padrao da plataforma, sem a etiqueta "EMPTY" no ambar de
-      // pendente: nada esta pendente, so nao ha compras.
+      // The platform's default empty state, without the "EMPTY" tag in the amber of
+      // pending: nothing is pending, there are just no purchases.
       <EmptyState
         as="h3"
         title={t("accountBilling.noPurchases")}
@@ -594,7 +594,7 @@ function PurchasesTab({
                 <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
                   {formatDate(order.paidAt ?? order.createdAt, locale, t("accountBilling.datePending"))}
                 </p>
-                {/* O número que o aluno manda ao suporte quando "comprei e não entrou". */}
+                {/* The number the learner sends to support when "I bought it and did not get access". */}
                 <div className="mt-1">
                   <ShortId id={order.id} label={t("shortId.order")} />
                 </div>
@@ -603,9 +603,9 @@ function PurchasesTab({
                 <span className="rounded-md bg-white px-3 py-1 text-sm font-bold text-[var(--color-primary)]">
                   {formatMoney(order.amountMinor, order.currency, locale)}
                 </span>
-                {/* Recibo: link de texto com alvo de 44px. Pedir reembolso é
-                    dinheiro: botão de contorno, não link dourado (o latão é
-                    só de marco, ui/button.tsx). */}
+                {/* Receipt: text link with a 44px target. Asking for a refund is
+                    money: an outline button, not a gold link (brass is
+                    only for milestones, ui/button.tsx). */}
                 <div className="flex flex-wrap items-center justify-end gap-3">
                   {order.receiptUrl ? (
                     <a
@@ -658,15 +658,15 @@ function RefundModal({
   onClose: () => void;
 }) {
   const { t, locale } = useTranslation();
-  // Este era o único diálogo do app que declarava `aria-modal="true"` e não
-  // gerenciava foco nenhum. `aria-modal` promete ao leitor de tela que o resto
-  // da página está inerte, e aqui a promessa era falsa nas três frentes: o foco
-  // ficava no botão atrás do modal, Tab caminhava para a página escondida, e
-  // Escape não fechava. Numa ação de DINHEIRO, a única saída era acertar o
-  // "Cancel" com o mouse.
+  // This was the only dialog in the app that declared `aria-modal="true"` and did not
+  // manage any focus. `aria-modal` promises the screen reader that the rest
+  // of the page is inert, and here the promise was false on all three counts: focus
+  // stayed on the button behind the modal, Tab walked into the hidden page, and
+  // Escape did not close it. On a MONEY action, the only way out was to hit
+  // "Cancel" with the mouse.
   //
-  // A hook já existia em @/lib/a11y — os outros sete diálogos a usam. Faltava
-  // só este.
+  // The hook already existed in @/lib/a11y — the other seven dialogs use it. It was missing
+  // only from this one.
   const dialogRef = useRef<HTMLDivElement>(null);
   useModalFocus(dialogRef, true);
 
@@ -674,9 +674,9 @@ function RefundModal({
   const [submitError, setSubmitError] = useState("");
   const [done, setDone] = useState(false);
 
-  // Enquanto o pedido de reembolso está indo, nenhuma saída fecha a janela:
-  // o Cancelar trava e o X some; Esc e o clique fora seguem a mesma regra
-  // (antes fechavam e o resultado do pedido chegava numa janela já fechada).
+  // While the refund request is being sent, no exit closes the dialog:
+  // Cancel locks and the X disappears; Esc and a click outside follow the same rule
+  // (before, they closed it and the request result arrived in an already closed dialog).
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape" && !busy) {
@@ -688,8 +688,8 @@ function RefundModal({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [busy, onClose]);
 
-  // A página de trás não rola enquanto a janela está aberta. Na conta quem
-  // rola é o .platform-content (fora do painel, o body).
+  // The page behind does not scroll while the dialog is open. In the account, what
+  // scrolls is .platform-content (outside the panel, the body).
   useEffect(() => {
     const scroller = document.querySelector<HTMLElement>(".platform-content") ?? document.body;
     const previousOverflow = scroller.style.overflow;
@@ -726,8 +726,8 @@ function RefundModal({
         className="dialog-panel modal-panel modal-panel-scroll relative"
         onClick={(event) => event.stopPropagation()}
       >
-        {/* O X faz o mesmo que o Cancelar (e o Concluído): some enquanto o
-            pedido de reembolso está indo, quando o Cancelar também trava. */}
+        {/* The X does the same as Cancel (and Done): it disappears while the
+            refund request is being sent, when Cancel also locks. */}
         {busy ? null : (
           <button
             type="button"
@@ -797,8 +797,8 @@ function RefundModal({
             ) : null}
             </div>
 
-            {/* O rodapé da casa: abaixo do sm empilha, o pedido em cima e o
-                Cancelar embaixo. */}
+            {/* The app's standard footer: below sm it stacks, the request on top and the
+                Cancel at the bottom. */}
             <div className="dialog-footer">
               <button
                 type="button"
@@ -840,7 +840,7 @@ function refundErrorKey(error: unknown): string {
   return `accountBilling.refundErrors.${error instanceof Error ? keys[error.message] ?? "unknown" : "unknown"}`;
 }
 
-// Os erros de leitura usam o LoadErrorAlert (com "Try again"); aqui só o aviso neutro.
+// Read errors use the LoadErrorAlert (with "Try again"); here only the neutral notice.
 function BillingNotice({ children }: { children: React.ReactNode }) {
   return (
     <div className="rounded-lg border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6 text-sm text-[var(--color-ink-soft)]">
@@ -849,11 +849,11 @@ function BillingNotice({ children }: { children: React.ReactNode }) {
   );
 }
 
-// F-03: cada aba carregava numa caixa tracejada de uma linha ("Loading your
-// billing overview...") que depois virava um layout bem mais alto. Agora
-// blocos no formato do que vem, no padrao do esqueleto do perfil: a frase fica
-// para o leitor de tela, os blocos nao. O pulso para no bloco global de
-// "reduzir movimento".
+// F-03: each tab loaded in a dashed one-line box ("Loading your
+// billing overview...") that later turned into a much taller layout. Now
+// blocks in the shape of what is coming, following the profile skeleton pattern: the phrase stays
+// for the screen reader, the blocks do not. The pulse stops in the global block of
+// "reduce motion".
 const skeletonBlock = "bg-[var(--color-surface-strong)]";
 
 function BillingSkeleton({ label, shape }: { label: string; shape: "overview" | "list" | "panel" }) {
