@@ -1,39 +1,39 @@
-# Índice da documentação
+# Documentation index
 
-O que existe em `docs/`, uma linha por item. Para começar, leia o `README.md` da
-raiz e depois `docs/ARQUITETURA.md`.
+What exists in `docs/`, one line per item. To start, read the `README.md` at the
+root, then `docs/ARCHITECTURE.md`.
 
-## Para começar
+## Getting started
 
-- `docs/COMO-TRABALHAR.md` — guia de entrada para um time novo: acessos, ambiente, fluxo de trabalho, convenções do código, migrations do banco, design system e o que não fazer.
+- `docs/ONBOARDING.md` — the entry guide for a new team: access, environment, workflow, code conventions, database migrations, design system and what not to do.
 
-## Como o sistema funciona
+## How the system works
 
-- `docs/ARQUITETURA.md` — mapa do sistema: páginas, dados, banco, pagamentos, vídeo, e-mail, tarefas agendadas, traduções, testes e portões de segurança.
+- `docs/ARCHITECTURE.md` — the system map: pages, data, database, payments, video, email, scheduled jobs, translations, tests and security gates.
 
-## Roteiros de operação
+## Operations runbooks
 
-- `docs/first-admin-setup.md` — como criar o primeiro administrador e promover os seguintes.
-- `docs/BACKUP.md` — como o backup diário funciona, como configurar e como restaurar.
-- `docs/teacher-advisor-setup.md` — como ligar o consultor de IA do professor (variáveis, base de conhecimento, reindexação).
-- `docs/operational-account-controls.md` — como suspender, bloquear e restaurar uma conta, e onde o banco garante isso.
-- `STRIPE_CHECKLIST.md` (na raiz) — configuração do Stripe campo por campo.
+- `docs/first-admin-setup.md` — how to create the first administrator and promote the next ones.
+- `docs/BACKUP.md` — how the daily backup works, how to set it up and how to restore it.
+- `docs/teacher-advisor-setup.md` — how to turn on the teacher's AI advisor (variables, knowledge base, reindexing).
+- `docs/operational-account-controls.md` — how to suspend, block and restore an account, and where the database enforces it.
+- `STRIPE_CHECKLIST.md` (at the root) — Stripe setup, field by field.
 
 ## Design
 
-- `docs/design-system/skillset-design-system/` — o design system: cores, tipografia, botões, cartões e kits de tela.
-- `docs/design-v2/DESIGN-SYSTEM-V2.md` — especificação da segunda versão do design (tokens e componentes).
-- `docs/design-reference/skillset-design-v2-2/` — protótipos de tela usados como referência visual (não é código de produção).
+- `docs/design-system/skillset-design-system/` — the design system: colors, typography, buttons, cards and screen kits.
+- `docs/design-v2/DESIGN-SYSTEM-V2.md` — the specification for the second version of the design (tokens and components).
+- `docs/design-reference/skillset-design-v2-2/` — screen prototypes used as a visual reference (not production code).
 
-## Traduções
+## Translations
 
-- `docs/i18n-archive/` — o dicionário em português guardado para quando o site voltar a ter português, com o passo a passo para religar.
+- `docs/i18n-archive/` — the Portuguese dictionary, kept for when the site offers Portuguese again, with the steps to turn it back on.
 
-## Regras para manter isto vivo
+## Rules to keep this up to date
 
-- Documento novo entra neste índice.
-- Plano, relatório de sessão, estratégia de negócio, material de investidor e
-  achado de segurança **não** entram neste repositório: ele é público.
-- O teste `src/app/documentacao-caminhos.test.ts` confere que todo caminho entre
-  crases neste índice, no `README.md`, em `docs/ARQUITETURA.md` e em
-  `docs/COMO-TRABALHAR.md` existe.
+- A new document goes into this index.
+- Plans, session reports, business strategy, investor material and
+  security findings do **not** go into this repository: it is public.
+- The test `src/app/documentacao-caminhos.test.ts` checks that every path between
+  backticks in this index, in `README.md`, in `docs/ARCHITECTURE.md` and in
+  `docs/ONBOARDING.md` exists.

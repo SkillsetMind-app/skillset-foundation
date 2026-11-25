@@ -4,30 +4,30 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 /**
- * Documentação viva: todo caminho citado entre crases nestes documentos precisa
- * existir. Se um arquivo muda de lugar ou some, este teste quebra e obriga a
- * atualizar o documento no mesmo PR, em vez de o mapa apodrecer em silêncio.
+ * Living documentation: every path cited between backticks in these documents must
+ * exist. If a file moves or goes away, this test breaks and forces the document to
+ * be updated in the same PR, instead of the map rotting in silence.
  */
 const RAIZ = process.cwd();
 const DOCUMENTOS = [
   "README.md",
-  "docs/ARQUITETURA.md",
+  "docs/ARCHITECTURE.md",
   "docs/README.md",
-  "docs/COMO-TRABALHAR.md",
+  "docs/ONBOARDING.md",
 ];
 const CAMINHO = /`((?:src|supabase|scripts|\.github|docs)\/[^`\s]*)`/g;
 
-describe("a documentação só cita caminhos que existem", () => {
+describe("the documentation only cites paths that exist", () => {
   for (const documento of DOCUMENTOS) {
     it(documento, () => {
       const texto = readFileSync(join(RAIZ, documento), "utf8");
       const caminhos = [...texto.matchAll(CAMINHO)].map((m) => m[1]);
 
-      // Um regex que não casa nada passaria verde sem conferir coisa alguma.
-      expect(caminhos.length, `${documento} não cita nenhum caminho`).toBeGreaterThan(0);
+      // A regex that matches nothing would pass green without checking anything.
+      expect(caminhos.length, `${documento} cites no path`).toBeGreaterThan(0);
 
       const faltando = caminhos.filter((c) => !existsSync(join(RAIZ, c)));
-      expect(faltando, `${documento} cita caminhos que não existem`).toEqual([]);
+      expect(faltando, `${documento} cites paths that do not exist`).toEqual([]);
     });
   }
 });
