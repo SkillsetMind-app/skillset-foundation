@@ -1,5 +1,5 @@
 \set ON_ERROR_STOP on
--- Banco descartável: a partição, as mensagens e o controle de conta voltam no
+-- Disposable database: the partition, the messages and the account control come back in the
 -- rollback.
 begin;
 
@@ -8,8 +8,8 @@ begin if not coalesce(ok, false) then raise exception 'REALTIME_JOIN_REGRESSION:
 create function pg_temp.uid(n int) returns uuid language sql immutable as $$
   select ('86000000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid;
 $$;
--- Quem entra no canal: claims de usuário logado e o tópico do canal, como o
--- Realtime monta antes de conferir a leitura.
+-- Who joins the channel: claims of a logged-in user and the channel topic, as
+-- Realtime builds them before checking the read.
 create function pg_temp.joins(n int, topic text) returns void language plpgsql as $$
 begin
   perform set_config('request.jwt.claim.role', 'authenticated', true);
@@ -19,9 +19,9 @@ begin
   perform set_config('realtime.topic', topic, true);
 end $$;
 
--- O Realtime confere a entrada num canal privado gravando uma mensagem de teste
--- por extensão e vendo se a RLS deixa quem entra ler. Aqui é igual, numa
--- partição própria (a tabela é particionada por inserted_at em produção).
+-- Realtime checks joining a private channel by writing a test message
+-- through the extension and seeing whether RLS lets the joiner read it. Here it is the same, in a
+-- partition of its own (the table is partitioned by inserted_at in production).
 do $$
 begin
   if (select relkind from pg_class where oid = 'realtime.messages'::regclass) = 'p' then
@@ -35,24 +35,24 @@ select topic, extension, true, '2000-01-01 12:00', '2000-01-01 12:00'
 from (values ('courses:builder:smoke-course#13'), ('community-presence:smoke-course#2')) t(topic)
 cross join (values ('broadcast'), ('presence')) e(extension);
 
--- Conta suspensa (uid 2). Sem linha de controle, a conta está liberada.
+-- Suspended account (uid 2). With no control row, the account is allowed.
 insert into public.account_controls (uid, suspended, sessions_revoked_before)
 values (pg_temp.uid(2)::text, true, now());
 
--- 1. Criador logado entra no canal do construtor (o eco do autosave).
+-- 1. Logged-in creator joins the builder channel (the autosave echo).
 select pg_temp.joins(1, 'courses:builder:smoke-course#13');
 set local role authenticated;
 select pg_temp.assert_true(exists(select 1 from realtime.messages
   where topic = 'courses:builder:smoke-course#13' and extension = 'broadcast'),
   'authenticated user cannot join a Postgres Changes channel');
--- A entrada não vira presença: nenhum tópico de Postgres Changes tem presença.
+-- Joining does not become presence: no Postgres Changes topic has presence.
 select pg_temp.assert_true(not exists(select 1 from realtime.messages
   where topic = 'courses:builder:smoke-course#13' and extension = 'presence'),
   'join policy opened presence on a Postgres Changes channel');
 reset role;
 
--- 1b. Entrar não é transmitir: sem policy de INSERT para broadcast, quem está
--- logado continua sem poder mandar mensagem num canal de Postgres Changes.
+-- 1b. Joining is not broadcasting: with no INSERT policy for broadcast, whoever is
+-- logged in still cannot send a message in a Postgres Changes channel.
 select pg_temp.joins(1, 'courses:builder:smoke-course#13');
 set local role authenticated;
 do $$
@@ -67,15 +67,15 @@ begin
 end $$;
 reset role;
 
--- 1c. Sem tópico (realtime.topic vazio), nada fica visível.
+-- 1c. With no topic (realtime.topic empty), nothing is visible.
 select pg_temp.joins(1, '');
 set local role authenticated;
 select pg_temp.assert_true(not exists(select 1 from realtime.messages),
   'messages visible with no realtime.topic set');
 reset role;
 
--- 2. A presença da comunidade continua fechada para quem não é dono, aluno ou
--- admin (#355): nem broadcast nem presença.
+-- 2. Community presence stays closed to whoever is not the owner, learner or
+-- admin (#355): neither broadcast nor presence.
 select pg_temp.joins(1, 'community-presence:smoke-course#2');
 set local role authenticated;
 select pg_temp.assert_true(not exists(select 1 from realtime.messages
@@ -83,7 +83,7 @@ select pg_temp.assert_true(not exists(select 1 from realtime.messages
   'outsider joined the community presence channel');
 reset role;
 
--- 3. Conta suspensa não entra.
+-- 3. A suspended account does not join.
 select pg_temp.joins(2, 'courses:builder:smoke-course#13');
 set local role authenticated;
 select pg_temp.assert_true(not exists(select 1 from realtime.messages
@@ -91,7 +91,7 @@ select pg_temp.assert_true(not exists(select 1 from realtime.messages
   'suspended account joined a Postgres Changes channel');
 reset role;
 
--- 4. Visitante sem login não entra.
+-- 4. A visitor who is not logged in does not join.
 select set_config('request.jwt.claims', '{"role":"anon"}', true);
 select set_config('request.jwt.claim.sub', '', true);
 select set_config('realtime.topic', 'courses:builder:smoke-course#13', true);

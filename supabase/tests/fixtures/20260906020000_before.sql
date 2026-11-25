@@ -1,6 +1,6 @@
 \set ON_ERROR_STOP on
--- Apenas build-test-db.sh: este arquivo, a migration 0200 e o after rodam
--- na MESMA transação do banco descartável. Não aplicar isolado nem em produção.
+-- Only build-test-db.sh: this file, migration 0200 and the after file run
+-- in the SAME transaction of the disposable database. Do not apply alone or in production.
 INSERT INTO auth.users (
   instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,
   created_at,updated_at,raw_app_meta_data,raw_user_meta_data
@@ -30,8 +30,8 @@ INSERT INTO public.courses (
   ]'
 );
 
--- NULL é uma decisão autoral, não ausência de migração. A linha já existe e
--- resolveLessonContent a prefere ao inline, inclusive quando ambos são NULL.
+-- NULL is an authorial decision, not the absence of a migration. The row already exists and
+-- resolveLessonContent prefers it over the inline one, even when both are NULL.
 INSERT INTO public.course_lesson_content (
   lesson_id,course_id,content_text,external_url,created_at,updated_at
 ) VALUES

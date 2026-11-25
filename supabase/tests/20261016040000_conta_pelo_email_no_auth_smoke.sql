@@ -1,10 +1,10 @@
 \set ON_ERROR_STOP on
--- Banco descartavel. Fixtures desfeitas no rollback final.
+-- Disposable database. Fixtures undone in the final rollback.
 -- find_auth_user_id_by_email (20261016040000_conta_pelo_email_no_auth.sql):
---   - acha a conta pelo e-mail de auth.users, com espaco e maiusculas;
---   - nao acha pelo public.users.email (editavel), nem conta apagada;
---   - e-mail desconhecido devolve null;
---   - so o service_role executa: anon e authenticated sao recusados.
+--   - finds the account by the email in auth.users, with spaces and uppercase;
+--   - does not find it by public.users.email (editable), nor a deleted account;
+--   - unknown email returns null;
+--   - only service_role executes: anon and authenticated are refused.
 begin;
 
 create function pg_temp.assert_true(ok boolean, message text) returns void language plpgsql as $$
@@ -20,8 +20,8 @@ begin
   raise exception 'FIND_AUTH_USER_REGRESSION: %', 'refused call succeeded: ' || statement;
 end $$;
 
--- Fixtures: 1 conta normal, 2 conta cujo public.users.email foi trocado,
--- 3 conta apagada.
+-- Fixtures: 1 normal account, 2 account whose public.users.email was changed,
+-- 3 deleted account.
 select set_config('skillset.trusted_write', 'on', true);
 insert into auth.users(id, aud, role, email, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, deleted_at)
 values
@@ -33,20 +33,20 @@ select id::text, email, '["student"]'::jsonb, true from auth.users where email l
 on conflict (uid) do nothing;
 update public.users set email = 'perfil-trocado@example.test' where uid = pg_temp.uid(2)::text;
 
--- 1) O servidor acha a conta, mesmo com espaco e maiusculas.
+-- 1) The server finds the account, even with spaces and uppercase.
 set local role service_role;
 select pg_temp.assert_true(public.find_auth_user_id_by_email('  Conta-Email-1@Example.TEST ') = pg_temp.uid(1), 'auth email lookup');
 
--- 2) O e-mail do perfil (editavel) nao acha conta; o de auth.users acha.
+-- 2) The profile email (editable) does not find an account; the one in auth.users does.
 select pg_temp.assert_true(public.find_auth_user_id_by_email('perfil-trocado@example.test') is null, 'profile email is not a lookup');
 select pg_temp.assert_true(public.find_auth_user_id_by_email('conta-email-2@example.test') = pg_temp.uid(2), 'auth email of edited profile');
 
--- 3) Conta apagada e e-mail desconhecido: null.
+-- 3) Deleted account and unknown email: null.
 select pg_temp.assert_true(public.find_auth_user_id_by_email('conta-email-3@example.test') is null, 'deleted account');
 select pg_temp.assert_true(public.find_auth_user_id_by_email('ninguem@example.test') is null, 'unknown email');
 reset role;
 
--- 4) Navegador (anon e authenticated) nao executa.
+-- 4) Browser (anon and authenticated) does not execute.
 select pg_temp.assert_true(not has_function_privilege('anon', 'public.find_auth_user_id_by_email(text)', 'execute'), 'anon privilege');
 select pg_temp.assert_true(not has_function_privilege('authenticated', 'public.find_auth_user_id_by_email(text)', 'execute'), 'authenticated privilege');
 set local role anon;

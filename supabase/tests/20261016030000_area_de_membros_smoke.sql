@@ -1,10 +1,10 @@
 \set ON_ERROR_STOP on
--- Banco descartavel. Fixtures desfeitas no rollback final.
+-- Disposable database. Fixtures are undone at the final rollback.
 --
--- Area de membros por criador: o aluno de A ve A em "meus produtos" e B em
--- "mais deste criador", mas nao le nada de B (aula, material, arquivo). A
--- vitrine so devolve campos publicos; rascunho e produto oculto nao aparecem;
--- quem nao e aluno nem dono recebe null; so o dono salva, e so produto dele.
+-- Members area per creator: the learner of A sees A in "my products" and B in
+-- "more from this creator", but reads nothing of B (lesson, material, file). The
+-- storefront returns only public fields; a draft and a hidden product do not appear;
+-- someone who is neither learner nor owner gets null; only the owner saves, and only their own product.
 begin;
 
 create function pg_temp.assert_true(ok boolean, message text) returns void language plpgsql as $$
@@ -44,8 +44,8 @@ create function pg_temp.file_path(k text) returns text language sql immutable as
   select 'courses/smoke-area-' || k || '/assets/' || pg_temp.uid(1)::text || '/smoke-area-asset-' || k || '/material.pdf';
 $$;
 
--- 1 criador (Eton), 2 aluno so de A, 3 ninguem, 4 outro criador, 5 aluno de A
--- com 2FA e sem aula tocada, 6 reembolsado de A.
+-- 1 creator (the owner), 2 learner of A only, 3 nobody, 4 other creator, 5 learner of A
+-- with 2FA and no lesson touched, 6 refunded from A.
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
@@ -63,8 +63,8 @@ update public.users
       activation_fee_paid_at = now()
   where uid in (pg_temp.uid(1)::text, pg_temp.uid(4)::text);
 
--- A (comprado), B (nao comprado), H (publicado, depois oculto), D (rascunho),
--- C (do outro criador). Datas crescentes: o padrao e do mais novo ao mais velho.
+-- A (bought), B (not bought), H (published, then hidden), D (draft),
+-- C (from the other creator). Increasing dates: the default is newest to oldest.
 insert into public.courses(id, owner_id, slug, title, summary, category, status, currency,
   price_amount_minor, payment_type, modules, created_at)
 select pg_temp.course(k.key), pg_temp.uid(k.owner)::text, pg_temp.course(k.key), 'Smoke area ' || k.key,
@@ -80,7 +80,7 @@ insert into public.enrollments(id, user_id, course_id, course_slug, course_title
 select pg_temp.uid(e.n)::text || '__' || pg_temp.course('a'), pg_temp.uid(e.n)::text, pg_temp.course('a'),
   pg_temp.course('a'), 'Smoke area a', 'smoke', '', e.status, 'admin', e.last_lesson
 from (values (2, 'active', 'a-1'), (5, 'active', 'a-1'), (6, 'refunded', null)) e(n, status, last_lesson);
--- 5 tambem concluiu H e tocou uma aula dele por ultimo: curso concluido nao retoma.
+-- 5 also completed H and touched a lesson of it last: a completed course does not resume.
 insert into public.enrollments(id, user_id, course_id, course_slug, course_title, course_category,
   course_image, status, source)
 values (pg_temp.uid(5)::text || '__' || pg_temp.course('h'), pg_temp.uid(5)::text, pg_temp.course('h'),
@@ -91,7 +91,7 @@ insert into auth.mfa_factors(id, user_id, factor_type, status, created_at, updat
 values (gen_random_uuid(), pg_temp.uid(5), 'totp', 'verified', now(), now());
 insert into public.lesson_playback(enrollment_id, lesson_id, user_id, last_seen_at, position_seconds)
 values (pg_temp.uid(2)::text || '__' || pg_temp.course('a'), 'a-2', pg_temp.uid(2)::text, now(), 42);
--- O conteudo protegido de B: texto da aula, material e o arquivo no bucket privado.
+-- B's protected content: lesson text, material and the file in the private bucket.
 insert into public.course_lesson_content(lesson_id, course_id, content_text)
 values ('b-1', pg_temp.course('b'), 'Texto protegido da aula b-1');
 insert into public.course_assets(id, course_id, owner_id, kind, file_name, content_type, size,
@@ -99,12 +99,12 @@ insert into public.course_assets(id, course_id, owner_id, kind, file_name, conte
 values ('smoke-area-asset-b', pg_temp.course('b'), pg_temp.uid(1)::text, 'lesson_material',
   'material.pdf', 'application/pdf', 1, pg_temp.file_path('b'), 'b-1', now());
 insert into storage.objects(bucket_id, name) values ('course-content', pg_temp.file_path('b'));
--- Perfil publico por ultimo: e-mail de teste nunca ganha perfil pelo gatilho.
+-- Public profile last: a test email never gets a profile through the trigger.
 insert into public.public_profiles(uid, display_name, username)
 values (pg_temp.uid(1)::text, 'Eton Smoke', 'smoke-area-eton');
 
--- 1) Aluno de A, area virtual: A em meus, B e H na vitrine (mais novo primeiro),
---    rascunho fora, continuar pela ultima aula tocada.
+-- 1) Learner of A, virtual area: A in mine, B and H in the storefront (newest first),
+--    draft out, continue from the last lesson touched.
 select pg_temp.act_as(pg_temp.uid(2));
 set local role authenticated;
 select pg_temp.assert_true(pg_temp.ids(pg_temp.home('@smoke-area-eton') -> 'my_products')
@@ -125,8 +125,8 @@ select pg_temp.assert_true(pg_temp.home('@ninguem-aqui') is null, 'unknown creat
 
 reset role;
 
--- Aluno com 2FA sem o segundo fator na sessao: null. Com ele, continuar vai
--- para a aula seguinte a ultima concluida (a-1 -> a-2), nao para o curso concluido.
+-- Learner with 2FA without the second factor in the session: null. With it, continue goes
+-- to the lesson after the last completed one (a-1 -> a-2), not to the completed course.
 select pg_temp.act_as(pg_temp.uid(5), 'authenticated', 'aal1');
 set local role authenticated;
 select pg_temp.assert_true(pg_temp.home('@smoke-area-eton') is null, 'second factor missing from session');
@@ -140,13 +140,13 @@ select pg_temp.assert_true((select d #>> '{continue,course_id}' = pg_temp.course
 select pg_temp.assert_true(pg_temp.ids(pg_temp.home('@smoke-area-eton') -> 'my_products')
   @> array[pg_temp.course('h')], 'completed course stays in my products');
 reset role;
--- Reembolsado nao e aluno.
+-- Refunded is not a learner.
 select pg_temp.act_as(pg_temp.uid(6));
 set local role authenticated;
 select pg_temp.assert_true(pg_temp.home('@smoke-area-eton') is null, 'refunded student gets null');
 reset role;
 
--- 2) A area nao libera nada de B.
+-- 2) The area unlocks nothing of B.
 select pg_temp.act_as(pg_temp.uid(2));
 set local role authenticated;
 select pg_temp.assert_true(not exists (select 1 from public.course_lesson_content
@@ -155,13 +155,13 @@ select pg_temp.assert_true(not exists (select 1 from public.course_assets
   where course_id = pg_temp.course('b')), 'student sees material of B');
 select pg_temp.assert_true(not exists (select 1 from storage.objects
   where bucket_id = 'course-content' and name = pg_temp.file_path('b')), 'student opens file of B');
--- Escrita direta na tabela e recusada; nem aluno salva area.
+-- Direct write to the table is refused; not even a learner saves an area.
 select pg_temp.refused($q$insert into public.member_areas(owner_id) values (pg_temp.uid(2)::text)$q$, '42501');
 select pg_temp.refused($q$select public.save_my_member_area('x', 'dark', null, null)$q$, '42501', 'MEMBER_AREA_FORBIDDEN');
 select pg_temp.refused($q$select public.save_my_member_area_products('[]')$q$, '42501', 'MEMBER_AREA_FORBIDDEN');
 reset role;
 
--- Controle: o dono le o conteudo de B, entao o "nada" acima e da RLS.
+-- Control: the owner reads B's content, so the "nothing" above comes from RLS.
 select pg_temp.act_as(pg_temp.uid(1));
 set local role authenticated;
 select pg_temp.assert_true(exists (select 1 from public.course_lesson_content where course_id = pg_temp.course('b'))
@@ -170,7 +170,7 @@ select pg_temp.assert_true(exists (select 1 from public.course_lesson_content wh
   'owner control: B content exists');
 reset role;
 
--- 3) Quem nao e aluno nem dono recebe null; anon nem executa.
+-- 3) Someone who is neither learner nor owner gets null; anon does not even execute.
 select pg_temp.act_as(pg_temp.uid(3));
 set local role authenticated;
 select pg_temp.assert_true(pg_temp.home('@smoke-area-eton') is null, 'outsider gets null');
@@ -178,7 +178,7 @@ reset role;
 select pg_temp.act_as(pg_temp.uid(4));
 set local role authenticated;
 select pg_temp.assert_true(pg_temp.home('@smoke-area-eton') is null, 'other creator gets null');
--- 4) Outro criador nao poe produto do Eton na area dele, e nada e gravado.
+-- 4) Another creator does not put the owner's product in their area, and nothing is written.
 select pg_temp.refused(format($q$select public.save_my_member_area_products('[{"course_id": %s}]')$q$,
   to_jsonb(pg_temp.course('a'))), '42501', 'MEMBER_AREA_COURSE_NOT_OWNED');
 select pg_temp.refused(format($q$select public.save_my_member_area_products('[{"course_id": %s}, {"course_id": %s}]')$q$,
@@ -188,7 +188,7 @@ select pg_temp.assert_true(not exists (select 1 from public.member_areas where o
   and not exists (select 1 from public.member_area_products where course_id like 'smoke-area-%'),
   'rejected save wrote something');
 
--- 5) O dono configura: nome, tema, ordem e H oculto. Capa fora da pasta dele e recusada.
+-- 5) The owner configures: name, theme, order and H hidden. A cover outside their folder is refused.
 select pg_temp.act_as(pg_temp.uid(1));
 set local role authenticated;
 select pg_temp.refused(format($q$select public.save_my_member_area('x', 'light', %L, null)$q$,
@@ -203,13 +203,13 @@ select public.save_my_member_area_products(jsonb_build_array(
   jsonb_build_object('course_id', pg_temp.course('h'), 'visible', false)));
 select pg_temp.refused($q$select public.save_my_member_area_products('[{"course_id": "x"}, {"course_id": "x"}]')$q$,
   '22023', 'MEMBER_AREA_ITEMS_INVALID');
--- Previa do dono: nada comprado, vitrine so com o visivel.
+-- Owner preview: nothing bought, storefront with only what is visible.
 select pg_temp.assert_true((select (d #>> '{area,is_owner_preview}')::boolean
     and pg_temp.ids(d -> 'more_products') = array[pg_temp.course('b'), pg_temp.course('a')]
   from (select pg_temp.home('@smoke-area-eton') as d) x), 'owner preview');
 reset role;
 
--- O aluno ve a mudanca: nome, tema, capa, boas-vindas; H oculto some da vitrine.
+-- The learner sees the change: name, theme, cover, welcome; hidden H disappears from the storefront.
 select pg_temp.act_as(pg_temp.uid(2));
 set local role authenticated;
 select pg_temp.assert_true((select d #>> '{area,name}' = 'Eton Academy' and d #>> '{area,theme}' = 'dark'
@@ -222,7 +222,7 @@ select pg_temp.assert_true(not exists (select 1 from public.member_areas)
   and not exists (select 1 from public.member_area_products), 'student reads area tables directly');
 reset role;
 
--- Outro criador nao le a configuracao do Eton direto na tabela.
+-- Another creator does not read the owner's configuration directly from the table.
 select pg_temp.act_as(pg_temp.uid(4));
 set local role authenticated;
 select pg_temp.assert_true(not exists (select 1 from public.member_areas where owner_id = pg_temp.uid(1)::text)
@@ -230,7 +230,7 @@ select pg_temp.assert_true(not exists (select 1 from public.member_areas where o
   'other creator reads area tables directly');
 reset role;
 
--- Oculto continua em "meus produtos" para quem comprou.
+-- Hidden stays in "my products" for whoever bought.
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 insert into public.enrollments(id, user_id, course_id, course_slug, course_title, course_category,
@@ -243,7 +243,7 @@ select pg_temp.assert_true(pg_temp.ids(pg_temp.home('@smoke-area-eton') -> 'my_p
   = array[pg_temp.course('a'), pg_temp.course('h')], 'hidden product stays in my products');
 reset role;
 
--- anon nao executa a funcao da area.
+-- anon does not execute the area function.
 select pg_temp.act_as(null, 'anon');
 set local role anon;
 select pg_temp.refused($q$select public.get_member_area_home('@smoke-area-eton')$q$, '42501');

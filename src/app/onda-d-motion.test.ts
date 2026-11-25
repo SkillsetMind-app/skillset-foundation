@@ -136,7 +136,7 @@ describe("catálogo de movimento: consertos e polimento", () => {
   });
 
   it("nada da onda nasce invisível: fora da animação, opacidade 0 só nos brilhos decorativos", () => {
-    const waveStart = css.indexOf("Onda D: calor");
+    const waveStart = css.indexOf("Wave D: warmth");
     expect(waveStart).toBeGreaterThan(-1);
     const hits = [...css.slice(waveStart).matchAll(/opacity: 0;/g)].map((match) => waveStart + match.index!);
     expect(hits.length).toBeGreaterThan(0);

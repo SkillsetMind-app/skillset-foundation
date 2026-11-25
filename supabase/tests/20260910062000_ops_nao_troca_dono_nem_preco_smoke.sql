@@ -1,10 +1,10 @@
 \set ON_ERROR_STOP on
--- Banco descartável apenas. Fixtures voltam no ROLLBACK.
+-- Disposable database only. Fixtures are undone in the ROLLBACK.
 --
--- P1-2: ops não troca dono, preço nem taxa de curso alheio e continua
--- moderando status. O dono continua mudando o próprio preço. Admin e servidor
--- mudam, e a troca feita por quem não é o dono fica no audit_log, que falha
--- fechado.
+-- P1-2: ops does not change the owner, price or fee of someone else's course and still
+-- moderates status. The owner still changes their own price. Admin and server
+-- change them, and a change made by someone who is not the owner is recorded in the audit_log, which fails
+-- closed.
 begin;
 create temp table owner_price_checks (name text, passed boolean);
 grant insert, select on owner_price_checks to authenticated;
@@ -21,7 +21,7 @@ begin
     jsonb_build_object('sub', p_uid, 'role', p_role, 'aal', 'aal2')::text, true);
   perform set_config('skillset.trusted_write', 'off', true);
 end $$;
--- true só quando a escrita foi recusada com esta mensagem; a que passou é desfeita.
+-- true only when the write was refused with this message; the one that went through is undone.
 create function pg_temp.refused(p_sql text, p_message text) returns boolean language plpgsql as $$
 begin
   execute p_sql;
@@ -39,7 +39,7 @@ exception
   when others then return false;
 end $$;
 
--- 1 dono, 2 cúmplice com curso próprio, 3 ops, 4 admin.
+-- 1 owner, 2 accomplice with their own course, 3 ops, 4 admin.
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
@@ -62,7 +62,7 @@ values ('owner-price-course', pg_temp.uid(1)::text, 'owner-price-course', 'Owner
   'owner-price-course', 'Synthetic course for the owner and price smoke.', 'smoke', 'published',
   'one_time', 5000, 'USD', 1000);
 
--- Ops, pelo caminho real: courses_update_ops deixa a linha passar pelo RLS.
+-- Ops, through the real path: courses_update_ops lets the row pass through RLS.
 select pg_temp.act_as(pg_temp.uid(3), 'authenticated');
 set local role authenticated;
 select pg_temp.check_course('ops cannot transfer the course',
@@ -78,13 +78,13 @@ select pg_temp.check_course('ops cannot make the course free',
 select pg_temp.check_course('ops cannot change the platform fee',
   pg_temp.refused($q$update public.courses set platform_fee_bps = 0 where id = 'owner-price-course'$q$,
     'courses: owner_id and platform_fee_bps are privileged (admin/service only)'));
--- Status que continua visível para ops: num UPDATE com WHERE, o RLS exige que
--- a linha nova também passe nas policies de SELECT.
+-- Status that stays visible to ops: in an UPDATE with a WHERE, RLS requires that
+-- the new row also pass the SELECT policies.
 select pg_temp.check_course('ops can still send a course back to review',
   pg_temp.accepted($q$update public.courses set status = 'in_review', review_note = 'Synthetic moderation note.' where id = 'owner-price-course'$q$));
 reset role;
 
--- Dono muda o próprio preço, e isso não vira linha de auditoria.
+-- The owner changes their own price, and that does not become an audit row.
 select pg_temp.act_as(pg_temp.uid(1), 'authenticated');
 set local role authenticated;
 update public.courses set price_amount_minor = 4000 where id = 'owner-price-course';
@@ -94,7 +94,7 @@ select pg_temp.check_course('owner can still change the own price',
 select pg_temp.check_course('owner price change is not audited as a third-party change',
   not exists (select 1 from public.audit_log where target_type = 'course' and target_id = 'owner-price-course'));
 
--- Admin transfere o curso, e a troca fica no audit_log.
+-- Admin transfers the course, and the change is recorded in the audit_log.
 select pg_temp.act_as(pg_temp.uid(4), 'authenticated');
 set local role authenticated;
 update public.courses set owner_id = pg_temp.uid(2)::text where id = 'owner-price-course';
@@ -108,7 +108,7 @@ select pg_temp.check_course('admin transfer is audited with previous and next ow
       and metadata->'previous'->>'owner_id' = pg_temp.uid(1)::text
       and metadata->'next'->>'owner_id' = pg_temp.uid(2)::text));
 
--- Servidor (rota de ofertas) muda o preço; também fica registrado.
+-- The server (offers route) changes the price; it is also recorded.
 select pg_temp.act_as(null, 'service_role');
 update public.courses set price_amount_minor = 3000 where id = 'owner-price-course';
 select pg_temp.check_course('server price change is audited as the server',
@@ -117,7 +117,7 @@ select pg_temp.check_course('server price change is audited as the server',
       and actor_id = 'system:service_role'
       and metadata->'next'->>'price_amount_minor' = '3000'));
 
--- A auditoria falha fechado: sem a linha no audit_log, o dono não muda.
+-- The audit fails closed: without the row in the audit_log, the owner does not change.
 create function public.owner_price_smoke_reject_audit() returns trigger language plpgsql as $$
 begin
   if new.target_id = 'owner-price-course' then raise exception 'SYNTHETIC_AUDIT_FAILURE'; end if;

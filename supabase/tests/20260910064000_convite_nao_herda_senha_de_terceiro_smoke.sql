@@ -1,10 +1,10 @@
 \set ON_ERROR_STOP on
--- Banco descartável apenas. Fixtures voltam no ROLLBACK.
+-- Disposable database only. Fixtures are undone in the ROLLBACK.
 --
--- P1-1: conta pré-cadastrada por terceiro não vira porta de admin quando o
--- convite chega. O banco efêmero não tem o Supabase Auth: aqui a confirmação
--- do e-mail e as sessões são linhas escritas à mão, e a senha é um hash
--- sintético (só importa se está vazio ou não).
+-- P1-1: an account pre-registered by a third party does not become an admin door when the
+-- invite arrives. The ephemeral database has no Supabase Auth: here the email
+-- confirmation and the sessions are hand-written rows, and the password is a
+-- synthetic hash (all that matters is whether it is empty or not).
 begin;
 \if :{?without_invite_password_guard}
 do $$
@@ -35,8 +35,8 @@ begin
   perform set_config('skillset.trusted_write', 'off', true);
 end $$;
 
--- 1 admin que convida; 2 conta pré-cadastrada por terceiro (senha dele, sem
--- confirmação); 3 pessoa que já tinha conta confirmada antes do convite.
+-- 1 admin who invites; 2 account pre-registered by a third party (their password, no
+-- confirmation); 3 person who already had a confirmed account before the invite.
 select pg_temp.act_as(null, 'service_role');
 insert into auth.users(id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
@@ -55,11 +55,11 @@ select public.admin_create_platform_invite('invite-precadastro@example.test', 'a
 select public.admin_create_platform_invite('invite-legit@example.test', 'staff') ->> 'id' as legit_invite \gset
 reset role;
 
--- A pessoa convidada clica no link: o e-mail DA CONTA PRÉ-CADASTRADA é
--- confirmado agora, depois de o convite existir. Em seguida há duas sessões:
--- a do link (102) e a de quem pré-cadastrou, que entrou com a senha (202).
--- Simula contas confirmadas antes da instalacao deste patch: o aceite ainda
--- precisa limpar a credencial e revogar suas sessoes reais no Auth.
+-- The invited person clicks the link: the email OF THE PRE-REGISTERED ACCOUNT is
+-- confirmed now, after the invite exists. Then there are two sessions:
+-- the link's (102) and that of whoever pre-registered, who came in with the password (202).
+-- Simulates accounts confirmed before this patch was installed: the accept still
+-- needs to clear the credential and revoke its real sessions in Auth.
 do $$
 declare
   original_definition text := pg_get_functiondef('public.admin_bootstrap_on_email_confirmed()'::regprocedure);
@@ -95,7 +95,7 @@ insert into auth.sessions(id, user_id, created_at, updated_at)
 select pg_temp.act_as(pg_temp.uid(2), 'authenticated', pg_temp.uid(302));
 select pg_temp.check_invite('a fresh sign-in after the acceptance is admin', public.is_admin());
 
--- Controle: conta confirmada antes do convite não perde senha nem sessão.
+-- Control: an account confirmed before the invite loses neither password nor session.
 select pg_temp.act_as(pg_temp.uid(3), 'authenticated', pg_temp.uid(103));
 set local role authenticated;
 select public.accept_platform_invite(:'legit_invite') as legit_result \gset
@@ -108,8 +108,8 @@ select pg_temp.check_invite('account confirmed before the invite keeps its sessi
 select pg_temp.check_invite('account confirmed before the invite is not asked to sign in again',
   (:'legit_result')::jsonb ->> 'reauthentication_required' = 'false');
 
--- admin_bootstrap_invites: 4 pré-cadastro com senha, sem confirmação;
--- 5 cadastro que já nasce confirmado e sem senha (Google).
+-- admin_bootstrap_invites: 4 pre-registration with password, no confirmation;
+-- 5 signup that is born confirmed and without a password (Google).
 select pg_temp.act_as(null, 'service_role');
 insert into auth.users(id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data)
 values

@@ -1,10 +1,10 @@
 \set ON_ERROR_STOP on
--- Banco descartavel. Fixtures desfeitas no rollback final.
+-- Disposable database. Fixtures are undone at the final rollback.
 --
--- Comunidade da area inteira: o professor escolhe o produto community C como
--- comunidade da area. O aluno so do curso A entra em C (le e posta), sem ganhar
--- matricula em C nem acesso de aula. Quem nao e aluno do professor fica fora.
--- So o dono escolhe, e so um produto community dele.
+-- Community of the whole area: the teacher picks the community product C as the
+-- area's community. A learner of course A only enters C (reads and posts), without gaining
+-- an enrollment in C nor lesson access. Someone who is not the teacher's learner stays out.
+-- Only the owner picks, and only a community product of theirs.
 begin;
 
 create function pg_temp.assert_true(ok boolean, message text) returns void language plpgsql as $$
@@ -31,8 +31,8 @@ begin
   raise exception 'AREA_COMMUNITY_REGRESSION: %', 'refused call succeeded: ' || statement;
 end $$;
 
--- 1 professor, 2 aluno so de A, 3 ninguem, 4 outro professor, 5 so pegou o
--- brinde gratis F do professor 1.
+-- 1 teacher, 2 learner of A only, 3 nobody, 4 other teacher, 5 only got the
+-- free giveaway F from teacher 1.
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
@@ -74,7 +74,7 @@ values ('smoke-ac-post', 'smoke-ac-c', pg_temp.uid(1)::text, 'Teacher', 'teacher
 insert into public.public_profiles(uid, display_name, username)
 values (pg_temp.uid(1)::text, 'Area Teacher', 'smoke-area-community');
 
--- 1) Antes da escolha: o aluno de A nao ve C.
+-- 1) Before the pick: the learner of A does not see C.
 select pg_temp.act_as(pg_temp.uid(2));
 set local role authenticated;
 select pg_temp.assert_true(not public.has_community_access('smoke-ac-c'), 'no area community chosen yet');
@@ -82,7 +82,7 @@ select pg_temp.assert_true((select count(*) = 0 from public.community_posts wher
   'posts of C hidden before the choice');
 reset role;
 
--- 2) So o dono escolhe, e so um produto community dele.
+-- 2) Only the owner picks, and only a community product of theirs.
 select pg_temp.act_as(pg_temp.uid(4));
 set local role authenticated;
 select pg_temp.refused($$select public.set_my_member_area_community('smoke-ac-c')$$, '22023');
@@ -94,8 +94,8 @@ select pg_temp.refused($$select public.set_my_member_area_community('smoke-ac-d'
 select public.set_my_member_area_community('smoke-ac-c');
 reset role;
 
--- 3) O aluno de A entra em C: le, posta e ve a comunidade da area. Sem matricula
---    em C: aula, eventos e o resto continuam por matricula.
+-- 3) The learner of A enters C: reads, posts and sees the area's community. Without an enrollment
+--    in C: lesson, events and the rest stay by enrollment.
 select pg_temp.act_as(pg_temp.uid(2));
 set local role authenticated;
 select pg_temp.assert_true(public.has_community_access('smoke-ac-c'), 'student of A reaches the area community');
@@ -109,7 +109,7 @@ select pg_temp.assert_true((select public.get_member_area_community('@smoke-area
 select pg_temp.assert_true(not public.has_community_access('smoke-ac-x'), 'another teacher''s community stays closed');
 reset role;
 
--- 4) Quem nao e aluno do professor fica fora.
+-- 4) Someone who is not the teacher's learner stays out.
 select pg_temp.act_as(pg_temp.uid(3));
 set local role authenticated;
 select pg_temp.assert_true(not public.has_community_access('smoke-ac-c'), 'outsider stays out');
@@ -118,14 +118,14 @@ select pg_temp.assert_true((select count(*) = 0 from public.community_posts wher
 select pg_temp.assert_true(public.get_member_area_community('@smoke-area-community') is null, 'outsider gets no community');
 reset role;
 
--- 4b) Brinde gratis nao abre a comunidade da area.
+-- 4b) A free giveaway does not open the area's community.
 select pg_temp.act_as(pg_temp.uid(5));
 set local role authenticated;
 select pg_temp.assert_true(not public.has_community_access('smoke-ac-c'), 'a free enrollment does not open the area community');
 select pg_temp.assert_true(public.get_member_area_community('@smoke-area-community') is null, 'free-only member gets no community');
 reset role;
 
--- 5) As regras da comunidade usam has_community_access; as de aula e evento nao.
+-- 5) The community rules use has_community_access; the lesson and event ones do not.
 select pg_temp.assert_true((select count(*) = 9 from pg_policies
   where policyname in ('community_posts_select_enrolled','community_posts_insert_enrolled',
     'community_comments_select_enrolled','community_comments_insert_enrolled',

@@ -1,12 +1,12 @@
 \set ON_ERROR_STOP on
 
--- Prova, contra um banco de verdade, o que a migracao 20260903120000 promete:
--- a abertura da aula fica gravada, a posicao do video vive no banco (e nao no
--- navegador), a linha e uma so por (matricula, aula), e nem outro aluno nem o
--- professor conseguem ler a linha crua de alguem.
+-- Proves, against a real database, what migration 20260903120000 promises:
+-- opening the lesson is recorded, the video position lives in the database (and not in the
+-- browser), the row is one per (enrollment, lesson), and neither another learner nor the
+-- teacher can read anyone's raw row.
 --
--- Seguro contra banco vivo: os dois alunos, o segundo curso e as matriculas
--- nascem e morrem dentro desta transacao, desfeitos no ROLLBACK do fim.
+-- Safe against a live database: the two learners, the second course and the enrollments
+-- are born and die inside this transaction, undone by the ROLLBACK at the end.
 BEGIN;
 
 CREATE OR REPLACE FUNCTION pg_temp.assert_true(
@@ -22,8 +22,8 @@ BEGIN
 END;
 $$;
 
--- Recusa esperada. O bloco EXCEPTION abre uma subtransacao: o erro derruba so
--- a tentativa, nao esta transacao inteira.
+-- Expected refusal. The EXCEPTION block opens a subtransaction: the error knocks down only
+-- the attempt, not this whole transaction.
 CREATE OR REPLACE FUNCTION pg_temp.assert_recusa(
   p_sql text,
   p_message text,
@@ -45,17 +45,17 @@ END;
 $$;
 
 -- ---------------------------------------------------------------------------
--- 0. Cenario: um professor (o usuario do seed, dono de smoke-ci-course) e dois
---    alunos diferentes dele.
+-- 0. Scenario: a teacher (the seed user, owner of smoke-ci-course) and two
+--    different learners of that teacher.
 -- ---------------------------------------------------------------------------
 
--- Aulas no curso do seed: a funcao recusa aula que nao esta em `modules`.
+-- Lessons in the seed course: the function refuses a lesson that is not in `modules`.
 UPDATE public.courses
 SET modules = '[{"id":"m1","lessons":[{"id":"aula-1"},{"id":"aula-2"}]}]'::jsonb
 WHERE id = 'smoke-ci-course';
 
--- Um segundo curso, do mesmo professor, com uma aula que NAO pertence a
--- matricula de baixo -- e o caso "gravar em aula de outro curso".
+-- A second course, from the same teacher, with a lesson that does NOT belong to
+-- the enrollment below -- it is the case "recording on a lesson of another course".
 INSERT INTO public.courses (
   id, owner_id, slug, title, summary, category, status,
   currency, price_amount_minor, modules
@@ -65,8 +65,8 @@ INSERT INTO public.courses (
   'brl', 0, '[{"id":"m1","lessons":[{"id":"aula-de-outro-curso"}]}]'::jsonb
 );
 
--- Os dois alunos. public.users nasce pelo trigger on_auth_user_created, o
--- mesmo caminho de um cadastro real.
+-- The two learners. public.users is born from the on_auth_user_created trigger, the
+-- same path as a real signup.
 INSERT INTO auth.users (
   instance_id, id, aud, role, email, encrypted_password,
   email_confirmed_at, created_at, updated_at,
@@ -104,7 +104,7 @@ END;
 $$;
 
 -- ---------------------------------------------------------------------------
--- 1. Abrir a aula ja deixa rastro -- hoje so a conclusao deixava
+-- 1. Opening the lesson already leaves a trace -- until now only completion left one
 -- ---------------------------------------------------------------------------
 
 SELECT pg_temp.vira('22222222-2222-4222-8222-222222222222');
@@ -124,7 +124,7 @@ SELECT pg_temp.assert_true(
 );
 
 -- ---------------------------------------------------------------------------
--- 2. A posicao sobe, a linha continua sendo UMA, e opened_at nao se move
+-- 2. The position goes up, the row stays ONE, and opened_at does not move
 -- ---------------------------------------------------------------------------
 
 SELECT public.record_lesson_playback('smoke-pb-a', 'aula-1', 42, 600);
@@ -146,8 +146,8 @@ SELECT pg_temp.assert_true(
   'opened_at e a PRIMEIRA abertura: nunca pode passar de last_seen_at'
 );
 
--- Posicao fora da fita (o professor regravou a aula mais curta) e descartada,
--- e a que valia continua valendo -- o aluno nao e jogado para fora da linha.
+-- A position past the end of the video (the teacher re-recorded the lesson shorter) is discarded,
+-- and the one that was valid stays valid -- the learner is not thrown off the timeline.
 SELECT public.record_lesson_playback('smoke-pb-a', 'aula-1', 5000, 600);
 SELECT pg_temp.assert_true(
   (SELECT position_seconds FROM public.lesson_playback
@@ -155,8 +155,8 @@ SELECT pg_temp.assert_true(
   'posicao maior que a duracao tem de ser ignorada'
 );
 
--- Zero EXPLICITO zera (a aula terminou); nulo nao mexe na posicao (so registra
--- a visita). E o que faz reabrir a aula nao apagar o ponto de retomada.
+-- EXPLICIT zero resets (the lesson ended); null does not touch the position (it only records
+-- the visit). That is what makes reopening the lesson not erase the resume point.
 SELECT public.record_lesson_playback('smoke-pb-a', 'aula-1', 0, 600);
 SELECT pg_temp.assert_true(
   (SELECT position_seconds FROM public.lesson_playback
@@ -172,7 +172,7 @@ SELECT pg_temp.assert_true(
 );
 
 -- ---------------------------------------------------------------------------
--- 3. Aula de outro curso, e matricula de outra pessoa: recusadas
+-- 3. Lesson from another course, and another person's enrollment: refused
 -- ---------------------------------------------------------------------------
 
 SELECT pg_temp.assert_recusa(
@@ -187,7 +187,7 @@ SELECT pg_temp.assert_recusa(
 RESET ROLE;
 
 -- ---------------------------------------------------------------------------
--- 4. RLS: um aluno nao ve a linha do outro
+-- 4. RLS: one learner does not see the other's row
 -- ---------------------------------------------------------------------------
 
 SELECT pg_temp.vira('33333333-3333-4333-8333-333333333333');
@@ -209,7 +209,7 @@ SELECT pg_temp.assert_true(
 RESET ROLE;
 
 -- ---------------------------------------------------------------------------
--- 5. O professor le o AGREGADO do proprio curso, nunca a linha crua
+-- 5. The teacher reads the AGGREGATE of their own course, never the raw row
 -- ---------------------------------------------------------------------------
 
 SELECT pg_temp.vira('11111111-1111-4111-8111-111111111111');
@@ -231,8 +231,8 @@ SELECT pg_temp.assert_true(
   'ninguem concluiu: abandono de 2 em 2'
 );
 
--- E o "ultimo acesso" da lista de alunos passa a ter valor -- as duas telas do
--- PR #187 ficaram sem dado exatamente por falta disto.
+-- And the learner list's "last access" gets a value -- the two screens of
+-- PR #187 were left without data precisely for lack of this.
 SELECT pg_temp.assert_true(
   (SELECT count(*) FROM public.get_my_course_students()
     WHERE enrollment_id IN ('smoke-pb-a', 'smoke-pb-b')
@@ -243,7 +243,7 @@ SELECT pg_temp.assert_true(
 RESET ROLE;
 
 -- ---------------------------------------------------------------------------
--- 6. Ninguem escreve na tabela pelo PostgREST: so a funcao
+-- 6. Nobody writes to the table through PostgREST: only the function
 -- ---------------------------------------------------------------------------
 
 SELECT pg_temp.assert_true(
@@ -255,7 +255,7 @@ SELECT pg_temp.assert_true(
     WHERE n.nspname = 'public'
       AND c.relname = 'lesson_playback'
       AND p.polcmd <> 'r'   -- 'r' = SELECT
-      AND p.polpermissive   -- restritiva limita; nao concede escrita sozinha
+      AND p.polpermissive   -- restrictive limits; does not grant write on its own
   ),
   'lesson_playback nao pode ter policy permissiva de escrita: toda escrita passa pela funcao'
 );
@@ -270,8 +270,8 @@ SELECT pg_temp.assert_true(
   'visitante deslogado nao pode ler onde os alunos pararam'
 );
 
--- O aluno tem matricula ativa e le sua linha, mas escreve somente pela RPC.
--- Valores validos evitam que uma constraint ou erro de SQL mascare a recusa.
+-- The learner has an active enrollment and reads their row, but writes only through the RPC.
+-- Valid values keep a constraint or SQL error from masking the refusal.
 SELECT pg_temp.vira('22222222-2222-4222-8222-222222222222');
 SET LOCAL ROLE authenticated;
 SELECT pg_temp.assert_recusa(

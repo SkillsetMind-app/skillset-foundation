@@ -1,26 +1,26 @@
 \set ON_ERROR_STOP on
--- Banco descartável apenas. Fixtures voltam no ROLLBACK.
+-- Disposable database only. Fixtures go back on ROLLBACK.
 --
--- 20261005010000: o progresso do aluno deixa de ser contornável.
---   1. Reembolso: desmarcar aulas baixa progress_percent, mas não o pico
---      (max_progress_percent), e o aluno não escreve o pico direto.
---   2. Drip: record_lesson_progress recusa concluir aula ainda fechada (no
---      sequencial e no prazo por aula), e desmarcar a anterior fecha de novo.
---   3. Certificado: a conclusão é medida contra o currículo ATUAL. Aula
---      acrescentada depois do 'completed' segura a emissão; aula removida
---      deixa de segurar.
---   4. 199 de 200 aulas é 99%, não 100% concluído.
---   5. A mensagem do professor avisa o aluno com o link da aba de mensagens.
---   6. submit_course_review trava o curso antes de ler a soma das notas
---      (conferência no catálogo: concorrência real pede duas conexões).
+-- 20261005010000: learner progress can no longer be bypassed.
+--   1. Refund: unchecking lessons lowers progress_percent, but not the peak
+--      (max_progress_percent), and the learner does not write the peak directly.
+--   2. Drip: record_lesson_progress refuses to complete a still-closed lesson (in
+--      sequential mode and in per-lesson deadline mode), and unchecking the previous one closes it again.
+--   3. Certificate: completion is measured against the CURRENT curriculum. A lesson
+--      added after 'completed' holds back issuance; a removed lesson
+--      stops holding it back.
+--   4. 199 of 200 lessons is 99%, not 100% complete.
+--   5. The teacher's message notifies the learner with the link to the messages tab.
+--   6. submit_course_review locks the course before reading the sum of the ratings
+--      (checked in the catalog: real concurrency needs two connections).
 begin;
 create temp table progress_checks (name text, passed boolean);
 grant insert, select on progress_checks to authenticated;
 create function pg_temp.check_progress(p_name text, p_ok boolean) returns void
 language sql as $$ insert into progress_checks values (p_name, coalesce(p_ok, false)); $$;
--- O número vai no COMEÇO: o código do certificado usa os 18 primeiros
--- caracteres da matrícula mais o milissegundo, e dentro de uma transação o
--- milissegundo é o mesmo. Com o número no fim, dois alunos colidiam.
+-- The number goes at the START: the certificate code uses the first 18
+-- characters of the enrollment plus the millisecond, and inside a transaction the
+-- millisecond is the same. With the number at the end, two learners collided.
 create function pg_temp.uid(n int) returns uuid language sql immutable as $$
   select (lpad(n::text, 8, '0') || '-1005-4010-8000-000000000000')::uuid;
 $$;
@@ -35,8 +35,8 @@ begin
     jsonb_build_object('sub', p_uid, 'role', p_role, 'aal', 'aal2')::text, true);
   perform set_config('skillset.trusted_write', 'off', true);
 end $$;
--- true só quando a chamada falha com uma mensagem que casa com p_like. Sucesso
--- conta como falha e é desfeito.
+-- true only when the call fails with a message that matches p_like. Success
+-- counts as a failure and is undone.
 create function pg_temp.refused(p_sql text, p_like text) returns boolean language plpgsql as $$
 begin
   execute p_sql;
@@ -45,7 +45,7 @@ exception
   when sqlstate 'Z0001' then return false;
   when others then return sqlerrm like p_like;
 end $$;
--- Um módulo; ids com o prefixo do curso; atraso por aula opcional.
+-- One module; ids with the course prefix; optional delay per lesson.
 create function pg_temp.curriculum(p text, ids text[], delays int[]) returns jsonb
 language sql immutable as $$
   select jsonb_build_array(jsonb_build_object('id', p || '-m1', 'title', 'Modulo 1', 'lessons',
@@ -54,7 +54,7 @@ language sql immutable as $$
        from unnest(ids) with ordinality u(x, o))));
 $$;
 
--- 1 dono, 2 aluno, 3 aluno do curso de 200 aulas e do curso que encolhe.
+-- 1 owner, 2 learner, 3 learner of the 200-lesson course and of the shrinking course.
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
@@ -87,7 +87,7 @@ select pg_temp.enr(e.n, e.course), pg_temp.uid(e.n)::text, 'smoke-prog-' || e.co
   'smoke-prog-' || e.course, 'Smoke progress', 'smoke', '', 'active', 'admin'
 from (values (2, 'seq'), (2, 'custom'), (2, 'cert'), (3, 'shrink'), (3, 'big')) e(n, course);
 
--- 2. Drip: aula fechada não é concluída.
+-- 2. Drip: a closed lesson is not completed.
 select pg_temp.act_as(pg_temp.uid(2), 'authenticated');
 set local role authenticated;
 select pg_temp.check_progress('drip: sequential lesson 2 cannot be marked before lesson 1',
@@ -106,7 +106,7 @@ select pg_temp.check_progress('drip: sequential lesson 1 is marked',
 select pg_temp.check_progress('drip: sequential lesson 2 opens once lesson 1 is done',
   (public.record_lesson_progress(pg_temp.enr(2, 'seq'), 'seq-b', true) ->> 'progressPercent')::int = 67);
 
--- 1. Reembolso: desmarcar baixa o progresso, não o pico.
+-- 1. Refund: unchecking lowers progress, not the peak.
 select pg_temp.check_progress('refund: un-marking lesson 2 lowers progress',
   (public.record_lesson_progress(pg_temp.enr(2, 'seq'), 'seq-b', false) ->> 'progressPercent')::int = 33);
 select pg_temp.check_progress('refund: un-marking lesson 1 lowers progress to zero',
@@ -114,7 +114,7 @@ select pg_temp.check_progress('refund: un-marking lesson 1 lowers progress to ze
 select pg_temp.check_progress('drip: lesson 2 locks again once lesson 1 is un-marked',
   pg_temp.refused($q$select public.record_lesson_progress(pg_temp.enr(2, 'seq'), 'seq-b', true)$q$,
     '%not released%'));
--- O ataque pelo PostgREST: o aluno tenta zerar o próprio pico.
+-- The attack through PostgREST: the learner tries to zero their own peak.
 select pg_temp.check_progress('refund: the student cannot lower the own peak through RLS',
   pg_temp.refused($q$update public.enrollments set max_progress_percent = 0 where id = pg_temp.enr(2, 'seq')$q$,
     'enrollments: owners may only update last_lesson_id and updated_at'));
@@ -124,7 +124,7 @@ select pg_temp.check_progress('refund: progress_percent follows the un-marking',
 select pg_temp.check_progress('refund: max_progress_percent keeps the peak',
   (select max_progress_percent = 67 from public.enrollments where id = pg_temp.enr(2, 'seq')));
 
--- 4. Arredondamento: 199 de 200 não conclui.
+-- 4. Rounding: 199 of 200 does not complete.
 select pg_temp.act_as(null, 'service_role');
 insert into public.lesson_progress(enrollment_id, lesson_id, user_id)
 select pg_temp.enr(3, 'big'), 'big-' || n, pg_temp.uid(3)::text from generate_series(1, 198) n;
@@ -138,7 +138,7 @@ select pg_temp.check_progress('rounding: the last lesson completes the course',
     @> '{"progressPercent": 100, "status": "completed"}');
 reset role;
 
--- 3. Certificado contra o currículo atual.
+-- 3. Certificate against the current curriculum.
 select pg_temp.act_as(pg_temp.uid(2), 'authenticated');
 set local role authenticated;
 select pg_temp.check_progress('certificate: lesson a of the certificate course is marked',
@@ -153,7 +153,7 @@ select pg_temp.check_progress('certificate: lessons a and b of the shrinking cou
 select pg_temp.check_progress('certificate: the shrinking course is at 67%',
   (public.record_lesson_progress(pg_temp.enr(3, 'shrink'), 'shrink-b', true) ->> 'progressPercent')::int = 67);
 reset role;
--- O professor acrescenta uma aula a um e remove uma do outro.
+-- The teacher adds a lesson to one course and removes one from the other.
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 update public.courses set modules = pg_temp.curriculum('cert', array['a', 'b', 'c'], null)
@@ -184,7 +184,7 @@ select pg_temp.check_progress('certificate: both certificates exist as issued',
   (select count(*) = 2 from public.certificates
     where id in (pg_temp.enr(2, 'cert'), pg_temp.enr(3, 'shrink')) and status = 'issued'));
 
--- 5. Mensagem do professor: link da aba de mensagens do curso.
+-- 5. Teacher message: link to the course messages tab.
 select pg_temp.act_as(pg_temp.uid(1), 'authenticated');
 set local role authenticated;
 select pg_temp.check_progress('message: the teacher message is sent',
@@ -195,13 +195,13 @@ select pg_temp.check_progress('message: the student notification opens the cours
     where user_id = pg_temp.uid(2)::text and type = 'course_message'
       and link = '/learn/courses/smoke-prog-cert/messages'));
 
--- 6. Avaliação: o curso é travado antes de a soma ser lida.
+-- 6. Review: the course is locked before the sum is read.
 select pg_temp.check_progress('review: the course row is locked before the rating sum is read',
   (select prosrc ~* 'from public[.]courses[[:space:]]+where id = v_course_id[[:space:]]+for update;'
       and position('for update;' in prosrc) < position('v_current_sum :=' in prosrc)
      from pg_proc where oid = 'public.submit_course_review(text,integer,text)'::regprocedure));
 
--- Os grants não mudaram: authenticated executa, anon não.
+-- The grants did not change: authenticated executes, anon does not.
 select pg_temp.check_progress('grants: authenticated keeps EXECUTE and anon stays out',
   (select bool_and(has_function_privilege('authenticated', f, 'EXECUTE')
        and not has_function_privilege('anon', f, 'EXECUTE'))

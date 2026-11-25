@@ -1,13 +1,13 @@
 \set ON_ERROR_STOP on
--- Banco descartável apenas. Fixtures voltam no ROLLBACK.
+-- Disposable database only. Fixtures are undone in the ROLLBACK.
 --
--- Advisor de performance do Supabase sobre a bolsa de acesso de criador:
--- 3 FKs sem indice de cobertura (course_access_grants.claimed_by,
--- course_access_grants.granted_by, enrollments.creator_grant_id) e a policy
--- course_access_grants_owner_select reavaliando auth.uid() a cada linha.
--- Este smoke prova as duas coisas: os 3 indices existem, e a policy recriada
--- continua deixando cada dono ver so os proprios grants -- nunca os de outro
--- criador, nunca os de um aluno qualquer.
+-- Supabase performance advisor on the creator access grant table:
+-- 3 FKs without a covering index (course_access_grants.claimed_by,
+-- course_access_grants.granted_by, enrollments.creator_grant_id) and the policy
+-- course_access_grants_owner_select re-evaluating auth.uid() on every row.
+-- This smoke proves both things: the 3 indexes exist, and the recreated policy
+-- still lets each owner see only their own grants -- never those of another
+-- creator, never those of any random learner.
 begin;
 create temp table fk_idx_policy_checks (name text, passed boolean);
 grant insert, select on fk_idx_policy_checks to authenticated;
@@ -25,7 +25,7 @@ begin
   perform set_config('skillset.trusted_write', 'off', true);
 end $$;
 
--- Os 3 indices do advisor (unindexed_foreign_keys).
+-- The 3 advisor indexes (unindexed_foreign_keys).
 select pg_temp.check_it('course_access_grants.claimed_by has a covering index',
   to_regclass('public.course_access_grants_claimed_by_idx') is not null);
 select pg_temp.check_it('course_access_grants.granted_by has a covering index',
@@ -33,7 +33,7 @@ select pg_temp.check_it('course_access_grants.granted_by has a covering index',
 select pg_temp.check_it('enrollments.creator_grant_id has a covering index',
   to_regclass('public.enrollments_creator_grant_id_idx') is not null);
 
--- 1 dono do curso A, 2 dono do curso B, 3 aluno sem curso e sem grant nenhum.
+-- 1 owner of course A, 2 owner of course B, 3 learner with no course and no grant.
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
@@ -55,7 +55,7 @@ values
 select id as grant_a from public.course_access_grants where course_id = 'smoke-fk-idx-course-a' \gset
 select id as grant_b from public.course_access_grants where course_id = 'smoke-fk-idx-course-b' \gset
 
--- O dono do curso A so ve o proprio grant, nunca o do curso B.
+-- The owner of course A sees only their own grant, never that of course B.
 select pg_temp.act_as(pg_temp.uid(1), 'authenticated');
 set local role authenticated;
 select pg_temp.check_it('course owner sees their own grant',
@@ -66,7 +66,7 @@ select pg_temp.check_it('course owner sees exactly one grant row total',
   (select count(*) = 1 from public.course_access_grants));
 reset role;
 
--- Simetrico: o dono do curso B so ve o proprio, nunca o do curso A.
+-- Symmetric: the owner of course B sees only their own, never that of course A.
 select pg_temp.act_as(pg_temp.uid(2), 'authenticated');
 set local role authenticated;
 select pg_temp.check_it('the other course owner sees only their own grant',
@@ -74,7 +74,7 @@ select pg_temp.check_it('the other course owner sees only their own grant',
   and not exists(select from public.course_access_grants where id = :'grant_a'));
 reset role;
 
--- Um aluno sem curso e sem grant proprio nao ve grant de ninguem.
+-- A learner with no course and no grant of their own sees nobody's grant.
 select pg_temp.act_as(pg_temp.uid(3), 'authenticated');
 set local role authenticated;
 select pg_temp.check_it('a student who owns no course and holds no grant sees none',

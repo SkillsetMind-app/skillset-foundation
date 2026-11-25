@@ -1,18 +1,18 @@
 -- Fixtures mínimas para os smoke tests de RLS de supabase/tests/.
 --
--- Por que este arquivo existe: os smoke tests foram escritos contra um banco
--- vivo e leem um usuário e um curso REAIS (`select ... limit 1` + `\gset`).
--- Num banco recém-montado essas tabelas estão vazias, o `\gset` aborta e o
--- teste falha por falta de dado — não por regressão de policy. Estas linhas são
--- o mínimo que faz os testes medirem o que prometem.
+-- Why this file exists: the smoke tests were written against a live database
+-- and read a REAL user and a REAL course (`select ... limit 1` + `\gset`).
+-- On a freshly built database those tables are empty, the `\gset` aborts and the
+-- test fails for lack of data, not because of a policy regression. These rows are
+-- the minimum that makes the tests measure what they promise.
 --
--- Quem aplica: scripts/build-test-db.sh, no fim, depois do baseline e das
--- migrations. Mora aqui e não em supabase/seed.sql de propósito: no caminho
--- padrão da CLI ele seria aplicado antes de existir tabela, e falharia. Isto
--- nunca roda contra produção: só em banco descartável.
+-- Who applies it: scripts/build-test-db.sh, at the end, after the baseline and the
+-- migrations. It lives here and not in supabase/seed.sql on purpose: on the CLI's
+-- default path it would be applied before any table exists, and it would fail. This
+-- never runs against production: only on a throwaway database.
 
--- Um único uuid, usado como auth.users.id, public.users.uid e
--- enrollments.user_id — os testes derivam um do outro e precisam casar.
+-- A single uuid, used as auth.users.id, public.users.uid and
+-- enrollments.user_id — the tests derive one from the other and they must match.
 insert into auth.users (
   instance_id,
   id,
@@ -39,20 +39,20 @@ insert into auth.users (
   '{}'::jsonb
 ) on conflict (id) do nothing;
 
--- A linha de public.users NÃO é inserida aqui: o trigger on_auth_user_created
--- chama handle_new_user(), que já a cria com roles '["student"]' — o mesmo
--- caminho de um cadastro real. Escrever por fora seria pior de duas maneiras:
--- o trigger users_field_guard_biu recusa mexer em campos server-controlled
--- (current_plan_id, Stripe, gate de criador), e o seed passaria a testar um
--- perfil que a aplicação nunca produz.
+-- The public.users row is NOT inserted here: the on_auth_user_created trigger
+-- calls handle_new_user(), which already creates it with roles '["student"]' — the same
+-- path as a real signup. Writing it from outside would be worse in two ways:
+-- the users_field_guard_biu trigger refuses to touch server-controlled fields
+-- (current_plan_id, Stripe, creator gate), and the seed would end up testing a
+-- profile the application never produces.
 --
--- roles sem 'admin' e nenhuma linha em custom_domains: é exatamente o perfil
--- que 20260731000100 (gate de criador) e 20260901220000 (cota de domínio)
--- pescam com o `limit 1`. current_plan_id fica nulo de propósito — o teste de
--- cota o define sozinho, com a flag de escrita confiável.
+-- roles without 'admin' and no row in custom_domains: it is exactly the profile
+-- that 20260731000100 (creator gate) and 20260901220000 (domain quota)
+-- catch with `limit 1`. current_plan_id is left null on purpose — the quota
+-- test sets it by itself, with the trusted-write flag.
 --
--- Se esse caminho quebrar, o seed precisa gritar: sem a linha, os smoke tests
--- falhariam por falta de dado e o motivo real ficaria escondido.
+-- If this path breaks, the seed has to shout: without the row, the smoke tests
+-- would fail for lack of data and the real reason would stay hidden.
 do $$
 begin
   if not exists (
@@ -64,8 +64,8 @@ begin
   end if;
 end $$;
 
--- 20260902120000 (segundo fator) matricula este usuário neste curso para provar
--- que a policy some com a matrícula numa sessão fraca.
+-- 20260902120000 (second factor) enrolls this user in this course to prove
+-- that the policy disappears with the enrollment in a weak session.
 insert into public.subscriptions(id, user_id, plan_id, status, current_period_end)
 values ('smoke-ci-plan', '11111111-1111-4111-8111-111111111111', 'basic', 'active', now() + interval '1 day');
 

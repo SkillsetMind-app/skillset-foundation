@@ -1,7 +1,7 @@
 \set ON_ERROR_STOP on
 
--- Nada e gravado: so catalogo e chamadas de funcoes IMMUTABLE. O BEGIN/ROLLBACK
--- segue o padrao dos outros smoke tests.
+-- Nothing is written: only the catalog and calls to IMMUTABLE functions. The BEGIN/ROLLBACK
+-- follows the pattern of the other smoke tests.
 BEGIN;
 
 CREATE OR REPLACE FUNCTION pg_temp.assert_true(
@@ -18,9 +18,9 @@ END;
 $$;
 
 -- ---------------------------------------------------------------------------
--- 1. O que o advisor do Supabase confere: search_path fixo no proconfig.
---    `set search_path = ''` fica gravado como search_path="". O cast para
---    regprocedure tambem falha se alguma assinatura sumir.
+-- 1. What the Supabase advisor checks: a fixed search_path in proconfig.
+--    `set search_path = ''` is stored as search_path="". The cast to
+--    regprocedure also fails if any signature disappears.
 -- ---------------------------------------------------------------------------
 
 SELECT pg_temp.assert_true(
@@ -35,15 +35,15 @@ WHERE p.oid IN (
 );
 
 -- ---------------------------------------------------------------------------
--- 2. O pino nao muda resposta nenhuma. Com search_path vazio, um corpo que
---    citasse objeto sem schema quebraria aqui, na chamada.
+-- 2. The pin does not change any answer. With an empty search_path, a body that
+--    referenced an object without a schema would break here, at the call.
 -- ---------------------------------------------------------------------------
 
 SELECT pg_temp.assert_true(
   public.custom_domain_limit_for_plan(NULL) = 0
     AND public.custom_domain_limit_for_plan('free') = 0
     AND public.custom_domain_limit_for_plan('starter') = 1
-    -- 5 desde 20261006040000 (Pro herdou os limites do Plus).
+    -- 5 since 20261006040000 (Pro inherited Plus's limits).
     AND public.custom_domain_limit_for_plan('pro') = 5
     AND public.custom_domain_limit_for_plan('plus') = 5,
   'custom_domain_limit_for_plan mudou de resposta'

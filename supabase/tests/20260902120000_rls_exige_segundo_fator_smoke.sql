@@ -1,7 +1,7 @@
 \set ON_ERROR_STOP on
 
--- Seguro contra banco vivo: o fator de teste e a matricula de teste nascem e
--- morrem dentro desta transação, desfeitos no ROLLBACK do fim.
+-- Safe against a live database: the test factor and the test enrollment are born and
+-- die inside this transaction, undone by the ROLLBACK at the end.
 BEGIN;
 
 CREATE OR REPLACE FUNCTION pg_temp.assert_true(
@@ -17,13 +17,13 @@ BEGIN
 END;
 $$;
 
--- O buraco que sobrou do PR #146: o portão do segundo fator vivia só na tela e
--- nas rotas do app. Um token aal1 de conta com TOTP continuava lendo e
--- escrevendo pelo PostgREST direto, com a chave anon, tudo o que as policies
--- liberam para auth.uid(). Nenhuma policy olhava o AAL.
+-- The hole left over from PR #146: the second-factor gate lived only on the screen and
+-- in the app's routes. An aal1 token for an account with TOTP kept reading and
+-- writing straight through PostgREST, with the anon key, everything the policies
+-- allow for auth.uid(). No policy looked at the AAL.
 
 -- ---------------------------------------------------------------------------
--- 1. A função existe com as propriedades que a tornam segura de usar em policy
+-- 1. The function exists with the properties that make it safe to use in a policy
 -- ---------------------------------------------------------------------------
 
 SELECT pg_temp.assert_true(
@@ -45,17 +45,17 @@ SELECT pg_temp.assert_true(
   'session_is_strong sem search_path fixo: security definer com search_path aberto e sequestravel'
 );
 
--- anon precisa executar. Não é permissão a mais: para anon a função responde
--- TRUE e o predicado de dono segue filtrando. Sem o EXECUTE, toda leitura
--- anônima de tabela cuja policy `TO public` cita a função aborta com 42501 —
--- foi o incidente de 20260901120000_restore_anon_execute_on_rls_predicates.
+-- anon must be able to execute it. It is not extra permission: for anon the function answers
+-- TRUE and the owner predicate keeps filtering. Without the EXECUTE, every anonymous
+-- read of a table whose `TO public` policy cites the function aborts with 42501 —
+-- that was the incident of 20260901120000_restore_anon_execute_on_rls_predicates.
 SELECT pg_temp.assert_true(
   has_function_privilege('anon', 'public.session_is_strong()', 'EXECUTE'),
   'anon sem EXECUTE em session_is_strong: leitura publica vai abortar com 42501'
 );
 
 -- ---------------------------------------------------------------------------
--- 2. Toda policy da lista carrega o portão
+-- 2. Every policy in the list carries the gate
 -- ---------------------------------------------------------------------------
 
 DO $$
@@ -101,7 +101,7 @@ BEGIN
 END $$;
 
 -- ---------------------------------------------------------------------------
--- 3. Comportamento, com um usuário real e um curso real deste banco
+-- 3. Behavior, with a real user and a real course from this database
 -- ---------------------------------------------------------------------------
 
 SELECT u.id::text AS test_uid
@@ -115,7 +115,7 @@ FROM public.courses c
 LIMIT 1
 \gset
 
--- Quem NÃO usa segundo fator não muda nada: aal1 continua valendo.
+-- Whoever does NOT use a second factor sees no change: aal1 keeps working.
 SELECT set_config('request.jwt.claim.sub', :'test_uid', true);
 SELECT set_config(
   'request.jwt.claims',
@@ -129,8 +129,8 @@ SELECT pg_temp.assert_true(
 );
 RESET ROLE;
 
--- A partir daqui a conta tem TOTP verificado. Sem valor de segredo: a coluna é
--- opcional e o que decide é o status.
+-- From here on the account has a verified TOTP. No secret value: the column is
+-- optional and what decides is the status.
 INSERT INTO auth.mfa_factors (id, user_id, factor_type, status, created_at, updated_at)
 VALUES (gen_random_uuid(), :'test_uid'::uuid, 'totp', 'verified', now(), now());
 
@@ -141,7 +141,7 @@ SELECT pg_temp.assert_true(
 );
 RESET ROLE;
 
--- A mesma sessão, depois do código de 6 dígitos, volta a valer.
+-- The same session, after the 6-digit code, is valid again.
 SELECT set_config(
   'request.jwt.claims',
   jsonb_build_object('sub', :'test_uid', 'role', 'authenticated', 'aal', 'aal2')::text,
@@ -155,7 +155,7 @@ SELECT pg_temp.assert_true(
 RESET ROLE;
 
 -- ---------------------------------------------------------------------------
--- 4. A policy MORDE: a matrícula do próprio aluno some com a sessão fraca
+-- 4. The policy BITES: the learner's own enrollment disappears with the weak session
 -- ---------------------------------------------------------------------------
 
 INSERT INTO public.enrollments (
@@ -191,7 +191,7 @@ SELECT pg_temp.assert_true(
 RESET ROLE;
 
 -- ---------------------------------------------------------------------------
--- 5. Visitante deslogado: a função responde, não aborta
+-- 5. Logged-out visitor: the function answers, it does not abort
 -- ---------------------------------------------------------------------------
 
 SELECT set_config('request.jwt.claim.sub', '', true);

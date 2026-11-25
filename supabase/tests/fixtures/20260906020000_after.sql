@@ -1,6 +1,6 @@
 \set ON_ERROR_STOP on
--- Executado pelo build-test-db.sh depois da migration, antes do COMMIT.
--- Uma falha reverte fixture E migration; sucesso remove só estas fixtures.
+-- Run by build-test-db.sh after the migration, before the COMMIT.
+-- A failure rolls back fixture AND migration; success removes only these fixtures.
 DO $$ BEGIN
   IF NOT EXISTS (
     SELECT FROM public.course_lesson_content
@@ -53,7 +53,7 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- A FK remove o conteúdo privado deste curso. O perfil foi criado pelo
--- handle_new_user, como no seed existente; limpamos as duas linhas de usuário.
+-- The FK removes this course's private content. The profile was created by
+-- handle_new_user, as in the existing seed; we clean up the two user rows.
 \ir 20260906020000_cleanup.sql
 \echo Upgrade 0200: conteudo privado preservado, comunidade vinculada ao ID e fixtures removidas.

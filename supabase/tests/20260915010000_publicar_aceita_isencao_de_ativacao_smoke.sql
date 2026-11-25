@@ -1,10 +1,10 @@
 \set ON_ERROR_STOP on
--- Banco descartável apenas. Fixtures voltam no ROLLBACK.
+-- Disposable database only. Fixtures are undone in the ROLLBACK.
 --
--- A publicação usa a mesma porta da taxa que o rascunho, o vídeo, o cupom e o
--- checkout: com a exigência ligada, publicam quem pagou, quem tem isenção
--- pronta e admin; ficam de fora quem não pagou e quem tem isenção pendente.
--- Antes de 20260915010000 a isenção pronta era recusada no Publicar.
+-- Publishing uses the same fee door as the draft, the video, the coupon and the
+-- checkout: with the requirement on, whoever paid, whoever has a ready
+-- waiver and admin can publish; whoever did not pay and whoever has a pending waiver stay out.
+-- Before 20260915010000 a ready waiver was refused on Publish.
 begin;
 create temp table publish_checks (name text, passed boolean);
 grant insert, select on publish_checks to authenticated;
@@ -38,8 +38,8 @@ exception when others then
   return false;
 end $$;
 
--- 1 sem ativação, 2 pagou, 3 isenção pronta, 4 admin sem taxa (concede as
--- isenções), 5 isenção pendente. Cada um com um rascunho grátis publicável.
+-- 1 without activation, 2 paid, 3 ready waiver, 4 admin without fee (grants the
+-- waivers), 5 pending waiver. Each one with a publishable free draft.
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
@@ -98,7 +98,7 @@ set local role authenticated;
 select pg_temp.try_publish(5, 'creator with a pending waiver', false);
 reset role;
 
--- O que passou tem de estar publicado de fato; o que foi recusado, não.
+-- What went through must really be published; what was refused, must not.
 select pg_temp.act_as(null, 'service_role');
 select pg_temp.check_gate('published exactly the paid, the ready waiver and the admin',
   (select array_agg(id order by id) from public.courses

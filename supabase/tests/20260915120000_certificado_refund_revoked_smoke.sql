@@ -1,7 +1,7 @@
 \set ON_ERROR_STOP on
 
--- Seguro contra banco vivo: a matricula e o certificado de teste nascem e
--- morrem dentro desta transacao, desfeitos no ROLLBACK do fim.
+-- Safe against a live database: the test enrollment and certificate are born and
+-- die inside this transaction, undone in the ROLLBACK at the end.
 BEGIN;
 
 CREATE OR REPLACE FUNCTION pg_temp.assert_true(
@@ -17,11 +17,11 @@ BEGIN
 END;
 $$;
 
--- Reembolso integral ou chargeback perdido: o webhook do Stripe grava o
--- certificado como 'refund_revoked'. Quem compra o curso de novo e conclui tem
--- de conseguir o certificado de volta. Uma revogacao da operacao ('revoked')
--- continua definitiva. Este arquivo prova as duas metades direto no RPC de
--- emissao, que e quem decide.
+-- Full refund or lost chargeback: the Stripe webhook writes the
+-- certificate as 'refund_revoked'. Whoever buys the course again and finishes must
+-- be able to get the certificate back. A revocation by operations ('revoked')
+-- stays final. This file proves both halves directly on the issuance RPC,
+-- which is the one that decides.
 
 SELECT u.id::text AS test_uid
 FROM auth.users u
@@ -42,7 +42,7 @@ SELECT 'smoke-cert-rebuy__' || :'test_uid' AS test_enrollment
 
 SELECT set_config('smoke.enrollment', :'test_enrollment', true);
 
--- Matricula concluida: o estado depois da recompra, com o progresso mantido.
+-- Finished enrollment: the state after the repurchase, with progress kept.
 INSERT INTO public.enrollments (
   id, user_id, course_id, course_slug, course_title, course_category,
   course_image, status, source, progress_percent, created_at, updated_at
@@ -51,16 +51,16 @@ INSERT INTO public.enrollments (
   'Smoke Cert Rebuy', 'smoke', '', 'completed', 'admin', 100, now(), now()
 );
 
--- Desde 20261005010000 a emissao mede a conclusao contra o curriculo atual
--- (uma linha de lesson_progress por aula), nao o progress_percent gravado. O
--- curso de teste ganha uma aula e a matricula a conclui.
+-- Since 20261005010000 issuance measures completion against the current curriculum
+-- (one lesson_progress row per lesson), not the stored progress_percent. The
+-- test course gets a lesson and the enrollment completes it.
 UPDATE public.courses
 SET modules = '[{"id": "smoke-cert-rebuy-m1", "title": "Smoke", "lessons": [{"id": "smoke-cert-rebuy-a", "title": "Smoke", "type": "text"}]}]'::jsonb
 WHERE id = :'test_course';
 INSERT INTO public.lesson_progress (enrollment_id, lesson_id, user_id)
 VALUES (:'test_enrollment', 'smoke-cert-rebuy-a', :'test_uid');
 
--- O certificado que o reembolso anterior retirou.
+-- The certificate that the previous refund withdrew.
 INSERT INTO public.certificates (
   id, enrollment_id, user_id, course_id, course_slug, course_title,
   course_category, authority_label, status, verification_code,
@@ -71,13 +71,13 @@ INSERT INTO public.certificates (
   'refund_revoked', 'SK-SMOKE-REBUY-0915', now(), now(), now()
 );
 
--- Enquanto retirado, a verificacao publica nao atesta.
+-- While withdrawn, public verification does not attest it.
 SELECT pg_temp.assert_true(
   (public.verify_skillset_certificate('SK-SMOKE-REBUY-0915', 'smoke') ->> 'valid')::boolean = false,
   'certificado refund_revoked nao pode ser atestado pela verificacao publica'
 );
 
--- 1. Recompra: o aluno pede o certificado de novo e ele volta a 'issued'.
+-- 1. Repurchase: the learner asks for the certificate again and it goes back to 'issued'.
 SELECT set_config('request.jwt.claim.role', 'authenticated', true);
 SELECT set_config('request.jwt.claim.sub', :'test_uid', true);
 SELECT set_config(
@@ -98,7 +98,7 @@ SELECT pg_temp.assert_true(
   'depois de reemitido, o mesmo codigo volta a ser atestado'
 );
 
--- 2. Revogacao da operacao: continua bloqueando a reemissao.
+-- 2. Revocation by operations: it keeps blocking reissue.
 UPDATE public.certificates SET status = 'revoked' WHERE id = :'test_enrollment';
 
 SET LOCAL ROLE authenticated;

@@ -1,7 +1,7 @@
 \set ON_ERROR_STOP on
 
--- Somente no banco descartavel de testes: cria dados e um gatilho de falha.
--- ROLLBACK limpa o fixture, mas nao torna a execucao segura em producao.
+-- Only on the disposable test database: it creates data and a failure trigger.
+-- ROLLBACK cleans the fixture, but does not make the run safe in production.
 BEGIN;
 
 CREATE OR REPLACE FUNCTION pg_temp.assert_true(
@@ -17,15 +17,15 @@ BEGIN
 END;
 $$;
 
--- O que esta sessao prova, no banco de verdade: anon e authenticated nao
--- executam; service_role executa; fechar e liquidar mudam pedido, reserva,
--- cupom e lock juntos; uma falha no meio desfaz tudo; as duas ordens
--- (fecha->paga, paga->fecha) e a repeticao sao seguras.
+-- What this session proves, on the real database: anon and authenticated do not
+-- execute; service_role executes; closing and settling change order, reservation,
+-- coupon and lock together; a failure in the middle undoes everything; both orders
+-- (close->pay, pay->close) and the repeat are safe.
 --
--- O que NAO prova: duas transacoes concorrentes de verdade. psql numa sessao
--- so nao agenda concorrencia e este runner nao tem um segundo cliente. A
--- ordem dos locks fica conferida por definicao na migration; a disputa real
--- e exercitada separadamente em scripts/check-order-concurrency.mjs.
+-- What it does NOT prove: two truly concurrent transactions. psql in a single session
+-- does not schedule concurrency and this runner has no second client. The
+-- lock order is checked by definition in the migration; the real contention
+-- is exercised separately in scripts/check-order-concurrency.mjs.
 
 SELECT c.id AS course_id, c.owner_id AS buyer_id
   FROM public.courses c
@@ -36,7 +36,7 @@ SELECT c.id AS course_id, c.owner_id AS buyer_id
 SELECT :'buyer_id' || '__' || :'course_id' AS lock_key
 \gset
 
--- 1) So service_role executa.
+-- 1) Only service_role executes.
 SELECT pg_temp.assert_true(
   NOT has_function_privilege('anon', 'public.close_unpaid_course_order(text, text, text, text)', 'EXECUTE')
   AND NOT has_function_privilege('authenticated', 'public.close_unpaid_course_order(text, text, text, text)', 'EXECUTE')
@@ -83,7 +83,7 @@ END;
 $$;
 RESET ROLE;
 
--- Linhas reais: um cupom, seis pedidos e as reservas deles.
+-- Real rows: one coupon, six orders and their reservations.
 INSERT INTO public.course_coupons (id, course_id, owner_id, code, percent_off, max_redemptions, redeemed_count, active)
 VALUES ('5e0c0de0-0000-4000-8000-000000000001', :'course_id', :'buyer_id', 'SMOKE-ATOMICO', 10, 10, 0, true);
 
@@ -109,7 +109,7 @@ SELECT o.id, '5e0c0de0-0000-4000-8000-000000000001', :'buyer_id', o.status, now(
     ('smoke_reembolso', 'redeemed')
   ) AS o(id, status);
 
--- 2) Fecha, repete, e o pago atrasado nao ressuscita nada.
+-- 2) Close, repeat, and a late payment resurrects nothing.
 INSERT INTO public.checkout_locks (lock_key, user_id, course_id, order_id)
 VALUES (:'lock_key', :'buyer_id', :'course_id', 'smoke_fecha')
 ON CONFLICT (lock_key) DO UPDATE SET order_id = EXCLUDED.order_id;
@@ -136,7 +136,7 @@ SELECT pg_temp.assert_true(
   'close releases coupon and own lock together; paid after close resurrects nothing'
 );
 
--- 3) Paga, repete, outro pagamento e recusado, e o fechamento atrasado nao rebaixa.
+-- 3) Pay, repeat, another payment is refused, and a late close does not downgrade.
 INSERT INTO public.checkout_locks (lock_key, user_id, course_id, order_id)
 VALUES (:'lock_key', :'buyer_id', :'course_id', 'smoke_paga')
 ON CONFLICT (lock_key) DO UPDATE SET order_id = EXCLUDED.order_id;
@@ -146,7 +146,7 @@ SELECT public.settle_paid_course_order('smoke_paga', 'cs_smoke_paga', 'pi_smoke_
 \gset
 RESET ROLE;
 
--- Recua paid_at para provar que a repeticao nao o move (now() e fixo na transacao).
+-- Move paid_at back to prove the repeat does not move it (now() is fixed in the transaction).
 UPDATE public.orders SET paid_at = '2026-01-01T00:00:00Z' WHERE id = 'smoke_paga';
 
 SET LOCAL ROLE service_role;
@@ -179,7 +179,7 @@ SELECT pg_temp.assert_true(
   'settle redeems once and marks paid together; replay keeps paid_at; late close keeps everything'
 );
 
--- 4) Falha no ultimo passo desfaz o que veio antes, nas duas funcoes.
+-- 4) A failure in the last step undoes what came before, in both functions.
 CREATE FUNCTION public.smoke_falha_no_meio() RETURNS trigger
 LANGUAGE plpgsql
 AS $$
@@ -237,7 +237,7 @@ SELECT pg_temp.assert_true(
   'the retry after the failure closes the order'
 );
 
--- 5) Lock de uma tentativa mais nova sobrevive ao fechamento da antiga.
+-- 5) The lock of a newer attempt survives the closing of the old one.
 INSERT INTO public.checkout_locks (lock_key, user_id, course_id, order_id)
 VALUES (:'lock_key', :'buyer_id', :'course_id', 'smoke_novo')
 ON CONFLICT (lock_key) DO UPDATE SET order_id = EXCLUDED.order_id;
@@ -252,7 +252,7 @@ SELECT pg_temp.assert_true(
   'closing an old attempt keeps the newer owner lock'
 );
 
--- 6) Pendente com cupom ja resgatado (caminho antigo) esta liquidando: nao fecha.
+-- 6) Pending with an already redeemed coupon (old path) is settling: it does not close.
 INSERT INTO public.checkout_locks (lock_key, user_id, course_id, order_id)
 VALUES (:'lock_key', :'buyer_id', :'course_id', 'smoke_legado')
 ON CONFLICT (lock_key) DO UPDATE SET order_id = EXCLUDED.order_id;
@@ -278,7 +278,7 @@ SELECT pg_temp.assert_true(
   'finishing a legacy settlement does not count the coupon twice'
 );
 
--- 7) Sessao/conta divergente e pedido inexistente.
+-- 7) Mismatched session/account and nonexistent order.
 SET LOCAL ROLE service_role;
 DO $$
 DECLARE
@@ -310,7 +310,7 @@ SELECT public.close_unpaid_course_order('smoke_inexistente', 'cs_x', 'cancelled'
 RESET ROLE;
 SELECT pg_temp.assert_true(:'inexistente' = 'missing', 'an unknown order is a no-op');
 
--- 8) Reembolsado nao volta a paid nem e fechado.
+-- 8) Refunded does not go back to paid nor is it closed.
 SET LOCAL ROLE service_role;
 SELECT public.settle_paid_course_order('smoke_reembolso', 'cs_smoke_reembolso', 'pi_smoke_reembolso', 'acct_smoke', NULL) AS reembolso_paga
 \gset
@@ -323,7 +323,7 @@ SELECT pg_temp.assert_true(
   'a refunded order is neither resurrected nor closed'
 );
 
--- 9) finalize: solta continua recusada; resgatada continua sem contar de novo.
+-- 9) finalize: loose stays refused; redeemed still does not count again.
 SET LOCAL ROLE service_role;
 DO $$
 BEGIN

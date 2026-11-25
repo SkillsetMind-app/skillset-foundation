@@ -6,9 +6,9 @@
      scheme even in dark mode — the pale strip down the right edge the founder
      flagged. [data-theme="dark"] flips it to `dark` below. */
   color-scheme: light;
-  /* Altura da barra fixa do site público. Vive aqui porque duas regras
-     dependem dela: a própria barra (min-height) e a faixa que reserva o
-     espaço que ela deixou de ocupar no fluxo (.site-header-spacer). */
+  /* Height of the fixed bar of the public site. It lives here because two rules
+     depend on it: the bar itself (min-height) and the strip that reserves the
+     space the bar no longer takes up in the flow (.site-header-spacer). */
   --site-header-height: 64px;
   --color-base: #ffffff;
   --color-surface: #ffffff;
@@ -74,20 +74,20 @@
   --color-success-fg: #176b46;
   --shadow-soft: 0 1px 2px rgba(26, 54, 93, 0.08), 0 10px 24px rgba(26, 54, 93, 0.11);
   --shadow-strong: 0 18px 44px rgba(15, 39, 68, 0.14);
-  /* Anel de foco unico. Antes cada tela pintava o seu (navy antigo
-     rgba(44,82,130,.24/.28/.35) inline) e o anel mudava de cor por tela.
-     Navy em superficie clara (14.6:1 no branco). Superficie navy troca para
-     latao no proprio seletor dela (6.67:1 no #091d2f); navy sobre navy dava
-     1.17:1, invisivel. */
+  /* Single focus ring. Before, each screen painted its own (old navy
+     rgba(44,82,130,.24/.28/.35) inline) and the ring changed color from screen to screen.
+     Navy on a light surface (14.6:1 on white). A navy surface switches to
+     brass in its own selector (6.67:1 on #091d2f); navy on navy gave
+     1.17:1, invisible. */
   --focus-ring: var(--color-primary);
-  /* Borda de campo: a --color-line (navy 28%) dava 1.78:1 e o campo sumia no
-     cartao branco. #7c8a98 (= navy 55%) da 3.53:1 no branco, 3.19:1 no
-     surface-soft e 3.00:1 no surface-strong (no limite dos 3:1 de
-     componente). Cartoes seguem com a linha. */
+  /* Field border: --color-line (navy 28%) gave 1.78:1 and the field vanished on the
+     white card. #7c8a98 (= navy 55%) gives 3.53:1 on white, 3.19:1 on
+     surface-soft and 3.00:1 on surface-strong (right at the 3:1 limit for a
+     component). Cards keep the line. */
   --color-field-border: #7c8a98;
-  /* Fundo de toda janela centrada. Eram 9 fundos (preto a 55%, três navys a
-     38-62%, com e sem desfoque) e cada popup parecia de um kit diferente.
-     O tema escuro tem o seu (preto), porque navy ali não escurece nada. */
+  /* Backdrop of every centered dialog. There were 9 backdrops (black at 55%, three navys at
+     38-62%, with and without blur) and each popup looked like it came from a different kit.
+     The dark theme has its own (black), because navy there darkens nothing. */
   --color-scrim: rgba(15, 39, 68, 0.62);
   --shadow-avatar: 0 8px 18px rgba(26, 54, 93, 0.14);
   /* Design V2 net-new tokens (additive — no existing value changed) */
@@ -151,21 +151,21 @@
   --duration-fast: 120ms;
   --duration-base: 180ms;
   --duration-slow: 280ms;
-  /* Onda D: um leve passar do ponto, só para selo de marco; e o teto de uma
-     festa (publicado, produto criado). Feedback fica nos 120-280ms acima. */
+  /* Wave D: a slight overshoot, only for the milestone badge; and the ceiling of a
+     celebration (published, product created). Feedback stays at the 120-280ms above. */
   --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
   --duration-celebrate: 600ms;
-  /* Camadas (z-index), de baixo para cima, um nome por papel. O cartão de
-     envio do vídeo estava em 90, por cima de toda janela escurecida (até do
-     aceite de termos), e a faixa "Rascunho salvo" em 60, por baixo do menu
-     lateral. A barra de baixo do celular fica em 40, abaixo de tudo isto.
-     overlay-layers.test.ts confere cada regra que usa um destes papéis. */
+  /* Layers (z-index), from bottom to top, one name per role. The video upload
+     card was at 90, above every dimmed dialog (even the terms
+     acceptance), and the "Draft saved" strip at 60, below the side
+     menu. The bottom bar on the phone stays at 40, below all of these.
+     overlay-layers.test.ts checks every rule that uses one of these roles. */
   --z-dropdown: 50;
   --z-topbar: 60;
   --z-rail: 65;
-  /* Avisos de andamento que não pedem ação: cartão de envio e faixa
-     "Rascunho salvo". Abaixo do menu de categoria do celular (67) e do
-     Advisor (68), que eles cobririam no celular. */
+  /* Progress notices that ask for no action: the upload card and the
+     "Draft saved" strip. Below the phone's category menu (67) and the
+     Advisor (68), which they would cover on the phone. */
   --z-status: 66;
   --z-float: 68;
   --z-banner: 69;
@@ -187,11 +187,11 @@
   --color-primary: #eef0f3;
   --color-primary-dark: #ffffff;
   --color-primary-light: #cbd0d7;
-  /* Sobre fundo escuro o navy some; o anel vira claro para manter contraste. */
+  /* On a dark background the navy disappears; the ring turns light to keep contrast. */
   --focus-ring: var(--color-primary-light);
   --color-field-border: var(--color-line-strong);
-  /* Navy a 62% sobre o fundo escuro dava ~#0d1e34, quase o painel (#0f1626):
-     tingia em vez de escurecer. Preto a 60% separa a janela da página. */
+  /* Navy at 62% over the dark background gave ~#0d1e34, almost the panel (#0f1626):
+     it tinted instead of darkening. Black at 60% separates the dialog from the page. */
   --color-scrim: rgba(0, 0, 0, 0.6);
   --color-ink: #e8edf5;
   --color-ink-soft: #a4b3c8;
@@ -233,29 +233,29 @@
   --shadow-strong: 0 22px 54px rgba(0, 0, 0, 0.42);
 }
 
-/* Cantos levemente arredondados (decisão do fundador, 06/10/2026 — desfaz os
-   cantos retos do #447). Um raio por papel, e nada passa de 16px:
-     sm   4px  selo verificado, marcas miúdas
-     chip 6px  chips e badges (os que já eram pílula continuam rounded-full)
-     md   8px  botões, inputs, selects, textareas, ícones-botão
-     lg  12px  cards, painéis, dropdowns
-     xl  16px  dialogs e sheets
-   Avatares, pontos de status, spinners e toggles seguem redondos. Fica em
-   @theme para o Tailwind gerar rounded-sm/chip/md/lg/xl a partir daqui. */
+/* Slightly rounded corners (the owner's decision, Oct 6, 2026 — undoes the
+   square corners of #447). One radius per role, and nothing goes past 16px:
+     sm   4px  verified badge, tiny marks
+     chip 6px  chips and badges (the ones that were already pills stay rounded-full)
+     md   8px  buttons, inputs, selects, textareas, icon buttons
+     lg  12px  cards, panels, dropdowns
+     xl  16px  dialogs and sheets
+   Avatars, status dots, spinners and toggles stay round. It lives in
+   @theme so Tailwind generates rounded-sm/chip/md/lg/xl from here. */
 @theme {
   --radius-sm: 4px;
   --radius-chip: 6px;
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
-  /* Teto: as classes maiores do Tailwind não passam do raio de dialog. */
+  /* Ceiling: Tailwind's larger classes do not go past the dialog radius. */
   --radius-2xl: 16px;
   --radius-3xl: 16px;
   --radius-4xl: 16px;
-  /* Toda utility transition-* sem duração própria anda no tempo da casa
-     (eram os 150ms do Tailwind, e o controle feito à mão terminava antes do
-     botão do sistema ao lado). A curva das utilities fica a do Tailwind, de
-     propósito: o movimento do site público foi aprovado assim. */
+  /* Every transition-* utility without its own duration runs on the house timing
+     (it used to be Tailwind's 150ms, and a hand-made control finished before the
+     system button next to it). The utilities' curve stays Tailwind's, on
+     purpose: the public site's motion was approved that way. */
   --default-transition-duration: var(--duration-base);
 }
 
@@ -391,27 +391,27 @@ html {
   }
 }
 
-/* O fundo de toda janela centrada: a camada `fixed inset-0` das feitas à mão
-   (.dialog-backdrop) e o ::backdrop do <dialog> nativo (ui/confirm-dialog, a
-   janela de acesso do /ops). Sem desfoque: o README só permite blur no topo
-   e no cartão de vidro. */
+/* The backdrop of every centered dialog: the `fixed inset-0` layer of the hand-made ones
+   (.dialog-backdrop) and the ::backdrop of the native <dialog> (ui/confirm-dialog, the
+   /ops access dialog). No blur: the README only allows blur on the top bar
+   and on the glass card. */
 .dialog-backdrop {
   background: var(--color-scrim);
 }
 
-/* Regra própria: um navegador que não aceita o seletor descarta a lista
-   inteira e levaria o .dialog-backdrop junto. E antes do Chrome 122, Firefox
-   120 e Safari 17.4 (iPhone parado no iOS 16) o ::backdrop não herda
-   variáveis: sem o valor de reserva o fundo da confirmação ficava transparente. */
+/* Its own rule: a browser that does not support the selector drops the whole
+   list and would take .dialog-backdrop with it. And before Chrome 122, Firefox
+   120 and Safari 17.4 (an iPhone stuck on iOS 16) the ::backdrop does not inherit
+   variables: without the fallback value the confirmation backdrop was transparent. */
 dialog.modal-panel::backdrop {
   background: var(--color-scrim, rgba(15, 39, 68, 0.62));
 }
 
-/* Entrada única das janelas: o fundo acende e o painel sobe 8px, em 180ms.
-   Antes todas apareciam e sumiam num corte seco de tela inteira escura. A
-   saída continua seca: fechar não espera animação nem deixa a janela no DOM.
-   Fill `backwards`: terminada a entrada, nada fica invisível nem com
-   transform preso. O <dialog> nativo repete a entrada a cada showModal(). */
+/* Single entrance for dialogs: the backdrop lights up and the panel rises 8px, in 180ms.
+   Before, all of them appeared and vanished in a hard cut to a fully dark screen. The
+   exit stays hard: closing does not wait for an animation or leave the dialog in the DOM.
+   Fill `backwards`: once the entrance ends, nothing stays invisible or with a
+   stuck transform. The native <dialog> repeats the entrance on every showModal(). */
 @media (prefers-reduced-motion: no-preference) {
   .modal-panel {
     animation: motion-panel-in var(--duration-base) var(--ease-standard) backwards;
@@ -426,15 +426,15 @@ dialog.modal-panel::backdrop {
   }
 }
 
-/* Painel e rodapé únicos das janelas centradas. Havia três sombras de painel,
-   larguras soltas e seis jeitos de pôr os botões (à direita sem filete, em
-   linha de formulário, empilhados só em algumas). Agora: uma sombra, um canto,
-   quatro larguras; o rodapé tem filete em cima, ações à direita com a
-   principal por último e, abaixo de 640px (o sm, onde a confirmação já
-   empilhava), empilha na largura toda com a principal em cima e o Cancelar
-   embaixo, onde o polegar cai (column-reverse). O fundo é o token de superfície (no
-   escuro, o mesmo do bg-white). Em camada: a janela que precisa de outra
-   coisa num tamanho (o checkout em tela cheia no celular) muda por utility. */
+/* Single panel and footer for centered dialogs. There were three panel shadows,
+   loose widths and six ways of placing the buttons (on the right with no divider, in a
+   form row, stacked only in some). Now: one shadow, one corner,
+   four widths; the footer has a divider on top, actions on the right with the
+   primary one last and, below 640px (the sm, where the confirmation already
+   stacked), it stacks at full width with the primary on top and Cancel
+   at the bottom, where the thumb lands (column-reverse). The background is the surface token (in
+   dark, the same as bg-white). In a layer: a dialog that needs something
+   different in one size (the full-screen checkout on the phone) changes it by utility. */
 @layer components {
   .dialog-panel {
     width: 100%;
@@ -458,7 +458,7 @@ dialog.modal-panel::backdrop {
     max-width: 64rem;
   }
 
-  /* Do sm em diante, uma linha só (sem quebra), como a confirmação sempre foi. */
+  /* From sm up, a single line (no wrapping), as the confirmation always was. */
   .dialog-footer {
     display: flex;
     align-items: center;
@@ -476,10 +476,10 @@ dialog.modal-panel::backdrop {
   }
 }
 
-/* Botão só de ícone: alvo de 44px, ícone no centro, canto de 8px (redondo é
-   de avatar e de chave). Havia seis tamanhos, de 24 a 44px, e os pequenos
-   escapavam do dedo. O anel de foco é o global de `button:focus-visible`.
-   Em camada para as utilities ao lado (cor, posição, margem) vencerem. */
+/* Icon-only button: 44px target, icon in the center, 8px corner (round is
+   for avatars and toggles). There were six sizes, from 24 to 44px, and the small ones
+   slipped past the finger. The focus ring is the global one from `button:focus-visible`.
+   In a layer so the utilities next to it (color, position, margin) win. */
 @layer components {
   .button-icon {
     display: inline-grid;
@@ -499,17 +499,17 @@ dialog.modal-panel::backdrop {
     color: var(--color-primary);
   }
 
-  /* Desligado não reage ao mouse: fica o fundo e a cor de repouso. */
+  /* Disabled does not react to the mouse: the background and resting color stay. */
   .button-icon:is(:disabled, [aria-disabled="true"]) {
     background: transparent;
     color: var(--color-ink-soft);
   }
 }
 
-/* O "limpar" da busca mora encostado na ponta de um campo com overflow
-   hidden: o anel global (3px para fora) era cortado em três lados, e o hover
-   do .button-icon pintava a mesma cor do campo. Anel para dentro e hover um
-   tom acima. Sem camada: precisa vencer `button:focus-visible`. */
+/* The search "clear" button sits against the edge of a field with overflow
+   hidden: the global ring (3px outward) was cut off on three sides, and the hover
+   of .button-icon painted the same color as the field. Ring inward and hover one
+   tone up. No layer: it has to beat `button:focus-visible`. */
 .listing-search-clear:hover {
   background: var(--color-surface-strong);
 }
@@ -519,12 +519,12 @@ dialog.modal-panel::backdrop {
 }
 
 @media (min-width: 1024px) {
-  /* A foto cobre o hero inteiro: o quadro é o próprio hero (w-full no JSX) e a
-     imagem ancora o topo (lg:object-[center_top]) para o rosto sobreviver ao
-     corte. Dimensionar o quadro pela proporção da foto (f0be6ff) deixava 439px
-     de gradiente vazio a 1920px, com a foto parada como um retângulo à direita
-     ("desencaixada do canvas", Patrick, 07/09). Em tela ultralarga o corte é
-     embaixo, nunca na cabeça. */
+  /* The photo covers the whole hero: the frame is the hero itself (w-full in the JSX) and the
+     image anchors the top (lg:object-[center_top]) so the face survives the
+     crop. Sizing the frame by the photo's aspect ratio (f0be6ff) left 439px
+     of empty gradient at 1920px, with the photo sitting like a rectangle on the right
+     ("detached from the canvas", the owner, Sept 7). On an ultrawide screen the crop is
+     at the bottom, never at the head. */
   .hero-portrait-layer {
     background-color: #05101f;
   }
@@ -578,53 +578,53 @@ body {
   background: transparent;
 }
 
-/* Link sem cor própria aqui: o preflight do Tailwind já herda a cor do pai
-   DENTRO de `@layer base`. A mesma herança fora de camada vencia toda utility
-   num <a>/<Link>, e o link que pedia a cor de destaque saía com a do texto em
-   volta (cascade em button-sizes-cascade.test.tsx). O sublinhado continua
-   desligado aqui: ligar os `underline` mortos é outra decisão. */
+/* Link with no color of its own here: Tailwind's preflight already inherits the parent's color
+   INSIDE `@layer base`. The same inheritance outside a layer beat every utility
+   on an <a>/<Link>, and a link that asked for the accent color came out with the surrounding
+   text color (cascade in button-sizes-cascade.test.tsx). The underline stays
+   off here: turning on the dead `underline` classes is another decision. */
 a {
   text-decoration: none;
 }
 
-/* Botões e campos herdam a letra pelo preflight do Tailwind, que já faz
-   `font: inherit` DENTRO de `@layer base`. Aqui morava a mesma regra fora de
-   camada, e regra sem camada vence qualquer utility: todo <button> saía 16px
-   peso 400, ignorando text-sm/font-semibold e o peso de .button-*, e o
-   `font-normal` dos campos não valia: o texto digitado saía no negrito do
-   rótulo. */
+/* Buttons and fields inherit the font through Tailwind's preflight, which already does
+   `font: inherit` INSIDE `@layer base`. The same rule used to live here outside a
+   layer, and a rule without a layer beats any utility: every <button> came out 16px
+   weight 400, ignoring text-sm/font-semibold and the weight of .button-*, and the
+   fields' `font-normal` did not apply: typed text came out in the label's
+   bold. */
 
-/* ─── Fundo branco fixo no tema escuro ────────────────────────────────────
-   182 elementos combinam `bg-white` (fundo branco literal) com tinta por token
-   (`text-[var(--color-ink...)]`). No tema escuro a tinta clareia e o fundo não:
-   dá texto claro sobre branco. Medido na política de privacidade — rótulos em
-   negrito ficavam a 1.18:1 de contraste, contra os 4.5:1 exigidos pela WCAG AA.
+/* ─── Fixed white background in the dark theme ────────────────────────────
+   182 elements combine `bg-white` (literal white background) with ink by token
+   (`text-[var(--color-ink...)]`). In the dark theme the ink lightens and the background does not:
+   that gives light text on white. Measured on the privacy policy: bold labels
+   had 1.18:1 contrast, against the 4.5:1 required by WCAG AA.
 
-   Trocar os 182 à mão seria 182 chances de errar. Aqui o utilitário passa a
-   seguir o tema, que é o que cada um desses usos já pretendia.
+   Swapping the 182 by hand would be 182 chances to get it wrong. Here the utility now
+   follows the theme, which is what each of those uses already intended.
 
-   Quem PRECISA continuar branco no escuro — documento impresso, ativo de marca
-   sobre fundo colorido — usa `keep-white`. O certificado é o caso: é baixado em
-   PDF e compartilhado, então não deve seguir o tema de quem abre. */
+   Whatever MUST stay white in dark mode (a printed document, a brand asset
+   on a colored background) uses `keep-white`. The certificate is the case: it is downloaded as
+   a PDF and shared, so it must not follow the theme of whoever opens it. */
 [data-theme="dark"] .bg-white:not(.keep-white):not(.cert-doc) {
   background-color: var(--color-surface);
 }
 
-/* O certificado inteiro fica fora, inclusive o que está dentro dele.
+/* The whole certificate stays out, including what is inside it.
 
-   Duas coisas que esta regra tinha de errado e deixavam o certificado cinza:
+   Two things this rule had wrong that left the certificate gray:
 
-   1. Só falava dos FILHOS. O papel do certificado é o próprio elemento
-      (`<article class="cert-doc bg-white">`), que nenhum destes seletores
-      alcançava — daí `.cert-doc.bg-white`, sem espaço.
-   2. Não tinha `!important`. Mais abaixo (linha ~600) existe um
-      `[data-theme="dark"] .bg-white { ... !important }` que pega tudo: por ser
-      `!important` ele ganha de qualquer regra normal, por mais específica que
-      seja. A exceção precisa da mesma força para poder valer — e aí ganha, por
-      ter especificidade maior (0,3,0 contra 0,2,0).
+   1. It only covered the CHILDREN. The certificate paper is the element itself
+      (`<article class="cert-doc bg-white">`), which none of these selectors
+      reached — hence `.cert-doc.bg-white`, with no space.
+   2. It had no `!important`. Further down (line ~600) there is a
+      `[data-theme="dark"] .bg-white { ... !important }` that catches everything: being
+      `!important`, it beats any normal rule, however specific
+      it is. The exception needs the same strength to apply — and then it wins, because
+      it has higher specificity (0,3,0 against 0,2,0).
 
-   Sem `!important` aqui a exceção existe mas não vale, que é como o certificado
-   apareceu cinza no tema escuro mesmo com a regra escrita. */
+   Without `!important` here the exception exists but does not apply, which is how the certificate
+   showed up gray in the dark theme even with the rule written. */
 [data-theme="dark"] .cert-doc.bg-white,
 [data-theme="dark"] .keep-white.bg-white,
 [data-theme="dark"] .cert-doc .bg-white,
@@ -643,24 +643,24 @@ a {
   }
 }
 
-/* ─── Affordance base ─────────────────────────────────────────────────────
-   Duas regras que faltavam no projeto inteiro, medidas em produção antes de
-   escrever:
+/* ─── Base affordance ─────────────────────────────────────────────────────
+   Two rules that were missing from the whole project, measured in production before
+   writing:
 
-     um <button> recém-criado, sem classe nenhuma  ->  cursor: default
-     /teach  20 de 25 botões sem pointer, 14 sem foco visível
-     /ops    18 de 19 botões sem pointer, 15 sem foco visível
-     /learn   4 de  5 botões sem pointer
+     a freshly created <button>, with no class at all  ->  cursor: default
+     /teach  20 of 25 buttons without pointer, 14 without visible focus
+     /ops    18 of 19 buttons without pointer, 15 without visible focus
+     /learn   4 of  5 buttons without pointer
 
-   Causa: o navegador define `cursor: default` para <button>, e o Preflight do
-   Tailwind v4 deixou de sobrescrever isso. Só <a href> ganha o "dedinho" de
-   graça — daí a impressão de que os links funcionam e os botões não. As
-   classes .button-solid/.button-outline até resolviam, mas só onde eram
-   usadas; menu lateral, abas, sino e toggle de tema não usam nenhuma.
+   Cause: the browser sets `cursor: default` for <button>, and Tailwind v4's Preflight
+   stopped overriding that. Only <a href> gets the "little hand" for free —
+   hence the impression that links work and buttons do not. The
+   .button-solid/.button-outline classes did fix it, but only where they were
+   used; the side menu, tabs, bell and theme toggle use neither.
 
-   Ficam como regras de ELEMENTO, não de classe, para valer nas 76 páginas sem
-   depender de alguém lembrar de aplicar. Qualquer classe utilitária continua
-   sobrescrevendo (mesma especificidade, declarada depois). */
+   They are ELEMENT rules, not class rules, so they apply on all 76 pages without
+   depending on someone remembering to add them. Any utility class still
+   overrides them (same specificity, declared later). */
 button:not(:disabled),
 summary,
 label[for],
@@ -677,20 +677,20 @@ button:disabled,
   cursor: not-allowed;
 }
 
-/* WCAG 2.4.7 (Focus Visible, AA). :focus-visible só aparece para teclado, então
-   o clique de mouse segue sem anel. Usa outline — e não box-shadow — porque
-   outline não é cortado por overflow:hidden nem afeta layout.
+/* WCAG 2.4.7 (Focus Visible, AA). :focus-visible only shows for the keyboard, so
+   a mouse click still gets no ring. It uses outline — not box-shadow — because
+   outline is not clipped by overflow:hidden and does not affect layout.
 
-   Seletor de ELEMENTO, não `:focus-visible` sozinho: existem 103 usos de
-   `outline-none` nos componentes, e uma utilitária de classe tem a mesma
-   especificidade (0,1,0) que `:focus-visible` isolado — empate que a utilitária
-   ganha por vir depois. `button:focus-visible` é (0,1,1) e vence sem !important.
-   Foi assim que 14 botões do /teach continuaram sem anel mesmo com a regra
-   global no ar; medido em produção depois do primeiro deploy.
+   An ELEMENT selector, not `:focus-visible` alone: there are 103 uses of
+   `outline-none` in the components, and a class utility has the same
+   specificity (0,1,0) as a bare `:focus-visible` — a tie the utility
+   wins by coming later. `button:focus-visible` is (0,1,1) and wins without !important.
+   That is how 14 buttons on /teach stayed without a ring even with the global
+   rule live; measured in production after the first deploy.
 
-   Campos de formulário ficam DE FORA de propósito: ali o `outline-none` é
-   deliberado e o projeto já dá o retorno de foco por box-shadow (ver a regra do
-   input mais abaixo). Forçar outline neles criaria indicador duplo. */
+   Form fields are left OUT on purpose: there the `outline-none` is
+   deliberate and the project already gives the focus feedback through box-shadow (see the
+   input rule further down). Forcing outline on them would create a double indicator. */
 button:focus-visible,
 a:focus-visible,
 summary:focus-visible,
@@ -776,10 +776,10 @@ p {
   overflow-x: clip;
 }
 
-/* O gradiente fixo que ficava atrás de tudo saiu (F10). Ele fazia cada cartão
-   "flutuar" sobre um fundo que se movia sozinho e disputava com a superfície
-   dos próprios cartões. A página agora é plana: o fundo é o do <body>
-   (--color-base), e a elevação passa a ser decisão de cada peça. */
+/* The fixed gradient that sat behind everything is gone (F10). It made each card
+   "float" over a background that moved by itself and competed with the surface
+   of the cards themselves. The page is now flat: the background is the <body>'s
+   (--color-base), and elevation becomes each piece's own decision. */
 
 [data-theme="dark"] .bg-white {
   background-color: var(--color-surface) !important;
@@ -826,8 +826,8 @@ p {
   color: var(--color-ink);
 }
 
-/* O telefone é uma caixa só (país + número, shared/phone-input): o campo de
-   dentro segue o fundo da caixa, senão o escuro mostrava dois tons. */
+/* The phone is a single box (country + number, shared/phone-input): the inner
+   field follows the box's background, otherwise dark mode showed two tones. */
 [data-theme="dark"] .phone-field input {
   background-color: transparent !important;
 }
@@ -941,10 +941,10 @@ p {
   text-wrap: balance;
 }
 
-/* Título de página do site público (About, Contact, Help, curso, 404...).
-   Uma regra só: os h1 saíam com text-6xl FIXO (60px) e estouravam a largura
-   de um celular de 360px. Fica em `components` para uma utility de tamanho
-   escrita ao lado ainda valer, como nos botões acima. */
+/* Page title of the public site (About, Contact, Help, course, 404...).
+   A single rule: the h1s came out with a FIXED text-6xl (60px) and overflowed the width
+   of a 360px phone. It lives in `components` so a size utility
+   written next to it still applies, as in the buttons above. */
 @layer components {
   .page-title {
     font-size: clamp(1.9rem, 6vw, 3.5rem);
@@ -1004,9 +1004,9 @@ p {
   white-space: nowrap;
 }
 
-/* I-16, só no /ops: etiqueta com 6px de raio e 11px no lugar da pílula de
-   10px. O resto do produto fica como está até cada tela ser conferida no
-   navegador. `.ops-surface` está no conteúdo de /ops e da ficha da pessoa. */
+/* I-16, only on /ops: a label with a 6px radius and 11px in place of the 10px
+   pill. The rest of the product stays as is until each screen is checked in the
+   browser. `.ops-surface` is on the /ops content and on the person's profile. */
 .ops-surface .status-chip {
   border-radius: var(--radius-chip);
   font-size: 0.6875rem;
@@ -1036,7 +1036,7 @@ p {
 
 .status-chip--danger {
   background: var(--color-danger-soft);
-  /* Era --color-accent-fg (latão): erro pintado de conquista. 6.01:1 no tom. */
+  /* It was --color-accent-fg (brass): an error painted as an achievement. 6.01:1 on the tone. */
   color: var(--color-danger-fg);
   border-color: rgba(178, 34, 52, 0.22);
 }
@@ -1071,11 +1071,11 @@ p {
 }
 
 /* Visible by default: without JavaScript nothing would ever add --in, so
-   the page used to render its sections invisible. Também não some antes da
-   hidratação: o html.js chega antes da primeira pintura, e esconder só por ele
-   deixava a home em branco num celular lento (ou para sempre, se o JavaScript
-   falhasse). Só a seção que o useRevealOnView armou, já montada e ainda abaixo
-   da tela, começa escondida. */
+   the page used to render its sections invisible. It also does not disappear before
+   hydration: html.js arrives before the first paint, and hiding by it alone
+   left the home blank on a slow phone (or forever, if the JavaScript
+   failed). Only the section that useRevealOnView armed, already mounted and still below
+   the screen, starts hidden. */
 .reveal-on-view {
   transition:
     opacity 300ms ease,
@@ -1087,7 +1087,7 @@ p {
     opacity: 0;
     transform: translateY(12px);
     will-change: opacity, transform;
-    /* Some de uma vez (está fora da tela); a entrada usa a transição acima. */
+    /* It disappears at once (it is off screen); the entrance uses the transition above. */
     transition: none;
   }
 }
@@ -1138,18 +1138,18 @@ p {
   }
 }
 
-/* ─── Home: coreografia de rolagem ───────────────────────────────────────
-   A home entra junto com a rolagem, e não de uma vez só: cada peça anda no
-   ritmo do dedo (ou da roda do mouse) e volta se a pessoa sobe a página.
-   É CSS puro (animation-timeline), sem JavaScript e sem biblioteca: o
-   navegador roda tudo fora da thread principal e só mexe em transform e
-   opacity. Três redes de segurança:
-   - só vale dentro de prefers-reduced-motion: no-preference;
-   - só vale onde o navegador entende animation-timeline (@supports); nos
-     outros a home segue com a entrada antiga do RevealSection;
-   - tudo é escopado em .home-scroll, a classe que só a home põe na moldura.
-   Os quadros (@keyframes motion-scroll-*) ficam fora do @media, como os
-   demais do catálogo, e só animam transform e opacity. */
+/* ─── Home: scroll choreography ──────────────────────────────────────────
+   The home enters together with the scroll, not all at once: each piece moves
+   at the pace of the finger (or the mouse wheel) and goes back if the person scrolls up the page.
+   It is pure CSS (animation-timeline), with no JavaScript and no library: the
+   browser runs everything off the main thread and only touches transform and
+   opacity. Three safety nets:
+   - it only applies inside prefers-reduced-motion: no-preference;
+   - it only applies where the browser understands animation-timeline (@supports); in
+     the others the home keeps the old RevealSection entrance;
+   - everything is scoped under .home-scroll, the class that only the home puts on the frame.
+   The frames (@keyframes motion-scroll-*) stay outside the @media, like the
+   others in the catalog, and only animate transform and opacity. */
 @keyframes motion-scroll-progress {
   from {
     transform: scaleX(0);
@@ -1279,12 +1279,12 @@ p {
   }
 }
 
-/* Cenas da home no computador (bloco "Cenas" no fim do @supports abaixo).
-   O passo a passo preso: cada passo tem UM jogo de quadros para a opacidade
-   e um para o tamanho do ícone e do número, com a mesma régua (contain da
-   faixa alta). 1 = ativo, 0.55 = calmo; no fim os três voltam inteiros, para
-   a seção ler normal a quem volta de baixo. Entre um passo e outro, o
-   seguinte acende antes de o anterior apagar: sempre há um passo inteiro. */
+/* Home scenes on the desktop ("Scenes" block at the end of the @supports below).
+   The pinned step-by-step: each step has ONE set of frames for opacity
+   and one for the size of the icon and the number, with the same ruler (contain of
+   the tall strip). 1 = active, 0.55 = calm; at the end all three return to full, so
+   the section reads normally for whoever comes back from below. Between one step and another, the
+   next one lights up before the previous one fades: there is always one full step. */
 @keyframes motion-scroll-step-first {
   0%,
   30%,
@@ -1369,10 +1369,10 @@ p {
   }
 }
 
-/* A cortina da promessa: um arco que nasce embaixo e sobe dentro da faixa.
-   Sobe depressa enquanto ainda está fora da tela (até 36%), cobre todo o
-   conteúdo por volta de 50% e daí sobe devagar, com a borda curva à vista,
-   até encostar no topo da faixa em 85% (1/1.08). Em 1 cobre os cantos. */
+/* The promise curtain: an arc that is born at the bottom and rises inside the strip.
+   It rises fast while still off screen (up to 36%), covers all the
+   content around 50% and from there rises slowly, with the curved edge in view,
+   until it touches the top of the strip at 85% (1/1.08). At 1 it covers the corners. */
 @keyframes motion-scroll-curtain {
   0% {
     transform: scale(0.12);
@@ -1395,8 +1395,8 @@ p {
   }
 }
 
-/* O desdobrar dos cartões com profundidade: cada coluna parte de uma
-   distância (--home-depth) e todas assentam juntas. */
+/* The unfolding of the cards with depth: each column starts from a
+   distance (--home-depth) and they all settle together. */
 @keyframes motion-scroll-assemble {
   from {
     opacity: 0;
@@ -1409,8 +1409,8 @@ p {
   }
 }
 
-/* A foto do curso assenta no quadro. Usada sem o preenchimento de depois
-   (fill backwards): acabada a entrada, o transform volta a ser do :hover. */
+/* The course photo settles into the frame. Used without the later fill
+   (fill backwards): once the entrance ends, the transform goes back to the :hover's. */
 @keyframes motion-scroll-settle {
   from {
     transform: scale(1.06);
@@ -1421,7 +1421,7 @@ p {
   }
 }
 
-/* Faixa de fatos: cada número aparece e sobe 12px, bem de leve. */
+/* Facts strip: each number appears and rises 12px, very gently. */
 @keyframes motion-scroll-fact {
   from {
     opacity: 0;
@@ -1434,18 +1434,18 @@ p {
   }
 }
 
-/* Sem suporte ou com movimento reduzido a barra de leitura não existe. */
+/* Without support or with reduced motion the reading bar does not exist. */
 .home-scroll-progress {
   display: none;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  /* Só entra quem entende a coreografia inteira: um navegador que conheça
-     a linha do tempo mas não os trechos (animation-range) deixaria o texto
-     meio apagado no meio da tela. */
+  /* Only whoever understands the whole choreography gets in: a browser that knows
+     the timeline but not the ranges (animation-range) would leave the text
+     half faded in the middle of the screen. */
   @supports (animation-timeline: view()) and (animation-range: entry 0% cover 30%) and (view-timeline: --x block) {
-    /* 1. Barra de leitura: um fio dourado no topo que enche conforme a página
-       desce. Fica acima da barra do site (40) e abaixo de menus e janelas. */
+    /* 1. Reading bar: a golden thread at the top that fills as the page
+       goes down. It sits above the site bar (40) and below menus and dialogs. */
     .home-scroll-progress {
       display: block;
       position: fixed;
@@ -1460,16 +1460,16 @@ p {
       animation-timeline: scroll(root block);
     }
 
-    /* 2. A entrada antiga (de uma vez, por IntersectionObserver) sai de cena
-       aqui: quem conduz é a rolagem. Sem isto as duas brigariam. */
+    /* 2. The old entrance (all at once, by IntersectionObserver) leaves the scene
+       here: the scroll drives it. Without this the two would fight. */
     html.js .home-scroll .reveal-on-view:not(.reveal-on-view--in) {
       opacity: 1;
       transform: none;
     }
 
-    /* 3. Topo: ao sair, a foto recua devagar (profundidade) e o texto sobe e
-       some. O hero corta o que passa dele (overflow hidden), então a linha do
-       tempo tem nome e é declarada no próprio hero. */
+    /* 3. Top: on exit, the photo recedes slowly (depth) and the text rises and
+       fades. The hero clips whatever goes past it (overflow hidden), so the
+       timeline has a name and is declared on the hero itself. */
     .home-scroll .home-hero {
       view-timeline: --home-hero block;
     }
@@ -1483,27 +1483,27 @@ p {
     .home-scroll .home-hero__copy {
       animation: motion-scroll-hero-copy 1ms linear both;
       animation-timeline: --home-hero;
-      /* No celular o texto de apoio fica embaixo do hero: ele só começa a
-         sumir quando metade do hero já saiu, para dar tempo de ler. */
+      /* On a phone the supporting text sits below the hero: it only starts
+         to fade once half of the hero has scrolled out, so there is time to read. */
       animation-range: exit 45% exit 95%;
     }
 
-    /* Quem volta ao topo pelo teclado não pode achar o botão focado quase
-       invisível: com foco dentro, o texto do topo não some. */
+    /* Someone who returns to the top with the keyboard must not find the focused
+       button nearly invisible: with focus inside, the top text does not fade. */
     .home-scroll .home-hero__copy:has(:focus-visible) {
       animation: none;
     }
 
-    /* 4. Títulos de seção. */
+    /* 4. Section titles. */
     .home-scroll .home-heading {
       animation: motion-scroll-rise 1ms var(--ease-standard) both;
       animation-timeline: view();
       animation-range: entry 0% cover 30%;
     }
 
-    /* 5. Os três passos: cada um sobe, o ícone gira para o lugar, o número
-       grande desliza mais devagar que o resto e uma linha dourada percorre o
-       topo do passo. */
+    /* 5. The three steps: each one rises, the icon spins into place, the big
+       number slides slower than the rest and a brass line runs across the
+       top of the step. */
     .home-scroll .home-steps {
       view-timeline: --home-steps block;
     }
@@ -1543,14 +1543,14 @@ p {
       animation-range: cover 0% cover 100%;
     }
 
-    /* 6. Cartão do curso de verdade. */
+    /* 6. The real course card. */
     .home-scroll .home-feature > a {
       animation: motion-scroll-zoom 1ms var(--ease-standard) both;
       animation-timeline: view();
       animation-range: entry 0% cover 30%;
     }
 
-    /* 7. Os seis recursos: cada cartão se desdobra de baixo para cima. */
+    /* 7. The six features: each card unfolds from bottom to top. */
     .home-scroll .home-card {
       transform-origin: 50% 100%;
       animation: motion-scroll-unfold 1ms var(--ease-standard) both;
@@ -1558,9 +1558,9 @@ p {
       animation-range: entry 0% cover 28%;
     }
 
-    /* 8. A promessa: o texto chega pela esquerda, a carta pela direita, e as
-       seis cláusulas entram uma a uma. A carta corta o que passa dela, então
-       as cláusulas usam a linha do tempo com nome declarada na carta. */
+    /* 8. The promise: the text arrives from the left, the letter from the right, and the
+       six clauses come in one by one. The letter clips whatever overflows it, so
+       the clauses use the named timeline declared on the letter. */
     .home-scroll .home-promise__text {
       animation: motion-scroll-from-left 1ms var(--ease-standard) both;
       animation-timeline: view();
@@ -1600,8 +1600,8 @@ p {
       animation-range: entry 80% cover 49%;
     }
 
-    /* 9. Faixa final: o bloco azul cresce para o lugar e o conteúdo dele
-       entra em seguida, um item depois do outro. */
+    /* 9. Final band: the blue block grows into place and its content
+       comes in next, one item after another. */
     .home-scroll .home-creators {
       view-timeline: --home-creators block;
       animation: motion-scroll-zoom 1ms var(--ease-standard) both;
@@ -1616,10 +1616,10 @@ p {
       animation-range: entry 30% cover 30%;
     }
 
-    /* O título fica no começo da faixa. Num celular pequeno com letra
-       grande a faixa passa de duas telas, e medido pela faixa inteira ele
-       chegava ao meio da tela a 75%. Ele termina de entrar ainda na
-       primeira tela da faixa. */
+    /* The title sits at the start of the band. On a small phone with large
+       text the band is taller than two screens, and measured against the whole band it
+       reached the middle of the screen at 75%. It finishes coming in while still on the
+       first screen of the band. */
     .home-scroll .home-creators__lead {
       animation-range: entry 10% entry 60%;
     }
@@ -1636,8 +1636,8 @@ p {
       animation-range: entry 65% cover 40%;
     }
 
-    /* Do tablet para cima as peças vizinhas entram em escada, da esquerda
-       para a direita, em vez de todas juntas. */
+    /* From tablet up, neighboring pieces come in as a staircase, from left
+       to right, instead of all at once. */
     @media (min-width: 768px) and (max-width: 1279.98px) {
       .home-scroll .home-card:nth-child(2n) {
         animation-range: entry 14% cover 34%;
@@ -1659,9 +1659,9 @@ p {
         animation-range: exit 20% exit 85%;
       }
 
-      /* Três colunas lado a lado: a linha do tempo passa a ser a da grade
-         inteira, e a linha dourada percorre um passo de cada vez, do 01 ao
-         03, como um caminho que se desenha. */
+      /* Three columns side by side: the timeline becomes that of the whole
+         grid, and the brass line runs one step at a time, from 01 to
+         03, like a path being drawn. */
       .home-scroll .home-step,
       .home-scroll .home-step__icon,
       .home-scroll .home-step__line::before {
@@ -1705,20 +1705,20 @@ p {
       }
     }
 
-    /* 10. Cenas: só em tela de computador. No celular, com movimento
-       reduzido ou sem suporte, nada aqui existe: sem faixa alta, sem
-       cortina, sem texto escondido, e a página tem a mesma altura de antes.
-       Tudo que trava a tela ou pinta a cortina mora só neste bloco. A partir
-       de 1280 de largura bastam 640 de altura; entre 1024 e 1279 as colunas
-       dos passos são estreitas (o passo 3 em espanhol passa de 7 linhas) e o
-       painel preso só cabe abaixo da barra a partir de 720 de altura. */
+    /* 10. Scenes: desktop screens only. On a phone, with reduced motion
+       or without support, nothing here exists: no tall band, no
+       curtain, no hidden text, and the page has the same height as before.
+       Everything that pins the screen or paints the curtain lives only in this block. From
+       1280 wide, 640 tall is enough; between 1024 and 1279 the step columns
+       are narrow (step 3 in Spanish goes past 7 lines) and the pinned
+       panel only fits below the bar from 720 tall. */
     @media (min-width: 1280px) and (min-height: 640px), (min-width: 1024px) and (min-height: 720px) {
-      /* Cena 1: "How it works" preso. A seção da página vira uma faixa alta
-         (uma tela + 3 × 40% de tela) e o conteúdo gruda logo abaixo da barra
-         enquanto ela passa. A régua desconta a barra (inset), então contain
-         0% é o instante em que a tela trava e contain 100% o que ela solta:
-         120% de tela de rolagem a mais, nada além. A âncora pousa no começo
-         da faixa: título à vista e o passo 1 aceso. */
+      /* Scene 1: pinned "How it works". The page section becomes a tall band
+         (one screen + 3 x 40% of a screen) and the content sticks right below the bar
+         while it scrolls past. The range discounts the bar (inset), so contain
+         0% is the moment the screen locks and contain 100% the moment it releases:
+         120% of a screen of extra scroll, nothing more. The anchor lands at the start
+         of the band: title in view and step 1 lit. */
       .home-scroll .home-how {
         height: calc(220svh - var(--site-header-height));
         scroll-margin-top: var(--site-header-height);
@@ -1736,10 +1736,10 @@ p {
         padding-block: 1.5rem;
       }
 
-      /* Os passos acendem um de cada vez: 1 até 30%, 2 de 30% a 63%, 3 de
-         63% ao fim; de 84% a 92% os três voltam inteiros e a tela solta em
-         100%. Cada propriedade tem dono único (opacidade no passo, tamanho
-         no ícone e no número), então nada briga. */
+      /* The steps light up one at a time: 1 up to 30%, 2 from 30% to 63%, 3 from
+         63% to the end; from 84% to 92% all three come back whole and the screen releases at
+         100%. Each property has a single owner (opacity on the step, size
+         on the icon and on the number), so nothing fights. */
       .home-scroll .home-step:nth-child(1) {
         animation: motion-scroll-step-first 1ms ease-in-out both;
         animation-timeline: --home-how;
@@ -1779,13 +1779,13 @@ p {
         animation-range: contain 0% contain 100%;
       }
 
-      /* O número encolhe para o lado do ícone, sem abrir buraco entre os dois. */
+      /* The number shrinks to the side of the icon, without leaving a gap between the two. */
       .home-scroll .home-step__number {
         transform-origin: 0 50%;
       }
 
-      /* A linha dourada no topo dos três passos vira a barra de progresso
-         da cena: cada trecho enche enquanto o seu passo está aceso. */
+      /* The brass line on top of the three steps becomes the scene's progress
+         bar: each stretch fills while its step is lit. */
       .home-scroll .home-step__line::before {
         animation-timeline: --home-how;
       }
@@ -1802,18 +1802,18 @@ p {
         animation-range: contain 63% contain 90%;
       }
 
-      /* Cena 2: a cortina da promessa. A faixa perde o fundo claro e um arco
-         da cor da marca nasce no meio da borda de baixo e sobe dentro dela,
-         como um sol nascendo. A régua é a da própria faixa, em altura de
-         tela: o trecho vai do topo da faixa no fundo da tela (0) ao topo a
-         45% da tela (55svh). O arco cobre a coluna de texto com o topo da
-         faixa a ~82% e a carta a ~74%; a borda curva fica à vista até o topo
-         a ~53% (85% do trecho) e os cantos fecham antes dos 48%. Cada bloco
-         de texto só aparece depois de coberto, de cima para baixo: sobretítulo
-         21-28, título 23-30, parágrafo 25-32, botão 27-34, carta 28-35 e as
-         cláusulas pela própria posição; todos inteiros antes de chegar a 75%
-         da tela. Cores de tokens: no tema claro azul com texto claro; no
-         escuro a cortina é a superfície da faixa e o texto fica o de sempre. */
+      /* Scene 2: the promise curtain. The band loses its light background and an arc
+         in the brand color is born at the middle of the bottom edge and rises inside it,
+         like a rising sun. The range is that of the band itself, in screen
+         height: the stretch goes from the band's top at the bottom of the screen (0) to its top at
+         45% of the screen (55svh). The arc covers the text column with the band's
+         top at ~82% and the letter at ~74%; the curved edge stays in view until the top
+         is at ~53% (85% of the stretch) and the corners close before 48%. Each text
+         block only appears after it is covered, from top to bottom: eyebrow
+         21-28, title 23-30, paragraph 25-32, button 27-34, letter 28-35 and the
+         clauses by their own position; all whole before reaching 75%
+         of the screen. Token colors: in the light theme blue with light text; in
+         dark the curtain is the band's surface and the text stays as usual. */
       .home-scroll .home-promise {
         --home-curtain: var(--color-primary);
         --home-curtain-ink: var(--color-on-primary);
@@ -1835,12 +1835,12 @@ p {
         --home-curtain-ring: var(--color-primary-light);
       }
 
-      /* Elipse de 320% x 216% da faixa, centro no meio da borda de baixo:
-         raio de pé 108% da altura (passa o topo em escala 1/1.08) e raio
-         deitado 160% da largura, então o arco é suave e as colunas dos lados
-         são cobertas quase junto com o meio; em escala 1 ainda cobre os
-         cantos (a 50% da largura o arco está a 102% da altura). A faixa corta
-         o que passa dela (overflow clip), sem rolagem de lado. */
+      /* Ellipse of 320% x 216% of the band, centered on the middle of the bottom edge:
+         standing radius 108% of the height (it passes the top at scale 1/1.08) and lying
+         radius 160% of the width, so the arc is smooth and the columns at the sides
+         are covered almost together with the middle; at scale 1 it still covers the
+         corners (at 50% of the width the arc is at 102% of the height). The band clips
+         whatever overflows it (overflow clip), with no sideways scroll. */
       .home-scroll .home-promise::before {
         content: "";
         position: absolute;
@@ -1857,9 +1857,9 @@ p {
         animation-range: cover 0% cover 55svh;
       }
 
-      /* A coluna de texto não anda inteira: cada bloco sobe no seu tempo,
-         sem andar de lado por cima do texto. O anel de foco troca para
-         latão: azul sobre azul sumia. */
+      /* The text column does not move as a whole: each block rises in its own time,
+         without sliding sideways over the text. The focus ring switches to
+         brass: blue on blue disappeared. */
       .home-scroll .home-promise__text {
         --focus-ring: var(--home-curtain-ring);
         animation: none;
@@ -1881,8 +1881,8 @@ p {
         animation-range: cover 25svh cover 32svh;
       }
 
-      /* O botão sobe só com o preenchimento de antes (backwards): acabada a
-         entrada, o transform volta a ser do :hover e do :active dele. */
+      /* The button rises only with the earlier fill (backwards): once the
+         entrance is over, the transform goes back to its :hover and :active. */
       .home-scroll .home-promise__text > a {
         animation: motion-scroll-rise 1ms var(--ease-standard) backwards;
         animation-timeline: --home-curtain;
@@ -1893,17 +1893,17 @@ p {
         color: var(--home-curtain-kicker);
       }
 
-      /* Com o foco do teclado na faixa, nada dela fica apagado. */
+      /* With keyboard focus on the band, nothing in it stays hidden. */
       .home-scroll .home-promise:has(:focus-visible) .home-promise__text > * {
         animation: none;
       }
 
-      /* A carta corta os cantos com clip, não hidden: assim ela não vira
-         área de rolagem e cada cláusula mede a própria posição na tela. A
-         carta é branca e lê em qualquer fundo, mas só entra depois que o arco
-         passou a borda de cima dela, para não boiar na página clara. A
-         escada das cláusulas sai da posição de cada uma, de cima para baixo,
-         e começa depois da carta. */
+      /* The letter clips its corners with clip, not hidden: that way it does not become
+         a scroll area and each clause measures its own position on the screen. The
+         letter is white and reads on any background, but it only comes in after the arc
+         has passed its top edge, so it does not float on the light page. The
+         staircase of clauses comes from each one's position, from top to bottom,
+         and starts after the letter. */
       .home-scroll .home-promise__charter {
         overflow: clip;
         animation: motion-scroll-rise 1ms var(--ease-standard) both;
@@ -1916,8 +1916,8 @@ p {
         animation-range: cover 8svh cover 18svh;
       }
 
-      /* Cena 3: profundidade. As colunas da grade partem de distâncias
-         diferentes e assentam juntas, inteiras, com o topo a 74% da tela. */
+      /* Scene 3: depth. The grid columns start from different distances
+         and settle together, whole, with the top at 74% of the screen. */
       .home-scroll .home-card:nth-child(n) {
         animation: motion-scroll-assemble 1ms var(--ease-standard) both;
         animation-timeline: view();
@@ -1940,10 +1940,10 @@ p {
         }
       }
 
-      /* A foto de cada curso da vitrine assenta no quadro até o cartão
-         chegar ao meio da tela. A régua é do item da lista: o quadro e o
-         cartão cortam o que passa deles (overflow hidden), e view() dentro
-         deles mediria o quadro, não a tela. */
+      /* The photo of each storefront course settles into the frame until the card
+         reaches the middle of the screen. The range is that of the list item: the frame and the
+         card clip whatever overflows them (overflow hidden), and view() inside
+         them would measure the frame, not the screen. */
       .home-scroll .marketplace-course-grid > li {
         view-timeline: --home-course block;
       }
@@ -1955,12 +1955,12 @@ p {
       }
     }
 
-    /* 11. Faixa de fatos (fora das cenas: vale no celular e no computador).
-       Os quatro números aparecem um depois do outro. A régua é de cada fato
-       e o trecho é medido em svh, não em %: seja qual for a altura do fato,
-       ele termina inteiro antes de o topo dele passar de 79% da tela (a regra
-       de leitura pede inteiro de 75% para cima). No celular, 2x2, a segunda
-       fileira entra quando chega, e cada fileira tem a sua escada. */
+    /* 11. Facts band (outside the scenes: works on phone and desktop).
+       The four numbers appear one after another. The range is each fact's own
+       and the stretch is measured in svh, not %: whatever the height of the fact,
+       it finishes whole before its top passes 79% of the screen (the reading
+       rule asks for whole from 75% up). On a phone, 2x2, the second
+       row comes in when it arrives, and each row has its own staircase. */
     .home-scroll .home-facts__item {
       animation: motion-scroll-fact 1ms var(--ease-standard) both;
       animation-timeline: view();
@@ -1979,12 +1979,12 @@ p {
       animation-range: cover 9svh cover 21svh;
     }
 
-    /* 12. Fotos da home, só no computador (no celular e no tablet ficam
-       paradas; só os títulos entram, como em todas as seções). */
+    /* 12. Home photos, desktop only (on phone and tablet they stay
+       still; only the titles come in, as in every section). */
     @media (min-width: 1024px) {
-      /* "Para quem é": os três retratos aparecem e sobem 12px, um depois do
-         outro (os mesmos quadros da escada dos números), todos inteiros
-         antes de o topo passar de 76% da tela. */
+      /* "Who it is for": the three portraits appear and rise 12px, one after the
+         other (the same frames as the numbers' staircase), all whole
+         before the top passes 76% of the screen. */
       .home-scroll .home-who__photo {
         animation: motion-scroll-fact 1ms var(--ease-standard) both;
         animation-timeline: view();
@@ -1999,11 +1999,11 @@ p {
         animation-range: cover 10svh cover 24svh;
       }
 
-      /* Faixa final de ponta a ponta: a faixa não cresce mais para o lugar
-         (cresceria de uma borda à outra); quem se mexe é a foto, que recua
-         devagar até assentar enquanto a faixa entra, até cobrir um terço da
-         tela. O título sobe quando a foto já quase assentou e fica inteiro
-         antes de chegar a 75% da tela, mesmo em 1024x720. */
+      /* Full-bleed final band: the band no longer grows into place
+         (it would grow from one edge to the other); what moves is the photo, which recedes
+         slowly until it settles while the band comes in, until it covers a third of the
+         screen. The title rises when the photo has almost settled and ends up whole
+         before reaching 75% of the screen, even at 1024x720. */
       .home-scroll .home-creators {
         animation: none;
       }
@@ -2021,8 +2021,8 @@ p {
   }
 }
 
-/* No papel não há rolagem: nada fica parado no meio de uma entrada, e a
-   barra de leitura não se repete em cada folha. */
+/* On paper there is no scrolling: nothing stays stuck in the middle of an entrance, and the
+   reading bar is not repeated on every sheet. */
 @media print {
   .home-scroll *,
   .home-scroll *::before {
@@ -2039,14 +2039,14 @@ p {
   }
 }
 
-/* Os DEFAULTS de tamanho dos botões vivem na camada `components` para que as
-   utilities de tamanho escritas ao lado da classe (text-xs, px-3.5, py-2,
-   min-h-10...) valham de verdade. O Tailwind v4 coloca toda utility dentro de
-   `@layer utilities`, e uma regra SEM camada vence qualquer regra em camada,
-   não importa a ordem nem a especificidade — enquanto este bloco ficou fora
-   de camada, 287 botões que pediam um tamanho saíram todos iguais (P-16).
-   As cores logo abaixo seguem fora de camada de propósito: o !important delas
-   é o que mantém o rótulo legível nas inversões do tema escuro. */
+/* The button size DEFAULTS live in the `components` layer so that the
+   size utilities written next to the class (text-xs, px-3.5, py-2,
+   min-h-10...) really apply. Tailwind v4 puts every utility inside
+   `@layer utilities`, and a rule WITHOUT a layer beats any layered rule,
+   regardless of order or specificity: while this block stayed outside
+   a layer, 287 buttons that asked for a size all came out the same (P-16).
+   The colors right below stay outside a layer on purpose: their !important
+   is what keeps the label readable in the dark theme inversions. */
 @layer components {
   .button-solid,
   .button-outline,
@@ -2059,14 +2059,14 @@ p {
     gap: 0.5rem;
     padding: 0.75rem 1.25rem;
     border-radius: var(--radius-md);
-    /* 14px/600 em <a> e <button> por igual. Antes o <a> saía 13.5px/700 e o
-       <button> 16px/400 (regra fora de camada, removida lá em cima). */
+    /* 14px/600 on <a> and <button> alike. Before, the <a> came out 13.5px/700 and the
+       <button> 16px/400 (rule outside a layer, removed further up). */
     font-size: 0.875rem;
     font-weight: 600;
     line-height: 1;
     text-decoration: none;
-    /* Soltar em 180ms; apertar em 120ms (regra :active logo abaixo). O
-       `transition` do ui/button.tsx punha 150ms por cima e brigava com isto. */
+    /* Release in 180ms; press in 120ms (the :active rule right below). The
+       `transition` in ui/button.tsx put 150ms on top and fought with this. */
     transition:
       transform var(--duration-base) var(--ease-standard),
       background-color var(--duration-base) var(--ease-standard),
@@ -2075,10 +2075,10 @@ p {
       color var(--duration-base) var(--ease-standard);
   }
 
-  /* Ação principal de um fluxo (Continuar, Criar, Publicar): 48px de alvo,
-     para não parecer igual a todo botão da tela. Sem raio próprio: o canto
-     vem do botão base. Junto de .button-solid (primária) ou .button-outline
-     (secundária). */
+  /* Main action of a flow (Continue, Create, Publish): 48px target,
+     so it does not look the same as every button on the screen. No radius of its own: the corner
+     comes from the base button. Together with .button-solid (primary) or .button-outline
+     (secondary). */
   .button-lg {
     min-height: 48px;
     padding: 0.875rem 1.5rem;
@@ -2087,8 +2087,8 @@ p {
   }
 }
 
-/* O contorno cinza do .button-outline sumia ao lado do botão cheio e o "Voltar"
-   parecia texto solto. No par grande, a secundária ganha contorno navy. */
+/* The gray outline of .button-outline disappeared next to the filled button and "Back"
+   looked like loose text. In the large pair, the secondary gets a navy outline. */
 .button-outline.button-lg,
 .button-outline.button-lg:hover {
   border-color: var(--color-primary);
@@ -2145,7 +2145,7 @@ p {
 .button-solid-light:active,
 .button-outline-light:active {
   transform: translateY(1px) scale(0.985);
-  /* A duração vem do estado de destino: afunda em 120ms, volta em 180ms. */
+  /* The duration comes from the destination state: it sinks in 120ms, comes back in 180ms. */
   transition-duration: var(--duration-fast);
 }
 
@@ -2170,10 +2170,10 @@ p {
   border-color: var(--color-line-strong);
 }
 
-/* Destructive variant. Quatro botões "Delete" tentavam `.button-outline` mais
-   uma utility de cor, e a cor nunca chegava à tela: o !important do outline
-   vence qualquer utility (P-08). Excluir tem de PARECER perigoso, e só uma
-   variante própria consegue isso. Mesmo desenho do outline, tinta de perigo. */
+/* Destructive variant. Four "Delete" buttons tried `.button-outline` plus
+   a color utility, and the color never reached the screen: the outline's !important
+   beats any utility (P-08). Delete has to LOOK dangerous, and only a
+   variant of its own can do that. Same design as the outline, danger ink. */
 .button-danger {
   border: 1px solid rgba(178, 34, 52, 0.38);
   background: var(--color-surface);
@@ -2189,15 +2189,15 @@ p {
   box-shadow: 0 12px 24px rgba(178, 34, 52, 0.12);
 }
 
-/* --color-danger-fg já inverte no escuro (#e8808c); a borda fixa em vermelho
-   escuro sumia sobre a superfície escura. */
+/* --color-danger-fg already inverts in dark (#e8808c); the border fixed in dark
+   red disappeared on the dark surface. */
 [data-theme="dark"] .button-danger {
   border-color: rgba(232, 128, 140, 0.5);
 }
 
-/* Confirmacao final do que nao volta (apagar produto): vermelho cheio, no
-   claro e no escuro. Branco sobre #b22234 ~ 6,5:1. Dois seletores de classe
-   para vencer o .button-danger:hover e a borda do tema escuro acima. */
+/* Final confirmation of something that cannot be undone (deleting a product): solid red, in
+   light and dark. White on #b22234 ~ 6.5:1. Two class selectors
+   to beat .button-danger:hover and the dark theme border above. */
 .button-danger.button-danger-solid {
   border-color: var(--color-danger);
   background: var(--color-danger);
@@ -2226,14 +2226,14 @@ p {
   box-shadow: 0 12px 24px rgba(121, 86, 21, 0.28);
 }
 
-/* Mesma razão do bloco de tamanho acima: defaults em camada, para as
-   utilities de tamanho escritas no JSX valerem. */
+/* Same reason as the size block above: defaults in a layer, so the
+   size utilities written in the JSX apply. */
 @layer components {
   .button-solid-light,
   .button-outline-light {
     display: inline-flex;
-    /* Mesmo alvo de 44px da base solid/outline. Sem isto, padding 10 + linha
-       20 + borda 2 davam 42px nos CTAs do hero (QA celular/tablet, 07/09). */
+    /* Same 44px target as the solid/outline base. Without this, padding 10 + line
+       20 + border 2 made 42px on the hero CTAs (phone/tablet QA, Sep 7). */
     min-height: 44px;
     align-items: center;
     justify-content: center;
@@ -2276,13 +2276,13 @@ p {
   background: rgba(255, 255, 255, 0.14);
 }
 
-/* Botão desligado não reage: um "Publish product" apagado ainda subia e
-   ganhava sombra com o mouse e afundava no clique, como se fosse clicável.
-   Fica chato (sem sombra), parado e com o cursor de bloqueado. Vem DEPOIS de
-   todos os :hover e :active acima, que têm a mesma especificidade: é a ordem
-   que faz esta regra valer. A opacidade era escrita em cada chamada, com cinco
-   valores (30 a 70%); agora é uma só, daqui, e vence a utility da chamada
-   (regra fora de camada). */
+/* A disabled button does not react: a dimmed "Publish product" still rose and
+   got a shadow on mouse hover and sank on click, as if it were clickable.
+   It stays flat (no shadow), still and with the blocked cursor. It comes AFTER
+   all the :hover and :active rules above, which have the same specificity: the order
+   is what makes this rule win. The opacity used to be written on every call, with five
+   values (30 to 70%); now there is just one, from here, and it beats the call's utility
+   (rule outside a layer). */
 :is(.button-solid, .button-outline, .button-accent, .button-danger, .button-solid-light, .button-outline-light, .button-icon):is(:disabled, [aria-disabled="true"]) {
   cursor: not-allowed;
   opacity: 0.6;
@@ -2290,9 +2290,9 @@ p {
   box-shadow: none;
 }
 
-/* O fundo e a borda também ficam os de repouso: no hover o "Save" apagado
-   ainda escurecia como se fosse clicável. Cada variante repete o próprio
-   desenho em repouso, com a especificidade do :hover e depois dele. */
+/* The background and border also stay the resting ones: on hover the dimmed "Save"
+   still darkened as if it were clickable. Each variant repeats its own
+   resting design, with the :hover specificity and after it. */
 .button-solid:is(:disabled, [aria-disabled="true"]) {
   border-color: var(--color-primary);
   background: var(--color-primary);
@@ -2301,7 +2301,7 @@ p {
 .button-outline:is(:disabled, [aria-disabled="true"]) {
   border-color: var(--color-line-strong);
   background: var(--color-surface);
-  /* O :hover troca o rótulo para o navy escuro com !important. */
+  /* The :hover switches the label to dark navy with !important. */
   color: var(--color-primary) !important;
 }
 
@@ -2309,9 +2309,9 @@ p {
   border-color: var(--color-line);
 }
 
-/* O par grande tem contorno navy em repouso, e o :hover dele (dois seletores
-   de classe) vencia a regra acima: o "Back" apagado do construtor ia de cinza
-   a navy sob o mouse. */
+/* The large pair has a navy outline at rest, and its :hover (two class
+   selectors) beat the rule above: the builder's dimmed "Back" went from gray
+   to navy under the mouse. */
 .button-outline.button-lg:is(:disabled, [aria-disabled="true"]) {
   border-color: var(--color-primary);
 }
@@ -2321,8 +2321,8 @@ p {
   background: var(--color-surface);
 }
 
-/* Mesmo peso da borda escura em repouso, e depois dela: sem isto o "Delete"
-   apagado ganhava no escuro a borda do tema claro. */
+/* Same weight as the dark border at rest, and after it: without this the dimmed "Delete"
+   got the light theme border in dark. */
 [data-theme="dark"] .button-danger:is(:disabled, [aria-disabled="true"]) {
   border-color: rgba(232, 128, 140, 0.5);
 }
@@ -2468,9 +2468,9 @@ p {
    wash across the top of the page (the gradient is an arbitrary value, so the
    global .bg-white dark override never reached it) — give it a muted dark-amber
    surface with warm light text so it still reads as a warning without glaring. */
-/* A faixa usa as cores de aviso da plataforma (as mesmas do InlineAlert).
-   Era o único degradê do produto, em âmbar do Tailwind; os tokens já trocam
-   no tema escuro, então a regra própria do escuro saiu. */
+/* The band uses the platform's warning colors (the same as InlineAlert).
+   It was the only gradient in the product, in Tailwind amber; the tokens already switch
+   in the dark theme, so the dark-only rule was removed. */
 .account-status-banner {
   background: var(--color-warning-soft);
   border-bottom: 1px solid var(--color-warning);
@@ -2489,11 +2489,11 @@ p {
   color: var(--color-ink-soft) !important;
 }
 
-/* Uma camada só, e ela não se mexe. Antes o cabeçalho era uma ilha flutuante
-   que animava margem, topo e padding ao rolar — mudança de layout a cada
-   quadro, com a página inteira reagindo ao scroll. Agora é uma barra fixa de
-   largura total: fundo translúcido, filete embaixo, e ao rolar só a sombra
-   entra (150ms). Nenhuma propriedade de layout na transição. */
+/* A single layer, and it does not move. Before, the header was a floating island
+   that animated margin, top and padding on scroll: a layout change on every
+   frame, with the whole page reacting to the scroll. Now it is a fixed bar of
+   full width: translucent background, thin line below, and on scroll only the shadow
+   comes in (150ms). No layout property in the transition. */
 .site-header {
   position: fixed;
   top: 0;
@@ -2510,15 +2510,15 @@ p {
   box-shadow: 0 8px 24px rgba(15, 39, 68, 0.1);
 }
 
-/* O site público também é visto na prévia: a barra dele é fixa (camada 40) e
-   desce para baixo da faixa, como a da plataforma. */
+/* The public site is also seen in the preview: its bar is fixed (layer 40) and
+   moves down below the band, like the platform's. */
 html[data-view-as] .site-header {
   top: var(--view-as-offset, 0px);
 }
 
-/* A barra saiu do fluxo, então o SiteNav monta esta faixa logo abaixo dela
-   para devolver a altura que a página perdeu. Uma variável só, usada nos dois
-   lugares, para não haver como as duas medidas divergirem. */
+/* The bar left the flow, so the SiteNav mounts this band right below it
+   to give back the height the page lost. A single variable, used in both
+   places, so the two measures cannot diverge. */
 .site-header-spacer {
   height: var(--site-header-height);
 }
@@ -2530,14 +2530,14 @@ html[data-view-as] .site-header {
   display: flex;
   align-items: center;
   gap: 16px;
-  /* A mesma margem das páginas em toda largura: 20px no celular, 32px a
-     partir de 640px (px-5 sm:px-8 do PublicPage e das faixas da home). De 640
-     a 1279px a barra ficava com 20px e o título logo abaixo com 32px. */
+  /* The same margin as the pages at every width: 20px on a phone, 32px from
+     640px up (px-5 sm:px-8 of PublicPage and the home bands). From 640
+     to 1279px the bar had 20px and the title right below it 32px. */
   padding: 8px var(--container-pad-mobile);
 }
 
-/* 40rem, e não 640px: é o ponto do sm:px-8 das páginas, que acompanha a
-   fonte padrão aumentada no navegador. */
+/* 40rem, not 640px: it is the sm:px-8 breakpoint of the pages, which follows the
+   default font enlarged in the browser. */
 @media (width >= 40rem) {
   .site-header__inner {
     padding-inline: var(--container-pad-desktop);
@@ -2556,7 +2556,7 @@ html[data-view-as] .site-header {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  /* Alvo de toque: 32px de altura era menor que o mínimo de 44px. */
+  /* Touch target: 32px of height was below the 44px minimum. */
   min-height: 44px;
   padding: 9px 12px;
   border-radius: var(--radius-md);
@@ -2588,9 +2588,9 @@ html[data-view-as] .site-header {
   margin-left: auto;
 }
 
-/* "Sign in" da barra com a mesma cara do .button-outline do menu do celular
-   (contorno navy, 14px). Era um contorno dourado de 13px que, no hover, tingia
-   o fundo com o vermelho antigo da marca. */
+/* The bar's "Sign in" with the same look as the .button-outline of the phone menu
+   (navy outline, 14px). It was a 13px brass outline that, on hover, tinted
+   the background with the brand's old red. */
 .btn-signin {
   display: inline-flex;
   align-items: center;
@@ -2635,7 +2635,7 @@ html[data-view-as] .site-header {
   font-weight: 600;
   line-height: 1;
   text-decoration: none;
-  /* Sombra navy: o brilho vermelho era resto da marca antiga. */
+  /* Navy shadow: the red glow was a leftover of the old brand. */
   box-shadow: 0 6px 16px rgba(26, 54, 93, 0.18);
   transition:
     background-color 180ms ease,
@@ -2730,10 +2730,10 @@ html[data-view-as] .site-header {
 }
 
 .account-menu-context-chip {
-  /* Etiqueta do papel na conta: era rosa do vermelho antigo com texto dourado,
-     a 9px. Agora a etiqueta neutra da casa (a das tabelas do /ops): fundo
-     suave, texto em tinta, 11px, raio de etiqueta. Os tokens trocam no tema
-     escuro, então o contraste passa de 4.5:1 nos dois temas sem regra extra. */
+  /* Role label on the account: it was pink from the old red with brass text,
+     at 9px. Now the house's neutral label (the one in the /ops tables): soft
+     background, ink text, 11px, label radius. The tokens switch in the dark
+     theme, so the contrast passes 4.5:1 in both themes with no extra rule. */
   display: inline-flex;
   margin-top: 0.45rem;
   border: 1px solid var(--color-line);
@@ -2825,9 +2825,9 @@ html[data-view-as] .site-header {
   color: var(--color-danger-fg);
 }
 
-/* ── Botao Ajuda: tres escolhas (help-menu.tsx) ────────────────────────────
-   No topo da sala de aula abre por cima da pagina; na barra lateral abre
-   no lugar, como um grupo. Uma Ajuda por tela. ── */
+/* ── Help button: three choices (help-menu.tsx) ────────────────────────────
+   At the top of the classroom it opens over the page; in the sidebar it opens
+   in place, as a group. One Help per screen. ── */
 .help-menu-popover {
   position: absolute;
   top: calc(100% + 8px);
@@ -2901,7 +2901,7 @@ html[data-view-as] .site-header {
   color: rgba(255, 255, 255, 0.9);
 }
 
-/* "Embaixo": compras e configuracoes do aluno, separadas dos itens fixos. */
+/* "Bottom": the learner's purchases and settings, separate from the fixed items. */
 .platform-nav-section[data-section="account"] {
   margin-top: 0.75rem;
 }
@@ -2915,8 +2915,8 @@ html[data-view-as] .site-header {
    its light-ink name/role stop sitting on near-white. Light mode untouched.
    (The --danger selectors that used to be listed here now read the promoted
    --color-danger-fg token instead, so there is one dark red, not two. The role
-   pill stays hardcoded: it is a context label, not a failure. A etiqueta do
-   papel dentro do menu saiu daqui: usa os tokens neutros, que já trocam.) */
+   pill stays hardcoded: it is a context label, not a failure. The role
+   label inside the menu left this block: it uses the neutral tokens, which already switch.) */
 [data-theme="dark"] .account-menu-trigger__role {
   color: #e06472;
 }
@@ -2975,7 +2975,7 @@ html[data-view-as] .site-header {
   padding: 0.85rem;
   color: var(--color-ink-soft);
   text-align: left;
-  /* Tempos e curva do catálogo de movimento (eram 180ms "ease" soltos). */
+  /* Timings and curve from the motion catalog (they were loose 180ms "ease"). */
   transition:
     background var(--duration-base) var(--ease-standard),
     border-color var(--duration-base) var(--ease-standard),
@@ -3094,7 +3094,7 @@ html[data-view-as] .site-header {
   border: 1px solid var(--color-line);
   border-radius: 999px;
   background: var(--color-surface-strong);
-  /* Tokens do catálogo de movimento, como a aba de configurações acima. */
+  /* Motion catalog tokens, like the settings tab above. */
   transition:
     background var(--duration-base) var(--ease-standard),
     border-color var(--duration-base) var(--ease-standard);
@@ -3223,9 +3223,9 @@ html[data-view-as] .site-header {
     scroll-snap-type: x mandatory;
   }
 
-  /* Abaixo de 1024px as abas viravam cartões de 220px com ícone e descrição:
-     cabia uma aba e meia e os ajustes começavam abaixo da primeira tela. Aqui
-     são só o rótulo, numa fileira de 44px que rola de lado. */
+  /* Below 1024px the tabs used to turn into 220px cards with icon and description:
+     one and a half tabs fit and the settings started below the first screen. Here
+     they are just the label, in a 44px row that scrolls sideways. */
   .account-settings-tab {
     display: flex;
     flex: none;
@@ -3263,9 +3263,9 @@ html[data-view-as] .site-header {
     background-color var(--duration-base) var(--ease-standard);
 }
 
-/* 44px, a altura do botão e da busca ao lado: select e data saíam de 38 a
-   46px conforme o navegador. Em camada, e não na regra acima, para um min-h-*
-   do JSX (as caixas de texto de 88px) continuar valendo. */
+/* 44px, the height of the button and of the search next to it: select and date came out 38 to
+   46px depending on the browser. In a layer, and not in the rule above, so a min-h-*
+   in the JSX (the 88px text boxes) keeps applying. */
 @layer components {
   .field-input {
     min-height: 44px;
@@ -3292,8 +3292,8 @@ html[data-view-as] .site-header {
    31-file className sweep. `.field-input` sets its own ring at higher
    specificity, so it is unaffected. ponytail: box-shadow ring can be clipped by
    an `overflow:hidden` ancestor — same known ceiling as `.field-input`.
-   O anel era navy a 22% (≈1.5:1 no branco); agora é o --focus-ring sólido
-   (navy 14.6:1 no claro, claro no escuro, latão nas superfícies navy). */
+   The ring used to be navy at 22% (about 1.5:1 on white); now it is the solid --focus-ring
+   (navy 14.6:1 on light, light on dark, brass on the navy surfaces). */
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
@@ -3301,7 +3301,7 @@ select:focus-visible {
 }
 
 .field-input[aria-invalid="true"] {
-  /* Erro em vermelho, nunca em latão (6.62:1 no branco). */
+  /* Error in red, never in brass (6.62:1 on white). */
   border-color: var(--color-danger-fg);
   background: rgba(178, 34, 52, 0.04);
 }
@@ -3323,11 +3323,11 @@ select:focus-visible {
   box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
-/* A mesma pele numa fileira de filtros (vendas, alunos): sem a largura toda,
-   que quebrava a linha, e com 44px cravados, a altura da busca e dos botoes
-   ao lado. A largura vem do conteudo ou de flex/min-w. Fica depois da regra
-   do .field-input para vencer o `width: 100%` dele (as utilidades do Tailwind
-   moram numa camada e perdem para regra solta). */
+/* The same skin in a filter row (sales, learners): without the full width,
+   which broke the line, and with 44px fixed, the height of the search and of the buttons
+   next to it. The width comes from the content or from flex/min-w. It sits after the
+   .field-input rule to beat its `width: 100%` (Tailwind utilities
+   live in a layer and lose to a loose rule). */
 .field-input--inline {
   width: auto;
   min-height: 44px;
@@ -3379,9 +3379,9 @@ select:focus-visible {
     linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
 }
 
-/* Celular: "Continue" preso ao pe da tela. A barra rolava junto com a pagina
-   e ficava abaixo da dobra (e atras do teclado no passo do telefone). No
-   tablet e no computador ela volta a ser a barra comum do fim da pagina. */
+/* Phone: "Continue" pinned to the bottom of the screen. The bar used to scroll with the page
+   and ended up below the fold (and behind the keyboard on the phone step). On
+   tablet and desktop it goes back to being the usual bar at the end of the page. */
 @media (max-width: 639.98px) {
   .onboarding-footer {
     position: sticky;
@@ -3392,14 +3392,14 @@ select:focus-visible {
     padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
   }
 
-  /* Campo focado e aviso de erro nunca param atras da barra presa. */
+  /* A focused field and an error notice never end up behind the pinned bar. */
   html:has(.onboarding-footer) {
     scroll-padding-bottom: 6rem;
   }
 }
 
-/* Cada pergunta entra com a mesma subida curta (180ms do sistema), so para
-   quem nao pediu menos movimento. */
+/* Each question comes in with the same short rise (the system's 180ms), only for
+   those who did not ask for less motion. */
 @media (prefers-reduced-motion: no-preference) {
   .welcome-question {
     animation: welcome-question-in var(--duration-base) var(--ease-standard) both;
@@ -3514,8 +3514,8 @@ select:focus-visible {
 }
 
 @media (width < 1280px) {
-  /* Os links ficam no menu até 1279px: a conta em barra-do-topo-cabe.test.ts
-     mostra que em 1024px eles e os botões não cabem (logado, ou em espanhol). */
+  /* The links stay in the menu up to 1279px: the math in barra-do-topo-cabe.test.ts
+     shows that at 1024px they and the buttons do not fit (signed in, or in Spanish). */
   .site-header__links {
     display: none;
   }
@@ -3544,10 +3544,10 @@ select:focus-visible {
   background: linear-gradient(180deg, var(--color-base) 0%, var(--color-surface-soft) 100%);
 }
 
-/* I-15, prévia "ver como" do admin (view-as.tsx): a faixa fixa (camada 70)
-   cobria a barra da plataforma (camada 60). Enquanto ela aparece, a página
-   desce a altura medida da faixa; a casca da plataforma tem altura fixa e
-   desconta a mesma medida, senão o pé dela sairia da tela. */
+/* I-15, admin "view as" preview (view-as.tsx): the fixed band (layer 70)
+   covered the platform bar (layer 60). While it shows, the page
+   moves down by the band's measured height; the platform shell has a fixed height
+   and subtracts the same measure, otherwise its bottom would fall off the screen. */
 html[data-view-as] body {
   padding-top: var(--view-as-offset, 0px);
 }
@@ -3562,9 +3562,9 @@ html[data-view-as] .platform-shell-root {
   flex: 0 0 auto;
 }
 
-/* Caixas de marcar e botoes de radio sem estilo proprio (construtor, ofertas,
-   caixa da comunidade, biblioteca de midia) saiam no azul do navegador ao
-   lado dos navy da casa. Uma regra so, dentro da plataforma. */
+/* Checkboxes and radio buttons without their own style (builder, offers,
+   community box, media library) came out in the browser's blue
+   next to the house navy. A single rule, inside the platform. */
 .platform-shell-root input[type="checkbox"],
 .platform-shell-root input[type="radio"] {
   accent-color: var(--color-primary);
@@ -3635,11 +3635,11 @@ html[data-view-as] .platform-shell-root {
   margin-left: auto;
 }
 
-/* ── Busca na barra do topo ────────────────────────────────────────────────
-   Estava presa à barra lateral e só existia com ela expandida: recolher o rail
-   ou abrir no celular fazia a busca sumir (achado F26). Aqui ela está em toda
-   largura. Abaixo de 768px o campo não cabe na linha, então o ícone o abre
-   como uma faixa logo abaixo da barra — a barra é `position: relative`. ─── */
+/* ── Search in the top bar ─────────────────────────────────────────────────
+   It was stuck to the sidebar and only existed with it expanded: collapsing the rail
+   or opening on a phone made the search vanish (finding F26). Here it is at every
+   width. Below 768px the field does not fit on the line, so the icon opens it
+   as a band right below the bar — the bar is `position: relative`. ─── */
 .platform-topbar-search {
   display: none;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -3735,8 +3735,8 @@ html[data-view-as] .platform-shell-root {
 .platform-topbar__actions .account-menu-trigger {
   width: auto !important;
   min-height: 44px;
-  /* Canto de 8px como os vizinhos: botao com texto nao e pilula. O avatar
-     dentro continua redondo. */
+  /* 8px corner like its neighbors: a button with text is not a pill. The avatar
+     inside stays round. */
   border-radius: var(--radius-md) !important;
   background: #ffffff !important;
   padding: 5px 14px 5px 6px;
@@ -3770,10 +3770,10 @@ html[data-view-as] .platform-shell-root {
   }
 }
 
-/* ── Lado e troca de lado na barra do topo ────────────────────────────────
-   O botao "Go to student area" / "Go to teacher area" abre na MESMA aba. No
-   celular ele sai daqui (vai para a barra de baixo) e fica so o nome do lado,
-   no lugar do caminho que nao cabe. ── */
+/* ── Side and side switch in the top bar ──────────────────────────────────
+   The "Go to student area" / "Go to teacher area" button opens in the SAME tab. On a
+   phone it leaves here (goes to the bottom bar) and only the side's name stays,
+   in place of the path that does not fit. ── */
 .platform-topbar__switch,
 .help-menu-trigger {
   display: inline-flex;
@@ -3813,12 +3813,12 @@ html[data-view-as] .platform-shell-root {
   color: var(--color-ink);
 }
 
-/* ── Barra do topo da plataforma: uma moldura so ──────────────────────────
-   Eram quatro formas na mesma linha: a troca de lado em pilula (um circulo
-   abaixo de 1280px), quadrados brancos com borda, a conta em pilula comprida
-   e o idioma sem borda nem fundo, que parecia texto solto. Agora todos: 44px,
-   borda de 1px, fundo branco, canto de 8px. Fora da barra (site, Ajuda da
-   sala) nada muda. */
+/* ── Platform top bar: a single frame ─────────────────────────────────────
+   There were four shapes on the same line: the side switch as a pill (a circle
+   below 1280px), white squares with a border, the account as a long pill
+   and the language with no border or background, which looked like loose text. Now they are all: 44px,
+   1px border, white background, 8px corner. Outside the bar (site, classroom
+   Help) nothing changes. */
 .platform-topbar__actions .platform-topbar__switch {
   border-radius: var(--radius-md);
 }
@@ -3839,10 +3839,10 @@ html[data-view-as] .platform-shell-root {
   display: none;
 }
 
-/* Abaixo de 1280px a troca de lado fica so com o icone (o nome vai no
-   aria-label e no title). Com o texto inteiro, de 768 a ~1180px, ela empurrava
-   o idioma e o menu da conta para fora da tela: a coluna tem overflow hidden e
-   o grupo de acoes nao encolhe. Conta em src/app/barra-do-topo-cabe.test.ts. */
+/* Below 1280px the side switch keeps only the icon (the name goes in the
+   aria-label and the title). With the full text, from 768 to ~1180px, it pushed
+   the language and the account menu off the screen: the column has overflow hidden and
+   the action group does not shrink. The math is in src/app/barra-do-topo-cabe.test.ts. */
 @media (max-width: 1279.98px) {
   .platform-topbar__switch {
     width: 44px;
@@ -3865,8 +3865,8 @@ html[data-view-as] .platform-shell-root {
     display: none;
   }
 
-  /* 360px: 328 de conteudo - logo 40 - acoes 200 - 2 espacos de 8 = 72px
-     para o nome do lado, que e uma palavra so ("Profesor" e a maior). */
+  /* 360px: 328 of content - logo 40 - actions 200 - 2 gaps of 8 = 72px
+     for the side's name, which is a single word ("Profesor" is the longest). */
   .platform-topbar__inner {
     gap: 0.5rem;
   }
@@ -3939,8 +3939,8 @@ html[data-view-as] .platform-shell-root {
 }
 
 .platform-sidebar-panel {
-  /* This rail stays navy in both themes: latão no navy (5.62:1 no tom mais
-     claro do degradê, 7.39:1 no mais escuro). */
+  /* This rail stays navy in both themes: brass on navy (5.62:1 at the lighter
+     tone of the gradient, 7.39:1 at the darker). */
   --focus-ring: var(--color-accent);
   width: var(--platform-sidebar-width, var(--sidebar-width));
   display: flex;
@@ -3953,8 +3953,8 @@ html[data-view-as] .platform-shell-root {
   box-shadow: 18px 0 44px rgba(7, 23, 42, 0.1);
 }
 
-/* A trama quadriculada de 28px do rail saiu: textura repetida e um dos
-   padroes que o desenho da casa proibe. O degrade navy fica. */
+/* The 28px checkered grid of the rail was removed: a repeated texture and one of the
+   patterns the house design forbids. The navy gradient stays. */
 .platform-sidebar-panel > * {
   position: relative;
 }
@@ -3968,8 +3968,8 @@ html[data-view-as] .platform-shell-root {
   padding: 0.125rem 0.25rem 1rem;
 }
 
-/* A marca pequena só aparece de 768 a 1023px (bloco do tablet), onde o ☰
-   some: acima disso o rail mostra o ☰ no lugar dela. */
+/* The small brand only shows from 768 to 1023px (tablet block), where the ☰
+   goes away: above that the rail shows the ☰ in its place. */
 .platform-sidebar-brand__mark {
   display: none;
 }
@@ -3979,9 +3979,9 @@ html[data-view-as] .platform-shell-root {
   height: 2rem;
 }
 
-/* Rail recolhido: o ☰ centra no mesmo eixo dos icones. Antes a marca ficava
-   encostada a esquerda (flex sem justify + 4px de padding) enquanto cada
-   icone abaixo e um quadrado centrado nos 64px — parecia deslocada. */
+/* Collapsed rail: the ☰ centers on the same axis as the icons. Before, the brand sat
+   against the left (flex without justify + 4px of padding) while each
+   icon below is a square centered in the 64px — it looked shifted. */
 .platform-sidebar.sidebar-collapsed .platform-sidebar-brand {
   justify-content: center;
   padding-inline: 0;
@@ -4035,37 +4035,37 @@ html[data-view-as] .platform-shell-root {
   backdrop-filter: blur(8px);
 }
 
-/* No celular a barra de navegação do app (.platform-mobile-nav) também é
-   `position: fixed; bottom: 0`, com z-index 40. Este banner, em z-index 48 e no
-   mesmo bottom: 0, ficava EM CIMA dela: enquanto o visitante não decidisse
-   sobre cookies, a navegação principal — Home, Market, Teach, Profile — estava
-   coberta e inalcançável. O banner sobe a altura da barra em vez de disputar o
-   mesmo espaço; o safe-area sai do padding porque a barra de baixo já o
-   consome.
-   O `:has()` é o que evita o efeito colateral: o banner é global e aparece
-   também nas páginas públicas, que não têm barra inferior nenhuma. Só sobe
-   quando a barra existe de fato no documento; abaixo de 768px ela existir
-   significa que está visível (de 768px para cima é `display: none`, porque
-   no tablet a navegação é o rail). */
+/* On a phone the app's navigation bar (.platform-mobile-nav) is also
+   `position: fixed; bottom: 0`, with z-index 40. This banner, at z-index 48 and at the
+   same bottom: 0, sat ON TOP of it: until the visitor decided
+   about cookies, the main navigation — Home, Market, Teach, Profile — was
+   covered and unreachable. The banner now rises by the bar's height instead of competing for the
+   same space; the safe-area leaves the padding because the bottom bar already
+   consumes it.
+   The `:has()` is what avoids the side effect: the banner is global and shows up
+   on public pages too, which have no bottom bar at all. It only rises
+   when the bar actually exists in the document; below 768px, existing
+   means it is visible (from 768px up it is `display: none`, because
+   on tablet the navigation is the rail). */
 @media (max-width: 767.98px) {
   body:has(.platform-mobile-nav) .cookie-consent {
     bottom: calc(60px + env(safe-area-inset-bottom, 0px));
     padding-bottom: 0.875rem;
   }
 
-  /* A faixa "Rascunho salvo. Próximo: ..." (onda D) cobria Home/Market/
-     Teach/Profile por 4s: sobe a barra (60px) e mais o respiro dela. */
+  /* The "Draft saved. Next: ..." band (wave D) covered Home/Market/
+     Teach/Profile for 4s: it rises by the bar (60px) plus its breathing room. */
   body:has(.platform-mobile-nav) .created-strip {
     bottom: calc(60px + 0.75rem + env(safe-area-inset-bottom, 0px));
   }
 
-  /* O cartão de envio do vídeo (lesson-upload-provider.tsx) ficava a 16px do
-     fundo e tapava as cinco abas enquanto o vídeo subia: sobe a barra (60px)
-     e mantém os 16px de respiro. */
+  /* The video upload card (lesson-upload-provider.tsx) sat 16px from the
+     bottom and covered the five tabs while the video uploaded: it rises by the bar (60px)
+     and keeps the 16px of breathing room. */
   body:has(.platform-mobile-nav) .lesson-upload-card {
     bottom: calc(60px + 1rem + env(safe-area-inset-bottom, 0px));
-    /* O teto do componente (100svh - 2rem) não conta a subida: num celular
-       deitado o topo do cartão saía da tela. */
+    /* The component's ceiling (100svh - 2rem) does not count the rise: on a phone
+       in landscape the top of the card went off the screen. */
     max-height: calc(100svh - 60px - 2rem - env(safe-area-inset-bottom, 0px));
   }
 }
@@ -4100,10 +4100,10 @@ html[data-view-as] .platform-shell-root {
   gap: 0.5rem;
 }
 
-/* A barra de cookies usa uma letra um pouco menor que o botão padrão (13px,
-   com entrelinha para quebrar em duas linhas no celular). A regra fora de
-   camada que fazia todo <button> sair 16px/400 já saiu do topo do arquivo;
-   isto agora é só o tamanho compacto da barra. */
+/* The cookie bar uses a slightly smaller font than the default button (13px,
+   with line height to wrap onto two lines on a phone). The rule outside a
+   layer that made every <button> come out 16px/400 already left the top of the file;
+   this is now only the bar's compact size. */
 .cookie-consent__actions .button-outline,
 .cookie-consent__actions .button-solid {
   font-size: 0.8125rem;
@@ -4112,9 +4112,9 @@ html[data-view-as] .platform-shell-root {
 }
 
 @media (max-width: 640px) {
-  /* Mais baixo no celular (era 240px de 812 na 1ª visita): texto em 12px, sem
-     perder o alvo de 44px. Recusar e Aceitar dividem a linha por igual
-     (recusar tão fácil quanto aceitar). */
+  /* Shorter on a phone (it was 240px of 812 on the 1st visit): text at 12px, without
+     losing the 44px target. Decline and Accept share the line equally
+     (declining as easy as accepting). */
   .cookie-consent {
     padding-top: 0.75rem;
   }
@@ -4146,11 +4146,11 @@ html[data-view-as] .platform-shell-root {
   }
 }
 
-/* O ☰ (onda E) mora no topo, à esquerda da marca, com a pele dos links
-   (.platform-nav-link). Antes de virar item da barra era um círculo pregado
-   na borda direita, em cima da linha entre barra e conteúdo. O recuo de 8px
-   põe o ícone no mesmo eixo do rail (32px): recolher não o tira de baixo do
-   cursor. Recolhida, a regra do rail (44px, margin-inline: auto) vence. */
+/* The ☰ (wave E) lives at the top, to the left of the brand, with the links' skin
+   (.platform-nav-link). Before it became a bar item it was a circle pinned
+   to the right edge, on top of the line between bar and content. The 8px indent
+   puts the icon on the same axis as the rail (32px): collapsing does not take it from under
+   the cursor. Collapsed, the rail rule (44px, margin-inline: auto) wins. */
 .platform-sidebar .platform-sidebar-toggle {
   margin-inline-start: -0.5rem;
 }
@@ -4192,14 +4192,14 @@ html[data-view-as] .platform-shell-root {
   scrollbar-width: thin;
 }
 
-/* A barra de rolagem do menu lateral sumia: sem cor propria, ela herdava a
-   barra global (--color-line-strong = rgba(16,42,67,.4) no tema claro), ou
-   seja, azul-marinho translucido desenhado sobre o trilho navy. E o trilho
-   fica navy nos DOIS temas, entao o token que vira claro no escuro nao
-   resolvia. Branco translucido e a unica cor que aparece nesse fundo.
-   Escopado em .platform-sidebar de proposito: o mesmo PlatformNav tambem
-   e renderizado dentro da gaveta mobile, que e branca, e la o polegar
-   branco sumiria. */
+/* The side menu's scrollbar disappeared: with no color of its own, it inherited the
+   global bar (--color-line-strong = rgba(16,42,67,.4) in the light theme), that
+   is, translucent navy blue drawn over the navy track. And the track
+   stays navy in BOTH themes, so the token that turns light in dark
+   did not solve it. Translucent white is the only color that shows on that background.
+   Scoped to .platform-sidebar on purpose: the same PlatformNav is also
+   rendered inside the mobile drawer, which is white, and there the white
+   thumb would disappear. */
 .platform-sidebar .platform-sidebar-nav {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.35) transparent;
@@ -4214,8 +4214,8 @@ html[data-view-as] .platform-shell-root {
 }
 
 .platform-sidebar .platform-sidebar-nav::-webkit-scrollbar-thumb {
-  /* border: 0 anula os 2px transparentes da barra global, que numa barra de
-     6px deixariam 2px visiveis de polegar. */
+  /* border: 0 cancels the 2px transparent of the global bar, which on a 6px
+     bar would leave 2px of visible thumb. */
   border: 0;
   border-radius: 999px;
   background-color: rgba(255, 255, 255, 0.35);
@@ -4225,11 +4225,11 @@ html[data-view-as] .platform-shell-root {
   background-color: rgba(255, 255, 255, 0.6);
 }
 
-/* "Members & communities" saía cortado no meio da palavra: o link media 228px e
-   terminava em x=250, o nav terminava em x=245 com overflow-x:hidden, e não
-   havia text-overflow — a barra tem 260px de largura para 277px de conteúdo.
-   Reticências fazem o corte virar informação em vez de defeito, e o title
-   devolve o texto inteiro no hover. */
+/* "Members & communities" came out cut in the middle of the word: the link was 228px and
+   ended at x=250, the nav ended at x=245 with overflow-x:hidden, and there was
+   no text-overflow — the bar is 260px wide for 277px of content.
+   An ellipsis makes the cut become information instead of a defect, and the title
+   gives the whole text back on hover. */
 .platform-sidebar-nav a,
 .platform-sidebar-nav button {
   min-width: 0;
@@ -4278,12 +4278,12 @@ html[data-view-as] .platform-shell-root {
   height: min(560px, calc(100dvh - 7rem));
 }
 
-/* Gatilho na barra do topo (advisor-sidebar.tsx mede o botao): a conversa
-   abre logo abaixo dele, e nao no rodape. A altura desconta o topo medido,
-   para o painel inteiro caber na janela. No celular nada muda. */
+/* Trigger in the top bar (advisor-sidebar.tsx measures the button): the conversation
+   opens right below it, not at the bottom. The height subtracts the measured top,
+   so the whole panel fits in the window. On a phone nothing changes. */
 .floating-action--advisor.floating-action--anchored {
-  /* Logo abaixo da camada da barra do topo (60): o painel do sino e o menu da
-     conta, que moram nela, abrem POR CIMA da conversa, nao escondidos atras. */
+  /* Right below the top bar's layer (60): the bell panel and the account menu,
+     which live in it, open ON TOP of the conversation, not hidden behind it. */
   z-index: 59;
   top: var(--advisor-top, 4.5rem);
   bottom: auto;
@@ -4300,8 +4300,8 @@ html[data-view-as] .platform-shell-root {
    exactly where a teacher asks the advisor how to structure the course: without
    the :not(:has()) guard, opening that menu display:none'd the whole widget and
    the open chat vanished mid-sentence. .advisor-panel only exists while open. */
-/* A barra flutuante de compra (página de vendas, desktop) dá a vez ao aviso de
-   cookies, que ocupa o rodapé inteiro: os dois juntos se cobririam. */
+/* The floating purchase bar (sales page, desktop) gives way to the cookie
+   notice, which takes the whole footer: together the two would cover each other. */
 @media (min-width: 64rem) {
   body:has(.cookie-consent) .course-buy-float {
     display: none;
@@ -4338,8 +4338,8 @@ body:has([aria-label="Course categories"])
   color: var(--color-ink);
 }
 
-/* O mesmo fundo das janelas, com a mesma reserva do dialog.modal-panel: o
-   ::backdrop antigo não herda variáveis. */
+/* The same background as the dialogs, with the same reserve as dialog.modal-panel: the old
+   ::backdrop does not inherit variables. */
 .contextual-help-dialog::backdrop {
   background: var(--color-scrim, rgba(15, 39, 68, 0.62));
 }
@@ -4485,7 +4485,7 @@ body:has([aria-label="Course categories"])
   padding: 1rem 0;
   display: grid;
   gap: 0.9rem;
-  /* A faixa de etapas decide pela largura dela (@container mais abaixo). */
+  /* The steps band decides by its own width (@container further below). */
   container-type: inline-size;
 }
 
@@ -4503,9 +4503,9 @@ body:has([aria-label="Course categories"])
   max-width: 440px;
 }
 
-/* Linha abaixo do painel: a volta ao estudio e a biblioteca de midia. O
-   cartao de publicar e o "Course structure" sairam (repetiam a aba Publish e
-   a aba Curriculum). */
+/* Row below the panel: the way back to the studio and the media library. The
+   publish card and the "Course structure" were removed (they repeated the Publish tab and
+   the Curriculum tab). */
 .course-builder-footer {
   display: grid;
   gap: 1.25rem;
@@ -4565,9 +4565,9 @@ body:has([aria-label="Course categories"])
     transform 180ms ease;
 }
 
-/* Como as abas da casa: o hover so escurece o texto. Antes ele pintava borda,
-   fundo e cor iguais aos da etapa aberta, e com o ponteiro em cima nao se
-   sabia qual estava aberta. A marca de feito continua no numero. */
+/* Like the house tabs: hover only darkens the text. Before, it painted the border,
+   background and color the same as the open step, and with the pointer on top you could not
+   tell which one was open. The done mark stays on the number. */
 .course-builder-step:hover {
   color: var(--color-ink);
 }
@@ -4588,7 +4588,7 @@ body:has([aria-label="Course categories"])
   width: auto;
   height: 2px;
   border-radius: 999px;
-  /* Navy, como a aba escolhida da casa; latao e de marco. */
+  /* Navy, like the house's chosen tab; brass is for milestones. */
   background: var(--color-primary);
 }
 
@@ -4665,7 +4665,7 @@ body:has([aria-label="Course categories"])
 }
 
 .create-course-screen__intro {
-  /* Coluna navy nos dois temas: o anel navy dava 1.17:1 aqui. */
+  /* Navy column in both themes: the navy ring gave 1.17:1 here. */
   --focus-ring: var(--color-accent);
   background: var(--color-primary-dark);
   border-color: color-mix(in srgb, var(--color-accent) 36%, transparent);
@@ -4786,10 +4786,10 @@ body:has([aria-label="Course categories"])
     transform 180ms ease;
 }
 
-/* Hover e escolhido eram a MESMA regra: passar o mouse num cartão o deixava
-   igual ao escolhido. Agora o hover só escurece a borda; o escolhido ganha
-   borda navy de 2px (a 2ª via sombra interna, sem pular o layout), fundo de
-   latão claro e o selo com check. */
+/* Hover and chosen were the SAME rule: hovering a card made it look
+   the same as the chosen one. Now hover only darkens the border; the chosen one gets a
+   2px navy border (the 2nd via inner shadow, with no layout jump), a light
+   brass background and the badge with a check. */
 .create-course-payment:hover {
   border-color: var(--color-field-border);
 }
@@ -4817,7 +4817,7 @@ body:has([aria-label="Course categories"])
   color: #ffffff;
 }
 
-/* "O que você vai entregar?": quatro cartões com o ícone grande. */
+/* "What will you deliver?": four cards with a large icon. */
 .create-course-payment--large {
   min-height: 168px;
   padding: 1.25rem;
@@ -4847,7 +4847,7 @@ body:has([aria-label="Course categories"])
   line-height: 1.5;
 }
 
-/* Selo quadrado de latão com check navy (6.67:1), não um check solto. */
+/* Square brass badge with a navy check (6.67:1), not a loose check. */
 .create-course-payment__selected {
   position: absolute;
   right: 0.75rem;
@@ -4860,8 +4860,8 @@ body:has([aria-label="Course categories"])
   color: var(--color-on-accent);
 }
 
-/* O fundo vem do .dialog-backdrop (lesson-content-modal.tsx), como nas outras
-   janelas: era navy a 52% com desfoque de 8px, um kit à parte. */
+/* The background comes from .dialog-backdrop (lesson-content-modal.tsx), like the other
+   dialogs: it was navy at 52% with an 8px blur, a separate kit. */
 .lesson-modal-overlay {
   position: fixed;
   z-index: var(--z-modal-studio);
@@ -4886,26 +4886,26 @@ body:has([aria-label="Course categories"])
   box-shadow: 0 32px 80px rgba(15, 39, 68, 0.28);
 }
 
-/* Pagina da aula no builder: o mesmo estudio, sem flutuar sobre a tela. */
+/* Lesson page in the builder: the same studio, without floating over the screen. */
 .lesson-modal--page {
   width: 100%;
   max-height: none;
   overflow: visible;
   border-color: var(--color-line);
-  /* Pagina, nao janela: sem o canto de 16 px e sem o brilho vermelho do canto
-     (radial e so do hero). */
+  /* A page, not a dialog: without the 16 px corner and without the red glow of the corner
+     (the radial is only for the hero). */
   border-radius: var(--radius-lg);
   background: var(--color-surface);
   box-shadow: none;
 }
 
-/* A 1920 px a aula esticava ate 1.450 px: previa do video de 1.474 x 829 px e
-   campos de ponta a ponta. Uma coluna de leitura, como nas pranchas. */
+/* At 1920 px the lesson stretched to 1,450 px: a 1,474 x 829 px video preview and
+   edge-to-edge fields. One reading column, as on the boards. */
 .lesson-modal--page .lesson-modal__body > * {
   max-width: 48rem;
 }
 
-/* O titulo da aula ficava em 37,6 px, maior que o h1 do curso (30 px). */
+/* The lesson title was 37.6 px, larger than the course h1 (30 px). */
 .lesson-modal--page .lesson-modal__context h3 {
   font-size: 1.5rem;
 }
@@ -5037,10 +5037,10 @@ body:has([aria-label="Course categories"])
     color 180ms ease;
 }
 
-/* O desenho das abas da casa (HorizontalTabs): passar o mouse so escurece o
-   texto, sem linha; a escolhida e navy com a linha navy. Antes o hover era a
-   mesma regra da escolhida (linha de latao), e com o ponteiro na barra nao se
-   sabia qual aba estava aberta. O latao fica para marco. */
+/* The house tabs design (HorizontalTabs): hovering only darkens the
+   text, with no line; the chosen one is navy with the navy line. Before, hover was the
+   same rule as the chosen one (brass line), and with the pointer on the bar you could not
+   tell which tab was open. Brass stays for milestones. */
 .lesson-modal__tabs button:hover {
   color: var(--color-ink);
 }
@@ -5050,9 +5050,9 @@ body:has([aria-label="Course categories"])
   color: var(--color-primary);
 }
 
-/* Estado da aba em tamanho fixo: a palavra trocava a largura e a fileira
-   pulava. Marca de 10 px (a palavra fica no title e em sr-only) e, em
-   Materials, o numero. */
+/* Tab state at a fixed size: the word changed the width and the row
+   jumped. A 10 px mark (the word stays in the title and in sr-only) and, in
+   Materials, the number. */
 .lesson-modal__tab-count {
   min-width: 1.25rem;
   border-radius: var(--radius-sm);
@@ -5065,9 +5065,9 @@ body:has([aria-label="Course categories"])
   text-align: center;
 }
 
-/* A forma diz o estado, nao so a cor: anel vazio (off), meio cheio (busy),
-   cheio (done/on). Todas as cores passam de 3:1 sobre a barra das abas nos dois
-   temas (o cinza de linha e o latao claro davam ~2,5:1). */
+/* The shape tells the state, not just the color: empty ring (off), half full (busy),
+   full (done/on). All colors pass 3:1 on the tab bar in both
+   themes (the line gray and the light brass gave ~2.5:1). */
 .lesson-modal__tab-dot {
   box-sizing: border-box;
   width: 0.625rem;
@@ -5392,9 +5392,9 @@ body:has([aria-label="Course categories"])
   background: var(--color-surface-soft);
 }
 
-/* Cartao de envio compacto: era grid sem limite, e o botao "Upload file" e
-   a previa local esticavam ate a largura da pagina. Agora a previa 16:9 fica
-   ao lado (vai para cima no celular) e os botoes tem a largura do texto. */
+/* Compact upload card: it was an unbounded grid, and the "Upload file" button and
+   the local preview stretched to the width of the page. Now the 16:9 preview sits
+   beside it (goes on top on a phone) and the buttons are as wide as their text. */
 .lesson-modal-upload {
   display: flex;
   flex-wrap: wrap;
@@ -5463,7 +5463,7 @@ body:has([aria-label="Course categories"])
   font-weight: 800;
 }
 
-/* O nome do arquivo e o titulo do cartao, nao mais uma caixa azul. */
+/* The file name is the card's title, no longer a blue box. */
 .lesson-modal-upload__file {
   max-width: 100%;
   background: none;
@@ -5501,10 +5501,10 @@ body:has([aria-label="Course categories"])
   padding: 0.85rem 1rem;
 }
 
-/* Só as linhas de detalhe do cartão (tipo e tamanho, nome original, rótulo do
-   nome): era `.lesson-modal-assets span`, fora de camada, e pintava também os
-   span de dentro dos botões da linha (as duas faces do BusyLabel do "Delete"
-   empilhavam em bloco cinza, maiúsculo e 11px). */
+/* Only the card's detail lines (type and size, original name, name
+   label): it was `.lesson-modal-assets span`, outside a layer, and it also painted the
+   spans inside the row's buttons (the two faces of the "Delete" BusyLabel
+   stacked in a gray, uppercase 11px block). */
 .lesson-modal-assets strong,
 .lesson-modal-assets__meta {
   display: block;
@@ -5544,7 +5544,7 @@ body:has([aria-label="Course categories"])
   border-radius: var(--radius-lg);
   background: #ffffff;
   padding: 1rem;
-  /* A linha é o botão da chave (lesson-content-modal): o texto também liga. */
+  /* The row is the switch's button (lesson-content-modal): the text toggles it too. */
   width: 100%;
   text-align: left;
   transition: border-color var(--duration-base) var(--ease-standard);
@@ -5554,8 +5554,8 @@ body:has([aria-label="Course categories"])
   border-color: var(--color-line-strong);
 }
 
-/* Desligada (curso sem edição): só o trilho apaga, como antes; o texto segue
-   legível. A regra do [role="switch"] punha a mãozinha mesmo desligada. */
+/* Off (course without editing): only the track dims, as before; the text stays
+   readable. The [role="switch"] rule showed the hand cursor even when off. */
 .lesson-modal-setting:disabled {
   cursor: not-allowed;
 }
@@ -5564,8 +5564,8 @@ body:has([aria-label="Course categories"])
   opacity: 0.6;
 }
 
-/* Abaixo de 1024px a linha vira coluna, e o flex-basis de 46px do trilho
-   passaria a ser a ALTURA: ficava um círculo. */
+/* Below 1024px the row becomes a column, and the track's 46px flex-basis
+   would become the HEIGHT: it turned into a circle. */
 .lesson-modal-setting > .settings-toggle {
   flex: none;
 }
@@ -5584,7 +5584,7 @@ body:has([aria-label="Course categories"])
   line-height: 1.55;
 }
 
-/* A chave da aula agora é a .settings-toggle da casa (lesson-content-modal). */
+/* The lesson switch is now the house .settings-toggle (lesson-content-modal). */
 
 .lesson-modal__footer {
   display: flex;
@@ -5651,8 +5651,8 @@ body:has([aria-label="Course categories"])
   background: var(--color-surface-strong);
 }
 
-/* No escuro o campo de link e a chave desligada tinham a cor do proprio
-   cartao e so se liam pela linha fina: um degrau mais fundo que o cartao. */
+/* In dark the link field and the off switch had the card's own color
+   and could only be read by the thin line: one step deeper than the card. */
 [data-theme="dark"] .lesson-video-source-picker__url input {
   background: var(--color-surface);
 }
@@ -5757,14 +5757,14 @@ body:has([aria-label="Course categories"])
   box-shadow: 0 14px 34px rgba(15, 39, 68, 0.055);
 }
 
-/* A faixa da prévia gruda logo abaixo da barra do topo da área de membros
-   (member-area-shell.tsx, sticky top 0: 44px dos botões + 24 de respiro + 1 de
-   borda = 69px), não em top 0, onde ficaria atrás dela. Era um cartão comum:
-   depois de rolar, nada dizia que era uma prévia. Sticky guarda o próprio
-   lugar, então em repouso não cobre nada. Uma linha fina: 44px + 8 + 8.
-   69px e z 30 ficam escritos: a barra do topo não tem variável de altura
-   (o 92px da lista de aulas abaixo sai da mesma conta) e a escala --z-* começa
-   em 50, acima dela (z-40), que a faixa não pode cobrir. */
+/* The preview band sticks right below the members area's top bar
+   (member-area-shell.tsx, sticky top 0: 44px of buttons + 24 of breathing room + 1 of
+   border = 69px), not at top 0, where it would end up behind it. It was a plain card:
+   after scrolling, nothing said it was a preview. Sticky keeps its own
+   place, so at rest it covers nothing. A thin line: 44px + 8 + 8.
+   69px and z 30 stay written out: the top bar has no height variable
+   (the 92px of the lesson list below comes from the same math) and the --z-* scale starts
+   at 50, above it (z-40), which the band must not cover. */
 .member-preview-banner {
   position: sticky;
   top: 69px;
@@ -5773,15 +5773,15 @@ body:has([aria-label="Course categories"])
   padding: 8px 16px;
 }
 
-/* A faixa presa cobre o topo: o foco do teclado e as âncoras param abaixo dela
-   (barra do topo 69 + faixa ~62 + folga). */
+/* The pinned band covers the top: keyboard focus and anchors stop below it
+   (top bar 69 + band ~62 + slack). */
 html:has(.member-preview-banner) {
   scroll-padding-top: 148px;
 }
 
-/* No celular o texto ao lado do botão quebra em linhas, em vez de o botão
-   descer para uma segunda faixa: presa no topo, cada linha a mais é tela a
-   menos. */
+/* On a phone the text beside the button wraps into lines, instead of the button
+   dropping to a second band: pinned at the top, every extra line is less screen
+   left. */
 @media (max-width: 639.98px) {
   .member-preview-banner > div {
     flex-wrap: nowrap;
@@ -5934,17 +5934,17 @@ html:has(.member-preview-banner) {
   padding: clamp(16px, 2.4vw, 24px);
 }
 
-/* O cartao "Proxima aula" — ele APARECIA seco, cortado em cima do video, e
-   sumia igual. Entra subindo com fade; ao cancelar, desce e some (a classe
-   `is-leaving` e posta pelo proprio cartao, que so avisa o pai depois).
-   prefers-reduced-motion zera as duas duracoes no bloco global la embaixo. */
+/* The "Next lesson" card — it used to APPEAR abruptly, cut over the video, and
+   vanish the same way. It comes in rising with a fade; on cancel, it drops and vanishes (the class
+   `is-leaving` is set by the card itself, which only notifies the parent afterwards).
+   prefers-reduced-motion zeroes both durations in the global block down below. */
 .member-next-lesson {
   animation: member-next-lesson-in var(--duration-base) var(--ease-standard) both;
 }
 
 .member-next-lesson.is-leaving {
-  /* A animacao de entrada tem fill `both`: sem cancela-la aqui, ela segurava o
-     estado final e a saida nao acontecia. A duracao bate com EXIT_MS em
+  /* The entrance animation has fill `both`: without canceling it here, it held the
+     final state and the exit did not happen. The duration matches EXIT_MS in
      next-lesson-card.tsx. */
   animation: none;
   opacity: 0;
@@ -5972,15 +5972,15 @@ html:has(.member-preview-banner) {
   gap: 14px;
   border: 0;
   box-shadow: none;
-  /* A playlist rola dentro da lateral; o vídeo fica parado. top 92px = barra
-     do topo da área de membros (~68px) + 24px; 108px deixa 16px embaixo. */
+  /* The playlist scrolls inside the side column; the video stays still. top 92px = members area's
+     top bar (~68px) + 24px; 108px leaves 16px at the bottom. */
   max-height: calc(100svh - 108px);
   overflow-y: auto;
 }
 
-/* Na prévia a faixa presa (~62px) fica entre a barra do topo e a lista de
-   aulas: a lista desce o mesmo tanto para não passar por baixo dela. Só onde a
-   lista é presa (acima de 1180px; abaixo ela vira acordeão estático). */
+/* In the preview the pinned band (~62px) sits between the top bar and the lesson
+   list: the list moves down by the same amount so it does not pass under it. Only where the
+   list is pinned (above 1180px; below it becomes a static accordion). */
 @media (width > 1180px) {
   .member-classroom:has(> .member-preview-banner) .member-classroom-sidebar {
     top: 154px;
@@ -5988,7 +5988,7 @@ html:has(.member-preview-banner) {
   }
 }
 
-/* Cabeçalho curto de aula — a capa inteira fica para a primeira visita. */
+/* Short lesson header — the full cover is left for the first visit. */
 .member-classroom-head {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) minmax(120px, 220px) auto;
@@ -6028,9 +6028,9 @@ html:has(.member-preview-banner) {
   color: var(--color-ink-soft);
 }
 
-/* Anterior / próxima junto do título (paridade Hotmart). O título e o par de
-   setas dividem a coluna do meio da grade; alvo de 44px; desabilitado é
-   aria-disabled (segue focável) e o cadeado nunca é burlado por aqui. */
+/* Previous / next next to the title (Hotmart parity). The title and the pair of
+   arrows share the middle column of the grid; 44px target; disabled is
+   aria-disabled (stays focusable) and the lock is never bypassed from here. */
 .member-classroom-head__main {
   display: flex;
   align-items: center;
@@ -6068,8 +6068,8 @@ html:has(.member-preview-banner) {
   cursor: not-allowed;
 }
 
-/* Playlist ao lado do vídeo: módulos em acordeão, aula atual em destaque,
-   check e cadeado por aula, busca no topo. */
+/* Playlist beside the video: modules as an accordion, current lesson highlighted,
+   check and lock per lesson, search at the top. */
 .member-playlist {
   display: grid;
   gap: 10px;
@@ -6209,8 +6209,8 @@ html:has(.member-preview-banner) {
   cursor: pointer;
 }
 
-/* O quadrado tem 28px; o alvo de toque, 44px (28 + 2 x 8). Cabe na linha
-   (min-height 44px) e no gap de 8px até o título, sem cobrir o botão da aula. */
+/* The square is 28px; the touch target, 44px (28 + 2 x 8). It fits in the row
+   (min-height 44px) and in the 8px gap to the title, without covering the lesson button. */
 .member-playlist__status--button::after {
   content: "";
   position: absolute;
@@ -6261,8 +6261,8 @@ html:has(.member-preview-banner) {
   color: var(--color-ink-soft);
 }
 
-/* "Tocando agora": só existe na linha atual; mesmo par de cores do pill de
-   status dessa linha (branco + primário; no tema, --ma-bg-top + acento). */
+/* "Playing now": only exists on the current row; same color pair as the status
+   pill of that row (white + primary; in the theme, --ma-bg-top + accent). */
 .member-playlist__now {
   display: inline-block;
   margin-right: 6px;
@@ -6378,18 +6378,18 @@ html:has(.member-preview-banner) {
   margin: 0;
 }
 
-/* MINI PLAYER (só no celular).
-   Rolando para ler a descrição ou a discussão, o vídeo simplesmente sumia da
-   tela: pausar, voltar, achar de novo. Passado o player, o quadro se prende no
-   topo, pequeno, com o nome da aula e um X.
+/* MINI PLAYER (phone only).
+   Scrolling down to read the description or the discussion, the video simply vanished from
+   the screen: pause, go back, find it again. Once past the player, the frame pins to the
+   top, small, with the lesson name and an X.
 
-   O que NÃO se faz aqui: mover o vídeo de lugar no DOM. Um <iframe> arrancado
-   e recolocado RECARREGA — a aula recomeçaria do zero, exatamente o que a
-   outra metade deste PR conserta. O elemento fica onde está e só muda de
-   posicionamento por CSS; o React nunca desmonta nada.
+   What is NOT done here: moving the video in the DOM. An <iframe> pulled out
+   and put back RELOADS — the lesson would restart from zero, exactly what the
+   other half of this PR fixes. The element stays where it is and only changes
+   positioning by CSS; React never unmounts anything.
 
-   .member-video-dock é o buraco que o quadro deixa no fluxo (min-height vem
-   por style, medido antes de prender); .member-video-frame é o que prende. */
+   .member-video-dock is the hole the frame leaves in the flow (min-height comes
+   by style, measured before pinning); .member-video-frame is what pins. */
 .member-video-mini {
   display: none;
 }
@@ -6400,7 +6400,7 @@ html:has(.member-preview-banner) {
     top: 0;
     right: 0;
     left: 0;
-    /* Acima da barra do topo da área de membros (z-40). */
+    /* Above the members area's top bar (z-40). */
     z-index: 45;
     display: flex;
     align-items: center;
@@ -6408,8 +6408,8 @@ html:has(.member-preview-banner) {
     padding: 6px 10px;
     background: var(--color-primary);
     box-shadow: var(--shadow-strong);
-    /* Só transform e opacity: nada de largura/altura animada. O bloco global
-       de prefers-reduced-motion zera a duração. */
+    /* Only transform and opacity: no animated width/height. The global
+       prefers-reduced-motion block zeroes the duration. */
     animation: member-video-mini-in var(--duration-base) var(--ease-standard);
   }
 
@@ -6418,12 +6418,12 @@ html:has(.member-preview-banner) {
     border-radius: var(--radius-md);
   }
 
-  /* O vídeo terminou com o mini ligado: o cartão "Next lesson" nascia dentro
-     do vídeo pequeno (~150x84px) e só o anel aparecia. Aqui o palco deixa de
-     ser a referência do cartão, e ele vira uma faixa logo abaixo da barra do
-     mini, de ponta a ponta. O vídeo não sai do lugar no DOM. As duas regras
-     dependem do mesmo :has(): navegador sem ele ignora as duas e o cartão
-     fica onde estava, em vez de cair sob o overflow do palco e sumir. */
+  /* The video ended with the mini on: the "Next lesson" card was born inside
+     the small video (~150x84px) and only the ring showed. Here the stage stops being
+     the card's reference, and it becomes a band right below the mini's bar,
+     edge to edge. The video does not move in the DOM. Both rules
+     depend on the same :has(): a browser without it ignores both and the card
+     stays where it was, instead of falling under the stage's overflow and vanishing. */
   .member-video-dock--mini .member-video-stage:has(> .member-next-lesson) {
     position: static;
   }
@@ -6467,12 +6467,12 @@ html:has(.member-preview-banner) {
   color: rgba(255, 255, 255, 0.82);
 }
 
-/* O realce do hover é só o branco cheio. A lavagem translúcida que estava aqui
-   criava um par branco-sobre-branco-translúcido: sobre a barra do mini (fundo
-   --color-primary, azul escuro) enxergava-se bem, mas o par não é verificável
-   sozinho — ele só passa por causa do que está ATRÁS, e a checagem de contraste
-   compõe sobre o fundo da página. Um segundo tom de branco é o mesmo aviso sem
-   depender do que está embaixo. */
+/* The hover highlight is just solid white. The translucent wash that was here
+   created a white-on-translucent-white pair: over the mini's bar (background
+   --color-primary, dark blue) it was clearly visible, but the pair is not verifiable
+   on its own — it only passes because of what is BEHIND it, and the contrast check
+   composites over the page background. A second shade of white is the same signal without
+   depending on what is underneath. */
 .member-video-mini__close:hover {
   color: #ffffff;
 }
@@ -6497,19 +6497,19 @@ html:has(.member-preview-banner) {
   color: #ffffff;
 }
 
-/* Esperando o vídeo: a caixa já tem o 16:9 do player (o iframe é
-   aspect-video). Com a altura do clamp acima ela media 260-520px e a aula
-   pulava 50-110px quando o vídeo chegava. O clamp fica para trancada e sem
-   mídia, que têm texto e botão. */
+/* Waiting for the video: the box already has the player's 16:9 (the iframe is
+   aspect-video). With the clamp height above it measured 260-520px and the lesson
+   jumped 50-110px when the video arrived. The clamp is kept for locked and no-media
+   states, which have text and a button. */
 .member-video-empty--loading {
   aspect-ratio: 16 / 9;
   min-height: 0;
   padding: 0;
 }
 
-/* Espera do vídeo enviado (protected-asset-preview.tsx). Na sala ela cai
-   dentro do palco escuro e herda o fundo dele; fora dela (prévia do professor)
-   não há palco, e o anel branco sumiria no branco. */
+/* Wait for the uploaded video (protected-asset-preview.tsx). In the classroom it falls
+   inside the dark stage and inherits its background; outside it (teacher preview)
+   there is no stage, and the white ring would vanish on white. */
 .protected-asset-loading {
   border-radius: var(--radius-lg);
   background: linear-gradient(135deg, #081426 0%, #102744 100%);
@@ -6523,10 +6523,10 @@ html:has(.member-preview-banner) {
   color: rgba(255, 255, 255, 0.82);
 }
 
-/* h3 nos avisos da sala (subseção da aula, que é h2); h5 segue no player da
-   Bunny (components/courses), que mora no mesmo palco. 18px, não 20: sob a
-   capa o título da aula (o h2 acima) tem 18px, e um subtítulo não pode ser
-   maior que o título dele. */
+/* h3 in the classroom notices (a subsection of the lesson, which is h2); h5 stays in the
+   Bunny player (components/courses), which lives on the same stage. 18px, not 20: under the
+   cover the lesson title (the h2 above) is 18px, and a subtitle cannot be
+   larger than its title. */
 .member-video-empty h3,
 .member-video-empty h5 {
   margin-top: 16px;
@@ -6929,7 +6929,7 @@ html:has(.member-preview-banner) {
     grid-template-columns: 1fr;
   }
 
-  /* Abaixo de 1180 a playlist vira acordeão embaixo do vídeo. */
+  /* Below 1180 the playlist becomes an accordion under the video. */
   .member-classroom-sidebar {
     position: static;
     max-height: none;
@@ -6938,14 +6938,14 @@ html:has(.member-preview-banner) {
   }
 }
 
-/* Embaixo do vídeo a playlist ganha a largura inteira da sala — e cada aula
-   virava uma linha de ~1000px com o título à esquerda e vazio até a borda.
-   No tablet as aulas vão de duas em duas. Abaixo de 768px não: aí a linha
-   inteira é estreita e duas colunas cortariam o título.
-   O container (.member-classroom-sidebar) continua em UMA coluna de propósito:
-   ele guarda a playlist e, quando existe, o cartão da assinatura — dois
-   cartões sem relação, e na maioria das salas só o primeiro; parti-lo em duas
-   deixaria metade da faixa vazia. */
+/* Under the video the playlist gets the full width of the classroom — and each lesson
+   became a ~1000px row with the title on the left and empty space to the edge.
+   On tablet the lessons go two by two. Below 768px they do not: there the whole
+   row is narrow and two columns would cut the title.
+   The container (.member-classroom-sidebar) stays in ONE column on purpose:
+   it holds the playlist and, when it exists, the subscription card — two
+   unrelated cards, and in most classrooms only the first; splitting it in two
+   would leave half of the band empty. */
 @media (min-width: 768px) and (max-width: 1180px) {
   .member-playlist__lessons {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -6958,9 +6958,9 @@ html:has(.member-preview-banner) {
     grid-template-columns: auto minmax(0, 1fr) auto;
   }
 
-  /* Linha 1: a seta de voltar (só ícone, 44px) e o título com as setas de
-     aula. Linha 2: barra e porcentagem juntas. Antes a barra ocupava a linha
-     2 inteira e o "40%" caía sozinho numa terceira. */
+  /* Row 1: the back arrow (icon only, 44px) and the title with the lesson
+     arrows. Row 2: bar and percentage together. Before, the bar took up all of
+     row 2 and the "40%" fell alone onto a third one. */
   .member-classroom-head__back {
     min-width: 44px;
     justify-content: center;
@@ -7006,11 +7006,11 @@ html:has(.member-preview-banner) {
 }
 
 .member-classroom[data-members-theme] {
-  /* clip, e não hidden: hidden faz da sala um contêiner de rolagem, e tudo o
-     que é sticky dentro dela (barra "Mark complete & next", lista de aulas,
-     aviso de posts novos) grudava nela e rolava junto com a página. clip
-     corta os cantos igual e deixa o sticky grudar na tela. hidden fica como
-     reserva para navegador sem clip. */
+  /* clip, not hidden: hidden makes the classroom a scroll container, and everything
+     sticky inside it ("Mark complete & next" bar, lesson list,
+     new posts notice) stuck to it and scrolled along with the page. clip
+     cuts the corners the same and lets sticky stick to the screen. hidden stays as
+     a fallback for browsers without clip. */
   overflow: hidden;
   overflow: clip;
   gap: 0;
@@ -7021,9 +7021,9 @@ html:has(.member-preview-banner) {
   box-shadow: var(--ma-shadow);
 }
 
-/* Com a barra "Mark complete & next" presa no pé da tela (~69px: 44 do botão,
-   24 de respiro, 1 de borda), o navegador levava o item focado pelo Tab até a
-   borda de baixo, atrás dela. Só na página que tem a aula aberta. */
+/* With the "Mark complete & next" bar pinned to the bottom of the screen (~69px: 44 for the button,
+   24 of breathing room, 1 of border), the browser took the item focused by Tab to the
+   bottom edge, behind it. Only on the page that has the lesson open. */
 html:has(#member-lesson-player) {
   scroll-padding-bottom: 88px;
 }
@@ -7046,11 +7046,11 @@ html:has(#member-lesson-player) {
   box-shadow: none;
 }
 
-/* Respiro entre a moldura da sala e o que vai dentro dela. Os painéis moram
-   no invólucro da aba (.member-classroom-body, enrolled-course-workspace.tsx);
-   as margens antigas miravam filhos diretos da sala, deixaram de casar quando
-   o invólucro entrou, e os cartões passaram a encostar na borda. Cabeçalho
-   curto e abas recuam o mesmo tanto, para as bordas esquerdas alinharem. */
+/* Breathing room between the classroom frame and what goes inside it. The panels live
+   in the tab wrapper (.member-classroom-body, enrolled-course-workspace.tsx);
+   the old margins aimed at direct children of the classroom, stopped matching when
+   the wrapper came in, and the cards started touching the edge. The short header
+   and the tabs indent by the same amount, so the left edges line up. */
 .member-classroom[data-members-theme] > .member-classroom-body {
   padding: 0 24px 24px;
 }
@@ -7060,22 +7060,22 @@ html:has(#member-lesson-player) {
   padding-inline: 0;
 }
 
-/* A barra rola de lado (overflow-x), e isso corta o que passa da borda dela:
-   o anel de foco (2px + 3px de afastamento) da primeira aba sumia à
-   esquerda. 6px de folga por dentro, descontados da margem, e o texto segue
-   alinhado com os painéis. */
+/* The bar scrolls sideways (overflow-x), and that clips whatever goes past its edge:
+   the first tab's focus ring (2px + 3px offset) disappeared on the
+   left. 6px of slack inside, subtracted from the margin, and the text stays
+   aligned with the panels. */
 .member-classroom[data-members-theme] > .member-classroom-tabs {
   margin-inline: 18px;
   padding-inline: 6px;
 }
 
-/* O texto da primeira aba começa na mesma linha dos painéis. */
+/* The first tab's text starts on the same line as the panels. */
 .member-classroom[data-members-theme] > .member-classroom-tabs > a:first-child {
   padding-inline-start: 0;
 }
 
-/* A faixa "ao vivo" (live-session-parts.tsx) entre as abas e o painel: o
-   mesmo recuo dos painéis e o mesmo respiro que as abas deixam embaixo. */
+/* The "live" band (live-session-parts.tsx) between the tabs and the panel: the
+   same indent as the panels and the same breathing room the tabs leave below. */
 .member-classroom[data-members-theme] > .member-live-strip {
   margin: 0 24px 18px;
 }
@@ -7106,17 +7106,17 @@ html:has(#member-lesson-player) {
   color: var(--ma-accent-ink) !important;
 }
 
-/* Avisos de erro da sala (InlineAlert e linhas de erro): o vermelho da
-   plataforma dava ~2.7:1 num curso escuro. Troca a variável, não a cor, para o
-   ícone e o texto da caixa seguirem juntos. */
+/* Classroom error notices (InlineAlert and error rows): the platform's red
+   gave ~2.7:1 in a dark course. It swaps the variable, not the color, so the
+   box's icon and text keep going together. */
 .member-classroom[data-members-theme] [class*="text-[var(--color-danger-fg)]"] {
   --color-danger-fg: var(--ma-accent-ink);
 }
 
-/* Avisos (âmbar) da sala: a sala segue o tema do CURSO, não o da plataforma.
-   Com a plataforma escura num curso claro, o âmbar claro do escuro (#e6b24f)
-   ficava 1.59:1 sobre o fundo claro do aviso. O par certo vem do tema do curso:
-   claro 5.2:1, escuro 6.7:1 ou mais nas superfícies da sala. */
+/* Classroom notices (amber): the classroom follows the COURSE theme, not the platform's.
+   With the platform dark on a light course, the dark theme's light amber (#e6b24f)
+   was 1.59:1 over the notice's light background. The right pair comes from the course theme:
+   light 5.2:1, dark 6.7:1 or more on the classroom surfaces. */
 .member-classroom[data-members-theme="light"] [class*="text-[var(--color-warning-fg)]"] {
   --color-warning-fg: #8a5d08;
   --color-warning-soft: #fcefd2;
@@ -7127,10 +7127,10 @@ html:has(#member-lesson-player) {
   --color-warning-soft: rgba(192, 123, 10, 0.18);
 }
 
-/* Verde de "respondida", "ao vivo" e sucesso na sala: o mesmo mecanismo do
-   âmbar acima, com o par da plataforma do tema do CURSO. Antes o feed usava um
-   verde fixo (3.6:1 num curso escuro) e o fundo claro do verde da plataforma
-   clara ficava aceso num curso escuro. Vale para texto, fundo e borda. */
+/* Green for "answered", "live" and success in the classroom: the same mechanism as the
+   amber above, with the platform's pair from the COURSE theme. Before, the feed used a
+   fixed green (3.6:1 in a dark course) and the light platform green's light background
+   stayed lit in a dark course. It applies to text, background and border. */
 .member-classroom[data-members-theme="light"] [class*="var(--color-success-"] {
   --color-success-fg: #176b46;
   --color-success-soft: #e4f3eb;
@@ -7141,11 +7141,11 @@ html:has(#member-lesson-player) {
   --color-success-soft: rgba(31, 138, 91, 0.18);
 }
 
-/* Filtro ativo, pílula "N new posts", avatares e o contorno do compositor na
-   comunidade e nos comentários da aula: o navy da plataforma sobre o fundo do
-   curso (≈1.3:1 num curso escuro; num curso claro com a plataforma escura, o
-   claro do navy sumia no branco). Na sala, o par invertido do próprio curso.
-   Só nessas duas superfícies: o fundo navy do player continua escuro. */
+/* Active filter, "N new posts" pill, avatars and the composer outline in the
+   community and in the lesson comments: the platform's navy over the course
+   background (≈1.3:1 in a dark course; in a light course with the platform dark,
+   the navy's light tone vanished into white). In the classroom, the course's own inverted pair.
+   Only on those two surfaces: the player's navy background stays dark. */
 .member-classroom[data-members-theme] .community-feed [class*="bg-[var(--color-primary)]"],
 .member-classroom[data-members-theme] .community-feed [class*="border-[var(--color-primary)]"],
 .member-classroom[data-members-theme] .member-lesson-comments [class*="bg-[var(--color-primary)]"] {
@@ -7153,33 +7153,33 @@ html:has(#member-lesson-player) {
   --color-base: var(--ma-bg);
 }
 
-/* Borda forte (a tracejada do EmptyState) na sala: a da plataforma é navy a
-   40% e some num curso escuro; a regra de --color-line acima não a alcança. */
+/* Strong border (the EmptyState's dashed one) in the classroom: the platform's is navy at
+   40% and vanishes in a dark course; the --color-line rule above does not reach it. */
 .member-classroom[data-members-theme] [class*="border-[var(--color-line-strong)]"] {
   border-color: var(--ma-line-2) !important;
 }
 
-/* A gaveta da pergunta não sai da sala (não é portal), então o texto dela já
-   vem na cor do CURSO pelas regras acima. Fundo, divisórias e os tons que as
-   regras acima não trocam passam a ler a mesma paleta: sem isso a gaveta era
-   branca num curso escuro, com o texto claro por cima. Fora da sala (área do
-   criador, caixa do professor) ela segue os tokens da plataforma. */
+/* The question drawer does not leave the classroom (it is not a portal), so its text already
+   comes in the COURSE color through the rules above. Background, dividers and the tones the
+   rules above do not swap now read the same palette: without this the drawer was
+   white in a dark course, with light text on top. Outside the classroom (creator
+   area, teacher box) it follows the platform tokens. */
 .member-classroom[data-members-theme] .community-drawer {
   --color-surface: var(--ma-surface);
   --color-surface-soft: var(--ma-surface-2);
   --color-line: var(--ma-line);
   --color-ink: var(--ma-ink);
   --color-ink-soft: var(--ma-ink-soft);
-  /* --ma-ink-muted não chega a 4.5:1 no escuro; o meta (autor, hora) é
-     leitura, então usa o tom suave. */
+  /* --ma-ink-muted does not reach 4.5:1 in dark; the meta (author, time) is
+     reading text, so it uses the soft tone. */
   --color-ink-muted: var(--ma-ink-soft);
 }
 
-/* Erro e "respondida" na gaveta e nos cartões do feed da sala (o fundo dos
-   cartões já é --ma-surface pela regra do bg-white). O vermelho e o verde da
-   plataforma davam ~2.7:1 num curso escuro, e o vermelho do modo escuro
-   ~2.7:1 sobre o branco de um curso claro. Os -ink do curso existem para
-   isso: no claro 5.5:1 e 7:1 sobre branco; no escuro 5.6:1 e 5.3:1 sobre
+/* Error and "answered" in the drawer and in the classroom feed cards (the cards'
+   background is already --ma-surface from the bg-white rule). The platform's red and green
+   gave ~2.7:1 in a dark course, and the dark mode red
+   ~2.7:1 over the white of a light course. The course's -ink tokens exist for
+   this: in light 5.5:1 and 7:1 on white; in dark 5.6:1 and 5.3:1 on
    #141923. */
 .member-classroom[data-members-theme] .community-drawer,
 .member-classroom[data-members-theme] [data-community-item] {
@@ -7214,7 +7214,7 @@ html:has(#member-lesson-player) {
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16);
 }
 
-/* Playlist e cabeçalho curto seguem o tema da área de membros. */
+/* Playlist and short header follow the members area theme. */
 .member-classroom[data-members-theme] .member-playlist {
   border-color: var(--ma-line);
   background: var(--ma-surface);
@@ -7289,17 +7289,17 @@ html:has(#member-lesson-player) {
   color: var(--ma-on-accent);
 }
 
-/* A regra de .member-playlist__lesson-meta acima empata em especificidade com
-   a da linha atual e vem depois: sem esta, a duração da aula atual pintava
-   --ma-ink-soft sobre o vermelho (1.04:1 claro, 2.7:1 escuro). Mesma tinta do
-   título da linha: --ma-on-accent (branco sobre o vermelho padrão, 6.6:1; tinta
-   escura quando a cor do professor é clara). */
+/* The .member-playlist__lesson-meta rule above ties in specificity with
+   the current row's and comes later: without this one, the current lesson's duration painted
+   --ma-ink-soft over the red (1.04:1 light, 2.7:1 dark). Same ink as the row's
+   title: --ma-on-accent (white over the default red, 6.6:1; dark ink
+   when the teacher's color is light). */
 .member-classroom[data-members-theme] .member-playlist__lesson.is-current .member-playlist__lesson-meta {
   color: var(--ma-on-accent);
 }
 
-/* O trilho da barra do topo (ProgressBar) na linha do curso; o preenchimento
-   no acento vem da própria barra (fillClassName). */
+/* The top bar's track (ProgressBar) on the course row; the fill
+   in the accent comes from the bar itself (fillClassName). */
 .member-classroom[data-members-theme] .member-classroom-head__progress {
   background: var(--ma-line);
 }
@@ -7445,11 +7445,11 @@ html:has(#member-lesson-player) {
   color: var(--ma-ink-muted);
 }
 
-/* O campo da casa dentro da sala segue o tema do CURSO, como a regra acima.
-   Com a plataforma escura, o fundo `!important` e a borda de foco do
-   [data-theme="dark"] .field-input venciam a sala: num curso claro, a caixa
-   de mensagem e a de avaliação ficavam no tom da plataforma. Só o fundo
-   precisa do `!important` (o do escuro também tem); a borda vence por peso. */
+/* The house field inside the classroom follows the COURSE theme, like the rule above.
+   With the platform dark, the `!important` background and the focus border of
+   [data-theme="dark"] .field-input beat the classroom: in a light course, the message
+   box and the review box stayed in the platform's tone. Only the background
+   needs the `!important` (the dark one has it too); the border wins by weight. */
 .member-classroom[data-members-theme] .field-input,
 .member-classroom[data-members-theme] .field-input:focus,
 .member-classroom[data-members-theme] .field-input:focus-visible {
@@ -7458,9 +7458,9 @@ html:has(#member-lesson-player) {
   color: var(--ma-ink);
 }
 
-/* Sombra navy da casa, não um brilho vermelho: o vermelho fixo ficava sob o
-   botão mesmo quando a cor do curso é verde ou azul, e o contrato só aceita
-   sombra navy. */
+/* The house navy shadow, not a red glow: the fixed red sat under the
+   button even when the course color is green or blue, and the contract only accepts
+   navy shadow. */
 .member-classroom[data-members-theme] .button-solid,
 .member-classroom[data-members-theme] .button-accent {
   border-color: var(--ma-accent);
@@ -7476,10 +7476,10 @@ html:has(#member-lesson-player) {
   box-shadow: var(--shadow-button-strong);
 }
 
-/* O ícone dentro do botão (o Play de "Watch now") segue o rótulo. Sem isto
-   a regra da plataforma para `.button-solid *` pintava o ícone escuro no modo
-   escuro, ou branco sobre uma cor clara do professor, com o texto de outra
-   cor ao lado. */
+/* The icon inside the button (the Play of "Watch now") follows the label. Without this
+   the platform rule for `.button-solid *` painted the icon dark in dark
+   mode, or white over a light teacher color, with the text in another
+   color next to it. */
 .member-classroom[data-members-theme] .button-solid *,
 .member-classroom[data-members-theme] .button-solid:hover *,
 .member-classroom[data-members-theme] .button-accent *,
@@ -7494,8 +7494,8 @@ html:has(#member-lesson-player) {
   box-shadow: none;
 }
 
-/* O realce do contorno sai da cor do curso (a do professor, se houver), não
-   do vermelho fixo. */
+/* The outline highlight comes from the course color (the teacher's, if any), not
+   from the fixed red. */
 .member-classroom[data-members-theme] .button-outline:hover {
   border-color: var(--ma-accent);
   background: color-mix(in srgb, var(--ma-accent) 10%, transparent);
@@ -7503,9 +7503,9 @@ html:has(#member-lesson-player) {
   box-shadow: none;
 }
 
-/* Desligado na área de membros: as regras acima têm mais peso que a central
-   (botão desligado), e o "Post" apagado da comunidade escurecia e ganhava
-   sombra no hover. Fica o desenho de repouso, sem sombra e parado. */
+/* Disabled in the members area: the rules above weigh more than the central one
+   (disabled button), and the dimmed community "Post" darkened and got a
+   shadow on hover. The resting design stays, with no shadow and still. */
 .member-classroom[data-members-theme] .button-solid:is(:disabled, [aria-disabled="true"]),
 .member-classroom[data-members-theme] .button-accent:is(:disabled, [aria-disabled="true"]) {
   border-color: var(--ma-accent);
@@ -7535,7 +7535,7 @@ html:has(#member-lesson-player) {
     margin-left: 14px;
   }
 
-  /* 14px menos os 6px de folga do anel de foco (regra de cima). */
+  /* 14px minus the 6px of slack for the focus ring (rule above). */
   .member-classroom[data-members-theme] > .member-classroom-tabs {
     margin-inline: 8px;
   }
@@ -7574,9 +7574,9 @@ html:has(#member-lesson-player) {
   }
 }
 
-/* A largura da barra troca na hora (onda E): animar a coluna refazia o layout
-   da página inteira a cada quadro. O que anda é o nome acendendo, no bloco
-   de movimento da onda D (item 14). */
+/* The bar's width changes instantly (wave E): animating the column redid the layout
+   of the whole page on every frame. What moves is the name lighting up, in the
+   motion block of wave D (item 14). */
 .platform-sidebar-label {
   white-space: nowrap;
 }
@@ -7609,11 +7609,11 @@ html:has(#member-lesson-player) {
     0 10px 22px rgba(0, 0, 0, 0.16) !important;
 }
 
-/* O item traz também as classes da gaveta do celular (before:top-1/2
-   before:-translate-y-1/2), que no Tailwind 4 usam a propriedade
-   `translate`. Com `transform: translateY(-50%)` aqui os dois somavam e o
-   filete subia 9px, acima do quadradinho do ícone. Uma propriedade só: a
-   mesma `translate`, que esta regra (sem camada) vence. */
+/* The item also carries the phone drawer's classes (before:top-1/2
+   before:-translate-y-1/2), which in Tailwind 4 use the property
+   `translate`. With `transform: translateY(-50%)` here the two added up and the
+   thin line rose 9px, above the icon's little square. A single property: the
+   same `translate`, which this rule (no layer) wins. */
 .platform-sidebar .platform-nav-active::before {
   content: "";
   position: absolute;
@@ -7667,10 +7667,10 @@ html:has(#member-lesson-player) {
   opacity: 1;
 }
 
-/* Só o item SELECIONADO tem moldura (.platform-nav-active acima). Os outros
-   ficam limpos — sem borda nem fundo — e só ganham um fundo leve no hover.
-   Antes cada item tinha a sua caixinha, e a barra virava uma pilha de
-   retângulos onde nada se destacava (pedido do Patrick, 02/09). */
+/* Only the SELECTED item has a frame (.platform-nav-active above). The others
+   stay clean — no border or background — and only get a light background on hover.
+   Before, each item had its own little box, and the bar became a stack of
+   rectangles where nothing stood out (owner's request, Sep 2). */
 .platform-sidebar .platform-nav-link:not(.platform-nav-active) {
   border-color: transparent !important;
   background: transparent !important;
@@ -7684,10 +7684,10 @@ html:has(#member-lesson-player) {
   gap: 0.25rem;
 }
 
-/* Sales e Promote sao itens do primeiro nivel como os outros: a altura (44px),
-   o texto (14px) e o chip (32px) vem do mesmo lugar dos links diretos. Antes
-   este bloco os encolhia para 38px, 11,5px em MAIUSCULAS e 66% de branco, e
-   eles pareciam titulos de secao. */
+/* Sales and Promote are first-level items like the others: the height (44px),
+   the text (14px) and the chip (32px) come from the same place as the direct links. Before,
+   this block shrank them to 38px, 11.5px in UPPERCASE and 66% white,
+   and they looked like section titles. */
 .platform-sidebar .platform-nav-link.platform-nav-section-trigger {
   border-color: transparent !important;
   background: transparent !important;
@@ -7722,9 +7722,9 @@ html:has(#member-lesson-player) {
   gap: inherit;
 }
 
-/* Marketplace e "o que eu estudo" no pé da barra: são outra intenção que
-   produzir, então uma linha os separa do trabalho do dia em vez de deixá-los
-   disputando o topo com Produtos. */
+/* Marketplace and "what I study" at the bottom of the bar: they are a different intent than
+   producing, so a line separates them from the day's work instead of leaving them
+   competing for the top with Products. */
 .platform-nav-footer {
   display: grid;
   gap: 0.25rem;
@@ -7733,14 +7733,14 @@ html:has(#member-lesson-player) {
   padding-top: 0.5rem;
 }
 
-/* ─── Rail recolhido (64px): UM quadrado por item ──────────────────────────
-   Link direto e gatilho de grupo desenham o MESMO quadrado de 44px, centrado
-   nos 64px, inteiro (antes o gatilho ocupava a largura toda e cortava nas
-   laterais, e o hover somava o fundo do item + o chip do icone: duas camadas).
-   O chip nao existe no rail (platform-nav.tsx so o renderiza expandido).
-   Este bloco fica DEPOIS das regras do gatilho de proposito: no hover as duas
-   tem a mesma especificidade e a ultima vence. A barra e sempre navy, nos dois
-   temas. */
+/* ─── Collapsed rail (64px): ONE square per item ───────────────────────────
+   A direct link and a group trigger draw the SAME 44px square, centered
+   in the 64px, whole (before, the trigger took the full width and was cut off at
+   the sides, and hover added the item's background + the icon's chip: two layers).
+   The chip does not exist in the rail (platform-nav.tsx only renders it expanded).
+   This block comes AFTER the trigger rules on purpose: on hover the two
+   have the same specificity and the last one wins. The bar is always navy, in both
+   themes. */
 .platform-sidebar.sidebar-collapsed .platform-nav-link {
   width: 44px;
   height: 44px;
@@ -7783,7 +7783,7 @@ html:has(#member-lesson-player) {
   content: none;
 }
 
-/* O botao de recolher ainda traz o chip; no rail ele e so o icone. */
+/* The collapse button still carries the chip; in the rail it is just the icon. */
 .platform-sidebar.sidebar-collapsed .platform-nav-icon-chip {
   background: transparent !important;
   box-shadow: none !important;
@@ -7938,12 +7938,12 @@ button:hover > .dash-card,
   min-height: 390px;
 }
 
-/* ── Seletor segmentado do estudio (PeriodTabs): uma entre poucas opcoes ──
-   O unico desenho para filtro (periodo dos relatorios e da Home,
-   espacos/comunidades em Membros, cursos e credenciais do aluno, ciclo dos
-   planos). Texto normal, sem versalete; 36px de botao no mouse e 44px no toque
-   (regra logo abaixo). Passar o mouse nao pinta igual a ativa (antes as duas
-   regras eram a mesma e nao se sabia qual estava escolhida). */
+/* ── Studio segmented selector (PeriodTabs): one among a few options ──
+   The only design for a filter (period of reports and Home,
+   spaces/communities in Members, learner courses and credentials, plan
+   cycle). Normal text, no small caps; 36px button with a mouse and 44px on touch
+   (rule right below). Hovering does not paint the same as the active one (before, the two
+   rules were the same and you could not tell which one was chosen). */
 .studio-range-tabs {
   display: inline-flex;
   max-width: 100%;
@@ -7989,29 +7989,29 @@ button:hover > .dash-card,
   box-shadow: var(--shadow-soft);
 }
 
-/* No escuro a pastilha escolhida (#0f1626) e a moldura (#141d33) quase se
-   confundem e a sombra some no fundo escuro: sobrava so a cor do texto, e
-   este seletor decide o que a pessoa paga (Mensal/Anual). Um contorno por
-   dentro em --color-primary passa de 3:1 contra a moldura e nao mexe no
-   tamanho do botao. O claro fica como esta. */
+/* In dark the chosen pill (#0f1626) and the frame (#141d33) almost
+   blend together and the shadow vanishes on the dark background: only the text color was left,
+   and this selector decides what the person pays (Monthly/Yearly). An inner outline
+   in --color-primary passes 3:1 against the frame and does not change the
+   size of the button. Light stays as it is. */
 [data-theme="dark"] .studio-range-tabs button[aria-pressed="true"] {
   box-shadow:
     inset 0 0 0 1.5px var(--color-primary),
     var(--shadow-soft);
 }
 
-/* A moldura de 4px e do grupo, nao do botao: tocar nela nao escolhe nada.
-   Publico de 55+ no celular: um toque que erra "Yearly" deixa o professor no
-   Mensal. No toque o botao tem os 44px inteiros. */
+/* The 4px frame belongs to the group, not the button: touching it chooses nothing.
+   55+ audience on a phone: a tap that misses "Yearly" leaves the teacher on
+   Monthly. On touch the button has the full 44px. */
 @media (pointer: coarse) {
   .studio-range-tabs button {
     min-height: 44px;
   }
 }
 
-/* Variante que quebra a linha (credenciais: quatro filtros com numero). A
-   rolagem por dentro escondia "En curso N" atras dela a 360px em espanhol;
-   quebrando, os quatro ficam a vista e seguem na mesma moldura. */
+/* Variant that wraps the line (credentials: four filters with a number). Scrolling
+   inside hid "En curso N" behind it at 360px in Spanish;
+   wrapping, all four stay in view and remain in the same frame. */
 .studio-range-tabs--wrap {
   flex-wrap: wrap;
   overflow-x: visible;
@@ -8024,15 +8024,15 @@ button:hover > .dash-card,
   overflow: hidden;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-lg);
-  /* Sem o brilho vermelho da marca antiga no canto. */
+  /* Without the old brand's red glow in the corner. */
   background: linear-gradient(180deg, #ffffff 0%, var(--color-surface-soft) 100%);
   padding: 1rem;
 }
 
 .studio-chart-empty {
-  /* Centrada no canvas: encostada no canto inferior direito ela cobria os
-     rotulos do eixo X e brigava com a etiqueta do ultimo ponto (QA visual em
-     producao, 08/09). */
+  /* Centered on the canvas: against the bottom right corner it covered the
+     X axis labels and fought with the label of the last point (visual QA in
+     production, Sep 8). */
   position: absolute;
   inset: 0;
   margin: auto;
@@ -8062,7 +8062,7 @@ button:hover > .dash-card,
 }
 
 .studio-chart-empty p {
-  /* Professor: a serifa fica so no titulo da pagina (T-09). */
+  /* Teacher: the serif stays only on the page title (T-09). */
   color: var(--color-primary);
   font-family: inherit;
   font-size: 1rem;
@@ -8259,8 +8259,8 @@ button:hover > .dash-card,
   color: var(--color-primary);
 }
 
-/* Urgente e vermelho de verdade (fundo e texto de perigo), nao vermelho com
-   letra latao. */
+/* Urgent is a real red (danger background and text), not red with
+   brass letters. */
 .studio-activity-card__icon.is-urgent {
   background: var(--color-danger-soft);
   color: var(--color-danger-fg);
@@ -8272,7 +8272,7 @@ button:hover > .dash-card,
 }
 
 .studio-activity-card strong {
-  /* Professor: titulo de cartao no texto da casa, nao em serifa (T-09). */
+  /* Teacher: card title in the house text, not in serif (T-09). */
   color: var(--color-primary);
   font-family: inherit;
   font-size: 1rem;
@@ -8588,9 +8588,9 @@ button:hover > .dash-card,
     grid-template-columns: minmax(0, 1fr);
   }
 
-  /* As três ações do topo (Manage product, Preview, Save draft) quebravam em
-     duas linhas e empurravam o primeiro campo para baixo: uma linha só, três
-     colunas iguais, e o rótulo longo quebra dentro do próprio botão. */
+  /* The three top actions (Manage product, Preview, Save draft) wrapped onto
+     two lines and pushed the first field down: a single line, three equal
+     columns, and the long label wraps inside the button itself. */
   .course-builder-hero__actions {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -8603,14 +8603,14 @@ button:hover > .dash-card,
     text-align: center;
   }
 
-  /* No celular os cinco passos empilhados (~270px) empurravam o primeiro
-     campo para ~800 px do topo: viram uma faixa que rola de lado, com a etapa
-     aberta no meio (course-builder-studio.tsx) e a borda direita esmaecida
-     enquanto houver etapa escondida, como as abas da sala. A rolagem corta o
-     que passa da borda: 5px de respiro guardam o anel de foco (2px + 3px de
-     afastamento) e o traço da etapa aberta (bottom -0.25rem); a margem
-     negativa devolve o alinhamento com o resto da página. O foco pelo Tab
-     para fora dos 48px esmaecidos da borda (scroll-padding). */
+  /* On a phone the five stacked steps (~270px) pushed the first
+     field to ~800 px from the top: they become a band that scrolls sideways, with the open
+     step in the middle (course-builder-studio.tsx) and the right edge faded
+     while there is a hidden step, like the classroom tabs. The scroll clips
+     whatever goes past the edge: 5px of breathing room keep the focus ring (2px + 3px of
+     offset) and the open step's stroke (bottom -0.25rem); the negative
+     margin gives the alignment with the rest of the page back. Focus via Tab
+     out of the 48px faded at the edge (scroll-padding). */
   .course-builder-steps {
     display: flex;
     overflow-x: auto;
@@ -8633,17 +8633,17 @@ button:hover > .dash-card,
     width: auto;
   }
 
-  /* A linha de apoio de cada passo sai, o nome fica. */
+  /* Each step's support line goes away, the name stays. */
   .course-builder-step__sub {
     display: none;
   }
 }
 
-/* Fora do celular, quando as cinco etapas não cabem lado a lado (5 x 150px +
-   gaps = 782px; entre ~681 e ~1100px de tela, conforme a barra lateral), a
-   grade dava 4 etapas e 1 sozinha embaixo: vale a mesma faixa do celular.
-   Pela largura da própria faixa (container query no .course-builder-stepper),
-   não da tela. O bloco acima fica para navegador sem container query. */
+/* Off the phone, when the five steps do not fit side by side (5 x 150px +
+   gaps = 782px; between ~681 and ~1100px of screen, depending on the sidebar), the
+   grid gave 4 steps and 1 alone below: the same band as the phone applies.
+   By the width of the band itself (container query on .course-builder-stepper),
+   not of the screen. The block above stays for browsers without container queries. */
 @container (width < 782px) {
   .course-builder-steps {
     display: flex;
@@ -8668,16 +8668,16 @@ button:hover > .dash-card,
   }
 }
 
-/* Abaixo do sm (o mesmo corte do botão "More about this step", que só existe
-   ali) a ajuda da etapa fica fechada até a pessoa pedir. */
+/* Below sm (the same cut as the "More about this step" button, which only exists
+   there) the step's help stays closed until the person asks for it. */
 @media (max-width: 639.98px) {
   .course-builder-step-help:not([data-open="true"]) {
     display: none;
   }
 }
 
-/* Recolhida, o nome sai da linha mas fica no DOM: é o nome acessível do link.
-   O do ☰ fica assim nos dois estados (ao lado da marca não há lugar). */
+/* Collapsed, the name leaves the line but stays in the DOM: it is the link's accessible name.
+   The ☰'s one stays like this in both states (there is no room beside the brand). */
 .sidebar-collapsed .platform-sidebar-label,
 .platform-sidebar-toggle .platform-sidebar-label {
   position: absolute;
@@ -8688,11 +8688,11 @@ button:hover > .dash-card,
   pointer-events: none;
 }
 
-/* ...e vira dica no hover E no foco do teclado (o title só aparecia no mouse,
-   depois de 1s). `position: fixed` porque a lista rola e cortaria uma dica
-   absoluta; o lugar (--tip-x/--tip-y) vem do item, medido no hover e no foco
-   (placeSidebarTip, platform-shell.tsx). O `[style]` espera essa medida: antes
-   dela (página ainda sem JS) não há dica solta no lugar errado. */
+/* ...and becomes a tooltip on hover AND on keyboard focus (the title only showed with the mouse,
+   after 1s). `position: fixed` because the list scrolls and would clip an
+   absolute tooltip; the place (--tip-x/--tip-y) comes from the item, measured on hover and focus
+   (placeSidebarTip, platform-shell.tsx). The `[style]` waits for that measure: before
+   it (page still without JS) there is no loose tooltip in the wrong place. */
 .platform-sidebar.sidebar-collapsed .platform-nav-link[style]:is(:hover, :focus-visible) .platform-sidebar-label,
 .platform-sidebar .platform-sidebar-toggle[style]:is(:hover, :focus-visible) .platform-sidebar-label {
   position: fixed;
@@ -8717,8 +8717,8 @@ button:hover > .dash-card,
   transform: translateY(-50%);
 }
 
-/* A contagem exata dentro do rótulo (platform-nav.tsx): fora da dica, só
-   para o leitor de tela; na dica, aparece ("128 pending" quando o selo diz 99+). */
+/* The exact count inside the label (platform-nav.tsx): outside the tooltip, only
+   for the screen reader; in the tooltip, it shows ("128 pending" when the badge says 99+). */
 .platform-sidebar-label-count {
   position: absolute;
   width: 1px;
@@ -8735,8 +8735,8 @@ button:hover > .dash-card,
   clip-path: none;
 }
 
-/* O ☰ vira seta "recolher" com a barra aberta: as barras de cima e de baixo
-   encurtam e giram até a ponta da do meio. Recolhida, volta a ser ☰. */
+/* The ☰ turns into a "collapse" arrow with the bar open: the top and bottom bars
+   shorten and rotate to the tip of the middle one. Collapsed, it goes back to ☰. */
 .platform-menu-icon path {
   vector-effect: non-scaling-stroke;
 }
@@ -8770,22 +8770,22 @@ button:hover > .dash-card,
   box-shadow: var(--shadow-strong);
 }
 
-/* Onde a pessoa está: a aba atual ganha um traço em cima, além da cor. Só a
-   cor (dois azuis escuros) não dava para distinguir. */
+/* Where the person is: the current tab gets a stroke on top, besides the color. The
+   color alone (two dark blues) could not be told apart. */
 .platform-mobile-nav [aria-current="page"],
 .platform-mobile-nav [data-current="true"] {
   box-shadow: inset 0 2px 0 var(--color-primary);
   color: var(--color-primary);
 }
 
-/* TELAS MÉDIAS (768–1179px): o rail de 64px é o padrão, e o conteúdo fica
-   com os ~196px que a barra aberta comia (onda E).
-   A largura vem daqui, e não só da classe, para não haver o salto de
-   260px→64px no primeiro quadro: sem escolha salva (.platform-grid--auto) o
-   servidor não sabe a largura da janela e manda a barra "aberta" até o
-   useSidebarState montar. As regras com :not(.platform-grid--collapsed)
-   cobrem só esse intervalo: escondem o que não cabe em 64px. Quem abriu a
-   barra (cookie "expanded") fica com ela aberta de 1024px para cima. */
+/* MEDIUM SCREENS (768–1179px): the 64px rail is the default, and the content gets
+   the ~196px that the open bar used to eat (wave E).
+   The width comes from here, and not only from the class, so there is no jump from
+   260px→64px on the first frame: without a saved choice (.platform-grid--auto) the
+   server does not know the window width and sends the bar "open" until
+   useSidebarState mounts. The rules with :not(.platform-grid--collapsed)
+   cover only this range: they hide what does not fit in 64px. Whoever opened the
+   bar (cookie "expanded") keeps it open from 1024px up. */
 @media (min-width: 768px) and (width < 1180px) {
   .platform-grid--auto {
     --platform-sidebar-width: 64px;
@@ -8823,9 +8823,9 @@ button:hover > .dash-card,
     transform: none;
   }
 
-  /* ...e o 1º quadro já é o rail que o JS vai desenhar: o ativo é o quadrado
-     branco de 44px, os ícones sem caixinha e a calha da rolagem reservada
-     (sem ela os ícones andam ~5px no Windows quando o JS monta). */
+  /* ...and the 1st frame is already the rail that the JS will draw: the active one is the
+     44px white square, the icons have no little box and the scroll gutter is
+     reserved (without it the icons shift ~5px on Windows when the JS mounts). */
   .platform-grid--auto:not(.platform-grid--collapsed) .platform-sidebar-nav {
     scrollbar-gutter: stable;
   }
@@ -8853,11 +8853,11 @@ button:hover > .dash-card,
   }
 }
 
-/* TABLET (768–1023px): sempre o rail, mesmo para quem abriu a barra. Aberta,
-   ela deixaria ~465px de conteúdo e a barra do topo não cabe (conta em
-   src/app/barra-do-topo-cabe.test.ts). Antes do rail esta faixa caía no
-   desenho de celular, com a barra de baixo numa tela de 1000px. O ☰ some:
-   aqui não há o que abrir — um grupo ou a Ajuda abrem a gaveta. */
+/* TABLET (768–1023px): always the rail, even for whoever opened the bar. Open,
+   it would leave ~465px of content and the top bar does not fit (math in
+   src/app/barra-do-topo-cabe.test.ts). Before the rail this range fell into the
+   phone design, with the bottom bar on a 1000px screen. The ☰ goes away:
+   here there is nothing to open — a group or Help opens the drawer. */
 @media (min-width: 768px) and (width < 1024px) {
   .platform-grid {
     --platform-sidebar-width: 64px;
@@ -8875,16 +8875,16 @@ button:hover > .dash-card,
     display: none;
   }
 
-  /* No lugar do ☰, a marca pequena: o rail não começa com uma faixa vazia e
-     a home continua a um clique (a barra do topo só tem logo abaixo de 768). */
+  /* In place of the ☰, the small brand: the rail does not start with an empty band and
+     home stays one click away (the top bar only has a logo below 768). */
   .platform-sidebar-brand__mark {
     display: inline-flex;
   }
 
-  /* Com o cookie "expanded" o servidor manda a barra aberta, mas aqui ela é o
-     rail mesmo assim: as regras da faixa média valem para qualquer grade não
-     recolhida. Nada vaza dos 64px (a marca larga passava por cima da barra do
-     topo) e o 1º quadro já é o rail. */
+  /* With the "expanded" cookie the server sends the bar open, but here it is the
+     rail anyway: the medium band rules apply to any grid that is not
+     collapsed. Nothing leaks out of the 64px (the wide brand went over the top
+     bar) and the 1st frame is already the rail. */
   .platform-grid:not(.platform-grid--collapsed) .platform-sidebar-panel {
     padding-inline: 0;
   }
@@ -8932,7 +8932,7 @@ button:hover > .dash-card,
   }
 }
 
-/* CELULAR (< 768px): barra de baixo + gaveta, sem barra lateral. */
+/* PHONE (< 768px): bottom bar + drawer, no sidebar. */
 @media (max-width: 767.98px) {
   .platform-grid {
     grid-template-columns: 1fr;
@@ -9184,11 +9184,11 @@ button:hover > .dash-card,
   --ma-ink: #eef1f6;
   --ma-ink-soft: #9aa6b6;
   --ma-ink-muted: #67717f;
-  /* O texto do hero fica na base: o gradiente vertical escurece o terço
-     inferior o bastante para branco ler sobre qualquer foto. Pior caso, foto
-     branca: 0.92 dá (27,29,32) → 16.9:1 para o título e 11.7:1 para a
-     descrição a 82% de branco (AA pede 4.5:1); o gradiente horizontal ainda
-     soma por cima disso. */
+  /* The hero text sits at the bottom: the vertical gradient darkens the lower
+     third enough for white to read over any photo. Worst case, white photo:
+     0.92 gives (27,29,32) → 16.9:1 for the title and 11.7:1 for the
+     description at 82% white (AA asks for 4.5:1); the horizontal gradient still
+     adds on top of that. */
   --ma-hero-scrim:
     linear-gradient(
       90deg,
@@ -9204,9 +9204,9 @@ button:hover > .dash-card,
      --ma-success is already 5.14:1 here and stays as-is. */
   --ma-accent-ink: #e8697c;
   --ma-success-ink: #27a06a;
-  /* A lista de aulas abre dentro da sala: num curso escuro o navy a 62%
-     clareava o fundo (#0a0d12) em vez de escurecer. Preto, como no tema
-     escuro da plataforma. */
+  /* The lesson list opens inside the classroom: in a dark course the navy at 62%
+     lightened the background (#0a0d12) instead of darkening it. Black, as in the platform's
+     dark theme. */
   --color-scrim: rgba(0, 0, 0, 0.6);
 }
 [data-members-theme="light"] {
@@ -9253,10 +9253,10 @@ button:hover > .dash-card,
   --ma-display: "Cormorant Garamond", Georgia, serif;
   --ma-sans: "Manrope", system-ui, -apple-system, sans-serif;
 }
-/* Área do criador carregando: o tema dela só chega com a leitura no
-   navegador. Até lá a casca (member-area-shell.tsx) usa os tons da
-   PLATAFORMA, que seguem o claro/escuro do app, em vez de nascer no claro da
-   área e virar escura um instante depois. */
+/* Creator area loading: its theme only arrives with the read in the
+   browser. Until then the shell (member-area-shell.tsx) uses the PLATFORM's
+   tones, which follow the app's light/dark, instead of being born in the area's light
+   and turning dark a moment later. */
 [data-members-theme="pending"] {
   --ma-bg: var(--color-base);
   --ma-bg-top: var(--color-base);
@@ -9277,14 +9277,14 @@ button:hover > .dash-card,
   position: relative;
   overflow: hidden;
   display: flex;
-  /* Altura = fatia do viewport, não 520px fixos. O canvas mede 1214px tanto a
-     1366 quanto a 1920 de largura, então proporção só por largura (21/9 do
-     canvas = 520px) não encaixava nada: entre as duas telas o que muda é a
-     ALTURA. 48svh deixa hero + faixa de prévia + abas dentro de um viewport de
-     ~600px (1366×768 com o navegador); 43vw ≈ 21/9 do canvas em janelas mais
-     estreitas que 1280px; 520px segue como teto. min-height, e não
-     aspect-ratio: com overflow hidden uma caixa de proporção fixa cortaria um
-     título de duas linhas ou o CTA do certificado — esta cresce com o texto. */
+  /* Height = a slice of the viewport, not a fixed 520px. The canvas measures 1214px at both
+     1366 and 1920 of width, so a proportion by width alone (21/9 of the
+     canvas = 520px) fit nothing: between the two screens what changes is the
+     HEIGHT. 48svh keeps hero + preview band + tabs inside a viewport of
+     ~600px (1366×768 with the browser); 43vw ≈ 21/9 of the canvas in windows
+     narrower than 1280px; 520px stays as the ceiling. min-height, not
+     aspect-ratio: with overflow hidden a fixed-proportion box would cut a
+     two-line title or the certificate CTA — this one grows with the text. */
   min-height: clamp(300px, min(43vw, 48svh), 520px);
   background: var(--ma-surface-2);
   font-family: var(--ma-sans);
@@ -9296,8 +9296,8 @@ button:hover > .dash-card,
   width: 100%;
   height: 100%;
   object-fit: cover;
-  /* Capa mais larga que a caixa perde as bordas de cima e de baixo; ancorar no
-     terço superior preserva rostos, que numa foto de professor ficam ali. */
+  /* A cover wider than the box loses its top and bottom edges; anchoring on the
+     upper third preserves faces, which in a teacher photo sit there. */
   object-position: 50% 20%;
   display: block;
 }
@@ -9341,8 +9341,8 @@ button:hover > .dash-card,
 .members-hero__inner {
   position: relative;
   z-index: 3;
-  /* Canto inferior esquerdo, sobre a parte mais escura do scrim. Centrado, o
-     título boiava no meio com um vazio embaixo. */
+  /* Bottom left corner, over the darkest part of the scrim. Centered, the
+     title floated in the middle with an emptiness below. */
   align-self: flex-end;
   width: 100%;
   max-width: 1440px;
@@ -9360,13 +9360,13 @@ button:hover > .dash-card,
   text-decoration: none;
   text-underline-offset: 4px;
 }
-/* Hover por sublinhado, não por opacidade (o texto ficava 8% apagado em
-   repouso e o hover só o acendia). */
+/* Hover by underline, not by opacity (the text was 8% dimmed at
+   rest and the hover only lit it up). */
 .members-hero__back:hover {
   text-decoration: underline;
 }
-/* No toque o link de voltar tem 44px de altura (eram 23px, e ele e o caminho
-   de volta do aluno). As margens encolhem o mesmo tanto: o titulo nao desce. */
+/* On touch the back link is 44px tall (it was 23px, and it is the learner's
+   way back). The margins shrink by the same amount: the title does not move down. */
 @media (pointer: coarse) {
   .members-hero__back {
     min-height: 44px;
@@ -9441,12 +9441,12 @@ button:hover > .dash-card,
   color: #fff;
   font-variant-numeric: tabular-nums;
 }
-/* A barra da capa é a ProgressBar da casa; aqui só o trilho claro sobre a foto. */
+/* The cover's bar is the house ProgressBar; here only the light track over the photo. */
 .members-hero__bar {
   background: rgba(255, 255, 255, 0.22);
 }
-/* "Ver certificado" no hero, só a 100%: branco sobre o acento (AA nos dois
-   temas, o mesmo par do botão de acento da sala). */
+/* "View certificate" in the hero, only at 100%: white over the accent (AA in both
+   themes, the same pair as the classroom's accent button). */
 .members-hero__cta {
   display: inline-flex;
   align-items: center;
@@ -9521,7 +9521,7 @@ button:hover > .dash-card,
   overflow: hidden;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-lg);
-  /* Termina no mesmo azul-claro: o rosa (#fff7f9) era resto do vermelho antigo. */
+  /* It ends in the same light blue: the pink (#fff7f9) was a leftover of the old red. */
   background: linear-gradient(135deg, #ffffff 0%, #f5f9ff 70%, #f5f9ff 100%);
   box-shadow: var(--shadow-soft);
   padding: clamp(1.5rem, 3vw, 2.25rem);
@@ -9637,8 +9637,8 @@ button:hover > .dash-card,
 
 @media (min-width: 820px) {
   .marketplace-controls {
-    /* A ordenação cresce até caber o rótulo inteiro: "(paid placement)" não
-       pode ficar cortado no seletor fechado. */
+    /* The sort control grows until the whole label fits: "(paid placement)" cannot
+       be cut off in the closed selector. */
     grid-template-columns: minmax(16rem, 1fr) minmax(13rem, max-content) auto;
     align-items: end;
   }
@@ -9687,8 +9687,8 @@ button:hover > .dash-card,
   box-shadow: 0 0 0 3px rgba(26, 54, 93, 0.08);
 }
 
-/* Teclado: o anel padrão de volta. A regra acima (0,2,0) vencia o
-   `select:focus-visible` global e deixava só um halo a 8% (≈1,1:1). */
+/* Keyboard: the default ring is back. The rule above (0,2,0) beat the global
+   `select:focus-visible` and left only an 8% halo (≈1.1:1). */
 .marketplace-select:focus-visible {
   box-shadow: 0 0 0 2px var(--focus-ring);
 }
@@ -9756,10 +9756,10 @@ button:hover > .dash-card,
   transform: translateY(-1px);
 }
 
-/* Catálogo no celular: cabeçalho e filtros abertos davam uns 800px antes do
-   primeiro curso. Abaixo de 640px os filtros ficam atrás de um botão "Filters"
-   (com o número de filtros valendo); a partir de 640px o botão some e o painel
-   fica sempre aberto, como antes. */
+/* Catalog on a phone: header and open filters took up some 800px before the
+   first course. Below 640px the filters stay behind a "Filters" button
+   (with the number of active filters); from 640px the button goes away and the panel
+   stays always open, as before. */
 .marketplace-filters-toggle {
   display: none;
 }
@@ -9803,8 +9803,8 @@ button:hover > .dash-card,
     text-align: left;
   }
 
-  /* O painel corta o que passa da borda (overflow: hidden): o anel de foco
-     vai para dentro do botão. */
+  /* The panel clips whatever goes past its edge (overflow: hidden): the focus ring
+     goes inside the button. */
   .marketplace-filters-toggle:focus-visible {
     outline-offset: -3px;
   }
@@ -9817,15 +9817,15 @@ button:hover > .dash-card,
     border-top: 1px solid var(--color-line);
   }
 
-  /* O título fica; o parágrafo de cinco linhas sai do celular. */
+  /* The title stays; the five-line paragraph leaves the phone. */
   .marketplace-page-copy {
     display: none;
   }
 }
 
-/* Abaixo de 640px a grade e a lista são a mesma coluna única: o seletor de
-   grade/lista não mudava nada e gastava uns 80px. De 640 a 767px ele fica,
-   porque lá a grade tem duas colunas e a lista uma. */
+/* Below 640px the grid and the list are the same single column: the grid/list
+   selector changed nothing and wasted some 80px. From 640 to 767px it stays,
+   because there the grid has two columns and the list one. */
 @media (max-width: 639.98px) {
   .marketplace-view {
     display: none;
@@ -9937,9 +9937,9 @@ button:hover > .dash-card,
   }
 }
 
-/* Linha do link da bio (perfil do professor): capa quadrada a esquerda,
-   titulo, nota e preco a direita. O mesmo cartao (CourseTile), em outro
-   arranjo: o cartao inteiro continua sendo o link. */
+/* Bio link row (teacher profile): square cover on the left,
+   title, rating and price on the right. The same card (CourseTile), in another
+   arrangement: the whole card is still the link. */
 .marketplace-card--row {
   display: grid;
   min-height: 0;
@@ -9980,10 +9980,10 @@ button:hover > .dash-card,
   padding-top: 0;
 }
 
-/* Perfil do professor (link da bio). Plano com vitrine: o botao principal
-   leva a cor da marca, com o texto que tiver mais contraste
-   (readableTextOnAccent). Especificidade acima de .button-solid e da versao
-   escura, que usam !important na cor. */
+/* Teacher profile (bio link). Plan with a storefront: the main button
+   takes the brand color, with the text that has the most contrast
+   (readableTextOnAccent). Specificity above .button-solid and the dark
+   version, which use !important on the color. */
 .button-solid[data-accent],
 .button-solid[data-accent]:hover,
 [data-theme="dark"] .button-solid[data-accent],
@@ -10000,8 +10000,8 @@ button:hover > .dash-card,
   color: var(--storefront-accent-ink) !important;
 }
 
-/* Temas da vitrine no cabecalho do perfil, com os tokens que ja trocam no
-   escuro (a superficie muda; o tom vem do dourado e do azul da marca). */
+/* Storefront themes in the profile header, with the tokens that already switch in
+   dark (the surface changes; the tone comes from the brand's gold and blue). */
 .creator-profile-header[data-storefront-theme="warm"] {
   background: color-mix(in srgb, var(--color-accent) 14%, var(--color-surface));
 }
@@ -10014,8 +10014,8 @@ button:hover > .dash-card,
   background: var(--color-surface-strong);
 }
 
-/* Bio longa: 3 linhas e "Read more". Aberto o <details>, o texto solta e o
-   botao some. Sem marcador do <summary>, nem no Safari do iPhone. */
+/* Long bio: 3 lines and "Read more". With the <details> open, the text is released and the
+   button goes away. No <summary> marker, not even in iPhone Safari. */
 .creator-bio summary::-webkit-details-marker {
   display: none;
 }
@@ -10072,7 +10072,7 @@ button:hover > .dash-card,
   inset: 0;
   background:
     linear-gradient(180deg, rgba(7, 23, 42, 0.12), rgba(7, 23, 42, 0.72)),
-    /* Canto navy, não o vermelho da marca antiga (hoje o vermelho é cor de erro). */
+    /* Navy corner, not the old brand's red (today red is the error color). */
     linear-gradient(135deg, transparent 0%, transparent 58%, rgba(26, 54, 93, 0.22) 100%);
   pointer-events: none;
 }
@@ -10132,7 +10132,7 @@ button:hover > .dash-card,
   color: var(--color-accent-fg);
 }
 
-/* Tinta escura sobre o dourado: branco ali dá 2,6:1 (ícone pede 3:1). */
+/* Dark ink over the gold: white there gives 2.6:1 (an icon needs 3:1). */
 .marketplace-card__wishlist.is-active {
   background: var(--color-accent);
   color: var(--color-on-accent);
@@ -10153,10 +10153,10 @@ button:hover > .dash-card,
   text-transform: uppercase;
 }
 
-/* Um cartao de curso, tres telas (home, catalogo, vitrine do professor).
-   O titulo saiu do display serifado de 1.9rem: naquele tamanho ele competia
-   com o titulo da propria pagina e um nome longo virava quatro linhas. Agora
-   e Manrope 600 entre 18 e 20px, cortado em duas linhas em qualquer tela. */
+/* One course card, three screens (home, catalog, teacher storefront).
+   The title left the 1.9rem serif display: at that size it competed
+   with the page's own title and a long name became four lines. Now it
+   is Manrope 600 between 18 and 20px, cut to two lines on any screen. */
 .marketplace-card__title {
   display: -webkit-box;
   overflow: hidden;
@@ -10170,10 +10170,10 @@ button:hover > .dash-card,
   -webkit-line-clamp: 2;
 }
 
-/* Link esticado: o <a> mora no titulo (é dele o nome acessível do cartão) e o
-   ::after cobre o cartão inteiro, então clicar em qualquer canto navega. O
-   botão de salvar fica acima pelo z-index e continua clicável — sem <button>
-   aninhado dentro de <a>, que nenhum leitor de tela sabe anunciar. */
+/* Stretched link: the <a> lives in the title (the card's accessible name is its) and the
+   ::after covers the whole card, so clicking any corner navigates. The
+   save button stays above by z-index and remains clickable — with no <button>
+   nested inside <a>, which no screen reader knows how to announce. */
 .marketplace-card__link {
   color: inherit;
   text-decoration: none;
@@ -10301,31 +10301,31 @@ button:hover > .dash-card,
   }
 }
 
-/* ─── iOS: campo de formulário nunca abaixo de 16px no celular ──────────────
-   O Safari do iPhone dá zoom ao focar um campo com fonte menor que 16px, e o
-   zoom NÃO volta sozinho: a pessoa fica com a tela deslocada no meio do login,
-   que é a primeira tela do produto. Cinco regras da casa usavam 0.875rem ou
-   13px em campos (formulário geral, busca da barra lateral, URL do vídeo,
-   campos do modal de aula, busca do catálogo).
+/* ─── iOS: a form field never below 16px on a phone ─────────────────────────
+   iPhone Safari zooms in when focusing a field with a font smaller than 16px, and the
+   zoom does NOT come back on its own: the person is left with the screen shifted in the middle of login,
+   which is the product's first screen. Five house rules used 0.875rem or
+   13px on fields (general form, sidebar search, video URL,
+   lesson modal fields, catalog search).
 
-   O gatilho é o aparelho de toque primário (hover: none + pointer: coarse), e
-   não a largura da tela: o zoom nasce do tamanho da fonte do campo e dispara
-   igual com o iPhone deitado, onde a viewport passa de 900px. A primeira versão
-   desta regra parava em 640px e deixava a tela de login quebrada em paisagem —
-   e o iPhone SE de pé, com 667px, também ficava de fora. O par de condições
-   exclui o notebook de tela sensível ao toque, que tem ponteiro fino e não dá
-   zoom: ali a densidade projetada para o desktop continua valendo.
+   The trigger is the primary touch device (hover: none + pointer: coarse), and
+   not the screen width: the zoom comes from the field's font size and fires
+   the same with the iPhone on its side, where the viewport goes past 900px. The first version
+   of this rule stopped at 640px and left the login screen broken in landscape —
+   and the iPhone SE upright, at 667px, was left out too. The pair of conditions
+   excludes the touch-screen laptop, which has a fine pointer and does not zoom:
+   there the density designed for desktop still applies.
 
-   Sem !important, de propósito. `:not([type=...])` herda a especificidade do
-   argumento, então o seletor abaixo é (0,2,1) e já vence .platform-sidebar-search
-   input, que é (0,1,1) — o comentário anterior errava essa conta. Um !important
-   de folha de estilo ainda atropelaria todo `style={{ fontSize }}` inline da
-   aplicação, e obrigaria o próximo override legítimo a nascer com outro.
-   (Auditoria de produto de 2026-08-30, achado P-11.)
+   No !important, on purpose. `:not([type=...])` inherits the specificity of its
+   argument, so the selector below is (0,2,1) and already beats .platform-sidebar-search
+   input, which is (0,1,1) — the previous comment got that math wrong. A stylesheet
+   !important would still trample every inline `style={{ fontSize }}` in the
+   application, and would force the next legitimate override to be born with another.
+   (Product audit of 2026-08-30, finding P-11.)
 
-   `textarea` e `select` sozinhos são (0,0,1) e perdem para `.field-input`
-   (0,1,0, 14px), que vem antes no arquivo mas tem mais peso: Bio e Fuso do
-   perfil davam zoom. `textarea.field-input` (0,1,1) devolve o piso a eles. */
+   `textarea` and `select` alone are (0,0,1) and lose to `.field-input`
+   (0,1,0, 14px), which comes earlier in the file but weighs more: Bio and Time zone of the
+   profile caused zoom. `textarea.field-input` (0,1,1) gives them the floor back. */
 @media (hover: none) and (pointer: coarse) {
   input:not([type="checkbox"]):not([type="radio"]),
   textarea,
@@ -10336,13 +10336,13 @@ button:hover > .dash-card,
   }
 }
 
-/* ── A barra de abas da sala (reanálise item 9) ─────────────────────────────
-   Substitui a faixa "Lesson tools", cujos botões só rolavam a página. Cada aba
-   é um link de verdade (endereço próprio, entra no histórico). No celular a
-   barra rola na horizontal em vez de quebrar em duas linhas.
-   Cores do CURSO (--ma-*), não da plataforma: a barra só existe dentro de
-   .member-classroom[data-members-theme], e o --color-ink da plataforma dava
-   ~1.3:1 na aba ativa de um curso escuro. ─────────────────────────────────── */
+/* ── The classroom tab bar (reanalysis item 9) ──────────────────────────────
+   Replaces the "Lesson tools" band, whose buttons only scrolled the page. Each tab
+   is a real link (its own address, enters the history). On a phone the bar
+   scrolls horizontally instead of wrapping onto two lines.
+   COURSE colors (--ma-*), not the platform's: the bar only exists inside
+   .member-classroom[data-members-theme], and the platform's --color-ink gave
+   ~1.3:1 on the active tab of a dark course. ─────────────────────────────── */
 @layer components {
   .member-classroom-tabs {
     display: flex;
@@ -10375,9 +10375,9 @@ button:hover > .dash-card,
       border-color var(--duration-base) var(--ease-standard);
   }
 
-  /* Há aba escondida à direita (classroom-tabs.tsx marca data-more): a borda
-     esmaece, sinal de que a barra rola. Sem isso a barra de rolagem oculta
-     fazia "Review" e "About" parecerem não existir. */
+  /* There is a hidden tab on the right (classroom-tabs.tsx sets data-more): the edge
+     fades, a sign that the bar scrolls. Without it the hidden scrollbar
+     made "Review" and "About" look like they did not exist. */
   .member-classroom-tabs[data-more="true"] {
     mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent);
   }
@@ -10408,8 +10408,8 @@ button:hover > .dash-card,
     color: var(--ma-accent-ink);
   }
 
-  /* No celular "Get certificate" ficava no fim da barra que rola, fora da
-     tela. Ele já está na capa do curso e no botão da última aula. */
+  /* On a phone "Get certificate" ended up at the end of the scrolling bar, off the
+     screen. It is already on the course cover and on the last lesson's button. */
   @media (max-width: 767.98px) {
     .member-classroom-tabs > .member-classroom-tabs__action {
       display: none;
@@ -10417,13 +10417,13 @@ button:hover > .dash-card,
   }
 }
 
-/* ── A gaveta da pergunta (mockup 5, 11b) ───────────────────────────────────
-   Desliza da direita (560px) por cima do feed escurecido; no celular sobe como
-   folha inferior. A caixa de resposta fica fixa no rodapé da gaveta.
-   Fundo pelo token de superfície, não #ffffff: o texto segue o tema e, no
-   escuro, ficava quase branco sobre branco. Camada 70, a dos popups: na 60 o
-   menu lateral (65), o assistente (68) e o aviso de cookies (69) passavam por
-   cima da gaveta. ─────────────────────────────────────────────────────────── */
+/* ── The question drawer (mockup 5, 11b) ────────────────────────────────────
+   Slides in from the right (560px) over the darkened feed; on a phone it rises as a
+   bottom sheet. The reply box stays fixed at the drawer's footer.
+   Background by the surface token, not #ffffff: the text follows the theme and, in
+   dark, it was almost white on white. Layer 70, the popups' one: at 60 the
+   side menu (65), the assistant (68) and the cookie notice (69) went over the
+   drawer. ─────────────────────────────────────────────────────────────── */
 @layer components {
   .community-drawer-backdrop {
     position: fixed;
@@ -10473,9 +10473,9 @@ button:hover > .dash-card,
     }
   }
 
-  /* Entrada: o fundo escurece e a gaveta chega 16px da direita (no celular,
-     de baixo), em 180ms. Só opacity e transform; fill backwards, então fora da
-     animação nada fica preso nem invisível. */
+  /* Entrance: the background darkens and the drawer arrives 16px from the right (on a phone,
+     from the bottom), in 180ms. Only opacity and transform; fill backwards, so outside the
+     animation nothing stays stuck or invisible. */
   @media (prefers-reduced-motion: no-preference) {
     .community-drawer-backdrop {
       animation: community-drawer-fade var(--duration-base) var(--ease-standard) backwards;
@@ -10514,21 +10514,21 @@ button:hover > .dash-card,
 }
 
 /* ==========================================================================
-   Onda D: calor. As cenas de gravura (ui/spot-art.tsx) e o catálogo de
-   movimento do estúdio. Regras do catálogo:
-   - só transform e opacity (a barra de progresso é a única que anda em
-     largura);
-   - nada em loop fora o spinner;
-   - retorno de ação até 300ms; festa até 700ms (--duration-celebrate);
-   - TODA animação mora dentro de `no-preference`. O estado padrão já é o
-     final: com "reduzir movimento" nada se mexe e nada some;
-   - fill `backwards`, nunca `both`: terminada a entrada, o elemento fica sem
-     transform preso (um transform "segurado" vira bloco de contenção para
-     qualquer filho `position: fixed`, como um diálogo aberto ali dentro).
+   Wave D: warmth. The engraving scenes (ui/spot-art.tsx) and the studio's
+   motion catalog. Catalog rules:
+   - only transform and opacity (the progress bar is the only one that moves in
+     width);
+   - nothing in a loop except the spinner;
+   - action feedback up to 300ms; celebration up to 700ms (--duration-celebrate);
+   - EVERY animation lives inside `no-preference`. The default state is already the
+     final one: with "reduce motion" nothing moves and nothing disappears;
+   - fill `backwards`, never `both`: once the entrance ends, the element is left with no
+     stuck transform (a "held" transform becomes a containing block for
+     any `position: fixed` child, such as a dialog opened inside it).
    ========================================================================== */
 
-/* Em camada: as utilities de tamanho escritas ao lado (h-20 w-auto no tour,
-   max-w-[6.5rem] no gráfico) precisam vencer este padrão. */
+/* In a layer: the size utilities written next to it (h-20 w-auto in the tour,
+   max-w-[6.5rem] in the chart) must beat this default. */
 @layer components {
   .spot-art {
     display: block;
@@ -10537,14 +10537,14 @@ button:hover > .dash-card,
   }
 }
 
-/* 1,25-1,5px de traço em qualquer tamanho: a cena do tour (80px de altura) e
-   a do painel vazio (128px) desenham a mesma linha. */
+/* 1.25-1.5px stroke at any size: the tour scene (80px tall) and
+   the empty panel one (128px) draw the same line. */
 .spot-art * {
   vector-effect: non-scaling-stroke;
 }
 
-/* Gravura no pé da coluna marinho da tela de criar: o vão de ~450px embaixo
-   dos passos. Some quando a coluna vira faixa (uma coluna só) e no celular. */
+/* Engraving at the foot of the navy column of the create screen: the ~450px gap below
+   the steps. It goes away when the column becomes a band (a single column) and on phone. */
 .create-course-screen__art {
   max-width: 13rem;
   margin-top: 2.5rem;
@@ -10557,16 +10557,16 @@ button:hover > .dash-card,
   }
 }
 
-/* O painel vazio com cena: a gravura ao lado do texto, ou em cima dele no
-   celular. A cena nunca passa de 9rem para não virar o assunto da tela. */
+/* The empty panel with a scene: the engraving beside the text, or above it on
+   a phone. The scene never goes past 9rem so it does not become the subject of the screen. */
 .empty-state__art {
   width: 100%;
   max-width: 9rem;
   flex: 0 0 auto;
 }
 
-/* 4. "Saved": o fundo verde-claro acende e apaga por baixo do texto. É uma
-   camada própria só para animar opacidade, não a cor do chip. */
+/* 4. "Saved": the light green background lights up and fades out under the text. It is its own
+   layer just to animate opacity, not the chip's color. */
 .builder-save-status--saved {
   position: relative;
   isolation: isolate;
@@ -10583,8 +10583,8 @@ button:hover > .dash-card,
   pointer-events: none;
 }
 
-/* 5. A linha do checklist que acabou de ficar pronta acende em latão claro.
-   Latão aqui é conquista, nunca pendência. */
+/* 5. The checklist row that just became ready lights up in light brass.
+   Brass here is an achievement, never a pending item. */
 .is-just-done {
   position: relative;
   isolation: isolate;
@@ -10601,23 +10601,23 @@ button:hover > .dash-card,
   pointer-events: none;
 }
 
-/* 7. A faixa "Rascunho salvo. Próximo: ..." depois de criar. Fixa no rodapé,
-   acima da barra do celular; nunca cobre o botão principal por mais de 4s. */
+/* 7. The "Draft saved. Next: ..." band after creating. Fixed at the footer,
+   above the phone bar; never covers the main button for more than 4s. */
 .created-strip {
   position: fixed;
   right: max(1rem, env(safe-area-inset-right, 0px));
   bottom: max(1rem, env(safe-area-inset-bottom, 0px));
   left: max(1rem, env(safe-area-inset-left, 0px));
-  /* Status: em 60 passava por baixo do menu lateral (65); acima dele, mas
-     abaixo do menu de categoria do celular (67) e do Advisor (68). */
+  /* Status: at 60 it passed under the side menu (65); above it, but
+     below the phone category menu (67) and the Advisor (68). */
   z-index: var(--z-status);
   display: flex;
   align-items: center;
   gap: 0.75rem;
   max-width: 34rem;
   margin-inline: auto;
-  /* Marinho e latao a 40% fixos nos dois temas (o --color-primary-dark vira
-     branco no escuro). Literal, sem color-mix: nao gera regra de reserva. */
+  /* Navy and brass at a fixed 40% in both themes (--color-primary-dark turns
+     white in dark). Literal, without color-mix: it generates no fallback rule. */
   border: 1px solid rgba(201, 154, 70, 0.4);
   border-radius: var(--radius-lg);
   background: #091d2f;
@@ -10627,9 +10627,9 @@ button:hover > .dash-card,
   --focus-ring: var(--color-accent);
 }
 
-/* 8. O painel "Publicado!": cena, frase e o botão latão. Sem borda própria:
-   ele já mora dentro do cartão de publicar e leva a caixa do link dentro de
-   si; uma terceira moldura viraria caixa dentro de caixa. */
+/* 8. The "Published!" panel: scene, sentence and the brass button. No border of its own:
+   it already lives inside the publish card and carries the link box inside
+   itself; a third frame would become a box inside a box. */
 .published-panel {
   border-radius: var(--radius-lg);
   background: var(--color-surface-soft);
@@ -10641,26 +10641,26 @@ button:hover > .dash-card,
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  /* 1. Troca de etapa: o painel novo sobe 8px e acende; a saída é seca. É a
-     entrada compartilhada: etapa do construtor e da criação de curso, troca
-     de aba da sala, lista de aulas, os dois tours de boas-vindas, o menu de
-     ajuda, a ajuda da tela, a gaveta do celular e o Advisor no celular.
-     Todas no tempo da casa (eram 200ms soltos). */
+  /* 1. Step change: the new panel rises 8px and lights up; the exit is abrupt. It is the
+     shared entrance: builder and course creation step, classroom
+     tab switch, lesson list, the two welcome tours, the help
+     menu, the screen help, the phone drawer and the Advisor on phone.
+     All in the house timing (they were loose 200ms). */
   .motion-panel-in {
     animation: motion-panel-in var(--duration-base) var(--ease-standard) backwards;
   }
 
-  /* 2. Escolher uma opção: o selo latão cresce de 0,6 para 1 (formato na tela
-     de criar; "Como as pessoas vão pagar?" no construtor). As cores do cartão
-     seguem na transição de 120-180ms que ele já tem. */
+  /* 2. Choosing an option: the brass badge grows from 0.6 to 1 (format on the
+     create screen; "How will people pay?" in the builder). The card's colors
+     stay on the 120-180ms transition it already has. */
   .create-course-payment__selected,
   .motion-select {
     animation: motion-grow var(--duration-base) var(--ease-pop) backwards;
   }
 
-  /* 4. Salvando -> Salvo: entra em 160ms, o verde segura 1,5s e apaga em 200ms.
-     `motion-rise-in` é a entrada de qualquer retorno curto: o chip, o aviso
-     de sucesso ("Draft saved."). */
+  /* 4. Saving -> Saved: it comes in at 160ms, the green holds for 1.5s and fades in 200ms.
+     `motion-rise-in` is the entrance of any short feedback: the chip, the success
+     notice ("Draft saved."). */
   .motion-rise-in {
     animation: motion-rise-in 160ms var(--ease-standard) backwards;
   }
@@ -10669,9 +10669,9 @@ button:hover > .dash-card,
     animation: motion-save-flash 1860ms linear backwards;
   }
 
-  /* 5. O check se desenha (pathLength=1 no SVG); a linha pisca e apaga. A
-     classe só entra no item que ACABOU de ficar pronto (ui/drawn-check.tsx,
-     useJustDone): abrir a tela com tudo pronto não redesenha nada. */
+  /* 5. The check draws itself (pathLength=1 on the SVG); the line flashes and fades. The
+     class only goes on the item that JUST became ready (ui/drawn-check.tsx,
+     useJustDone): opening the screen with everything ready redraws nothing. */
   .drawn-check path {
     stroke-dasharray: 1;
     animation: motion-check-draw 240ms var(--ease-standard) backwards;
@@ -10681,19 +10681,19 @@ button:hover > .dash-card,
     animation: motion-flash var(--duration-celebrate) ease-out backwards;
   }
 
-  /* 6. O selo de marco quando a barra chega em 100% (de novo: só na
-     chegada, não a cada carga). */
+  /* 6. The milestone badge when the bar reaches 100% (again: only on
+     arrival, not on every load). */
   .milestone-seal {
     animation: motion-pop var(--duration-base) var(--ease-pop) backwards;
   }
 
-  /* 7. A faixa de marco entra subindo. */
+  /* 7. The milestone band comes in rising. */
   .created-strip {
     animation: motion-rise-in 240ms var(--ease-standard) backwards;
   }
 
-  /* 8. Publicado: o selo carimba (1,15 -> 1, -6deg -> 0), a gravura acende
-     logo depois e os três losangos aparecem uma vez. Tudo acaba em 700ms. */
+  /* 8. Published: the badge stamps (1.15 -> 1, -6deg -> 0), the engraving lights up
+     right after and the three diamonds appear once. All ends in 700ms. */
   .published-panel.is-celebrating .spot-art__seal,
   .published-panel.is-celebrating .spot-art__spark path {
     transform-box: fill-box;
@@ -10724,39 +10724,39 @@ button:hover > .dash-card,
     animation-delay: 420ms;
   }
 
-  /* 10. A cena do estado vazio entra subindo, no mesmo desenho do painel
-     (um keyframe a menos no CSS de todo mundo). */
+  /* 10. The empty state scene comes in rising, with the same design as the panel
+     (one less keyframe in everyone's CSS). */
   .spot-art-in {
     animation: motion-panel-in var(--duration-slow) var(--ease-standard) backwards;
   }
 
-  /* 11. Menu que abre de um botão (Compartilhar): cai 6px e acende. O menu
-     da conta entra igual: tinha curva e 180ms próprios, e animava mesmo com
-     "reduzir movimento" ligado. */
+  /* 11. A menu that opens from a button (Share): it drops 6px and lights up. The
+     account menu comes in the same way: it had its own curve and 180ms, and animated even with
+     "reduce motion" on. */
   .account-menu-panel,
   .motion-drop-in {
     animation: dropdown-in var(--duration-fast) var(--ease-standard) backwards;
   }
 
-  /* 12. Lista que chega dos dados (cartões da Home, linhas de produtos): os
-     itens sobem em escada, 40ms cada, e do 6º em diante juntos, para a
-     entrada inteira caber em 400ms. Só transform: o item está pintado desde
-     o 1º quadro, então a capa de um cartão conta para o LCP na hora certa. */
+  /* 12. A list that arrives from data (Home cards, product rows): the
+     items rise in a staircase, 40ms each, and from the 6th on together, so the
+     whole entrance fits in 400ms. Only transform: the item is painted from
+     the 1st frame, so a card's cover counts for LCP at the right time. */
   .motion-stagger > * {
     animation: motion-lift 200ms var(--ease-standard) backwards;
     animation-delay: calc(min(var(--i, 0), 5) * 40ms);
   }
 
-  /* 13. Cartao de produto do estudio: sobe 2px no hover, junto da sombra que
-     ele ja tinha (a `transition` do cartao ja inclui transform). */
+  /* 13. Studio product card: it rises 2px on hover, together with the shadow
+     it already had (the card's `transition` already includes transform). */
   .motion-hover-lift:hover {
     transform: translateY(-2px);
   }
 
-  /* 14. Menu lateral (onda E). A largura troca na hora: animar a coluna
-     refaria o layout da página inteira a cada quadro. Ao abrir, os nomes
-     acendem; recolhida, a dica acende no hover/foco; o ☰ vira seta. Tudo
-     em 180ms, só opacity e transform. */
+  /* 14. Side menu (wave E). The width changes instantly: animating the column
+     would redo the layout of the whole page on every frame. When opening, the names
+     light up; collapsed, the tooltip lights up on hover/focus; the ☰ turns into an arrow. All
+     in 180ms, only opacity and transform. */
   .platform-sidebar-label {
     transition: opacity var(--duration-base) var(--ease-standard);
   }
@@ -10852,11 +10852,11 @@ button:hover > .dash-card,
   }
 }
 
-/* ── Carregamento: envio de arquivo sem porcentagem (F-20) ─────────────────
-   O Storage não informa o andamento; um trecho de 30% desliza pelo trilho
-   para a espera não parecer travada. Parado, um trecho parcial se leria como
-   "30% feito": com "reduzir movimento" o trilho fica inteiro preenchido e
-   apagado, sem número nenhum. Só transform (regra do catálogo de movimento). */
+/* ── Loading: file upload without a percentage (F-20) ──────────────────────
+   Storage does not report progress; a 30% stretch slides along the track
+   so the wait does not look stuck. Still, a partial stretch would read as
+   "30% done": with "reduce motion" the track stays fully filled
+   and dimmed, with no number at all. Only transform (motion catalog rule). */
 .upload-indeterminate-fill {
   width: 100%;
   opacity: 0.35;
@@ -10880,13 +10880,13 @@ button:hover > .dash-card,
   }
 }
 
-/* ── Barra nativa de envio da aula (F-09) ──────────────────────────────────
-   O <progress> do envio da aula e o do aviso flutuante eram a barra do
-   navegador (cinza, com cara diferente em cada um). Com porcentagem, os mesmos
-   tokens da ProgressBar compartilhada: 6px, trilho --color-line, preenchimento
-   no latão de texto. Sem porcentagem ([value] ausente) fica a barra nativa
-   indeterminada, que já se mexe sozinha: pintada à mão ela pararia e se leria
-   como "travou". O accent-color dá a ela o mesmo latão onde o navegador deixa. */
+/* ── Native lesson upload bar (F-09) ───────────────────────────────────────
+   The lesson upload <progress> and the floating notice's one were the browser's
+   bar (gray, looking different in each). With a percentage, the same tokens as the shared
+   ProgressBar: 6px, --color-line track, fill in the
+   text brass. Without a percentage ([value] absent) the native indeterminate
+   bar stays, which already moves on its own: painted by hand it would stop and read
+   as "stuck". The accent-color gives it the same brass where the browser allows. */
 @layer components {
   .upload-progress {
     display: block;

@@ -1,15 +1,15 @@
 \set ON_ERROR_STOP on
--- Banco descartável apenas. Nada fica: tudo volta no ROLLBACK.
+-- Disposable database only. Nothing stays: everything goes back on ROLLBACK.
 --
--- Preços novos + teste grátis (20261006040000_precos_novos_teste_gratis.sql):
---   - comissão: free 1000, basic 1000, starter 490, pro 0 e plus (Enterprise) 0 (eram 290 e 190; 20261113010000);
---   - basic sem destaque nem domínio (cai no else);
---   - orders.platform_fee_fixed_minor existe, com default 0;
---   - pro com os destaques e domínios do Plus (5 e 5); landing segue 20;
---   - os pinos de search_path continuam lá depois do create or replace;
---   - subscriptions.trial_end existe;
---   - creator_plan_trials: uma linha por conta, RLS ligada e forçada, e
---     anon/authenticated não leem nem escrevem.
+-- New prices + free trial (20261006040000_precos_novos_teste_gratis.sql):
+--   - commission: free 1000, basic 1000, starter 490, pro 0 and plus (Enterprise) 0 (they were 290 and 190; 20261113010000);
+--   - basic without highlights or domain (falls into the else);
+--   - orders.platform_fee_fixed_minor exists, with default 0;
+--   - pro with Plus's highlights and domains (5 and 5); landing stays 20;
+--   - the search_path pins are still there after the create or replace;
+--   - subscriptions.trial_end exists;
+--   - creator_plan_trials: one row per account, RLS enabled and forced, and
+--     anon/authenticated neither read nor write.
 begin;
 
 create or replace function pg_temp.assert_true(p_condition boolean, p_message text)

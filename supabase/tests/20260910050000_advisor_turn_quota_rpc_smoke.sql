@@ -1,11 +1,11 @@
 \set ON_ERROR_STOP on
--- Banco descartavel de teste: tudo nasce e morre nesta transacao (ROLLBACK).
+-- Disposable test database: everything is born and dies in this transaction (ROLLBACK).
 --
--- Sofria: advisor_conversations e advisor_messages aceitavam INSERT direto de
--- `authenticated`, entao qualquer conta logada gravava historico do Advisor
--- pelo PostgREST sem a cota de 30/h e 120/dia da rota. Agora a unica porta e
--- save_advisor_turn. Sem a migration 20260910050000 este arquivo fica
--- vermelho: os checks de privilegio falham e a funcao nao existe.
+-- The bug: advisor_conversations and advisor_messages accepted a direct INSERT from
+-- `authenticated`, so any logged-in account could write Advisor history
+-- through PostgREST without the route's quota of 30/h and 120/day. Now the only door is
+-- save_advisor_turn. Without migration 20260910050000 this file turns
+-- red: the privilege checks fail and the function does not exist.
 BEGIN;
 CREATE TEMP TABLE advisor_checks (name text, passed boolean);
 GRANT INSERT, SELECT ON advisor_checks TO authenticated;
@@ -19,7 +19,7 @@ BEGIN
   PERFORM set_config('request.jwt.claims',
     jsonb_build_object('sub', p_uid, 'role', p_role, 'aal', p_aal)::text, true);
 END $$;
--- SQLSTATE e mensagem do erro, ou 'ok'. Desfaz ate o comando que passou.
+-- SQLSTATE and error message, or 'ok'. Rolls back up to the command that passed.
 CREATE FUNCTION pg_temp.outcome(p_sql text) RETURNS text LANGUAGE plpgsql AS $$
 BEGIN
   EXECUTE p_sql;
@@ -45,7 +45,7 @@ INSERT INTO auth.mfa_factors (id, user_id, factor_type, status, created_at, upda
 VALUES (gen_random_uuid(), :'mfa_uid', 'totp', 'verified', now(), now());
 
 -- ---------------------------------------------------------------------------
--- 1. Catalogo: o INSERT direto saiu dos papeis da API; anon nao chama a RPC.
+-- 1. Catalog: the direct INSERT left the API roles; anon cannot call the RPC.
 -- ---------------------------------------------------------------------------
 SELECT pg_temp.check_advisor('authenticated has no direct INSERT on advisor_conversations',
   NOT has_table_privilege('authenticated', 'public.advisor_conversations', 'INSERT'));
@@ -59,7 +59,7 @@ SELECT pg_temp.check_advisor('anon cannot call save_advisor_turn',
   AND NOT has_function_privilege('anon', 'public.save_advisor_turn(uuid,text,text,text)', 'EXECUTE'));
 
 -- ---------------------------------------------------------------------------
--- 2. O professor dono: grava pela RPC, nao pela tabela, e esbarra na cota.
+-- 2. The owner teacher: writes through the RPC, not the table, and hits the quota.
 -- ---------------------------------------------------------------------------
 SELECT pg_temp.assume_session(:'teacher_uid', 'authenticated');
 SET LOCAL ROLE authenticated;
@@ -82,7 +82,7 @@ SELECT pg_temp.check_advisor('direct INSERT of a message into an own thread is r
 SELECT pg_temp.check_advisor('continuing a thread keeps its id',
   public.save_advisor_turn(:'conv', NULL, 'And the description?', 'Lead with the outcome.') = :'conv'::uuid);
 
--- Dois turnos gastos acima; a rajada completa 30 dentro da mesma hora.
+-- Two turns were spent above; the burst completes 30 within the same hour.
 DO $$
 BEGIN
   FOR i IN 3..30 LOOP
@@ -93,7 +93,7 @@ SELECT pg_temp.check_advisor('the 31st turn inside the hour is refused by the qu
   pg_temp.outcome($q$SELECT public.save_advisor_turn(NULL, NULL, 'q', 'a')$q$) = 'P0001 RATE_LIMIT');
 
 -- ---------------------------------------------------------------------------
--- 3. Quem nao pode gravar: outro professor, conta sem papel, sessao fraca.
+-- 3. Who cannot write: another teacher, an account with no role, a weak session.
 -- ---------------------------------------------------------------------------
 RESET ROLE;
 SELECT pg_temp.assume_session(:'other_uid', 'authenticated');
@@ -120,7 +120,7 @@ SELECT pg_temp.check_advisor('the same account with aal2 stores the turn',
   pg_temp.outcome($q$SELECT public.save_advisor_turn(NULL, NULL, 'q', 'a')$q$) = 'ok');
 
 -- ---------------------------------------------------------------------------
--- 4. Os dois baldes da cota (hora e dia) foram gastos a cada turno gravado.
+-- 4. Both quota buckets (hour and day) were spent on every turn written.
 -- ---------------------------------------------------------------------------
 RESET ROLE;
 SELECT pg_temp.check_advisor('each stored turn spends both the hourly and the daily budget',

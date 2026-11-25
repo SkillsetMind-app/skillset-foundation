@@ -1,25 +1,29 @@
 name: Porteiro de PR
 
-# Lê o diff de cada PR e pergunta ao GLM-5: "isto abre alguma porta?".
-# Não substitui o Semgrep (padrão conhecido); pega a lógica errada — a classe
-# de bug que produziu a moeda sem validação e o base sem head.
+# Reads the diff of each PR and asks GLM-5: "does this open any door?".
+# It does not replace Semgrep (known patterns); it catches wrong logic — the
+# class of bug that produced the currency without validation and the base
+# without head.
 #
-# Regras que este arquivo obedece:
-#   - Job separado dos existentes: o build do `checks` estoura memória de
-#     forma intermitente e não pode esconder o veredito — nem o contrário.
-#   - Repo PÚBLICO: o comentário no PR e o log trazem SÓ O PLACAR. O detalhe
-#     vai para o canal privado (webhook ops-alert do n8n -> Telegram).
-#   - Sem chave => "NÃO ANALISADO" e o check FALHA. Não repetir o `exit 0` que
-#     deixou o check de RLS verde por dois meses sem rodar.
-#   - PR de fork não recebe secret => cai no caso acima. Não usar
-#     pull_request_target com checkout do fork para contornar: é execução de
-#     código não confiável com os secrets do repo na mão.
-#   - Dependabot também não recebe os secrets do repo; um bump de lockfile não
-#     é o que este portão existe para ler, e o `npm audit` já cobre. Fica fora.
+# Rules this file follows:
+#   - A job separate from the existing ones: the `checks` build runs out of
+#     memory intermittently and must not hide the verdict — nor the reverse.
+#   - PUBLIC repo: the PR comment and the log carry ONLY THE SCOREBOARD. The
+#     detail goes to the private channel (n8n ops-alert webhook -> Telegram).
+#   - No key => "NÃO ANALISADO" (NOT ANALYZED) and the check FAILS. Do not
+#     repeat the `exit 0` that left the RLS check green for two months without
+#     running.
+#   - A fork PR gets no secret => it falls into the case above. Do not use
+#     pull_request_target with a checkout of the fork to get around it: that
+#     is running untrusted code with the repo secrets in hand.
+#   - Dependabot does not get the repo secrets either; a lockfile bump is not
+#     what this gate exists to read, and `npm audit` already covers it. It
+#     stays out.
 #
-# Modo: variável do repositório PORTEIRO_MODO = avisa (padrão) | barra.
-# Em "barra", achado bloqueante derruba o check. Começa em "avisa" até o
-# analisador passar por teste adversarial (instrução plantada no diff).
+# Mode: repository variable PORTEIRO_MODO, values: avisa (= warn, the default)
+# or barra (= block). In "barra", a blocking finding fails the check. It
+# starts in "avisa" until the analyzer passes an adversarial test (an
+# instruction planted in the diff).
 
 on:
   pull_request:
@@ -38,7 +42,7 @@ jobs:
     name: Porteiro de PR (segurança, GLM-5)
     if: github.event.pull_request.draft == false && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
-    # 30: cada reserva de raciocínio leva ~1 min por tentativa (até 3 tetos).
+    # 30: each reasoning reserve takes ~1 min per attempt (up to 3 caps).
     timeout-minutes: 30
 
     steps:
@@ -46,20 +50,21 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Diff da base até a ponta do PR, SEM pathspec de exclusão: um
-      # ':(exclude)*.png' também some com a pasta src/app/api/x.png/. Imagem e
-      # fonte binárias saem no script (último segmento do caminho, todos os
-      # nomes do bloco, binário de verdade); lockfile é caminho de risco e é lido.
-      # --text --no-textconv --no-ext-diff: nem `* -diff` no .gitattributes nem
-      # um byte NUL escondem o código atrás de "Binary files ... differ" (o que
-      # sobrar assim dá 3 no script).
-      # core.quotePath=false: caminho não-ASCII sai cru no cabeçalho. Aspas,
-      # barra invertida e controle continuam entre aspas; o script lê as duas
-      # formas e dá 3 (não 0) se sobrar cabeçalho que não reconhece.
-      # pr.names: o que o PR toca, segundo o git; arquivo que não vier no diff
-      # dá PARCIAL (3), nunca 0. Um comando por linha: o teste roda os dois.
-      # --no-renames: `git mv src/proxy.ts src/proxy.png` vira apagar + criar,
-      # e o modelo lê o código apagado (rename 100% não traz conteúdo nenhum).
+      # Diff from the base to the PR tip, WITHOUT an exclusion pathspec: an
+      # ':(exclude)*.png' also drops the folder src/app/api/x.png/. Binary
+      # images and fonts are skipped in the script (last path segment, every
+      # name in the block, truly binary); a lockfile is a risk path and is read.
+      # --text --no-textconv --no-ext-diff: neither `* -diff` in .gitattributes
+      # nor a NUL byte hides code behind "Binary files ... differ" (whatever is
+      # left that way gives 3 in the script).
+      # core.quotePath=false: a non-ASCII path comes out raw in the header.
+      # Quotes, backslash and control characters stay quoted; the script reads
+      # both forms and gives 3 (not 0) if a header it does not recognize is left.
+      # pr.names: what the PR touches, according to git; a file that does not
+      # show up in the diff gives PARTIAL (3), never 0. One command per line:
+      # the test runs both.
+      # --no-renames: `git mv src/proxy.ts src/proxy.png` becomes delete + create,
+      # and the model reads the deleted code (a 100% rename carries no content).
       - name: Diff do PR
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
@@ -70,28 +75,32 @@ jobs:
           git -c core.quotePath=false diff --name-only -z --no-renames "$BASE...$HEAD" > "$RUNNER_TEMP/pr.names"
           echo "diff: $(wc -c < "$RUNNER_TEMP/pr.diff") bytes"
 
-      # Quem julga o PR é o portão do BRANCH PADRÃO, nunca a cópia do PR nem a
-      # da base. `pull_request` faz checkout do merge do PR, e este job recebe os
-      # secrets: rodar `scripts/porteiro.py` do checkout é executar código do PR
-      # com as chaves na mão. PR de fork não recebe secret, mas PR interno recebe
-      # — e um agente com acesso de escrita abre PR interno.
-      # A base também não serve: quem abre o PR escolhe o branch base, e poderia
-      # apontar para um branch próprio com um portão falso. E base antiga (sem o
-      # arquivo, ou de antes do --nomes) deixava o PR vermelho sem análise.
-      # O nome do branch padrão vem dos metadados do repositório, que o PR não
-      # controla. O fetch nomeado garante a ref (nunca FETCH_HEAD), e a leitura usa
-      # o NOME COMPLETO refs/remotes/origin/...: com fetch-depth 0 o checkout baixa
-      # todas as tags, e uma tag "origin/main" venceria o nome curto "origin/main"
-      # (o git só avisa "ambiguous") — trocando o portão de todos os PRs.
-      # `cat-file blob`, não `show`: é o comando de encanamento cuja saída é o
-      # blob cru, sem textconv, filtro ou conversão de fim de linha (isso só com
-      # --filters/--textconv, que não usamos). O .gitattributes do PR não tem
-      # como mexer nos bytes do portão que vai julgá-lo.
-      # `git fetch` ou `git cat-file` falham => o passo falha => check vermelho.
-      # SEM timeout-minutes de propósito: test_E toma o MENOR timeout-minutes do
-      # arquivo como teto da cadeia. E o destino não pode ser "$RUNNER_TEMP/pr.*":
-      # comandos_do_workflow() casa esse padrão para rodar o diff de verdade.
-      # Não fecha sozinho o furo: este arquivo ainda é a cópia do PR.
+      # The gate of the DEFAULT BRANCH judges the PR, never the PR's copy nor
+      # the base's. `pull_request` checks out the PR merge, and this job gets the
+      # secrets: running `scripts/porteiro.py` from the checkout means running PR
+      # code with the keys in hand. A fork PR gets no secret, but an internal PR
+      # does — and an agent with write access opens internal PRs.
+      # The base will not do either: whoever opens the PR picks the base branch,
+      # and could point it at their own branch with a fake gate. And an old base
+      # (without the file, or from before --nomes) left the PR red with no
+      # analysis.
+      # The default branch name comes from the repository metadata, which the PR
+      # does not control. The named fetch guarantees the ref (never FETCH_HEAD),
+      # and the read uses the FULL NAME refs/remotes/origin/...: with fetch-depth
+      # 0 the checkout downloads all tags, and a tag "origin/main" would beat the
+      # short name "origin/main" (git only warns "ambiguous") — swapping the gate
+      # for every PR.
+      # `cat-file blob`, not `show`: it is the plumbing command whose output is
+      # the raw blob, with no textconv, filter or line-ending conversion (that
+      # only happens with --filters/--textconv, which we do not use). The PR's
+      # .gitattributes has no way to touch the bytes of the gate that will judge
+      # it.
+      # `git fetch` or `git cat-file` fail => the step fails => red check.
+      # NO timeout-minutes on purpose: test_E takes the SMALLEST timeout-minutes
+      # in the file as the cap of the chain. And the destination cannot be
+      # "$RUNNER_TEMP/pr.*": comandos_do_workflow() matches that pattern to run
+      # the real diff.
+      # It does not close the hole by itself: this file is still the PR's copy.
       - name: Extrai o portão do branch padrão
         env:
           PADRAO: ${{ github.event.repository.default_branch }}
@@ -102,16 +111,17 @@ jobs:
           git cat-file blob "refs/remotes/origin/$PADRAO:scripts/porteiro.py" > "$RUNNER_TEMP/portao-do-padrao/porteiro.py"
           echo "portão de origin/$PADRAO ($(git rev-parse --short "refs/remotes/origin/$PADRAO")): $(wc -c < "$RUNNER_TEMP/portao-do-padrao/porteiro.py") bytes"
 
-      # continue-on-error: o placar precisa ser publicado mesmo quando o
-      # veredito é "não analisado" ou "bloqueante". O passo final replica a falha.
-      # Cadeia de reserva: sem veredito do GLM (sem saldo, chave recusada,
-      # API fora), tenta Kimi k3 -> Kimi k2.6 -> OpenAI. Secret que não existe
-      # chega vazio e o provedor é pulado. vars.PORTEIRO_CADEIA muda ordem/modelos.
+      # continue-on-error: the scoreboard must be published even when the
+      # verdict is "not analyzed" or "blocking". The final step replays the failure.
+      # Fallback chain: with no verdict from GLM (no balance, key refused, API
+      # down), it tries Kimi k3 -> Kimi k2.6 -> OpenAI. A secret that does not
+      # exist arrives empty and the provider is skipped. vars.PORTEIRO_CADEIA
+      # changes the order/models.
       - name: Analisa com o GLM-5 (e reservas)
         id: analisa
         continue-on-error: true
-        # A cadeia para sozinha em PRAZO_TOTAL (25 min, scripts/porteiro.py);
-        # 27 garante que o placar ainda seja publicado dentro dos 30 do job.
+        # The chain stops by itself at PRAZO_TOTAL (25 min, scripts/porteiro.py);
+        # 27 guarantees the scoreboard is still published within the job's 30.
         timeout-minutes: 27
         env:
           GLM_API_KEY: ${{ secrets.GLM_API_KEY }}
@@ -122,16 +132,16 @@ jobs:
           OPS_ALERT_WEBHOOK_SECRET: ${{ secrets.OPS_ALERT_WEBHOOK_SECRET }}
           PORTEIRO_MODO: ${{ vars.PORTEIRO_MODO || 'avisa' }}
           PORTEIRO_MODELO: ${{ vars.PORTEIRO_MODELO || 'glm-5' }}
-          # Pacotes de cobranca incluem testes extensos: ler o diff inteiro.
-          # Acima deste teto continua PARCIAL e falha, sem dispensar arquivos.
+          # Billing packages include extensive tests: read the whole diff.
+          # Above this cap it stays PARTIAL and fails, without dismissing files.
           PORTEIRO_MAX_DIFF_KB: "512"
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_URL: ${{ github.event.pull_request.html_url }}
           REPO: ${{ github.repository }}
         run: python3 "$RUNNER_TEMP/portao-do-padrao/porteiro.py" --diff "$RUNNER_TEMP/pr.diff" --nomes "$RUNNER_TEMP/pr.names" --placar "$RUNNER_TEMP/placar.md"
 
-      # Um comentário só por PR, atualizado a cada push (--edit-last edita o
-      # último comentário do próprio bot; se não existe, cria).
+      # Only one comment per PR, updated on every push (--edit-last edits the
+      # bot's own last comment; if there is none, it creates one).
       - name: Publica o placar no PR
         if: always()
         env:

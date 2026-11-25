@@ -35,11 +35,11 @@ describe("os rotulos da barra lateral", () => {
   // 240ms e o rotulo esperava 180ms para nao correr por cima dela.
   it("fora de no-preference o rotulo nao anima; dentro, so a opacidade, em 180ms", () => {
     expect(block(".platform-sidebar-label")).not.toContain("transition");
-    const motion = css.slice(css.indexOf("/* 14. Menu lateral (onda E)."));
+    const motion = css.slice(css.indexOf("/* 14. Side menu (wave E)."));
     expect(motion.slice(0, 600)).toMatch(
       /\.platform-sidebar-label \{\s*transition: opacity var\(--duration-base\) var\(--ease-standard\);/,
     );
-    const opener = css.lastIndexOf("@media (prefers-reduced-motion: no-preference) {", css.indexOf("/* 14. Menu lateral"));
+    const opener = css.lastIndexOf("@media (prefers-reduced-motion: no-preference) {", css.indexOf("/* 14. Side menu"));
     expect(opener).toBeGreaterThan(-1);
   });
 

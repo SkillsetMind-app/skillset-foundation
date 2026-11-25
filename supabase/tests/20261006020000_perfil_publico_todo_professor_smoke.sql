@@ -1,20 +1,20 @@
 \set ON_ERROR_STOP on
--- Banco descartável apenas. Fixtures voltam no ROLLBACK.
+-- Disposable database only. Fixtures go back on ROLLBACK.
 --
--- Todo professor ganha perfil público
+-- Every teacher gets a public profile
 -- (20261006020000_perfil_publico_todo_professor.sql):
---   - professor com o cadastro completo e sem verificação aparece, sem o selo;
---   - professor sem o cadastro completo não aparece; aceitar os termos depois
---     publica; aluno que aceitou os termos não aparece;
---   - suspender ou bloquear pela RPC de admin tira do ar, restaurar devolve, e
---     escrever em users não traz um suspenso de volta;
---   - aprovado com caso aprovado continua com o selo;
---   - conta de teste (example.com, *.test...) nunca aparece;
---   - updated_at (ordem do diretório) só anda com mudança visível: pedido
---     pendente, aprovação, novo aceite dos termos e reescrita de papéis não
---     mexem nele;
---   - anon lê o perfil e continua sem ler nada privado, e ninguém de fora
---     (nem a service role) chama as funções da projeção.
+--   - a teacher with a complete signup and no verification appears, without the badge;
+--   - a teacher without a complete signup does not appear; accepting the terms later
+--     publishes; a learner who accepted the terms does not appear;
+--   - suspending or blocking through the admin RPC takes it offline, restoring brings it back, and
+--     writing to users does not bring a suspended one back;
+--   - approved with an approved case keeps the badge;
+--   - a test account (example.com, *.test...) never appears;
+--   - updated_at (directory order) only moves with a visible change: a pending
+--     request, an approval, a new acceptance of the terms and a rewrite of roles do not
+--     touch it;
+--   - anon reads the profile and still reads nothing private, and nobody outside
+--     (not even the service role) calls the projection functions.
 begin;
 create temp table profile_checks (name text, passed boolean);
 grant insert, select on profile_checks to anon, authenticated;
@@ -46,7 +46,7 @@ create function pg_temp.account(n int, p_action text) returns boolean language s
   select (public.admin_set_account_control(pg_temp.uid(n)::text, p_action,
     'Synthetic public profile check')->>'suspended')::boolean = (p_action <> 'restore');
 $$;
--- Número de linhas que a consulta devolveu, ou -1 se ela foi recusada.
+-- Number of rows the query returned, or -1 if it was refused.
 create function pg_temp.rows_or_denied(p_sql text) returns int language plpgsql as $$
 declare n int;
 begin
@@ -55,7 +55,7 @@ begin
 exception when insufficient_privilege then
   return -1;
 end $$;
--- true só quando o banco recusou a escrita por privilégio.
+-- true only when the database refused the write for privilege.
 create function pg_temp.write_denied(p_sql text) returns boolean language plpgsql as $$
 begin
   execute p_sql;
@@ -64,12 +64,12 @@ exception when insufficient_privilege then
   return true;
 end $$;
 
--- 1 professor sem verificação · 2 professor sem os termos · 3 psicólogo aprovado
--- 4 professor com pedido pendente · 5 professor que será suspenso · 6 admin
--- 7 aluno que aceitou os termos · 8 conta suspensa que vira professor depois
--- 9 professor para a ordem do diretório · 10 e 11 contas internas de teste
--- Os reais usam um domínio nosso, fora dos reservados: conta em domínio de
--- teste nunca ganha perfil público.
+-- 1 teacher without verification · 2 teacher without the terms · 3 approved psychologist
+-- 4 teacher with a pending request · 5 teacher who will be suspended · 6 admin
+-- 7 learner who accepted the terms · 8 suspended account that becomes a teacher later
+-- 9 teacher for the directory order · 10 and 11 internal test accounts
+-- The real ones use a domain of ours, outside the reserved ones: an account on a test
+-- domain never gets a public profile.
 select pg_temp.service();
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 select pg_temp.uid(n), 'authenticated', 'authenticated',
@@ -85,8 +85,8 @@ update public.users set roles = '["student","teacher"]', display_name = 'Perfil 
 update public.users set roles = '["student"]', teacher_terms_accepted_at = now(), teacher_terms_version = 'smoke'
   where uid = pg_temp.uid(7)::text;
 update public.users set roles = '["student","admin"]' where uid = pg_temp.uid(6)::text;
--- Marcador privado: se aparecer na linha pública, vazou. (users_phone_format
--- exige E.164.)
+-- Private marker: if it shows up in the public row, it leaked. (users_phone_format
+-- requires E.164.)
 update public.users set phone_number = '+15550100777'
   where uid in (pg_temp.uid(1)::text, pg_temp.uid(2)::text, pg_temp.uid(3)::text);
 
@@ -123,9 +123,9 @@ select pg_temp.check_profile('real domains are not mistaken for test domains',
     'a@examples.org', 'a@localhost.com', 'example.com@gmail.com']) e)
   and not public.is_reserved_test_email(null) and not public.is_reserved_test_email(''));
 
--- updated_at é a ordem do diretório: só anda quando muda o que o visitante vê.
--- Data antiga primeiro: dentro da transação now() é constante, e comparar com o
--- valor de agora passaria mesmo com o bump.
+-- updated_at is the directory order: it only moves when what the visitor sees changes.
+-- Old date first: inside the transaction now() is constant, and comparing with the
+-- value of now would pass even with the bump.
 update public.public_profiles set updated_at = '2020-01-01 00:00:00+00' where uid = pg_temp.uid(9)::text;
 update public.users set creator_verification_status = 'pending' where uid = pg_temp.uid(9)::text;
 select pg_temp.check_profile('a pending request keeps updated_at', pg_temp.at(9) = '2020-01-01 00:00:00+00');
@@ -145,17 +145,17 @@ select pg_temp.check_profile('rewriting the roles keeps updated_at', pg_temp.at(
 update public.users set bio = 'A visible change' where uid = pg_temp.uid(9)::text;
 select pg_temp.check_profile('a visible change moves updated_at', pg_temp.at(9) > '2020-01-01 00:00:00+00');
 
--- Aceitar os termos depois dispara a projeção (coluna nova no trigger).
+-- Accepting the terms later fires the projection (new column in the trigger).
 update public.users set teacher_terms_accepted_at = now(), teacher_terms_version = 'smoke'
   where uid = pg_temp.uid(2)::text;
 select pg_temp.check_profile('accepting the terms later publishes the profile, without the badge',
   (select not verified_professional from public.public_profiles where uid = pg_temp.uid(2)::text));
 
--- Perder o papel tira do ar.
+-- Losing the role takes it offline.
 update public.users set roles = '["student"]' where uid = pg_temp.uid(4)::text;
 select pg_temp.check_profile('losing the teacher role removes the profile', not pg_temp.listed(4));
 
--- Suspensão e bloqueio pelo caminho real: a RPC de admin, que só escreve em
+-- Suspension and blocking through the real path: the admin RPC, which only writes to
 -- account_controls.
 select pg_temp.act_as(pg_temp.uid(6), 'authenticated');
 set local role authenticated;
@@ -166,7 +166,7 @@ reset role;
 select pg_temp.check_profile('a suspended teacher is not listed', not pg_temp.listed(5));
 select pg_temp.check_profile('a blocked teacher is not listed', not pg_temp.listed(1));
 
--- Escrever em users não traz o suspenso de volta, nem publica quem já entra suspenso.
+-- Writing to users does not bring the suspended one back, nor publish one who already enters suspended.
 select pg_temp.service();
 update public.users set bio = 'Synthetic bio' where uid = pg_temp.uid(5)::text;
 update public.users set roles = '["student","teacher"]', teacher_terms_accepted_at = now(),
@@ -181,7 +181,7 @@ select pg_temp.check_profile('admin restores through the account-control RPC', p
 reset role;
 select pg_temp.check_profile('restoring the account brings the profile back', pg_temp.listed(5));
 
--- O criterio dito de novo, sem a função: nenhuma linha fora dele.
+-- The criterion stated again, without the function: no row outside it.
 select pg_temp.check_profile('every listed fixture is a teacher with setup complete, not suspended, not a test account',
   not exists (
     select 1 from public.public_profiles pp
@@ -192,7 +192,7 @@ select pg_temp.check_profile('every listed fixture is a teacher with setup compl
         or a.email like '%@example.com' or a.email like '%.test'
         or exists (select 1 from public.account_controls c where c.uid = u.uid and c.suspended))));
 
--- Nada privado vira coluna pública.
+-- Nothing private becomes a public column.
 select pg_temp.check_profile('public_profiles has no private column',
   not exists (select 1 from information_schema.columns
                where table_schema = 'public' and table_name = 'public_profiles'
@@ -209,7 +209,7 @@ select pg_temp.check_profile('anon, authenticated and service_role cannot call t
     cross join unnest(array['anon', 'authenticated', 'service_role']) r
     where has_function_privilege(r, f, 'EXECUTE')));
 
--- Visitante anônimo.
+-- Anonymous visitor.
 select pg_temp.act_as(null, 'anon');
 set local role anon;
 select pg_temp.check_profile('anon reads the non-verified teacher, without the badge',

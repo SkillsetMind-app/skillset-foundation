@@ -1,10 +1,10 @@
-"""Prova de integridade das marcas isoladas (public/brand/logo-mark-*.png).
+"""Integrity check for the standalone marks (public/brand/logo-mark-*.png).
 
-Uso: python scripts/check_brand_marks.py
-Falha (exit 1) se qualquer marca tiver pixel escuro opaco fora do esperado, pixel cinza
-(barra de rolagem de renderizacao) ou geometria (alpha) diferente entre navy e white.
-Historico: em 2026-09-08 as duas marcas tinham 12.312 pixels pretos opacos formando
-barras verticais nas laterais, visiveis como "linhas pretas" em fundo escuro (issue #250).
+Usage: python scripts/check_brand_marks.py
+Fails (exit 1) if any mark has an unexpected opaque dark pixel, a gray pixel
+(rendering scrollbar) or a different geometry (alpha) between navy and white.
+History: on 2026-09-08 both marks had 12,312 opaque black pixels forming
+vertical bars on the sides, visible as "black lines" on a dark background (issue #250).
 """
 import sys
 from pathlib import Path

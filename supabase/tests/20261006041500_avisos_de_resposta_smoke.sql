@@ -1,21 +1,21 @@
 \set ON_ERROR_STOP on
--- Banco descartável apenas. Fixtures voltam no ROLLBACK.
+-- Disposable database only. Fixtures are undone in the ROLLBACK.
 --
--- Quem responde, avisa (20261006041500_avisos_de_resposta.sql):
---   - pergunta nova avisa o dono do curso, uma vez; outro tipo de post não;
---   - resposta avisa o autor do post e quem já respondeu, uma vez cada;
---   - quem escreveu a resposta nunca recebe aviso dela;
---   - resposta do suporte avisa o dono do ticket; regravar o mesmo texto não;
---   - o texto não é frase em inglês: title vazio, ids em params;
---   - cada um lê só os próprios avisos; estranho e anon não leem nada;
---   - o cliente continua sem gravar params nem emailed_at;
---   - quem perdeu a matrícula não recebe mais respostas daquele curso;
---   - o nome no aviso vem do perfil, nunca do author_name do cliente;
---   - editar atualiza o trecho sem avisar de novo; apagar apaga o aviso;
---   - o resumo por e-mail (claim_notification_digests) pula quem desligou,
---     está suspenso, não confirmou, foi apagado ou recebeu nesta hora, sem
---     segurar a fila, e nunca devolve o mesmo aviso duas vezes.
--- Tudo pelo caminho real: aluno, professor e suporte escrevem sob RLS.
+-- Whoever replies, notifies (20261006041500_avisos_de_resposta.sql):
+--   - a new question notifies the course owner, once; another post type does not;
+--   - a reply notifies the post author and whoever already replied, once each;
+--   - whoever wrote the reply never gets a notice of it;
+--   - a support reply notifies the ticket owner; rewriting the same text does not;
+--   - the text is not an English sentence: empty title, ids in params;
+--   - each person reads only their own notices; a stranger and anon read nothing;
+--   - the client still cannot write params or emailed_at;
+--   - whoever lost the enrollment no longer gets replies from that course;
+--   - the name in the notice comes from the profile, never from the client's author_name;
+--   - editing updates the excerpt without notifying again; deleting deletes the notice;
+--   - the email digest (claim_notification_digests) skips whoever turned it off,
+--     is suspended, did not confirm, was deleted or received one in this hour, without
+--     holding up the queue, and never returns the same notice twice.
+-- All through the real path: learner, teacher and support write under RLS.
 begin;
 create temp table aviso_checks (name text, passed boolean);
 grant insert, select on aviso_checks to anon, authenticated;
@@ -32,18 +32,18 @@ begin
     jsonb_build_object('sub', p_uid, 'role', p_role, 'aal', 'aal2')::text, true);
   perform set_config('skillset.trusted_write', 'off', true);
 end $$;
--- Avisos que o trigger gravou para a pessoa n (opcionalmente de um tipo).
+-- Notices the trigger wrote for person n (optionally of one type).
 create function pg_temp.avisos(n int, p_type text default null) returns bigint language sql as $$
   select count(*) from public.notifications
   where user_id = pg_temp.uid(n)::text and (p_type is null or type = p_type);
 $$;
--- Respostas (commentId) que geraram aviso para a pessoa n, em ordem.
+-- Replies (commentId) that generated a notice for person n, in order.
 create function pg_temp.comments_for(n int, p_type text) returns text[] language sql as $$
   select coalesce(array_agg(params->>'commentId' order by params->>'commentId'), '{}')
   from public.notifications
   where user_id = pg_temp.uid(n)::text and type = p_type;
 $$;
--- Número de linhas que a consulta devolveu, ou -1 se ela foi recusada.
+-- Number of rows the query returned, or -1 if it was refused.
 create function pg_temp.rows_or_denied(p_sql text) returns int language plpgsql as $$
 declare n int;
 begin
@@ -52,7 +52,7 @@ begin
 exception when insufficient_privilege then
   return -1;
 end $$;
--- true só quando a escrita falha com a mensagem esperada. Sucesso é desfeito.
+-- true only when the write fails with the expected message. Success is undone.
 create function pg_temp.refused(p_sql text, p_like text) returns boolean language plpgsql as $$
 begin
   execute p_sql;
@@ -62,8 +62,8 @@ exception
   when others then return sqlerrm like p_like;
 end $$;
 
--- 1 professor dono do curso · 2 aluna que pergunta · 3 e 4 alunos que
--- respondem · 5 conta de fora (sem matrícula) · 6 admin que responde o suporte
+-- 1 teacher who owns the course · 2 learner who asks · 3 and 4 learners who
+-- reply · 5 outside account (no enrollment) · 6 admin who answers support
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
@@ -93,7 +93,7 @@ insert into public.support_tickets(id, user_id, category, subject, message)
 values ('smoke-avisos-ticket', pg_temp.uid(2)::text, 'account', 'Cannot change my email', 'Synthetic support message.');
 select set_config('skillset.trusted_write', 'off', true);
 
--- 1. Pergunta nova: avisa o dono do curso, e só ele.
+-- 1. New question: notifies the course owner, and only them.
 select pg_temp.act_as(pg_temp.uid(2), 'authenticated');
 set local role authenticated;
 insert into public.community_posts(id, course_slug, author_id, author_name, author_role, category, title, body)
@@ -110,7 +110,7 @@ select pg_temp.check_aviso('question: the owner link opens the studio community 
       and body = 'How do I export the worksheet?' and actor_name = 'Avisos 2'));
 select pg_temp.check_aviso('question: the author gets no notification for asking', pg_temp.avisos(2) = 0);
 
--- Discussão (não é pergunta): ninguém é avisado.
+-- Discussion (not a question): nobody is notified.
 select pg_temp.act_as(pg_temp.uid(3), 'authenticated');
 set local role authenticated;
 insert into public.community_posts(id, course_slug, author_id, author_name, author_role, category, body)
@@ -120,8 +120,8 @@ reset role;
 select pg_temp.check_aviso('discussion: a post that is not a question notifies nobody',
   pg_temp.avisos(1) = 1 and pg_temp.avisos(3) = 0);
 
--- 2. Respostas, cada uma escrita por quem diz o author_id:
---   c1 por 3, c2 pelo professor, c3 por 3 de novo, c4 pela autora, c5 por 4.
+-- 2. Replies, each one written by whoever says the author_id:
+--   c1 by 3, c2 by the teacher, c3 by 3 again, c4 by the asker, c5 by 4.
 select pg_temp.act_as(pg_temp.uid(3), 'authenticated');
 set local role authenticated;
 insert into public.community_comments(id, post_id, course_slug, author_id, author_name, author_role, body)
@@ -190,14 +190,14 @@ select pg_temp.check_aviso('reply: nobody gets two notifications for the same re
     where params ? 'commentId'
     group by user_id, params->>'commentId' having count(*) > 1));
 
--- 3. Suporte: a resposta avisa o dono do ticket.
+-- 3. Support: the reply notifies the ticket owner.
 select pg_temp.act_as(pg_temp.uid(6), 'authenticated');
 set local role authenticated;
 update public.support_tickets
   set admin_response = 'Changed it for you.', responded_by = pg_temp.uid(6)::text,
       responded_at = now(), status = 'resolved', updated_at = now()
   where id = 'smoke-avisos-ticket';
--- Regravar o mesmo texto não é resposta nova.
+-- Rewriting the same text is not a new reply.
 update public.support_tickets
   set admin_response = 'Changed it for you.', updated_at = now()
   where id = 'smoke-avisos-ticket';
@@ -218,7 +218,7 @@ select pg_temp.check_aviso('email: new notifications start never emailed',
   not exists (select 1 from public.notifications
     where user_id in (select pg_temp.uid(n)::text from generate_series(1, 6) n) and emailed_at is not null));
 
--- 4. RLS: cada um lê só os próprios avisos.
+-- 4. RLS: each person reads only their own notices.
 select pg_temp.act_as(pg_temp.uid(5), 'authenticated');
 set local role authenticated;
 select pg_temp.check_aviso('rls: a stranger reads none of these notifications',
@@ -239,7 +239,7 @@ select pg_temp.check_aviso('rls: anon reads no notification',
   pg_temp.rows_or_denied('select 1 from public.notifications') in (0, -1));
 reset role;
 
--- 5. O cliente marca como lido e mais nada.
+-- 5. The client marks as read and nothing else.
 select pg_temp.act_as(pg_temp.uid(2), 'authenticated');
 set local role authenticated;
 select pg_temp.check_aviso('guard: the owner cannot mark a notification as emailed',
@@ -258,7 +258,7 @@ reset role;
 select pg_temp.check_aviso('guard: the owner can still mark notifications as read',
   not exists (select 1 from public.notifications where user_id = pg_temp.uid(2)::text and not read));
 
--- 6. As funções: SECURITY DEFINER, search_path fixo, ninguém de fora executa.
+-- 6. The functions: SECURITY DEFINER, fixed search_path, nobody outside executes.
 select pg_temp.check_aviso('functions: security definer with a fixed search_path',
   (select bool_and(p.prosecdef and p.proconfig @> array['search_path=public, pg_temp'])
      from pg_proc p
@@ -282,8 +282,8 @@ select pg_temp.check_aviso('functions: anon and authenticated cannot call them',
 select pg_temp.check_aviso('functions: the service role can claim digests',
   has_function_privilege('service_role', 'public.claim_notification_digests(integer)', 'execute'));
 
--- 7. Quem perdeu o acesso não recebe mais; o nome vem do perfil, não do cliente.
--- A matrícula do aluno 3 é revogada e o aluno 4 responde dizendo ser o suporte.
+-- 7. Whoever lost access gets no more; the name comes from the profile, not the client.
+-- Learner 3's enrollment is revoked and learner 4 replies claiming to be support.
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 update public.enrollments set status = 'revoked' where id = pg_temp.uid(3)::text || '__smoke-avisos';
@@ -309,7 +309,7 @@ select pg_temp.check_aviso('name: the notification shows the profile name, never
 select pg_temp.check_aviso('name: the reply itself stores the profile name',
   (select author_name = 'Avisos 4' from public.community_comments where id = 'smoke-avisos-c6'));
 
--- Sem nome no perfil: "SkillsetMind member", nunca o e-mail nem o que veio do cliente.
+-- With no name in the profile: "SkillsetMind member", never the email nor what came from the client.
 select pg_temp.act_as(null, 'service_role');
 update public.users set display_name = null where uid = pg_temp.uid(4)::text;
 select pg_temp.act_as(pg_temp.uid(4), 'authenticated');
@@ -323,7 +323,7 @@ select pg_temp.check_aviso('name: an empty profile name falls back to SkillsetMi
     where params->>'commentId' = 'smoke-avisos-c7')
   and (select author_name = 'SkillsetMind member' from public.community_comments where id = 'smoke-avisos-c7'));
 
--- 8. Editar atualiza o trecho guardado, sem avisar de novo; apagar apaga o aviso.
+-- 8. Editing updates the stored excerpt, without notifying again; deleting deletes the notice.
 create temp table aviso_antes as
   select notification_id, read, emailed_at from public.notifications
   where user_id in (select pg_temp.uid(n)::text from generate_series(1, 6) n);
@@ -346,7 +346,7 @@ select pg_temp.check_aviso('edit: an edit creates no notification and keeps read
   and not exists (select 1 from aviso_antes a join public.notifications n using (notification_id)
     where n.read is distinct from a.read or n.emailed_at is distinct from a.emailed_at));
 
--- O admin modera uma resposta; depois a autora apaga a pergunta inteira.
+-- The admin moderates a reply; then the asker deletes the whole question.
 select pg_temp.act_as(pg_temp.uid(6), 'authenticated');
 set local role authenticated;
 delete from public.community_comments where id = 'smoke-avisos-c5';
@@ -365,13 +365,13 @@ select pg_temp.check_aviso('delete: a deleted question takes all of its notifica
 select pg_temp.check_aviso('delete: notifications of other things stay',
   pg_temp.avisos(2, 'support_reply') = 1);
 
--- 9. O resumo por e-mail: claim_notification_digests escolhe e marca.
--- Na fila só ficam os avisos deste smoke (o resto volta no ROLLBACK).
---  7 recebe · 8 desligou o resumo · 9 suspenso · 10 e-mail não confirmado
---  11 recebeu um resumo há 30 minutos · 12 nada na fila · 13 conta apagada
---  14 e 15 recebem
---  100-159 desligaram e 160-219 estão suspensos, todos com aviso mais antigo
---  que o de 7: 120 pessoas que não podem receber na frente da fila.
+-- 9. The email digest: claim_notification_digests picks and marks.
+-- Only this smoke's notices stay in the queue (the rest comes back in the ROLLBACK).
+--  7 receives · 8 turned off the digest · 9 suspended · 10 email not confirmed
+--  11 received a digest 30 minutes ago · 12 nothing in the queue · 13 deleted account
+--  14 and 15 receive
+--  100-159 turned it off and 160-219 are suspended, all with a notice older
+--  than 7's: 120 people who cannot receive ahead of the queue.
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 delete from public.notifications where user_id not like '61006415-%';
@@ -440,8 +440,8 @@ select pg_temp.check_aviso('digest: opted out, suspended, unconfirmed, deleted o
   and not exists (select 1 from aviso_claims where round = 4)
   and (select bool_and(emailed_at is null) from public.notifications
     where notification_id in ('d8', 'd9', 'd10', 'd11', 'd13')));
--- Concorrência: uma execução que já segura as linhas é pulada, e a outra só
--- marca o que ainda está sem emailed_at no mesmo comando que devolve.
+-- Concurrency: an execution that already holds the rows is skipped, and the other one only
+-- marks what is still without emailed_at in the same command that returns.
 select pg_temp.check_aviso('digest: concurrent runs skip rows another run holds',
   (select prosrc ~* 'for update of n skip locked' and prosrc ~* 'update public[.]notifications n'
      from pg_proc where oid = 'public.claim_notification_digests(integer)'::regprocedure));
