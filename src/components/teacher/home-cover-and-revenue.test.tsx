@@ -6,7 +6,7 @@ import { TeacherStudioDashboard } from "@/components/teacher/teacher-studio-dash
 const { mockUser, state } = vi.hoisted(() => ({
   mockUser: {
     uid: "teacher-1",
-    displayName: "Patrick Simon",
+    displayName: "Preston Sloan",
     roles: ["teacher"],
   },
   state: {
