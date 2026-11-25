@@ -581,11 +581,11 @@ body {
 /* Link sem cor própria aqui: o preflight do Tailwind já herda a cor do pai
    DENTRO de `@layer base`. A mesma herança fora de camada vencia toda utility
    num <a>/<Link>, e o link que pedia a cor de destaque saía com a do texto em
-   volta (cascade em button-sizes-cascade.test.tsx). O sublinhado continua
-   desligado aqui: ligar os `underline` mortos é outra decisão. */
-a {
-  text-decoration: none;
-}
+   volta (cascade em button-sizes-cascade.test.tsx). O sublinhado tambem
+   fica com o preflight (`text-decoration: inherit` dentro de `@layer base`):
+   link nao nasce sublinhado, mas `underline` e `hover:underline` valem. A
+   regra `a { text-decoration: none }` que morava aqui, fora de camada,
+   desligava os 40 sublinhados fixos e os 47 de passar o mouse do site. */
 
 /* Botões e campos herdam a letra pelo preflight do Tailwind, que já faz
    `font: inherit` DENTRO de `@layer base`. Aqui morava a mesma regra fora de
