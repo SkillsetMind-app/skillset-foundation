@@ -154,7 +154,7 @@ describe("profile page", () => {
 
   it("a read that failed becomes an error, never a 404", async () => {
     mocks.getPublicProfileByRef.mockRejectedValue(new Error("database down"));
-    await expect(InstructorDetailPage(params("@ana.souza"))).rejects.toThrow("banco fora");
+    await expect(InstructorDetailPage(params("@ana.souza"))).rejects.toThrow("database down");
     expect(mocks.notFound).not.toHaveBeenCalled();
   });
 
