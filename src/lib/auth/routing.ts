@@ -324,6 +324,37 @@ export function getWelcomeRoute(
   return query ? `/welcome?${query}` : "/welcome";
 }
 
+/**
+ * Where /loading sends a signed-in account, from the query it was opened with
+ * (`next`, `path`/`role`, `returnTo`). One rule for both readers: the server
+ * page that redirects before anything is painted, and the client screen that
+ * takes over when the server could not tell who is signed in.
+ */
+export function getSignedInLoadingDestination(
+  profile: UserProfile | null,
+  searchParams: URLSearchParams,
+): string {
+  const intent = getAuthPathIntentFromSearchParams(searchParams);
+  const returnTo = getSafeReturnTo(searchParams);
+
+  if (searchParams.get("next") === "welcome" && !profile?.onboardingCompleted) {
+    // The deep link rides along into onboarding instead of stopping here:
+    // a first-timer who came from a course page finishes the wizard back
+    // on that course.
+    return getWelcomeRoute(intent, returnTo);
+  }
+
+  // The deep link the sign-in wall captured, carried here by Google
+  // sign-in. Onboarded accounts only — first-timers went to /welcome
+  // above, the same rule the email login applies. A plan picked on
+  // /pricing opens its card screen only for a teacher with no plan yet.
+  return (
+    (profile?.onboardingCompleted
+      ? getOnboardedReturnTo(profile, returnTo, intent)
+      : null) ?? getPostAuthRoute(profile, intent)
+  );
+}
+
 export function getPostAuthRoute(
   profile: UserProfile | null,
   intent: AuthPathIntent | null = null,

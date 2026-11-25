@@ -6,10 +6,8 @@ import { SkillsetSpinner } from "@/components/shared/skillset-spinner";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import {
   getAuthRoute,
-  getOnboardedReturnTo,
-  getPostAuthRoute,
   getSafeReturnTo,
-  getWelcomeRoute,
+  getSignedInLoadingDestination,
   parseAuthPathIntent,
 } from "@/lib/auth/routing";
 import { getUserProfile } from "@/lib/data/user-profiles";
@@ -50,7 +48,6 @@ export function LoadingScreen() {
       const intent =
         parseAuthPathIntent(searchParams.get("path")) ??
         parseAuthPathIntent(searchParams.get("role"));
-      const next = searchParams.get("next");
       const returnTo = getSafeReturnTo(searchParams);
       let destination = getAuthRoute("signin", intent, returnTo);
 
@@ -63,23 +60,8 @@ export function LoadingScreen() {
         const query = params.toString();
         destination = query ? `/login?${query}` : "/login";
       } else if (status === "authenticated" && user) {
-        const profile = await getUserProfile(user.uid);
-
-        if (next === "welcome" && !profile?.onboardingCompleted) {
-          // The deep link rides along into onboarding instead of stopping here:
-          // a first-timer who came from a course page finishes the wizard back
-          // on that course.
-          destination = getWelcomeRoute(intent, returnTo);
-        } else {
-          // The deep link the sign-in wall captured, carried here by Google
-          // sign-in. Onboarded accounts only — first-timers went to /welcome
-          // above, the same rule the email login applies. A plan picked on
-          // /pricing opens its card screen only for a teacher with no plan yet.
-          destination =
-            (profile?.onboardingCompleted
-              ? getOnboardedReturnTo(profile, returnTo, intent)
-              : null) ?? getPostAuthRoute(profile, intent);
-        }
+        // The same rule the server page applies before it ever renders this.
+        destination = getSignedInLoadingDestination(await getUserProfile(user.uid), searchParams);
       }
 
       const elapsed = performance.now() - startedAt;
