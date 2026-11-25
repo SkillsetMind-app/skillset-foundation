@@ -26,8 +26,8 @@ name: PR gatekeeper
 #
 # Interface across the merge: on a PR this file comes from the PR, but the
 # script comes from the default branch (step "Extract the gate from the default
-# branch"). Until the default branch has the English names, this file keeps
-# passing the old ones (--nomes, --placar, avisa), which both versions accept.
+# branch"). The script still accepts the old flag names (--nomes, --placar),
+# because a PR opened before the rename carries the old copy of this file.
 
 on:
   pull_request:
@@ -121,7 +121,6 @@ jobs:
       # down), it tries Kimi k3 -> Kimi k2.6 -> OpenAI. A secret that does not
       # exist arrives empty and the provider is skipped. vars.PORTEIRO_CADEIA
       # changes the order/models.
-      # --nomes/--placar: the old names of --names/--scoreboard (see the top).
       - name: Analyze with GLM-5 (and fallbacks)
         id: analyze
         continue-on-error: true
@@ -135,7 +134,7 @@ jobs:
           PORTEIRO_CADEIA: ${{ vars.PORTEIRO_CADEIA }}
           OPS_ALERT_WEBHOOK_URL: ${{ secrets.OPS_ALERT_WEBHOOK_URL }}
           OPS_ALERT_WEBHOOK_SECRET: ${{ secrets.OPS_ALERT_WEBHOOK_SECRET }}
-          PORTEIRO_MODO: ${{ vars.PORTEIRO_MODO || 'avisa' }}
+          PORTEIRO_MODO: ${{ vars.PORTEIRO_MODO || 'warn' }}
           PORTEIRO_MODELO: ${{ vars.PORTEIRO_MODELO || 'glm-5' }}
           # Billing packages include extensive tests: read the whole diff.
           # Above this cap it stays PARTIAL and fails, without dismissing files.
@@ -143,7 +142,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_URL: ${{ github.event.pull_request.html_url }}
           REPO: ${{ github.repository }}
-        run: python3 "$RUNNER_TEMP/default-branch-gate/porteiro.py" --diff "$RUNNER_TEMP/pr.diff" --nomes "$RUNNER_TEMP/pr.names" --placar "$RUNNER_TEMP/scoreboard.md"
+        run: python3 "$RUNNER_TEMP/default-branch-gate/porteiro.py" --diff "$RUNNER_TEMP/pr.diff" --names "$RUNNER_TEMP/pr.names" --scoreboard "$RUNNER_TEMP/scoreboard.md"
 
       # Only one comment per PR, updated on every push (--edit-last edits the
       # bot's own last comment; if there is none, it creates one).
