@@ -6,8 +6,8 @@ already cost us a real defect in production, not general advice.
 Applies to every agent working in this repo — Claude Code, Codex, anything else.
 
 Where things are: `README.md` (what this is, how to run it, how a change ships),
-`docs/COMO-TRABALHAR.md` (onboarding: accesses, setup, flow, code conventions,
-migrations), `docs/ARQUITETURA.md` (map of the system) and `docs/README.md`
+`docs/ONBOARDING.md` (onboarding: accesses, setup, flow, code conventions,
+migrations), `docs/ARCHITECTURE.md` (map of the system) and `docs/README.md`
 (index of the rest). This repo is **public**: plans, session notes, business strategy,
 investor material and security findings do not belong in it.
 
@@ -128,3 +128,6 @@ document.documentElement.scrollWidth > document.documentElement.clientWidth  // 
   relationship; they are the shield, not the exposure. Never strip them while
   cleaning marketing wording.
 - **No secret in code, ever.** Server-only values have no `NEXT_PUBLIC_` prefix.
+- **English only.** Code, comments, test names, docs, commit messages and PR
+  titles are written in English. Applied migrations are never edited, so their
+  old Portuguese comments stay. Spanish in `src/data/i18n` is product copy.

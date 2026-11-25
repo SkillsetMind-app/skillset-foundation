@@ -1,108 +1,96 @@
 # SkillsetMind
 
-## In English
+SkillsetMind is an online course platform for psychologists, coaches and
+personal-development professionals. People who teach build and sell their
+courses; people who learn buy and watch them. It all happens on the same site
+(https://www.skillsetmind.com).
 
-SkillsetMind is an online course platform for psychologists, coaches and personal-development
-professionals: creators build and sell courses, learners buy and watch them on the same site.
-- **Four areas:** visitor (`src/app/courses`), student (`src/app/learn`), teacher (`src/app/teach`) and operations (`src/app/ops`).
-- **Stack:** Next.js on Vercel, Supabase (Postgres database and login), Stripe Connect with direct charges, Bunny Stream for video, GitHub Actions for checks.
-- **Run locally:** `npm ci`, copy `.env.example` to `.env.local` with test values, `npm run dev`.
-- **Shipping:** branch → pull request → review → 5 required checks → merge → Vercel deploys `main`. Database migrations are applied by hand, never by merging.
-- **Docs:** `docs/COMO-TRABALHAR.md` (onboarding), `docs/ARQUITETURA.md` (system map), `docs/README.md` (index). This file and the first two open with an English summary; the rest is in Portuguese.
-- This repository is public: no secrets, customer data or business strategy here.
+This repository holds the code for the whole site. It is **public**: never put a
+key, a password, customer data or company strategy here.
 
----
+## The 4 areas of the site
 
-A SkillsetMind é uma plataforma de cursos on-line para psicólogos e
-profissionais de desenvolvimento pessoal: quem ensina monta e vende os cursos,
-quem aprende compra e assiste, tudo no mesmo site (https://www.skillsetmind.com).
-
-Este repositório guarda o código do site inteiro. Ele é **público**: não coloque
-aqui chave, senha, dado de cliente nem estratégia da empresa.
-
-## As 4 áreas do site
-
-| Área | Para quem | Onde fica o código |
+| Area | For whom | Where the code lives |
 |---|---|---|
-| Visitante | Quem ainda não entrou: página inicial, catálogo de cursos, página de cada professor, preços, ajuda, termos | `src/app/page.tsx`, `src/app/courses`, `src/app/instructors`, `src/app/legal` |
-| Aluno | Quem comprou: sala de aula, comunidade, certificados, mensagens | `src/app/learn` |
-| Professor | Quem vende: criação de curso, vitrine, vendas, alunos, cupons, relatórios | `src/app/teach` |
-| Operações | A equipe da plataforma: usuários, papéis, fila de pendências | `src/app/ops` |
+| Visitor | People who have not signed in yet: home page, course catalog, each teacher's page, pricing, help, terms | `src/app/page.tsx`, `src/app/courses`, `src/app/instructors`, `src/app/legal` |
+| Learner | People who bought a course: classroom, community, certificates, messages | `src/app/learn` |
+| Teacher | People who sell: course creation, storefront, sales, learners, coupons, reports | `src/app/teach` |
+| Operations | The platform staff: users, roles, queue of pending items | `src/app/ops` |
 
-A conta de cada pessoa (perfil, segurança, planos, pagamentos) fica em
-`src/app/account` e serve às quatro áreas. O mapa completo está em
-`docs/ARQUITETURA.md`.
+Each person's account (profile, security, plans, payments) lives in
+`src/app/account` and serves all four areas. The full map is in
+`docs/ARCHITECTURE.md`.
 
-## As peças principais
+## The main pieces
 
-- **Next.js** — o "motor" do site: monta as páginas e roda as rotas do servidor (os endereços que o site chama por trás, em `src/app/api`).
-- **Supabase** — guarda o banco de dados (Postgres, onde ficam cursos, alunos, pedidos) e cuida do login.
-- **Stripe Connect** — recebe os pagamentos; o dinheiro da venda cai direto na conta Stripe do professor.
-- **Bunny** — hospeda e entrega os vídeos das aulas.
-- **Vercel** — hospeda o site: pega o código do GitHub, monta e publica.
-- **GitHub Actions** — robôs que conferem cada mudança automaticamente antes de ela entrar.
+- **Next.js** — the site's "engine": it builds the pages and runs the server routes (the addresses the site calls behind the scenes, in `src/app/api`).
+- **Supabase** — holds the database (Postgres, where courses, learners and orders live) and handles sign-in.
+- **Stripe Connect** — takes the payments. It uses direct charges: the money from a sale goes straight into the teacher's own Stripe account.
+- **Bunny** — hosts and streams the lesson videos (Bunny Stream).
+- **Vercel** — hosts the site: it takes the code from GitHub, builds it and publishes it.
+- **GitHub Actions** — robots that check every change automatically before it goes in.
 
-## Como rodar no seu computador
+## How to run it on your computer
 
-Você precisa do Node.js (o programa que roda JavaScript fora do navegador) na
-versão do arquivo `.nvmrc`, e de acesso a um projeto Supabase de teste.
+You need Node.js (the program that runs JavaScript outside the browser) at the
+version in the `.nvmrc` file, and access to a test Supabase project.
 
-1. Instale as dependências (as bibliotecas que o projeto usa), exatamente como o CI: `npm ci`
-2. Copie `.env.example` para `.env.local` e preencha os valores. O `.env.local`
-   nunca vai para o git. Os nomes mais importantes:
-   - banco e login: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
-   - pagamentos: `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CONNECT_WEBHOOK_SECRET`
-   - vídeo: `BUNNY_STREAM_API_KEY`, `BUNNY_STREAM_TOKEN_KEY`, `NEXT_PUBLIC_BUNNY_STREAM_LIBRARY_ID`
-   - e-mail: `RESEND_API_KEY`
-   - tarefas agendadas: `CRON_SECRET`
+1. Install the dependencies (the libraries the project uses), exactly as CI does: `npm ci`
+2. Copy `.env.example` to `.env.local` and fill in the values, using test values. The `.env.local` file
+   never goes into git. The most important names:
+   - database and sign-in: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+   - payments: `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CONNECT_WEBHOOK_SECRET`
+   - video: `BUNNY_STREAM_API_KEY`, `BUNNY_STREAM_TOKEN_KEY`, `NEXT_PUBLIC_BUNNY_STREAM_LIBRARY_ID`
+   - email: `RESEND_API_KEY`
+   - scheduled jobs: `CRON_SECRET`
 
-   A lista completa, com o que cada um faz, está no próprio `.env.example`.
-   Regra: valor secreto **nunca** leva o prefixo `NEXT_PUBLIC_` (esse prefixo
-   manda o valor para o navegador de qualquer visitante).
-3. Suba o site: `npm run dev` e abra http://localhost:3000.
+   The full list, with what each one does, is in `.env.example` itself.
+   Rule: a secret value **never** gets the `NEXT_PUBLIC_` prefix (that prefix
+   sends the value to the browser of every visitor).
+3. Start the site: `npm run dev` and open http://localhost:3000.
 
-Comandos de conferência (os mesmos que o robô roda):
+Check commands (the same ones the robot runs):
 
-| Comando | O que faz |
+| Command | What it does |
 |---|---|
-| `npm run lint` | procura erros de estilo e descuidos no código |
-| `npx tsc --noEmit` | confere os tipos (se cada dado tem o formato esperado) |
-| `npm test` | roda os testes automáticos (Vitest) |
-| `npm run build` | monta o site como em produção |
-| `npm run test:db` | roda os testes de segurança do banco num banco descartável (veja `scripts/build-test-db.sh`; nunca aponte para produção) |
+| `npm run lint` | looks for style errors and careless mistakes in the code |
+| `npx tsc --noEmit` | checks the types (whether each piece of data has the expected shape) |
+| `npm test` | runs the automated tests (Vitest) |
+| `npm run build` | builds the site the way production does |
+| `npm run test:db` | runs the database security tests on a throwaway database (see `scripts/build-test-db.sh`; never point it at production) |
 
-Em máquina com pouca memória, rode **um arquivo de teste por vez**:
+On a machine with little memory, run **one test file at a time**:
 `npx vitest run src/app/documentacao-caminhos.test.ts --pool=forks --maxWorkers=1`.
 
-## Como uma mudança chega ao site
+## How a change reaches the site
 
-1. **Rascunho:** crie uma branch (uma cópia paralela do código) a partir de `main`. Nunca mexa direto na `main`.
-2. **Salvar:** faça commits (cada commit é um "salvar" com descrição do que mudou).
-3. **Pedido de revisão:** abra um pull request (PR), o pedido para juntar a branch na `main`.
-4. **Revisão:** uma pessoa lê a mudança. O Porteiro de PR (uma IA que lê o diff procurando brechas de segurança) comenta um placar no PR; ele avisa, mas não bloqueia.
-5. **Conferências automáticas:** o GitHub só deixa juntar se estes 5 checks passarem:
-   - `Lint, typecheck, test, build` — estilo, tipos, testes e montagem (`.github/workflows/ci.yml`);
-   - `RLS smoke tests (banco efêmero)` — testa as regras de acesso do banco num banco descartável (`.github/workflows/ci.yml`);
-   - `Semgrep SAST` — procura padrões de código inseguro (`.github/workflows/security.yml`);
-   - `TruffleHog secrets scan` — procura chave ou senha vazada no código (`.github/workflows/security.yml`);
-   - `npm audit (high+)` — procura bibliotecas com falha de segurança grave conhecida (`.github/workflows/security.yml`).
+1. **Draft:** create a branch (a parallel copy of the code) from `main`. Never work directly on `main`.
+2. **Save:** make commits (each commit is a "save" with a description of what changed).
+3. **Review request:** open a pull request (PR), the request to merge the branch into `main`.
+4. **Review:** a person reads the change. The PR gatekeeper ("porteiro", an AI that reads the diff looking for security holes) posts a score on the PR; it warns, but it does not block.
+5. **Automated checks:** GitHub only allows the merge if these 5 checks pass:
+   - `Lint, typecheck, test, build` — style, types, tests and build (`.github/workflows/ci.yml`);
+   - `RLS smoke tests (banco efêmero)` — tests the database access rules on a throwaway database (`.github/workflows/ci.yml`);
+   - `Semgrep SAST` — looks for unsafe code patterns (`.github/workflows/security.yml`);
+   - `TruffleHog secrets scan` — looks for a leaked key or password in the code (`.github/workflows/security.yml`);
+   - `npm audit (high+)` — looks for libraries with a known serious security flaw (`.github/workflows/security.yml`).
 
-   A Vercel também monta uma prévia do site para cada PR.
-6. **Juntar:** com tudo verde, o PR é mesclado na `main`.
-7. **Publicar:** a Vercel percebe a mudança na `main` e publica sozinha em produção.
+   Vercel also builds a preview of the site for each PR.
+6. **Merge:** once everything is green, the PR is merged into `main`.
+7. **Publish:** Vercel notices the change on `main` and publishes it to production on its own.
 
-Mudança no banco de dados (uma migration) é a exceção: ela não é aplicada
-sozinha. Veja "Banco de dados" em `docs/ARQUITETURA.md`.
+A database change (a migration) is the exception: it is not applied on its own.
+It is applied by hand, never by merging. See "Database" in `docs/ARCHITECTURE.md`.
 
-## Onde está a documentação
+## Where the documentation is
 
-- `README.md` — este arquivo: o que é e como trabalhar.
-- `docs/COMO-TRABALHAR.md` — guia de entrada para um time novo de desenvolvimento: acessos, ambiente, fluxo, convenções, migrations e o que não fazer.
-- `docs/ARQUITETURA.md` — o mapa do sistema: onde fica cada parte e como elas se ligam.
-- `docs/README.md` — índice de tudo o que existe em `docs/`.
-- `AGENTS.md` — regras que já custaram defeito em produção; leitura obrigatória antes de mexer em tela.
-- `STRIPE_CHECKLIST.md` — passo a passo para configurar o Stripe.
+- `README.md` — this file: what the product is and how to work on it.
+- `docs/ONBOARDING.md` — the entry guide for a new development team: access, environment, workflow, conventions, migrations and what not to do.
+- `docs/ARCHITECTURE.md` — the system map: where each part lives and how the parts connect.
+- `docs/README.md` — an index of everything in `docs/`.
+- `AGENTS.md` — rules that have already caused defects in production; required reading before you touch a screen.
+- `STRIPE_CHECKLIST.md` — step-by-step Stripe setup.
 
-O teste `src/app/documentacao-caminhos.test.ts` confere que todo caminho citado
-entre crases neste README, em `docs/ARQUITETURA.md`, em `docs/README.md` e em
-`docs/COMO-TRABALHAR.md` existe de verdade. Se você mover um arquivo, atualize o documento junto.
+The test `src/app/documentacao-caminhos.test.ts` checks that every path cited
+between backticks in this README, in `docs/ARCHITECTURE.md`, in `docs/README.md` and in
+`docs/ONBOARDING.md` really exists. If you move a file, update the document at the same time.

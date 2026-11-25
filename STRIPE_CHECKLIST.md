@@ -1,140 +1,140 @@
-# STRIPE GO-LIVE CHECKLIST — campo por campo
+# STRIPE GO-LIVE CHECKLIST — field by field
 
-> Tudo aqui depende de você (acesso ao painel Stripe / Vercel). O código já está pronto.
-> Quando terminar cada item, marque `[x]`.
+> Everything here is up to you (access to the Stripe / Vercel dashboard). The code is already done.
+> When you finish each item, mark it `[x]`.
 
-Hospedagem: **Next.js na Vercel** · Dados: **Supabase (Postgres)**
+Hosting: **Next.js on Vercel** · Data: **Supabase (Postgres)**
 Webhook: Route Handler `src/app/api/webhooks/stripe/route.ts` → `POST /api/webhooks/stripe`
-Modelo: **direct charges** — a cobrança nasce na conta conectada do professor e a
-comissão da plataforma sai como `application_fee_amount` (venda avulsa) ou `application_fee_percent`
-(assinatura de curso) (`src/app/api/payments/checkout/route.ts`).
+Model: **direct charges** — the charge is created on the teacher's connected account and the
+platform's commission comes out as `application_fee_amount` (one-time sale) or `application_fee_percent`
+(course subscription) (`src/app/api/payments/checkout/route.ts`).
 
-Todas as variáveis de servidor abaixo vão em **Vercel → projeto → Settings → Environment
-Variables** (Production, e Preview se for testar lá). Localmente, em `.env.local`.
-Nunca no git, nunca com prefixo `NEXT_PUBLIC_`. Depois de mudar uma variável, faça um
-redeploy para ela valer.
+All the server variables below go in **Vercel → project → Settings → Environment
+Variables** (Production, and Preview if you are going to test there). Locally, in `.env.local`.
+Never in git, never with the `NEXT_PUBLIC_` prefix. After you change a variable, redeploy
+so it takes effect.
 
 ---
 
-## 1. Chaves de API (TEST primeiro, depois LIVE)
+## 1. API keys (TEST first, then LIVE)
 
-Onde: https://dashboard.stripe.com → canto superior direito, alterne **Test mode** ON para pegar as de teste; OFF para as LIVE.
-Caminho: **Developers → API keys**.
+Where: https://dashboard.stripe.com → top right corner, switch **Test mode** ON to get the test keys; OFF for the LIVE ones.
+Path: **Developers → API keys**.
 
-| Campo no painel | O que copiar | Onde vai no nosso sistema |
+| Field in the dashboard | What to copy | Where it goes in our system |
 |---|---|---|
-| **Publishable key** (`pk_test_...` / `pk_live_...`) | a string inteira | variável de ambiente do projeto na Vercel `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (e `.env.local` para dev) |
-| **Secret key** (`sk_test_...` / `sk_live_...`) | clique em **Reveal**, copie | variável de ambiente do projeto na Vercel `STRIPE_SECRET_KEY` (NÃO no git, NÃO com `NEXT_PUBLIC_`) |
+| **Publishable key** (`pk_test_...` / `pk_live_...`) | the whole string | the Vercel project environment variable `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (and `.env.local` for dev) |
+| **Secret key** (`sk_test_...` / `sk_live_...`) | click **Reveal**, copy it | the Vercel project environment variable `STRIPE_SECRET_KEY` (NOT in git, NOT with `NEXT_PUBLIC_`) |
 
-- [ ] Cole a secret key como **uma linha só**, sem espaço no meio: o código apara espaço/quebra de linha nas pontas, mas recusa uma chave com caractere inválido no meio (`sanitizeStripeSecret`, `src/lib/payments/rules.ts`).
-- [ ] O modo da chave define o modo do webhook: com `sk_test_` o webhook ignora eventos LIVE (responde 503 para que o Stripe reentregue), e com `sk_live_` ignora eventos de teste.
-- [ ] `SUPABASE_SERVICE_ROLE_KEY` também precisa estar configurada: sem ela as rotas de dinheiro (checkout, webhook, reembolsos) falham com erro 500 (`src/lib/supabase/admin.ts`).
+- [ ] Paste the secret key as **a single line**, with no space in the middle: the code trims spaces and line breaks at the ends, but refuses a key with an invalid character in the middle (`sanitizeStripeSecret`, `src/lib/payments/rules.ts`).
+- [ ] The key's mode sets the webhook's mode: with `sk_test_` the webhook ignores LIVE events (it answers 503 so that Stripe delivers them again), and with `sk_live_` it ignores test events.
+- [ ] `SUPABASE_SERVICE_ROLE_KEY` must also be set: without it the money routes (checkout, webhook, refunds) fail with a 500 error (`src/lib/supabase/admin.ts`).
 
 ## 2. Webhook endpoints
 
-Onde: **Developers → Webhooks → + Add endpoint**.
+Where: **Developers → Webhooks → + Add endpoint**.
 
-Com direct charges, a venda de curso acontece na conta conectada do professor, então o
-Stripe entrega esses eventos como eventos **Connect** — não chegam a um endpoint só de
-plataforma. São **dois endpoints na mesma URL**, cada um com o seu signing secret; a rota
-verifica a assinatura contra os dois.
+With direct charges, the course sale happens on the teacher's connected account, so
+Stripe delivers those events as **Connect** events — they never reach a platform-only
+endpoint. There are **two endpoints on the same URL**, each with its own signing secret; the route
+checks the signature against both.
 
-| Endpoint | Campo "Listen to" | Endpoint URL | Signing secret vai em |
+| Endpoint | "Listen to" field | Endpoint URL | Signing secret goes in |
 |---|---|---|---|
-| Plataforma | Events on your account | `https://www.skillsetmind.com/api/webhooks/stripe` | `STRIPE_WEBHOOK_SECRET` |
+| Platform | Events on your account | `https://www.skillsetmind.com/api/webhooks/stripe` | `STRIPE_WEBHOOK_SECRET` |
 | Connect | Events on Connected accounts | `https://www.skillsetmind.com/api/webhooks/stripe` | `STRIPE_CONNECT_WEBHOOK_SECRET` |
 
-> ⚠️ Use o `www`: o domínio sem `www` responde 308 e o Stripe não segue redirect
+> ⚠️ Use the `www`: the domain without `www` answers 308 and Stripe does not follow redirects
 > (`scripts/create-connect-webhook.mjs`).
 
-Alternativa para o endpoint Connect: `node scripts/create-connect-webhook.mjs --secret-out <arquivo>`
-(lê `STRIPE_SECRET_KEY` do `.env.local` e cria ou ajusta o endpoint com a lista abaixo. Só quando
-cria um endpoint novo ele grava o signing secret no arquivo, sem imprimi-lo; apague o arquivo depois.
-Se o endpoint já existia, o secret não vem: pegue-o ou gere outro no painel). `--dry-run` só mostra o que faria.
+Alternative for the Connect endpoint: `node scripts/create-connect-webhook.mjs --secret-out <arquivo>`
+(`<arquivo>` is the file path). It reads `STRIPE_SECRET_KEY` from `.env.local` and creates or adjusts the endpoint with the list below. Only when
+it creates a new endpoint does it write the signing secret to the file, without printing it; delete the file afterwards.
+If the endpoint already existed, the secret does not come back: get it or generate another one in the dashboard. `--dry-run` only shows what it would do.
 
-Eventos a assinar — a lista exata de `HANDLED_STRIPE_EVENT_TYPES` na rota. Qualquer outro
-evento é confirmado e ignorado.
+Events to subscribe to — the exact list in `HANDLED_STRIPE_EVENT_TYPES` in the route. Any other
+event is acknowledged and ignored.
 
-**Compra one-time, reembolso e disputa:**
-- [ ] `checkout.session.completed` — venda de curso: grava o pagamento, marca o pedido `paid`, libera o acesso e grava o registro de ganhos. Também confirma a taxa de ativação da vitrine (sessão com `purpose` de ativação).
-- [ ] `checkout.session.async_payment_succeeded` — mesmo tratamento do anterior, para pagamento assíncrono.
-- [ ] `checkout.session.async_payment_failed` — pedido `failed`.
-- [ ] `checkout.session.expired` — pedido `cancelled`.
-- [ ] `payment_intent.payment_failed` — pedido `failed`.
-- [ ] `charge.refunded` — registra o reembolso.
-- [ ] `charge.dispute.created` — registra a disputa.
-- [ ] `charge.dispute.closed` — registra o resultado da disputa.
+**One-time purchase, refund and dispute:**
+- [ ] `checkout.session.completed` — course sale: records the payment, marks the order `paid`, grants access and records the earnings entry. It also confirms the storefront activation fee (a session with the activation `purpose`).
+- [ ] `checkout.session.async_payment_succeeded` — same handling as the previous one, for asynchronous payment.
+- [ ] `checkout.session.async_payment_failed` — order `failed`.
+- [ ] `checkout.session.expired` — order `cancelled`.
+- [ ] `payment_intent.payment_failed` — order `failed`.
+- [ ] `charge.refunded` — records the refund.
+- [ ] `charge.dispute.created` — records the dispute.
+- [ ] `charge.dispute.closed` — records the outcome of the dispute.
 
-**Assinatura** (curso recorrente + plano do professor):
-- [ ] `invoice.created` — **endpoint Connect**: grava na fatura de renovação da assinatura de curso a taxa exata (percentual + fixo), enquanto ela ainda é rascunho (`handleCourseSubscriptionInvoiceCreated`). Sem ele, a renovação cobra só o percentual da primeira fatura.
-- [ ] `customer.subscription.trial_will_end` — **endpoint da plataforma**: e-mail de fim do teste grátis do plano, um por assinatura (`handlePlanTrialWillEnd`).
-- [ ] `invoice.paid` — fulfillment do ciclo (`handleCourseSubscriptionInvoicePaid`).
-- [ ] `invoice.payment_failed` — falha de cobrança do ciclo (`handleInvoicePaymentFailed`).
+**Subscription** (recurring course + teacher's plan):
+- [ ] `invoice.created` — **Connect endpoint**: writes the exact fee (percentage + fixed amount) on the course subscription's renewal invoice while it is still a draft (`handleCourseSubscriptionInvoiceCreated`). Without it, the renewal charges only the percentage from the first invoice.
+- [ ] `customer.subscription.trial_will_end` — **platform endpoint**: the email about the end of the plan's free trial, one per subscription (`handlePlanTrialWillEnd`).
+- [ ] `invoice.paid` — fulfillment for the billing cycle (`handleCourseSubscriptionInvoicePaid`).
+- [ ] `invoice.payment_failed` — failed charge for the cycle (`handleInvoicePaymentFailed`).
 - [ ] `customer.subscription.created` — lifecycle (`handleCourseSubscriptionLifecycle` → fallback `syncSubscriptionFromStripe`).
-- [ ] `customer.subscription.updated` — lifecycle, mesmo caminho.
-- [ ] `customer.subscription.deleted` — lifecycle, mesmo caminho.
+- [ ] `customer.subscription.updated` — lifecycle, same path.
+- [ ] `customer.subscription.deleted` — lifecycle, same path.
 
-**Conta conectada:**
-- [ ] `account.updated` — sincroniza se a conta do professor pode cobrar e receber (`handleConnectedAccountUpdated`).
-- [ ] `account.application.deauthorized` — **endpoint Connect**: o professor desconectou a plataforma; marca a conta como sem cobrança e sem repasse, sem apagar o id (`handleConnectedAccountDeauthorized`).
+**Connected account:**
+- [ ] `account.updated` — syncs whether the teacher's account can charge and receive money (`handleConnectedAccountUpdated`).
+- [ ] `account.application.deauthorized` — **Connect endpoint**: the teacher disconnected the platform; it marks the account as unable to charge and with no payouts, without deleting the id (`handleConnectedAccountDeauthorized`).
 
-> ⚠️ **Sem os eventos de assinatura, uma assinatura COBRA mas o acesso não é concedido nem
-> revogado**, e o plano pago do professor não é aplicado — quem pagou continua no Free (`.env.example`).
+> ⚠️ **Without the subscription events, a subscription CHARGES but access is neither granted nor
+> revoked**, and the teacher's paid plan is not applied — someone who paid stays on Free (`.env.example`).
 
-Depois de criar cada endpoint:
-- Abra o endpoint → **Signing secret** → **Reveal** → copie o `whsec_...`
-- Grave na variável de ambiente do projeto na Vercel correspondente (tabela acima) e faça redeploy.
+After creating each endpoint:
+- Open the endpoint → **Signing secret** → **Reveal** → copy the `whsec_...`
+- Save it in the matching Vercel project environment variable (table above) and redeploy.
 
-## 2b. Planos do professor (tabela de 2026-10-06)
+## 2b. Teacher plans (table of 2026-10-06)
 
-Fonte da verdade: `src/data/plans.ts` (preços) e `src/lib/payments/rules.ts` (comissão e taxa fixa).
+Source of truth: `src/data/plans.ts` (prices) and `src/lib/payments/rules.ts` (commission and fixed fee).
 
-| Plano | Mensal | Anual | Comissão por venda | Price IDs |
+| Plan | Monthly | Yearly | Commission per sale | Price IDs |
 |---|---|---|---|---|
-| Basic | $5 | $50 | 10% + $0.30 | **criar** (lookup `skillset_basic_monthly` / `skillset_basic_yearly`) |
-| Starter (Recomendado) | $19 | $190 | 4,9% + $0.30 | já existem |
-| Pro | $89 | $890 | 2,9% + $0.30 | já existem |
-| Enterprise (fora da oferta, id `plus`) | $199 | $1990 | 1,9% + $0.30 | os do antigo Plus |
+| Basic | $5 | $50 | 10% + $0.30 | **create** (lookup `skillset_basic_monthly` / `skillset_basic_yearly`) |
+| Starter (Recommended) | $19 | $190 | 4.9% + $0.30 | they already exist |
+| Pro | $89 | $890 | 2.9% + $0.30 | they already exist |
+| Enterprise (not offered, id `plus`) | $199 | $1990 | 1.9% + $0.30 | the ones from the old Plus |
 
-- [ ] Criar o Product **Skillset Basic** com os dois Prices recorrentes em USD da tabela e colar os `price_...` em `src/data/plans.ts` (hoje `price_PLACEHOLDER_basic_*`). Enquanto houver placeholder, o cartão Basic mostra "Disponível em breve". Dá para criar pelo painel ou com `scripts/setup-stripe-billing.mjs` rodado pelo cofre, sem `STRIPE_WEBHOOK_URL` (o script só cria o Basic, reaproveita Price pela lookup key e nunca imprime segredo).
-- [ ] Opcional: renomear o Product "Skillset Plus" para "Skillset Enterprise" no painel (os Price IDs não mudam).
-- [ ] **Configuração própria do Customer portal** (Settings → Billing → Customer portal → nova configuração, não a padrão): cancelamento ligado, "no fim do período"; troca de plano só entre os Prices de Basic, Starter e Pro (mensal e anual), sem Enterprise. Colar o `bpc_...` em `STRIPE_PORTAL_CONFIGURATION_ID` (`src/data/plans.ts`). Enquanto for placeholder, "Gerenciar" responde 503 em vez de abrir o portal padrão.
-- [ ] **Enterprise só por admin:** criar a assinatura no painel, no customer do criador (`users.stripe_customer_id`), com a metadata `uid=<uid do criador>` e `enterprise_grant=admin`. Sem essa metadata o webhook não concede plano nenhum e avisa ops (`stripe.plan.enterprise_not_granted`).
-- [ ] Teste grátis: nada a configurar no painel. O checkout pede `trial_period_days: 14` e `payment_method_collection: always`; um teste por conta (`creator_plan_trials`).
+- [ ] Create the **Skillset Basic** Product with the two recurring USD Prices from the table and paste the `price_...` IDs into `src/data/plans.ts` (today `price_PLACEHOLDER_basic_*`). While there is a placeholder, the Basic card shows "Available soon". You can create it in the dashboard or with `scripts/setup-stripe-billing.mjs`, run with the key loaded from the secrets vault and without `STRIPE_WEBHOOK_URL` (the script only creates Basic, reuses a Price by its lookup key and never prints a secret).
+- [ ] Optional: rename the "Skillset Plus" Product to "Skillset Enterprise" in the dashboard (the Price IDs do not change).
+- [ ] **A dedicated Customer portal configuration** (Settings → Billing → Customer portal → new configuration, not the default one): cancellation on, "at the end of the period"; plan changes only between the Basic, Starter and Pro Prices (monthly and yearly), without Enterprise. Paste the `bpc_...` into `STRIPE_PORTAL_CONFIGURATION_ID` (`src/data/plans.ts`). While it is a placeholder, "Manage" answers 503 instead of opening the default portal.
+- [ ] **Enterprise by admin only:** create the subscription in the dashboard, on the creator's customer (`users.stripe_customer_id`), with the metadata `uid=<uid do criador>` (the creator's uid) and `enterprise_grant=admin`. Without that metadata the webhook grants no plan at all and alerts ops (`stripe.plan.enterprise_not_granted`).
+- [ ] Free trial: nothing to set up in the dashboard. The checkout asks for `trial_period_days: 14` and `payment_method_collection: always`; one trial per account (`creator_plan_trials`).
 
-## 3. Stripe Connect (pagamentos dos professores)
+## 3. Stripe Connect (teacher payments)
 
-Onde: **Connect → Settings**.
-- [ ] Connect ativado na conta (se aparecer "Get started", conclua o onboarding da plataforma)
-- [ ] **Branding**: nome público, logo, cor — aparece na tela de onboarding do professor
-- [ ] **Payout settings**: o prazo e o calendário de payout são do Stripe, na conta conectada. A plataforma não segura dinheiro nem tem cron de liberação: o registro em `payout_ledger` é gravado já como `settled`, sem data de liberação (`src/app/api/webhooks/stripe/route.ts`).
-- [ ] Confirme que Connect está em modo LIVE quando for o cutover
+Where: **Connect → Settings**.
+- [ ] Connect turned on for the account (if "Get started" appears, finish the platform onboarding)
+- [ ] **Branding**: public name, logo, color — shown on the teacher's onboarding screen
+- [ ] **Payout settings**: the payout delay and schedule belong to Stripe, on the connected account. The platform does not hold money and has no release cron: the entry in `payout_ledger` is written already as `settled`, with no release date (`src/app/api/webhooks/stripe/route.ts`).
+- [ ] Confirm that Connect is in LIVE mode at cutover time
 
-## 4. Test mode — validação antes do LIVE
+## 4. Test mode — validation before LIVE
 
-- [ ] Com chaves TEST configuradas, rode `node --env-file=.env.local scripts/stripe-test-e2e.mjs` (o script não carrega o `.env.local` sozinho; sem `--env-file` ele só lê o que já estiver exportado no shell). Ele imprime uma tabela de divisão de valores e, com `STRIPE_SECRET_KEY=sk_test_...`, cria uma Checkout Session de teste de $100 para provar a ligação com a API.
-  - As fórmulas dessa tabela são uma cópia histórica e **não** acompanham o código atual — os valores reais estão em `src/lib/payments/rules.ts`.
-  - A sessão criada pelo script não tem pedido associado. Não a pague contra um endpoint de teste que aponte para o app: a rota exige `orderId`/`courseId`/`userId` no metadata, lança erro e o Stripe fica reentregando o evento.
-- [ ] Use cartão de teste `4242 4242 4242 4242`, qualquer data futura, qualquer CVC/CEP
-- [ ] Faça uma compra de curso de verdade pelo app (em test mode) e confira no Supabase: tabela `orders` com status `paid`, e `payout_ledger` com `skillset_fee_minor`, `stripe_fee_minor` e `net_amount_minor`.
-- [ ] Stripe Dashboard (test) → Webhooks → as entregas dos dois endpoints respondem 200.
+- [ ] With the TEST keys set, run `node --env-file=.env.local scripts/stripe-test-e2e.mjs` (the script does not load `.env.local` by itself; without `--env-file` it only reads what is already exported in the shell). It prints a table of how the amounts are split and, with `STRIPE_SECRET_KEY=sk_test_...`, creates a $100 test Checkout Session to prove the connection to the API.
+  - The formulas in that table are a historical copy and do **not** follow the current code — the real values are in `src/lib/payments/rules.ts`.
+  - The session the script creates has no order attached. Do not pay it against a test endpoint that points to the app: the route requires `orderId`/`courseId`/`userId` in the metadata, throws an error, and Stripe keeps delivering the event again.
+- [ ] Use the test card `4242 4242 4242 4242`, any future date, any CVC/ZIP code
+- [ ] Make a real course purchase through the app (in test mode) and check in Supabase: the `orders` table with status `paid`, and `payout_ledger` with `skillset_fee_minor`, `stripe_fee_minor` and `net_amount_minor`.
+- [ ] Stripe Dashboard (test) → Webhooks → the deliveries to both endpoints answer 200.
 
-## 5. Cutover LIVE (só depois do item 4 verde)
+## 5. LIVE cutover (only after item 4 is green)
 
-- [ ] Repetir itens 1 e 2 com **Test mode OFF** (chaves `sk_live_` / `pk_live_` / os dois webhooks LIVE)
-- [ ] Atualizar as variáveis de ambiente do projeto na Vercel (Production) e fazer redeploy
-- [ ] Confirmar os dois endpoints LIVE recebendo eventos (Stripe → Webhooks → últimas entregas com 200)
-- [ ] Primeira venda real de valor baixo como smoke test
+- [ ] Repeat items 1 and 2 with **Test mode OFF** (keys `sk_live_` / `pk_live_` / the two LIVE webhooks)
+- [ ] Update the Vercel project environment variables (Production) and redeploy
+- [ ] Confirm that both LIVE endpoints are receiving events (Stripe → Webhooks → latest deliveries with 200)
+- [ ] A first real sale of a small amount as a smoke test
 
 ---
 
-### Resumo do que o código espera de você
-| Variável | Onde configurar | De onde tirar |
+### Summary of what the code expects from you
+| Variable | Where to set it | Where to get it |
 |---|---|---|
-| `STRIPE_SECRET_KEY` | variável de ambiente do projeto na Vercel | Stripe → Developers → API keys → Secret key |
-| `STRIPE_WEBHOOK_SECRET` | variável de ambiente do projeto na Vercel | Stripe → Webhooks → endpoint de plataforma → Signing secret |
-| `STRIPE_CONNECT_WEBHOOK_SECRET` | variável de ambiente do projeto na Vercel | Stripe → Webhooks → endpoint Connect → Signing secret |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | variável de ambiente do projeto na Vercel + `.env.local` | Stripe → Developers → API keys → Publishable key |
-| `SUPABASE_SERVICE_ROLE_KEY` | variável de ambiente do projeto na Vercel | painel do Supabase (chave `service_role`) |
-| `SKILLSET_APP_URL` (opcional) | variável de ambiente do projeto na Vercel | default é o `SITE_URL` canônico (https://www.skillsetmind.com) |
-| `STRIPE_CONNECT_APPLICATION_ID` (opcional) | variável de ambiente do projeto na Vercel | Stripe → Settings → Connect → Onboarding options → OAuth → `client_id` (`ca_...`), do MESMO modo da `STRIPE_SECRET_KEY` (live com live, test com test); antes de ligar, confira numa assinatura de curso criada pelo nosso checkout que o campo `application` traz esse mesmo id. Com ela, uma assinatura de curso nova numa conta conectada só vale se foi criada pelo nosso checkout (`subscription.application`). Sem ela, nada muda. |
+| `STRIPE_SECRET_KEY` | Vercel project environment variable | Stripe → Developers → API keys → Secret key |
+| `STRIPE_WEBHOOK_SECRET` | Vercel project environment variable | Stripe → Webhooks → platform endpoint → Signing secret |
+| `STRIPE_CONNECT_WEBHOOK_SECRET` | Vercel project environment variable | Stripe → Webhooks → Connect endpoint → Signing secret |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Vercel project environment variable + `.env.local` | Stripe → Developers → API keys → Publishable key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Vercel project environment variable | Supabase dashboard (the `service_role` key) |
+| `SKILLSET_APP_URL` (optional) | Vercel project environment variable | the default is the canonical `SITE_URL` (https://www.skillsetmind.com) |
+| `STRIPE_CONNECT_APPLICATION_ID` (optional) | Vercel project environment variable | Stripe → Settings → Connect → Onboarding options → OAuth → `client_id` (`ca_...`), in the SAME mode as `STRIPE_SECRET_KEY` (live with live, test with test); before turning it on, check on a course subscription created by our checkout that the `application` field carries this same id. With it set, a new course subscription on a connected account only counts if it was created by our checkout (`subscription.application`). Without it, nothing changes. |
