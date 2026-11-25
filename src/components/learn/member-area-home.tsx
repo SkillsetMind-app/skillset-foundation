@@ -92,7 +92,7 @@ export function MemberAreaHomeSkeleton({ label }: { label: string }) {
 }
 
 /**
- * /learn/areas/[criador] (and /[area] on an extra one): the creator's area for the
+ * /learn/areas/[creator] (and /[area] on an extra one): the creator's area for the
  * learner. It does not unlock lessons: each product opens its own room.
  */
 export function MemberAreaHomeView({
