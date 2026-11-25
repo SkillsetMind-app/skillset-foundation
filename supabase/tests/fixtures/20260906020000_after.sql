@@ -56,4 +56,4 @@ END $$;
 -- The FK removes this course's private content. The profile was created by
 -- handle_new_user, as in the existing seed; we clean up the two user rows.
 \ir 20260906020000_cleanup.sql
-\echo Upgrade 0200: conteudo privado preservado, comunidade vinculada ao ID e fixtures removidas.
+\echo Upgrade 0200: private content preserved, community linked to the ID and fixtures removed.

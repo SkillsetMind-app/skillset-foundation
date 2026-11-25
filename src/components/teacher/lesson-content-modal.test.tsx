@@ -92,10 +92,10 @@ function videoAsset(overrides: Partial<CourseAsset> = {}): CourseAsset {
     courseId: "course-1",
     ownerId: "owner-1",
     kind: "lesson_video",
-    fileName: "aula.mp4",
+    fileName: "lesson.mp4",
     contentType: "video/mp4",
     size: 1024,
-    storagePath: "courses/course-1/aula.mp4",
+    storagePath: "courses/course-1/lesson.mp4",
     isPreview: false,
     lessonId: "lesson-1",
     ...overrides,
@@ -109,14 +109,14 @@ function ChangeLanguage() {
 
 function renderModal(
   lessonOverrides: Partial<TeacherLesson> = {},
-  moduleTitle = "Módulo 1",
+  moduleTitle = "Module 1",
   localized = false,
   dripStrategy: DripStrategy = "instant",
   isFreePreview = false,
 ) {
   const lesson: TeacherLesson = {
     id: "lesson-1",
-    title: "Primeira aula",
+    title: "First lesson",
     type: "video",
     description: "",
     ...lessonOverrides,
@@ -125,9 +125,9 @@ function renderModal(
   const course: TeacherCourse = {
     id: "course-1",
     ownerId: "owner-1",
-    title: "Curso",
+    title: "Course",
     summary: "",
-    category: "geral",
+    category: "general",
     status: "draft",
     lessonCount: 1,
     modules: [{ id: "module-1", title: moduleTitle, lessons: [lesson] }],
@@ -166,7 +166,7 @@ function renderModal(
   return { onClose, onUpdateLesson, onSetFreePreview, lesson, unmount: view.unmount, rerenderLesson: (patch: Partial<TeacherLesson>) => view.rerender(modal({ ...lesson, ...patch })) };
 }
 
-function chooseVideoFile(name = "aula.mp4") {
+function chooseVideoFile(name = "lesson.mp4") {
   const file = new File(["video-bytes"], name, { type: "video/mp4" });
 
   fireEvent.change(screen.getByLabelText("Upload a lesson video"), {
@@ -185,7 +185,7 @@ describe("LessonContentModal — wait days", () => {
   });
 
   it("hides the wait days when the course strategy does not use them", () => {
-    renderModal({ dripDelayDays: 7 }, "Módulo 1", false, "instant");
+    renderModal({ dripDelayDays: 7 }, "Module 1", false, "instant");
     fireEvent.click(screen.getByRole("tab", { name: /^Settings/ }));
     const toggle = screen.getByRole("switch", { name: "Use this lesson as the free preview" });
     expect(toggle).toBeInTheDocument();
@@ -199,7 +199,7 @@ describe("LessonContentModal — wait days", () => {
   });
 
   it("shows the wait days in per-lesson release", () => {
-    renderModal({ dripDelayDays: 7 }, "Módulo 1", false, "time_drip_custom");
+    renderModal({ dripDelayDays: 7 }, "Module 1", false, "time_drip_custom");
     fireEvent.click(screen.getByRole("tab", { name: /^Settings/ }));
     expect(screen.getByDisplayValue("7")).toBeInTheDocument();
   });
@@ -274,13 +274,13 @@ describe("LessonContentModal — upload with no file", () => {
   });
 
   it("the dimmed Upload file says the file is missing, and the sentence goes away when it comes", () => {
-    renderModal({}, "Módulo 1", true);
+    renderModal({}, "Module 1", true);
     fireEvent.click(screen.getByRole("tab", { name: /^Materials/ }));
     const upload = screen.getByRole("button", { name: "Upload file" });
     expect(upload).toBeDisabled();
     expect(upload).toHaveAccessibleDescription("Choose a file first, then upload it.");
     fireEvent.change(screen.getByLabelText("Lesson material"), {
-      target: { files: [new File(["pdf"], "apostila.pdf", { type: "application/pdf" })] },
+      target: { files: [new File(["pdf"], "handout.pdf", { type: "application/pdf" })] },
     });
     expect(screen.getByRole("button", { name: "Upload file" })).toBeEnabled();
     expect(screen.queryByText("Choose a file first, then upload it.")).not.toBeInTheDocument();
@@ -310,19 +310,19 @@ describe("LessonContentModal — description", () => {
 
     fireEvent.change(
       screen.getByPlaceholderText("Explain what the student is about to learn and why it matters."),
-      { target: { value: "Leia isto" } },
+      { target: { value: "Read this" } },
     );
-    expect(onUpdateLesson).toHaveBeenLastCalledWith({ contentText: "Leia isto" });
+    expect(onUpdateLesson).toHaveBeenLastCalledWith({ contentText: "Read this" });
     expect(onUpdateLesson).not.toHaveBeenCalledWith(
       expect.objectContaining({ description: expect.anything() }),
     );
   });
 
   it("the old note stays editable and goes away when the lesson has no note", () => {
-    const { onUpdateLesson, unmount } = renderModal({ description: "old", contentText: "corpo" });
+    const { onUpdateLesson, unmount } = renderModal({ description: "old", contentText: "body" });
     fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
 
-    expect(screen.getByPlaceholderText("Explain what the student is about to learn and why it matters.")).toHaveValue("corpo");
+    expect(screen.getByPlaceholderText("Explain what the student is about to learn and why it matters.")).toHaveValue("body");
     fireEvent.change(
       screen.getByRole("textbox", { name: oldNoteLabel, hidden: true }),
       { target: { value: "old!" } },
@@ -330,7 +330,7 @@ describe("LessonContentModal — description", () => {
     expect(onUpdateLesson).toHaveBeenLastCalledWith({ description: "old!" });
     unmount();
 
-    renderModal({ description: "", contentText: "corpo" });
+    renderModal({ description: "", contentText: "body" });
     fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
     expect(screen.queryByText(oldNoteLabel)).not.toBeInTheDocument();
   });
@@ -338,20 +338,20 @@ describe("LessonContentModal — description", () => {
   // Deleting the old note unmounted the field on the same tap: the teacher could not
   // retype or undo, and autosave saved "".
   it("deleting the old note does not remove the field", () => {
-    const { onUpdateLesson } = renderModal({ description: "old", contentText: null }, "Módulo 1", true);
+    const { onUpdateLesson } = renderModal({ description: "old", contentText: null }, "Module 1", true);
     fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
     const note = () => screen.queryByRole("textbox", { name: oldNoteLabel, hidden: true });
 
     fireEvent.change(note() as HTMLElement, { target: { value: "" } });
     expect(onUpdateLesson).toHaveBeenLastCalledWith({ description: "" });
     expect(note()).toBeInTheDocument();
-    fireEvent.change(note() as HTMLElement, { target: { value: "de volta" } });
-    expect(onUpdateLesson).toHaveBeenLastCalledWith({ description: "de volta" });
+    fireEvent.change(note() as HTMLElement, { target: { value: "back again" } });
+    expect(onUpdateLesson).toHaveBeenLastCalledWith({ description: "back again" });
   });
 
   // The text of a free preview lesson is read by anyone on the course page.
   it("on a free preview lesson the help warns that the text is public", () => {
-    const { unmount } = renderModal({}, "Módulo 1", false, "instant", true);
+    const { unmount } = renderModal({}, "Module 1", false, "instant", true);
     fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
     expect(screen.getByText(/anyone can read this text on the course page/)).toBeInTheDocument();
     expect(screen.queryByText(/for enrolled students/)).not.toBeInTheDocument();
@@ -427,7 +427,7 @@ describe("LessonContentModal — one video per lesson", () => {
   });
 
   it("an old link that is not a video appears read-only as Old link", async () => {
-    const { onUpdateLesson } = renderModal({ externalUrl: drive }, "Módulo 1", true);
+    const { onUpdateLesson } = renderModal({ externalUrl: drive }, "Module 1", true);
 
     const old = screen.getByRole("region", { name: "Old link" });
     expect(old).toHaveTextContent(drive);
@@ -456,7 +456,7 @@ describe("LessonContentModal — one video per lesson", () => {
   });
 
   it("declining the confirmation to remove the old link changes nothing", () => {
-    const { onUpdateLesson } = renderModal({ externalUrl: drive }, "Módulo 1", true);
+    const { onUpdateLesson } = renderModal({ externalUrl: drive }, "Module 1", true);
 
     fireEvent.click(screen.getByRole("button", { name: "Remove old link" }));
     fireEvent.click(within(screen.getByRole("dialog", { name: "Remove this link?" })).getByRole("button", { name: "Cancel" }));
@@ -475,7 +475,7 @@ describe("LessonContentModal — one video per lesson", () => {
 
   it("a Vimeo link on a lesson with an old link asks for confirmation before saving", async () => {
     const nativeConfirm = vi.spyOn(window, "confirm");
-    const { onUpdateLesson } = renderModal({ externalUrl: drive }, "Módulo 1", true);
+    const { onUpdateLesson } = renderModal({ externalUrl: drive }, "Module 1", true);
     const notice = "Link not saved. The old link stays.";
     fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
 
@@ -525,7 +525,7 @@ describe("LessonContentModal — one video per lesson", () => {
   });
 
   it("the unsaved link notice goes away after removing the old link and when switching tabs", () => {
-    renderModal({ externalUrl: drive }, "Módulo 1", true);
+    renderModal({ externalUrl: drive }, "Module 1", true);
     fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
     fireEvent.change(linkField(), { target: { value: vimeo } });
     fireEvent.blur(linkField());
@@ -545,8 +545,8 @@ describe("LessonContentModal — one video per lesson", () => {
   it("with an upload and a link saved, swapping saves the source and the learner sees the swap, deleting nothing", () => {
     currentAssets = [videoAsset()];
     const { onUpdateLesson, lesson } = renderModal(
-      { videoSource: "youtube", externalUrl: youtube, durationMinutes: 12, contentText: "corpo" },
-      "Módulo 1",
+      { videoSource: "youtube", externalUrl: youtube, durationMinutes: 12, contentText: "body" },
+      "Module 1",
       true,
     );
     const saved = () =>
@@ -584,7 +584,7 @@ describe("LessonContentModal — one video per lesson", () => {
   // The mode was re-derived from the saved data on every render: deleting the link
   // sent the tab back to upload and removed the field the teacher was typing in.
   it("deleting the link of a YouTube lesson keeps the field on the screen", () => {
-    const { onUpdateLesson } = renderModal({ videoSource: "youtube", externalUrl: youtube }, "Módulo 1", true);
+    const { onUpdateLesson } = renderModal({ videoSource: "youtube", externalUrl: youtube }, "Module 1", true);
     expect(linkField()).toHaveValue(youtube);
 
     fireEvent.change(linkField(), { target: { value: "" } });
@@ -623,7 +623,7 @@ describe("LessonContentModal — one video per lesson", () => {
   // null, the free preview video vanished from the sales page.
   it("deleting the link with a saved upload saves the source as the upload, not null", () => {
     currentAssets = [videoAsset()];
-    const { onUpdateLesson, lesson } = renderModal({ videoSource: "youtube", externalUrl: youtube }, "Módulo 1", true);
+    const { onUpdateLesson, lesson } = renderModal({ videoSource: "youtube", externalUrl: youtube }, "Module 1", true);
 
     fireEvent.change(linkField(), { target: { value: "" } });
     fireEvent.blur(linkField());
@@ -653,7 +653,7 @@ describe("LessonContentModal — one video per lesson", () => {
   });
 
   it("Esc and Cancel on the confirmation leave the studio open; the next Esc closes", () => {
-    const { onUpdateLesson, onClose } = renderModal({ externalUrl: drive }, "Módulo 1", true);
+    const { onUpdateLesson, onClose } = renderModal({ externalUrl: drive }, "Module 1", true);
     fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
     fireEvent.change(linkField(), { target: { value: vimeo } });
 
@@ -683,7 +683,7 @@ describe("LessonContentModal — one video per lesson", () => {
   it("before the lesson files arrive, the link is read-only and deleting saves nothing", () => {
     subscribeOutcome = "wait";
     currentAssets = [videoAsset()];
-    const { onUpdateLesson } = renderModal({ videoSource: "youtube", externalUrl: youtube }, "Módulo 1", true);
+    const { onUpdateLesson } = renderModal({ videoSource: "youtube", externalUrl: youtube }, "Module 1", true);
 
     expect(linkField()).toHaveAttribute("readonly");
     expect(screen.getByText("Loading this lesson's files...")).toBeInTheDocument();
@@ -729,7 +729,7 @@ describe("LessonContentModal — one video per lesson", () => {
   it("Replace with upload before the load saves the source as the upload when the files arrive", () => {
     subscribeOutcome = "wait";
     currentAssets = [videoAsset()];
-    const { onUpdateLesson, lesson } = renderModal({ videoSource: "youtube", externalUrl: youtube }, "Módulo 1", true);
+    const { onUpdateLesson, lesson } = renderModal({ videoSource: "youtube", externalUrl: youtube }, "Module 1", true);
 
     fireEvent.click(screen.getByRole("button", { name: "Replace with upload" }));
     expect(onUpdateLesson).not.toHaveBeenCalled();
@@ -753,7 +753,7 @@ describe("LessonContentModal — one video per lesson", () => {
     failed.unmount();
 
     subscribeOutcome = "wait";
-    const back = renderModal({ videoSource: "youtube", externalUrl: youtube }, "Módulo 1", true);
+    const back = renderModal({ videoSource: "youtube", externalUrl: youtube }, "Module 1", true);
     fireEvent.click(screen.getByRole("button", { name: "Replace with upload" }));
     fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
     act(() => emitAssets(currentAssets));
@@ -765,7 +765,7 @@ describe("LessonContentModal — one video per lesson", () => {
   it("going back and forth upload/link before the load does not take the learner off the upload", () => {
     subscribeOutcome = "wait";
     currentAssets = [videoAsset()];
-    const { onUpdateLesson } = renderModal({ videoSource: "upload", externalUrl: youtube }, "Módulo 1", true);
+    const { onUpdateLesson } = renderModal({ videoSource: "upload", externalUrl: youtube }, "Module 1", true);
 
     fireEvent.click(screen.getByRole("button", { name: "Replace with upload" }));
     fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
@@ -911,7 +911,7 @@ describe("LessonContentModal — video tab", () => {
     await act(async () => { finish(); });
     expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("File uploaded to this lesson.");
-    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:local-aula.mp4");
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:local-lesson.mp4");
   });
 
   // The owner's complaint: on upload, a huge block took over the screen (a
@@ -921,7 +921,7 @@ describe("LessonContentModal — video tab", () => {
     let finish!: () => void;
     uploadCourseAsset.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
     renderModal();
-    chooseVideoFile("minha aula.mp4");
+    chooseVideoFile("my lesson.mp4");
     const videoTab = screen.getByRole("tab", { name: /^Video/ });
     // Half full (shape, not just color) and the word in the title for mouse users.
     expect(videoTab.querySelector(".lesson-modal__tab-dot")).toHaveAttribute("data-tone", "busy");
@@ -935,7 +935,7 @@ describe("LessonContentModal — video tab", () => {
     const form = progress.closest("form")!;
     // The focused button goes away: with no Cancel on this upload, focus goes to the progress.
     expect(within(form).getByRole("status")).toHaveFocus();
-    expect(within(form).getByText(/minha aula\.mp4/)).toBeInTheDocument();
+    expect(within(form).getByText(/my lesson\.mp4/)).toBeInTheDocument();
     expect(within(form).getAllByRole("progressbar")).toHaveLength(1);
     // The upload button only repeated "Uploading...": it leaves the view, the field stays mounted.
     expect(within(form).queryByRole("button", { name: "Uploading..." })).not.toBeInTheDocument();
@@ -1021,16 +1021,16 @@ describe("LessonContentModal — video tab", () => {
   // painted (name label, type and size, original name) carry the class.
   it("on the materials tab, with an edited name, the three detail lines carry lesson-modal-assets__meta", () => {
     currentAssets = [videoAsset({
-      id: "material-1", kind: "lesson_material", contentType: "application/pdf", fileName: "apostila.pdf", title: "Apostila final",
+      id: "material-1", kind: "lesson_material", contentType: "application/pdf", fileName: "handout.pdf", title: "Final handout",
     })];
-    renderModal({}, "Módulo 1", true);
+    renderModal({}, "Module 1", true);
     fireEvent.click(screen.getByRole("tab", { name: /^Materials/ }));
     const list = document.querySelector(".lesson-modal-assets") as HTMLElement;
     const meta = Array.from(list.querySelectorAll(".lesson-modal-assets__meta")).map((node) => node.textContent);
     expect(meta).toHaveLength(3);
     expect(meta[0]).toBe("Name students see");
     expect(meta[1]).toMatch(/ - /);
-    expect(meta[2]).toBe("File: apostila.pdf");
+    expect(meta[2]).toBe("File: handout.pdf");
     expect(within(list).getByRole("button", { name: "Delete" }).querySelector(".lesson-modal-assets__meta")).toBeNull();
   });
 
@@ -1087,7 +1087,7 @@ describe("LessonContentModal — video tab", () => {
     });
     renderModal({ videoSource: "upload" });
     fireEvent.change(screen.getByLabelText("Lesson video"), {
-      target: { files: [new File(["video"], "nova.mp4", { type: "video/mp4" })] },
+      target: { files: [new File(["video"], "new.mp4", { type: "video/mp4" })] },
     });
     const submit = screen.getByRole("button", { name: "Upload file" });
     act(() => submit.focus());
@@ -1103,7 +1103,7 @@ describe("LessonContentModal — video tab", () => {
   it.each([[true, "Preview", "on"], [false, "Private", "off"]] as const)(
     "the Settings tab shows whether the lesson is a free preview (%s)",
     (isFreePreview, label, tone) => {
-      renderModal({}, "Módulo 1", false, "instant", isFreePreview);
+      renderModal({}, "Module 1", false, "instant", isFreePreview);
       const settings = screen.getByRole("tab", { name: /^Settings/ });
       // The screen reader hears the state along with the tab name.
       expect(settings).toHaveAccessibleName(new RegExp(`${label}$`));
@@ -1187,16 +1187,16 @@ describe("LessonContentModal — video tab", () => {
         return new Promise<void>((resolve, reject) => { finish = resolve; fail = reject; });
       });
       const url = "https://youtu.be/author-link";
-      const { onUpdateLesson } = renderModal({ externalUrl: url }, "Módulo $& integral", true);
+      const { onUpdateLesson } = renderModal({ externalUrl: url }, "Module $& intact", true);
       fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
-      fireEvent.change(screen.getByLabelText("Lesson title"), { target: { value: "Título $& íntegro" } });
+      fireEvent.change(screen.getByLabelText("Lesson title"), { target: { value: "Café title $& intact" } });
       fireEvent.change(screen.getByPlaceholderText("Explain what the student is about to learn and why it matters."), {
-        target: { value: "Descrição autoral — não traduzir" },
+        target: { value: "Authorial description — do not translate" },
       });
       fireEvent.click(screen.getByRole("tab", { name: /^Video/ }));
       // The lesson has a YouTube link: the tab opens on the link, and the upload is an explicit swap.
       fireEvent.click(screen.getByRole("button", { name: "Replace with upload" }));
-      const file = chooseVideoFile("Aula $& — ação.mp4");
+      const file = chooseVideoFile("Lesson $& — café.mp4");
       const fileInput = screen.getByLabelText("Lesson video");
       fireEvent.click(screen.getByRole("button", { name: "Upload file" }));
       await screen.findByText("50% - 512 B of 1.0 KB");
@@ -1206,7 +1206,7 @@ describe("LessonContentModal — video tab", () => {
       expect(screen.getByText("50% - 512 B de 1.0 KB")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Cancelar subida" })).toBeEnabled();
       expect(screen.getByLabelText("Video de la lección")).toBe(fileInput);
-      expect(screen.getByText(/Aula \$& — ação\.mp4/)).toBeInTheDocument();
+      expect(screen.getByText(/Lesson \$& — café\.mp4/)).toBeInTheDocument();
       // The saved link was never touched by the swap or by the upload.
       expect(onUpdateLesson).not.toHaveBeenCalledWith(expect.objectContaining({ externalUrl: expect.anything() }));
       for (const name of [/^Video/, /^Descripción/, /^Materiales/, /^Ajustes/]) {
@@ -1241,8 +1241,8 @@ describe("LessonContentModal — video tab", () => {
       if (outcome === "failure") expect(screen.getByText(/Too many uploads in the last hour/)).toBeInTheDocument();
       if (outcome === "success") expect(screen.getByText("File uploaded to this lesson.")).toBeInTheDocument();
       fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
-      expect(screen.getByLabelText("Lesson title")).toHaveValue("Título $& íntegro");
-      expect(screen.getByDisplayValue("Descrição autoral — não traduzir")).toBeInTheDocument();
+      expect(screen.getByLabelText("Lesson title")).toHaveValue("Café title $& intact");
+      expect(screen.getByDisplayValue("Authorial description — do not translate")).toBeInTheDocument();
       expect(subscribed).toHaveBeenCalledOnce();
       expect(uploadLessonVideoToBunny).toHaveBeenCalledOnce();
       if (outcome !== "success") expect(onUpdateLesson).toHaveBeenCalledTimes(updatesBeforeLanguage);
@@ -1251,13 +1251,13 @@ describe("LessonContentModal — video tab", () => {
 
   it("translates a displayed validation error while preserving the literal filename", () => {
     bunnyConfig.isBunnyConfigured = true;
-    renderModal({}, "Módulo 1", true);
-    const file = new File(["notes"], "Material $& <autoral>.pdf", { type: "application/pdf" });
+    renderModal({}, "Module 1", true);
+    const file = new File(["notes"], "Material $& <authored>.pdf", { type: "application/pdf" });
     fireEvent.change(screen.getByLabelText("Upload a lesson video"), { target: { files: [file] } });
     fireEvent.click(screen.getByRole("button", { name: "Upload file" }));
-    expect(screen.getByText('"Material $& <autoral>.pdf" is not a video file. Use MP4, MOV or WebM.')).toBeInTheDocument();
+    expect(screen.getByText('"Material $& <authored>.pdf" is not a video file. Use MP4, MOV or WebM.')).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    expect(screen.getByText('"Material $& <autoral>.pdf" no es un archivo de video. Usa MP4, MOV o WebM.')).toBeInTheDocument();
+    expect(screen.getByText('"Material $& <authored>.pdf" no es un archivo de video. Usa MP4, MOV o WebM.')).toBeInTheDocument();
     expect(uploadLessonVideoToBunny).not.toHaveBeenCalled();
     expect(uploadCourseAsset).not.toHaveBeenCalled();
   });
@@ -1268,19 +1268,19 @@ describe("LessonContentModal — video tab", () => {
     reloadServesCurrentAssets = true;
     uploadCourseAsset.mockImplementationOnce(async () => {
       currentAssets = [videoAsset({
-        id: "material-1", kind: "lesson_material", contentType: "application/pdf", fileName: "apostila.pdf",
+        id: "material-1", kind: "lesson_material", contentType: "application/pdf", fileName: "handout.pdf",
       })];
     });
     try {
-      renderModal({}, "Módulo 1", true);
+      renderModal({}, "Module 1", true);
       fireEvent.click(screen.getByRole("tab", { name: /^Materials/ }));
-      expect(screen.queryByText("apostila.pdf")).not.toBeInTheDocument();
+      expect(screen.queryByText("handout.pdf")).not.toBeInTheDocument();
       fireEvent.change(screen.getByLabelText("Lesson material"), {
-        target: { files: [new File(["pdf"], "apostila.pdf", { type: "application/pdf" })] },
+        target: { files: [new File(["pdf"], "handout.pdf", { type: "application/pdf" })] },
       });
       fireEvent.click(screen.getByRole("button", { name: "Upload file" }));
       // The material name is now an editable field (the name the learner sees).
-      expect(await screen.findByDisplayValue("apostila.pdf")).toBeInTheDocument();
+      expect(await screen.findByDisplayValue("handout.pdf")).toBeInTheDocument();
     } finally {
       reloadServesCurrentAssets = false;
     }
@@ -1288,20 +1288,20 @@ describe("LessonContentModal — video tab", () => {
 
   it("localizes materials and settings while preserving lesson values, type codes and authored placeholders", () => {
     currentAssets = [videoAsset({
-      kind: "lesson_thumbnail", contentType: "image/png", fileName: "Miniatura $&.png",
+      kind: "lesson_thumbnail", contentType: "image/png", fileName: "Thumbnail $&.png",
       downloadUrl: "https://example.supabase.co/storage/v1/object/public/public-media/thumbnail.png",
     })];
-    const { onUpdateLesson } = renderModal({ type: "external_embed", durationMinutes: 12, dripDelayDays: 7 }, "Módulo $& {lessonIndex}", true, "time_drip_custom");
+    const { onUpdateLesson } = renderModal({ type: "external_embed", durationMinutes: 12, dripDelayDays: 7 }, "Module $& {lessonIndex}", true, "time_drip_custom");
     fireEvent.click(screen.getByRole("tab", { name: /^Settings/ }));
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
     expect(screen.getByRole("tab", { name: /^Ajustes/ })).toHaveAttribute("aria-selected", "true");
     expect(screen.queryByLabelText("Tipo de lección")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Duración en minutos")).not.toBeInTheDocument();
     expect(screen.getByDisplayValue("7")).toBeInTheDocument();
-    expect(screen.getByText("Módulo 1 - Módulo $& {lessonIndex} / Lección 1")).toBeInTheDocument();
+    expect(screen.getByText("Módulo 1 - Module $& {lessonIndex} / Lección 1")).toBeInTheDocument();
     expect(screen.getByRole("switch", { name: "Usar esta lección como vista previa gratuita" })).toHaveAttribute("aria-checked", "false");
     fireEvent.click(screen.getByRole("tab", { name: /^Descripción/ }));
-    expect(screen.getByRole("img", { name: "Miniatura de la lección: Miniatura $&.png" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Miniatura de la lección: Thumbnail $&.png" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: /^Materiales/ }));
     expect(screen.getByLabelText("Material de la lección")).toBeInTheDocument();
     expect(screen.getByText("Todavía no hay materiales complementarios.")).toBeInTheDocument();
@@ -1309,8 +1309,8 @@ describe("LessonContentModal — video tab", () => {
   });
 
   it("keeps full lesson identity in the content scroll, upload first and preview before guidance", () => {
-    const title = "Como preparar uma aula com um título completo que precisa continuar legível em uma tela pequena";
-    const moduleTitle = "Planejamento e preparação de todas as etapas do primeiro módulo";
+    const title = "How to prepare a lesson with a full title that needs to stay readable on a small screen";
+    const moduleTitle = "Planning and preparation of all the steps of the first module";
     currentAssets = [videoAsset()];
     renderModal({ title, videoSource: "upload" }, moduleTitle);
 
@@ -1548,7 +1548,7 @@ describe("LessonContentModal — video tab", () => {
   it("refuses a video above the plan ceiling before uploading", async () => {
     renderModal();
 
-    const big = new File(["video-bytes"], "aula.mp4", { type: "video/mp4" });
+    const big = new File(["video-bytes"], "lesson.mp4", { type: "video/mp4" });
     Object.defineProperty(big, "size", { value: 51 * 1024 * 1024 });
     fireEvent.change(screen.getByLabelText("Upload a lesson video"), {
       target: { files: [big] },
@@ -1595,7 +1595,7 @@ describe("LessonContentModal — processing on Bunny", () => {
       { status: 3, encodeProgress: 40, lengthSeconds: null },
       { status: 4, encodeProgress: 100, lengthSeconds: 125 },
     );
-    const { onUpdateLesson } = renderModal({ videoSource: "upload", durationMinutes: 1 }, "Módulo 1", true);
+    const { onUpdateLesson } = renderModal({ videoSource: "upload", durationMinutes: 1 }, "Module 1", true);
 
     await flush();
     expect(screen.getByText("Processing 40%")).toBeInTheDocument();

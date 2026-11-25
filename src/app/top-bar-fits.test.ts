@@ -132,14 +132,14 @@ describe("the top bar fits from 768px up", () => {
   });
 
   it.each([
-    [768, "trilho, o padrao", mediumRail],
-    [1023, "trilho, o padrao", mediumRail],
-    [1024, "trilho, o padrao", mediumRail],
-    [1179, "trilho, o padrao", mediumRail],
-    [1024, "barra aberta por escolha", sidebar],
-    [1179, "barra aberta por escolha", sidebar],
-    [1180, "barra aberta, o padrao", sidebar],
-    [1279, "barra aberta, o padrao", sidebar],
+    [768, "rail, the default", mediumRail],
+    [1023, "rail, the default", mediumRail],
+    [1024, "rail, the default", mediumRail],
+    [1179, "rail, the default", mediumRail],
+    [1024, "sidebar open by choice", sidebar],
+    [1179, "sidebar open by choice", sidebar],
+    [1180, "sidebar open, the default", sidebar],
+    [1279, "sidebar open, the default", sidebar],
   ])("at %spx (%s), the action group with the icon-only switch fits", (viewport, _label, sidebarWidth) => {
     expect(actionsWidth(iconButton)).toBeLessThanOrEqual(roomForActions(viewport, sidebarWidth));
   });

@@ -1,5 +1,5 @@
 \set ON_ERROR_STOP on
--- Banco descartável apenas. Fixtures voltam no ROLLBACK.
+-- Disposable database only. Fixtures go back on ROLLBACK.
 --
 -- Lesson release (drip) also holds in the database. Before 20260915020000 only
 -- the video respected the calendar (video-token route); the text, the link and the
@@ -30,12 +30,12 @@ end $$;
 -- module 1; c (1) in module 2. The ids carry the course prefix.
 create function pg_temp.curriculum(p text) returns jsonb language sql immutable as $$
   select jsonb_build_array(
-    jsonb_build_object('id', p || '-m1', 'title', 'Modulo 1', 'lessons', jsonb_build_array(
-      jsonb_build_object('title', 'Aula a', 'type', 'text', 'id', p || '-a', 'dripDelayDays', 0),
-      jsonb_build_object('title', 'Aula b', 'type', 'text', 'id', p || '-b', 'dripDelayDays', 7),
-      jsonb_build_object('title', 'Aula p', 'type', 'text', 'id', p || '-p', 'dripDelayDays', 30))),
-    jsonb_build_object('id', p || '-m2', 'title', 'Modulo 2', 'lessons', jsonb_build_array(
-      jsonb_build_object('title', 'Aula c', 'type', 'text', 'id', p || '-c', 'dripDelayDays', 1))));
+    jsonb_build_object('id', p || '-m1', 'title', 'Module 1', 'lessons', jsonb_build_array(
+      jsonb_build_object('title', 'Lesson a', 'type', 'text', 'id', p || '-a', 'dripDelayDays', 0),
+      jsonb_build_object('title', 'Lesson b', 'type', 'text', 'id', p || '-b', 'dripDelayDays', 7),
+      jsonb_build_object('title', 'Lesson p', 'type', 'text', 'id', p || '-p', 'dripDelayDays', 30))),
+    jsonb_build_object('id', p || '-m2', 'title', 'Module 2', 'lessons', jsonb_build_array(
+      jsonb_build_object('title', 'Lesson c', 'type', 'text', 'id', p || '-c', 'dripDelayDays', 1))));
 $$;
 create function pg_temp.file_path(p_course text, p_asset text) returns text language sql immutable as $$
   select 'courses/smoke-drip-' || p_course || '/assets/' || pg_temp.uid(1)::text
@@ -76,7 +76,7 @@ update public.users
 insert into public.courses(id, owner_id, slug, title, summary, category, status, currency,
   price_amount_minor, payment_type, modules, drip_strategy, drip_interval_days, free_preview_lesson_id)
 select 'smoke-drip-' || k.key, pg_temp.uid(1)::text, 'smoke-drip-' || k.key, 'Smoke drip ' || k.key,
-  'Curso usado só por este smoke de liberação.', 'smoke', 'published', 'usd', 0, 'free',
+  'Course used only by this drip smoke test.', 'smoke', 'published', 'usd', 0, 'free',
   pg_temp.curriculum(k.key), k.strategy, k.interval_days::int, k.key || '-p'
 from (values
   ('instant', 'instant', null),
@@ -96,7 +96,7 @@ from (values
   (4, 'sequential', 'active'), (4, 'module', 'active'), (4, 'lesson', 'active')
 ) e(n, course, status);
 insert into public.course_lesson_content(lesson_id, course_id, content_text)
-select k || '-' || x, 'smoke-drip-' || k, 'Texto protegido da aula ' || x
+select k || '-' || x, 'smoke-drip-' || k, 'Protected lesson text ' || x
 from unnest(array['custom', 'sequential']) k, unnest(array['a', 'b', 'p', 'c']) x;
 -- Material per lesson (a, b) and one for the whole course (no lesson), with the file in the
 -- private bucket; and the public thumbnail of lesson b (its file lives in

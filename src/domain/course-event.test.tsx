@@ -247,9 +247,9 @@ describe("live window (one rule for the four screens)", () => {
 describe("add to calendar", () => {
   const event = {
     id: "ev-42",
-    title: "Liderança; ação, \"Q&A\"",
-    description: "Linha 1\nLinha 2",
-    courseTitle: "Curso, avançado",
+    title: "Leadership; café, \"Q&A\"",
+    description: "Line 1\nLine 2",
+    courseTitle: "Course, advanced",
     startsAt: START,
   };
   const link = "https://zoom.us/j/123?pwd=a,b";
@@ -260,7 +260,7 @@ describe("add to calendar", () => {
     expect(url.searchParams.get("action")).toBe("TEMPLATE");
     expect(url.searchParams.get("text")).toBe(event.title);
     expect(url.searchParams.get("dates")).toBe("20261125T210000Z/20261125T220000Z");
-    expect(url.searchParams.get("details")).toBe(`Curso, avançado\n\nLinha 1\nLinha 2\n\n${link}`);
+    expect(url.searchParams.get("details")).toBe(`Course, advanced\n\nLine 1\nLine 2\n\n${link}`);
     expect(url.searchParams.get("location")).toBe(link);
     expect(CALENDAR_EVENT_MINUTES).toBe(60);
   });
@@ -282,15 +282,15 @@ describe("add to calendar", () => {
     expect(lines).toContain("DTSTAMP:20261120T120000Z");
     expect(lines).toContain("DTSTART:20261125T210000Z");
     expect(lines).toContain("DTEND:20261125T220000Z");
-    expect(lines).toContain("SUMMARY:Liderança\\; ação\\, \"Q&A\"");
-    expect(lines).toContain(`DESCRIPTION:Curso\\, avançado\\n\\nLinha 1\\nLinha 2\\n\\n${link.replace(",", "\\,")}`);
+    expect(lines).toContain("SUMMARY:Leadership\\; café\\, \"Q&A\"");
+    expect(lines).toContain(`DESCRIPTION:Course\\, advanced\\n\\nLine 1\\nLine 2\\n\\n${link.replace(",", "\\,")}`);
     expect(lines).toContain(`URL:${link}`);
     // The same file downloaded again has the same UID.
     expect(buildEventIcs(event, link, Date.now())).toContain("UID:course-event-ev-42@skillsetmind.com");
   });
 
   it(".ics without a link carries no URL; a long line folds at up to 75 bytes without splitting an accent", () => {
-    const long = { ...event, title: "Sessão é ótima ".repeat(10) };
+    const long = { ...event, title: "Entrée à éclat ".repeat(10) };
     const ics = buildEventIcs(long, null, at(0))!;
     expect(ics).not.toContain("URL:");
     for (const line of ics.split("\r\n")) {
@@ -307,9 +307,9 @@ describe("add to calendar", () => {
   });
 
   it("a lone CR in the text becomes \\n, does not break the file line", () => {
-    const ics = buildEventIcs({ ...event, title: "Parte 1\rATTACH:evil" }, null, at(0))!;
+    const ics = buildEventIcs({ ...event, title: "Part 1\rATTACH:evil" }, null, at(0))!;
     expect(ics.replace(/\r\n/g, "")).not.toContain("\r");
-    expect(ics.replace(/\r\n /g, "").split("\r\n")).toContain("SUMMARY:Parte 1\\nATTACH:evil");
+    expect(ics.replace(/\r\n /g, "").split("\r\n")).toContain("SUMMARY:Part 1\\nATTACH:evil");
   });
 
   // Rescheduled and downloaded again: the same UID with a higher SEQUENCE replaces the

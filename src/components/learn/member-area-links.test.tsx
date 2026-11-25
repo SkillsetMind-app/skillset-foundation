@@ -154,7 +154,7 @@ describe("MemberAreaLinks", () => {
 
 function AreaProbe({ ownerId, courseId = null }: { ownerId: string; courseId?: string | null }) {
   const area = useCreatorAreaLink(ownerId, courseId);
-  return <p>{area ? `${area.name} -> ${area.href}` : "sem area"}</p>;
+  return <p>{area ? `${area.name} -> ${area.href}` : "no area"}</p>;
 }
 
 describe("useCreatorAreaLink", () => {
@@ -186,6 +186,6 @@ describe("useCreatorAreaLink", () => {
     });
     render(withLocale(<AreaProbe ownerId="u-9" />));
     await waitFor(() => expect(mocks.subscribeToPublicProfile).toHaveBeenCalledWith("u-9", expect.any(Function), expect.any(Function)));
-    expect(screen.getByText("sem area")).toBeTruthy();
+    expect(screen.getByText("no area")).toBeTruthy();
   });
 });

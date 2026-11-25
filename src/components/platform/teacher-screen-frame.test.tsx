@@ -38,7 +38,7 @@ afterEach(() => {
 });
 
 describe("frame of the teacher screens", () => {
-  it("no estudio a coluna tem no maximo 1280px, centrada, so a partir de 1440px", () => {
+  it("in the studio the column is at most 1280px, centered, only from 1440px up", () => {
     render(
       <I18nProvider initialLocale="en">
         <PlatformShell title="Your sales">Rows</PlatformShell>
@@ -54,8 +54,8 @@ describe("frame of the teacher screens", () => {
   // The builder uses the full width, decided by the address: by the loaded
   // editor's class, the skeleton came out at 1280px and the page jumped afterwards.
   it.each([
-    ["sem curso (lista, esqueleto, erro)", <p key="list">Loading products</p>],
-    ["com o editor carregado", <div key="editor" className="course-builder-shell">Editor</div>],
+    ["without a course (list, skeleton, error)", <p key="list">Loading products</p>],
+    ["with the editor loaded", <div key="editor" className="course-builder-shell">Editor</div>],
   ])("/teach/builder %s uses the full width from the first frame", (_label, children) => {
     mocks.pathname = "/teach/builder";
     render(
@@ -81,7 +81,7 @@ describe("frame of the teacher screens", () => {
     "/learn/wishlist",
     "/learn/credentials",
     "/learn/community",
-  ])("%s ganha a coluna de 1280px, so a partir de 1440px", (pathname) => {
+  ])("%s gets the 1280px column, only from 1440px up", (pathname) => {
     mocks.pathname = pathname;
     render(
       <I18nProvider initialLocale="en">
@@ -96,8 +96,8 @@ describe("frame of the teacher screens", () => {
   // The classroom uses the full width by design; the members area,
   // support and the plan payment screens stay as they were.
   it.each([
-    "/learn/courses/curso-1",
-    "/learn/courses/curso-1/community",
+    "/learn/courses/course-1",
+    "/learn/courses/course-1/community",
     "/learn/areas/x",
     "/support",
     "/account/billing/upgrade",

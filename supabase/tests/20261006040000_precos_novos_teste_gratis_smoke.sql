@@ -27,7 +27,7 @@ select pg_temp.assert_true(
     and public.platform_fee_bps_for_plan('pro') = 0
     and public.platform_fee_bps_for_plan('plus') = 0
     and public.platform_fee_bps_for_plan(null) = 1000,
-  'platform_fee_bps_for_plan fora da tabela nova'
+  'platform_fee_bps_for_plan is outside the new table'
 );
 
 select pg_temp.assert_true(
@@ -36,7 +36,7 @@ select pg_temp.assert_true(
     and public.featured_slots_for_plan('starter') = 1
     and public.featured_slots_for_plan('pro') = 5
     and public.featured_slots_for_plan('plus') = 5,
-  'featured_slots_for_plan fora da tabela nova'
+  'featured_slots_for_plan is outside the new table'
 );
 
 select pg_temp.assert_true(
@@ -45,13 +45,13 @@ select pg_temp.assert_true(
     and public.custom_domain_limit_for_plan('starter') = 1
     and public.custom_domain_limit_for_plan('pro') = 5
     and public.custom_domain_limit_for_plan('plus') = 5,
-  'custom_domain_limit_for_plan fora da tabela nova'
+  'custom_domain_limit_for_plan is outside the new table'
 );
 
 select pg_temp.assert_true(
   public.landing_block_limit_for_plan('pro') = 20
     and public.landing_block_limit_for_plan('plus') = 20,
-  'landing_block_limit_for_plan mudou sem querer'
+  'landing_block_limit_for_plan changed by accident'
 );
 
 select pg_temp.assert_true(
@@ -67,19 +67,19 @@ where p.oid in (
 select pg_temp.assert_true(
   exists (select 1 from information_schema.columns
     where table_schema = 'public' and table_name = 'subscriptions' and column_name = 'trial_end'),
-  'subscriptions.trial_end nao existe'
+  'subscriptions.trial_end does not exist'
 );
 
 select pg_temp.assert_true(
   exists (select 1 from information_schema.columns
     where table_schema = 'public' and table_name = 'orders'
       and column_name = 'platform_fee_fixed_minor' and column_default = '0' and is_nullable = 'NO'),
-  'orders.platform_fee_fixed_minor nao existe com default 0'
+  'orders.platform_fee_fixed_minor does not exist with default 0'
 );
 
 select pg_temp.assert_true(
   c.relrowsecurity and c.relforcerowsecurity,
-  'creator_plan_trials sem RLS ligada e forcada'
+  'creator_plan_trials without RLS enabled and forced'
 )
 from pg_class c
 where c.oid = 'public.creator_plan_trials'::regclass;
@@ -88,14 +88,14 @@ select pg_temp.assert_true(
   not has_table_privilege(r, 'public.creator_plan_trials', 'select')
     and not has_table_privilege(r, 'public.creator_plan_trials', 'insert')
     and not has_table_privilege(r, 'public.creator_plan_trials', 'update'),
-  format('%s alcanca creator_plan_trials', r)
+  format('%s can reach creator_plan_trials', r)
 )
 from unnest(array['anon', 'authenticated']) r;
 
 select pg_temp.assert_true(
   exists (select 1 from pg_constraint
     where conrelid = 'public.creator_plan_trials'::regclass and contype = 'p'),
-  'creator_plan_trials sem chave primaria por conta'
+  'creator_plan_trials without a per-account primary key'
 );
 
 rollback;

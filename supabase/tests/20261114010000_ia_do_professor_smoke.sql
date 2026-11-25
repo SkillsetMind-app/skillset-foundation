@@ -41,12 +41,12 @@ insert into public.ai_usage(owner_id, course_id, lesson_id, kind, seconds, creat
 values (pg_temp.uid(3)::text, 'smoke-ia-course', 'l1', 'transcribe', 7000, now() - interval '40 days');
 
 insert into public.courses(id, owner_id, slug, title, summary, category, status, currency, price_amount_minor, modules)
-values ('smoke-ia-course', pg_temp.uid(1)::text, 'smoke-ia-course', 'Smoke IA', 'Curso usado só por este smoke.',
+values ('smoke-ia-course', pg_temp.uid(1)::text, 'smoke-ia-course', 'Smoke IA', 'Course used only by this smoke test.',
   'smoke', 'draft', 'usd', 0,
   '[{"id":"m1","title":"Module","summary":"","lessons":[{"id":"l1","title":"Lesson","type":"video","description":""}]}]');
 -- Another teacher copies the id of lesson l1 into their course.
 insert into public.courses(id, owner_id, slug, title, summary, category, status, currency, price_amount_minor, modules)
-values ('smoke-ia-copycat', pg_temp.uid(2)::text, 'smoke-ia-copycat', 'Smoke IA copy', 'Curso usado só por este smoke.',
+values ('smoke-ia-copycat', pg_temp.uid(2)::text, 'smoke-ia-copycat', 'Smoke IA copy', 'Course used only by this smoke test.',
   'smoke', 'draft', 'usd', 0,
   '[{"id":"m9","title":"Module","summary":"","lessons":[{"id":"l1","title":"Lesson","type":"video","description":""}]}]');
 insert into public.enrollments(id, user_id, course_id, course_slug, course_title, course_category, course_image, status, source)

@@ -68,7 +68,7 @@ afterEach(() => {
   mocks.pathname = "/teach";
 });
 
-describe("a escolha vem do cookie, lida no servidor", () => {
+describe("the choice comes from the cookie, read on the server", () => {
   function serverHtml(pref: SidebarPref) {
     const host = document.createElement("div");
     host.innerHTML = renderToString(

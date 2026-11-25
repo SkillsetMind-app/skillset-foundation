@@ -18,7 +18,7 @@ const bidiControls = new RegExp("[\\u061C\\u200E\\u200F\\u202A-\\u202E\\u2066-\\
 
 describe("linkify", () => {
   it("only the address becomes a link, with the final period left out", () => {
-    const p = show("ver https://a.com/x.");
+    const p = show("see https://a.com/x.");
     const links = p.querySelectorAll("a");
 
     expect(links).toHaveLength(1);
@@ -26,7 +26,7 @@ describe("linkify", () => {
     expect(links[0]).toHaveTextContent("https://a.com/x");
     expect(links[0]).toHaveAttribute("target", "_blank");
     expect(links[0]).toHaveAttribute("rel", "noopener noreferrer nofollow ugc");
-    expect(p.textContent).toBe("ver https://a.com/x.");
+    expect(p.textContent).toBe("see https://a.com/x.");
   });
 
   it.each(["javascript:alert(1)", "www.a.com", "data:text/html,<b>x</b>"])(
@@ -43,13 +43,13 @@ describe("linkify", () => {
   // href went to evil.com (verified in a real browser).
   it.each([
     [
-      "antes da URL",
-      `veja ${RLO}https://evil.com//moc.elgoog.www//:sptth`,
+      "before the URL",
+      `see ${RLO}https://evil.com//moc.elgoog.www//:sptth`,
       "https://evil.com//moc.elgoog.www//:sptth",
     ],
     [
-      "dentro da URL",
-      `veja https://evil.com/${RLO}abc${LRI}d${RLM}`,
+      "inside the URL",
+      `see https://evil.com/${RLO}abc${LRI}d${RLM}`,
       "https://evil.com/abcd",
     ],
   ])("strips the bidi controls %s and isolates the link in ltr", (_where, text, href) => {
@@ -66,12 +66,12 @@ describe("linkify", () => {
   });
 
   it("finds several links and leaves the parenthesis, comma and exclamation mark out", () => {
-    const p = show("(https://a.com/x), e http://b.com/y?q=1!");
+    const p = show("(https://a.com/x), and http://b.com/y?q=1!");
 
     expect(Array.from(p.querySelectorAll("a"), (a) => a.getAttribute("href"))).toEqual([
       "https://a.com/x",
       "http://b.com/y?q=1",
     ]);
-    expect(p.textContent).toBe("(https://a.com/x), e http://b.com/y?q=1!");
+    expect(p.textContent).toBe("(https://a.com/x), and http://b.com/y?q=1!");
   });
 });

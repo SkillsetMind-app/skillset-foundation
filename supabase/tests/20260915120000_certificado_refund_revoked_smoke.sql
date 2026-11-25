@@ -74,7 +74,7 @@ INSERT INTO public.certificates (
 -- While withdrawn, public verification does not attest it.
 SELECT pg_temp.assert_true(
   (public.verify_skillset_certificate('SK-SMOKE-REBUY-0915', 'smoke') ->> 'valid')::boolean = false,
-  'certificado refund_revoked nao pode ser atestado pela verificacao publica'
+  'a refund_revoked certificate must not be attested by the public verification'
 );
 
 -- 1. Repurchase: the learner asks for the certificate again and it goes back to 'issued'.
@@ -91,11 +91,11 @@ RESET ROLE;
 
 SELECT pg_temp.assert_true(
   (SELECT status = 'issued' FROM public.certificates WHERE id = :'test_enrollment'),
-  'refund_revoked precisa voltar a issued quando o aluno compra de novo e conclui'
+  'refund_revoked must go back to issued when the learner buys again and completes'
 );
 SELECT pg_temp.assert_true(
   (public.verify_skillset_certificate('SK-SMOKE-REBUY-0915', 'smoke') ->> 'valid')::boolean = true,
-  'depois de reemitido, o mesmo codigo volta a ser atestado'
+  'once reissued, the same code is attested again'
 );
 
 -- 2. Revocation by operations: it keeps blocking reissue.
@@ -105,7 +105,7 @@ SET LOCAL ROLE authenticated;
 DO $$
 BEGIN
   PERFORM public.issue_skillset_certificate(current_setting('smoke.enrollment'), 'Smoke Learner');
-  RAISE EXCEPTION 'SMOKE_ASSERTION_FAILED: certificado revogado pela operacao foi reemitido';
+  RAISE EXCEPTION 'SMOKE_ASSERTION_FAILED: a certificate revoked by operations was reissued';
 EXCEPTION WHEN OTHERS THEN
   IF SQLERRM LIKE 'SMOKE_ASSERTION_FAILED%' THEN
     RAISE;
@@ -118,7 +118,7 @@ RESET ROLE;
 
 SELECT pg_temp.assert_true(
   (SELECT status = 'revoked' FROM public.certificates WHERE id = :'test_enrollment'),
-  'a tentativa bloqueada nao pode mudar o status revoked'
+  'the blocked attempt must not change the revoked status'
 );
 
 ROLLBACK;

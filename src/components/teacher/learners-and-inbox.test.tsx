@@ -185,7 +185,7 @@ describe("Students: all products in one list", () => {
   it("shows 50 at a time and 'Show N more' opens the next ones, without reading again", async () => {
     mocks.getMyCourseStudents.mockResolvedValue(
       Array.from({ length: 120 }, (_, index) => ({
-        ...enrollment(`e-${index}`, "c-1", `s-${index}`, `Aluno ${index}`, "active"),
+        ...enrollment(`e-${index}`, "c-1", `s-${index}`, `Student ${index}`, "active"),
         enrolledAt: new Date(Date.UTC(2026, 0, 1) + index * 60_000).toISOString(),
       })),
     );
@@ -211,7 +211,7 @@ describe("Students: all products in one list", () => {
   it("a new filter or search restarts at the first 50", async () => {
     mocks.getMyCourseStudents.mockResolvedValue(
       Array.from({ length: 120 }, (_, index) => ({
-        ...enrollment(`e-${index}`, "c-1", `s-${index}`, `Aluno ${index}`, "active"),
+        ...enrollment(`e-${index}`, "c-1", `s-${index}`, `Student ${index}`, "active"),
         enrolledAt: new Date(Date.UTC(2026, 0, 1) + index * 60_000).toISOString(),
       })),
     );
@@ -228,7 +228,7 @@ describe("Students: all products in one list", () => {
     expect(bodyRows()).toHaveLength(50);
     fireEvent.click(screen.getByRole("button", { name: "Show 50 more" }));
     expect(bodyRows()).toHaveLength(100);
-    fireEvent.change(screen.getByLabelText("Search students by name, e-mail or product"), { target: { value: "Aluno" } });
+    fireEvent.change(screen.getByLabelText("Search students by name, e-mail or product"), { target: { value: "Student" } });
     expect(bodyRows()).toHaveLength(50);
     expect(screen.getByRole("button", { name: "Show 50 more" })).toBeInTheDocument();
   });
@@ -238,8 +238,8 @@ describe("Students: all products in one list", () => {
   it("Export takes everything the search and filter find, not just the open rows", async () => {
     mocks.getMyCourseStudents.mockResolvedValue([
       ...Array.from({ length: 60 }, (_, index) => ({
-        ...enrollment(`e-${index}`, "c-1", `s-${index}`, `Aluno ${index}`, "active"),
-        email: `aluno${index}@example.com`,
+        ...enrollment(`e-${index}`, "c-1", `s-${index}`, `Student ${index}`, "active"),
+        email: `student${index}@example.com`,
       })),
       { ...enrollment("e-x", "c-2", "s-x", "Carla", "refunded"), email: "carla@example.com" },
     ]);
@@ -269,7 +269,7 @@ describe("Students: all products in one list", () => {
     const lines = blobs[0].split("\n");
     expect(lines[0]).toBe("name,email,product,access,progressPercent,enrolledAt");
     expect(lines).toHaveLength(61);
-    expect(blobs[0]).toContain("aluno59@example.com,Leadership,active,0,");
+    expect(blobs[0]).toContain("student59@example.com,Leadership,active,0,");
     expect(blobs[0]).not.toContain("carla@example.com");
     expect(created[0]?.download).toMatch(/^students-\d{4}-\d{2}-\d{2}\.csv$/);
     expect(mocks.getMyCourseStudents).toHaveBeenCalledTimes(1);

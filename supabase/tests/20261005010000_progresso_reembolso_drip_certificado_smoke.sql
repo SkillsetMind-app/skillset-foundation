@@ -48,8 +48,8 @@ end $$;
 -- One module; ids with the course prefix; optional delay per lesson.
 create function pg_temp.curriculum(p text, ids text[], delays int[]) returns jsonb
 language sql immutable as $$
-  select jsonb_build_array(jsonb_build_object('id', p || '-m1', 'title', 'Modulo 1', 'lessons',
-    (select jsonb_agg(jsonb_build_object('title', 'Aula ' || u.x, 'type', 'text', 'id', p || '-' || u.x,
+  select jsonb_build_array(jsonb_build_object('id', p || '-m1', 'title', 'Module 1', 'lessons',
+    (select jsonb_agg(jsonb_build_object('title', 'Lesson ' || u.x, 'type', 'text', 'id', p || '-' || u.x,
         'dripDelayDays', coalesce(delays[u.o::int], 0)) order by u.o)
        from unnest(ids) with ordinality u(x, o))));
 $$;
@@ -72,7 +72,7 @@ update public.users
 insert into public.courses(id, owner_id, slug, title, summary, category, status, currency,
   price_amount_minor, payment_type, modules, drip_strategy)
 select 'smoke-prog-' || k.key, pg_temp.uid(1)::text, 'smoke-prog-' || k.key, 'Smoke progress ' || k.key,
-  'Curso usado só por este smoke de progresso.', 'smoke', 'published', 'usd', 0, 'free',
+  'Course used only by this progress smoke test.', 'smoke', 'published', 'usd', 0, 'free',
   pg_temp.curriculum(k.key, k.ids, k.delays), k.strategy
 from (values
   ('seq', array['a', 'b', 'c'], null::int[], 'sequential_progress'),

@@ -61,8 +61,8 @@ insert into public.creator_activation_waivers(uid, granted_by, ready_at) values
 insert into public.courses(id, owner_id, slug, title, summary, category, status, currency,
   price_amount_minor, payment_type, modules)
 select 'smoke-publish-gate-' || n, pg_temp.uid(n)::text, 'smoke-publish-gate-' || n,
-  'Smoke publish gate ' || n, 'Curso usado só por este smoke de publicação.', 'smoke', 'draft', 'usd', 0,
-  'free', '[{"id":"m1","title":"Modulo","lessons":[{"id":"l1","title":"Aula","type":"video","description":"Texto da aula."}]}]'::jsonb
+  'Smoke publish gate ' || n, 'Course used only by this publish smoke test.', 'smoke', 'draft', 'usd', 0,
+  'free', '[{"id":"m1","title":"Module","lessons":[{"id":"l1","title":"Lesson","type":"video","description":"Lesson text."}]}]'::jsonb
 from generate_series(1, 5) n;
 delete from public.platform_settings where key in ('require_activation_fee', 'require_creator_verification');
 insert into public.platform_settings(key, value) values

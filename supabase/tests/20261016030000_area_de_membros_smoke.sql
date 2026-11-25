@@ -68,10 +68,10 @@ update public.users
 insert into public.courses(id, owner_id, slug, title, summary, category, status, currency,
   price_amount_minor, payment_type, modules, created_at)
 select pg_temp.course(k.key), pg_temp.uid(k.owner)::text, pg_temp.course(k.key), 'Smoke area ' || k.key,
-  'Curso usado so por este smoke da area de membros.', 'smoke', k.status, 'usd', 0, 'free',
-  jsonb_build_array(jsonb_build_object('id', k.key || '-m1', 'title', 'Modulo 1', 'lessons', jsonb_build_array(
-    jsonb_build_object('id', k.key || '-1', 'title', 'Aula ' || k.key || ' 1', 'type', 'text'),
-    jsonb_build_object('id', k.key || '-2', 'title', 'Aula ' || k.key || ' 2', 'type', 'text')))),
+  'Course used only by this members-area smoke test.', 'smoke', k.status, 'usd', 0, 'free',
+  jsonb_build_array(jsonb_build_object('id', k.key || '-m1', 'title', 'Module 1', 'lessons', jsonb_build_array(
+    jsonb_build_object('id', k.key || '-1', 'title', 'Lesson ' || k.key || ' 1', 'type', 'text'),
+    jsonb_build_object('id', k.key || '-2', 'title', 'Lesson ' || k.key || ' 2', 'type', 'text')))),
   now() - make_interval(days => k.age)
 from (values ('a', 1, 'published', 4), ('b', 1, 'published', 3), ('h', 1, 'published', 2),
   ('d', 1, 'draft', 1), ('c', 4, 'published', 1)) k(key, owner, status, age);
@@ -93,7 +93,7 @@ insert into public.lesson_playback(enrollment_id, lesson_id, user_id, last_seen_
 values (pg_temp.uid(2)::text || '__' || pg_temp.course('a'), 'a-2', pg_temp.uid(2)::text, now(), 42);
 -- B's protected content: lesson text, material and the file in the private bucket.
 insert into public.course_lesson_content(lesson_id, course_id, content_text)
-values ('b-1', pg_temp.course('b'), 'Texto protegido da aula b-1');
+values ('b-1', pg_temp.course('b'), 'Protected lesson text b-1');
 insert into public.course_assets(id, course_id, owner_id, kind, file_name, content_type, size,
   storage_path, lesson_id, created_at)
 values ('smoke-area-asset-b', pg_temp.course('b'), pg_temp.uid(1)::text, 'lesson_material',
@@ -113,7 +113,7 @@ select pg_temp.assert_true(pg_temp.ids(pg_temp.home('@smoke-area-eton') -> 'more
   = array[pg_temp.course('h'), pg_temp.course('b')], 'storefront: published not bought, newest first, no draft');
 select pg_temp.assert_true((select d #>> '{area,name}' = 'Eton Smoke' and d #>> '{area,theme}' = 'light'
     and not (d #>> '{area,configured}')::boolean and not (d #>> '{area,is_owner_preview}')::boolean
-    and d #>> '{continue,lesson_id}' = 'a-2' and d #>> '{continue,lesson_title}' = 'Aula a 2'
+    and d #>> '{continue,lesson_id}' = 'a-2' and d #>> '{continue,lesson_title}' = 'Lesson a 2'
     and (d #>> '{continue,position_seconds}')::int = 42
   from (select pg_temp.home('@smoke-area-eton') as d) x), 'virtual area defaults and continue');
 select pg_temp.assert_true((select bool_and((select array_agg(k order by k collate "C") from jsonb_object_keys(p) k(k))
@@ -121,7 +121,7 @@ select pg_temp.assert_true((select bool_and((select array_agg(k order by k colla
   from jsonb_array_elements(pg_temp.home('@smoke-area-eton') -> 'more_products') p), 'storefront exposes only public fields');
 select pg_temp.assert_true(pg_temp.home('@SMOKE-AREA-ETON') is not null
   and pg_temp.home(pg_temp.uid(1)::text) is not null, 'area resolves by @ in any case and by uid');
-select pg_temp.assert_true(pg_temp.home('@ninguem-aqui') is null, 'unknown creator is null');
+select pg_temp.assert_true(pg_temp.home('@nobody-here') is null, 'unknown creator is null');
 
 reset role;
 
@@ -134,7 +134,7 @@ reset role;
 select pg_temp.act_as(pg_temp.uid(5));
 set local role authenticated;
 select pg_temp.assert_true((select d #>> '{continue,course_id}' = pg_temp.course('a')
-    and d #>> '{continue,lesson_id}' = 'a-2' and d #>> '{continue,lesson_title}' = 'Aula a 2'
+    and d #>> '{continue,lesson_id}' = 'a-2' and d #>> '{continue,lesson_title}' = 'Lesson a 2'
     and (d #>> '{continue,position_seconds}')::int = 0
   from (select pg_temp.home('@smoke-area-eton') as d) x), 'continue: next after last completed, never a completed course');
 select pg_temp.assert_true(pg_temp.ids(pg_temp.home('@smoke-area-eton') -> 'my_products')
@@ -192,11 +192,11 @@ select pg_temp.assert_true(not exists (select 1 from public.member_areas where o
 select pg_temp.act_as(pg_temp.uid(1));
 set local role authenticated;
 select pg_temp.refused(format($q$select public.save_my_member_area('x', 'light', %L, null)$q$,
-  'users/' || pg_temp.uid(4)::text || '/member-area/capa.jpg'), '23514');
+  'users/' || pg_temp.uid(4)::text || '/member-area/cover.jpg'), '23514');
 select pg_temp.refused(format($q$select public.save_my_member_area('x', 'light', %L, null)$q$,
   'users/' || pg_temp.uid(1)::text || '/member-area/../../' || pg_temp.uid(4)::text || '/x.jpg'), '23514');
 select public.save_my_member_area(' Eton Academy ', 'dark',
-  'users/' || pg_temp.uid(1)::text || '/member-area/capa.jpg', 'Bem-vindo');
+  'users/' || pg_temp.uid(1)::text || '/member-area/cover.jpg', 'Welcome');
 select public.save_my_member_area_products(jsonb_build_array(
   jsonb_build_object('course_id', pg_temp.course('b'), 'visible', true),
   jsonb_build_object('course_id', pg_temp.course('a'), 'visible', true),
@@ -213,8 +213,8 @@ reset role;
 select pg_temp.act_as(pg_temp.uid(2));
 set local role authenticated;
 select pg_temp.assert_true((select d #>> '{area,name}' = 'Eton Academy' and d #>> '{area,theme}' = 'dark'
-    and d #>> '{area,welcome_text}' = 'Bem-vindo' and (d #>> '{area,configured}')::boolean
-    and d #>> '{area,cover_path}' like 'users/%/member-area/capa.jpg'
+    and d #>> '{area,welcome_text}' = 'Welcome' and (d #>> '{area,configured}')::boolean
+    and d #>> '{area,cover_path}' like 'users/%/member-area/cover.jpg'
     and pg_temp.ids(d -> 'my_products') = array[pg_temp.course('a')]
     and pg_temp.ids(d -> 'more_products') = array[pg_temp.course('b')]
   from (select pg_temp.home('@smoke-area-eton') as d) x), 'student sees saved area, hidden and draft stay out');

@@ -23,9 +23,9 @@ afterEach(cleanup);
 
 describe("Button", () => {
   it("brings the layout that the global classes do not", () => {
-    render(<Button>Salvar</Button>);
+    render(<Button>Save</Button>);
 
-    const button = screen.getByRole("button", { name: "Salvar" });
+    const button = screen.getByRole("button", { name: "Save" });
     // The global class only paints border, background, color and shadow. Radius, spacing and
     // icon alignment were copied in 361 places.
     expect(button).toHaveClass("button-solid", "inline-flex", "items-center", "gap-2");
@@ -35,19 +35,19 @@ describe("Button", () => {
   it("maps each variant to the matching global class", () => {
     render(
       <>
-        <Button variant="outline">Voltar</Button>
-        <Button variant="danger">Excluir</Button>
+        <Button variant="outline">Back</Button>
+        <Button variant="danger">Delete</Button>
       </>,
     );
 
-    expect(screen.getByRole("button", { name: "Voltar" })).toHaveClass("button-outline");
-    expect(screen.getByRole("button", { name: "Excluir" })).toHaveClass("button-danger");
+    expect(screen.getByRole("button", { name: "Back" })).toHaveClass("button-outline");
+    expect(screen.getByRole("button", { name: "Delete" })).toHaveClass("button-danger");
   });
 
   it("defaults to type=button so it does not submit the form by accident", () => {
-    render(<Button>Adicionar linha</Button>);
+    render(<Button>Add row</Button>);
 
-    expect(screen.getByRole("button", { name: "Adicionar linha" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Add row" })).toHaveAttribute(
       "type",
       "button",
     );
@@ -56,11 +56,11 @@ describe("Button", () => {
   it("large brass loading: the spinner takes the icon's place and the button locks", () => {
     render(
       <Button variant="accent" size="lg" loading icon={<svg data-testid="icone" />}>
-        Publicar
+        Publish
       </Button>,
     );
 
-    const button = screen.getByRole("button", { name: "Publicar" });
+    const button = screen.getByRole("button", { name: "Publish" });
     expect(button).toHaveClass("button-accent", "button-lg");
     expect(button).toBeDisabled();
     expect(button).toHaveAttribute("aria-busy", "true");
@@ -81,7 +81,7 @@ describe("Button", () => {
     for (const { loading, reference } of cases) {
       const { container: current, unmount } = render(
         <Button variant="accent" loading={loading} icon={<svg data-testid="icone" />}>
-          Publicar
+          Publish
         </Button>,
       );
       const html = current.innerHTML;
@@ -95,7 +95,7 @@ describe("Button", () => {
           aria-busy={loading || undefined}
         >
           {reference}
-          Publicar
+          Publish
         </button>,
       );
       expect(html).toBe(before.innerHTML);
@@ -105,17 +105,17 @@ describe("Button", () => {
 
   it("with busyLabel, both labels share the same cell and the name is the visible one", () => {
     const { rerender } = render(
-      <Button loading={false} busyLabel="Salvando...">
-        Salvar
+      <Button loading={false} busyLabel="Saving...">
+        Save
       </Button>,
     );
 
-    const button = screen.getByRole("button", { name: "Salvar" });
+    const button = screen.getByRole("button", { name: "Save" });
     expect(button).toBeEnabled();
     expect(button).not.toHaveAttribute("aria-busy");
     // Both labels always exist, stacked in the same cell.
-    const idle = screen.getByText("Salvar");
-    const busy = screen.getByText("Salvando...");
+    const idle = screen.getByText("Save");
+    const busy = screen.getByText("Saving...");
     expect(idle).toHaveClass("[grid-area:1/1]");
     expect(busy).toHaveClass("[grid-area:1/1]");
     expect(idle.parentElement).toBe(busy.parentElement);
@@ -129,16 +129,16 @@ describe("Button", () => {
     expect(ring).toHaveClass("motion-safe:animate-spin");
 
     rerender(
-      <Button loading busyLabel="Salvando...">
-        Salvar
+      <Button loading busyLabel="Saving...">
+        Save
       </Button>,
     );
 
-    const waiting = screen.getByRole("button", { name: "Salvando..." });
+    const waiting = screen.getByRole("button", { name: "Saving..." });
     expect(waiting).toBe(button);
     expect(waiting).toBeDisabled();
     expect(waiting).toHaveAttribute("aria-busy", "true");
-    expect(screen.queryByRole("button", { name: "Salvar" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
     expect(idle).toHaveClass("invisible");
     expect(idle).toHaveAttribute("aria-hidden", "true");
     expect(busy).not.toHaveClass("invisible");
@@ -149,14 +149,14 @@ describe("Button", () => {
 
   it("with busyLabel and an icon: the icon stays on the resting face and the spinner on the waiting one", () => {
     render(
-      <Button loading busyLabel="Publicando..." icon={<svg data-testid="icone" />}>
-        Publicar
+      <Button loading busyLabel="Publishing..." icon={<svg data-testid="icone" />}>
+        Publish
       </Button>,
     );
 
-    expect(screen.getByRole("button", { name: "Publicando..." })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Publishing..." })).toBeDisabled();
     expect(screen.getByTestId("icone").parentElement).toHaveAttribute("aria-hidden", "true");
-    expect(screen.getByText("Publicando...").querySelector("svg")).toHaveClass("motion-safe:animate-spin");
+    expect(screen.getByText("Publishing...").querySelector("svg")).toHaveClass("motion-safe:animate-spin");
   });
 
   it("exposes the same outfit as text, for a Link dressed as a button", () => {
@@ -169,13 +169,13 @@ describe("BusyLabel", () => {
   it("keeps the width of the larger label and only swaps what is visible and the name", () => {
     const { rerender } = render(
       <button type="button" className="button-solid">
-        <BusyLabel busy={false} idle="Enviar" busyText="Enviando..." />
+        <BusyLabel busy={false} idle="Send" busyText="Sending..." />
       </button>,
     );
 
-    expect(screen.getByRole("button", { name: "Enviar" })).toBeInTheDocument();
-    const idle = screen.getByText("Enviar");
-    const busy = screen.getByText("Enviando...");
+    expect(screen.getByRole("button", { name: "Send" })).toBeInTheDocument();
+    const idle = screen.getByText("Send");
+    const busy = screen.getByText("Sending...");
     expect(idle.parentElement).toBe(busy.parentElement);
     expect(idle.parentElement).toHaveClass("inline-grid");
     expect(idle).toHaveClass("[grid-area:1/1]");
@@ -186,12 +186,12 @@ describe("BusyLabel", () => {
 
     rerender(
       <button type="button" className="button-solid">
-        <BusyLabel busy idle="Enviar" busyText="Enviando..." />
+        <BusyLabel busy idle="Send" busyText="Sending..." />
       </button>,
     );
 
-    expect(screen.getByRole("button", { name: "Enviando..." })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Enviar" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Sending..." })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Send" })).toBeNull();
     expect(idle).toHaveClass("invisible");
     expect(idle).toHaveAttribute("aria-hidden", "true");
     expect(busy).not.toHaveClass("invisible");
@@ -200,8 +200,8 @@ describe("BusyLabel", () => {
 });
 
 describe("Card", () => {
-  it("aponta para as variáveis em vez de bg-white", () => {
-    const { container } = render(<Card>conteúdo</Card>);
+  it("points to the variables instead of bg-white", () => {
+    const { container } = render(<Card>content</Card>);
 
     const card = container.firstElementChild!;
     expect(card.className).toContain("bg-[var(--color-surface)]");
@@ -212,10 +212,10 @@ describe("Card", () => {
     expect(card.className).not.toContain("bg-white");
   });
 
-  it("respeita a etiqueta pedida", () => {
+  it("respects the requested tag", () => {
     const { container } = render(
       <Card as="section" tone="soft" padding="none">
-        conteúdo
+        content
       </Card>,
     );
 
@@ -228,7 +228,7 @@ describe("Card", () => {
   // A list-row card does not lift off the surface. Without this escape hatch the
   // primitive would not suit the two places that already use it that way.
   it("drops the shadow when the card lives inside another one", () => {
-    const { container } = render(<Card shadow={false}>linha</Card>);
+    const { container } = render(<Card shadow={false}>row</Card>);
 
     expect(container.firstElementChild!.className).not.toContain("shadow-");
   });
@@ -238,15 +238,15 @@ describe("InlineAlert", () => {
   // 187 red surfaces in the project against 23 role="alert": most errors
   // never reached people who use a screen reader.
   it("announces the error instead of just painting it red", () => {
-    render(<InlineAlert tone="error">Não foi possível salvar.</InlineAlert>);
+    render(<InlineAlert tone="error">Could not save.</InlineAlert>);
 
     const alert = screen.getByRole("alert");
-    expect(alert).toHaveTextContent("Não foi possível salvar.");
+    expect(alert).toHaveTextContent("Could not save.");
     expect(alert).toHaveAttribute("aria-live", "assertive");
   });
 
   it("notifies without interrupting in the tones that are not errors", () => {
-    render(<InlineAlert tone="success">Domínio conectado.</InlineAlert>);
+    render(<InlineAlert tone="success">Domain connected.</InlineAlert>);
 
     const status = screen.getByRole("status");
     expect(status).toHaveAttribute("aria-live", "polite");
@@ -256,7 +256,7 @@ describe("InlineAlert", () => {
   // Without an icon, the only difference between error, warning, success and info was
   // color. The icon is decorative: the alert's name is still the sentence.
   it.each(["error", "warning", "success", "info"] as const)("tone %s brings its own icon, hidden from the screen reader", (tone) => {
-    const { container } = render(<InlineAlert tone={tone}>Mensagem.</InlineAlert>);
+    const { container } = render(<InlineAlert tone={tone}>Message.</InlineAlert>);
 
     const box = container.firstElementChild!;
     const icons = box.querySelectorAll("svg");
@@ -264,7 +264,7 @@ describe("InlineAlert", () => {
     expect(icons[0]).toHaveAttribute("aria-hidden", "true");
     expect(icons[0]).toHaveAttribute("width", "16");
     expect(box).toHaveClass("flex", "items-start", "gap-2");
-    expect(box).toHaveTextContent("Mensagem.");
+    expect(box).toHaveTextContent("Message.");
   });
 
   it("each tone has a different icon", () => {
@@ -283,7 +283,7 @@ describe("InlineAlert", () => {
   // The error background comes from the theme variable, which rises to 18% in dark (the
   // literal 6% vanished over the near-black).
   it("the error background follows the theme (--color-danger-soft)", () => {
-    render(<InlineAlert tone="error">Falhou.</InlineAlert>);
+    render(<InlineAlert tone="error">Failed.</InlineAlert>);
     expect(screen.getByRole("alert").className).toContain("bg-[var(--color-danger-soft)]");
     // Error text in danger-fg, never in brass (revisao-pr494.test.ts, C3).
     expect(screen.getByRole("alert").className).toContain("text-[var(--color-danger-fg)]");
@@ -291,16 +291,16 @@ describe("InlineAlert", () => {
 
   it("a title and pieces with a link sit in an inner wrapper beside the icon, in order", () => {
     render(
-      <InlineAlert tone="warning" title="Atenção">
-        Leia antes. <a href="/x">Abrir</a>
+      <InlineAlert tone="warning" title="Warning">
+        Read first. <a href="/x">Open</a>
       </InlineAlert>,
     );
 
     const status = screen.getByRole("status");
-    expect(status).toHaveTextContent("AtençãoLeia antes. Abrir");
+    expect(status).toHaveTextContent("WarningRead first. Open");
     const body = status.lastElementChild!;
     expect(body).toHaveClass("min-w-0", "flex-1");
-    expect(body.firstElementChild).toHaveTextContent("Atenção");
+    expect(body.firstElementChild).toHaveTextContent("Warning");
     expect(body.querySelector("a")).toHaveAttribute("href", "/x");
   });
 
@@ -309,8 +309,8 @@ describe("InlineAlert", () => {
   it("whoever arranges the children in flex carries on as before: no extra icon or inner wrapper", () => {
     render(
       <InlineAlert tone="error" className="mt-5 flex flex-wrap items-center justify-between gap-3">
-        <span>Falhou.</span>
-        <button type="button">Tentar de novo</button>
+        <span>Failed.</span>
+        <button type="button">Try again</button>
       </InlineAlert>,
     );
 
@@ -335,13 +335,13 @@ describe("ProgressBar", () => {
   it("clamps the value at the ends", () => {
     render(
       <>
-        <ProgressBar value={140} label="Acima" />
-        <ProgressBar value={-5} label="Abaixo" />
+        <ProgressBar value={140} label="Above" />
+        <ProgressBar value={-5} label="Below" />
       </>,
     );
 
-    expect(screen.getByRole("progressbar", { name: "Acima" })).toHaveAttribute("aria-valuenow", "100");
-    expect(screen.getByRole("progressbar", { name: "Abaixo" })).toHaveAttribute("aria-valuenow", "0");
+    expect(screen.getByRole("progressbar", { name: "Above" })).toHaveAttribute("aria-valuenow", "100");
+    expect(screen.getByRole("progressbar", { name: "Below" })).toHaveAttribute("aria-valuenow", "0");
   });
 
   // Sign-up and interview: the screen reader hears the step, not the percentage.
@@ -364,9 +364,9 @@ describe("ProgressBar", () => {
   // Track from the line variable (navy at 12% vanished in dark) and motion
   // only in transform, inside motion-safe.
   it("one height, a track that follows the theme and a fill that slides with transform", () => {
-    render(<ProgressBar value={25} label="Curso" />);
+    render(<ProgressBar value={25} label="Course" />);
 
-    const bar = screen.getByRole("progressbar", { name: "Curso" });
+    const bar = screen.getByRole("progressbar", { name: "Course" });
     expect(bar).toHaveClass("h-1.5", "rounded-full", "overflow-hidden", "bg-[var(--color-line)]");
     const fill = bar.firstElementChild as HTMLElement;
     // TEXT brass: the background one (--color-accent) gave 1.44:1 against the track.
@@ -379,13 +379,13 @@ describe("ProgressBar", () => {
     render(
       <ProgressBar
         value={50}
-        label="Área"
+        label="Area"
         className="bg-[var(--ma-surface-2)]"
         fillClassName="bg-[var(--ma-accent)]"
       />,
     );
 
-    const bar = screen.getByRole("progressbar", { name: "Área" });
+    const bar = screen.getByRole("progressbar", { name: "Area" });
     expect(bar).toHaveClass("bg-[var(--ma-surface-2)]");
     expect(bar).not.toHaveClass("bg-[var(--color-line)]");
     expect(bar.firstElementChild).toHaveClass("bg-[var(--ma-accent)]");
@@ -396,16 +396,16 @@ describe("ProgressBar", () => {
 describe("Field", () => {
   it("links label, hint and error to the control", () => {
     render(
-      <Field id="hostname" label="Adicionar domínio" hint="Sem http." error="Domínio inválido.">
+      <Field id="hostname" label="Add domain" hint="No http." error="Invalid domain.">
         {(a11y) => <input {...a11y} />}
       </Field>,
     );
 
-    const input = screen.getByLabelText(/Adicionar domínio/);
+    const input = screen.getByLabelText(/Add domain/);
     expect(input).toHaveAttribute("aria-invalid", "true");
     // The hint before the error: that is the order in which the person needs both.
     expect(input).toHaveAttribute("aria-describedby", "hostname-hint hostname-error");
-    expect(screen.getByRole("alert")).toHaveTextContent("Domínio inválido.");
+    expect(screen.getByRole("alert")).toHaveTextContent("Invalid domain.");
   });
 
   it("does not mark the field invalid while there is no error", () => {
@@ -437,15 +437,15 @@ describe("SectionHeader", () => {
     render(
       <SectionHeader
         eyebrow="Media library"
-        title="Arquivos do curso"
-        description="Revise o que foi enviado."
+        title="Course files"
+        description="Review what was uploaded."
         as="h3"
       />,
     );
 
-    expect(screen.getByRole("heading", { level: 3, name: "Arquivos do curso" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 3, name: "Course files" })).toBeInTheDocument();
     expect(screen.getByText("Media library")).toBeInTheDocument();
-    expect(screen.getByText("Revise o que foi enviado.")).toBeInTheDocument();
+    expect(screen.getByText("Review what was uploaded.")).toBeInTheDocument();
   });
 
   // The serif is kept for the page headline; a card title is the sans.
@@ -462,16 +462,16 @@ describe("EmptyState", () => {
   it("uses a single dashed shape and accepts the action", () => {
     const { container } = render(
       <EmptyState
-        title="Crie um curso primeiro."
-        description="Os arquivos ficam presos a um curso."
-        action={<Button>Criar curso</Button>}
+        title="Create a course first."
+        description="Files are attached to a course."
+        action={<Button>Create course</Button>}
       />,
     );
 
     const box = container.firstElementChild!;
     expect(box.className).toContain("border-dashed");
     expect(box).toHaveClass("rounded-lg");
-    expect(screen.getByRole("button", { name: "Criar curso" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create course" })).toBeInTheDocument();
   });
 
   it("with a scene: the engraving comes before the text, hidden from the screen reader, and the title is sans", () => {
@@ -495,7 +495,7 @@ describe("EmptyState", () => {
   });
 
   it("without a scene, no art frame", () => {
-    const { container } = render(<EmptyState title="Vazio." />);
+    const { container } = render(<EmptyState title="Empty." />);
     expect(container.querySelector(".empty-state__art")).toBeNull();
   });
 });

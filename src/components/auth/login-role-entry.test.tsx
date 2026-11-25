@@ -86,14 +86,14 @@ describe("login entry by role", () => {
       "Create your teacher account.",
       "Crea tu cuenta de profesor.",
     ],
-  ])("the title states the role on %s (EN and ES)", (query, emIngles, emEspanhol) => {
+  ])("the title states the role on %s (EN and ES)", (query, inEnglish, inSpanish) => {
     renderAt(query);
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(emIngles);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(inEnglish);
 
     cleanup();
     renderAt(query, "es");
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
-      emEspanhol,
+      inSpanish,
     );
   });
 
@@ -102,17 +102,17 @@ describe("login entry by role", () => {
     ["teacher", "student", "Are you a learner? Sign in here"],
   ])(
     "from %s offers the switch to %s without losing the captured destination",
-    (papel, outroPapel, rotulo) => {
+    (papel, otherRole, rotulo) => {
       renderAt(`mode=signin&path=${papel}&returnTo=${checkoutEncoded}`);
 
-      const destino = new URL(
+      const destination = new URL(
         screen.getByRole("link", { name: rotulo }).getAttribute("href")!,
         "https://skillset.test",
       );
-      expect(destino.pathname).toBe("/auth");
-      expect(destino.searchParams.get("mode")).toBe("signin");
-      expect(destino.searchParams.get("path")).toBe(outroPapel);
-      expect(destino.searchParams.get("returnTo")).toBe(checkout);
+      expect(destination.pathname).toBe("/auth");
+      expect(destination.searchParams.get("mode")).toBe("signin");
+      expect(destination.searchParams.get("path")).toBe(otherRole);
+      expect(destination.searchParams.get("returnTo")).toBe(checkout);
     },
   );
 

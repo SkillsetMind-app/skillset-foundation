@@ -96,7 +96,7 @@ insert into public.creator_activation_waivers(uid, granted_by, ready_at) values
   (pg_temp.uid(5)::text, pg_temp.uid(4)::text, null);
 insert into public.courses(id, owner_id, slug, title, summary, category, status, currency, price_amount_minor)
 select 'smoke-activation-gate-' || n, pg_temp.uid(n)::text, 'smoke-activation-gate-' || n,
-  'Smoke activation gate ' || n, 'Curso usado só por este smoke.', 'smoke', 'published', 'brl', 0
+  'Smoke activation gate ' || n, 'Course used only by this smoke test.', 'smoke', 'published', 'brl', 0
 from generate_series(1, 5) n;
 insert into public.course_coupons(course_id, owner_id, code, percent_off)
 select 'smoke-activation-gate-' || n, pg_temp.uid(n)::text, 'SEEDED', 10 from generate_series(1, 5) n;

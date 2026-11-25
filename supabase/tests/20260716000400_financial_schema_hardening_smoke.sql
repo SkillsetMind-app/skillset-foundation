@@ -25,29 +25,29 @@ $$;
 -- Everything here is undone in the ROLLBACK at the end of the file.
 DO $$
 DECLARE
-  v_sufixo text;
+  v_suffix text;
 BEGIN
   -- The first six are the statuses of the subscriptions loop below, with the
   -- '_' already swapped for '-' as that loop does; 'a' and 'b' are the two courses of the
   -- lesson ownership test.
-  FOREACH v_sufixo IN ARRAY ARRAY[
+  FOREACH v_suffix IN ARRAY ARRAY[
     'active', 'trialing', 'past-due', 'unpaid', 'incomplete', 'paused',
     'canceled', 'a', 'b'
   ] LOOP
     INSERT INTO public.users (uid, email, display_name)
     VALUES (
-      'hardening-smoke-user-' || v_sufixo,
-      'hardening-smoke-' || v_sufixo || '@ci.local',
-      'Hardening Smoke ' || v_sufixo
+      'hardening-smoke-user-' || v_suffix,
+      'hardening-smoke-' || v_suffix || '@ci.local',
+      'Hardening Smoke ' || v_suffix
     )
     ON CONFLICT (uid) DO NOTHING;
 
     INSERT INTO public.courses (id, owner_id, title, summary, category)
     VALUES (
-      'hardening-smoke-course-' || v_sufixo,
-      'hardening-smoke-user-' || v_sufixo,
-      'Hardening Smoke ' || v_sufixo,
-      'Curso usado só por este smoke test.',
+      'hardening-smoke-course-' || v_suffix,
+      'hardening-smoke-user-' || v_suffix,
+      'Hardening Smoke ' || v_suffix,
+      'Course used only by this smoke test.',
       'smoke'
     )
     ON CONFLICT (id) DO NOTHING;
@@ -68,7 +68,7 @@ BEGIN
     'hardening-smoke-canceled-course',
     'hardening-smoke-canceled-user',
     'Hardening Smoke Canceled',
-    'Curso usado só por este smoke test.',
+    'Course used only by this smoke test.',
     'smoke'
   )
   ON CONFLICT (id) DO NOTHING;
@@ -554,7 +554,7 @@ BEGIN
     'hardening-smoke-offer-course',
     'hardening-smoke-owner',
     'Hardening Smoke Offer',
-    'Curso usado só por este smoke test.',
+    'Course used only by this smoke test.',
     'smoke'
   );
 

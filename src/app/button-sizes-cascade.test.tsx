@@ -450,7 +450,7 @@ describe("link color", () => {
       }
       if (!rule.selectors.some(bareAnchor)) return;
       rule.walkDecls("color", (decl) => {
-        offenders.push(`${rule.selector} { color: ${decl.value} } (linha ${decl.source?.start?.line})`);
+        offenders.push(`${rule.selector} { color: ${decl.value} } (line ${decl.source?.start?.line})`);
       });
     });
     expect(offenders).toEqual([]);

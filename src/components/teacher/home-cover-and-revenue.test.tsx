@@ -82,8 +82,8 @@ afterEach(cleanup);
 describe("Teacher home: the product card shows the cover", () => {
   it("uses the product cover when it exists and the placeholder when it does not", async () => {
     state.courses = [
-      course("com-capa", "Curso com capa", "https://cdn.example/cover.jpg"),
-      course("sem-capa", "Curso sem capa", null),
+      course("with-cover", "Course with cover", "https://cdn.example/cover.jpg"),
+      course("without-cover", "Course without cover", null),
     ];
 
     render(<TeacherStudioDashboard />);
@@ -91,28 +91,28 @@ describe("Teacher home: the product card shows the cover", () => {
     // Scoped to the products section: the course title also appears in
     // other home blocks (Top courses, activity), and a loose search would be
     // ambiguous depending on whether those blocks appear or not.
-    const produtos = await screen.findByRole("region", {
+    const productsRegion = await screen.findByRole("region", {
       name: "Products in your workspace",
     });
-    const comCapa = within(produtos).getByRole("link", { name: /Curso com capa/ });
-    const semCapa = within(produtos).getByRole("link", { name: /Curso sem capa/ });
+    const withCover = within(productsRegion).getByRole("link", { name: /Course with cover/ });
+    const withoutCover = within(productsRegion).getByRole("link", { name: /Course without cover/ });
 
-    const img = comCapa.querySelector("img");
+    const img = withCover.querySelector("img");
     expect(img).not.toBeNull();
     expect(img).toHaveAttribute("src", "https://cdn.example/cover.jpg");
     // Decorative cover: the product title is already on the card as text.
     expect(img).toHaveAttribute("alt", "");
 
     // With no cover we do not invent an image: the same icon as the products list stays.
-    expect(semCapa.querySelector("img")).toBeNull();
-    expect(semCapa.querySelector("svg")).not.toBeNull();
+    expect(withoutCover.querySelector("img")).toBeNull();
+    expect(withoutCover.querySelector("svg")).not.toBeNull();
   });
 });
 
 // Before the 1st sale the performance block was ~700px of nothing.
 describe("Teacher home: performance only with sales history", () => {
   it("with no sales, hides the chart, Top courses and the $0 tiles", async () => {
-    state.courses = [course("c1", "Curso sem venda", null)];
+    state.courses = [course("c1", "Course without sales", null)];
     state.orders = [];
 
     render(<TeacherStudioDashboard />);
@@ -128,12 +128,12 @@ describe("Teacher home: performance only with sales history", () => {
   });
 
   it("with one paid sale, the chart and Top courses come back", async () => {
-    state.courses = [course("c1", "Curso vendido", null)];
+    state.courses = [course("c1", "Course sold", null)];
     state.orders = [
       {
         id: "o1",
         courseId: "c1",
-        courseTitle: "Curso vendido",
+        courseTitle: "Course sold",
         status: "paid",
         amountMinor: 9900,
         currency: "usd",

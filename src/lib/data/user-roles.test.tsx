@@ -86,7 +86,7 @@ describe("updateUserRoles — onboarding adds roles, never removes", () => {
     const { client, captured } = buildClient(null);
     supabaseMocks.getSupabaseBrowserClient.mockReturnValue(client);
 
-    await updateUserRoles("novo", ["student"]);
+    await updateUserRoles("new", ["student"]);
 
     expect(captured.roles).toEqual(["student"]);
   });

@@ -22,7 +22,7 @@ type DomainFixture = {
 const domains: DomainFixture[] = [
   {
     id: "dom-1",
-    hostname: "aulas.exemplo.com",
+    hostname: "lessons.example.com",
     status: "pending_dns",
     verification_name: null,
     verification_value: null,
@@ -30,7 +30,7 @@ const domains: DomainFixture[] = [
   },
   {
     id: "dom-2",
-    hostname: "live.exemplo.com",
+    hostname: "live.example.com",
     status: "active",
     verification_name: null,
     verification_value: null,
@@ -38,7 +38,7 @@ const domains: DomainFixture[] = [
   },
   {
     id: "dom-3",
-    hostname: "erro.exemplo.com",
+    hostname: "error.example.com",
     status: "error",
     verification_name: null,
     verification_value: null,
@@ -153,7 +153,7 @@ describe("CustomDomainsPanel", () => {
   it("uses the house StatusChip for the status of each domain", async () => {
     const { container } = render(<CustomDomainsPanel />);
 
-    await screen.findByText("aulas.exemplo.com");
+    await screen.findByText("lessons.example.com");
 
     const pending = container.querySelector('[data-status="pending_dns"]');
     expect(pending).toHaveClass("status-chip", "status-chip--warning");
@@ -180,7 +180,7 @@ describe("CustomDomainsPanel", () => {
     );
 
     render(<CustomDomainsPanel />);
-    await screen.findByText("aulas.exemplo.com");
+    await screen.findByText("lessons.example.com");
 
     const [disconnect] = screen.getAllByRole("button", { name: /Disconnect/ });
     fireEvent.click(disconnect);
@@ -188,7 +188,7 @@ describe("CustomDomainsPanel", () => {
     // (a) the usual sentence, now in the platform dialog;
     const dialog = screen.getByRole("dialog", { name: "Disconnect this domain?" });
     expect(dialog).toHaveTextContent(
-      "Disconnect aulas.exemplo.com? Students go back to the platform address, and the DNS setup starts over if you reconnect it.",
+      "Disconnect lessons.example.com? Students go back to the platform address, and the DNS setup starts over if you reconnect it.",
     );
     expect(nativeConfirm).not.toHaveBeenCalled();
     // (b) giving up disconnects nothing;
@@ -212,19 +212,19 @@ describe("CustomDomainsPanel", () => {
     // The dialog does not wait for the DELETE (which can take minutes): it closes right away
     // and the page responds again. Only the card stays busy.
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    const card = domainCard("aulas.exemplo.com");
+    const card = domainCard("lessons.example.com");
     expect(card.getByRole("button", { name: "Disconnect" })).toBeDisabled();
     expect(card.getByRole("button", { name: "Check again" })).toBeDisabled();
-    expect(domainCard("erro.exemplo.com").getByRole("button", { name: "Disconnect" })).toBeEnabled();
+    expect(domainCard("error.example.com").getByRole("button", { name: "Disconnect" })).toBeEnabled();
     expect(requestCount("DELETE")).toBe(1);
 
-    await act(async () => removal.resolve(jsonResponse({ ok: true, hostname: "aulas.exemplo.com" })));
+    await act(async () => removal.resolve(jsonResponse({ ok: true, hostname: "lessons.example.com" })));
     expect(requestCount("DELETE")).toBe(1);
   });
 
   it("styles Disconnect as a danger action, not as a twin of Check again", async () => {
     render(<CustomDomainsPanel />);
-    await screen.findByText("aulas.exemplo.com");
+    await screen.findByText("lessons.example.com");
 
     const [disconnect] = screen.getAllByRole("button", { name: /Disconnect/ });
     const [recheck] = screen.getAllByRole("button", { name: /Check again/ });
@@ -275,22 +275,22 @@ describe("CustomDomainsPanel", () => {
 
   it.each([
     {
-      name: "serviço não configurado", payload: domainPayload([], { used: 0, limit: 0 }, false), form: "absent",
+      name: "service not configured", payload: domainPayload([], { used: 0, limit: 0 }, false), form: "absent",
       en: "Custom domains are not switched on yet. Nothing is wrong with your account — check back shortly.",
       es: "Los dominios propios todavía no están activados. No hay ningún problema con tu cuenta; vuelve a consultar pronto.",
     },
     {
-      name: "plano sem domínio", payload: domainPayload([], { used: 0, limit: 0 }), form: "absent",
+      name: "plan without a domain", payload: domainPayload([], { used: 0, limit: 0 }), form: "absent",
       en: "Your plan does not include a custom domain. Upgrade to Starter to connect one.",
       es: "Tu plan no incluye un dominio propio. Mejora a Starter para conectar uno.",
     },
     {
-      name: "quota cheia", payload: domainPayload(domains.slice(0, 2), { used: 2, limit: 2 }), form: "disabled",
+      name: "quota full", payload: domainPayload(domains.slice(0, 2), { used: 2, limit: 2 }), form: "disabled",
       en: "You have connected every domain your plan includes. Upgrade to add another.",
       es: "Ya has conectado todos los dominios incluidos en tu plan. Mejora tu plan para añadir otro.",
     },
     {
-      name: "quota disponível sem domínios", payload: domainPayload([], { used: 0, limit: 3 }), form: "enabled",
+      name: "quota available with no domains", payload: domainPayload([], { used: 0, limit: 3 }), form: "enabled",
       en: "0 of 3 used", es: "0 de 3 utilizados",
     },
   ])("distinguishes $name in EN/ES without changing the quota or enabling a forbidden action", async (scenario) => {
@@ -779,7 +779,7 @@ describe("CustomDomainsPanel", () => {
         const verificationValue = "TXT literal $$ $& {hostname} local-qa";
         const target: DomainFixture = {
           ...domains[0], status: "pending_verification",
-          verification_name: "_verify.aulas.exemplo.com", verification_value: verificationValue,
+          verification_name: "_verify.lessons.example.com", verification_value: verificationValue,
         };
         const saved: DomainFixture = { ...domains[0], id: "dom-new", hostname: "miescuela.example.com" };
         const updated: DomainFixture = {

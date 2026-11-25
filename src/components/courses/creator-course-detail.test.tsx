@@ -227,7 +227,7 @@ describe("CreatorCourseDetail", () => {
     const course = fixtures.course as TeacherCourse;
     const lesson = course.modules[0].lessons[0];
     course.freePreviewLessonId = "lesson-1";
-    lesson.contentText = "linha 1\nveja https://a.com/x.";
+    lesson.contentText = "line 1\nsee https://a.com/x.";
     try {
       render(<CreatorCourseDetail courseIdOverride="course-1" />);
       await screen.findAllByText("$149.00");
@@ -238,7 +238,7 @@ describe("CreatorCourseDetail", () => {
       expect(link).toHaveAttribute("target", "_blank");
       expect(link).toHaveAttribute("rel", "noopener noreferrer nofollow ugc");
       expect(link?.parentElement).toHaveClass("whitespace-pre-line");
-      expect(preview.textContent).toContain("linha 1\nveja https://a.com/x.");
+      expect(preview.textContent).toContain("line 1\nsee https://a.com/x.");
     } finally {
       delete course.freePreviewLessonId;
       delete lesson.contentText;
@@ -323,11 +323,11 @@ describe("CreatorCourseDetail: while loading", () => {
   // status phrases: the block also goes without the price line. Free and a real
   // price (one-time or subscription) stay as before.
   it.each([
-    ["oferta do link que não existe mais", () => { fixtures.query = "offer=MISSING"; withOffers(); }, "Offer unavailable", null],
-    ["preço que não se resolve", () => { fixtures.course.priceAmountMinor = -1; }, "Pricing pending", null],
-    ["curso gratuito", () => { fixtures.course.priceAmountMinor = 0; }, "Free", "Free"],
-    ["pagamento único", () => {}, "$149.00", "$149.00"],
-    ["assinatura", () => { Object.assign(fixtures.course, { paymentType: "subscription_monthly" }); }, "$149.00 / month", "$149.00 / month"],
+    ["offer of a link that no longer exists", () => { fixtures.query = "offer=MISSING"; withOffers(); }, "Offer unavailable", null],
+    ["price that does not resolve", () => { fixtures.course.priceAmountMinor = -1; }, "Pricing pending", null],
+    ["free course", () => { fixtures.course.priceAmountMinor = 0; }, "Free", "Free"],
+    ["one-time payment", () => {}, "$149.00", "$149.00"],
+    ["subscription", () => { Object.assign(fixtures.course, { paymentType: "subscription_monthly" }); }, "$149.00 / month", "$149.00 / month"],
   ])("%s: the card says \"%s\" and the block receives %s", async (_caso, arrange, cardPrice, blockPrice) => {
     arrange();
     render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
@@ -511,8 +511,8 @@ describe("CreatorCourseDetail: the card that sells", () => {
   // Until the price arrives the course is not yet "free": a free course used to read
   // "Paid access opens…", the refund and the seller while the price loaded.
   it.each([
-    ["carregando", () => new Promise(() => {})],
-    ["com a leitura falhando", async () => ({ ok: false, json: async () => ({ error: "unavailable" }) })],
+    ["loading", () => new Promise(() => {})],
+    ["with the read failing", async () => ({ ok: false, json: async () => ({ error: "unavailable" }) })],
   ])("free course with price %s: no paid-purchase phrase on the card", async (_state, respond) => {
     Object.assign(fixtures.course, { paymentType: "free", priceAmountMinor: 0 });
     vi.stubGlobal("fetch", vi.fn(respond));

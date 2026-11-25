@@ -447,9 +447,9 @@ describe("how will people pay", () => {
     });
 
     it.each([
-      ["o mesmo modelo", "one_time", 9700],
-      ["um construtor que diz gratis", "free", 0],
-      ["um construtor que diz mensal", "subscription_monthly", 2900],
+      ["the same model", "one_time", 9700],
+      ["a builder that says free", "free", 0],
+      ["a builder that says monthly", "subscription_monthly", 2900],
     ] as const)("with %s: shows what the page charges, without cards or fields", async (_label, paymentType, price) => {
       stubOffers([main]);
       mocks.course = paid("course", paymentType, price, { status: "published" });
@@ -477,8 +477,8 @@ describe("how will people pay", () => {
     // Without the list, the main price is unknown: the cards would only change the
     // builder. The route returns 200 with a warning when the read fails.
     it.each([
-      ["a leitura falha", { ok: false, json: async () => ({}) }],
-      ["a rota avisa que nao leu", { ok: true, json: async () => ({ offers: [], warning: "Offers are unavailable." }) }],
+      ["the read fails", { ok: false, json: async () => ({}) }],
+      ["the route warns it did not read", { ok: true, json: async () => ({ offers: [], warning: "Offers are unavailable." }) }],
     ])("when %s: no cards, and Try again reads again", async (_label, response) => {
       vi.stubGlobal("fetch", vi.fn(async () => response));
       mocks.course = paid("course", "one_time", 9700, { status: "published" });

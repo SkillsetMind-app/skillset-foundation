@@ -71,7 +71,7 @@ next-env.d.ts
 # graphify knowledge graph (local tooling output)
 graphify-out/
 
-# Fatias intermediarias da extracao do baseline (o artefato e supabase/schema/remote_schema_*.sql)
+# Intermediate slices from extracting the baseline (the artifact is supabase/schema/remote_schema_*.sql)
 supabase/schema/parts/
 
 # Supabase CLI link state (holds the project ref and pooler URL)

@@ -346,15 +346,15 @@ describe("lessonMedia: every lesson needs content", () => {
   });
 
   it("the hint names only the first three empty lessons, and translates without touching the titles", () => {
-    const lessons = ["Aula $& um", "Two", "", "Four"].map((title, index) => ({
+    const lessons = ["Lesson $& one", "Two", "", "Four"].map((title, index) => ({
       ...empty, id: `e${index}`, title,
     }));
     const en = readinessOf(courseWith(...lessons), [], (key) => translate(getDictionary("en"), key));
     const es = readinessOf(courseWith(...lessons), [], (key) => translate(getDictionary("es"), key));
 
-    expect(en.next?.hint).toBe("Add a video, text or file to every lesson. Missing: Aula $& um, Two, Untitled lesson and 1 more.");
+    expect(en.next?.hint).toBe("Add a video, text or file to every lesson. Missing: Lesson $& one, Two, Untitled lesson and 1 more.");
     expect(es.next?.label).toBe("Contenido de las lecciones");
-    expect(es.next?.hint).toBe("Añade un video, texto o archivo a cada lección. Faltan: Aula $& um, Two, Lección sin título y 1 más.");
+    expect(es.next?.hint).toBe("Añade un video, texto o archivo a cada lección. Faltan: Lesson $& one, Two, Lección sin título y 1 más.");
     expect(en).toEqual(readinessOf(courseWith(...lessons)));
   });
 });

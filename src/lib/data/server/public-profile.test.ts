@@ -120,8 +120,8 @@ describe("getPublicProfileByRef", () => {
     fakeClient({ data: null, error: null });
     expect(await getPublicProfileByRef("@ninguem")).toBeNull();
 
-    fakeClient({ data: null, error: { message: "banco fora" } });
-    await expect(getPublicProfileByRef("@ana.souza")).rejects.toMatchObject({ message: "banco fora" });
+    fakeClient({ data: null, error: { message: "database down" } });
+    await expect(getPublicProfileByRef("@ana.souza")).rejects.toMatchObject({ message: "database down" });
   });
 
   it("uses an anonymous client, with no retry, and a short deadline and cache", async () => {
@@ -167,11 +167,11 @@ describe("listCreatorCourses", () => {
       error: null,
     });
 
-    const courses = await listCreatorCourses("dono");
+    const courses = await listCreatorCourses("owner");
 
     expect(calls).toEqual(expect.arrayContaining([
       ["from", "courses"],
-      ["eq", "owner_id", "dono"],
+      ["eq", "owner_id", "owner"],
       ["eq", "status", "published"],
       ["not", "id", "like", "smoke-%"],
       ["not", "title", "like", "[QA]%"],
@@ -186,10 +186,10 @@ describe("listCreatorCourses", () => {
   });
 
   it("a read failure counts as null and goes to the log", async () => {
-    fakeClient({ data: null, error: { message: "banco fora" } });
+    fakeClient({ data: null, error: { message: "database down" } });
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
-      expect(await listCreatorCourses("dono")).toBeNull();
+      expect(await listCreatorCourses("owner")).toBeNull();
       expect(log).toHaveBeenCalledWith(expect.stringContaining("listCreatorCourses"), expect.anything());
     } finally {
       log.mockRestore();

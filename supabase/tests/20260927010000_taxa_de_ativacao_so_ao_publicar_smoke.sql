@@ -73,18 +73,18 @@ create function pg_temp.build(n int) returns void language plpgsql as $$
 declare v_id text;
 begin
   v_id := public.create_teacher_course_draft(
-    'Publish only ' || n, 'Curso usado só por este smoke da taxa ao publicar.', 'smoke',
+    'Publish only ' || n, 'Course used only by this smoke test of the fee charged at publish.', 'smoke',
     array['smoke'], 'free');
   perform set_config('smoke.course_' || n, v_id, true);
   perform public.update_teacher_course_builder(v_id, jsonb_build_object(
     'title', 'Publish only ' || n,
-    'summary', 'Curso usado só por este smoke da taxa ao publicar.',
+    'summary', 'Course used only by this smoke test of the fee charged at publish.',
     'categories', jsonb_build_array('smoke'),
     'paymentType', 'free', 'priceAmountMinor', 0, 'currency', 'USD',
-    'modules', jsonb_build_array(jsonb_build_object('id', 'm1', 'title', 'Modulo',
-      'lessons', jsonb_build_array(jsonb_build_object('id', 'po-l1-' || n, 'title', 'Aula',
-        'description', 'Aula', 'type', 'text', 'contentText', 'Conteudo da aula para o smoke.',
-        'externalUrl', 'https://example.invalid/aula')))))
+    'modules', jsonb_build_array(jsonb_build_object('id', 'm1', 'title', 'Module',
+      'lessons', jsonb_build_array(jsonb_build_object('id', 'po-l1-' || n, 'title', 'Lesson',
+        'description', 'Lesson', 'type', 'text', 'contentText', 'Lesson content for the smoke test.',
+        'externalUrl', 'https://example.invalid/lesson')))))
   );
 end $$;
 
@@ -128,13 +128,13 @@ select pg_temp.check_gate('revoked creator cannot edit a course that stayed publ
   pg_temp.refused(format($q$select public.update_teacher_course_builder(%L, %L::jsonb)$q$,
     current_setting('smoke.course_1', true),
     jsonb_build_object('title', 'Publish only 1 edited',
-      'summary', 'Curso usado só por este smoke da taxa ao publicar.',
+      'summary', 'Course used only by this smoke test of the fee charged at publish.',
       'categories', jsonb_build_array('smoke'),
       'paymentType', 'free', 'priceAmountMinor', 0, 'currency', 'USD',
-      'modules', jsonb_build_array(jsonb_build_object('id', 'm1', 'title', 'Modulo',
-        'lessons', jsonb_build_array(jsonb_build_object('id', 'po-l1-1', 'title', 'Aula',
-          'description', 'Aula', 'type', 'text', 'contentText', 'Conteudo da aula para o smoke.',
-          'externalUrl', 'https://example.invalid/aula')))))::text),
+      'modules', jsonb_build_array(jsonb_build_object('id', 'm1', 'title', 'Module',
+        'lessons', jsonb_build_array(jsonb_build_object('id', 'po-l1-1', 'title', 'Lesson',
+          'description', 'Lesson', 'type', 'text', 'contentText', 'Lesson content for the smoke test.',
+          'externalUrl', 'https://example.invalid/lesson')))))::text),
     'Pay the one-time activation fee before publishing your first course.'));
 reset role;
 select pg_temp.act_as(null, 'service_role');

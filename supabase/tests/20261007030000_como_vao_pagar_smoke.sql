@@ -13,13 +13,13 @@
 -- next to a main price (alone, checkout would charge it). With a main price,
 -- the product's own price follows it: only the main price copies over.
 begin;
-create temp table pagar_checks (name text, passed boolean);
-grant insert, select on pagar_checks to authenticated;
+create temp table payment_checks (name text, passed boolean);
+grant insert, select on payment_checks to authenticated;
 -- Before pg_temp.draft: a language sql body is checked when it is created.
 create temp table drafts (key text primary key, id text);
 grant insert, select on drafts to authenticated;
 create function pg_temp.check_gate(p_name text, p_ok boolean) returns void
-language sql as $$ insert into pagar_checks values (p_name, coalesce(p_ok, false)); $$;
+language sql as $$ insert into payment_checks values (p_name, coalesce(p_ok, false)); $$;
 create function pg_temp.uid(n int) returns uuid language sql immutable as $$
   select ('86651007-0300-4000-8000-' || lpad(n::text, 12, '0'))::uuid;
 $$;
@@ -94,7 +94,7 @@ $$;
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
-values (pg_temp.uid(1), 'authenticated', 'authenticated', 'como-vao-pagar-1@example.test',
+values (pg_temp.uid(1), 'authenticated', 'authenticated', 'how-they-pay-1@example.test',
   now(), '{}', '{}', now(), now());
 -- This smoke isolates activation/content; creator plans are already current.
 insert into public.subscriptions(id, user_id, plan_id, status, current_period_end)
@@ -275,13 +275,13 @@ select pg_temp.check_gate('functions: fixed search_path; the price checks run as
                       'public.courses_price_follows_main_offer()'::regprocedure))
   and not has_function_privilege('authenticated', 'public.set_default_product_offer(text, text)', 'execute'));
 
-select pg_temp.check_gate('every case ran', (select count(*) = 41 from pagar_checks));
+select pg_temp.check_gate('every case ran', (select count(*) = 41 from payment_checks));
 
-select name, passed from pagar_checks order by name;
+select name, passed from payment_checks order by name;
 do $$
 declare failures text;
 begin
-  select string_agg(name, ', ' order by name) into failures from pagar_checks where not passed;
+  select string_agg(name, ', ' order by name) into failures from payment_checks where not passed;
   if failures is not null then
     raise exception 'PAYMENT_BY_FORMAT_REGRESSION: %', failures;
   end if;

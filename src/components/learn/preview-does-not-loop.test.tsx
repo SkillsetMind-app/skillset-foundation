@@ -71,9 +71,9 @@ const course = {
 // reversal). A fuse turns the hang into a failure that ends.
 const FUSIVEL = 20;
 
-function comFusivel<T>(rotulo: string, entrega: T) {
+function withFuse<T>(rotulo: string, entrega: T) {
   let vezes = 0;
-  return (_courseId: string, onNext: (valor: T) => void) => {
+  return (_courseId: string, onNext: (value: T) => void) => {
     vezes += 1;
     if (vezes > FUSIVEL) {
       throw new Error(`loop: ${rotulo} resubscribed ${vezes} times`);
@@ -89,10 +89,10 @@ describe("the teacher's course preview must not enter a loop", () => {
     // The real failure mode: the subscription delivers the current state RIGHT when
     // subscribing. It is writing that state that closes the loop.
     mocks.subscribeToLessonContent.mockImplementation(
-      comFusivel("conteudo de aula", new Map()),
+      withFuse("lesson content", new Map()),
     );
     mocks.subscribeToCourseAssets.mockImplementation(
-      comFusivel("anexos", [] as unknown[]),
+      withFuse("attachments", [] as unknown[]),
     );
     mocks.subscribeToEnrollment.mockImplementation((_uid, _slug, onNext) => {
       onNext(null);

@@ -84,24 +84,24 @@ describe("support queue search, states and language", () => {
     // The box opens through "Reply" (I-09).
     expect(screen.queryByRole("textbox")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Reply" }));
-    fireEvent.change(screen.getByRole("textbox", { name: "Reply to user" }), { target: { value: "  Resposta autoral preservada.  " } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Reply to user" }), { target: { value: "  Authored reply preserved.  " } });
     rerender(queue("Beta"));
     rerender(queue("Alpha"));
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    expect(screen.getByRole("textbox", { name: "Respuesta al usuario" })).toHaveValue("  Resposta autoral preservada.  ");
+    expect(screen.getByRole("textbox", { name: "Respuesta al usuario" })).toHaveValue("  Authored reply preserved.  ");
     expect(screen.getByText("Curso")).toBeInTheDocument();
     // The label and the locked button of the current status, in the usual place.
     expect(screen.getAllByText("Abierto", { ignore: hidden })).toHaveLength(2);
     mocks.reply.mockRejectedValueOnce(new Error("Internal operation detail"));
     fireEvent.click(screen.getByRole("button", { name: "Enviar respuesta y resolver" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("No pudimos enviar esta respuesta.");
-    expect(screen.getByRole("textbox", { name: "Respuesta al usuario" })).toHaveValue("  Resposta autoral preservada.  ");
+    expect(screen.getByRole("textbox", { name: "Respuesta al usuario" })).toHaveValue("  Authored reply preserved.  ");
     expect(screen.queryByText("Respuesta enviada y ticket resuelto.")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
     expect(screen.getByRole("alert")).toHaveTextContent("We could not send this reply.");
     fireEvent.click(screen.getByRole("button", { name: "Send reply and resolve" }));
     expect(await screen.findByRole("status")).toHaveTextContent("Reply sent and ticket resolved.");
-    expect(mocks.reply).toHaveBeenLastCalledWith("ticket-a", "Resposta autoral preservada.", "operator");
+    expect(mocks.reply).toHaveBeenLastCalledWith("ticket-a", "Authored reply preserved.", "operator");
     // Once sent, the box closes and focus goes back to "Reply"; reopened, it comes up empty.
     expect(screen.queryByRole("textbox")).toBeNull();
     expect(screen.getByRole("button", { name: "Reply" })).toHaveFocus();
@@ -142,12 +142,12 @@ describe("support queue search, states and language", () => {
     fireEvent.click(within(resolved).getByRole("button", { name: "Reply" }));
     expect(screen.getAllByRole("textbox")).toHaveLength(1);
     expect(within(resolved).getByRole("textbox", { name: "Reply to user" })).toHaveFocus();
-    fireEvent.change(within(resolved).getByRole("textbox"), { target: { value: "Rascunho guardado." } });
+    fireEvent.change(within(resolved).getByRole("textbox"), { target: { value: "Draft saved." } });
     fireEvent.click(within(resolved).getByRole("button", { name: "Cancel" }));
     expect(screen.queryAllByRole("textbox")).toHaveLength(0);
     expect(within(resolved).getByRole("button", { name: "Reply" })).toHaveFocus();
     fireEvent.click(within(resolved).getByRole("button", { name: "Reply" }));
-    expect(within(resolved).getByRole("textbox")).toHaveValue("Rascunho guardado.");
+    expect(within(resolved).getByRole("textbox")).toHaveValue("Draft saved.");
     expect(mocks.reply).not.toHaveBeenCalled();
     expect(mocks.update).not.toHaveBeenCalled();
   });

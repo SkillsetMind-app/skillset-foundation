@@ -31,19 +31,19 @@ values
 insert into public.users(uid, email, roles, onboarding_completed)
 select id::text, email, '["student"]'::jsonb, true from auth.users where email like 'conta-email-%@example.test'
 on conflict (uid) do nothing;
-update public.users set email = 'perfil-trocado@example.test' where uid = pg_temp.uid(2)::text;
+update public.users set email = 'profile-changed@example.test' where uid = pg_temp.uid(2)::text;
 
 -- 1) The server finds the account, even with spaces and uppercase.
 set local role service_role;
 select pg_temp.assert_true(public.find_auth_user_id_by_email('  Conta-Email-1@Example.TEST ') = pg_temp.uid(1), 'auth email lookup');
 
 -- 2) The profile email (editable) does not find an account; the one in auth.users does.
-select pg_temp.assert_true(public.find_auth_user_id_by_email('perfil-trocado@example.test') is null, 'profile email is not a lookup');
+select pg_temp.assert_true(public.find_auth_user_id_by_email('profile-changed@example.test') is null, 'profile email is not a lookup');
 select pg_temp.assert_true(public.find_auth_user_id_by_email('conta-email-2@example.test') = pg_temp.uid(2), 'auth email of edited profile');
 
 -- 3) Deleted account and unknown email: null.
 select pg_temp.assert_true(public.find_auth_user_id_by_email('conta-email-3@example.test') is null, 'deleted account');
-select pg_temp.assert_true(public.find_auth_user_id_by_email('ninguem@example.test') is null, 'unknown email');
+select pg_temp.assert_true(public.find_auth_user_id_by_email('nobody@example.test') is null, 'unknown email');
 reset role;
 
 -- 4) Browser (anon and authenticated) does not execute.

@@ -22,8 +22,8 @@ describe("buildPageMetadata — canonical host", () => {
 
   it("builds canonical and og:url on the canonical host", () => {
     const meta = buildPageMetadata({
-      title: "Curso",
-      description: "Descrição",
+      title: "Course",
+      description: "Description",
       path: "/courses/abc",
     });
 
@@ -40,8 +40,8 @@ describe("buildPageMetadata — card image", () => {
   it("uses the course cover when it is an absolute URL", () => {
     const cover = "https://cdn.example.com/capa.jpg";
     const meta = buildPageMetadata({
-      title: "Curso",
-      description: "Descrição",
+      title: "Course",
+      description: "Description",
       path: "/courses/abc",
       image: cover,
     });
@@ -52,8 +52,8 @@ describe("buildPageMetadata — card image", () => {
 
   it("resolves a local path against the canonical host", () => {
     const meta = buildPageMetadata({
-      title: "Curso",
-      description: "Descrição",
+      title: "Course",
+      description: "Description",
       path: "/courses/abc",
       image: "/brand/capa.png",
     });
@@ -68,12 +68,12 @@ describe("buildPageMetadata — card image", () => {
   it("falls back to the 1200×630 share card when the page has no image of its own", () => {
     const withoutImage = buildPageMetadata({
       title: "Sobre",
-      description: "Descrição",
+      description: "Description",
       path: "/about",
     });
     const withNull = buildPageMetadata({
       title: "Sobre",
-      description: "Descrição",
+      description: "Description",
       path: "/about",
       image: null,
     });

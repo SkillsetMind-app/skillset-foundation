@@ -82,9 +82,9 @@ insert into public.courses(id, owner_id, slug, title, title_key, summary, catego
   price_amount_minor, currency, community_enabled)
 values
   ('smoke-mod-a', pg_temp.uid(1)::text, 'smoke-mod-a-slug', 'Smoke mod A', 'smoke-mod-a',
-   'Curso usado so por este smoke.', 'smoke', 'published', 'free', 0, 'USD', true),
+   'Course used only by this smoke test.', 'smoke', 'published', 'free', 0, 'USD', true),
   ('smoke-mod-b', pg_temp.uid(4)::text, 'smoke-mod-b-slug', 'Smoke mod B', 'smoke-mod-b',
-   'Curso usado so por este smoke.', 'smoke', 'published', 'free', 0, 'USD', true);
+   'Course used only by this smoke test.', 'smoke', 'published', 'free', 0, 'USD', true);
 insert into public.enrollments(id, user_id, course_id, course_slug, course_title, course_category, course_image, status, source)
 select pg_temp.uid(n)::text || '__smoke-mod-a', pg_temp.uid(n)::text, 'smoke-mod-a', 'smoke-mod-a',
   'Smoke mod A', 'smoke', '', 'active', 'admin'

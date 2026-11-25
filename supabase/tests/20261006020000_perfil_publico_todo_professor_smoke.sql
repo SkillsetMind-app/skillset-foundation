@@ -73,8 +73,8 @@ end $$;
 select pg_temp.service();
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 select pg_temp.uid(n), 'authenticated', 'authenticated',
-  case n when 10 then 'qa-10@example.com' when 11 then 'perfil-11@lab.test'
-         else 'perfil-' || n || '@smoke.skillsetmind.com' end,
+  case n when 10 then 'qa-10@example.com' when 11 then 'profile-11@lab.test'
+         else 'profile-' || n || '@smoke.skillsetmind.com' end,
   now(), '{}', '{}', now(), now()
 from generate_series(1, 11) n;
 update public.users set roles = '["student","teacher"]', display_name = 'Perfil ' || right(uid, 2),

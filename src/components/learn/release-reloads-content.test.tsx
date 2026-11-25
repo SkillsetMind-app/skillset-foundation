@@ -79,7 +79,7 @@ const db = vi.hoisted(() => {
                 const deliver = () =>
                   resolve(
                     failed
-                      ? { data: null, error: { message: "falha simulada" } }
+                      ? { data: null, error: { message: "simulated failure" } }
                       : { data: rowsFor(table), error: null },
                   );
                 if (state.hold) {
@@ -114,7 +114,7 @@ const db = vi.hoisted(() => {
       from: () => ({
         createSignedUrl: async () => {
           state.signs += 1;
-          return { data: { signedUrl: "https://files.example.test/aula-1.mp4" }, error: null };
+          return { data: { signedUrl: "https://files.example.test/lesson-1.mp4" }, error: null };
         },
       }),
     },
@@ -268,7 +268,7 @@ describe("the classroom fetches again only when a lesson opens", () => {
         assetRow("video-l1", "l1", "lesson_video", "video/mp4"),
         assetRow("pdf-l2", "l2", "lesson_material", "application/pdf"),
       ],
-      course_lesson_content: [contentRow("l1", "Texto da aula um"), contentRow("l2", "Texto da aula dois")],
+      course_lesson_content: [contentRow("l1", "Lesson one text"), contentRow("l2", "Lesson two text")],
     };
     db.state.serverOpen = new Set(["l1"]);
     db.state.failNext = new Set();
@@ -337,11 +337,11 @@ describe("the classroom fetches again only when a lesson opens", () => {
 
     await flush(day + 6 * second);
     expect(counts().content).toBe(before.content + 1);
-    expect(screen.queryByText("Texto da aula dois")).toBeNull();
+    expect(screen.queryByText("Lesson two text")).toBeNull();
 
     db.state.serverOpen.add("l2");
     await flush(30 * second);
-    expect(screen.getByText("Texto da aula dois")).toBeTruthy();
+    expect(screen.getByText("Lesson two text")).toBeTruthy();
     expect(counts().content).toBe(before.content + 2);
 
     await flush(5 * minute);
@@ -364,18 +364,18 @@ describe("the classroom fetches again only when a lesson opens", () => {
     const before = counts();
     db.state.serverOpen.add("l2");
     await flush(day + 6 * second);
-    expect(screen.getByText("Texto da aula dois")).toBeTruthy();
+    expect(screen.getByText("Lesson two text")).toBeTruthy();
 
     db.state.tables.course_lesson_content = [
-      contentRow("l1", "Texto da aula um"),
-      contentRow("l2", "Texto revisado da aula dois"),
+      contentRow("l1", "Lesson one text"),
+      contentRow("l2", "Revised lesson two text"),
     ];
     await act(async () => {
       db.state.realtime.get("course_lesson_content")?.();
     });
     await flush();
 
-    expect(screen.getByText("Texto revisado da aula dois")).toBeTruthy();
+    expect(screen.getByText("Revised lesson two text")).toBeTruthy();
     expect(counts().subscribes).toBe(before.subscribes);
   });
 
@@ -449,7 +449,7 @@ describe("the classroom fetches again only when a lesson opens", () => {
 
     // Deadline: the reload comes back without lesson 2 (device clock running ahead).
     await flush(day + 6 * second);
-    expect(screen.queryByText("Texto da aula dois")).toBeNull();
+    expect(screen.queryByText("Lesson two text")).toBeNull();
 
     // Another change inside the retry window.
     await act(async () => {
@@ -459,13 +459,13 @@ describe("the classroom fetches again only when a lesson opens", () => {
 
     db.state.serverOpen.add("l2");
     await flush(minute);
-    expect(screen.getByText("Texto da aula dois")).toBeTruthy();
+    expect(screen.getByText("Lesson two text")).toBeTruthy();
   });
 
   it("an open lesson without protected content (sequential) spends at most one extra attempt", async () => {
     db.state.tables = {
       course_assets: [assetRow("video-l1", "l1", "lesson_video", "video/mp4")],
-      course_lesson_content: [contentRow("l1", "Texto da aula um")],
+      course_lesson_content: [contentRow("l1", "Lesson one text")],
     };
     await mount(sequentialCourse);
     const before = counts();
@@ -512,7 +512,7 @@ describe("the classroom fetches again only when a lesson opens", () => {
     expect(playerNotice()).toBe("Loading lesson content...");
 
     await releaseHeld();
-    expect(screen.getByText("Texto da aula dois")).toBeTruthy();
+    expect(screen.getByText("Lesson two text")).toBeTruthy();
     expect(playerNotice()).toBeNull();
   });
 
@@ -531,7 +531,7 @@ describe("the classroom fetches again only when a lesson opens", () => {
     } as unknown as Course;
     db.state.tables = {
       course_assets: [assetRow("pdf-l2", "l2", "lesson_material", "application/pdf")],
-      course_lesson_content: [contentRow("l1", "Texto da aula um"), contentRow("l2", "Texto da aula dois")],
+      course_lesson_content: [contentRow("l1", "Lesson one text"), contentRow("l2", "Lesson two text")],
     };
     await mount(textFirstCourse, "l1");
     expect(playerNotice()).toBeNull();
@@ -562,7 +562,7 @@ describe("the classroom fetches again only when a lesson opens", () => {
     // Lesson 2 without a protected row: quiz, text only in the curriculum, or embed.
     db.state.tables = {
       course_assets: [assetRow("video-l1", "l1", "lesson_video", "video/mp4")],
-      course_lesson_content: [contentRow("l1", "Texto da aula um")],
+      course_lesson_content: [contentRow("l1", "Lesson one text")],
     };
     await mount(sequentialCourse, "l2");
 
@@ -589,7 +589,7 @@ describe("the classroom fetches again only when a lesson opens", () => {
               type: "text",
               duration: "7 min",
               isPreview: false,
-              contentText: "Texto no currículo da aula dois",
+              contentText: "Curriculum text of lesson two",
             },
           ],
         },
@@ -597,7 +597,7 @@ describe("the classroom fetches again only when a lesson opens", () => {
     } as unknown as Course;
     db.state.tables = {
       course_assets: [assetRow("video-l1", "l1", "lesson_video", "video/mp4")],
-      course_lesson_content: [contentRow("l1", "Texto da aula um")],
+      course_lesson_content: [contentRow("l1", "Lesson one text")],
     };
     await mount(inlineTextCourse, "l2");
 
@@ -605,7 +605,7 @@ describe("the classroom fetches again only when a lesson opens", () => {
     db.state.hold = true;
     await flush(day + 6 * second);
     expect(playerNotice()).toBeNull();
-    expect(screen.getByText("Texto no currículo da aula dois")).toBeTruthy();
+    expect(screen.getByText("Curriculum text of lesson two")).toBeTruthy();
 
     await releaseHeld();
     expect(playerNotice()).toBeNull();

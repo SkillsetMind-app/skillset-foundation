@@ -78,20 +78,20 @@ insert into public.courses(id, owner_id, slug, title, title_key, summary, catego
   price_amount_minor, currency, community_enabled, cover_image_url)
 values
   ('smoke-del-a', pg_temp.uid(1)::text, 'smoke-del-a-slug', 'Smoke del A', 'smoke-del-a',
-   'Curso usado so por este smoke.', 'smoke', 'draft', 'free', 0, 'USD', true, null),
+   'Course used only by this smoke test.', 'smoke', 'draft', 'free', 0, 'USD', true, null),
   -- Neighbor prefix: 'courses/smoke-del-a-b/' starts with 'courses/smoke-del-a'.
   -- And its cover is "borrowed" from A: the cleanup of A must not delete it.
   ('smoke-del-a-b', pg_temp.uid(2)::text, 'smoke-del-a-b-slug', 'Smoke del A-B', 'smoke-del-a-b',
-   'Curso usado so por este smoke.', 'smoke', 'draft', 'free', 0, 'USD', true,
+   'Course used only by this smoke test.', 'smoke', 'draft', 'free', 0, 'USD', true,
    'https://example.supabase.co/storage/v1/object/public/public-media/courses/smoke-del-a/landing/hero.webp'),
   ('smoke-del-buyer', pg_temp.uid(1)::text, 'smoke-del-buyer-slug', 'Smoke del buyer', 'smoke-del-buyer',
-   'Curso usado so por este smoke.', 'smoke', 'published', 'free', 0, 'USD', true, null),
+   'Course used only by this smoke test.', 'smoke', 'published', 'free', 0, 'USD', true, null),
   ('smoke-del-sub', pg_temp.uid(1)::text, 'smoke-del-sub-slug', 'Smoke del sub', 'smoke-del-sub',
-   'Curso usado so por este smoke.', 'smoke', 'published', 'free', 0, 'USD', true, null),
+   'Course used only by this smoke test.', 'smoke', 'published', 'free', 0, 'USD', true, null),
   ('smoke-del-admin', pg_temp.uid(1)::text, 'smoke-del-admin-slug', 'Smoke del admin', 'smoke-del-admin',
-   'Curso usado so por este smoke.', 'smoke', 'draft', 'free', 0, 'USD', true, null),
+   'Course used only by this smoke test.', 'smoke', 'draft', 'free', 0, 'USD', true, null),
   ('smoke-del-direct', pg_temp.uid(1)::text, 'smoke-del-direct-slug', 'Smoke del direct', 'smoke-del-direct',
-   'Curso usado so por este smoke.', 'smoke', 'draft', 'free', 0, 'USD', false, null);
+   'Course used only by this smoke test.', 'smoke', 'draft', 'free', 0, 'USD', false, null);
 
 -- Only learner 4 bought: refunded enrollment on 'buyer', subscription on 'sub'.
 insert into public.enrollments(id, user_id, course_id, course_slug, course_title, course_category, course_image, status, source)
@@ -237,7 +237,7 @@ set local role authenticated;
 select pg_temp.check_del('a student probing an id being deleted gets the RLS error, not the queue error',
   pg_temp.error_of(format($q$insert into public.courses(id, owner_id, slug, title, title_key, summary, category, status,
       payment_type, price_amount_minor, currency)
-    values (%L, %L, %L, 'Smoke del again', %L, 'Curso usado so por este smoke.', 'smoke', 'draft', 'free', 0, 'USD')$q$,
+    values (%L, %L, %L, 'Smoke del again', %L, 'Course used only by this smoke test.', 'smoke', 'draft', 'free', 0, 'USD')$q$,
     'smoke-del-a', pg_temp.uid(1)::text, 'smoke-del-a-probe', 'smoke-del-a-probe')) like '42501:%');
 reset role;
 -- A course without children from teacher 2, for the rename case (a child with an FK
@@ -247,13 +247,13 @@ select set_config('skillset.trusted_write', 'on', true);
 insert into public.courses(id, owner_id, slug, title, title_key, summary, category, status, payment_type,
   price_amount_minor, currency)
 values ('smoke-del-rename', pg_temp.uid(2)::text, 'smoke-del-rename-slug', 'Smoke del rename', 'smoke-del-rename',
-  'Curso usado so por este smoke.', 'smoke', 'draft', 'free', 0, 'USD');
+  'Course used only by this smoke test.', 'smoke', 'draft', 'free', 0, 'USD');
 select pg_temp.act_as(pg_temp.uid(2), 'authenticated');
 set local role authenticated;
 select pg_temp.check_del('creating a course with an id still being deleted is refused',
   pg_temp.error_of(format($q$insert into public.courses(id, owner_id, slug, title, title_key, summary, category, status,
       payment_type, price_amount_minor, currency)
-    values (%L, %L, %L, 'Smoke del again', %L, 'Curso usado so por este smoke.', 'smoke', 'draft', 'free', 0, 'USD')$q$,
+    values (%L, %L, %L, 'Smoke del again', %L, 'Course used only by this smoke test.', 'smoke', 'draft', 'free', 0, 'USD')$q$,
     'smoke-del-a', pg_temp.uid(2)::text, 'smoke-del-a-again', 'smoke-del-a-again')) like '23505:%deleted product%');
 select pg_temp.check_del('renaming a course to an id still being deleted is refused',
   pg_temp.error_of($q$update public.courses set id = 'smoke-del-a' where id = 'smoke-del-rename'$q$)
@@ -268,7 +268,7 @@ update public.course_deletions set status = 'cancelled' where course_id = 'smoke
 insert into public.courses(id, owner_id, slug, title, title_key, summary, category, status, payment_type,
   price_amount_minor, currency)
 values ('smoke-del-a', pg_temp.uid(2)::text, 'smoke-del-a-again', 'Smoke del A again', 'smoke-del-a-again',
-  'Curso usado so por este smoke.', 'smoke', 'draft', 'free', 0, 'USD');
+  'Course used only by this smoke test.', 'smoke', 'draft', 'free', 0, 'USD');
 update public.course_deletions set status = 'pending' where course_id = 'smoke-del-a';
 select set_config('skillset.trusted_write', 'off', true);
 set local role service_role;
@@ -338,11 +338,11 @@ set local role authenticated;
 select pg_temp.check_del('the client never recreates a cancelled or a done id',
   pg_temp.error_of(format($q$insert into public.courses(id, owner_id, slug, title, title_key, summary, category, status,
       payment_type, price_amount_minor, currency)
-    values (%L, %L, %L, 'Smoke del again', %L, 'Curso usado so por este smoke.', 'smoke', 'draft', 'free', 0, 'USD')$q$,
+    values (%L, %L, %L, 'Smoke del again', %L, 'Course used only by this smoke test.', 'smoke', 'draft', 'free', 0, 'USD')$q$,
     'smoke-del-direct', pg_temp.uid(2)::text, 'smoke-del-direct-c', 'smoke-del-direct-c')) like '23505:%deleted product%'
   and pg_temp.error_of(format($q$insert into public.courses(id, owner_id, slug, title, title_key, summary, category, status,
       payment_type, price_amount_minor, currency)
-    values (%L, %L, %L, 'Smoke del again', %L, 'Curso usado so por este smoke.', 'smoke', 'draft', 'free', 0, 'USD')$q$,
+    values (%L, %L, %L, 'Smoke del again', %L, 'Course used only by this smoke test.', 'smoke', 'draft', 'free', 0, 'USD')$q$,
     'smoke-del-admin', pg_temp.uid(2)::text, 'smoke-del-admin-c', 'smoke-del-admin-c')) like '23505:%deleted product%');
 reset role;
 select pg_temp.act_as(null, 'service_role');
@@ -357,7 +357,7 @@ select pg_temp.check_del('the team (service role) can still create a cancelled i
   pg_temp.affected(format($q$insert into public.courses(id, owner_id, slug, title, title_key, summary, category,
       status, payment_type, price_amount_minor, currency)
     values ('smoke-del-direct', %L, 'smoke-del-direct-2', 'Smoke del direct 2', 'smoke-del-direct-2',
-      'Curso usado so por este smoke.', 'smoke', 'draft', 'free', 0, 'USD')$q$, pg_temp.uid(2)::text)) = 1);
+      'Course used only by this smoke test.', 'smoke', 'draft', 'free', 0, 'USD')$q$, pg_temp.uid(2)::text)) = 1);
 select set_config('skillset.trusted_write', 'off', true);
 delete from public.courses where id = 'smoke-del-direct';
 select pg_temp.check_del('deleting it again queues a fresh cleanup',

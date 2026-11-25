@@ -272,17 +272,17 @@ describe("attachments of a lesson with a video", () => {
   it("show the name given by the teacher, with no 'Preview' on material, and the mind map program", async () => {
     mocks.searchParams = new URLSearchParams("lesson=l1");
     mocks.assets = [
-      file("video", "l1", "aula-1.mp4", { kind: "lesson_video", contentType: "video/mp4" }),
+      file("video", "l1", "lesson-1.mp4", { kind: "lesson_video", contentType: "video/mp4" }),
       file("slides", "l1", "zz-slides.pdf", { title: "Slides", position: 0 }),
       // Marked as "preview" back when the old box existed: it stays enrolled-only.
-      file("map", "l1", "mapa.xmind", { position: 1, isPreview: true, contentType: "application/vnd.xmind.workbook" }),
-      file("freemind", "l1", "ideias.mm", { position: 2, contentType: "application/x-freemind" }),
+      file("map", "l1", "map.xmind", { position: 1, isPreview: true, contentType: "application/vnd.xmind.workbook" }),
+      file("freemind", "l1", "ideas.mm", { position: 2, contentType: "application/x-freemind" }),
     ];
     render(<EnrolledCourseWorkspace course={course} enableFirestoreAssets />);
 
     const slides = (await screen.findByText("Slides")).closest("div.rounded-lg") as HTMLElement;
     expect(within(slides).queryByText("zz-slides.pdf")).toBeNull();
-    const map = screen.getByText("mapa.xmind").closest("div.rounded-lg") as HTMLElement;
+    const map = screen.getByText("map.xmind").closest("div.rounded-lg") as HTMLElement;
     // Neither "Enrolled" (it applied to every attachment) nor the "Preview" badge on material.
     // A mind map has no preview: it stays as it was, "Open file" and "Download".
     expect(within(map).queryByText("Enrolled")).toBeNull();
@@ -296,7 +296,7 @@ describe("attachments of a lesson with a video", () => {
   it("the attachment preview only mounts when the person asks: opening the lesson does not request a link per file", async () => {
     mocks.searchParams = new URLSearchParams("lesson=l1");
     mocks.assets = [
-      file("video", "l1", "aula-1.mp4", { kind: "lesson_video", contentType: "video/mp4" }),
+      file("video", "l1", "lesson-1.mp4", { kind: "lesson_video", contentType: "video/mp4" }),
       file("slides", "l1", "zz-slides.pdf", { title: "Slides", position: 0 }),
     ];
     render(<EnrolledCourseWorkspace course={course} enableFirestoreAssets />);
@@ -320,7 +320,7 @@ describe("attachments of a lesson with a video", () => {
   it("audio in the lesson gets 'Preview', which opens 'Open file' to play in the browser", async () => {
     mocks.searchParams = new URLSearchParams("lesson=l1");
     mocks.assets = [
-      file("video", "l1", "aula-1.mp4", { kind: "lesson_video", contentType: "video/mp4" }),
+      file("video", "l1", "lesson-1.mp4", { kind: "lesson_video", contentType: "video/mp4" }),
       file("talk", "l1", "talk.mp3", { contentType: "audio/mpeg" }),
     ];
     render(<EnrolledCourseWorkspace course={course} enableFirestoreAssets />);

@@ -116,17 +116,17 @@ const ownSkin: [file: string, needle: string, reason: string][] = [
   [
     "teacher/course-builder-studio.tsx",
     "title: event.target.value,",
-    "título da aula na linha do currículo: editado no lugar, em negrito, ao lado de botões de 44px",
+    "lesson title in the curriculum row: edited in place, in bold, next to 44px buttons",
   ],
   [
     "teacher/course-builder-studio.tsx",
     'value={moveTargets[lesson.id] ?? ""}',
-    "mover para outro módulo: seletor de 12px na fileira de botões de 44px da aula",
+    "move to another module: 12px selector in the lesson's row of 44px buttons",
   ],
   [
     "teacher/lesson-content-modal.tsx",
     "defaultValue={title}",
-    "nome do material: dentro de .lesson-modal-assets, que tem regras próprias no globals.css",
+    "material name: inside .lesson-modal-assets, which has its own rules in globals.css",
   ],
 ];
 

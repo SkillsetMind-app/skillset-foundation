@@ -44,22 +44,22 @@ function table(result: { data: unknown; error: unknown }) {
 const home = {
   area: {
     owner_id: "u-1", username: "evan", creator_name: "Evan Stone", creator_photo_url: null,
-    name: "Evan Academy", theme: "dark", cover_path: "users/u-1/member-area/capa.jpg",
-    welcome_text: "Bem-vindo", configured: true, is_owner_preview: false,
+    name: "Evan Academy", theme: "dark", cover_path: "users/u-1/member-area/cover.jpg",
+    welcome_text: "Welcome", configured: true, is_owner_preview: false,
   },
   continue: {
-    course_id: "c-a", course_title: "EI Mastery", lesson_id: "l-2", lesson_title: "Aula 2",
+    course_id: "c-a", course_title: "EI Mastery", lesson_id: "l-2", lesson_title: "Lesson 2",
     position_seconds: 42, last_seen_at: "2026-10-15T10:00:00Z",
   },
   my_products: [
     { course_id: "c-a", title: "EI Mastery", cover_image_url: null, product_format: "course",
       lesson_count: 17, progress_percent: 12, enrollment_status: "active" },
-    { title: "sem id" },
+    { title: "no id" },
   ],
   more_products: [
     { course_id: "c-b", title: "Leadership Blind Spots", cover_image_url: "https://x/c.jpg",
       price_amount_minor: 9700, currency: "usd", payment_type: "one_time", sales_key: "leadership-blind-spots" },
-    { course_id: "c-c", title: "Sem chave", price_amount_minor: null },
+    { course_id: "c-c", title: "No key", price_amount_minor: null },
   ],
 };
 
@@ -70,14 +70,14 @@ describe("getMemberAreaHome", () => {
     expect(rpc).toHaveBeenCalledWith("get_member_area_home", { p_area_ref: "@evan" });
     expect(result?.area).toMatchObject({ ownerId: "u-1", name: "Evan Academy", theme: "dark", configured: true });
     expect(result?.continueWatching).toEqual({
-      courseId: "c-a", courseTitle: "EI Mastery", lessonId: "l-2", lessonTitle: "Aula 2",
+      courseId: "c-a", courseTitle: "EI Mastery", lessonId: "l-2", lessonTitle: "Lesson 2",
       positionSeconds: 42, lastSeenAt: "2026-10-15T10:00:00Z",
     });
     expect(result?.myProducts.map((product) => product.courseId)).toEqual(["c-a"]);
     expect(result?.moreProducts).toEqual([
       { courseId: "c-b", title: "Leadership Blind Spots", coverImageUrl: "https://x/c.jpg",
         priceAmountMinor: 9700, currency: "usd", paymentType: "one_time", salesKey: "leadership-blind-spots" },
-      { courseId: "c-c", title: "Sem chave", coverImageUrl: null, priceAmountMinor: null,
+      { courseId: "c-c", title: "No key", coverImageUrl: null, priceAmountMinor: null,
         currency: null, paymentType: null, salesKey: "c-c" },
     ]);
   });
@@ -168,13 +168,13 @@ describe("getMyMemberAreas", () => {
     from
       .mockReturnValueOnce(table({ data: [
         { id: "area-2", slug: "vip", name: "VIP", theme: "light", cover_path: null, welcome_text: null, community_course_id: null },
-        { id: "area-1", slug: null, name: "Evan Academy", theme: "dark", cover_path: null, welcome_text: "Oi", community_course_id: "c-com" },
+        { id: "area-1", slug: null, name: "Evan Academy", theme: "dark", cover_path: null, welcome_text: "Hi", community_course_id: "c-com" },
       ], error: null }))
       .mockReturnValueOnce(table({ data: [{ area_id: "area-2", course_id: "c-a", position: 0, visible: false }], error: null }));
     const editor = await getMyMemberAreas("u-1");
     expect(from).toHaveBeenNthCalledWith(2, "member_area_products");
     expect(editor.areas.map((area) => area.slug)).toEqual([null, "vip"]);
-    expect(editor.areas[0].settings).toEqual({ name: "Evan Academy", theme: "dark", coverPath: null, welcomeText: "Oi" });
+    expect(editor.areas[0].settings).toEqual({ name: "Evan Academy", theme: "dark", coverPath: null, welcomeText: "Hi" });
     expect(editor.areas[0].communityCourseId).toBe("c-com");
     expect(editor.placement.get("c-a")).toEqual({ areaId: "area-2", position: 0, visible: false });
   });
@@ -206,8 +206,8 @@ describe("memberAreaProductsOf", () => {
 describe("extra areas", () => {
   it("extra address and slug rule", () => {
     expect(memberAreaPath({ username: "evan", ownerId: "u-1", slug: "vip" })).toBe("/learn/areas/@evan/vip");
-    expect(isValidMemberAreaSlug("turma-2")).toBe(true);
-    for (const bad of ["community", "-x", "x-", "Turma", "a b", "", "a".repeat(41)]) {
+    expect(isValidMemberAreaSlug("cohort-2")).toBe(true);
+    for (const bad of ["community", "-x", "x-", "Cohort", "a b", "", "a".repeat(41)]) {
       expect(isValidMemberAreaSlug(bad), bad).toBe(false);
     }
   });
@@ -242,14 +242,14 @@ describe("extra areas", () => {
 describe("uploadMemberAreaCover", () => {
   it("uploads to the creator's folder with a new name and returns the path", async () => {
     upload.mockResolvedValue({ error: null });
-    const file = new File(["x"], "capa.png", { type: "image/png" });
+    const file = new File(["x"], "cover.png", { type: "image/png" });
     const path = await uploadMemberAreaCover("u-1", file);
     expect(path).toMatch(/^users\/u-1\/member-area\/cover-\d+$/);
     expect(upload).toHaveBeenCalledWith(path, file, { contentType: "image/png", upsert: false });
   });
 
   it("refuses a format outside the list without uploading anything", async () => {
-    await expect(uploadMemberAreaCover("u-1", new File(["x"], "capa.gif", { type: "image/gif" })))
+    await expect(uploadMemberAreaCover("u-1", new File(["x"], "cover.gif", { type: "image/gif" })))
       .rejects.toThrow("MEMBER_AREA_COVER_INVALID");
     expect(upload).not.toHaveBeenCalled();
   });

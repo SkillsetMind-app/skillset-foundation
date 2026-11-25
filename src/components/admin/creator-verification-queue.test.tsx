@@ -15,7 +15,7 @@ vi.mock("@/lib/data/creator-verification", () => ({
 }));
 
 const cases: CreatorVerificationCase[] = [
-  { id: "case-a", creatorId: "creator-a", applicantName: "Ana Rivera", applicantEmail: "ana@example.test", status: "pending", profession: "Facilitadora autoral", registrationType: "Registry", registrationId: "REG-100", registrationRegion: "Florida", evidenceLinks: [], note: "Nota original da candidata.", createdAt: "2026-08-20T13:00:00.000Z", updatedAt: "2026-08-20T13:00:00.000Z" },
+  { id: "case-a", creatorId: "creator-a", applicantName: "Ana Rivera", applicantEmail: "ana@example.test", status: "pending", profession: "Authorial facilitator", registrationType: "Registry", registrationId: "REG-100", registrationRegion: "Florida", evidenceLinks: [], note: "Original note from the applicant.", createdAt: "2026-08-20T13:00:00.000Z", updatedAt: "2026-08-20T13:00:00.000Z" },
   { id: "case-b", creatorId: "creator-b", applicantName: "Bruno Silva", applicantEmail: "bruno@example.test", status: "pending", profession: "Mentor", registrationType: "Registry", registrationId: "REG-200", registrationRegion: "Texas", evidenceLinks: [], createdAt: "2026-08-21T13:00:00.000Z", updatedAt: "2026-08-21T13:00:00.000Z" },
 ];
 
@@ -77,7 +77,7 @@ describe("verification queue search, states and language", () => {
   });
 
   it.each(["en", "es"] as const)("preserves literal dollar sequences in the applicant note in %s", locale => {
-    const note = "Certificado custa $$50; código literal $&.";
+    const note = "Certificate costs $$50; literal code $&.";
     render(queue());
     if (locale === "es") fireEvent.click(screen.getByRole("button", { name: "Change language" }));
     deliver([{ ...cases[0], note }]);
@@ -124,8 +124,8 @@ describe("verification queue search, states and language", () => {
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
     expect(screen.getByRole("textbox", { name: "Nota de revisión para el creador" })).toHaveValue("short");
     expect(screen.getByRole("alert")).toHaveTextContent("al menos 12 caracteres");
-    expect(screen.getByText("Facilitadora autoral")).toBeInTheDocument();
-    expect(screen.getByText(/Nota original da candidata\./)).toBeInTheDocument();
+    expect(screen.getByText("Authorial facilitator")).toBeInTheDocument();
+    expect(screen.getByText(/Original note from the applicant\./)).toBeInTheDocument();
     expect(screen.getByText(`Enviada el ${new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date(cases[0].createdAt))}`)).toBeInTheDocument();
     expect(mocks.subscribe).toHaveBeenCalledTimes(1);
   });
@@ -133,7 +133,7 @@ describe("verification queue search, states and language", () => {
   it.each(["approved", "needs_changes", "rejected"] as const)("sends canonical decision %s and preserves the creator's note", async decision => {
     render(queue("REG-100"));
     deliver();
-    fireEvent.change(screen.getByRole("textbox", { name: "Review note to creator" }), { target: { value: "  Nota autoral da revisão.  " } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Review note to creator" }), { target: { value: "  Authorial review note.  " } });
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
     const label = { approved: "Aprobar", needs_changes: "Solicitar cambios", rejected: "Rechazar" }[decision];
     fireEvent.click(screen.getByRole("button", { name: label }));
@@ -144,7 +144,7 @@ describe("verification queue search, states and language", () => {
       fireEvent.click(within(screen.getByRole("dialog", { name: "¿Rechazar esta solicitud?" })).getByRole("button", { name: label }));
     }
     expect(await screen.findByRole("status")).toHaveTextContent(/creador|solicitud/i);
-    expect(mocks.review).toHaveBeenCalledWith("case-a", decision, "Nota autoral da revisão.");
+    expect(mocks.review).toHaveBeenCalledWith("case-a", decision, "Authorial review note.");
     expect(screen.queryByRole("heading", { name: "Ana Rivera" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
     expect(screen.getByRole("status")).toHaveTextContent(/Creator approved|Application returned|Application rejected/);
@@ -155,13 +155,13 @@ describe("verification queue search, states and language", () => {
     mocks.review.mockRejectedValue(new Error("Private RPC details"));
     render(queue("REG-100"));
     deliver();
-    fireEvent.change(screen.getByRole("textbox", { name: "Review note to creator" }), { target: { value: "A nota precisa continuar aqui." } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Review note to creator" }), { target: { value: "The note must stay here." } });
     fireEvent.click(screen.getByRole("button", { name: "Approve" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("We could not record this decision.");
     expect(screen.queryByText("Private RPC details")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
     expect(screen.getByRole("alert")).toHaveTextContent("No pudimos registrar esta decisión.");
-    expect(screen.getByRole("textbox", { name: "Nota de revisión para el creador" })).toHaveValue("A nota precisa continuar aqui.");
+    expect(screen.getByRole("textbox", { name: "Nota de revisión para el creador" })).toHaveValue("The note must stay here.");
     expect(screen.getByRole("heading", { name: "Ana Rivera" })).toBeInTheDocument();
   });
 
@@ -192,7 +192,7 @@ describe("verification queue search, states and language", () => {
   it("asks before rejecting, keeps Reject apart from Request changes, and cancel records nothing", () => {
     render(queue("REG-100"));
     deliver();
-    fireEvent.change(screen.getByRole("textbox", { name: "Review note to creator" }), { target: { value: "Registro não confere com o órgão." } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Review note to creator" }), { target: { value: "Registration does not match the registry body." } });
     expect(screen.getByRole("button", { name: "Reject" })).toHaveClass("button-danger");
     expect(screen.getByRole("button", { name: "Request changes" })).not.toHaveClass("button-danger");
     fireEvent.click(screen.getByRole("button", { name: "Reject" }));

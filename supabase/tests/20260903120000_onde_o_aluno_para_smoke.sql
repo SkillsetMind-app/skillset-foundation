@@ -24,7 +24,7 @@ $$;
 
 -- Expected refusal. The EXCEPTION block opens a subtransaction: the error knocks down only
 -- the attempt, not this whole transaction.
-CREATE OR REPLACE FUNCTION pg_temp.assert_recusa(
+CREATE OR REPLACE FUNCTION pg_temp.assert_refused(
   p_sql text,
   p_message text,
   p_expected_sqlstate text DEFAULT NULL
@@ -51,7 +51,7 @@ $$;
 
 -- Lessons in the seed course: the function refuses a lesson that is not in `modules`.
 UPDATE public.courses
-SET modules = '[{"id":"m1","lessons":[{"id":"aula-1"},{"id":"aula-2"}]}]'::jsonb
+SET modules = '[{"id":"m1","lessons":[{"id":"lesson-1"},{"id":"lesson-2"}]}]'::jsonb
 WHERE id = 'smoke-ci-course';
 
 -- A second course, from the same teacher, with a lesson that does NOT belong to
@@ -60,9 +60,9 @@ INSERT INTO public.courses (
   id, owner_id, slug, title, summary, category, status,
   currency, price_amount_minor, modules
 ) VALUES (
-  'smoke-playback-outro', '11111111-1111-4111-8111-111111111111',
-  'smoke-playback-outro', 'Outro curso', 'Smoke', 'smoke', 'published',
-  'brl', 0, '[{"id":"m1","lessons":[{"id":"aula-de-outro-curso"}]}]'::jsonb
+  'smoke-playback-other', '11111111-1111-4111-8111-111111111111',
+  'smoke-playback-other', 'Other course', 'Smoke', 'smoke', 'published',
+  'brl', 0, '[{"id":"m1","lessons":[{"id":"lesson-of-other-course"}]}]'::jsonb
 );
 
 -- The two learners. public.users is born from the on_auth_user_created trigger, the
@@ -74,11 +74,11 @@ INSERT INTO auth.users (
 ) VALUES
   ('00000000-0000-0000-0000-000000000000',
    '22222222-2222-4222-8222-222222222222', 'authenticated', 'authenticated',
-   'aluno-a@smoke.local', '', now(), now(), now(),
+   'learner-a@smoke.local', '', now(), now(), now(),
    '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb),
   ('00000000-0000-0000-0000-000000000000',
    '33333333-3333-4333-8333-333333333333', 'authenticated', 'authenticated',
-   'aluno-b@smoke.local', '', now(), now(), now(),
+   'learner-b@smoke.local', '', now(), now(), now(),
    '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb);
 
 INSERT INTO public.enrollments (
@@ -90,7 +90,7 @@ INSERT INTO public.enrollments (
   ('smoke-pb-b', '33333333-3333-4333-8333-333333333333', 'smoke-ci-course',
    'smoke-ci-course', 'Smoke CI', 'smoke', '', 'active', 'admin', 0, now(), now());
 
-CREATE OR REPLACE FUNCTION pg_temp.vira(p_uid text) RETURNS void
+CREATE OR REPLACE FUNCTION pg_temp.act_as(p_uid text) RETURNS void
 LANGUAGE plpgsql
 AS $$
 BEGIN
@@ -107,81 +107,81 @@ $$;
 -- 1. Opening the lesson already leaves a trace -- until now only completion left one
 -- ---------------------------------------------------------------------------
 
-SELECT pg_temp.vira('22222222-2222-4222-8222-222222222222');
+SELECT pg_temp.act_as('22222222-2222-4222-8222-222222222222');
 SET LOCAL ROLE authenticated;
 
-SELECT public.record_lesson_playback('smoke-pb-a', 'aula-1');
+SELECT public.record_lesson_playback('smoke-pb-a', 'lesson-1');
 
 SELECT pg_temp.assert_true(
   (SELECT count(*) FROM public.lesson_playback
-    WHERE enrollment_id = 'smoke-pb-a' AND lesson_id = 'aula-1') = 1,
-  'abrir a aula tem de criar a linha do funil'
+    WHERE enrollment_id = 'smoke-pb-a' AND lesson_id = 'lesson-1') = 1,
+  'opening a lesson must create the funnel row'
 );
 SELECT pg_temp.assert_true(
   (SELECT position_seconds FROM public.lesson_playback
-    WHERE enrollment_id = 'smoke-pb-a' AND lesson_id = 'aula-1') = 0,
-  'abertura sem posicao comeca em zero'
+    WHERE enrollment_id = 'smoke-pb-a' AND lesson_id = 'lesson-1') = 0,
+  'opening without a position starts at zero'
 );
 
 -- ---------------------------------------------------------------------------
 -- 2. The position goes up, the row stays ONE, and opened_at does not move
 -- ---------------------------------------------------------------------------
 
-SELECT public.record_lesson_playback('smoke-pb-a', 'aula-1', 42, 600);
-SELECT public.record_lesson_playback('smoke-pb-a', 'aula-1', 137, 600);
+SELECT public.record_lesson_playback('smoke-pb-a', 'lesson-1', 42, 600);
+SELECT public.record_lesson_playback('smoke-pb-a', 'lesson-1', 137, 600);
 
 SELECT pg_temp.assert_true(
   (SELECT count(*) FROM public.lesson_playback
-    WHERE enrollment_id = 'smoke-pb-a' AND lesson_id = 'aula-1') = 1,
-  'tres gravacoes na mesma aula nao podem virar tres linhas'
+    WHERE enrollment_id = 'smoke-pb-a' AND lesson_id = 'lesson-1') = 1,
+  'three recordings on the same lesson must not become three rows'
 );
 SELECT pg_temp.assert_true(
   (SELECT position_seconds FROM public.lesson_playback
-    WHERE enrollment_id = 'smoke-pb-a' AND lesson_id = 'aula-1') = 137,
-  'a posicao gravada tem de ser a ultima'
+    WHERE enrollment_id = 'smoke-pb-a' AND lesson_id = 'lesson-1') = 137,
+  'the recorded position must be the latest one'
 );
 SELECT pg_temp.assert_true(
   (SELECT opened_at <= last_seen_at FROM public.lesson_playback
-    WHERE enrollment_id = 'smoke-pb-a' AND lesson_id = 'aula-1'),
-  'opened_at e a PRIMEIRA abertura: nunca pode passar de last_seen_at'
+    WHERE enrollment_id = 'smoke-pb-a' AND lesson_id = 'lesson-1'),
+  'opened_at is the FIRST opening: it can never be later than last_seen_at'
 );
 
 -- A position past the end of the video (the teacher re-recorded the lesson shorter) is discarded,
 -- and the one that was valid stays valid -- the learner is not thrown off the timeline.
-SELECT public.record_lesson_playback('smoke-pb-a', 'aula-1', 5000, 600);
+SELECT public.record_lesson_playback('smoke-pb-a', 'lesson-1', 5000, 600);
 SELECT pg_temp.assert_true(
   (SELECT position_seconds FROM public.lesson_playback
-    WHERE enrollment_id = 'smoke-pb-a' AND lesson_id = 'aula-1') = 137,
-  'posicao maior que a duracao tem de ser ignorada'
+    WHERE enrollment_id = 'smoke-pb-a' AND lesson_id = 'lesson-1') = 137,
+  'a position greater than the duration must be ignored'
 );
 
 -- EXPLICIT zero resets (the lesson ended); null does not touch the position (it only records
 -- the visit). That is what makes reopening the lesson not erase the resume point.
-SELECT public.record_lesson_playback('smoke-pb-a', 'aula-1', 0, 600);
+SELECT public.record_lesson_playback('smoke-pb-a', 'lesson-1', 0, 600);
 SELECT pg_temp.assert_true(
   (SELECT position_seconds FROM public.lesson_playback
-    WHERE enrollment_id = 'smoke-pb-a' AND lesson_id = 'aula-1') = 0,
-  'zero explicito tem de zerar a posicao'
+    WHERE enrollment_id = 'smoke-pb-a' AND lesson_id = 'lesson-1') = 0,
+  'an explicit zero must reset the position'
 );
-SELECT public.record_lesson_playback('smoke-pb-a', 'aula-1', 55, 600);
-SELECT public.record_lesson_playback('smoke-pb-a', 'aula-1');
+SELECT public.record_lesson_playback('smoke-pb-a', 'lesson-1', 55, 600);
+SELECT public.record_lesson_playback('smoke-pb-a', 'lesson-1');
 SELECT pg_temp.assert_true(
   (SELECT position_seconds FROM public.lesson_playback
-    WHERE enrollment_id = 'smoke-pb-a' AND lesson_id = 'aula-1') = 55,
-  'reabrir a aula (posicao nula) nao pode apagar o ponto de retomada'
+    WHERE enrollment_id = 'smoke-pb-a' AND lesson_id = 'lesson-1') = 55,
+  'reopening the lesson (null position) must not erase the resume point'
 );
 
 -- ---------------------------------------------------------------------------
 -- 3. Lesson from another course, and another person's enrollment: refused
 -- ---------------------------------------------------------------------------
 
-SELECT pg_temp.assert_recusa(
-  $$SELECT public.record_lesson_playback('smoke-pb-a', 'aula-de-outro-curso', 10, 600)$$,
-  'gravou posicao numa aula que nao pertence ao curso da matricula'
+SELECT pg_temp.assert_refused(
+  $$SELECT public.record_lesson_playback('smoke-pb-a', 'lesson-of-other-course', 10, 600)$$,
+  'recorded a position on a lesson that does not belong to the course of the enrollment'
 );
-SELECT pg_temp.assert_recusa(
-  $$SELECT public.record_lesson_playback('smoke-pb-b', 'aula-1', 10, 600)$$,
-  'gravou na matricula de outro aluno'
+SELECT pg_temp.assert_refused(
+  $$SELECT public.record_lesson_playback('smoke-pb-b', 'lesson-1', 10, 600)$$,
+  'recorded on the enrollment of another learner'
 );
 
 RESET ROLE;
@@ -190,20 +190,20 @@ RESET ROLE;
 -- 4. RLS: one learner does not see the other's row
 -- ---------------------------------------------------------------------------
 
-SELECT pg_temp.vira('33333333-3333-4333-8333-333333333333');
+SELECT pg_temp.act_as('33333333-3333-4333-8333-333333333333');
 SET LOCAL ROLE authenticated;
 
-SELECT public.record_lesson_playback('smoke-pb-b', 'aula-1', 200, 600);
+SELECT public.record_lesson_playback('smoke-pb-b', 'lesson-1', 200, 600);
 
 SELECT pg_temp.assert_true(
   (SELECT count(*) FROM public.lesson_playback
     WHERE enrollment_id = 'smoke-pb-a') = 0,
-  'o aluno B esta lendo a linha do aluno A'
+  'learner B can read the row of learner A'
 );
 SELECT pg_temp.assert_true(
   (SELECT count(*) FROM public.lesson_playback
     WHERE enrollment_id = 'smoke-pb-b') = 1,
-  'o aluno tem de ler a propria linha'
+  'a learner must be able to read their own row'
 );
 
 RESET ROLE;
@@ -212,23 +212,23 @@ RESET ROLE;
 -- 5. The teacher reads the AGGREGATE of their own course, never the raw row
 -- ---------------------------------------------------------------------------
 
-SELECT pg_temp.vira('11111111-1111-4111-8111-111111111111');
+SELECT pg_temp.act_as('11111111-1111-4111-8111-111111111111');
 SET LOCAL ROLE authenticated;
 
 SELECT pg_temp.assert_true(
   (SELECT count(*) FROM public.lesson_playback) = 0,
-  'o dono do curso esta lendo a linha crua dos alunos dele'
+  'the course owner can read the raw rows of their learners'
 );
 
 SELECT pg_temp.assert_true(
   (SELECT students_opened FROM public.get_my_course_lesson_funnel()
-    WHERE course_id = 'smoke-ci-course' AND lesson_id = 'aula-1') = 2,
-  'o funil tem de contar os dois alunos que abriram a aula'
+    WHERE course_id = 'smoke-ci-course' AND lesson_id = 'lesson-1') = 2,
+  'the funnel must count the two learners who opened the lesson'
 );
 SELECT pg_temp.assert_true(
   (SELECT students_completed FROM public.get_my_course_lesson_funnel()
-    WHERE course_id = 'smoke-ci-course' AND lesson_id = 'aula-1') = 0,
-  'ninguem concluiu: abandono de 2 em 2'
+    WHERE course_id = 'smoke-ci-course' AND lesson_id = 'lesson-1') = 0,
+  'nobody completed: drop-off is 2 out of 2'
 );
 
 -- And the learner list's "last access" gets a value -- the two screens of
@@ -237,7 +237,7 @@ SELECT pg_temp.assert_true(
   (SELECT count(*) FROM public.get_my_course_students()
     WHERE enrollment_id IN ('smoke-pb-a', 'smoke-pb-b')
       AND last_seen_at IS NOT NULL) = 2,
-  'get_my_course_students precisa devolver o ultimo acesso dos dois alunos'
+  'get_my_course_students must return the last access of both learners'
 );
 
 RESET ROLE;
@@ -257,37 +257,37 @@ SELECT pg_temp.assert_true(
       AND p.polcmd <> 'r'   -- 'r' = SELECT
       AND p.polpermissive   -- restrictive limits; does not grant write on its own
   ),
-  'lesson_playback nao pode ter policy permissiva de escrita: toda escrita passa pela funcao'
+  'lesson_playback must have no permissive write policy: every write goes through the function'
 );
 
 SELECT pg_temp.assert_true(
   (SELECT relrowsecurity FROM pg_class WHERE oid = 'public.lesson_playback'::regclass),
-  'lesson_playback sem RLS ligada'
+  'lesson_playback without RLS enabled'
 );
 
 SELECT pg_temp.assert_true(
   NOT has_table_privilege('anon', 'public.lesson_playback', 'SELECT'),
-  'visitante deslogado nao pode ler onde os alunos pararam'
+  'a logged-out visitor must not be able to read where the learners stopped'
 );
 
 -- The learner has an active enrollment and reads their row, but writes only through the RPC.
 -- Valid values keep a constraint or SQL error from masking the refusal.
-SELECT pg_temp.vira('22222222-2222-4222-8222-222222222222');
+SELECT pg_temp.act_as('22222222-2222-4222-8222-222222222222');
 SET LOCAL ROLE authenticated;
-SELECT pg_temp.assert_recusa(
+SELECT pg_temp.assert_refused(
   $$INSERT INTO public.lesson_playback(enrollment_id,lesson_id,user_id)
-    VALUES('smoke-pb-a','aula-2','22222222-2222-4222-8222-222222222222')$$,
-  'aluno inseriu lesson_playback diretamente', '42501'
+    VALUES('smoke-pb-a','lesson-2','22222222-2222-4222-8222-222222222222')$$,
+  'a learner inserted into lesson_playback directly', '42501'
 );
-SELECT pg_temp.assert_recusa(
+SELECT pg_temp.assert_refused(
   $$UPDATE public.lesson_playback SET position_seconds=99
-    WHERE enrollment_id='smoke-pb-a' AND lesson_id='aula-1'$$,
-  'aluno atualizou lesson_playback diretamente', '42501'
+    WHERE enrollment_id='smoke-pb-a' AND lesson_id='lesson-1'$$,
+  'a learner updated lesson_playback directly', '42501'
 );
-SELECT pg_temp.assert_recusa(
+SELECT pg_temp.assert_refused(
   $$DELETE FROM public.lesson_playback
-    WHERE enrollment_id='smoke-pb-a' AND lesson_id='aula-1'$$,
-  'aluno excluiu lesson_playback diretamente', '42501'
+    WHERE enrollment_id='smoke-pb-a' AND lesson_id='lesson-1'$$,
+  'a learner deleted from lesson_playback directly', '42501'
 );
 RESET ROLE;
 

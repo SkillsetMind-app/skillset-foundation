@@ -28,21 +28,21 @@ $$;
 
 SELECT pg_temp.assert_true(
   to_regprocedure('public.session_is_strong()') IS NOT NULL,
-  'public.session_is_strong() nao existe'
+  'public.session_is_strong() does not exist'
 );
 
 SELECT pg_temp.assert_true(
   (SELECT p.provolatile = 's' AND p.prosecdef
      FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
     WHERE n.nspname = 'public' AND p.proname = 'session_is_strong'),
-  'session_is_strong precisa ser STABLE e SECURITY DEFINER: sem definer ela nao le auth.mfa_factors'
+  'session_is_strong must be STABLE and SECURITY DEFINER: without definer it cannot read auth.mfa_factors'
 );
 
 SELECT pg_temp.assert_true(
   (SELECT p.proconfig::text LIKE '%search_path=%'
      FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
     WHERE n.nspname = 'public' AND p.proname = 'session_is_strong'),
-  'session_is_strong sem search_path fixo: security definer com search_path aberto e sequestravel'
+  'session_is_strong has no fixed search_path: a security definer function with an open search_path can be hijacked'
 );
 
 -- anon must be able to execute it. It is not extra permission: for anon the function answers
@@ -51,7 +51,7 @@ SELECT pg_temp.assert_true(
 -- that was the incident of 20260901120000_restore_anon_execute_on_rls_predicates.
 SELECT pg_temp.assert_true(
   has_function_privilege('anon', 'public.session_is_strong()', 'EXECUTE'),
-  'anon sem EXECUTE em session_is_strong: leitura publica vai abortar com 42501'
+  'anon has no EXECUTE on session_is_strong: public reads will abort with 42501'
 );
 
 -- ---------------------------------------------------------------------------
@@ -81,20 +81,20 @@ DECLARE
     ['lesson_comments', 'lesson_comments_insert']
   ];
   i int;
-  expressao text;
+  policy_expr text;
 BEGIN
   FOR i IN 1 .. array_length(alvo, 1) LOOP
     SELECT coalesce(pg_get_expr(p.polqual, p.polrelid), '')
            || ' ' || coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '')
-      INTO expressao
+      INTO policy_expr
       FROM pg_policy p
       JOIN pg_class c ON c.oid = p.polrelid
       JOIN pg_namespace n ON n.oid = c.relnamespace
      WHERE n.nspname = 'public' AND c.relname = alvo[i][1] AND p.polname = alvo[i][2];
 
-    IF expressao IS NULL OR expressao NOT LIKE '%session_is_strong%' THEN
+    IF policy_expr IS NULL OR policy_expr NOT LIKE '%session_is_strong%' THEN
       RAISE EXCEPTION
-        'SMOKE_ASSERTION_FAILED: policy %.% sem o portao do segundo fator',
+        'SMOKE_ASSERTION_FAILED: policy %.% has no second-factor gate',
         alvo[i][1], alvo[i][2];
     END IF;
   END LOOP;
@@ -125,7 +125,7 @@ SELECT set_config(
 SET LOCAL ROLE authenticated;
 SELECT pg_temp.assert_true(
   public.session_is_strong(),
-  'conta sem fator verificado: aal1 tem de continuar valendo, senao a plataforma inteira para'
+  'account without a verified factor: aal1 must keep working, otherwise the whole platform stops'
 );
 RESET ROLE;
 
@@ -137,7 +137,7 @@ VALUES (gen_random_uuid(), :'test_uid'::uuid, 'totp', 'verified', now(), now());
 SET LOCAL ROLE authenticated;
 SELECT pg_temp.assert_true(
   NOT public.session_is_strong(),
-  'conta com fator verificado: a sessao aal1 nao pode mais valer'
+  'account with a verified factor: the aal1 session must no longer be valid'
 );
 RESET ROLE;
 
@@ -150,7 +150,7 @@ SELECT set_config(
 SET LOCAL ROLE authenticated;
 SELECT pg_temp.assert_true(
   public.session_is_strong(),
-  'depois do codigo (aal2) a mesma conta volta a valer'
+  'after the code (aal2) the same account is valid again'
 );
 RESET ROLE;
 
@@ -174,7 +174,7 @@ SELECT set_config(
 SET LOCAL ROLE authenticated;
 SELECT pg_temp.assert_true(
   (SELECT count(*) FROM public.enrollments WHERE id = 'smoke-aal2__' || :'test_uid') = 1,
-  'com aal2 o aluno tem de continuar vendo a propria matricula'
+  'with aal2 the learner must still see their own enrollment'
 );
 RESET ROLE;
 
@@ -186,7 +186,7 @@ SELECT set_config(
 SET LOCAL ROLE authenticated;
 SELECT pg_temp.assert_true(
   (SELECT count(*) FROM public.enrollments WHERE id = 'smoke-aal2__' || :'test_uid') = 0,
-  'sessao aal1 de conta com TOTP ainda le a matricula pelo PostgREST: o portao nao esta na policy'
+  'aal1 session of an account with TOTP still reads the enrollment through PostgREST: the gate is not in the policy'
 );
 RESET ROLE;
 
@@ -199,7 +199,7 @@ SELECT set_config('request.jwt.claims', '', true);
 SET LOCAL ROLE anon;
 SELECT pg_temp.assert_true(
   public.session_is_strong(),
-  'anon precisa conseguir executar a funcao e receber TRUE, senao a leitura publica aborta'
+  'anon must be able to execute the function and receive TRUE, otherwise public reads abort'
 );
 RESET ROLE;
 

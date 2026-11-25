@@ -17,10 +17,10 @@
 --     holding up the queue, and never returns the same notice twice.
 -- All through the real path: learner, teacher and support write under RLS.
 begin;
-create temp table aviso_checks (name text, passed boolean);
-grant insert, select on aviso_checks to anon, authenticated;
-create function pg_temp.check_aviso(p_name text, p_ok boolean) returns void
-language sql as $$ insert into aviso_checks values (p_name, coalesce(p_ok, false)); $$;
+create temp table notification_checks (name text, passed boolean);
+grant insert, select on notification_checks to anon, authenticated;
+create function pg_temp.check_notification(p_name text, p_ok boolean) returns void
+language sql as $$ insert into notification_checks values (p_name, coalesce(p_ok, false)); $$;
 create function pg_temp.uid(n int) returns uuid language sql immutable as $$
   select ('61006415-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid;
 $$;
@@ -33,7 +33,7 @@ begin
   perform set_config('skillset.trusted_write', 'off', true);
 end $$;
 -- Notices the trigger wrote for person n (optionally of one type).
-create function pg_temp.avisos(n int, p_type text default null) returns bigint language sql as $$
+create function pg_temp.notification_count(n int, p_type text default null) returns bigint language sql as $$
   select count(*) from public.notifications
   where user_id = pg_temp.uid(n)::text and (p_type is null or type = p_type);
 $$;
@@ -67,14 +67,14 @@ end $$;
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
-select pg_temp.uid(n), 'authenticated', 'authenticated', 'avisos-smoke-' || n || '@example.test',
+select pg_temp.uid(n), 'authenticated', 'authenticated', 'notifications-smoke-' || n || '@example.test',
   now(), '{}', '{}', now(), now()
 from generate_series(1, 6) n;
 -- Keep the creator plan current so this smoke exercises its original guard.
 insert into public.subscriptions(id, user_id, plan_id, status, current_period_end)
 select 'smoke-plan-' || pg_temp.uid(n)::text, pg_temp.uid(n)::text, 'basic', 'active', now() + interval '1 day'
 from (values (1)) owners(n);
-update public.users set display_name = 'Avisos ' || right(uid, 1)
+update public.users set display_name = 'Notifications ' || right(uid, 1)
   where uid in (select pg_temp.uid(n)::text from generate_series(1, 6) n);
 update public.users
   set roles = '["student","teacher"]', teacher_terms_accepted_at = now(), teacher_terms_version = 'smoke',
@@ -83,109 +83,109 @@ update public.users
 update public.users set roles = '["student","admin"]' where uid = pg_temp.uid(6)::text;
 insert into public.courses(id, owner_id, slug, title, title_key, summary, category, status, payment_type,
   price_amount_minor, currency, community_enabled)
-values ('smoke-avisos', pg_temp.uid(1)::text, 'smoke-avisos-slug', 'Smoke avisos', 'smoke-avisos',
-  'Curso usado só por este smoke de avisos.', 'smoke', 'published', 'free', 0, 'USD', true);
+values ('smoke-notifications', pg_temp.uid(1)::text, 'smoke-notifications-slug', 'Smoke notifications', 'smoke-notifications',
+  'Course used only by this notifications smoke test.', 'smoke', 'published', 'free', 0, 'USD', true);
 insert into public.enrollments(id, user_id, course_id, course_slug, course_title, course_category, course_image, status, source)
-select pg_temp.uid(n)::text || '__smoke-avisos', pg_temp.uid(n)::text, 'smoke-avisos', 'smoke-avisos',
-  'Smoke avisos', 'smoke', '', 'active', 'admin'
+select pg_temp.uid(n)::text || '__smoke-notifications', pg_temp.uid(n)::text, 'smoke-notifications', 'smoke-notifications',
+  'Smoke notifications', 'smoke', '', 'active', 'admin'
 from generate_series(2, 4) n;
 insert into public.support_tickets(id, user_id, category, subject, message)
-values ('smoke-avisos-ticket', pg_temp.uid(2)::text, 'account', 'Cannot change my email', 'Synthetic support message.');
+values ('smoke-notifications-ticket', pg_temp.uid(2)::text, 'account', 'Cannot change my email', 'Synthetic support message.');
 select set_config('skillset.trusted_write', 'off', true);
 
 -- 1. New question: notifies the course owner, and only them.
 select pg_temp.act_as(pg_temp.uid(2), 'authenticated');
 set local role authenticated;
 insert into public.community_posts(id, course_slug, author_id, author_name, author_role, category, title, body)
-values ('smoke-avisos-q', 'smoke-avisos', pg_temp.uid(2)::text, 'Avisos 2', 'student', 'question',
+values ('smoke-notifications-q', 'smoke-notifications', pg_temp.uid(2)::text, 'Notifications 2', 'student', 'question',
   'How do I export the worksheet?', 'Synthetic question body.');
 reset role;
-select pg_temp.check_aviso('question: the course owner gets exactly one notification',
-  pg_temp.avisos(1) = 1 and pg_temp.avisos(1, 'community_question') = 1);
-select pg_temp.check_aviso('question: the owner link opens the studio community inbox',
+select pg_temp.check_notification('question: the course owner gets exactly one notification',
+  pg_temp.notification_count(1) = 1 and pg_temp.notification_count(1, 'community_question') = 1);
+select pg_temp.check_notification('question: the owner link opens the studio community inbox',
   exists (select 1 from public.notifications
     where user_id = pg_temp.uid(1)::text and type = 'community_question'
-      and link = '/teach/courses/smoke-avisos/community'
-      and params->>'postId' = 'smoke-avisos-q' and params->>'courseId' = 'smoke-avisos'
-      and body = 'How do I export the worksheet?' and actor_name = 'Avisos 2'));
-select pg_temp.check_aviso('question: the author gets no notification for asking', pg_temp.avisos(2) = 0);
+      and link = '/teach/courses/smoke-notifications/community'
+      and params->>'postId' = 'smoke-notifications-q' and params->>'courseId' = 'smoke-notifications'
+      and body = 'How do I export the worksheet?' and actor_name = 'Notifications 2'));
+select pg_temp.check_notification('question: the author gets no notification for asking', pg_temp.notification_count(2) = 0);
 
 -- Discussion (not a question): nobody is notified.
 select pg_temp.act_as(pg_temp.uid(3), 'authenticated');
 set local role authenticated;
 insert into public.community_posts(id, course_slug, author_id, author_name, author_role, category, body)
-values ('smoke-avisos-discussion', 'smoke-avisos', pg_temp.uid(3)::text, 'Avisos 3', 'student', 'discussion',
+values ('smoke-notifications-discussion', 'smoke-notifications', pg_temp.uid(3)::text, 'Notifications 3', 'student', 'discussion',
   'Synthetic discussion body.');
 reset role;
-select pg_temp.check_aviso('discussion: a post that is not a question notifies nobody',
-  pg_temp.avisos(1) = 1 and pg_temp.avisos(3) = 0);
+select pg_temp.check_notification('discussion: a post that is not a question notifies nobody',
+  pg_temp.notification_count(1) = 1 and pg_temp.notification_count(3) = 0);
 
 -- 2. Replies, each one written by whoever says the author_id:
 --   c1 by 3, c2 by the teacher, c3 by 3 again, c4 by the asker, c5 by 4.
 select pg_temp.act_as(pg_temp.uid(3), 'authenticated');
 set local role authenticated;
 insert into public.community_comments(id, post_id, course_slug, author_id, author_name, author_role, body)
-values ('smoke-avisos-c1', 'smoke-avisos-q', 'smoke-avisos', pg_temp.uid(3)::text, 'Avisos 3', 'student',
+values ('smoke-notifications-c1', 'smoke-notifications-q', 'smoke-notifications', pg_temp.uid(3)::text, 'Notifications 3', 'student',
   'Use the export button.');
 reset role;
-select pg_temp.check_aviso('reply: the question author gets one notification for the first reply',
-  pg_temp.comments_for(2, 'community_comment') = array['smoke-avisos-c1']);
-select pg_temp.check_aviso('reply: the student link opens the question in the classroom',
+select pg_temp.check_notification('reply: the question author gets one notification for the first reply',
+  pg_temp.comments_for(2, 'community_comment') = array['smoke-notifications-c1']);
+select pg_temp.check_notification('reply: the student link opens the question in the classroom',
   exists (select 1 from public.notifications
-    where user_id = pg_temp.uid(2)::text and params->>'commentId' = 'smoke-avisos-c1'
-      and link = '/learn/courses/smoke-avisos/community/q/smoke-avisos-q'
-      and params->>'postId' = 'smoke-avisos-q' and params->>'category' = 'question'
-      and body = 'Use the export button.' and actor_name = 'Avisos 3'));
-select pg_temp.check_aviso('reply: the owner is not told about a thread they are not in',
-  pg_temp.avisos(1) = 1);
+    where user_id = pg_temp.uid(2)::text and params->>'commentId' = 'smoke-notifications-c1'
+      and link = '/learn/courses/smoke-notifications/community/q/smoke-notifications-q'
+      and params->>'postId' = 'smoke-notifications-q' and params->>'category' = 'question'
+      and body = 'Use the export button.' and actor_name = 'Notifications 3'));
+select pg_temp.check_notification('reply: the owner is not told about a thread they are not in',
+  pg_temp.notification_count(1) = 1);
 
 select pg_temp.act_as(pg_temp.uid(1), 'authenticated');
 set local role authenticated;
 insert into public.community_comments(id, post_id, course_slug, author_id, author_name, author_role, body)
-values ('smoke-avisos-c2', 'smoke-avisos-q', 'smoke-avisos', pg_temp.uid(1)::text, 'Avisos 1', 'teacher',
+values ('smoke-notifications-c2', 'smoke-notifications-q', 'smoke-notifications', pg_temp.uid(1)::text, 'Notifications 1', 'teacher',
   'Teacher answer here.');
 reset role;
 
 select pg_temp.act_as(pg_temp.uid(3), 'authenticated');
 set local role authenticated;
 insert into public.community_comments(id, post_id, course_slug, author_id, author_name, author_role, body)
-values ('smoke-avisos-c3', 'smoke-avisos-q', 'smoke-avisos', pg_temp.uid(3)::text, 'Avisos 3', 'student',
+values ('smoke-notifications-c3', 'smoke-notifications-q', 'smoke-notifications', pg_temp.uid(3)::text, 'Notifications 3', 'student',
   'Thanks, it worked.');
 reset role;
 
 select pg_temp.act_as(pg_temp.uid(2), 'authenticated');
 set local role authenticated;
 insert into public.community_comments(id, post_id, course_slug, author_id, author_name, author_role, body)
-values ('smoke-avisos-c4', 'smoke-avisos-q', 'smoke-avisos', pg_temp.uid(2)::text, 'Avisos 2', 'student',
+values ('smoke-notifications-c4', 'smoke-notifications-q', 'smoke-notifications', pg_temp.uid(2)::text, 'Notifications 2', 'student',
   'Solved, thank you all.');
 reset role;
 
 select pg_temp.act_as(pg_temp.uid(4), 'authenticated');
 set local role authenticated;
 insert into public.community_comments(id, post_id, course_slug, author_id, author_name, author_role, body)
-values ('smoke-avisos-c5', 'smoke-avisos-q', 'smoke-avisos', pg_temp.uid(4)::text, 'Avisos 4', 'student',
+values ('smoke-notifications-c5', 'smoke-notifications-q', 'smoke-notifications', pg_temp.uid(4)::text, 'Notifications 4', 'student',
   'Late to the thread.');
 reset role;
 
-select pg_temp.check_aviso('reply: the post author gets community_comment for every reply but her own',
+select pg_temp.check_notification('reply: the post author gets community_comment for every reply but her own',
   pg_temp.comments_for(2, 'community_comment')
-    = array['smoke-avisos-c1', 'smoke-avisos-c2', 'smoke-avisos-c3', 'smoke-avisos-c5']
-  and pg_temp.avisos(2) = 4);
-select pg_temp.check_aviso('reply: the author who also replied gets one notification, not a second community_reply',
-  pg_temp.avisos(2, 'community_reply') = 0);
-select pg_temp.check_aviso('reply: an earlier replier gets community_reply for later replies by others',
-  pg_temp.comments_for(3, 'community_reply') = array['smoke-avisos-c2', 'smoke-avisos-c4', 'smoke-avisos-c5']
-  and pg_temp.avisos(3) = 3);
-select pg_temp.check_aviso('reply: the owner who replied gets community_reply with the studio link',
-  pg_temp.comments_for(1, 'community_reply') = array['smoke-avisos-c3', 'smoke-avisos-c4', 'smoke-avisos-c5']
+    = array['smoke-notifications-c1', 'smoke-notifications-c2', 'smoke-notifications-c3', 'smoke-notifications-c5']
+  and pg_temp.notification_count(2) = 4);
+select pg_temp.check_notification('reply: the author who also replied gets one notification, not a second community_reply',
+  pg_temp.notification_count(2, 'community_reply') = 0);
+select pg_temp.check_notification('reply: an earlier replier gets community_reply for later replies by others',
+  pg_temp.comments_for(3, 'community_reply') = array['smoke-notifications-c2', 'smoke-notifications-c4', 'smoke-notifications-c5']
+  and pg_temp.notification_count(3) = 3);
+select pg_temp.check_notification('reply: the owner who replied gets community_reply with the studio link',
+  pg_temp.comments_for(1, 'community_reply') = array['smoke-notifications-c3', 'smoke-notifications-c4', 'smoke-notifications-c5']
   and not exists (select 1 from public.notifications
-    where user_id = pg_temp.uid(1)::text and link <> '/teach/courses/smoke-avisos/community'));
-select pg_temp.check_aviso('reply: a newcomer to the thread gets nothing for the own reply', pg_temp.avisos(4) = 0);
-select pg_temp.check_aviso('reply: nobody is ever notified of the own reply',
+    where user_id = pg_temp.uid(1)::text and link <> '/teach/courses/smoke-notifications/community'));
+select pg_temp.check_notification('reply: a newcomer to the thread gets nothing for the own reply', pg_temp.notification_count(4) = 0);
+select pg_temp.check_notification('reply: nobody is ever notified of the own reply',
   not exists (select 1 from public.notifications n
     join public.community_comments c on c.id = n.params->>'commentId'
     where n.user_id = c.author_id));
-select pg_temp.check_aviso('reply: nobody gets two notifications for the same reply',
+select pg_temp.check_notification('reply: nobody gets two notifications for the same reply',
   not exists (select 1 from public.notifications
     where params ? 'commentId'
     group by user_id, params->>'commentId' having count(*) > 1));
@@ -196,38 +196,38 @@ set local role authenticated;
 update public.support_tickets
   set admin_response = 'Changed it for you.', responded_by = pg_temp.uid(6)::text,
       responded_at = now(), status = 'resolved', updated_at = now()
-  where id = 'smoke-avisos-ticket';
+  where id = 'smoke-notifications-ticket';
 -- Rewriting the same text is not a new reply.
 update public.support_tickets
   set admin_response = 'Changed it for you.', updated_at = now()
-  where id = 'smoke-avisos-ticket';
+  where id = 'smoke-notifications-ticket';
 reset role;
-select pg_temp.check_aviso('support: the ticket owner gets exactly one notification',
-  pg_temp.avisos(2, 'support_reply') = 1);
-select pg_temp.check_aviso('support: the notification points to the ticket',
+select pg_temp.check_notification('support: the ticket owner gets exactly one notification',
+  pg_temp.notification_count(2, 'support_reply') = 1);
+select pg_temp.check_notification('support: the notification points to the ticket',
   exists (select 1 from public.notifications
     where user_id = pg_temp.uid(2)::text and type = 'support_reply'
-      and link = '/support' and params->>'ticketId' = 'smoke-avisos-ticket'
+      and link = '/support' and params->>'ticketId' = 'smoke-notifications-ticket'
       and body = 'Cannot change my email'));
-select pg_temp.check_aviso('support: whoever answered gets nothing', pg_temp.avisos(6) = 0);
+select pg_temp.check_notification('support: whoever answered gets nothing', pg_temp.notification_count(6) = 0);
 
-select pg_temp.check_aviso('text: the new notifications store no English sentence',
+select pg_temp.check_notification('text: the new notifications store no English sentence',
   not exists (select 1 from public.notifications
     where user_id in (select pg_temp.uid(n)::text from generate_series(1, 6) n) and title <> ''));
-select pg_temp.check_aviso('email: new notifications start never emailed',
+select pg_temp.check_notification('email: new notifications start never emailed',
   not exists (select 1 from public.notifications
     where user_id in (select pg_temp.uid(n)::text from generate_series(1, 6) n) and emailed_at is not null));
 
 -- 4. RLS: each person reads only their own notices.
 select pg_temp.act_as(pg_temp.uid(5), 'authenticated');
 set local role authenticated;
-select pg_temp.check_aviso('rls: a stranger reads none of these notifications',
+select pg_temp.check_notification('rls: a stranger reads none of these notifications',
   pg_temp.rows_or_denied('select 1 from public.notifications') = 0);
 reset role;
 
 select pg_temp.act_as(pg_temp.uid(3), 'authenticated');
 set local role authenticated;
-select pg_temp.check_aviso('rls: a recipient reads only the own notifications',
+select pg_temp.check_notification('rls: a recipient reads only the own notifications',
   pg_temp.rows_or_denied('select 1 from public.notifications') = 3
   and pg_temp.rows_or_denied(format(
     'select 1 from public.notifications where user_id <> %L', pg_temp.uid(3)::text)) = 0);
@@ -235,31 +235,31 @@ reset role;
 
 select pg_temp.act_as(null, 'anon');
 set local role anon;
-select pg_temp.check_aviso('rls: anon reads no notification',
+select pg_temp.check_notification('rls: anon reads no notification',
   pg_temp.rows_or_denied('select 1 from public.notifications') in (0, -1));
 reset role;
 
 -- 5. The client marks as read and nothing else.
 select pg_temp.act_as(pg_temp.uid(2), 'authenticated');
 set local role authenticated;
-select pg_temp.check_aviso('guard: the owner cannot mark a notification as emailed',
+select pg_temp.check_notification('guard: the owner cannot mark a notification as emailed',
   pg_temp.refused(format(
     'update public.notifications set emailed_at = now() where user_id = %L', pg_temp.uid(2)::text),
     'notifications: clients may only modify the read flag'));
-select pg_temp.check_aviso('guard: the owner cannot rewrite params',
+select pg_temp.check_notification('guard: the owner cannot rewrite params',
   pg_temp.refused(format(
     $q$update public.notifications set params = '{"postId":"other"}' where user_id = %L$q$, pg_temp.uid(2)::text),
     'notifications: clients may only modify the read flag'));
-select pg_temp.check_aviso('rls: the owner reads all five of the own notifications',
+select pg_temp.check_notification('rls: the owner reads all five of the own notifications',
   pg_temp.rows_or_denied(format(
     'select 1 from public.notifications where user_id = %L', pg_temp.uid(2)::text)) = 5);
 update public.notifications set read = true where user_id = pg_temp.uid(2)::text;
 reset role;
-select pg_temp.check_aviso('guard: the owner can still mark notifications as read',
+select pg_temp.check_notification('guard: the owner can still mark notifications as read',
   not exists (select 1 from public.notifications where user_id = pg_temp.uid(2)::text and not read));
 
 -- 6. The functions: SECURITY DEFINER, fixed search_path, nobody outside executes.
-select pg_temp.check_aviso('functions: security definer with a fixed search_path',
+select pg_temp.check_notification('functions: security definer with a fixed search_path',
   (select bool_and(p.prosecdef and p.proconfig @> array['search_path=public, pg_temp'])
      from pg_proc p
      where p.oid in ('public.notify_course_owner_on_question()'::regprocedure,
@@ -268,7 +268,7 @@ select pg_temp.check_aviso('functions: security definer with a fixed search_path
                      'public.sync_notifications_with_community_content()'::regprocedure,
                      'public.set_community_author_role()'::regprocedure,
                      'public.claim_notification_digests(integer)'::regprocedure)));
-select pg_temp.check_aviso('functions: anon and authenticated cannot call them',
+select pg_temp.check_notification('functions: anon and authenticated cannot call them',
   not exists (
     select 1
     from unnest(array['public.notify_course_owner_on_question()',
@@ -279,35 +279,35 @@ select pg_temp.check_aviso('functions: anon and authenticated cannot call them',
                       'public.claim_notification_digests(integer)']) f,
          unnest(array['anon', 'authenticated']) r
     where has_function_privilege(r, f, 'execute')));
-select pg_temp.check_aviso('functions: the service role can claim digests',
+select pg_temp.check_notification('functions: the service role can claim digests',
   has_function_privilege('service_role', 'public.claim_notification_digests(integer)', 'execute'));
 
 -- 7. Whoever lost access gets no more; the name comes from the profile, not the client.
 -- Learner 3's enrollment is revoked and learner 4 replies claiming to be support.
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
-update public.enrollments set status = 'revoked' where id = pg_temp.uid(3)::text || '__smoke-avisos';
+update public.enrollments set status = 'revoked' where id = pg_temp.uid(3)::text || '__smoke-notifications';
 select set_config('skillset.trusted_write', 'off', true);
 
 select pg_temp.act_as(pg_temp.uid(4), 'authenticated');
 set local role authenticated;
 insert into public.community_comments(id, post_id, course_slug, author_id, author_name, author_role, body)
-values ('smoke-avisos-c6', 'smoke-avisos-q', 'smoke-avisos', pg_temp.uid(4)::text, 'SkillsetMind Support', 'student',
+values ('smoke-notifications-c6', 'smoke-notifications-q', 'smoke-notifications', pg_temp.uid(4)::text, 'SkillsetMind Support', 'student',
   'Your account will be closed.');
 reset role;
-select pg_temp.check_aviso('access: a replier whose enrollment was revoked gets nothing for later replies',
-  pg_temp.comments_for(3, 'community_reply') = array['smoke-avisos-c2', 'smoke-avisos-c4', 'smoke-avisos-c5']
+select pg_temp.check_notification('access: a replier whose enrollment was revoked gets nothing for later replies',
+  pg_temp.comments_for(3, 'community_reply') = array['smoke-notifications-c2', 'smoke-notifications-c4', 'smoke-notifications-c5']
   and not exists (select 1 from public.notifications
-    where user_id = pg_temp.uid(3)::text and params->>'commentId' = 'smoke-avisos-c6'));
-select pg_temp.check_aviso('access: the post author and the course owner still get the reply',
+    where user_id = pg_temp.uid(3)::text and params->>'commentId' = 'smoke-notifications-c6'));
+select pg_temp.check_notification('access: the post author and the course owner still get the reply',
   (select array_agg(user_id || ':' || type order by user_id) from public.notifications
-    where params->>'commentId' = 'smoke-avisos-c6')
+    where params->>'commentId' = 'smoke-notifications-c6')
     = array[pg_temp.uid(1)::text || ':community_reply', pg_temp.uid(2)::text || ':community_comment']);
-select pg_temp.check_aviso('name: the notification shows the profile name, never the name the client sent',
-  (select bool_and(actor_name = 'Avisos 4') from public.notifications
-    where params->>'commentId' = 'smoke-avisos-c6'));
-select pg_temp.check_aviso('name: the reply itself stores the profile name',
-  (select author_name = 'Avisos 4' from public.community_comments where id = 'smoke-avisos-c6'));
+select pg_temp.check_notification('name: the notification shows the profile name, never the name the client sent',
+  (select bool_and(actor_name = 'Notifications 4') from public.notifications
+    where params->>'commentId' = 'smoke-notifications-c6'));
+select pg_temp.check_notification('name: the reply itself stores the profile name',
+  (select author_name = 'Notifications 4' from public.community_comments where id = 'smoke-notifications-c6'));
 
 -- With no name in the profile: "SkillsetMind member", never the email nor what came from the client.
 select pg_temp.act_as(null, 'service_role');
@@ -315,55 +315,55 @@ update public.users set display_name = null where uid = pg_temp.uid(4)::text;
 select pg_temp.act_as(pg_temp.uid(4), 'authenticated');
 set local role authenticated;
 insert into public.community_comments(id, post_id, course_slug, author_id, author_name, author_role, body)
-values ('smoke-avisos-c7', 'smoke-avisos-q', 'smoke-avisos', pg_temp.uid(4)::text, 'avisos-smoke-4@example.test',
+values ('smoke-notifications-c7', 'smoke-notifications-q', 'smoke-notifications', pg_temp.uid(4)::text, 'notifications-smoke-4@example.test',
   'student', 'One more thing.');
 reset role;
-select pg_temp.check_aviso('name: an empty profile name falls back to SkillsetMind member',
+select pg_temp.check_notification('name: an empty profile name falls back to SkillsetMind member',
   (select bool_and(actor_name = 'SkillsetMind member') from public.notifications
-    where params->>'commentId' = 'smoke-avisos-c7')
-  and (select author_name = 'SkillsetMind member' from public.community_comments where id = 'smoke-avisos-c7'));
+    where params->>'commentId' = 'smoke-notifications-c7')
+  and (select author_name = 'SkillsetMind member' from public.community_comments where id = 'smoke-notifications-c7'));
 
 -- 8. Editing updates the stored excerpt, without notifying again; deleting deletes the notice.
-create temp table aviso_antes as
+create temp table notifications_before as
   select notification_id, read, emailed_at from public.notifications
   where user_id in (select pg_temp.uid(n)::text from generate_series(1, 6) n);
 
 select pg_temp.act_as(pg_temp.uid(2), 'authenticated');
 set local role authenticated;
-update public.community_comments set body = 'Solved.', updated_at = now() where id = 'smoke-avisos-c4';
-update public.community_posts set title = 'How do I export it?', updated_at = now() where id = 'smoke-avisos-q';
+update public.community_comments set body = 'Solved.', updated_at = now() where id = 'smoke-notifications-c4';
+update public.community_posts set title = 'How do I export it?', updated_at = now() where id = 'smoke-notifications-q';
 reset role;
-select pg_temp.check_aviso('edit: the reply notifications carry the edited text',
+select pg_temp.check_notification('edit: the reply notifications carry the edited text',
   (select count(*) = 2 and bool_and(body = 'Solved.') from public.notifications
-    where params->>'commentId' = 'smoke-avisos-c4'));
-select pg_temp.check_aviso('edit: the question notification carries the edited title',
+    where params->>'commentId' = 'smoke-notifications-c4'));
+select pg_temp.check_notification('edit: the question notification carries the edited title',
   exists (select 1 from public.notifications
     where user_id = pg_temp.uid(1)::text and type = 'community_question' and body = 'How do I export it?'));
-select pg_temp.check_aviso('edit: an edit creates no notification and keeps read and emailed_at',
+select pg_temp.check_notification('edit: an edit creates no notification and keeps read and emailed_at',
   (select count(*) from public.notifications
     where user_id in (select pg_temp.uid(n)::text from generate_series(1, 6) n))
-    = (select count(*) from aviso_antes)
-  and not exists (select 1 from aviso_antes a join public.notifications n using (notification_id)
+    = (select count(*) from notifications_before)
+  and not exists (select 1 from notifications_before a join public.notifications n using (notification_id)
     where n.read is distinct from a.read or n.emailed_at is distinct from a.emailed_at));
 
 -- The admin moderates a reply; then the asker deletes the whole question.
 select pg_temp.act_as(pg_temp.uid(6), 'authenticated');
 set local role authenticated;
-delete from public.community_comments where id = 'smoke-avisos-c5';
+delete from public.community_comments where id = 'smoke-notifications-c5';
 reset role;
-select pg_temp.check_aviso('delete: a moderated reply leaves no notification behind',
-  not exists (select 1 from public.notifications where params->>'commentId' = 'smoke-avisos-c5')
-  and exists (select 1 from public.notifications where params->>'commentId' = 'smoke-avisos-c4'));
+select pg_temp.check_notification('delete: a moderated reply leaves no notification behind',
+  not exists (select 1 from public.notifications where params->>'commentId' = 'smoke-notifications-c5')
+  and exists (select 1 from public.notifications where params->>'commentId' = 'smoke-notifications-c4'));
 
 select pg_temp.act_as(pg_temp.uid(2), 'authenticated');
 set local role authenticated;
-delete from public.community_posts where id = 'smoke-avisos-q';
+delete from public.community_posts where id = 'smoke-notifications-q';
 reset role;
-select pg_temp.check_aviso('delete: a deleted question takes all of its notifications with it',
-  not exists (select 1 from public.community_posts where id = 'smoke-avisos-q')
-  and not exists (select 1 from public.notifications where params->>'postId' = 'smoke-avisos-q'));
-select pg_temp.check_aviso('delete: notifications of other things stay',
-  pg_temp.avisos(2, 'support_reply') = 1);
+select pg_temp.check_notification('delete: a deleted question takes all of its notifications with it',
+  not exists (select 1 from public.community_posts where id = 'smoke-notifications-q')
+  and not exists (select 1 from public.notifications where params->>'postId' = 'smoke-notifications-q'));
+select pg_temp.check_notification('delete: notifications of other things stay',
+  pg_temp.notification_count(2, 'support_reply') = 1);
 
 -- 9. The email digest: claim_notification_digests picks and marks.
 -- Only this smoke's notices stay in the queue (the rest comes back in the ROLLBACK).
@@ -376,7 +376,7 @@ select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 delete from public.notifications where user_id not like '61006415-%';
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
-select pg_temp.uid(n), 'authenticated', 'authenticated', 'avisos-smoke-' || n || '@example.test',
+select pg_temp.uid(n), 'authenticated', 'authenticated', 'notifications-smoke-' || n || '@example.test',
   case when n = 10 then null else now() end, '{}',
   case when n = 7 then '{"locale":"es"}' else '{}' end::jsonb, now(), now()
 from (select generate_series(7, 15) union all select generate_series(100, 219)) s(n);
@@ -387,70 +387,70 @@ insert into public.account_controls(uid, suspended, sessions_revoked_before)
 select pg_temp.uid(n)::text, true, now()
 from (select 9 union all select generate_series(160, 219)) s(n);
 
-create function pg_temp.fila(p_id text, n int, p_age interval, p_read boolean default false,
+create function pg_temp.enqueue(p_id text, n int, p_age interval, p_read boolean default false,
   p_emailed_ago interval default null) returns void language sql as $$
   insert into public.notifications(notification_id, user_id, type, title, body, read, link, created_at, emailed_at)
   values (p_id, pg_temp.uid(n)::text, 'community_reply', '', 'Synthetic digest row.', p_read,
     '/account/notifications', now() - p_age, now() - p_emailed_ago);
 $$;
-select pg_temp.fila('d7a', 7, '40 minutes');
-select pg_temp.fila('d7b', 7, '20 minutes');
-select pg_temp.fila('d7-young', 7, '5 minutes');
-select pg_temp.fila('d7-old', 7, '4 days');
-select pg_temp.fila('d7-read', 7, '30 minutes', true);
-select pg_temp.fila('d' || n, n, '2 days') from (values (8), (9), (10), (11), (13)) v(n);
-select pg_temp.fila('d11-sent', 11, '2 hours', false, '30 minutes');
-select pg_temp.fila('d14', 14, '30 minutes');
-select pg_temp.fila('d15', 15, '25 minutes');
-select pg_temp.fila('d' || n, n, '2 days 1 hour') from generate_series(100, 219) n;
+select pg_temp.enqueue('d7a', 7, '40 minutes');
+select pg_temp.enqueue('d7b', 7, '20 minutes');
+select pg_temp.enqueue('d7-young', 7, '5 minutes');
+select pg_temp.enqueue('d7-old', 7, '4 days');
+select pg_temp.enqueue('d7-read', 7, '30 minutes', true);
+select pg_temp.enqueue('d' || n, n, '2 days') from (values (8), (9), (10), (11), (13)) v(n);
+select pg_temp.enqueue('d11-sent', 11, '2 hours', false, '30 minutes');
+select pg_temp.enqueue('d14', 14, '30 minutes');
+select pg_temp.enqueue('d15', 15, '25 minutes');
+select pg_temp.enqueue('d' || n, n, '2 days 1 hour') from generate_series(100, 219) n;
 select set_config('skillset.trusted_write', 'off', true);
 
-create temp table aviso_claims (
+create temp table notification_claims (
   round int, user_id text, email text, locale text, notification_ids text[], notification_count int);
-grant insert, select on aviso_claims to service_role;
+grant insert, select on notification_claims to service_role;
 set local role service_role;
-insert into aviso_claims select 1, * from public.claim_notification_digests(1);
-insert into aviso_claims select 2, * from public.claim_notification_digests(1);
-insert into aviso_claims select 3, * from public.claim_notification_digests(1);
-insert into aviso_claims select 4, * from public.claim_notification_digests(100);
+insert into notification_claims select 1, * from public.claim_notification_digests(1);
+insert into notification_claims select 2, * from public.claim_notification_digests(1);
+insert into notification_claims select 3, * from public.claim_notification_digests(1);
+insert into notification_claims select 4, * from public.claim_notification_digests(100);
 reset role;
 
-select pg_temp.check_aviso('digest: 120 people who cannot get email at the head of the queue do not block the next one',
-  (select array_agg(user_id) from aviso_claims where round = 1) = array[pg_temp.uid(7)::text]);
-select pg_temp.check_aviso('digest: only unread, never emailed rows from 10 minutes to 3 days old go in',
-  exists (select 1 from aviso_claims where round = 1
+select pg_temp.check_notification('digest: 120 people who cannot get email at the head of the queue do not block the next one',
+  (select array_agg(user_id) from notification_claims where round = 1) = array[pg_temp.uid(7)::text]);
+select pg_temp.check_notification('digest: only unread, never emailed rows from 10 minutes to 3 days old go in',
+  exists (select 1 from notification_claims where round = 1
     and notification_ids = array['d7a', 'd7b'] and notification_count = 2));
-select pg_temp.check_aviso('digest: the claim marks exactly the rows it returns',
+select pg_temp.check_notification('digest: the claim marks exactly the rows it returns',
   (select bool_and(emailed_at is not null) from public.notifications where notification_id in ('d7a', 'd7b'))
   and (select bool_and(emailed_at is null) from public.notifications
     where notification_id in ('d7-young', 'd7-old', 'd7-read')));
-select pg_temp.check_aviso('digest: it returns the address and the language of the account',
-  exists (select 1 from aviso_claims where round = 1
-    and email = 'avisos-smoke-7@example.test' and locale = 'es'));
-select pg_temp.check_aviso('digest: oldest waiting person first, one person per claim',
-  (select array_agg(user_id order by round) from aviso_claims where round in (2, 3))
+select pg_temp.check_notification('digest: it returns the address and the language of the account',
+  exists (select 1 from notification_claims where round = 1
+    and email = 'notifications-smoke-7@example.test' and locale = 'es'));
+select pg_temp.check_notification('digest: oldest waiting person first, one person per claim',
+  (select array_agg(user_id order by round) from notification_claims where round in (2, 3))
     = array[pg_temp.uid(14)::text, pg_temp.uid(15)::text]);
-select pg_temp.check_aviso('digest: two claims never return the same notification or person',
-  not exists (select 1 from aviso_claims, unnest(notification_ids) id group by id having count(*) > 1)
-  and not exists (select 1 from aviso_claims group by user_id having count(*) > 1));
-select pg_temp.check_aviso('digest: opted out, suspended, unconfirmed, deleted or emailed this hour: never claimed',
-  not exists (select 1 from aviso_claims
+select pg_temp.check_notification('digest: two claims never return the same notification or person',
+  not exists (select 1 from notification_claims, unnest(notification_ids) id group by id having count(*) > 1)
+  and not exists (select 1 from notification_claims group by user_id having count(*) > 1));
+select pg_temp.check_notification('digest: opted out, suspended, unconfirmed, deleted or emailed this hour: never claimed',
+  not exists (select 1 from notification_claims
     where user_id in (select pg_temp.uid(n)::text from generate_series(8, 13) n)
        or user_id in (select pg_temp.uid(n)::text from generate_series(100, 219) n))
-  and not exists (select 1 from aviso_claims where round = 4)
+  and not exists (select 1 from notification_claims where round = 4)
   and (select bool_and(emailed_at is null) from public.notifications
     where notification_id in ('d8', 'd9', 'd10', 'd11', 'd13')));
 -- Concurrency: an execution that already holds the rows is skipped, and the other one only
 -- marks what is still without emailed_at in the same command that returns.
-select pg_temp.check_aviso('digest: concurrent runs skip rows another run holds',
+select pg_temp.check_notification('digest: concurrent runs skip rows another run holds',
   (select prosrc ~* 'for update of n skip locked' and prosrc ~* 'update public[.]notifications n'
      from pg_proc where oid = 'public.claim_notification_digests(integer)'::regprocedure));
 
-select name, passed from aviso_checks order by name;
+select name, passed from notification_checks order by name;
 do $$
 declare failures text;
 begin
-  select string_agg(name, ', ' order by name) into failures from aviso_checks where not passed;
+  select string_agg(name, ', ' order by name) into failures from notification_checks where not passed;
   if failures is not null then
     raise exception 'REPLY_NOTICE_REGRESSION: %', failures;
   end if;

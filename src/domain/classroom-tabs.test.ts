@@ -10,14 +10,14 @@ import {
 
 describe("classroom tabs: each has its own address", () => {
   it("the tab is its own base; the others get a segment, and the lesson goes along", () => {
-    const base = "/learn/courses/lideranca";
+    const base = "/learn/courses/leadership";
 
-    expect(classroomTabHref(base, "lesson", "aula-5")).toBe("/learn/courses/lideranca?lesson=aula-5");
-    expect(classroomTabHref(base, "community", "aula-5")).toBe(
-      "/learn/courses/lideranca/community?lesson=aula-5",
+    expect(classroomTabHref(base, "lesson", "lesson-5")).toBe("/learn/courses/leadership?lesson=lesson-5");
+    expect(classroomTabHref(base, "community", "lesson-5")).toBe(
+      "/learn/courses/leadership/community?lesson=lesson-5",
     );
     // No lesson chosen yet (first visit), no parameter.
-    expect(classroomTabHref(base, "about", null)).toBe("/learn/courses/lideranca/about");
+    expect(classroomTabHref(base, "about", null)).toBe("/learn/courses/leadership/about");
   });
 
   it("the lesson id is escaped in the address", () => {
@@ -27,19 +27,19 @@ describe("classroom tabs: each has its own address", () => {
   });
 
   it("the base strips the segment of the open tab, and only that", () => {
-    expect(classroomBasePath("/learn/courses/lideranca/community", "community")).toBe(
-      "/learn/courses/lideranca",
+    expect(classroomBasePath("/learn/courses/leadership/community", "community")).toBe(
+      "/learn/courses/leadership",
     );
-    expect(classroomBasePath("/learn/courses/lideranca", "lesson")).toBe(
-      "/learn/courses/lideranca",
+    expect(classroomBasePath("/learn/courses/leadership", "lesson")).toBe(
+      "/learn/courses/leadership",
     );
     // A course whose slug ends the same as a tab name does not lose its slug.
     expect(classroomBasePath("/learn/courses/community", "lesson")).toBe(
       "/learn/courses/community",
     );
     // The question drawer lives INSIDE the tab: whatever comes after it is removed too.
-    expect(classroomBasePath("/learn/courses/lideranca/community/q/post-1", "community")).toBe(
-      "/learn/courses/lideranca",
+    expect(classroomBasePath("/learn/courses/leadership/community/q/post-1", "community")).toBe(
+      "/learn/courses/leadership",
     );
     expect(classroomBasePath("/learn/courses/community/community/q/post-1", "community")).toBe(
       "/learn/courses/community",

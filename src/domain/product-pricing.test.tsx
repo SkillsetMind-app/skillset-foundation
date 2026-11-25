@@ -195,7 +195,7 @@ describe("getCoursePricingShape", () => {
 });
 
 // "How will people pay?": three cards, read from what is already stored.
-describe("os cartoes de pagamento", () => {
+describe("the payment cards", () => {
   // Each form stored today lands on one card, changing nothing: the yearly one
   // alone (old product) stays under Monthly fee, as yearly.
   it.each([
@@ -239,7 +239,7 @@ describe("os cartoes de pagamento", () => {
   });
 });
 
-describe("economia do plano anual", () => {
+describe("yearly plan savings", () => {
   it("compares against 12 monthly payments", () => {
     expect(yearlySavingMinor(2900, 29000)).toBe(5800);
     expect(yearlySavingMinor(2900, 34800)).toBe(0);

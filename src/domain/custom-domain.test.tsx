@@ -30,7 +30,7 @@ describe("parseCustomDomain — what a teacher actually types", () => {
   });
 
   it("takes a subdomain", () => {
-    expect(accepted("cursos.mysite.com.br")).toBe("cursos.mysite.com.br");
+    expect(accepted("courses.mysite.com.br")).toBe("courses.mysite.com.br");
   });
 
   // The overwhelmingly common input: a paste out of the address bar.
@@ -50,7 +50,7 @@ describe("parseCustomDomain — what a teacher actually types", () => {
 
 describe("parseCustomDomain — refusals that carry weight", () => {
   it("refuses anything with a path, query, port or credentials", () => {
-    expect(rejection("mysite.com/cursos")).toBe("has_scheme_or_path");
+    expect(rejection("mysite.com/courses")).toBe("has_scheme_or_path");
     expect(rejection("mysite.com?ref=1")).toBe("has_scheme_or_path");
     expect(rejection("mysite.com:3000")).toBe("has_scheme_or_path");
     expect(rejection("user@mysite.com")).toBe("has_scheme_or_path");
@@ -155,9 +155,9 @@ describe("dnsInstructionFor — the backwards record is the top cause of failure
   });
 
   it("gives a subdomain a CNAME named after its first label", () => {
-    expect(dnsInstructionFor("cursos.mysite.com")).toEqual({
+    expect(dnsInstructionFor("courses.mysite.com")).toEqual({
       type: "CNAME",
-      name: "cursos",
+      name: "courses",
       value: "cname.vercel-dns.com",
     });
   });
