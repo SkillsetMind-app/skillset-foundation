@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { CourseCover } from "@/components/learn/course-unlock-modal";
 import { MemberAreaShell, type MemberAreaBrand } from "@/components/learn/member-area-shell";
+import { CoverThumbnail } from "@/components/shared/cover-thumbnail";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { classroomTabHref } from "@/domain/classroom-tabs";
 import {
@@ -183,8 +184,13 @@ export function MemberAreaHomeView({
         <header className="overflow-hidden rounded-lg border border-[var(--ma-line)] bg-[var(--ma-surface)]">
           {area.coverPath ? (
             <div className="relative aspect-video max-h-[min(40svh,22rem)] w-full overflow-hidden">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={memberAreaCoverUrl(area.coverPath)} alt="" className="h-full w-full object-cover" />
+              {/* The picture of this screen: first in line for the network. */}
+              <CoverThumbnail
+                src={memberAreaCoverUrl(area.coverPath)}
+                alt=""
+                sizes="(min-width: 1280px) 1200px, 100vw"
+                highPriority
+              />
             </div>
           ) : null}
           <div className="grid gap-2 p-5 sm:p-7">
