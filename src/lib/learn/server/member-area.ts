@@ -72,7 +72,7 @@ function brandFromProfile(profile: BrandProfile): MemberAreaBrand | null {
 }
 
 /**
- * The creator's brand for their area (/learn/areas/[criador]), by the same
+ * The creator's brand for their area (/learn/areas/[creator]), by the same
  * rule as the classroom: the learner does not switch logos when leaving the lesson for the area.
  * `ref` is "@usuario" or the uid. A failure = no brand, never an error.
  */

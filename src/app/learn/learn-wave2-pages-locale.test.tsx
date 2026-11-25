@@ -8,7 +8,7 @@ import LearnWishlistPage from "@/app/learn/wishlist/page";
 import LearnCredentialsPage from "@/app/learn/credentials/page";
 import LearnMessagesPage from "@/app/learn/messages/page";
 import LoadingCourse from "@/app/learn/courses/[slug]/loading";
-import LoadingMemberArea from "@/app/learn/areas/[criador]/loading";
+import LoadingMemberArea from "@/app/learn/areas/[creator]/loading";
 import WelcomePage, { generateMetadata } from "@/app/welcome/page";
 import OnboardingPage from "@/app/onboarding/page";
 import { LearnCoursePage } from "@/components/learn/learn-course-page";

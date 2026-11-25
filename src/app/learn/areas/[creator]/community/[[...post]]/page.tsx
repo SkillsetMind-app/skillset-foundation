@@ -4,7 +4,7 @@ import { brand as siteBrand } from "@/data/brand";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { getCreatorBrand } from "@/lib/learn/server/member-area";
 
-// The community for the whole area: /learn/areas/@usuario/community (and
+// The community for the whole area: /learn/areas/@username/community (and
 // .../community/q/<post> with a post open). The database decides who gets in:
 // the owner and anyone enrolled in any of their products.
 export async function generateMetadata() {
@@ -18,12 +18,12 @@ export async function generateMetadata() {
 export default async function LearnMemberAreaCommunityRoute({
   params,
 }: {
-  params: Promise<{ criador: string; post?: string[] }>;
+  params: Promise<{ creator: string; post?: string[] }>;
 }) {
-  const { criador, post } = await params;
-  let ref = criador;
+  const { creator, post } = await params;
+  let ref = creator;
   try {
-    ref = decodeURIComponent(criador);
+    ref = decodeURIComponent(creator);
   } catch {
     // Broken encoding: carry on with the raw text, and the database answers null.
   }

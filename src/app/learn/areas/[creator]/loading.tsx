@@ -3,7 +3,7 @@ import { MemberAreaHomeSkeleton } from "@/components/learn/member-area-home";
 import { getServerTranslation } from "@/lib/i18n/server";
 
 /**
- * The members area routes (/learn/areas/<criador>, /<area> and the two
+ * The members area routes (/learn/areas/<creator>, /<area> and the two
  * communities) fetch the creator's brand on the server before responding.
  * Without this file, a click left the previous screen frozen until the
  * response arrived.
