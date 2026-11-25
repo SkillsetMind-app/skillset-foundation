@@ -99,8 +99,8 @@ describe("F-09: barras de progresso", () => {
 
 describe("F-03 / I-3: waits with a shape, and the routes that answer right away", () => {
   it("the members area answers right away with its own skeleton", () => {
-    expect(existsSync(join(process.cwd(), "src", "app/learn/areas/[criador]/loading.tsx"))).toBe(true);
-    expect(read("app/learn/areas/[criador]/loading.tsx")).toContain("<MemberAreaHomeSkeleton");
+    expect(existsSync(join(process.cwd(), "src", "app/learn/areas/[creator]/loading.tsx"))).toBe(true);
+    expect(read("app/learn/areas/[creator]/loading.tsx")).toContain("<MemberAreaHomeSkeleton");
   });
 
   // /teach/activate and the return from Stripe answer 307 on the server when there is

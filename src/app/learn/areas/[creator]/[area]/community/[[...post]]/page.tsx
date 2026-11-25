@@ -1,16 +1,16 @@
 import { ProtectedSurface } from "@/components/auth/protected-surface";
-import { MemberAreaHomeView } from "@/components/learn/member-area-home";
+import { MemberAreaCommunityView } from "@/components/learn/member-area-community";
 import { brand as siteBrand } from "@/data/brand";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { getCreatorBrand } from "@/lib/learn/server/member-area";
 
-// An extra area of the creator (Pro: up to 2 beyond the main one):
-// /learn/areas/@usuario/slug. The database decides who sees it: the owner and whoever bought
-// a product of THIS area; everyone else goes to the public storefront.
+// The community of an extra area: /learn/areas/@username/slug/community (and
+// .../community/q/<post>). The database decides who gets in: the owner and whoever has a
+// paid enrollment in a product of this area.
 export async function generateMetadata() {
   const { t } = await getServerTranslation();
   return {
-    title: `${t("learn.memberArea.tabTitle")} | ${siteBrand.name}`,
+    title: `${t("learn.memberArea.communityTitle")} | ${siteBrand.name}`,
     robots: { index: false, follow: false },
   };
 }
@@ -24,18 +24,19 @@ const decode = (value: string) => {
   }
 };
 
-export default async function LearnMemberAreaExtraRoute({
+export default async function LearnMemberAreaExtraCommunityRoute({
   params,
 }: {
-  params: Promise<{ criador: string; area: string }>;
+  params: Promise<{ creator: string; area: string; post?: string[] }>;
 }) {
-  const { criador, area } = await params;
-  const ref = decode(criador);
+  const { creator, area, post } = await params;
+  const ref = decode(creator);
+  const openPostId = post?.[0] === "q" && post[1] ? post[1] : null;
   const brand = await getCreatorBrand(ref);
 
   return (
     <ProtectedSurface permissions={["courses.viewLearning"]}>
-      <MemberAreaHomeView areaRef={ref} slug={decode(area)} brand={brand} />
+      <MemberAreaCommunityView areaRef={ref} slug={decode(area)} brand={brand} openPostId={openPostId} />
     </ProtectedSurface>
   );
 }
