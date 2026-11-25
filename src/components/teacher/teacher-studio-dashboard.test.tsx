@@ -21,7 +21,7 @@ const { mockUser, state, data } = vi.hoisted(() => {
   return {
     mockUser: {
       uid: "teacher-1",
-      displayName: "Patrick Simon",
+      displayName: "Preston Sloan",
       roles: ["teacher"],
     },
     state,
@@ -646,7 +646,7 @@ describe("Teacher home: one headline, what happened and the storefront", () => {
       expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     });
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "Welcome, Patrick",
+      "Welcome, Preston",
     );
     expect(screen.queryByText("Producer home")).toBeNull();
   });
@@ -684,7 +684,7 @@ describe("Teacher home: one headline, what happened and the storefront", () => {
   it("a name with $& in the headline shows up literally, without becoming '{name}'", async () => {
     // In a replace without a callback, "$&" becomes the matched piece ("{name}") and "$'" the
     // rest of the sentence. The name comes from sign-up: it is the person's text, not ours.
-    mockUser.displayName = "Mc$&Donald Simon";
+    mockUser.displayName = "Mc$&Donald Stone";
     try {
       render(<TeacherStudioDashboard />);
 
@@ -692,7 +692,7 @@ describe("Teacher home: one headline, what happened and the storefront", () => {
         "Welcome, Mc$&Donald",
       );
     } finally {
-      mockUser.displayName = "Patrick Simon";
+      mockUser.displayName = "Preston Sloan";
     }
   });
 });
@@ -705,7 +705,7 @@ describe("Teacher home: first visit", () => {
 
     const heading = await screen.findByRole("heading", { level: 1 });
     // No period: the Home title follows the header of the sibling screens.
-    expect(heading).toHaveTextContent(/^Welcome, Patrick$/);
+    expect(heading).toHaveTextContent(/^Welcome, Preston$/);
     expect(heading).not.toHaveTextContent("Welcome back");
   });
 
@@ -716,7 +716,7 @@ describe("Teacher home: first visit", () => {
 
     await waitFor(() => {
       expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-        "Welcome back, Patrick",
+        "Welcome back, Preston",
       );
     });
   });
@@ -792,7 +792,7 @@ describe("Teacher home: first visit", () => {
     render(<TeacherStudioDashboard />);
 
     const heading = await screen.findByRole("heading", { level: 1 });
-    expect(heading).toHaveTextContent(/^Hello, Patrick$/);
+    expect(heading).toHaveTextContent(/^Hello, Preston$/);
     expect(heading).not.toHaveTextContent("Welcome");
   });
 
@@ -822,7 +822,7 @@ describe("Teacher home: first visit", () => {
 
     await waitFor(() => {
       expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-        "Welcome back, Patrick",
+        "Welcome back, Preston",
       );
     });
     // A failure is not "no product": no inviting to create a repeated product.

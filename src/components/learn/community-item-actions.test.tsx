@@ -34,7 +34,7 @@ function user(uid: string, displayName: string): SkillsetUser {
 }
 
 const author = user("student-2", "Carla Souza");
-const owner = user("teacher-1", "Patrick S.");
+const owner = user("teacher-1", "Preston S.");
 const member = user("student-3", "Lucas Melo");
 
 const post: CommunityPost = {

@@ -145,7 +145,7 @@ const posts: CommunityPost[] = [
   post({
     id: "pinned",
     authorId: "teacher-1",
-    authorName: "Patrick S.",
+    authorName: "Preston S.",
     authorRole: "teacher",
     category: "announcement",
     body: "This week: persuasion you can defend in front of your team.",
@@ -195,7 +195,7 @@ const comments: CommunityComment[] = [
     postId: "answered",
     courseSlug: "course-1",
     authorId: "teacher-1",
-    authorName: "Patrick S.",
+    authorName: "Preston S.",
     authorRole: "teacher",
     body: "Show the constraint, not the pressure.",
     createdAt: new Date(NOW - 2 * HOUR).toISOString(),
@@ -224,7 +224,7 @@ const enrollmentFixture: Enrollment = {
 };
 
 async function renderFeed(props: Partial<Parameters<typeof CommunityFeed>[0]> = {}, locale?: "en" | "es") {
-  const feed = <CommunityFeed space={space} instructorName="Patrick" {...props} />;
+  const feed = <CommunityFeed space={space} instructorName="Preston" {...props} />;
   const view = render(locale ? <I18nProvider initialLocale={locale}><ChangeLanguage />{feed}</I18nProvider> : feed);
   await waitFor(() => expect(mocks.postsCallback).not.toBeNull());
   await act(async () => {
@@ -256,7 +256,7 @@ describe("community feed (round 11)", () => {
   // F-03: the wait has the shape of the posts, with the sentence only for the screen reader.
   // C-04: the filter in the segmented selector design (light pill, not solid navy).
   it("loading state shaped like the posts, and filter in the segmented design", async () => {
-    render(<I18nProvider initialLocale="en"><CommunityFeed space={space} instructorName="Patrick" /></I18nProvider>);
+    render(<I18nProvider initialLocale="en"><CommunityFeed space={space} instructorName="Preston" /></I18nProvider>);
     await waitFor(() => expect(mocks.postsCallback).not.toBeNull());
     const waiting = screen.getByText("Loading community feed...");
     expect(waiting).toHaveClass("sr-only");
@@ -450,7 +450,7 @@ describe("community feed (round 11)", () => {
       onError = fail;
       return Object.assign(vi.fn(), { reload });
     });
-    render(<I18nProvider initialLocale="en"><CommunityFeed space={space} instructorName="Patrick" /></I18nProvider>);
+    render(<I18nProvider initialLocale="en"><CommunityFeed space={space} instructorName="Preston" /></I18nProvider>);
     await waitFor(() => expect(mocks.postsCallback).not.toBeNull());
     act(() => onError(new Error("offline")));
 
@@ -547,7 +547,7 @@ describe("community feed (round 11)", () => {
     await renderFeed();
 
     const cards = screen.getAllByRole("article");
-    expect(cards[0]).toHaveTextContent("Patrick S.");
+    expect(cards[0]).toHaveTextContent("Preston S.");
     expect(cards[0]).toHaveTextContent("Instructor");
     expect(cards[0]).toHaveTextContent("pinned");
     expect(cards).toHaveLength(4);
@@ -555,7 +555,7 @@ describe("community feed (round 11)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Questions · 1 open" }));
     expect(screen.getAllByRole("article")).toHaveLength(2);
 
-    fireEvent.click(screen.getByRole("button", { name: "From Patrick" }));
+    fireEvent.click(screen.getByRole("button", { name: "From Preston" }));
     expect(screen.getAllByRole("article")).toHaveLength(1);
     expect(screen.getByRole("article")).toHaveTextContent("This week: persuasion");
 
@@ -675,7 +675,7 @@ describe("community feed (round 11)", () => {
 
   // The empty list is the platform's EmptyState, with h3 like the posts.
   it("with no posts, the empty state is the EmptyState with an h3 title", async () => {
-    render(<CommunityFeed space={space} instructorName="Patrick" />);
+    render(<CommunityFeed space={space} instructorName="Preston" />);
     await waitFor(() => expect(mocks.postsCallback).not.toBeNull());
     await act(async () => {
       mocks.postsCallback?.([]);
@@ -730,7 +730,7 @@ describe("community feed (round 11)", () => {
         },
       ]);
       mocks.presenceCallback?.([
-        { uid: "teacher-1", name: "Patrick S." },
+        { uid: "teacher-1", name: "Preston S." },
         { uid: "student-4", name: "Marcos Lima" },
       ]);
     });

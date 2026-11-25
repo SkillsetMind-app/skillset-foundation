@@ -440,20 +440,20 @@ describe("course home hero", () => {
   // The members area title is the cover's greeting; many teachers put their
   // own name there, and the whole classroom never said which course it was.
   it("with its own title on the cover, the course name shows on the cover and in the lesson header", () => {
-    const named = { ...course, membersTitle: "Patrick Simon" } as Course;
+    const named = { ...course, membersTitle: "Preston Sloan" } as Course;
     const { unmount } = renderClassroom("", [], { course: named });
     const hero = document.querySelector(".members-hero") as HTMLElement;
-    expect(within(hero).getByRole("heading", { level: 1 })).toHaveTextContent("Patrick Simon");
+    expect(within(hero).getByRole("heading", { level: 1 })).toHaveTextContent("Preston Sloan");
     expect(within(hero).getByText("Demo course")).toBeInTheDocument();
     unmount();
 
     renderClassroom("lesson=l2", ["l1"], { course: named });
     expect(within(head()).getByRole("heading", { level: 1 })).toHaveTextContent("Demo course");
-    expect(screen.queryByText("Patrick Simon")).toBeNull();
+    expect(screen.queryByText("Preston Sloan")).toBeNull();
   });
 
   it("the teacher's subtitle stays in its place", () => {
-    renderClassroom("", [], { course: { ...course, membersTitle: "Patrick Simon", membersSubtitle: "Live cohort" } as Course });
+    renderClassroom("", [], { course: { ...course, membersTitle: "Preston Sloan", membersSubtitle: "Live cohort" } as Course });
     const hero = document.querySelector(".members-hero") as HTMLElement;
     expect(within(hero).getByText("Live cohort")).toBeInTheDocument();
   });

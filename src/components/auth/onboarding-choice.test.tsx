@@ -53,7 +53,7 @@ function emitAuthenticated() {
   for (const listener of mocks.listeners) {
     listener({
       status: "authenticated",
-      user: { uid: "learner-1", displayName: "Patrick", emailVerified: true },
+      user: { uid: "learner-1", displayName: "Preston", emailVerified: true },
     });
   }
 }
@@ -96,7 +96,7 @@ describe("OnboardingChoice bootstrap", () => {
 describe("H3: country in the teacher activation", () => {
   const previousAnswers = { profileConfirmed: true, primaryGoal: ["Business"], sourceOfDiscovery: "Podcast" };
   const profile = {
-    displayName: "Patrick", username: "patrick", bio: "", timezone: "America/Sao_Paulo",
+    displayName: "Preston", username: "preston", bio: "", timezone: "America/Sao_Paulo",
     goals: ["teach_online"], roles: ["student"], teacherTermsAcceptedAt: "2026-10-01",
     onboardingCompleted: true, onboardingPath: "teacher", onboardingAnswers: previousAnswers,
   };
@@ -134,7 +134,7 @@ describe("H3: country in the teacher activation", () => {
     });
     expect(mocks.completeUserOnboarding).toHaveBeenCalledExactlyOnceWith({
       uid: "learner-1", roles: ["teacher"], acceptTeacherTerms: true,
-      identity: { displayName: "Patrick", username: "patrick", bio: "", timezone: "America/Sao_Paulo", goals: ["teach_online"] },
+      identity: { displayName: "Preston", username: "preston", bio: "", timezone: "America/Sao_Paulo", goals: ["teach_online"] },
     });
     expect(mocks.updateOnboardingAnswers.mock.invocationCallOrder[0])
       .toBeLessThan(mocks.completeUserOnboarding.mock.invocationCallOrder[0]);

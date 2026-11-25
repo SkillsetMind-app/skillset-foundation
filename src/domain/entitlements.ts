@@ -33,7 +33,7 @@
 import type { PlanId } from "@/data/plans";
 
 /**
- * Coupons are deliberately NOT a quota (decision, Patrick, 2026-08-08:
+ * Coupons are deliberately NOT a quota (decision, the owner, 2026-08-08:
  * "independente do plano/assinatura"). A coupon costs us nothing to store and
  * only fires when it produces a sale we take a fee on — capping it taxes the
  * teacher for trying to sell. Every plan, including free, creates as many as

@@ -29,7 +29,7 @@ vi.mock("@/lib/data/member-areas", async (importOriginal) => ({
 function renderView() {
   return render(
     <I18nProvider initialLocale="en">
-      <MemberAreaCommunityView areaRef="@eton" />
+      <MemberAreaCommunityView areaRef="@evan" />
     </I18nProvider>,
   );
 }
@@ -39,17 +39,17 @@ function renderView() {
 describe("MemberAreaCommunityView", () => {
   beforeEach(() => {
     window.localStorage.clear();
-    mocks.getMemberAreaCommunity.mockReset().mockResolvedValue({ courseId: "c-1", title: "Eton Circle", isOwner: false });
+    mocks.getMemberAreaCommunity.mockReset().mockResolvedValue({ courseId: "c-1", title: "Evan Circle", isOwner: false });
   });
 
   it("opens in the theme the area showed, with the feed on the classroom's themed surface", async () => {
-    rememberMemberAreaTheme("@eton", null, "dark");
+    rememberMemberAreaTheme("@evan", null, "dark");
     renderView();
     // Already loading, in the right theme.
     expect(screen.getByRole("status")).toHaveTextContent("Loading the members area...");
     expect(screen.getByTestId("shell").getAttribute("data-members-theme")).toBe("dark");
 
-    expect(await screen.findByRole("heading", { level: 1, name: "Eton Circle" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: "Evan Circle" })).toBeTruthy();
     expect(screen.getByTestId("shell").getAttribute("data-members-theme")).toBe("dark");
     const surface = screen.getByText("feed").closest(".member-classroom");
     expect(surface).toHaveAttribute("data-members-theme", "dark");
@@ -67,7 +67,7 @@ describe("MemberAreaCommunityView", () => {
     expect(busy).toBeDisabled();
     expect(screen.getByRole("alert")).toBeInTheDocument();
 
-    expect(await screen.findByRole("heading", { level: 1, name: "Eton Circle" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: "Evan Circle" })).toBeTruthy();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(mocks.getMemberAreaCommunity).toHaveBeenCalledTimes(2);
     expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1 }).parentElement);
@@ -81,7 +81,7 @@ describe("MemberAreaCommunityView", () => {
       button.click();
       button.click();
     });
-    expect(await screen.findByRole("heading", { level: 1, name: "Eton Circle" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: "Evan Circle" })).toBeTruthy();
     expect(mocks.getMemberAreaCommunity).toHaveBeenCalledTimes(2);
   });
 
@@ -97,7 +97,7 @@ describe("MemberAreaCommunityView", () => {
   it("with no saved theme: neutral wait and opens in the default light theme", async () => {
     renderView();
     expect(screen.getByTestId("shell")).not.toHaveAttribute("data-members-theme");
-    expect(await screen.findByRole("heading", { level: 1, name: "Eton Circle" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: "Evan Circle" })).toBeTruthy();
     expect(screen.getByTestId("shell").getAttribute("data-members-theme")).toBe("light");
     expect(screen.getByText("feed").closest(".member-classroom")).toHaveAttribute("data-members-theme", "light");
   });

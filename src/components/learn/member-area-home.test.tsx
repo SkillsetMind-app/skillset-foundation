@@ -28,8 +28,8 @@ vi.mock("@/lib/data/member-areas", async (importOriginal) => ({
 
 const home: MemberAreaHome = {
   area: {
-    ownerId: "u-1", username: "eton", slug: null, creatorName: "Eton Simon", creatorPhotoUrl: null,
-    name: "Eton Academy", theme: "dark", coverPath: "users/u-1/member-area/cover-1",
+    ownerId: "u-1", username: "evan", slug: null, creatorName: "Evan Stone", creatorPhotoUrl: null,
+    name: "Evan Academy", theme: "dark", coverPath: "users/u-1/member-area/cover-1",
     welcomeText: "Welcome to the academy.", configured: true, isOwnerPreview: false,
   },
   continueWatching: {
@@ -46,7 +46,7 @@ const home: MemberAreaHome = {
   }],
 };
 
-function renderView(ref = "@eton", locale: "en" | "es" = "en") {
+function renderView(ref = "@evan", locale: "en" | "es" = "en") {
   return render(
     <I18nProvider initialLocale={locale}>
       <MemberAreaHomeView areaRef={ref} />
@@ -70,14 +70,14 @@ describe("MemberAreaHomeView", () => {
     const first = renderView();
     expect(screen.getByTestId("shell")).not.toHaveAttribute("data-members-theme");
     expect(screen.getByRole("status")).toHaveTextContent("Loading the members area...");
-    expect(await screen.findByRole("heading", { level: 1, name: "Eton Academy" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: "Evan Academy" })).toBeTruthy();
     expect(screen.getByTestId("shell").getAttribute("data-members-theme")).toBe("dark");
     first.unmount();
 
     renderView();
     expect(screen.getByRole("status")).toBeTruthy();
     expect(screen.getByTestId("shell").getAttribute("data-members-theme")).toBe("dark");
-    expect(await screen.findByRole("heading", { level: 1, name: "Eton Academy" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: "Evan Academy" })).toBeTruthy();
   });
 
   // Community of the whole area: a card at the top when the teacher chose one;
@@ -88,7 +88,7 @@ describe("MemberAreaHomeView", () => {
     renderView();
     const card = await screen.findByRole("link", { name: /^Community/ });
     expect(card.getAttribute("href")).toBe("/learn/areas/%40eton/community");
-    expect(card.textContent).toContain("Talk with everyone learning with Eton Simon.");
+    expect(card.textContent).toContain("Talk with everyone learning with Evan Stone.");
     expect(within(screen.getByRole("region", { name: "My products" })).getByRole("link").textContent).toContain("Course");
     // "Open the community" is 14px text: it asks for the course's readable highlight,
     // not the button background (2.9:1 on a dark course).
@@ -101,7 +101,7 @@ describe("MemberAreaHomeView", () => {
     mocks.getMemberAreaHome.mockResolvedValue(home);
     mocks.getMemberAreaCommunity.mockRejectedValue(new Error("boom"));
     renderView();
-    expect(await screen.findByRole("heading", { name: "Eton Academy" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Evan Academy" })).toBeTruthy();
     expect(screen.queryByRole("link", { name: /^Community/ })).toBeNull();
   });
   afterEach(cleanup);
@@ -109,10 +109,10 @@ describe("MemberAreaHomeView", () => {
   it("shows the area in its own theme, with the three sections", async () => {
     mocks.getMemberAreaHome.mockResolvedValue(home);
     renderView();
-    expect(await screen.findByRole("heading", { level: 1, name: "Eton Academy" })).toBeTruthy();
-    expect(mocks.getMemberAreaHome).toHaveBeenCalledWith("@eton", null);
+    expect(await screen.findByRole("heading", { level: 1, name: "Evan Academy" })).toBeTruthy();
+    expect(mocks.getMemberAreaHome).toHaveBeenCalledWith("@evan", null);
     expect(screen.getByTestId("shell").getAttribute("data-members-theme")).toBe("dark");
-    expect(screen.getByText("By Eton Simon")).toBeTruthy();
+    expect(screen.getByText("By Evan Stone")).toBeTruthy();
     expect(screen.getByText("Welcome to the academy.")).toBeTruthy();
 
     const resume = screen.getByRole("link", { name: /Resume: Naming emotions/ });
@@ -138,8 +138,8 @@ describe("MemberAreaHomeView", () => {
 
   it("whoever is neither a learner nor the owner goes to the public storefront", async () => {
     mocks.getMemberAreaHome.mockResolvedValue(null);
-    renderView("@eton");
-    await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith("/@eton"));
+    renderView("@evan");
+    await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith("/@evan"));
     cleanup();
     renderView("u-1");
     await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith("/instructors/u-1"));
@@ -190,12 +190,12 @@ describe("MemberAreaHomeView", () => {
     renderView();
     expect(await screen.findByRole("alert")).toBeTruthy();
     fireEvent.click(screen.getByRole("button"));
-    expect(await screen.findByRole("heading", { level: 1, name: "Eton Academy" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: "Evan Academy" })).toBeTruthy();
   });
 
   it("in Spanish", async () => {
     mocks.getMemberAreaHome.mockResolvedValue(home);
-    renderView("@eton", "es");
+    renderView("@evan", "es");
     expect(await screen.findByRole("region", { name: "Más de este creador" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Ver detalles" })).toBeTruthy();
   });
