@@ -7,7 +7,7 @@ export function ConsoleSignature() {
     console.info(
       "%cSkillsetMind",
       "color:#183a63;font-size:24px;font-weight:700;",
-      "\nHope you are enjoying the experience. Good luck.",
+      "\nBuilt by SkillsetMind. Hope you are enjoying the experience. Good luck.",
     );
   }, []);
 
