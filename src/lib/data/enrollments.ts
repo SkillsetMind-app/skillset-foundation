@@ -18,7 +18,9 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-function rowToEnrollment(row: EnrollmentRow): Enrollment {
+// Exported for the rows the server sends with /learn (see
+// lib/data/server/learner-enrollments): one mapper for both ways in.
+export function rowToEnrollment(row: EnrollmentRow): Enrollment {
   return {
     id: row.id,
     userId: row.user_id,
