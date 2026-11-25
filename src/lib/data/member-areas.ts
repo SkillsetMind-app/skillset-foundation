@@ -4,14 +4,15 @@ import { isAllowedAvatarFile } from "@/lib/data/profile-media";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 /**
- * Área de membros por criador: a principal junta os produtos dele; no Pro há
- * até 2 extras (migration 20261113230000_tres_areas_no_pro), cada uma com os
- * produtos que o professor pôs nela e endereço próprio (slug).
+ * Members area per creator: the main one gathers the creator's products; on Pro
+ * there are up to 2 extras (migration 20261113230000_tres_areas_no_pro), each
+ * with the products the teacher put in it and its own address (slug).
  *
- * Tudo passa pelas funções do banco (migration 20261016030000_area_de_membros):
- * a leitura devolve null para quem não é aluno nem dono, e a vitrine ("mais
- * deste criador") só traz campos públicos. A área não libera aula nenhuma; o
- * acesso continua por curso.
+ * Everything goes through the database functions (migration
+ * 20261016030000_area_de_membros): the read returns null for anyone who is not a
+ * learner or the owner, and the storefront ("more from this creator") only
+ * brings public fields. The area unlocks no lesson at all; access still goes
+ * by course.
  */
 
 export type MemberAreaTheme = "light" | "dark";
@@ -19,17 +20,17 @@ export type MemberAreaTheme = "light" | "dark";
 export type MemberArea = {
   ownerId: string;
   username: string | null;
-  /** null = a área principal; senão o endereço da extra. */
+  /** null = the main area; otherwise the address of the extra. */
   slug: string | null;
   creatorName: string | null;
   creatorPhotoUrl: string | null;
-  /** Já com o padrão aplicado: o nome do criador enquanto a área é virtual. */
+  /** With the default already applied: the creator's name while the area is virtual. */
   name: string | null;
   theme: MemberAreaTheme;
-  /** Caminho no bucket public-media (`users/{uid}/member-area/...`). */
+  /** Path in the bucket public-media (`users/{uid}/member-area/...`). */
   coverPath: string | null;
   welcomeText: string | null;
-  /** false = área virtual: o criador nunca salvou. */
+  /** false = virtual area: the creator never saved. */
   configured: boolean;
   isOwnerPreview: boolean;
 };
@@ -60,7 +61,7 @@ export type MemberAreaLockedProduct = {
   priceAmountMinor: number | null;
   currency: string | null;
   paymentType: string | null;
-  /** Chave da página de vendas: `/courses/{salesKey}`. */
+  /** Sales page key: `/courses/{salesKey}`. */
   salesKey: string;
 };
 
@@ -71,10 +72,10 @@ export type MemberAreaHome = {
   moreProducts: MemberAreaLockedProduct[];
 };
 
-/** A comunidade da área inteira: um produto community do professor. */
+/** The community of the whole area: a community product of the teacher. */
 export type MemberAreaCommunity = { courseId: string; title: string; isOwner: boolean };
 
-/** Os quatro de uma vez: salvar regrava todos, então nenhum é opcional. */
+/** All four at once: saving rewrites all of them, so none is optional. */
 export type MemberAreaSettings = {
   name: string | null;
   theme: MemberAreaTheme;
@@ -127,7 +128,7 @@ function parseContinue(value: unknown): MemberAreaContinue | null {
   };
 }
 
-/** O JSON de get_member_area_home → tipos do app. Entrada torta vira null ou some da lista. */
+/** The JSON from get_member_area_home → app types. Malformed input becomes null or drops out of the list. */
 export function parseMemberAreaHome(value: unknown): MemberAreaHome | null {
   const row = asRow(value);
   const area = parseArea(row?.area);
@@ -165,8 +166,8 @@ export function parseMemberAreaHome(value: unknown): MemberAreaHome | null {
 }
 
 /**
- * `/learn/areas/@usuario` (ou o uid quando o criador não tem @), mais
- * `/{slug}` numa área extra.
+ * `/learn/areas/@usuario` (or the uid when the creator has no @), plus
+ * `/{slug}` in an extra area.
  */
 export function memberAreaPath(area: Pick<MemberArea, "username" | "ownerId"> & { slug?: string | null }): string {
   const base = area.username
@@ -175,22 +176,23 @@ export function memberAreaPath(area: Pick<MemberArea, "username" | "ownerId"> & 
   return area.slug ? `${base}/${encodeURIComponent(area.slug)}` : base;
 }
 
-/** A área na rota: `/learn/areas/{ref}` (o "@usuario" ou uid como veio na URL), mais `/{slug}` numa extra. */
+/** The area in the route: `/learn/areas/{ref}` (the "@usuario" or uid as it came in the URL), plus `/{slug}` in an extra. */
 export function memberAreaRoutePath(ref: string, slug: string | null = null): string {
   const base = `/learn/areas/${encodeURIComponent(ref)}`;
   return slug ? `${base}/${encodeURIComponent(slug)}` : base;
 }
 
-// O tema da área só chega com a leitura feita no navegador: a tabela é do dono,
-// e o servidor não a lê em nome do aluno. Guardar o último tema visto deixa a
-// volta à área, e a comunidade dela, pintarem no tema certo desde o primeiro
-// quadro, sem leitura nova ao banco. Sem nada guardado (primeira visita), a
-// tela espera neutra em vez de nascer clara e virar escura.
-// ponytail: um valor por endereço de área; tema trocado pelo professor só
-// aparece depois da próxima abertura da área (a leitura regrava).
+// The area's theme only arrives with the read done in the browser: the table
+// belongs to the owner, and the server does not read it on the learner's behalf.
+// Saving the last theme seen lets the return to the area, and its community,
+// paint in the right theme from the first frame, without a new database read.
+// With nothing saved (first visit), the screen waits neutral instead of being
+// born light and turning dark.
+// ponytail: one value per area address; a theme changed by the teacher only
+// shows up after the next time the area is opened (the read rewrites it).
 const themeKey = (ref: string, slug: string | null) => `skillset:member-area-theme:${memberAreaRoutePath(ref, slug)}`;
 
-/** O último tema visto desta área, ou null quando nunca foi aberta neste navegador. */
+/** The last theme seen for this area, or null when it was never opened in this browser. */
 export function rememberedMemberAreaTheme(ref: string, slug: string | null = null): MemberAreaTheme | null {
   try {
     const value = window.localStorage.getItem(themeKey(ref, slug));
@@ -204,22 +206,22 @@ export function rememberMemberAreaTheme(ref: string, slug: string | null, theme:
   try {
     window.localStorage.setItem(themeKey(ref, slug), theme);
   } catch {
-    // Armazenamento bloqueado (aba privada): só perde o atalho do primeiro quadro.
+    // Storage blocked (private tab): it only loses the first-frame shortcut.
   }
 }
 
-/** Endereço de área extra: minúsculas, números e hífen, até 40. Mesma regra do banco. */
+/** Extra area address: lowercase letters, numbers and hyphen, up to 40. Same rule as the database. */
 export function isValidMemberAreaSlug(slug: string): boolean {
   return /^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$/.test(slug) && slug !== "community";
 }
 
-/** `areaId`/`slug` vazio = a área principal: o parâmetro nem vai, e o banco usa o padrão. */
+/** `areaId`/`slug` empty = the main area: the parameter is not even sent, and the database uses the default. */
 const areaArg = (areaId: string | null | undefined) => (areaId ? { p_area_id: areaId } : {});
 const slugArg = (slug: string | null | undefined) => (slug ? { p_slug: slug } : {});
 
 /**
- * `ref` = "@usuario" ou uid; `slug` = área extra (null = principal). null: o
- * criador ou a área não existe, ou quem pede não é aluno da área nem dono.
+ * `ref` = "@usuario" or uid; `slug` = extra area (null = main). null: the
+ * creator or the area does not exist, or the requester is neither a learner of the area nor the owner.
  */
 export async function getMemberAreaHome(ref: string, slug: string | null = null): Promise<MemberAreaHome | null> {
   const { data, error } = await getSupabaseBrowserClient().rpc("get_member_area_home", {
@@ -231,8 +233,8 @@ export async function getMemberAreaHome(ref: string, slug: string | null = null)
 }
 
 /**
- * A comunidade da área de `ref` ("@usuario" ou uid; `slug` = extra). null: a
- * área não tem comunidade escolhida, ou quem pede não é aluno nem dono.
+ * The community of the area of `ref` ("@usuario" or uid; `slug` = extra). null: the
+ * area has no community chosen, or the requester is neither a learner nor the owner.
  */
 export async function getMemberAreaCommunity(ref: string, slug: string | null = null): Promise<MemberAreaCommunity | null> {
   const { data, error } = await getSupabaseBrowserClient().rpc("get_member_area_community", {
@@ -246,7 +248,7 @@ export async function getMemberAreaCommunity(ref: string, slug: string | null = 
   return { courseId, title: text(row.title) ?? "", isOwner: row.is_owner === true };
 }
 
-/** Escolhe (ou tira, com null) a comunidade de uma área de quem chama. */
+/** Chooses (or removes, with null) the community of one of the caller's areas. */
 export async function setMyMemberAreaCommunity(courseId: string | null, areaId: string | null = null): Promise<void> {
   const { error } = await getSupabaseBrowserClient().rpc("set_my_member_area_community", {
     p_course_id: courseId ?? "",
@@ -255,7 +257,7 @@ export async function setMyMemberAreaCommunity(courseId: string | null, areaId: 
   if (error) throw error;
 }
 
-/** Salva uma área de quem chama. Vazio ou null volta ao padrão. */
+/** Saves one of the caller's areas. Empty or null goes back to the default. */
 export async function saveMyMemberArea(settings: MemberAreaSettings, areaId: string | null = null): Promise<void> {
   const { error } = await getSupabaseBrowserClient().rpc("save_my_member_area", {
     p_name: settings.name ?? "",
@@ -268,9 +270,9 @@ export async function saveMyMemberArea(settings: MemberAreaSettings, areaId: str
 }
 
 /**
- * Troca a lista inteira de uma área, na ordem dada. Produto de outra área muda
- * para esta; o que sai da lista de uma extra volta para a principal. O banco
- * recusa tudo se um produto não for de quem chama.
+ * Replaces an area's whole list, in the given order. A product from another area moves
+ * to this one; what leaves an extra's list goes back to the main one. The database
+ * refuses everything if a product does not belong to the caller.
  */
 export async function saveMyMemberAreaProducts(
   choices: readonly MemberAreaProductChoice[],
@@ -283,10 +285,10 @@ export async function saveMyMemberAreaProducts(
   if (error) throw error;
 }
 
-/** O que a tela explica quando criar falha. */
+/** What the screen explains when creating fails. */
 export type CreateMemberAreaError = "limit" | "slugInvalid" | "slugTaken" | "other";
 
-/** Cria uma área extra e devolve o id. O banco confere o plano (Pro: até 3 com a principal). */
+/** Creates an extra area and returns the id. The database checks the plan (Pro: up to 3 with the main one). */
 export async function createMyMemberArea(name: string, slug: string): Promise<string> {
   const { data, error } = await getSupabaseBrowserClient().rpc("create_my_member_area", { p_name: name, p_slug: slug });
   if (error) {
@@ -303,15 +305,15 @@ export async function createMyMemberArea(name: string, slug: string): Promise<st
   return data;
 }
 
-/** Apaga uma área extra. Os produtos dela voltam para a principal. */
+/** Deletes an extra area. Its products go back to the main one. */
 export async function deleteMyMemberArea(areaId: string): Promise<void> {
   const { error } = await getSupabaseBrowserClient().rpc("delete_my_member_area", { p_area_id: areaId });
   if (error) throw error;
 }
 
 /**
- * Quais destes produtos (comprados ou do próprio professor) moram numa área
- * extra: courseId -> { slug, nome }. Fora do mapa = área principal.
+ * Which of these products (purchased or the teacher's own) live in an extra
+ * area: courseId -> { slug, name }. Outside the map = main area.
  */
 export async function getMemberAreaSlugs(
   courseIds: readonly string[],
@@ -325,33 +327,33 @@ export async function getMemberAreaSlugs(
 }
 
 // ---------------------------------------------------------------------------
-// Tela do criador (/teach/member-area)
+// Creator screen (/teach/member-area)
 // ---------------------------------------------------------------------------
 
 const publicMediaBucket = "public-media";
 
-/** Uma área do criador. `id` null = a principal ainda virtual (nunca salvou). */
+/** One of the creator's areas. `id` null = the main one, still virtual (never saved). */
 export type MyMemberAreaEditorArea = {
   id: string | null;
-  /** null = a principal. */
+  /** null = the main one. */
   slug: string | null;
-  /** null = nunca salvou: valem os padrões. */
+  /** null = never saved: the defaults apply. */
   settings: MemberAreaSettings | null;
-  /** O produto community escolhido como comunidade desta área. */
+  /** The community product chosen as this area's community. */
   communityCourseId: string | null;
 };
 
-/** O que o criador já salvou: as áreas (a principal primeiro) e onde cada produto mora. */
+/** What the creator has already saved: the areas (the main one first) and where each product lives. */
 export type MyMemberAreas = {
   areas: MyMemberAreaEditorArea[];
-  /** Produto numa lista salva: área, posição e visibilidade. Fora do mapa = principal, no fim, visível. */
+  /** Product in a saved list: area, position and visibility. Outside the map = main, at the end, visible. */
   placement: Map<string, { areaId: string; position: number; visible: boolean }>;
 };
 
-/** Posição e visibilidade dos produtos que a lista de uma área já tem. */
+/** Position and visibility of the products an area's list already has. */
 export type MemberAreaChoices = Map<string, { position: number; visible: boolean }>;
 
-/** Lê as próprias áreas pela RLS (só o dono enxerga as linhas). */
+/** Reads the caller's own areas through RLS (only the owner sees the rows). */
 export async function getMyMemberAreas(uid: string): Promise<MyMemberAreas> {
   const supabase = getSupabaseBrowserClient();
   const { data: rows, error } = await supabase
@@ -395,9 +397,9 @@ export async function getMyMemberAreas(uid: string): Promise<MyMemberAreas> {
 }
 
 /**
- * Os produtos que moram numa área e o recorte salvo deles. Mesma regra do banco
- * (member_area_product_order): a principal tem a lista dela e tudo o que não
- * está na lista de uma extra; a extra, só a lista dela.
+ * The products that live in an area and their saved slice. Same rule as the database
+ * (member_area_product_order): the main one has its own list and everything that
+ * is not in an extra's list; the extra has only its own list.
  */
 export function memberAreaProductsOf<T extends { id: string }>(
   courses: readonly T[],
@@ -420,8 +422,8 @@ export function memberAreaProductsOf<T extends { id: string }>(
 }
 
 /**
- * A mesma ordem do banco (member_area_product_order): primeiro a lista salva,
- * depois o que ficou fora dela, do mais novo para o mais antigo.
+ * The same order as the database (member_area_product_order): first the saved list,
+ * then what was left out of it, from newest to oldest.
  */
 export function orderMemberAreaProducts<T extends { id: string; createdAt?: unknown }>(
   courses: readonly T[],
@@ -435,8 +437,8 @@ export function orderMemberAreaProducts<T extends { id: string; createdAt?: unkn
 }
 
 /**
- * Sobe a capa para `users/{uid}/member-area/` e devolve o caminho. Nome novo a
- * cada envio: a URL pública muda junto e nenhum cache mostra a capa velha.
+ * Uploads the cover to `users/{uid}/member-area/` and returns the path. A new name on
+ * every upload: the public URL changes with it and no cache shows the old cover.
  */
 export async function uploadMemberAreaCover(uid: string, file: File): Promise<string> {
   if (!isAllowedAvatarFile(file)) throw new Error("MEMBER_AREA_COVER_INVALID");
@@ -448,7 +450,7 @@ export async function uploadMemberAreaCover(uid: string, file: File): Promise<st
   return path;
 }
 
-/** Apaga uma capa que deixou de ser usada. Falhar aqui só deixa um arquivo órfão. */
+/** Deletes a cover that is no longer used. Failing here only leaves an orphaned file. */
 export async function removeMemberAreaCover(path: string): Promise<void> {
   const { error } = await getSupabaseBrowserClient().storage.from(publicMediaBucket).remove([path]);
   if (error) throw error;

@@ -82,8 +82,8 @@ function stubClient({ idMatches }: { idMatches: boolean }) {
 }
 
 describe("subscribeToPublishedTeacherCourses", () => {
-  // O Realtime é "private only": visitante sem login era recusado ~575 vezes por
-  // dia neste canal. Ele fica só com a carga do catálogo.
+  // Realtime is "private only": a visitor without a login was refused ~575 times
+  // a day on this channel. They get only the catalog load.
   function catalogClient(session: object | null) {
     const channels: string[] = [];
     const client = {
@@ -99,7 +99,7 @@ describe("subscribeToPublishedTeacherCourses", () => {
     return { channels, client };
   }
 
-  it("visitante sem login recebe o catálogo e não abre canal", async () => {
+  it("a visitor without a login gets the catalog and opens no channel", async () => {
     const { channels } = catalogClient(null);
     const received = vi.fn();
     subscribeToPublishedTeacherCourses(received, vi.fn());
@@ -108,7 +108,7 @@ describe("subscribeToPublishedTeacherCourses", () => {
     expect(channels).toEqual([]);
   });
 
-  it("com sessão abre o canal e fecha ao sair", async () => {
+  it("with a session it opens the channel and closes it on exit", async () => {
     const { channels, client } = catalogClient({ user: { id: "u1" } });
     const unsubscribe = subscribeToPublishedTeacherCourses(vi.fn(), vi.fn());
     await vi.waitFor(() => expect(channels).toEqual(["courses:published"]));
@@ -155,8 +155,8 @@ describe("teacherCourseToLearningCourse module covers", () => {
     expect(teacher.modules[0].coverAssetId).toBe("selected-cover");
   });
 
-  // "Self-paced" em toda linha e "N lessons" como descricao de modulo nao sao
-  // dados: eram texto de enchimento repetido pela sala inteira.
+  // "Self-paced" on every row and "N lessons" as a module description are not
+  // data: they were filler text repeated across the whole room.
   it("leaves duration and module summary empty when the teacher gave none", () => {
     const teacher = rowToTeacherCourse({
       ...courseRow,

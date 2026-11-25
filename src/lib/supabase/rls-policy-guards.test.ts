@@ -4,47 +4,49 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 /**
- * Guarda sobre as POLÍTICAS RLS efetivas, irmã de `rpc-definition-guards`.
+ * Guard over the EFFECTIVE RLS POLICIES, sibling of `rpc-definition-guards`.
  *
- * A regra que ela prova já existia em SQL, no fim de
- * 20260809080000_enrollment_status_rls.sql: nenhuma política pode consultar
- * `enrollments` sem consultar o status junto — a linha nunca é apagada, só muda
- * de status, então "existe matrícula" não é a mesma pergunta que "a matrícula
- * ainda dá direito".
+ * The rule it proves already existed in SQL, at the end of
+ * 20260809080000_enrollment_status_rls.sql: no policy may query `enrollments`
+ * without also checking the status — the row is never deleted, it only changes
+ * status, so "an enrollment exists" is not the same question as "the enrollment
+ * still grants access".
  *
- * Ela está aqui em TypeScript por dois motivos. O primeiro é que a versão SQL
- * roda uma vez, no dia em que a migration é aplicada; esta roda em todo PR. O
- * segundo é o que a auditoria de hoje encontrou: aquela guarda lia só
- * `pg_get_expr(p.polqual, ...)`, a cláusula USING. Política de INSERT não tem
- * USING — o predicado dela vive em WITH CHECK —, então a guarda deu verde no
- * mesmo dia em que `lesson_comments_insert` ficou para trás, e no dia seguinte
- * deixou passar `member_stats_select_authenticated`.
+ * It is here in TypeScript for two reasons. The first is that the SQL version
+ * runs once, on the day the migration is applied; this one runs on every PR. The
+ * second is what today's audit found: that guard read only
+ * `pg_get_expr(p.polqual, ...)`, the USING clause. An INSERT policy has no
+ * USING — its predicate lives in WITH CHECK —, so the guard went green on the
+ * same day `lesson_comments_insert` was left behind, and the next day it let
+ * `member_stats_select_authenticated` through.
  *
- * A cegueira seguinte foi do próprio regex: ele só casava `create policy`, e
- * política redefinida por `alter policy` ficava invisível. No PR #253,
- * `courses_delete_owner` foi reescrita assim lendo `enrollments` sem status,
- * esta guarda deu verde e só o smoke contra o banco pegou — exatamente o caso
- * em que ela deveria ter falado primeiro.
+ * The next blind spot was the regex itself: it only matched `create policy`, and
+ * a policy redefined by `alter policy` was invisible. In PR #253,
+ * `courses_delete_owner` was rewritten that way reading `enrollments` without a
+ * status, this guard went green and only the smoke test against the database
+ * caught it — exactly the case where it should have spoken first.
  *
- * O critério é de texto, não de semântica: prova que o status foi consultado,
- * não que foi consultado no lugar certo. É de propósito — o que ele pega é o
- * esquecimento, que é como as três violações desta série nasceram.
+ * The criterion is textual, not semantic: it proves that the status was
+ * checked, not that it was checked in the right place. That is on purpose — what
+ * it catches is forgetting, which is how the three violations of this series
+ * were born.
  */
 const RAIZ = process.cwd();
 
 /**
- * Exceções documentadas. A lista tem de ser a mesma do smoke contra o banco
+ * Documented exceptions. The list has to be the same as the one in the database
+ * smoke test
  * (supabase/tests/20260901180000_dead_enrollments_lose_the_classroom_smoke.sql);
- * o teste "tem a mesma lista de exceções" prova.
+ * the test "has the same list of exceptions" proves it.
  *
- * - lesson_progress_select_owner: devolve o histórico do PRÓPRIO usuário, que é
- *   dele com matrícula viva ou morta.
- * - courses_delete_owner: única política de DELETE, e nela a pergunta é a
- *   inversa — consulta `enrollments` num NOT EXISTS para RECUSAR, não para
- *   liberar. Matrícula reembolsada, revogada ou expirada continua sendo
- *   registro do aluno, e `enrollments_course_id_fkey` é RESTRICT: filtrar por
- *   status aqui ABRIRIA o buraco, um curso com matrícula morta voltaria a ser
- *   apagável. Ver 20260908120000_excluir_ou_arquivar_curso_do_professor.sql.
+ * - lesson_progress_select_owner: returns the user's OWN history, which is
+ *   theirs whether the enrollment is live or dead.
+ * - courses_delete_owner: the only DELETE policy, and for it the question is
+ *   the inverse — it queries `enrollments` in a NOT EXISTS to REFUSE, not to
+ *   allow. A refunded, revoked or expired enrollment is still the learner's
+ *   record, and `enrollments_course_id_fkey` is RESTRICT: filtering by status
+ *   here would OPEN the hole, a course with a dead enrollment would become
+ *   deletable again. See 20260908120000_excluir_ou_arquivar_curso_do_professor.sql.
  */
 const EXCECOES = new Set(["lesson_progress_select_owner", "courses_delete_owner"]);
 
@@ -53,11 +55,11 @@ type Politica = { tabela: string; corpo: string; arquivo: string };
 function arquivosSql(pasta: string): string[] {
   return readdirSync(join(RAIZ, pasta))
     .filter((arquivo) => arquivo.endsWith(".sql"))
-    .sort() // nomes começam com data, então ordem alfabética = cronológica
+    .sort() // names start with a date, so alphabetical order = chronological
     .map((arquivo) => join(pasta, arquivo));
 }
 
-/** `create policy` e `alter policy` de UM arquivo SQL, na ordem em que aparecem. */
+/** `create policy` and `alter policy` from ONE SQL file, in the order they appear. */
 function definicoesDePolitica(texto: string, arquivo: string): Array<[string, Politica]> {
   const definicoes = texto.matchAll(
     /\b(?:create|alter)\s+policy\s+"?([a-z0-9_]+)"?\s+on\s+"?([a-z0-9_."]+)"?([\s\S]*?);/gi,
@@ -70,15 +72,15 @@ function definicoesDePolitica(texto: string, arquivo: string): Array<[string, Po
 }
 
 /**
- * Última definição de cada política na cadeia: `create policy` nasce, `alter
- * policy` redefine, e quem manda é a última. Olhar onde a política nasceu
- * daria vermelho eterno depois do conserto, porque migration antiga não se
- * edita, se substitui.
+ * Last definition of each policy in the chain: `create policy` creates it, `alter
+ * policy` redefines it, and the last one wins. Looking at where the policy was
+ * born would give a permanent red after the fix, because an old migration is not
+ * edited, it is replaced.
  *
- * O `alter policy` só troca as cláusulas que nomeia, mas aqui o texto do último
- * statement vale como corpo inteiro — a mesma simplificação de `policyEfetiva`
- * em rpc-definition-guards. Basta, porque a cláusula que ele NÃO nomeia já foi
- * julgada quando nasceu.
+ * `alter policy` only swaps the clauses it names, but here the text of the last
+ * statement counts as the whole body — the same simplification as `policyEfetiva`
+ * in rpc-definition-guards. It is enough, because the clause it does NOT name
+ * was already judged when it was born.
  */
 function politicasEfetivas(): Map<string, Politica> {
   const efetivas = new Map<string, Politica>();
@@ -94,7 +96,7 @@ function politicasEfetivas(): Map<string, Politica> {
   return efetivas;
 }
 
-/** Políticas que consultam `enrollments` sem consultar o status junto. */
+/** Policies that query `enrollments` without also checking the status. */
 function politicasSemStatus(efetivas: Map<string, Politica>): string[] {
   return [...efetivas.entries()]
     .filter(([nome, { corpo }]) => {
@@ -104,32 +106,33 @@ function politicasSemStatus(efetivas: Map<string, Politica>): string[] {
     .map(([nome, { tabela, arquivo }]) => `${tabela}.${nome} (${arquivo})`);
 }
 
-describe("políticas RLS que leem enrollments", () => {
+describe("RLS policies that read enrollments", () => {
   const efetivas = politicasEfetivas();
 
-  it("encontra as políticas do repositório", () => {
-    // Sem isto, um regex quebrado deixaria o teste abaixo verde por não ter
-    // olhado para nada — o modo de falha mais silencioso que este arquivo tem.
+  it("finds the repository policies", () => {
+    // Without this, a broken regex would leave the test below green for having
+    // looked at nothing — the quietest failure mode this file has.
     expect(efetivas.size).toBeGreaterThan(100);
   });
 
-  it("checa o status da matrícula em toda política que a consulta", () => {
+  it("checks the enrollment status in every policy that queries it", () => {
     const infratoras = politicasSemStatus(efetivas);
 
     expect(
       infratoras,
-      "Estas políticas liberam acesso porque a linha de matrícula EXISTE, não "
-        + "porque ela ainda dá direito. Um aluno reembolsado, revogado ou "
-        + "expirado passa por elas. Some `and e.status = any (array['active', "
-        + "'completed'])` ao EXISTS, ou justifique a exceção em EXCECOES:\n  "
+      "These policies grant access because the enrollment row EXISTS, not "
+        + "because it still grants access. A refunded, revoked or "
+        + "expired learner gets through them. Add `and e.status = any (array['active', "
+        + "'completed'])` to the EXISTS, or justify the exception in EXCECOES:\n  "
         + infratoras.join("\n  "),
     ).toEqual([]);
   });
 
-  it("enxerga a política redefinida por alter policy", () => {
-    // O furo do PR #253: courses_delete_owner nasceu limpa e foi reescrita por
-    // `alter policy` lendo enrollments sem status. O regex só via `create`, a
-    // asserção acima ficou verde, e só o smoke contra o banco pegou.
+  it("sees a policy redefined by alter policy", () => {
+    // The hole in PR #253: courses_delete_owner was born clean and was rewritten
+    // by `alter policy` reading enrollments without a status. The regex only saw
+    // `create`, the assertion above stayed green, and only the database smoke
+    // test caught it.
     const fixture = [
       "create policy fixture_owner on public.fixture using (owner_id = auth.uid());",
       "alter policy fixture_owner on public.fixture",
@@ -141,9 +144,9 @@ describe("políticas RLS que leem enrollments", () => {
     ]);
   });
 
-  it("tem a mesma lista de exceções que o smoke contra o banco", () => {
-    // As duas guardas provam a mesma regra, então uma exceção que só um lado
-    // conhece é um furo do outro. O smoke exclui por `p.polname <> '...'`.
+  it("has the same list of exceptions as the database smoke test", () => {
+    // Both guards prove the same rule, so an exception that only one side
+    // knows about is a hole in the other. The smoke test excludes by `p.polname <> '...'`.
     const smoke = readFileSync(
       join(RAIZ, "supabase/tests/20260901180000_dead_enrollments_lose_the_classroom_smoke.sql"),
       "utf8",
@@ -154,11 +157,11 @@ describe("políticas RLS que leem enrollments", () => {
     expect(new Set(noSmoke)).toEqual(EXCECOES);
   });
 
-  it("mantém a guarda SQL enxergando também o WITH CHECK", () => {
-    // A guarda em SQL é a que roda contra o banco de verdade. Enquanto ela lia
-    // só `polqual`, era cega para toda política de INSERT — o furo que esta
-    // série de correções fechou. Se alguém a reescrever sem `polwithcheck`, o
-    // ponto cego volta e este arquivo passa a ser a única defesa.
+  it("keeps the SQL guard looking at WITH CHECK as well", () => {
+    // The SQL guard is the one that runs against the real database. While it read
+    // only `polqual`, it was blind to every INSERT policy — the hole this series
+    // of fixes closed. If someone rewrites it without `polwithcheck`, the blind
+    // spot comes back and this file becomes the only defense.
     const guardas = arquivosSql("supabase/migrations")
       .map((arquivo) => readFileSync(join(RAIZ, arquivo), "utf8"))
       .filter((texto) => texto.includes("polqual"));

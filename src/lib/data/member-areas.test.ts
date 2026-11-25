@@ -28,7 +28,7 @@ beforeEach(() => {
   upload.mockReset();
 });
 
-// select().eq() → maybeSingle() ou a própria promessa, como o supabase-js.
+// select().eq() → maybeSingle() or the promise itself, like supabase-js.
 function table(result: { data: unknown; error: unknown }) {
   const chain = {
     select: () => chain,
@@ -64,7 +64,7 @@ const home = {
 };
 
 describe("getMemberAreaHome", () => {
-  it("pede a área pelo @ e devolve as três seções em camelCase", async () => {
+  it("asks for the area by its @ and returns the three sections in camelCase", async () => {
     rpc.mockResolvedValue({ data: home, error: null });
     const result = await getMemberAreaHome("@eton");
     expect(rpc).toHaveBeenCalledWith("get_member_area_home", { p_area_ref: "@eton" });
@@ -82,19 +82,19 @@ describe("getMemberAreaHome", () => {
     ]);
   });
 
-  it("null do banco (não é aluno nem dono) vira null", async () => {
+  it("null from the database (not a learner nor the owner) becomes null", async () => {
     rpc.mockResolvedValue({ data: null, error: null });
     await expect(getMemberAreaHome("@eton")).resolves.toBeNull();
   });
 
-  it("propaga a recusa do banco sem traduzir", async () => {
+  it("passes the database refusal through without translating it", async () => {
     rpc.mockResolvedValue({ data: null, error: { message: "permission denied" } });
     await expect(getMemberAreaHome("@eton")).rejects.toMatchObject({ message: "permission denied" });
   });
 });
 
 describe("parseMemberAreaHome", () => {
-  it("tema desconhecido vira claro e área sem dono vira null", () => {
+  it("an unknown theme becomes light and an area without an owner becomes null", () => {
     expect(parseMemberAreaHome({ ...home, area: { ...home.area, theme: "neon" } })?.area.theme).toBe("light");
     expect(parseMemberAreaHome({ ...home, area: { name: "x" } })).toBeNull();
     expect(parseMemberAreaHome({ ...home, continue: null })?.continueWatching).toBeNull();
@@ -102,14 +102,14 @@ describe("parseMemberAreaHome", () => {
 });
 
 describe("memberAreaPath", () => {
-  it("usa o @ quando existe e o uid quando não", () => {
+  it("uses the @ when it exists and the uid when it does not", () => {
     expect(memberAreaPath({ username: "eton", ownerId: "u-1" })).toBe("/learn/areas/@eton");
     expect(memberAreaPath({ username: null, ownerId: "u-1" })).toBe("/learn/areas/u-1");
   });
 });
 
 describe("saveMyMemberArea", () => {
-  it("manda vazio para o que volta ao padrão", async () => {
+  it("sends empty for what goes back to the default", async () => {
     rpc.mockResolvedValue({ data: null, error: null });
     await saveMyMemberArea({ name: "Eton Academy", theme: "light", coverPath: null, welcomeText: null });
     expect(rpc).toHaveBeenCalledWith("save_my_member_area", {
@@ -117,7 +117,7 @@ describe("saveMyMemberArea", () => {
     });
   });
 
-  it("propaga o erro", async () => {
+  it("passes the error through", async () => {
     rpc.mockResolvedValue({ data: null, error: { message: "MEMBER_AREA_FORBIDDEN" } });
     await expect(saveMyMemberArea({ name: null, theme: "dark", coverPath: null, welcomeText: null }))
       .rejects.toMatchObject({ message: "MEMBER_AREA_FORBIDDEN" });
@@ -125,7 +125,7 @@ describe("saveMyMemberArea", () => {
 });
 
 describe("saveMyMemberAreaProducts", () => {
-  it("manda a lista inteira na ordem dada", async () => {
+  it("sends the whole list in the given order", async () => {
     rpc.mockResolvedValue({ data: null, error: null });
     await saveMyMemberAreaProducts([{ courseId: "c-b", visible: true }, { courseId: "c-a", visible: false }]);
     expect(rpc).toHaveBeenCalledWith("save_my_member_area_products", {
@@ -133,7 +133,7 @@ describe("saveMyMemberAreaProducts", () => {
     });
   });
 
-  it("propaga a recusa de produto alheio", async () => {
+  it("passes through the refusal of someone else's product", async () => {
     rpc.mockResolvedValue({ data: null, error: { message: "MEMBER_AREA_COURSE_NOT_OWNED" } });
     await expect(saveMyMemberAreaProducts([{ courseId: "x", visible: true }]))
       .rejects.toMatchObject({ message: "MEMBER_AREA_COURSE_NOT_OWNED" });
@@ -141,7 +141,7 @@ describe("saveMyMemberAreaProducts", () => {
 });
 
 describe("orderMemberAreaProducts", () => {
-  it("lista salva primeiro; o resto do mais novo ao mais antigo", () => {
+  it("saved list first; the rest from newest to oldest", () => {
     const courses = [
       { id: "a", createdAt: "2026-01-01T00:00:00Z" },
       { id: "b", createdAt: "2026-05-01T00:00:00Z" },
@@ -155,7 +155,7 @@ describe("orderMemberAreaProducts", () => {
 });
 
 describe("getMyMemberAreas", () => {
-  it("sem linha: só a principal, virtual", async () => {
+  it("no row: only the main one, virtual", async () => {
     from.mockReturnValueOnce(table({ data: [], error: null }));
     await expect(getMyMemberAreas("u-1")).resolves.toEqual({
       areas: [{ id: null, slug: null, settings: null, communityCourseId: null }],
@@ -164,7 +164,7 @@ describe("getMyMemberAreas", () => {
     expect(from).toHaveBeenCalledTimes(1);
   });
 
-  it("principal primeiro, extras depois, e onde cada produto mora", async () => {
+  it("main first, extras after, and where each product lives", async () => {
     from
       .mockReturnValueOnce(table({ data: [
         { id: "area-2", slug: "vip", name: "VIP", theme: "light", cover_path: null, welcome_text: null, community_course_id: null },
@@ -193,7 +193,7 @@ describe("memberAreaProductsOf", () => {
   };
   const courses = [{ id: "a" }, { id: "b" }, { id: "c" }];
 
-  it("principal: a lista dela e o que não está em extra; extra: só a lista dela", () => {
+  it("main: its own list and whatever is not in an extra; extra: only its own list", () => {
     const main = memberAreaProductsOf(courses, editor, editor.areas[0]);
     expect(main.courses.map((course) => course.id)).toEqual(["a", "c"]);
     expect([...main.choices.keys()]).toEqual(["a"]);
@@ -203,8 +203,8 @@ describe("memberAreaProductsOf", () => {
   });
 });
 
-describe("áreas extras", () => {
-  it("endereço da extra e regra do slug", () => {
+describe("extra areas", () => {
+  it("extra address and slug rule", () => {
     expect(memberAreaPath({ username: "eton", ownerId: "u-1", slug: "vip" })).toBe("/learn/areas/@eton/vip");
     expect(isValidMemberAreaSlug("turma-2")).toBe(true);
     for (const bad of ["community", "-x", "x-", "Turma", "a b", "", "a".repeat(41)]) {
@@ -212,7 +212,7 @@ describe("áreas extras", () => {
     }
   });
 
-  it("pede a extra pelo slug; a principal nem manda o parâmetro", async () => {
+  it("asks for the extra by its slug; the main one does not even send the parameter", async () => {
     rpc.mockResolvedValue({ data: null, error: null });
     await getMemberAreaHome("@eton", "vip");
     expect(rpc).toHaveBeenLastCalledWith("get_member_area_home", { p_area_ref: "@eton", p_slug: "vip" });
@@ -220,7 +220,7 @@ describe("áreas extras", () => {
     expect(rpc).toHaveBeenLastCalledWith("get_member_area_home", { p_area_ref: "@eton" });
   });
 
-  it("criar: traduz limite, endereço em uso e inválido", async () => {
+  it("create: translates limit, address in use and invalid", async () => {
     rpc.mockResolvedValueOnce({ data: null, error: { message: "MEMBER_AREA_LIMIT", code: "P0001" } });
     await expect(createMyMemberArea("x", "vip")).rejects.toThrow("limit");
     rpc.mockResolvedValueOnce({ data: null, error: { message: "duplicate key", code: "23505" } });
@@ -231,7 +231,7 @@ describe("áreas extras", () => {
     await expect(createMyMemberArea("VIP", "vip")).resolves.toBe("area-2");
   });
 
-  it("slugs dos produtos: lista vazia não vai ao banco", async () => {
+  it("product slugs: an empty list does not go to the database", async () => {
     await expect(getMemberAreaSlugs([])).resolves.toEqual(new Map());
     expect(rpc).not.toHaveBeenCalled();
     rpc.mockResolvedValueOnce({ data: [{ course_id: "c-b", slug: "vip", name: "VIP" }], error: null });
@@ -240,7 +240,7 @@ describe("áreas extras", () => {
 });
 
 describe("uploadMemberAreaCover", () => {
-  it("sobe na pasta do criador com nome novo e devolve o caminho", async () => {
+  it("uploads to the creator's folder with a new name and returns the path", async () => {
     upload.mockResolvedValue({ error: null });
     const file = new File(["x"], "capa.png", { type: "image/png" });
     const path = await uploadMemberAreaCover("u-1", file);
@@ -248,7 +248,7 @@ describe("uploadMemberAreaCover", () => {
     expect(upload).toHaveBeenCalledWith(path, file, { contentType: "image/png", upsert: false });
   });
 
-  it("recusa formato fora da lista sem subir nada", async () => {
+  it("refuses a format outside the list without uploading anything", async () => {
     await expect(uploadMemberAreaCover("u-1", new File(["x"], "capa.gif", { type: "image/gif" })))
       .rejects.toThrow("MEMBER_AREA_COVER_INVALID");
     expect(upload).not.toHaveBeenCalled();

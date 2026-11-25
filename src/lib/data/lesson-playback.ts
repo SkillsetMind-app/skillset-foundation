@@ -3,16 +3,17 @@
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 /**
- * A camada de dados de `lesson_playback`: onde a aula foi aberta e em que
- * segundo o video parou.
+ * The data layer for `lesson_playback`: where the lesson was opened and at what
+ * second the video stopped.
  *
- * A LEITURA e SELECT direto (a RLS ja limita a linha do proprio aluno); a
- * ESCRITA e pela RPC `record_lesson_playback`, SECURITY DEFINER, que confere de
- * quem e a matricula e se a aula pertence ao curso. Mesma divisao de
- * `lesson-progress.ts`: o navegador nunca escolhe o `user_id` da linha.
+ * READING is a direct SELECT (RLS already limits the row to the learner's own);
+ * WRITING goes through the `record_lesson_playback` RPC, SECURITY DEFINER, which
+ * checks whose enrollment it is and whether the lesson belongs to the course.
+ * Same split as `lesson-progress.ts`: the browser never chooses the row's
+ * `user_id`.
  */
 
-/** Segundo guardado no banco. 0 = comeca do inicio (nada util guardado). */
+/** Second saved in the database. 0 = starts from the beginning (nothing useful saved). */
 export async function fetchLessonPosition(
   enrollmentId: string,
   lessonId: string,
@@ -35,12 +36,13 @@ export async function fetchLessonPosition(
 }
 
 /**
- * Registra a visita e, quando `positionSeconds` vem, onde o video parou.
+ * Records the visit and, when `positionSeconds` is given, where the video stopped.
  *
- * `positionSeconds` NULO tem significado proprio no banco: "so registra que
- * estive aqui", sem tocar a posicao guardada. E o que a ABERTURA da aula manda
- * — mandar 0 ali apagaria o ponto de retomada de quem so reabriu a aula. Zero
- * explicito continua sendo "zera" (a aula terminou).
+ * A NULL `positionSeconds` has its own meaning in the database: "just record
+ * that I was here", without touching the saved position. That is what OPENING
+ * the lesson sends. Sending 0 there would erase the resume point of someone who
+ * only reopened the lesson. An explicit zero still means "reset" (the lesson
+ * ended).
  */
 export async function recordLessonPlayback(
   enrollmentId: string,

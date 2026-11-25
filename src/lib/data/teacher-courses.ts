@@ -124,10 +124,10 @@ export type DeleteOrArchiveOutcome = {
 };
 
 /**
- * Uma acao, dois destinos, decididos no servidor: `delete_or_archive_own_course`
- * apaga o curso que nunca teve matricula nem pedido e arquiva (status inactive)
- * o que teve. Substitui `delete_teacher_course_draft`, que so aceitava rascunho
- * — a RPC antiga continua no banco por compatibilidade, o app nao a chama mais.
+ * One action, two outcomes, decided on the server: `delete_or_archive_own_course`
+ * deletes a course that never had an enrollment or an order and archives (status inactive)
+ * one that did. Replaces `delete_teacher_course_draft`, which only accepted a draft
+ * — the old RPC stays in the database for compatibility, the app no longer calls it.
  */
 export async function deleteOrArchiveCourse(courseId: string): Promise<DeleteOrArchiveOutcome> {
   const supabase = getSupabaseBrowserClient();
@@ -143,19 +143,19 @@ export async function deleteOrArchiveCourse(courseId: string): Promise<DeleteOrA
 }
 
 /**
- * Quantos compradores este curso tem, na visao do dono. Decide o TEXTO do modal
- * antes da acao; o destino de verdade continua sendo o do servidor.
+ * How many buyers this course has, from the owner's point of view. Decides the TEXT of the modal
+ * before the action; the real outcome is still the server's.
  *
- * As tabelas se leem de formas diferentes: a RLS de `enrollments` so devolve a
- * linha do PROPRIO aluno (por isso o RPC do roster existe), enquanto `orders` e
- * `course_subscriptions` tem policy de leitura para o professor
- * (`*_teacher_read`, 20260807120000). Assinatura conta como comprador: o
- * servidor arquiva produto so com assinatura, e o modal nao pode prometer apagar.
+ * The tables are read in different ways: the RLS of `enrollments` only returns the
+ * learner's OWN row (that is why the roster RPC exists), while `orders` and
+ * `course_subscriptions` have a read policy for the teacher
+ * (`*_teacher_read`, 20260807120000). A subscription counts as a buyer: the
+ * server archives a product with only a subscription, and the modal cannot promise to delete.
  *
- * ponytail: reusa o roster inteiro do professor e conta em memoria. Trocar por
- * um `p_course_id` + LIMIT na `get_my_course_students` quando alguem passar do
- * teto de 2.000 alunos do plano Pro — a mesma nota que a migration do roster ja
- * carrega.
+ * ponytail: reuses the teacher's whole roster and counts in memory. Swap for
+ * a `p_course_id` + LIMIT in `get_my_course_students` when someone passes the
+ * 2,000-learner cap of the Pro plan — the same note the roster migration
+ * already carries.
  */
 export async function getCourseAudience(
   courseId: string
@@ -286,8 +286,8 @@ export function subscribeToTeacherCourse(
   let cancelled = false;
   let generation = 0;
 
-  // `quiet`: a recarga avulsa que falha mantem o curso que ja esta na tela, em
-  // vez de trocar o construtor inteiro pela tela de erro.
+  // `quiet`: a standalone reload that fails keeps the course already on screen, instead of
+  // replacing the whole builder with the error screen.
   const load = async (quiet = false) => {
     const current = ++generation;
     const { data, error } = await supabase
@@ -362,9 +362,9 @@ export function subscribeToTeacherCourse(
     )
     .subscribe();
 
-  // `reload()` busca de novo sem mexer no canal. O construtor chama depois do
-  // proprio autosave: saber que o modulo/aula foi gravado (e liberar o upload
-  // da capa e do video) nao pode depender do eco do Realtime chegar.
+  // `reload()` fetches again without touching the channel. The builder calls it after its
+  // own autosave: knowing that the module/lesson was saved (and unlocking the upload
+  // of the cover and the video) cannot depend on the Realtime echo arriving.
   return Object.assign(
     () => {
       cancelled = true;
@@ -374,9 +374,9 @@ export function subscribeToTeacherCourse(
   );
 }
 
-/** Id, titulo e comunidade de cada produto do professor, numa leitura so:
- *  para telas que listam por produto (Alunos, Caixa de entrada) sem abrir uma
- *  inscricao em tempo real do curso inteiro. */
+/** Id, title and community of each of the teacher's products, in a single read:
+ *  for screens that list by product (Learners, Inbox) without opening a
+ *  realtime subscription to the whole course. */
 export async function getMyCourseSummaries(
   ownerId: string,
 ): Promise<Array<{ id: string; title: string; communityEnabled: boolean }>> {
@@ -400,8 +400,8 @@ export function subscribeToTeacherCourses(
   onError: (error: Error) => void
 ): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
-  // So a leitura mais nova entrega: um "Try again" que volta depois da
-  // releitura de um curso alterado traria a lista velha.
+  // Only the newest read delivers: a "Try again" that comes back after the
+  // re-read of a changed course would bring the old list.
   let active = true;
   let latestLoad = 0;
 
@@ -438,8 +438,8 @@ export function subscribeToTeacherCourses(
     )
     .subscribe();
 
-  // `reload()` le de novo SEM mexer no canal (o "Try again" da Home e da
-  // Midia): sem o intervalo entre sair e entrar de novo no Realtime.
+  // `reload()` reads again WITHOUT touching the channel (the "Try again" of Home and
+  // Media): without the gap between leaving and rejoining Realtime.
   return Object.assign(
     () => {
       active = false;

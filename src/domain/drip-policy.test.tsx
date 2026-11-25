@@ -184,7 +184,7 @@ describe("getLessonUnlockState", () => {
     });
   });
 
-  // A tela da aula trancada diz QUAL aula terminar e leva até ela.
+  // The locked lesson screen says WHICH lesson to finish and takes you to it.
   it("sequential A, B: B locked names A as the lesson to finish first", () => {
     const course = {
       dripStrategy: "sequential_progress" as const,

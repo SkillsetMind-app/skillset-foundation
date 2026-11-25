@@ -8,9 +8,9 @@ export type PresentMember = {
   name: string;
 };
 
-// "3 online · 38 members" — quem esta na comunidade AGORA. Supabase Realtime
-// Presence: cada aba entra no canal do curso com o proprio nome; o servidor
-// junta e avisa a todos. Nao grava nada no banco e some quando a aba fecha.
+// "3 online · 38 members" — who is in the community RIGHT NOW. Supabase Realtime
+// Presence: each tab joins the course channel with its own name; the server
+// merges and notifies everyone. It writes nothing to the database and goes away when the tab closes.
 export function subscribeToCommunityPresence(
   courseSlug: string,
   user: SkillsetUser,

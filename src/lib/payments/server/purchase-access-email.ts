@@ -10,14 +10,14 @@ export type PurchaseAccessEmail = {
   /** The sale's payout_ledger id (order id or invoice id). */
   idempotencyKey: string;
   /**
-   * Só na primeira cobrança de uma assinatura: o e-mail confirma por escrito
-   * os termos da renovação e como cancelar (o "acknowledgment" das leis de
-   * renovação automática). `amountMinor` é o preço de cada renovação, valor x 100.
+   * Only on the first charge of a subscription: the email confirms in writing
+   * the renewal terms and how to cancel (the "acknowledgment" of the automatic
+   * renewal laws). `amountMinor` is the price of each renewal, value x 100.
    */
   renewal?: PurchaseRenewalTerms;
   /**
-   * Comprador da UE, EEE ou Reino Unido que marcou a caixa do acesso imediato:
-   * o e-mail confirma o pedido e a ciência em meio durável.
+   * A buyer from the EU, EEA or UK who ticked the immediate-access checkbox:
+   * the email confirms the order and the acknowledgment on a durable medium.
    */
   withdrawalConsent?: boolean;
 };
@@ -102,7 +102,7 @@ export function buildPurchaseAccessEmail({ email, courseTitle, courseUrl, locale
   const title = oneLine(courseTitle);
   const safeTitle = escapeHtml(title);
   const safeUrl = escapeHtml(courseUrl);
-  // Assinatura: preço e intervalo de cada renovação, e como cancelar.
+  // Subscription: price and interval of each renewal, and how to cancel.
   const renewalLines = [
     ...(renewal
       ? [
@@ -114,7 +114,7 @@ export function buildPurchaseAccessEmail({ email, courseTitle, courseUrl, locale
           copy.renewalCancel,
         ]
       : []),
-    // Acesso imediato (UE, EEE e Reino Unido): a confirmação por escrito.
+    // Immediate access (EU, EEA and UK): the written confirmation.
     ...(withdrawalConsent ? [copy.withdrawalConsent] : []),
   ];
 

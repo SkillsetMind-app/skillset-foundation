@@ -59,10 +59,10 @@ export type QuotaKey =
    */
   | "memberAreas"
   /**
-   * Minutos de vídeo de aula que as ferramentas de IA podem transcrever por mês
-   * (UTC): a legenda, e sobre ela a tradução, o quiz e as sugestões. Todo plano
-   * tem (promessa 02: nenhuma ferramenta é vendida por plano, só o tamanho). A
-   * trava de verdade é claim_ai_video_seconds, no banco.
+   * Minutes of lesson video that the AI tools can transcribe per month
+   * (UTC): the caption, and on top of it the translation, the quiz and the suggestions. Every plan
+   * has it (promise 02: no tool is sold by plan, only the size). The
+   * real lock is claim_ai_video_seconds, in the database.
    */
   | "aiVideoMinutesPerMonth";
 

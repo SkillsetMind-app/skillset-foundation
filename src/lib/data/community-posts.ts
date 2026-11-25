@@ -81,8 +81,8 @@ function rowToReport(row: CommunityReportRow): CommunityReport {
 }
 
 // Pinned posts float above the rest; within each group newest-first. A
-// consulta ja vem nessa ordem (para a janela de 200 ser a certa); ordenar aqui
-// de novo mantem o post legado com `pinned` nulo junto dos nao fixados.
+// query already comes in this order (so the window of 200 is the right one); sorting here
+// again keeps the legacy post with a null `pinned` together with the unpinned ones.
 function compareFeedPosts(left: CommunityPost, right: CommunityPost): number {
   const leftPinned = left.pinned === true ? 1 : 0;
   const rightPinned = right.pinned === true ? 1 : 0;
@@ -99,16 +99,16 @@ export async function createCommunityPost(input: {
   category: CommunityPostCategory;
   body: string;
   user: SkillsetUser;
-  /** A pergunta em uma linha (question). Compartilhamentos nao tem titulo. */
+  /** The question in one line (question). Shares have no title. */
   title?: string | null;
-  /** A aula de onde a pessoa perguntou ("from lesson 5"). */
+  /** The lesson the person asked from ("from lesson 5"). */
   lessonId?: string | null;
   lessonTitle?: string | null;
 }): Promise<{ id: string }> {
   const supabase = getSupabaseBrowserClient();
   const timestamp = nowIso();
 
-  // Devolve o id: a caixa do professor fixa o aviso logo depois de publicar.
+  // Returns the id: the teacher's inbox pins the notice right after publishing.
   const { data, error } = await supabase
     .from("community_posts")
     .insert({
@@ -143,10 +143,10 @@ export function subscribeToCommunityPosts(
   onError: (error: Error) => void,
 ): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
-  // `reload()` (o "Try again") repete esta leitura sem mexer no canal. As de
-  // sempre (a inicial e as do canal) entregam como antes, so cedem a um reload
-  // mais novo; o que o reload comecou nao entrega depois de desligar nem por
-  // cima de uma leitura mais nova (traria o feed sem o post novo).
+  // `reload()` (the "Try again") repeats this read without touching the channel. The usual
+  // ones (the initial one and the channel's) deliver as before, only yielding to a newer
+  // reload; what the reload started does not deliver after shutting down or on
+  // top of a newer read (it would bring the feed without the new post).
   let active = true;
   let latestLoad = 0;
   let latestReload = 0;
@@ -155,10 +155,10 @@ export function subscribeToCommunityPosts(
     const thisLoad = ++latestLoad;
     if (fromReload) latestReload = thisLoad;
     // Bounded so one viral course community can't stream an unbounded
-    // collection to every viewer. A janela fica com os fixados e os MAIS
-    // NOVOS (sem order, o banco devolvia 200 quaisquer e o post de hoje podia
-    // sumir); usa o indice (course_slug, pinned, created_at desc). A pagina
-    // por cursor e o upgrade se 200 nao bastar.
+    // collection to every viewer. The window keeps the pinned ones and the NEWEST
+    // (without order, the database returned any 200 and today's post could
+    // disappear); it uses the index (course_slug, pinned, created_at desc). Cursor
+    // pagination is the upgrade if 200 is not enough.
     const { data, error } = await supabase
       .from("community_posts")
       .select("*")
@@ -196,8 +196,8 @@ export function subscribeToCommunityPosts(
     )
     .subscribe();
 
-  // `reload()` le de novo SEM mexer no canal (o "Try again" do feed e dos
-  // comentarios da aula).
+  // `reload()` reads again WITHOUT touching the channel (the "Try again" of the feed and of
+  // the lesson comments).
   return Object.assign(
     () => {
       active = false;
@@ -207,21 +207,21 @@ export function subscribeToCommunityPosts(
   );
 }
 
-/** So o NUMERO para o contador da aba Community — quantas perguntas do curso
- *  seguem sem resposta aceita.
+/** Only the NUMBER for the Community tab counter — how many of the course's questions
+ *  are still without an accepted answer.
  *
- *  POR QUE NAO REUSA subscribeToCommunityPosts: o contador precisa existir em
- *  TODA aba (a pessoa esta na aula e nao sabe que responderam), e abrir um
- *  segundo canal realtime do feed inteiro so para mostrar um numero e caro.
- *  Uma leitura ao abrir a sala, so as duas colunas da regra. A regra em si
- *  mora no dominio (countOpenQuestions), nao aqui.
+ *  WHY IT DOES NOT REUSE subscribeToCommunityPosts: the counter has to exist on
+ *  EVERY tab (the person is in the lesson and does not know someone answered), and opening a
+ *  second realtime channel for the whole feed just to show a number is expensive.
+ *  One read on opening the room, only the two columns the rule needs. The rule itself
+ *  lives in the domain (countOpenQuestions), not here.
  *
- *  O banco ja filtra (pergunta sem resposta aceita) e manda as MAIS NOVAS:
- *  sem isso a janela de 200 pegava 200 posts quaisquer e o numero da aba
- *  saia errado num curso com mais posts. A regra continua no dominio.
+ *  The database already filters (question without an accepted answer) and sends the NEWEST:
+ *  without that the window of 200 took any 200 posts and the tab number
+ *  came out wrong in a course with more posts. The rule stays in the domain.
  *
- *  ponytail: leitura unica na montagem, sem realtime, teto de 200. Se o numero
- *  precisar mudar sem recarregar, o upgrade e trocar por uma inscricao. */
+ *  ponytail: single read on mount, no realtime, cap of 200. If the number
+ *  needs to change without reloading, the upgrade is to swap in a subscription. */
 export async function countOpenCommunityQuestions(courseSlug: string): Promise<number> {
   const supabase = getSupabaseBrowserClient();
 
@@ -248,9 +248,9 @@ export async function countOpenCommunityQuestions(courseSlug: string): Promise<n
 
 // Teacher/admin moderation: toggle a post's pinned state. The write touches only
 // `pinned` + `updated_at`, which is exactly what the RLS teacher-pin path
-// allows (any other changed column would be rejected). A RLS recusa em
-// SILENCIO (0 linhas), como no apagar: sem o count o botao nao mudava e
-// ninguem ficava sabendo.
+// allows (any other changed column would be rejected). RLS refuses
+// SILENTLY (0 rows), as with delete: without the count the button did not change and
+// nobody found out.
 export async function setCommunityPostPinned(postId: string, pinned: boolean) {
   const supabase = getSupabaseBrowserClient();
 
@@ -267,10 +267,10 @@ export async function setCommunityPostPinned(postId: string, pinned: boolean) {
   }
 }
 
-// Apagar post ou resposta: o autor, o dono do curso ou o admin (policies de
-// DELETE). As respostas do post (e as respostas de uma resposta) vao junto em
-// cascata. A RLS recusa em SILENCIO (0 linhas, sem erro): sem o count a tela
-// diria "apagado" com o post ainda la.
+// Deleting a post or reply: the author, the course owner or the admin (DELETE
+// policies). The replies of the post (and the replies to a reply) go along in
+// cascade. RLS refuses SILENTLY (0 rows, no error): without the count the screen
+// would say "deleted" with the post still there.
 export async function deleteCommunityPost(postId: string) {
   await deleteCommunityRow("community_posts", postId);
 }
@@ -296,9 +296,9 @@ async function deleteCommunityRow(
   }
 }
 
-// "Mark as the answer": a pergunta ganha o ✓ e a resposta sobe para dentro do
-// cartao. Quem pode: o autor da pergunta ou o dono do curso (policies de
-// UPDATE); o banco recusa um comentario que nao seja deste post (trigger).
+// "Mark as the answer": the question gets the ✓ and the reply moves up into the
+// card. Who can: the question's author or the course owner (UPDATE
+// policies); the database refuses a comment that is not from this post (trigger).
 // null desfaz.
 export async function setCommunityPostAcceptedAnswer(
   postId: string,
@@ -328,8 +328,8 @@ export async function createCommunityComment(input: {
   const supabase = getSupabaseBrowserClient();
   const timestamp = nowIso();
 
-  // Devolve o id: "Post answer" na caixa do professor cria o comentario e,
-  // no mesmo gesto, marca-o como A resposta.
+  // Returns the id: "Post answer" in the teacher's inbox creates the comment and,
+  // in the same gesture, marks it as THE answer.
   const { data, error } = await supabase
     .from("community_comments")
     .insert({
@@ -403,10 +403,10 @@ export function subscribeToCommunityComments(
   };
 }
 
-// Todos os comentarios de um curso, numa inscricao so. O feed precisa, para
-// CADA cartao, de "View N replies" e da primeira resposta dentro do cartao —
-// uma inscricao por post (a funcao acima) viraria N canais abertos por tela.
-// A caixa do professor tambem le daqui (quem ja respondeu o que).
+// All the comments of a course, in a single subscription. The feed needs, for
+// EACH card, "View N replies" and the first reply inside the card —
+// one subscription per post (the function above) would become N open channels per screen.
+// The teacher's inbox also reads from here (who already answered what).
 export function subscribeToCourseCommunityComments(
   courseSlug: string,
   callback: (comments: CommunityComment[]) => void,
@@ -416,9 +416,9 @@ export function subscribeToCourseCommunityComments(
   const supabase = getSupabaseBrowserClient();
 
   const load = async () => {
-    // A janela guarda as respostas MAIS NOVAS (antes cortava justamente
-    // elas, passando de maxComments); a tela continua lendo da mais antiga
-    // para a mais nova.
+    // The window keeps the NEWEST replies (before it cut exactly
+    // those, going past maxComments); the screen still reads from the oldest
+    // to the newest.
     const { data, error } = await supabase
       .from("community_comments")
       .select("*")
@@ -563,11 +563,11 @@ export async function updateCommunityReportStatus(
 }
 
 /**
- * As perguntas mais recentes de VÁRIOS cursos, numa única leitura.
+ * The most recent questions from SEVERAL courses, in a single read.
  *
- * ponytail: leitura única, sem realtime, mesmo motivo de
- * getRecentCourseReviews — a Home não abre um canal por curso só para listar
- * o que aconteceu. `course_slug` é o id do curso (ver TeacherCommunityInbox).
+ * ponytail: single read, no realtime, same reason as
+ * getRecentCourseReviews — Home does not open a channel per course just to list
+ * what happened. `course_slug` is the course id (see TeacherCommunityInbox).
  */
 export async function getRecentCommunityQuestions(
   courseSlugs: string[],
@@ -591,19 +591,19 @@ export async function getRecentCommunityQuestions(
 }
 
 /**
- * Os ids das perguntas que esperam pelo professor nas comunidades dele: a
- * mesma regra da caixa de cada curso (openQuestions) — sem resposta aceita e
- * sem resposta de instrutor. Alimenta o numero ao lado de "Inbox" em toda
- * pagina do professor, entao le so ids, nunca o texto.
+ * The ids of the questions waiting for the teacher in their communities: the
+ * same rule as each course's inbox (openQuestions) — no accepted answer and
+ * no instructor reply. It feeds the number next to "Inbox" on every
+ * teacher page, so it reads only ids, never the text.
  *
- * As mais NOVAS primeiro, com os filtros na consulta: a janela pegava as 200
- * mais antigas, e perguntas ja respondidas sem "resposta aceita" ocupavam a
- * janela ate a Caixa dizer "nada esperando" com aluno esperando. Das
- * respostas, o banco devolve so as de instrutor, e so a coluna post_id.
+ * NEWEST first, with the filters in the query: the window used to take the 200
+ * oldest, and questions already answered but without an "accepted answer" filled the
+ * window until the Inbox said "nothing waiting" with a learner waiting. Of the
+ * replies, the database returns only the instructor ones, and only the post_id column.
  *
- * ponytail: duas leituras, tetos de 200 perguntas e 2000 respostas. Uma
- * pergunta aberta mais velha que as 200 mais novas sem resposta aceita fica de
- * fora; o upgrade e uma RPC que filtre "sem resposta de instrutor" no banco.
+ * ponytail: two reads, caps of 200 questions and 2000 replies. An
+ * open question older than the 200 newest without an accepted answer is left
+ * out; the upgrade is an RPC that filters "no instructor reply" in the database.
  */
 export async function getOpenCommunityQuestions(
   courseSlugs: string[],
@@ -629,8 +629,8 @@ export async function getOpenCommunityQuestions(
     return [];
   }
 
-  // A mesma regra de isInstructor (community-feed): papel de professor ou
-  // admin, ou o dono do curso.
+  // The same rule as isInstructor (community-feed): teacher or
+  // admin role, or the course owner.
   const { data: replies, error: repliesError } = await supabase
     .from("community_comments")
     .select("post_id")
@@ -643,8 +643,8 @@ export async function getOpenCommunityQuestions(
   return ids.filter((id) => !answered.has(id));
 }
 
-/** O texto das perguntas que a Caixa de entrada lista, da que espera ha mais
- *  tempo para a mais nova. So a pagina Inbox le isto; a conta nao precisa. */
+/** The text of the questions the Inbox lists, from the one that has waited longest
+ *  to the newest. Only the Inbox page reads this; the count does not need it. */
 export async function getCommunityPostsByIds(ids: string[]): Promise<CommunityPost[]> {
   if (!ids.length) {
     return [];

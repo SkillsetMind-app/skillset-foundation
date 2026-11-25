@@ -2,10 +2,10 @@
 // them — kept only to ride along with the signup the person submits, as user
 // metadata. Nothing leaves the browser before that.
 //
-// POR QUE ISTO EXISTE
+// WHY THIS EXISTS
 //
-// Nenhum cadastro dizia de onde a pessoa veio: anuncio, newsletter, Instagram.
-// Sem isso nao ha como saber qual canal traz conta, so qual traz visita.
+// No signup said where the person came from: ad, newsletter, Instagram.
+// Without this there is no way to know which channel brings an account, only which brings a visit.
 //
 // Consent: the banner promises non-essential storage can be refused, so the
 // touch lives in memory (enough for ad -> landing -> signup, which navigates

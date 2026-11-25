@@ -59,21 +59,21 @@ export function isValidExternalEventUrl(value: string): boolean {
   }
 }
 
-// Prazo (deadline) nao e reuniao: so ele pode ficar sem link. Link preenchido
-// passa pela mesma regra de sempre, em qualquer tipo. Sessao sem link ja
-// existia (a criacao do produto "Live event" deixa o link para depois).
+// A deadline is not a meeting: only it may go without a link. A filled-in link
+// goes through the same usual rule, in any type. A session without a link already
+// existed (creating the "Live event" product leaves the link for later).
 export function isEventLinkAcceptable(type: CourseEventType, value: string): boolean {
   return (type === "deadline" && value.trim() === "") || isValidExternalEventUrl(value);
 }
 
-// "zoom.us/j/123" vira "https://zoom.us/j/123". O que ja traz esquema (ate um
-// "javascript:") fica como veio e a validacao acima decide.
+// "zoom.us/j/123" becomes "https://zoom.us/j/123". Whatever already carries a scheme (even a
+// "javascript:") stays as it came and the validation above decides.
 export function withLinkScheme(value: string): string {
   const trimmed = value.trim();
   return trimmed && !/^[a-z][a-z\d+.-]*:/i.test(trimmed) ? `https://${trimmed}` : trimmed;
 }
 
-// Os quatro fusos principais dos EUA, para a previa do formulario do professor.
+// The four main US time zones, for the preview in the teacher's form.
 export const US_PREVIEW_TIME_ZONES = [
   "America/New_York",
   "America/Chicago",
@@ -81,14 +81,14 @@ export const US_PREVIEW_TIME_ZONES = [
   "America/Los_Angeles",
 ] as const;
 
-// Ingles: a sigla generica ("PT"). Espanhol: o nome longo ("hora del
-// Pacifico"), porque a sigla curta sai "GMT-8", que ninguem le.
+// English: the generic abbreviation ("PT"). Spanish: the long name ("hora del
+// Pacifico"), because the short abbreviation comes out as "GMT-8", which nobody reads.
 function zoneNameStyle(locale: string): "shortGeneric" | "longGeneric" {
   return locale.toLowerCase().startsWith("en") ? "shortGeneric" : "longGeneric";
 }
 
-// Motor que nao conhece os nomes genericos lanca RangeError: cai no "short"
-// em vez de apagar a tela inteira.
+// An engine that does not know the generic names throws RangeError: it falls back to "short"
+// instead of blanking the whole screen.
 function formatWithZoneName(
   locale: string,
   options: Intl.DateTimeFormatOptions,
@@ -103,8 +103,8 @@ function formatWithZoneName(
 
 // Defaults keep every existing caller on English; the classroom passes its
 // locale and an already-translated placeholder.
-/** A data no fuso de quem ensina, com o fuso escrito ("GMT-3"). Fuso ausente
- *  ou invalido: o de quem le, tambem escrito. Data invalida: null. */
+/** The date in the time zone of whoever teaches, with the zone written out ("GMT-3"). A missing
+ *  or invalid zone: the reader's, also written out. Invalid date: null. */
 export function formatEventDateTimeInZone(
   value: string,
   locale: string,
@@ -129,12 +129,12 @@ export function formatEventDateTimeInZone(
   }
 }
 
-// A frase que toda tela usa: dia da semana e o fuso de QUEM LE escrito
-// ("Wed, Nov 25, 4:00 PM PT"). Antes saia "Nov 25, 2026, 4:00 PM" sem dizer de
-// quem era a hora, e a mesma sessao parecia ter tres horarios. `timeZone` so
-// para teste e para a previa: sem ele vale o fuso do aparelho. O ano entra so
-// quando nao e o ano de `now` (sessao do ano passado em "Past"); `now` e
-// parametro para o teste nao depender do relogio.
+// The phrase every screen uses: weekday and the time zone of WHOEVER READS, written out
+// ("Wed, Nov 25, 4:00 PM PT"). Before it came out as "Nov 25, 2026, 4:00 PM" without saying
+// whose time it was, and the same session seemed to have three times. `timeZone` is only
+// for tests and for the preview: without it, the device's time zone applies. The year is included only
+// when it is not the year of `now` (last year's session in "Past"); `now` is a
+// parameter so the test does not depend on the clock.
 export function formatEventDateTime(
   value: string,
   locale = "en",
@@ -166,9 +166,9 @@ export function formatEventDateTime(
   );
 }
 
-// O fuso em palavras, com a cidade entre parenteses: "Central Time
-// (Chicago)". So a cidade do id enganava (quem mora em Dallas lia "Chicago"),
-// e "Etc/GMT+5" tem o sinal invertido: ai fica so o nome que o formatador da.
+// The time zone in words, with the city in parentheses: "Central Time
+// (Chicago)". Only the city from the id misled (someone living in Dallas read "Chicago"),
+// and "Etc/GMT+5" has the sign inverted: there only the name the formatter gives is kept.
 export function describeTimeZone(timeZone: string, locale: string, at: number): string {
   const parts = (style: "longGeneric" | "long") =>
     new Intl.DateTimeFormat(locale, { timeZone, timeZoneName: style }).formatToParts(at);
@@ -188,9 +188,9 @@ export function describeTimeZone(timeZone: string, locale: string, at: number): 
   return city && !name.includes(city) ? `${name} (${city})` : name;
 }
 
-// Um instante em varios fusos: ["7:00 PM ET", "6:00 PM CT", ...]. O dia da
-// semana so entra quando os fusos caem em dias diferentes (1 AM ET e 10 PM PT
-// do dia anterior), senao a previa mentiria. Data invalida: lista vazia.
+// One instant in several time zones: ["7:00 PM ET", "6:00 PM CT", ...]. The weekday
+// is included only when the zones fall on different days (1 AM ET and 10 PM PT
+// of the previous day), otherwise the preview would lie. Invalid date: empty list.
 export function formatEventTimeInZones(
   value: string,
   locale: string,
@@ -215,18 +215,18 @@ export function formatEventTimeInZones(
   );
 }
 
-// A janela "ao vivo", uma so para as quatro telas do aluno. Antes cada uma
-// chutava: o painel tirava a sessao no minuto em que comecava, a sala mantinha
-// 2 h, a agenda e a comunidade 3 h. Nao existe coluna de duracao: 3 h depois do
-// inicio a sessao conta como acabada, e 15 min antes ela ja esta "comecando".
+// The "live" window, a single one for the four learner screens. Before, each one
+// guessed: the panel removed the session the minute it started, the classroom kept it
+// for 2 h, the agenda and the community for 3 h. There is no duration column: 3 h after the
+// start the session counts as over, and 15 min before it is already "starting".
 export const EVENT_STARTING_SOON_MS = 15 * 60_000;
 export const EVENT_LIVE_WINDOW_MS = 3 * 3_600_000;
 
 export type EventLiveState = "upcoming" | "startingSoon" | "live" | "over";
 
-// Data invalida fica "upcoming": a sessao continua na lista com "Date pending"
-// em vez de sumir. Prazo (deadline) nao e reuniao: nunca "comecando" nem "ao
-// vivo"; vale ate a hora do prazo e depois passou.
+// An invalid date stays "upcoming": the session remains in the list with "Date pending"
+// instead of disappearing. A deadline is not a meeting: never "starting" or "live";
+// it counts until the deadline time and then it has passed.
 export function getEventLiveState(startsAt: string, now: number, type?: CourseEventType): EventLiveState {
   const start = Date.parse(startsAt);
   if (!Number.isFinite(start)) return "upcoming";
@@ -236,9 +236,9 @@ export function getEventLiveState(startsAt: string, now: number, type?: CourseEv
   return now < start + EVENT_LIVE_WINDOW_MS ? "live" : "over";
 }
 
-// Entre as sessoes na janela, a de inicio mais perto de agora; no empate, a que
-// ainda nao comecou. A mais antiga ficava "ao vivo" por 3 h e escondia a
-// seguinte: as 7:20 a faixa abria a sala do webinar das 6, nao a das 7:30.
+// Among the sessions in the window, the one whose start is closest to now; on a tie, the one that
+// has not started yet. The oldest one stayed "live" for 3 h and hid the
+// next one: at 7:20 the banner opened the 6:00 webinar room, not the 7:30 one.
 export function pickClosestEvent<T extends Pick<CourseEvent, "startsAt">>(events: T[], now: number): T | null {
   let best: T | null = null;
   let bestStart = 0;
@@ -255,8 +255,8 @@ export function pickClosestEvent<T extends Pick<CourseEvent, "startsAt">>(events
   return best;
 }
 
-// Cancelada continua a vista, marcada, ate 7 dias depois da hora marcada: quem
-// disse "vou" acha a sessao e le "Cancelled" em vez de ve-la sumir.
+// A cancelled session stays in view, marked, until 7 days after the scheduled time: whoever
+// said "I'm going" finds the session and reads "Cancelled" instead of watching it vanish.
 const CANCELLED_SHOWN_MS = 7 * 24 * 3_600_000;
 
 export function isCancelledEventShown(startsAt: string, now: number): boolean {
@@ -264,20 +264,20 @@ export function isCancelledEventShown(startsAt: string, now: number): boolean {
   return Number.isFinite(start) && now < start + CANCELLED_SHOWN_MS;
 }
 
-// O instante da ultima mudanca, so quando a sessao mudou depois de criada:
-// criar grava os dois carimbos iguais, e 1 min de folga cobre o resto.
+// The instant of the last change, only when the session changed after it was created:
+// creating writes both stamps equal, and a 1 min margin covers the rest.
 export function getEventUpdatedAt(event: Pick<CourseEvent, "createdAt" | "updatedAt">): string | null {
   const created = Date.parse(String(event.createdAt ?? ""));
   const updated = Date.parse(String(event.updatedAt ?? ""));
   return Number.isFinite(created) && updated - created > 60_000 ? String(event.updatedAt) : null;
 }
 
-// Sem hora de fim, a entrada do calendario assume 60 min (a tela diz isso).
+// Without an end time, the calendar entry assumes 60 min (the screen says so).
 export const CALENDAR_EVENT_MINUTES = 60;
 
 type CalendarEvent = Pick<CourseEvent, "id" | "title" | "description" | "courseTitle" | "startsAt" | "createdAt" | "updatedAt">;
 
-// 2026-11-25T21:00:00.000Z -> 20261125T210000Z (UTC, como o Google e o .ics pedem).
+// 2026-11-25T21:00:00.000Z -> 20261125T210000Z (UTC, as Google and .ics require).
 function calendarStamp(ms: number): string {
   return new Date(ms).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
 }
@@ -285,8 +285,8 @@ function calendarStamp(ms: number): string {
 function calendarDetails(event: CalendarEvent, joinUrl: string | null) {
   const start = Date.parse(event.startsAt);
   if (!Number.isFinite(start)) return null;
-  // O link volta normalizado pelo parser: uma quebra de linha escondida nele
-  // nao vira propriedade nova no arquivo.
+  // The link comes back normalized by the parser: a hidden line break in it
+  // does not become a new property in the file.
   let url: string | null = null;
   try {
     url = joinUrl ? new URL(joinUrl).href : null;
@@ -301,8 +301,8 @@ function calendarDetails(event: CalendarEvent, joinUrl: string | null) {
   };
 }
 
-// O link "adicionar ao Google Calendar", montado no navegador. `joinUrl` so
-// quando o aluno pode ver o link (matriculado). Data invalida: null.
+// The "add to Google Calendar" link, built in the browser. `joinUrl` only
+// when the learner can see the link (enrolled). Invalid date: null.
 export function buildGoogleCalendarUrl(event: CalendarEvent, joinUrl: string | null): string | null {
   const details = calendarDetails(event, joinUrl);
   if (!details) return null;
@@ -316,13 +316,13 @@ export function buildGoogleCalendarUrl(event: CalendarEvent, joinUrl: string | n
   return `https://calendar.google.com/calendar/render?${params}`;
 }
 
-// Texto do iCalendar (RFC 5545): barra, ponto e virgula, virgula e quebra de
-// linha (CRLF, LF ou um CR sozinho) escapados; acentos seguem como UTF-8.
+// iCalendar text (RFC 5545): backslash, semicolon, comma and line
+// break (CRLF, LF or a lone CR) escaped; accents stay as UTF-8.
 function icsText(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r\n|\r|\n/g, "\\n");
 }
 
-// Linha com mais de 75 bytes dobra (RFC 5545 3.1), sem partir um caractere.
+// A line longer than 75 bytes folds (RFC 5545 3.1), without splitting a character.
 function foldIcsLine(line: string): string {
   const encoder = new TextEncoder();
   const parts: string[] = [];
@@ -342,10 +342,10 @@ function foldIcsLine(line: string): string {
   return parts.join("\r\n");
 }
 
-// O arquivo .ics de uma sessao. UID estavel e SEQUENCE que cresce a cada
-// edicao (segundos entre criar e a ultima mudanca; 0 se nunca mudou): baixado
-// de novo depois de remarcar, o calendario troca a entrada em vez de duplicar.
-// `now` e o carimbo DTSTAMP. Data invalida: null.
+// The .ics file of a session. Stable UID and a SEQUENCE that grows with each
+// edit (seconds between creation and the last change; 0 if it never changed): downloaded
+// again after rescheduling, the calendar replaces the entry instead of duplicating it.
+// `now` is the DTSTAMP stamp. Invalid date: null.
 export function buildEventIcs(event: CalendarEvent, joinUrl: string | null, now: number): string | null {
   const details = calendarDetails(event, joinUrl);
   if (!details) return null;

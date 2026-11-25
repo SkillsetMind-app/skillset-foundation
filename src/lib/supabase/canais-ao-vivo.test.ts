@@ -1,14 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 
-// Duas telas abertas ao mesmo tempo assinam a mesma linha: o aviso de status
-// e o menu da conta em `users:<uid>`, o sino e o painel do aluno em
-// `notifications:user:<uid>`, a visao do curso e a atividade recente em
-// `orders:teacher:<uid>`. O realtime-js devolve o canal QUE JA EXISTE quando o
-// nome repete, descarta o segundo filtro igual e o removeChannel fecha o canal
-// para todos: a tela que entrou depois nunca ouvia nada, e quando uma saia a
-// outra ficava surda. O cliente do navegador (client.ts) poe um sufixo unico
-// em cada canal; este teste passa o cliente de verdade por um realtime falso
-// que se comporta como o de verdade e prova que as duas telas ouvem.
+// Two screens open at the same time subscribe to the same row: the status
+// notice and the account menu on `users:<uid>`, the bell and the learner
+// dashboard on `notifications:user:<uid>`, the course overview and the recent
+// activity on `orders:teacher:<uid>`. realtime-js returns the channel that
+// ALREADY EXISTS when the name repeats, drops the second identical filter, and
+// removeChannel closes the channel for everyone: the screen that came in later
+// never heard anything, and when one of them left, the other went deaf. The
+// browser client (client.ts) puts a unique suffix on each channel; this test
+// runs the real client through a fake realtime that behaves like the real one
+// and proves that both screens listen.
 
 type Binding = { table: string; filter: string; handler: (payload: unknown) => void };
 type FakeChannel = { name: string; joined: boolean; bindings: Binding[] };
@@ -17,7 +18,7 @@ const fake = vi.hoisted(() => {
   const channels: FakeChannel[] = [];
   const rows: Record<string, unknown[]> = {};
 
-  // Consulta encadeavel que responde com as linhas da tabela.
+  // Chainable query that answers with the table's rows.
   function query(table: string) {
     let single = false;
     const builder = {
@@ -36,9 +37,9 @@ const fake = vi.hoisted(() => {
     return builder;
   }
 
-  // Como o realtime-js: nome repetido devolve o mesmo canal; o segundo filtro
-  // igual e descartado; subscribe so age no canal fechado; removeChannel
-  // fecha para todo mundo que segura aquele canal.
+  // Like realtime-js: a repeated name returns the same channel; the second
+  // identical filter is dropped; subscribe only acts on a closed channel;
+  // removeChannel closes it for everyone who holds that channel.
   function channel(name: string) {
     const existing = channels.find((item) => item.name === name);
     if (existing) return api(existing);
@@ -72,7 +73,7 @@ const fake = vi.hoisted(() => {
     return Promise.resolve("ok");
   }
 
-  // Uma mudanca no banco: todo canal aberto com filtro daquela tabela ouve.
+  // A change in the database: every open channel with a filter on that table hears it.
   function emit(table: string, filter: string, payload: unknown = {}) {
     for (const item of channels) {
       if (!item.joined) continue;
@@ -97,9 +98,9 @@ const { subscribeToTeacherOrders } = await import("@/lib/data/orders");
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-describe("o realtime falso se comporta como o de verdade", () => {
-  // Sem isto o resto nao prova nada: com o mesmo nome, a segunda tela fica surda.
-  it("sem o sufixo, a segunda inscricao com o mesmo nome nunca ouve", () => {
+describe("the fake realtime behaves like the real one", () => {
+  // Without this the rest proves nothing: with the same name, the second screen goes deaf.
+  it("without the suffix, the second subscription with the same name never hears anything", () => {
     const first = vi.fn();
     const second = vi.fn();
     fake.rawChannel("raw:same").on("postgres_changes", { table: "t", filter: "id=eq.1" }, first).subscribe();
@@ -110,8 +111,8 @@ describe("o realtime falso se comporta como o de verdade", () => {
   });
 });
 
-describe("duas telas na mesma linha ouvem as duas, e uma saindo nao cala a outra", () => {
-  it("users:<uid> (aviso de status + menu da conta)", async () => {
+describe("two screens on the same row both listen, and one leaving does not silence the other", () => {
+  it("users:<uid> (status notice + account menu)", async () => {
     fake.rows.users = [{ uid: "u-1", display_name: "Ana" }];
     const banner = vi.fn();
     const menu = vi.fn();
@@ -132,7 +133,7 @@ describe("duas telas na mesma linha ouvem as duas, e uma saindo nao cala a outra
     stopMenu();
   });
 
-  it("notifications:user:<uid> (sino + painel do aluno)", async () => {
+  it("notifications:user:<uid> (bell + learner dashboard)", async () => {
     fake.rows.notifications = [];
     const bell = vi.fn();
     const dashboard = vi.fn();
@@ -158,7 +159,7 @@ describe("duas telas na mesma linha ouvem as duas, e uma saindo nao cala a outra
     stopBell();
   });
 
-  it("orders:teacher:<uid> (visao do curso + atividade recente)", async () => {
+  it("orders:teacher:<uid> (course overview + recent activity)", async () => {
     fake.rows.orders = [];
     const overview = vi.fn();
     const activity = vi.fn();

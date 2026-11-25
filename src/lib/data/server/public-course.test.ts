@@ -1,20 +1,20 @@
 import { AuthError, AuthSessionMissingError } from "@supabase/supabase-js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// O cliente falso devolve o que a RLS deixaria ESTE visitante ler: as linhas
-// passadas em `rows` ja sao o resultado das policies para ele.
+// The fake client returns what RLS would let THIS visitor read: the rows
+// passed in `rows` are already the result of the policies for them.
 const server = vi.hoisted(() => ({ client: null as unknown, fail: false }));
 
 vi.mock("@/lib/supabase/server", () => ({
   createSupabaseServerClient: async () => {
-    if (server.fail) throw new Error("sem configuracao");
+    if (server.fail) throw new Error("no configuration");
     return server.client;
   },
 }));
 
-// Cliente ANÔNIMO de hasRealPublishedCourse: sem cookie. Guarda as opções com
-// que foi criado e devolve o cliente falso da vez; sem cliente falso, cria o de
-// verdade (para ver o que o postgrest-js faz com a rede).
+// ANONYMOUS client of hasRealPublishedCourse: no cookie. Keeps the options it
+// was created with and returns the fake client of the moment; without a fake client, it creates the
+// real one (to see what postgrest-js does with the network).
 const anon = vi.hoisted(() => ({ client: null as unknown, options: null as unknown }));
 vi.mock("@supabase/supabase-js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@supabase/supabase-js")>();
@@ -103,30 +103,30 @@ describe("getCourseRefAccess", () => {
     server.fail = false;
   });
 
-  it("curso que ninguem consegue ler e 404", async () => {
+  it("a course nobody can read is a 404", async () => {
     server.client = fakeClient({});
     expect(await getCourseRefAccess("nao-existe")).toBe("missing");
   });
 
-  it("curso publicado continua visivel pelo id e pelo title_key", async () => {
+  it("a published course stays visible by id and by title_key", async () => {
     server.client = fakeClient({ rows: [published] });
     expect(await getCourseRefAccess("c-1")).toBe("visible");
     expect(await getCourseRefAccess("meu-curso")).toBe("visible");
   });
 
-  it("rascunho que a RLS devolve para o dono logado continua visivel (previa)", async () => {
+  it("a draft that RLS returns to the logged-in owner stays visible (preview)", async () => {
     server.client = fakeClient({ userId: "dono", rows: [draft] });
     expect(await getCourseRefAccess("c-1")).toBe("visible");
   });
 
-  it("Auth fora com o JWT valido: a linha que a RLS devolveu ao dono nao vira 404", async () => {
+  it("Auth down with a valid JWT: the row that RLS returned to the owner does not become a 404", async () => {
     for (const status of ["draft", "needs_changes", "inactive"]) {
       server.client = fakeClient({ userError: authDown, rows: [{ ...draft, status }] });
       expect(await getCourseRefAccess("c-1")).toBe("visible");
     }
   });
 
-  it("em revisao: estranho logado e visitante anonimo recebem 404, o dono ve", async () => {
+  it("in review: a logged-in stranger and an anonymous visitor get a 404, the owner sees it", async () => {
     server.client = fakeClient({ userId: "outra-pessoa", rows: [inReview] });
     expect(await getCourseRefAccess("c-1")).toBe("missing");
     server.client = fakeClient({ rows: [inReview] });
@@ -142,19 +142,19 @@ describe("getCourseRefAccess", () => {
     expect(await getCourseRefAccess("c-1")).toBe("visible");
   });
 
-  it("em revisao: admin e ops em sessao aal2 veem (fila de moderacao)", async () => {
+  it("in review: admin and ops in an aal2 session see it (moderation queue)", async () => {
     for (const role of ["admin", "ops"]) {
       server.client = fakeClient({ userId: "moderador", roles: [role], level: "aal2", rows: [inReview] });
       expect(await getCourseRefAccess("c-1")).toBe("visible");
     }
   });
 
-  it("em revisao: papel operacional sem aal2 nao abre a previa", async () => {
+  it("in review: an operational role without aal2 does not open the preview", async () => {
     server.client = fakeClient({ userId: "moderador", roles: ["admin"], level: "aal1", rows: [inReview] });
     expect(await getCourseRefAccess("c-1")).toBe("missing");
   });
 
-  it("em revisao: falha do Auth, do perfil ou do nivel de sessao nunca vira 404", async () => {
+  it("in review: a failure of Auth, of the profile or of the session level never becomes a 404", async () => {
     server.client = fakeClient({ userError: authDown, rows: [inReview] });
     expect(await getCourseRefAccess("c-1")).toBe("unknown");
     server.client = fakeClient({ userId: "moderador", rolesError: true, rows: [inReview] });
@@ -163,24 +163,24 @@ describe("getCourseRefAccess", () => {
     expect(await getCourseRefAccess("c-1")).toBe("unknown");
   });
 
-  it("falha na busca por id nao segue para o title_key: e unknown", async () => {
+  it("a failure in the lookup by id does not continue to title_key: it is unknown", async () => {
     server.client = fakeClient({ idError: true, rows: [published] });
     expect(await getCourseRefAccess("meu-curso")).toBe("unknown");
   });
 
-  // Conta suspensa e restaurada: o GoTrue ainda aceita a sessao antiga, mas a
-  // policy restritiva account_access_guard esconde toda linha dela — curso
-  // publicado inclusive. "Nao achei" ali nao e "nao existe".
-  it("sessao revogada: a RLS esconde ate o curso publicado, e isso nao e 404", async () => {
+  // Suspended and restored account: GoTrue still accepts the old session, but the
+  // restrictive policy account_access_guard hides every row of it — a published
+  // course included. "Did not find it" there is not "does not exist".
+  it("revoked session: RLS hides even the published course, and that is not a 404", async () => {
     const denied = new AuthError("Account access is unavailable.", 403, "account_access_denied");
     server.client = fakeClient({ userError: denied });
     expect(await getCourseRefAccess("c-1")).toBe("unknown");
-    // Logado de verdade, curso que nao existe: continua 404.
+    // Really logged in, a course that does not exist: still a 404.
     server.client = fakeClient({ userId: "aluno" });
     expect(await getCourseRefAccess("nao-existe")).toBe("missing");
   });
 
-  it("falha de leitura nunca vira 404", async () => {
+  it("a read failure never becomes a 404", async () => {
     server.client = fakeClient({ keyError: true });
     expect(await getCourseRefAccess("meu-curso")).toBe("unknown");
     server.fail = true;
@@ -189,9 +189,9 @@ describe("getCourseRefAccess", () => {
 });
 
 describe("listPublishedCourses", () => {
-  // A loja já escondia os cursos internos de teste; o sitemap e a home leem
-  // daqui e precisam da MESMA regra, senão o buscador indexa o que a loja esconde.
-  it("deixa de fora os cursos internos de teste, pelo mesmo predicado da loja", async () => {
+  // The store already hid the internal test courses; the sitemap and the home read
+  // from here and need the SAME rule, otherwise the search engine indexes what the store hides.
+  it("leaves out the internal test courses, by the same predicate as the store", async () => {
     const base = { summary: null, category: null, cover_image_url: null, lesson_count: 2, slug: null, status: "published", updated_at: null };
     const rows = [
       { ...base, id: "c-real", title: "Deep Focus Systems", title_key: "deep-focus-systems" },
@@ -212,7 +212,7 @@ describe("listPublishedCourses", () => {
 });
 
 describe("hasRealPublishedCourse", () => {
-  // Cliente falso que anota cada filtro da consulta encadeada.
+  // Fake client that records each filter of the chained query.
   function anonClient(result: { data: unknown[] | null; error: unknown }) {
     const calls: unknown[][] = [];
     const query = {
@@ -225,9 +225,9 @@ describe("hasRealPublishedCourse", () => {
     return calls;
   }
 
-  // Basta UMA linha: os cursos internos saem no próprio SQL, pelos mesmos
-  // prefixos do predicado da loja, em vez de trazer mil linhas para contar.
-  it("pergunta ao banco por um único curso publicado que não seja interno", async () => {
+  // ONE row is enough: internal courses are filtered out in the SQL itself, by the same
+  // prefixes as the store predicate, instead of fetching a thousand rows to count.
+  it("asks the database for a single published course that is not internal", async () => {
     const calls = anonClient({ data: [{ id: "c-real" }], error: null });
 
     expect(await hasRealPublishedCourse()).toBe(true);
@@ -241,14 +241,14 @@ describe("hasRealPublishedCourse", () => {
     ]);
   });
 
-  it("loja só com cursos internos (ou vazia) responde não", async () => {
+  it("a store with only internal courses (or empty) answers no", async () => {
     anonClient({ data: [], error: null });
     expect(await hasRealPublishedCourse()).toBe(false);
   });
 
-  // Sem cookie do visitante (token vencido não vira 401), resposta guardada
-  // por 5 min e desistência em 1,5 s: a home não espera o banco.
-  it("usa cliente anônimo, com cache de 5 minutos e prazo curto", async () => {
+  // No visitor cookie (an expired token does not become a 401), response cached
+  // for 5 min and giving up after 1.5 s: the home does not wait for the database.
+  it("uses an anonymous client, with a 5-minute cache and a short deadline", async () => {
     anonClient({ data: [], error: null });
     await hasRealPublishedCourse();
 
@@ -273,10 +273,10 @@ describe("hasRealPublishedCourse", () => {
     expect(init.signal).toBeInstanceOf(AbortSignal);
   });
 
-  // Banco mudo: o prazo de 1,5 s estoura com TimeoutError, que o postgrest-js
-  // repetia 3 vezes (esperando 1 s, 2 s e 4 s) — cada rota esperava ~13 s.
-  // Agora é uma tentativa só, e a resposta é não.
-  it("desiste na primeira vez que o prazo estoura, sem repetir", async () => {
+  // Silent database: the 1.5 s deadline blows up with a TimeoutError, which postgrest-js
+  // used to retry 3 times (waiting 1 s, 2 s and 4 s) — each route waited ~13 s.
+  // Now it is a single attempt, and the answer is no.
+  it("gives up the first time the deadline blows, without retrying", async () => {
     anon.client = null;
     const timedOut = vi.fn<typeof fetch>(async () => {
       throw new DOMException("The operation was aborted due to timeout", "TimeoutError");
@@ -292,7 +292,7 @@ describe("hasRealPublishedCourse", () => {
     }
   });
 
-  it("falha de leitura responde não e fica no log", async () => {
+  it("a read failure answers no and goes to the log", async () => {
     anonClient({ data: null, error: { message: "banco fora" } });
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
@@ -304,8 +304,8 @@ describe("hasRealPublishedCourse", () => {
   });
 });
 
-// O cartão "See a real course" da home: título e capa de um curso, pela mesma
-// leitura anônima e em cache de hasRealPublishedCourse.
+// The "See a real course" card on the home: a course's title and cover, through the same
+// anonymous, cached read of hasRealPublishedCourse.
 describe("getShowcaseCourseCover", () => {
   function anonClient(result: { data: unknown; error: unknown }) {
     const calls: unknown[][] = [];
@@ -318,7 +318,7 @@ describe("getShowcaseCourseCover", () => {
     return calls;
   }
 
-  it("lê só título e capa do curso publicado com aquele id", async () => {
+  it("reads only the title and cover of the published course with that id", async () => {
     const calls = anonClient({ data: { title: "Emotional Intelligence Mastery", cover_image_url: "https://x/capa.jpg" }, error: null });
 
     expect(await getShowcaseCourseCover("c-1")).toEqual({
@@ -334,12 +334,12 @@ describe("getShowcaseCourseCover", () => {
     ]);
   });
 
-  it("curso que não está publicado (ou não existe) responde null", async () => {
+  it("a course that is not published (or does not exist) answers null", async () => {
     anonClient({ data: null, error: null });
     expect(await getShowcaseCourseCover("c-1")).toBeNull();
   });
 
-  it("falha de leitura responde null e fica no log", async () => {
+  it("a read failure answers null and goes to the log", async () => {
     anonClient({ data: null, error: { message: "banco fora" } });
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
@@ -350,9 +350,9 @@ describe("getShowcaseCourseCover", () => {
     }
   });
 
-  // Banco mudo: uma tentativa só, abortada pelo prazo, guardada 5 min. A home
-  // sai com o cartão de texto em vez de esperar e repetir.
-  it("desiste na primeira vez que o prazo estoura, sem repetir, e responde null", async () => {
+  // Silent database: a single attempt, aborted by the deadline, cached for 5 min. The home
+  // comes out with the text card instead of waiting and retrying.
+  it("gives up the first time the deadline blows, without retrying, and answers null", async () => {
     anon.client = null;
     const timedOut = vi.fn<typeof fetch>(async () => {
       throw new DOMException("The operation was aborted due to timeout", "TimeoutError");
@@ -375,18 +375,18 @@ describe("getShowcaseCourseCover", () => {
   });
 });
 
-// Vitrine automática (decisão do dono, 13/11/2026): abre com 12 cursos reais
-// publicados de 5 professores diferentes, e fecha sozinha abaixo disso.
+// Automatic storefront (the owner's decision, Nov 13, 2026): opens with 12 real courses
+// published by 5 different teachers, and closes by itself below that.
 describe("marketplaceIsOpen", () => {
   const owners = (courses: number, teachers: number) =>
     Array.from({ length: courses }, (_, i) => `t${i % teachers}`);
 
-  it("abre com 12 cursos de 5 professores", () => {
+  it("opens with 12 courses from 5 teachers", () => {
     expect(marketplaceIsOpen(owners(12, 5))).toBe(true);
     expect(marketplaceIsOpen(owners(40, 9))).toBe(true);
   });
 
-  it("fica fechada com 11 cursos, ou com 12 cursos de só 4 professores", () => {
+  it("stays closed with 11 courses, or with 12 courses from only 4 teachers", () => {
     expect(marketplaceIsOpen(owners(11, 5))).toBe(false);
     expect(marketplaceIsOpen(owners(12, 4))).toBe(false);
     expect(marketplaceIsOpen(owners(2, 1))).toBe(false);

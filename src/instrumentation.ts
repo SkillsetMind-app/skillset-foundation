@@ -2,27 +2,27 @@ import type { Instrumentation } from "next";
 
 import { keepAliveUntil, sendOpsAlert } from "@/lib/ops/alert";
 
-// Um erro no checkout, numa aula ou no login so aparecia no log do Vercel, que
-// ninguem le. Este gancho do Next (onRequestError) recebe todo erro de
-// requisicao no servidor e avisa o Telegram de ops.
+// An error in checkout, in a lesson or at login only showed up in the Vercel log, which
+// nobody reads. This Next hook (onRequestError) receives every request
+// error on the server and notifies the ops Telegram.
 //
-// Duas formas de o Next chamar este gancho, e o envio tem de sobreviver a ambas:
-//  - AGUARDADO: no catch do route handler, no catch externo da pagina e no
-//    proxy, depois de sair do escopo da requisicao. Ali o after() lanca; o
-//    Next espera o gancho, entao o `await` segura a invocacao ate o aviso sair.
-//  - DESCARTADO: nos erros de renderizacao (RSC/SSR) e nas server actions o
-//    gancho entra no onError do React, que chama e JOGA FORA a promessa. Ali o
-//    `await` sozinho vira um fetch que ninguem espera, e a instancia congela
-//    antes de ele sair.
-// Por isso o envio comeca uma vez so, a MESMA promessa vai para o after() (ou
-// para o waitUntil da plataforma, fora do escopo) e so entao e aguardada.
-// sendOpsAlert tem teto de 4 s e nunca lanca.
+// Next can call this hook in two ways, and the send has to survive both:
+//  - AWAITED: in the route handler catch, in the page's outer catch and in the
+//    proxy, after leaving the request scope. There after() throws; and
+//    Next waits for the hook, so the `await` holds the invocation until the notice is sent.
+//  - DISCARDED: in rendering errors (RSC/SSR) and in server actions the
+//    hook enters React's onError, which calls it and THROWS AWAY the promise. There
+//    a lone `await` becomes a fetch nobody waits for, and the instance freezes
+//    before it goes out.
+// So the send starts only once, the SAME promise goes to after() (or
+// to the platform's waitUntil, outside the scope) and only then is awaited.
+// sendOpsAlert has a 4 s cap and never throws.
 //
-// O Next ja registra o erro inteiro no log antes de chamar o gancho, entao
-// aqui nao ha console.error.
+// Next already logs the whole error before calling the hook, so
+// there is no console.error here.
 
-// Erros de fluxo do Next, nao falha: notFound()/forbidden()/unauthorized()
-// e redirect() viajam como excecao com `digest`.
+// Next flow errors, not failures: notFound()/forbidden()/unauthorized()
+// and redirect() travel as an exception with `digest`.
 const CONTROL_FLOW_DIGESTS = ["NEXT_REDIRECT", "NEXT_HTTP_ERROR_FALLBACK", "NEXT_NOT_FOUND"];
 
 function digestOf(error: unknown): string | null {
@@ -38,15 +38,15 @@ function isExpected(error: unknown): boolean {
   if (digest && CONTROL_FLOW_DIGESTS.some((code) => digest.startsWith(code))) {
     return true;
   }
-  // Cliente que fechou a conexao no meio: nao e defeito da plataforma.
+  // Client that closed the connection midway: not a platform defect.
   return (
     error instanceof Error
     && (error.name === "AbortError" || (error as { code?: unknown }).code === "ECONNRESET")
   );
 }
 
-// FNV-1a de 32 bits: agrupa erros iguais sem mandar o texto (a mensagem pode
-// carregar dado pessoal) e sem node:crypto, que o runtime edge nao tem.
+// 32-bit FNV-1a: groups identical errors without sending the text (the message may
+// carry personal data) and without node:crypto, which the edge runtime does not have.
 function shortHash(text: string): string {
   let hash = 0x811c9dc5;
   for (let index = 0; index < text.length; index += 1) {
@@ -56,10 +56,10 @@ function shortHash(text: string): string {
   return (hash >>> 0).toString(16).padStart(8, "0");
 }
 
-// Um aviso por rota a cada 5 minutos, por instancia. Por ROTA, e nao pelo
-// evento: um erro inofensivo e recorrente numa rota nao pode esconder o do
-// checkout. A vaga e reservada antes do envio (um erro que volte a este gancho
-// pela mesma rota para aqui) e encurtada para 60 s se o relay nao confirmou.
+// One notice per route every 5 minutes, per instance. Per ROUTE, not per
+// event: a harmless recurring error on one route cannot hide the one from
+// checkout. The slot is reserved before the send (an error that comes back to this hook
+// on the same route stops here) and shortened to 60 s if the relay did not confirm.
 const THROTTLE_MS = 5 * 60 * 1000;
 const LOST_SEND_RETRY_MS = 60 * 1000;
 const MAX_ROUTES = 200;
@@ -70,7 +70,7 @@ function shouldSend(key: string, now: number): boolean {
   if (previous !== undefined && now - previous < THROTTLE_MS) {
     return false;
   }
-  // delete + set deixa o Map em ordem de uso: o primeiro e o mais antigo.
+  // delete + set keeps the Map in order of use: the first one is the oldest.
   lastSentAt.delete(key);
   lastSentAt.set(key, now);
   if (lastSentAt.size > MAX_ROUTES) {
@@ -97,13 +97,13 @@ export const onRequestError: Instrumentation.onRequestError = async (error, requ
   const message = error instanceof Error ? error.message : String(error);
   const pending = sendOpsAlert({
     event: "app.server_error",
-    // alert.ts so aceita "warn" | "critical". Sem status no texto: um erro
-    // pego por error.tsx, ou lancado num Suspense depois do shell, sai com 200.
+    // alert.ts only accepts "warn" | "critical". No status in the text: an error
+    // caught by error.tsx, or thrown in a Suspense after the shell, goes out with 200.
     severity: "critical",
     summary: `Server error on ${route} (${context.routeType}).`,
-    // So o padrao da rota, o tipo, o metodo, o nome do erro e uma impressao
-    // digital. Nunca a URL com query, cabecalhos, cookies, corpo, ids,
-    // e-mails ou a mensagem inteira.
+    // Only the route pattern, the type, the method, the error name and a
+    // fingerprint. Never the URL with query, headers, cookies, body, ids,
+    // emails or the whole message.
     context: {
       route,
       routeType: context.routeType,
@@ -113,17 +113,17 @@ export const onRequestError: Instrumentation.onRequestError = async (error, requ
     },
   });
 
-  // A mesma promessa vive ate o relay responder mesmo quando ninguem aguarda
-  // este gancho (onError do React). keepAliveUntil nunca lanca.
+  // The same promise lives until the relay answers even when nobody awaits
+  // this hook (React's onError). keepAliveUntil never throws.
   keepAliveUntil(pending);
 
   const delivered = await pending;
-  // Envio que o relay nao confirmou nao pode calar a rota por 5 minutos, mas
-  // tambem nao pode liberar a rota na hora: um relay que entrega no Telegram e
-  // demora mais de 4 s para responder da "falha" com a mensagem entregue, e uma
-  // rota quebrada avisaria a cada poucos segundos. A vaga encurta para 60 s,
-  // se nenhum envio mais novo a pegou: no pior caso, 1 aviso por minuto por
-  // rota por instancia, e um aviso perdido volta em ate um minuto.
+  // A send the relay did not confirm cannot silence the route for 5 minutes, but
+  // also cannot release the route right away: a relay that delivers to Telegram and
+  // takes more than 4 s to answer reports a "failure" with the message delivered, and a
+  // broken route would alert every few seconds. The slot shortens to 60 s,
+  // if no newer send took it: in the worst case, 1 notice per minute per
+  // route per instance, and a lost notice comes back within a minute.
   if (!delivered && lastSentAt.get(key) === reservedAt) {
     lastSentAt.set(key, Date.now() - THROTTLE_MS + LOST_SEND_RETRY_MS);
   }

@@ -23,12 +23,12 @@ describe("dicionarios EN/ES", () => {
   const english = flatten(en as Tree);
   const spanish = flatten(es as Tree);
 
-  it("espanhol tem exatamente as chaves do ingles", () => {
+  it("Spanish has exactly the same keys as English", () => {
     expect(Object.keys(english).filter((key) => !(key in spanish))).toEqual([]);
     expect(Object.keys(spanish).filter((key) => !(key in english))).toEqual([]);
   });
 
-  it("cada traducao preserva os marcadores de interpolacao", () => {
+  it("each translation preserves the interpolation placeholders", () => {
     const broken = Object.keys(english).filter(
       (key) => key in spanish && markers(english[key]) !== markers(spanish[key]),
     );

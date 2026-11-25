@@ -97,16 +97,16 @@ export type ResumeCourseLesson = CourseLessonEntry & {
 };
 
 /**
- * A aula que o painel oferece para retomar. O cartao "Continuar" abria a CAPA
- * do curso e a pessoa tinha que achar sozinha onde parou.
+ * The lesson the panel offers for resuming. The "Continue" card opened the course COVER
+ * and the person had to find on their own where they had stopped.
  *
- * `lastLessonId` e a ultima aula CONCLUIDA — e so isso que o banco grava
- * (record_lesson_progress escreve enrollments.last_lesson_id ao marcar a aula
- * como feita; abrir uma aula nao grava nada). Retomar, portanto, e a aula
- * SEGUINTE a ela: antes o cartao abria a propria aula ja concluida, e a
- * pessoa reassistia o que acabou de terminar. Concluiu a ultima → o cartao
- * fica nela. Sem registro, ou com um id que nao existe mais no curso, a
- * primeira aula. Os numeros sao 1-based, para o rotulo "Module N · Lesson M".
+ * `lastLessonId` is the last COMPLETED lesson, and that is all the database stores
+ * (record_lesson_progress writes enrollments.last_lesson_id when marking the lesson
+ * as done; opening a lesson stores nothing). Resuming, therefore, is the lesson
+ * AFTER it: before, the card opened the already completed lesson itself, and the
+ * person rewatched what they had just finished. Finished the last one → the card
+ * stays on it. With no record, or with an id that no longer exists in the course, the
+ * first lesson. The numbers are 1-based, for the "Module N · Lesson M" label.
  */
 export function getResumeCourseLesson(
   course: Course,
@@ -133,11 +133,11 @@ export function getResumeCourseLesson(
 }
 
 /**
- * Minutos que faltam a partir de uma aula, ela inclusa. `lesson.duration` e um
- * rotulo livre ("8 min", "Self-paced"): a soma so vale quando TODAS as aulas
- * restantes trazem um numero de minutos legivel. Com uma ilegivel devolve null
- * e o painel omite o texto, em vez de mostrar uma soma parcial como se fosse
- * o total.
+ * Minutes remaining from a lesson on, itself included. `lesson.duration` is a
+ * free-form label ("8 min", "Self-paced"): the sum is only valid when ALL the remaining
+ * lessons carry a readable number of minutes. With an unreadable one it returns null
+ * and the panel omits the text, instead of showing a partial sum as if it were
+ * the total.
  */
 export function getRemainingMinutesFrom(
   course: Course,

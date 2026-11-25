@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
-// O "Try again" do sino e a releitura que um aviso novo dispara podem voltar
-// fora de ordem. So a leitura mais nova entrega: a antiga traria a lista sem
-// o aviso novo, e ela ficaria assim ate o proximo evento.
+// The bell's "Try again" and the re-read that a new notice triggers can come back
+// out of order. Only the newest read delivers: the old one would bring the list
+// without the new notice, and it would stay that way until the next event.
 
 type Answer = { data: unknown[] | null; error: Error | null };
 
@@ -48,21 +48,21 @@ function row(id: string) {
 }
 
 describe("subscribeToNotifications", () => {
-  it("so a leitura mais nova entrega, mesmo que a antiga volte depois", async () => {
+  it("only the newest read delivers, even if the old one comes back later", async () => {
     const callback = vi.fn();
     const onError = vi.fn();
     const subscription = subscribeToNotifications("u-1", callback, onError);
 
-    // 1a leitura falha: o sino mostra o erro.
+    // 1st read fails: the bell shows the error.
     fake.reads[0]({ data: null, error: new Error("offline") });
     await vi.waitFor(() => expect(onError).toHaveBeenCalledOnce());
 
-    // "Try again" (leitura 2) e, antes de ela voltar, um aviso novo (leitura 3).
+    // "Try again" (read 2) and, before it comes back, a new notice (read 3).
     void subscription.reload();
     fake.onChange();
     expect(fake.reads).toHaveLength(3);
 
-    // A leitura 3 volta primeiro, com o aviso novo; a 2 volta depois, velha.
+    // Read 3 comes back first, with the new notice; read 2 comes back later, stale.
     fake.reads[2]({ data: [row("new"), row("old")], error: null });
     await vi.waitFor(() => expect(callback).toHaveBeenCalledOnce());
     fake.reads[1]({ data: [row("old")], error: null });
@@ -71,10 +71,10 @@ describe("subscribeToNotifications", () => {
     expect(callback).toHaveBeenCalledOnce();
     expect(callback.mock.calls[0][0].map((item: { id: string }) => item.id)).toEqual(["new", "old"]);
     expect(onError).toHaveBeenCalledOnce();
-    // A releitura nao mexe no canal.
+    // The re-read does not touch the channel.
     expect(fake.removeChannel).not.toHaveBeenCalled();
 
-    // Desligado, uma leitura que ainda volte nao entrega mais nada.
+    // Once turned off, a read that still comes back delivers nothing.
     fake.onChange();
     subscription();
     fake.reads[3]({ data: [], error: null });

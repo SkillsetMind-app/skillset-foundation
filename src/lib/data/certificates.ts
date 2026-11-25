@@ -39,10 +39,10 @@ export function subscribeToUserCertificates(
   onError: (error: Error) => void,
 ): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
-  // `reload()` (o "Try again") repete esta leitura sem mexer no canal. As de
-  // sempre (a inicial e as do canal) entregam como antes, so cedem a um reload
-  // mais novo; o que o reload comecou nao entrega depois de desligar nem por
-  // cima de uma leitura mais nova (traria a lista sem o recem-emitido).
+  // `reload()` (the "Try again") repeats this read without touching the channel. The usual
+  // ones (the initial one and the channel's) deliver as before, only yielding to a newer
+  // reload; what the reload started does not deliver after shutting down or on
+  // top of a newer read (it would bring the list without the newly issued one).
   let active = true;
   let latestLoad = 0;
   let latestReload = 0;
@@ -84,7 +84,7 @@ export function subscribeToUserCertificates(
     )
     .subscribe();
 
-  // `reload()` le de novo SEM mexer no canal (o "Try again" das credenciais).
+  // `reload()` reads again WITHOUT touching the channel (the "Try again" of the credentials).
   return Object.assign(
     () => {
       active = false;

@@ -99,7 +99,7 @@ export function subscribeToCourseThread(
 
 // Every message across a teacher's courses, newest-first; the inbox groups
 // them into threads client-side (groupCourseMessageThreads).
-// `reload()` le de novo SEM mexer no canal, como na caixa do aluno abaixo.
+// `reload()` reads again WITHOUT touching the channel, as in the learner inbox below.
 export function subscribeToTeacherMessages(
   teacherId: string,
   callback: (messages: CourseMessage[]) => void,
@@ -107,8 +107,8 @@ export function subscribeToTeacherMessages(
   maxMessages = 400,
 ): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
-  // So a leitura mais nova entrega: um "Try again" que volta depois da
-  // releitura de uma mensagem nova traria a lista sem ela.
+  // Only the newest read delivers: a "Try again" that comes back after the
+  // re-read of a new message would bring the list without it.
   let active = true;
   let latestLoad = 0;
 
@@ -157,14 +157,14 @@ export function subscribeToTeacherMessages(
   );
 }
 
-// Toda conversa de UM aluno, em todos os cursos dele — o espelho de
-// subscribeToTeacherMessages. Antes so existia a leitura por curso: o aluno
-// com tres cursos tinha tres lugares para responder ao professor, cada um no
-// fim da pagina da aula, e nenhuma lista de conversas (o professor tinha).
+// Every conversation of ONE learner, across all their courses — the mirror of
+// subscribeToTeacherMessages. Before there was only the per-course read: the learner
+// with three courses had three places to reply to the teacher, each at the
+// end of the lesson page, and no list of conversations (the teacher had one).
 //
-// `reload()` le de novo SEM mexer no canal (o "Try again" da caixa): sem o
-// intervalo entre sair e entrar de novo no Realtime, em que uma mensagem nova
-// se perderia, e sem uma segunda leitura de graca.
+// `reload()` reads again WITHOUT touching the channel (the inbox's "Try again"): without the
+// gap between leaving and rejoining Realtime, in which a new message
+// would be lost, and without a free second read.
 export function subscribeToStudentMessages(
   studentId: string,
   callback: (messages: CourseMessage[]) => void,
@@ -172,8 +172,8 @@ export function subscribeToStudentMessages(
   maxMessages = 400,
 ): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
-  // So a leitura mais nova entrega: um "Try again" que volta depois da
-  // releitura de uma mensagem nova traria a lista sem ela.
+  // Only the newest read delivers: a "Try again" that comes back after the
+  // re-read of a new message would bring the list without it.
   let active = true;
   let latestLoad = 0;
 
@@ -222,10 +222,10 @@ export function subscribeToStudentMessages(
   );
 }
 
-/** Quantas conversas esperam a resposta do professor (a ultima mensagem e do
- *  aluno). Le so quem mandou e quando: o texto das mensagens nao entra na
- *  conta. ponytail: as 400 mensagens mais novas, o mesmo teto da caixa; uma
- *  conversa parada ha mais tempo que isso fica fora do numero. */
+/** How many conversations are waiting for the teacher's reply (the last message is the
+ *  learner's). Reads only who sent it and when: the message text does not enter the
+ *  count. ponytail: the 400 newest messages, the same cap as the inbox; a
+ *  conversation idle for longer than that is left out of the number. */
 export async function countThreadsAwaitingTeacher(teacherId: string): Promise<number> {
   const supabase = getSupabaseBrowserClient();
   const { data, error } = await supabase

@@ -118,23 +118,23 @@ export function isLegacyOnlyPricing(offers: ProductOffer[]): boolean {
 }
 
 /**
- * Como o curso cobra, lido UMA vez.
+ * How the course charges, read ONCE.
  *
- * O que a pessoa sofria: a mesma tela lia o preco de dois jeitos. O rotulo de
- * preco tratava "sem valor" como gratuito, e a linha ao lado imprimia
- * `course.paymentType` cru — entao um rascunho com paymentType
- * "subscription_monthly" e valor zerado dizia "Free" e "Monthly subscription"
- * ao mesmo tempo. Aqui o valor manda: sem valor, o curso e gratuito e o tipo de
- * pagamento simplesmente NAO SE APLICA (`null`, a tela mostra "—") em vez de
- * anunciar uma cobranca que nunca vai acontecer.
+ * What the person suffered: the same screen read the price in two ways. The
+ * price label treated "no price" as free, and the line next to it printed the
+ * raw `course.paymentType` — so a draft with paymentType
+ * "subscription_monthly" and a zero price said "Free" and "Monthly subscription"
+ * at the same time. Here the price rules: with no price, the course is free and
+ * the payment type simply DOES NOT APPLY (`null`, the screen shows "—") instead
+ * of announcing a charge that will never happen.
  */
 export type CoursePricingShape = {
   free: boolean;
-  /** null = nao se aplica (curso gratuito). Nunca um tipo de cobranca sem preco. */
+  /** null = does not apply (free course). Never a charge type without a price. */
   paymentType: TeacherCoursePaymentType | null;
   amountMinor: number;
   currency: string;
-  /** null = parcelamento desligado ou sem cobranca; numero = maximo de parcelas. */
+  /** null = installments off or no charge; number = maximum installments. */
   installmentsMax: number | null;
 };
 
@@ -165,10 +165,10 @@ export function getCoursePricingShape(
 }
 
 /**
- * "Como as pessoas vao pagar?": uma pergunta, tres cartoes. O cartao e so a
- * leitura do `paymentType` gravado; nada muda no banco. Mensalidade cobre o
- * mensal e o anual: um produto antigo que cobra uma vez por ano continua
- * assim, dentro do mesmo cartao.
+ * "How will people pay?": one question, three cards. The card is only a
+ * reading of the stored `paymentType`; nothing changes in the database. Monthly
+ * fee covers monthly and yearly: an old product that charges once a year stays
+ * that way, inside the same card.
  */
 export type PaymentChoice = "free" | "one_payment" | "membership";
 
@@ -179,16 +179,16 @@ export function paymentChoiceOf(paymentType: TeacherCoursePaymentType): PaymentC
   return paymentType === "one_time" ? "one_payment" : "membership";
 }
 
-/** O que gravar ao escolher o cartao. Mensalidade nasce mensal. */
+/** What to store when the card is chosen. Monthly fee starts out monthly. */
 export function paymentTypeOfChoice(choice: PaymentChoice): TeacherCoursePaymentType {
   if (choice === "free") return "free";
   return choice === "one_payment" ? "one_time" : "subscription_monthly";
 }
 
 /**
- * Os cartoes de cada tipo, na ordem da tela. O cartao ja gravado aparece
- * mesmo fora da lista (produto criado antes da regra): a tela mostra o que o
- * produto e, e publicar pede para trocar.
+ * The cards for each type, in screen order. The stored card appears even
+ * outside the list (product created before the rule): the screen shows what
+ * the product is, and publishing asks to change it.
  */
 export function paymentChoicesFor(
   format: TeacherCourseProductFormat,
@@ -199,7 +199,7 @@ export function paymentChoicesFor(
   );
 }
 
-/** Quanto o plano anual poupa diante de 12 mensalidades. Zero ou menos: nao poupa. */
+/** How much the yearly plan saves compared with 12 monthly payments. Zero or less: it does not save. */
 export function yearlySavingMinor(monthlyMinor: number, yearlyMinor: number): number {
   return monthlyMinor * 12 - yearlyMinor;
 }

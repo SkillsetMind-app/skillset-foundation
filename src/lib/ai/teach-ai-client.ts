@@ -1,6 +1,6 @@
-// Chamada do estúdio à rota /api/teach/ai. Uma função para as três telas
-// (legenda, quiz, sugestões). O erro vira texto pelo `code` da rota, no idioma
-// da tela; código desconhecido cai no genérico.
+// Studio call to the /api/teach/ai route. One function for the three screens
+// (captions, quiz, suggestions). The error becomes text through the route's `code`, in the language
+// of the screen; an unknown code falls back to the generic one.
 export type TeachAiResult = { ok: boolean; status: number; body: Record<string, unknown> & { error?: string; code?: string } };
 
 const KNOWN_ERRORS = new Set([

@@ -95,8 +95,8 @@ export function subscribeToTeacherCourseSubscriptions(
     )
     .subscribe();
 
-  // `reload()` le de novo SEM mexer no canal (o "Try again" de Assinaturas):
-  // a versao mais nova e a unica que entrega, como numa mudanca do tempo real.
+  // `reload()` reads again WITHOUT touching the channel (the "Try again" of Subscriptions):
+  // the newest version is the only one that delivers, as on a realtime change.
   return Object.assign(
     () => {
       stopped = true;
@@ -119,10 +119,10 @@ export function subscribeToCourseSubscription(
   onError: (error: Error) => void,
 ): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
-  // `reload()` (o "Try again") repete esta leitura sem mexer no canal. A
-  // inicial sai como antes (a mesma cadeia, no mesmo instante) e entrega como
-  // antes, so cedendo a um reload mais novo; o que o reload comecou nao
-  // entrega depois de desligar nem por cima de uma leitura mais nova.
+  // `reload()` (the "Try again") repeats this read without touching the channel. The
+  // initial one goes out as before (the same chain, at the same instant) and delivers as
+  // before, only yielding to a newer reload; what the reload started does not
+  // deliver after shutting down or on top of a newer read.
   let active = true;
   let latestLoad = 0;
   let latestReload = 0;
@@ -175,8 +175,8 @@ export function subscribeToCourseSubscription(
     )
     .subscribe();
 
-  // `reload()` le de novo SEM mexer no canal (o "Try again" do cartao da
-  // assinatura na sala).
+  // `reload()` reads again WITHOUT touching the channel (the "Try again" of the
+  // subscription card in the room).
   return Object.assign(
     () => {
       active = false;

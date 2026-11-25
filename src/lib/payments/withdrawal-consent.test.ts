@@ -2,16 +2,16 @@ import { describe, expect, it } from "vitest";
 
 import { buyerCountryFromRequest, requiresWithdrawalConsent } from "@/lib/payments/withdrawal-consent";
 
-describe("consentimento de acesso imediato (UE, EEE e Reino Unido)", () => {
+describe("immediate access consent (EU, EEA and United Kingdom)", () => {
   it.each(["DE", "fr", "ES", "IE", "NO", "IS", "LI", "GB", "RE", "MQ", "AX"])("exige a caixa para %s", (country) => {
     expect(requiresWithdrawalConsent(country)).toBe(true);
   });
 
-  it.each(["US", "BR", "CA", "CH", "", null, undefined])("não exige para %s", (country) => {
+  it.each(["US", "BR", "CA", "CH", "", null, undefined])("does not require it for %s", (country) => {
     expect(requiresWithdrawalConsent(country)).toBe(false);
   });
 
-  it("lê o país do cabeçalho da hospedagem e ignora valor estranho", () => {
+  it("reads the country from the hosting header and ignores a strange value", () => {
     const from = (value?: string) =>
       buyerCountryFromRequest(new Request("http://localhost/", { headers: value === undefined ? {} : { "x-vercel-ip-country": value } }));
     expect(from("de")).toBe("DE");

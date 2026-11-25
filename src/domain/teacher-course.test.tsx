@@ -257,9 +257,9 @@ describe("resolveLessonVideoSource", () => {
     ).toBe("youtube");
   });
 
-  // Este e o caso que apagava a aula de quem ja tinha pago: o professor apaga o
-  // arquivo enviado, `videoSource` segue gravado como "upload", e o link do
-  // YouTube continua salvo e valido — so nunca mais consultado.
+  // This is the case that deleted the lesson of someone who had already paid: the
+  // teacher deletes the uploaded file, `videoSource` stays stored as "upload",
+  // and the YouTube link is still saved and valid — just never consulted again.
   it("falls back to the trusted embed when the declared upload has no file", () => {
     expect(
       resolveLessonVideoSource({

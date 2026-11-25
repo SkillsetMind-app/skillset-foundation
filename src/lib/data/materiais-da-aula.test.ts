@@ -11,9 +11,9 @@ import {
 } from "@/lib/data/course-assets";
 
 /**
- * Materiais da aula no cliente do Supabase: o link de baixar leva o nome do
- * arquivo, a lista sai na ordem do professor, renomear e reordenar gravam só o
- * necessário, e .xmind/.epub/.mm sobem com o tipo certo.
+ * Lesson materials on the Supabase client: the download link carries the file
+ * name, the list comes out in the teacher's order, renaming and reordering write
+ * only what is needed, and .xmind/.epub/.mm go up with the right type.
  */
 const mocks = vi.hoisted(() => ({
   sign: vi.fn(),
@@ -23,7 +23,7 @@ const mocks = vi.hoisted(() => ({
   eq: vi.fn(),
   rows: [] as Record<string, unknown>[],
   bucket: "",
-  // Quando preenchido, o storage é o da supabase-js de verdade (só o fetch é falso).
+  // When filled in, the storage is the real supabase-js one (only fetch is fake).
   realStorage: null as SupabaseClient["storage"] | null,
 }));
 
@@ -44,7 +44,7 @@ vi.mock("@/lib/supabase/client", () => ({
       insert: mocks.insert,
       update: (patch: unknown) => {
         mocks.update(patch);
-        // .update().eq().select("id"): a resposta diz quantas linhas mudaram.
+        // .update().eq().select("id"): the response says how many rows changed.
         return { eq: (column: string, value: string) => ({ select: () => mocks.eq(column, value) }) };
       },
       select: () => ({ eq: async () => ({ data: mocks.rows, error: null }) }),
@@ -77,24 +77,24 @@ beforeEach(() => {
   mocks.eq.mockResolvedValue({ data: [{ id: "changed" }], error: null });
 });
 
-describe("link assinado", () => {
-  it("o link de baixar leva o nome original do arquivo, com a mesma 1 hora", async () => {
+describe("signed link", () => {
+  it("the download link carries the original file name, with the same 1 hour", async () => {
     const url = await getProtectedCourseAssetObjectUrl(material(), { download: true });
 
     expect(mocks.bucket).toBe("course-content");
-    // O nome não vai pela opção da biblioteca (ela codifica duas vezes); vai
-    // no fim do link, codificado uma vez só.
+    // The name does not go through the library option (it encodes twice); it goes
+    // at the end of the link, encoded only once.
     expect(mocks.sign).toHaveBeenCalledExactlyOnceWith(material().storagePath, 3600);
     expect(url).toBe("https://storage.test/signed?download=Apostila%20final%20v3.pdf");
   });
 
-  it("o link de abrir continua sem a opção de baixar", async () => {
+  it("the open link stays without the download option", async () => {
     await getProtectedCourseAssetObjectUrl(material());
 
     expect(mocks.sign).toHaveBeenCalledExactlyOnceWith(material().storagePath, 3600);
   });
 
-  it("recusa do storage (sem matrícula ou aula fechada) vira erro, não link", async () => {
+  it("storage refusal (no enrollment or closed lesson) becomes an error, not a link", async () => {
     mocks.sign.mockResolvedValue({ data: null, error: new Error("Object not found") });
 
     await expect(getProtectedCourseAssetObjectUrl(material(), { download: true })).rejects.toThrow("Object not found");
@@ -102,13 +102,13 @@ describe("link assinado", () => {
 });
 
 /**
- * A storage-js de verdade monta o link (só a resposta do servidor é falsa).
- * Ela codifica o nome duas vezes (URLSearchParams e depois encodeURI) e o
- * servidor do storage decodifica uma: "Introdução.pdf" chegava como
- * "Introdu%C3%A7%C3%A3o.pdf". Aqui o link é lido como o servidor lê (uma
- * decodificação, igual ao URL do navegador) e o nome tem que chegar idêntico.
+ * The real storage-js builds the link (only the server response is fake).
+ * It encodes the name twice (URLSearchParams and then encodeURI) and the
+ * storage server decodes once: "Introdução.pdf" used to arrive as
+ * "Introdu%C3%A7%C3%A3o.pdf". Here the link is read the way the server reads it
+ * (one decoding, like the browser URL) and the name has to arrive identical.
  */
-describe("nome do arquivo baixado, com a storage-js de verdade", () => {
+describe("downloaded file name, with the real storage-js", () => {
   const signFetch = vi.fn(async (input: RequestInfo | URL) => {
     const signedPath = String(input).split("/object/sign/")[1];
     return new Response(JSON.stringify({ signedURL: `/object/sign/${signedPath}?token=t0k3n` }), {
@@ -121,7 +121,7 @@ describe("nome do arquivo baixado, com a storage-js de verdade", () => {
     global: { fetch: signFetch },
   }).storage;
 
-  it.each(["Apostila (1).pdf", "Introdução.pdf", "a,b&c#d+e%f.pdf"])("%s chega igual ao servidor", async (fileName) => {
+  it.each(["Apostila (1).pdf", "Introdução.pdf", "a,b&c#d+e%f.pdf"])("%s arrives the same at the server", async (fileName) => {
     mocks.realStorage = realStorage;
 
     const url = await getProtectedCourseAssetObjectUrl(material({ fileName }), { download: true });
@@ -132,7 +132,7 @@ describe("nome do arquivo baixado, com a storage-js de verdade", () => {
     expect(query.get("token")).toBe("t0k3n");
   });
 
-  it("o link de abrir não ganha nome nenhum", async () => {
+  it("the open link gets no name at all", async () => {
     mocks.realStorage = realStorage;
 
     const url = await getProtectedCourseAssetObjectUrl(material({ fileName: "Introdução.pdf" }));
@@ -141,8 +141,8 @@ describe("nome do arquivo baixado, com a storage-js de verdade", () => {
   });
 });
 
-describe("ordem e nome", () => {
-  it("lê pela posição, depois pelo nome que aparece; arquivo sem posição vai para o fim", async () => {
+describe("order and name", () => {
+  it("reads by position, then by the name shown; a file without a position goes to the end", async () => {
     mocks.rows = [
       row("new-b", "b.pdf", null, null),
       row("second", "zz.pdf", "Workbook", 1),
@@ -156,7 +156,7 @@ describe("ordem e nome", () => {
     expect(assets[0]).toMatchObject({ title: "Slides", position: 0 });
   });
 
-  it("lê também antes da migration (sem as colunas novas)", async () => {
+  it("also reads before the migration (without the new columns)", async () => {
     const old: Record<string, unknown> = row("old", "notes.pdf", null, null);
     delete old.title;
     delete old.position;
@@ -167,7 +167,7 @@ describe("ordem e nome", () => {
     expect(asset).toMatchObject({ title: null, position: null, fileName: "notes.pdf" });
   });
 
-  it("renomear apara o texto; vazio volta ao nome do arquivo", async () => {
+  it("renaming trims the text; empty goes back to the file name", async () => {
     await renameCourseAsset("asset-1", "  Guia de estudo  ");
     await renameCourseAsset("asset-1", "   ");
 
@@ -175,7 +175,7 @@ describe("ordem e nome", () => {
     expect(mocks.eq).toHaveBeenCalledWith("id", "asset-1");
   });
 
-  it("reordenar grava só as linhas cuja posição mudou", async () => {
+  it("reordering writes only the rows whose position changed", async () => {
     await saveCourseAssetOrder([
       { id: "b", position: 1 },
       { id: "a", position: 0 },
@@ -186,21 +186,21 @@ describe("ordem e nome", () => {
     expect(mocks.eq.mock.calls).toEqual([["id", "b"], ["id", "a"]]);
   });
 
-  it("falha ao gravar a ordem chega a quem chamou", async () => {
+  it("a failure writing the order reaches the caller", async () => {
     mocks.eq.mockResolvedValueOnce({ error: new Error("denied") });
 
     await expect(saveCourseAssetOrder([{ id: "b", position: 1 }, { id: "a", position: 0 }])).rejects.toThrow("denied");
   });
 
-  // A RLS filtra a linha sem dar erro (sessão sem segundo fator, curso de
-  // outro dono): nenhuma linha mudou, e isso não pode virar "salvo".
-  it("renomear que não mudou nenhuma linha é erro, não 'salvo'", async () => {
+  // RLS filters the row without an error (session without a second factor, course
+  // of another owner): no row changed, and that must not become "saved".
+  it("a rename that changed no row is an error, not 'saved'", async () => {
     mocks.eq.mockResolvedValueOnce({ data: [], error: null });
 
     await expect(renameCourseAsset("asset-1", "Guia")).rejects.toThrow("course-asset-not-updated");
   });
 
-  it("reordenar com alguma linha que não mudou é erro, não 'salvo'", async () => {
+  it("reordering with a row that did not change is an error, not 'saved'", async () => {
     mocks.eq.mockResolvedValueOnce({ data: [{ id: "b" }], error: null }).mockResolvedValueOnce({ data: [], error: null });
 
     await expect(saveCourseAssetOrder([{ id: "b", position: 1 }, { id: "a", position: 0 }]))
@@ -208,17 +208,17 @@ describe("ordem e nome", () => {
   });
 });
 
-describe("tipo do arquivo no envio", () => {
+describe("file type on upload", () => {
   it.each([
     ["mapa.xmind", "", "application/vnd.xmind.workbook"],
     ["mapa.mm", "text/x-objective-c++", "application/x-freemind"],
     ["livro.epub", "application/epub+zip", "application/epub+zip"],
     ["notas.md", "", "application/octet-stream"],
-    // Conteúdo ativo: aberto inline, o script rodaria no domínio do storage.
+    // Active content: opened inline, the script would run on the storage domain.
     ["logo.svg", "image/svg+xml", "application/octet-stream"],
     ["pagina.html", "text/html", "application/octet-stream"],
     ["feed.xml", "text/xml", "application/octet-stream"],
-  ])("%s (navegador disse %j) sobe como %s", async (name, browserType, expected) => {
+  ])("%s (browser said %j) goes up as %s", async (name, browserType, expected) => {
     const file = new File(["conteudo"], name, { type: browserType });
 
     await uploadCourseAsset({
@@ -227,8 +227,8 @@ describe("tipo do arquivo no envio", () => {
     });
 
     expect(mocks.upload).toHaveBeenCalledWith(expect.any(String), expect.any(File), { contentType: expected, upsert: false });
-    // A storage-js ignora `contentType` quando o corpo é um File e grava o tipo
-    // do próprio File. O tipo seguro tem que estar no arquivo que sobe.
+    // storage-js ignores `contentType` when the body is a File and writes the
+    // File's own type. The safe type has to be on the file that goes up.
     const body = mocks.upload.mock.lastCall?.[1] as File;
     expect(body.type).toBe(expected);
     expect(body.name).toBe(name);
@@ -237,25 +237,25 @@ describe("tipo do arquivo no envio", () => {
   });
 });
 
-describe("arquivo antigo com conteúdo ativo", () => {
+describe("old file with active content", () => {
   it.each([
     ["logo.svg", "image/svg+xml"],
     ["pagina.html", "text/html"],
     ["feed.xml", "text/xml"],
-  ])("o link de abrir de %s (%s) vem como anexo, com o mesmo pedido assinado", async (fileName, contentType) => {
+  ])("the open link for %s (%s) comes as an attachment, with the same signed request", async (fileName, contentType) => {
     const url = await getProtectedCourseAssetObjectUrl(material({ fileName, contentType }));
 
     expect(mocks.sign).toHaveBeenCalledExactlyOnceWith(material().storagePath, 3600);
     expect(url).toBe(`https://storage.test/signed?download=${fileName}`);
   });
 
-  it("PDF, imagem comum e vídeo continuam abrindo na tela", async () => {
+  it("PDF, regular image and video keep opening on screen", async () => {
     for (const contentType of ["application/pdf", "image/png", "video/mp4"]) {
       expect(await getProtectedCourseAssetObjectUrl(material({ contentType }))).toBe("https://storage.test/signed");
     }
   });
 
-  it("recusa do storage (sem matrícula ou aula fechada) segue virando erro", async () => {
+  it("storage refusal (no enrollment or closed lesson) still becomes an error", async () => {
     mocks.sign.mockResolvedValue({ data: null, error: new Error("Object not found") });
 
     await expect(getProtectedCourseAssetObjectUrl(material({ contentType: "image/svg+xml" })))

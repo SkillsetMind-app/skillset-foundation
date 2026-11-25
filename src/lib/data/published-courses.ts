@@ -88,10 +88,10 @@ export function subscribeToPublishedTeacherCourses(
   // the foreseeable horizon; past that the fix is a slim "courseCards"
   // projection + pagination, not a bigger limit.
   const supabase = getSupabaseBrowserClient();
-  // `reload()` (o "Try again") repete esta leitura sem mexer no canal. As de
-  // sempre (a inicial e as do canal) entregam como antes, so cedem a um reload
-  // mais novo; o que o reload comecou nao entrega depois de desligar (`closed`)
-  // nem por cima de uma leitura mais nova (traria o catalogo velho).
+  // `reload()` (the "Try again") repeats this read without touching the channel. The usual
+  // ones (the initial one and the channel's) deliver as before and only yield to a
+  // newer reload; what the reload started does not deliver after turning off (`closed`)
+  // nor over a newer read (it would bring the old catalog).
   let closed = false;
   let latestLoad = 0;
   let latestReload = 0;
@@ -122,8 +122,8 @@ export function subscribeToPublishedTeacherCourses(
 
   void load();
 
-  // Visitante sem login fica so com a carga acima: o Realtime do projeto e
-  // "private only" e recusava este canal ~575 vezes por dia.
+  // A visitor without a login gets only the load above: the project's Realtime is
+  // "private only" and refused this channel ~575 times a day.
   let channel: ReturnType<typeof supabase.channel> | null = null;
   void supabase.auth.getSession().then(({ data }) => {
     if (!data.session || closed) return;
@@ -142,8 +142,8 @@ export function subscribeToPublishedTeacherCourses(
       .subscribe();
   });
 
-  // `reload()` le de novo SEM mexer no canal (o "Try again" do catalogo e da
-  // lista de desejos).
+  // `reload()` reads again WITHOUT touching the channel (the "Try again" of the catalog and
+  // the wishlist).
   return Object.assign(
     () => {
       closed = true;
@@ -405,13 +405,13 @@ export function teacherCourseToLearningCourse(course: TeacherCourse): Course {
       id: module.id,
       title: module.title,
       coverAssetId: module.coverAssetId ?? null,
-      // Sem descricao, nada: "N lessons" so repetia a contagem da playlist.
+      // No description, nothing: "N lessons" only repeated the playlist count.
       summary: module.summary || "",
       lessons: module.lessons.map((lesson) => ({
         id: lesson.id,
         title: lesson.title,
         type: lesson.type,
-        // Sem duracao real, nada: "Self-paced" em toda linha nao informava.
+        // No real duration, nothing: "Self-paced" on every row told nothing.
         duration: lesson.durationMinutes
           ? `${lesson.durationMinutes} min`
           : "",

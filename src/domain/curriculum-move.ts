@@ -1,10 +1,10 @@
 import type { TeacherCourseModule } from "@/domain/teacher-course";
 
-// Move uma aula para outro modulo (ou outra posicao) sem trocar o objeto: o id
-// vai junto, e com ele video, materiais, progresso e comentarios; todo campo
-// da aula, inclusive os que sairam da tela, sobrevive ao autosave.
-// Indice fora da faixa cai na ponta mais proxima. Mesma posicao, ou aula ou
-// modulo que nao existem: devolve o proprio array, sem mudanca.
+// Moves a lesson to another module (or another position) without swapping the object: the id
+// goes along, and with it video, materials, progress and comments; every field
+// of the lesson, including those that left the screen, survives the autosave.
+// An out-of-range index falls to the nearest end. Same position, or a lesson or
+// module that does not exist: returns the array itself, with no change.
 export function moveLessonTo(
   modules: TeacherCourseModule[],
   lessonId: string,

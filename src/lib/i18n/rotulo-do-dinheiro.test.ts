@@ -4,9 +4,9 @@ import { describe, expect, it } from "vitest";
 import { platformNav } from "@/data/site";
 import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 
-// A pagina do dinheiro do professor (/account/payments) tinha quatro nomes:
-// "Payments" (tour), "Earnings" (barra), "Payouts & tax" (pagina e avatar) e
-// "Payouts panel" (erros). Agora e um so: "Earnings" / "Ganancias".
+// The teacher's money page (/account/payments) had four names:
+// "Payments" (tour), "Earnings" (bar), "Payouts & tax" (page and avatar) and
+// "Payouts panel" (errors). Now there is only one: "Earnings" / "Ganancias".
 
 const NAME = { en: "Earnings", es: "Ganancias" } as const;
 const OLD_NAMES = ["Payouts & tax", "Payouts panel", "Pagos e impuestos", "panel Cobros"];
@@ -17,18 +17,18 @@ function leaves(node: unknown, path = ""): Array<[string, string]> {
   return Object.entries(node).flatMap(([key, value]) => leaves(value, path ? `${path}.${key}` : key));
 }
 
-describe("um nome so para a pagina do dinheiro", () => {
-  it.each(["en", "es"] as const)("em %s, barra, grupo, atalho e erro usam o mesmo nome", (locale) => {
+describe("one name only for the money page", () => {
+  it.each(["en", "es"] as const)("in %s, bar, group, shortcut and error use the same name", (locale) => {
     const dict = getDictionary(locale);
 
     for (const key of ["platform.nav.earnings", "platform.navSection.earnings", "teach.reports.linkEarnings"]) {
       expect(translate(dict, key), key).toBe(NAME[locale]);
     }
-    // O tour do professor não cita mais a página (O-11: ficou com dois passos).
+    // The teacher tour no longer mentions the page (O-11: it was left with two steps).
     expect(translate(dict, "creatorEditor.builder.errors.payouts")).toContain(NAME[locale]);
   });
 
-  it.each(["en", "es"] as const)("em %s, nenhum dos nomes antigos sobrou no dicionario", (locale) => {
+  it.each(["en", "es"] as const)("in %s, none of the old names is left in the dictionary", (locale) => {
     const all = leaves(getDictionary(locale));
 
     for (const old of OLD_NAMES) {
@@ -36,7 +36,7 @@ describe("um nome so para a pagina do dinheiro", () => {
     }
   });
 
-  it("toda entrada da navegacao para /account/payments usa a mesma chave, e a pagina tambem", () => {
+  it("every navigation entry to /account/payments uses the same key, and so does the page", () => {
     const keys = new Set(platformNav.filter((item) => item.href === "/account/payments").map((item) => item.labelKey));
     expect([...keys]).toEqual(["platform.nav.earnings"]);
 
@@ -44,8 +44,8 @@ describe("um nome so para a pagina do dinheiro", () => {
     expect(page).toContain('privatePageMetadata("platform.nav.earnings")');
     expect(page).toContain('title={t("platform.nav.earnings")}');
 
-    // O painel de Ganhos nao repete mais o nome em cima do titulo (era o rotulo
-    // generico das telas irmas); o nome segue na barra, no menu e na aba.
+    // The Earnings panel no longer repeats the name above the title (it was the generic
+    // label of the sibling screens); the name stays in the bar, the menu and the tab.
     for (const file of ["src/components/site/account-menu.tsx"]) {
       expect(readFileSync(file, "utf8"), file).toContain('t("platform.nav.earnings")');
     }

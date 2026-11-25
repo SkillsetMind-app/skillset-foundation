@@ -157,7 +157,7 @@ export const plans: ReadonlyArray<Plan> = [
     monthlyUsd: 9,
     yearlyUsd: 90,
     commissionPercent: 10,
-    // Novas assinaturas; os precos anteriores continuam reconhecidos abaixo.
+    // New subscriptions; the previous prices are still recognized below.
     stripePriceIds: {
       monthlyId: "price_1UVi6QPvg1vJW0IjKHYmUE09",
       yearlyId: "price_1UVi6RPvg1vJW0Ijz87nmj5D",
@@ -274,7 +274,7 @@ export function isBillingConfigured(): boolean {
 export function planAndCycleByStripePriceId(
   priceId: string,
 ): { plan: Plan; cycle: PlanBillingCycle } | undefined {
-  // Webhooks historicos e assinaturas legadas nao mudam de plano/preco.
+  // Historical webhooks and legacy subscriptions keep their plan and price.
   if (priceId === "price_1UP4MvPvg1vJW0IjLNG6YeC9") return { plan: planById("basic"), cycle: "monthly" };
   if (priceId === "price_1UP4MwPvg1vJW0IjKAq6kpd8") return { plan: planById("basic"), cycle: "yearly" };
   for (const plan of plans) {
@@ -288,7 +288,7 @@ export function planByStripePriceId(priceId: string): Plan | undefined {
   return planAndCycleByStripePriceId(priceId)?.plan;
 }
 
-/** Tarifa do Price contratado, antes de descontos, impostos e saldo da fatura. */
+/** Rate of the contracted Price, before discounts, taxes and invoice balance. */
 export function planUsdByStripePriceId(priceId: string): number | undefined {
   if (priceId === "price_1UP4MvPvg1vJW0IjLNG6YeC9") return 5;
   if (priceId === "price_1UP4MwPvg1vJW0IjKAq6kpd8") return 50;

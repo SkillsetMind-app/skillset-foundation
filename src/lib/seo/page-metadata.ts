@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 
 import { brand } from "@/data/brand";
 
-// `www` é o host canônico em produção: o apex responde com 301 para cá
-// (verificado navegando até https://skillsetmind.com, que redireciona). Enquanto
-// esta constante apontava para o apex, TODA página se declarava canônica num
-// endereço que redireciona, e o sitemap inteiro listava URLs redirecionadas —
-// buscador trata redirecionamento como sinal enfraquecido.
+// `www` is the canonical host in production: the apex answers with a 301 to
+// here (checked by browsing to https://skillsetmind.com, which redirects). While
+// this constant pointed to the apex, EVERY page declared itself canonical at an
+// address that redirects, and the whole sitemap listed redirected URLs —
+// search engines treat a redirect as a weakened signal.
 export const SITE_URL = "https://www.skillsetmind.com";
 
 type PageMetadataInput = {
@@ -15,9 +15,9 @@ type PageMetadataInput = {
   path: string;
   noindex?: boolean;
   /**
-   * Imagem do card de compartilhamento. Absoluta (capa de curso vem do Bunny/
-   * Supabase) ou começando com "/" para um ativo local. Sem isto, todo card
-   * saía com o logo da marca — o mesmo card para todo curso do catálogo.
+   * Share card image. Absolute (a course cover comes from Bunny/Supabase) or
+   * starting with "/" for a local asset. Without this, every card came out
+   * with the brand logo — the same card for every course in the catalog.
    */
   image?: string | null;
 };
@@ -36,9 +36,10 @@ export function buildPageMetadata({
 }: PageMetadataInput): Metadata {
   const fullTitle = `${title} | ${brand.name}`;
   const url = `${SITE_URL}${path}`;
-  // Aceita URL absoluta (capa hospedada) ou caminho local; sem imagem própria,
-  // cai no card 1200×630 de src/app/opengraph-image.tsx. Era o logo 1600×320,
-  // que WhatsApp e LinkedIn cortavam ao meio no card grande.
+  // Accepts an absolute URL (hosted cover) or a local path; with no image of
+  // its own, it falls back to the 1200×630 card from src/app/opengraph-image.tsx.
+  // It used to be the 1600×320 logo, which WhatsApp and LinkedIn cut in half on
+  // the large card.
   const shareImage = image
     ? { url: image.startsWith("http") ? image : `${SITE_URL}${image}` }
     : { url: `${SITE_URL}/opengraph-image`, width: 1200, height: 630 };

@@ -6,39 +6,39 @@ import {
 } from "@/lib/data/lesson-playback";
 
 /**
- * Onde a aula parou, em SEGUNDOS, por pessoa e por aula.
+ * Where the lesson stopped, in SECONDS, per person and per lesson.
  *
- * O "retomar" da plataforma era por AULA — qual aula abrir — nunca por
- * posição: quem parava aos 22 minutos voltava no segundo zero e tinha de
- * arrastar a barra até achar o ponto.
+ * The platform's "resume" was per LESSON — which lesson to open — never per
+ * position: someone who stopped at 22 minutes came back at second zero and had to
+ * drag the bar until finding the spot.
  *
- * A posição mora no BANCO (`lesson_playback`, migração 20260903120000) e o
- * navegador virou a RESERVA. Era o contrário até o PR #186, e o preço era
- * conhecido: a posição ficava por navegador, então quem começava no celular e
- * terminava no computador recomeçava do zero lá.
+ * The position lives in the DATABASE (`lesson_playback`, migration 20260903120000) and the
+ * browser became the FALLBACK. It was the other way around until PR #186, and the price was
+ * known: the position was per browser, so someone who started on a phone and
+ * finished on a computer started over from zero there.
  *
- * As duas pontas continuam sendo escritas em toda gravação, de propósito:
- * - **banco primeiro na leitura**, porque é ele que atravessa aparelhos;
- * - **navegador sempre**, porque ele responde sem rede e cobre sessão anônima,
- *   preview do professor e a hora em que a escrita no banco falha.
+ * Both ends are still written on every save, on purpose:
+ * - **database first on read**, because it is the one that crosses devices;
+ * - **browser always**, because it answers without a network and covers an anonymous session,
+ *   the teacher's preview and the moment the database write fails.
  *
- * Abrir a aula também é gravado, com posição NULA — o banco entende isso como
- * "só registra a visita", sem tocar a posição. É a metade "abriu" do funil:
- * `lesson_progress` só nasce quando a aula é CONCLUÍDA, então quem desiste no
- * meio não deixava rastro nenhum.
+ * Opening the lesson is also saved, with a NULL position — the database understands this as
+ * "just record the visit", without touching the position. It is the "opened" half of the funnel:
+ * `lesson_progress` is only born when the lesson is COMPLETED, so someone who gives up
+ * midway left no trace at all.
  */
 
 const PREFIX = "skillset_lesson_pos:";
 
-/** Abaixo disso não há o que retomar — a pessoa mal abriu a aula. */
+/** Below this there is nothing to resume — the person barely opened the lesson. */
 const MIN_SECONDS = 5;
 
-/** E o fim fica de fora, para a aula não reabrir nos últimos segundos. */
+/** And the end is left out, so the lesson does not reopen in the last seconds. */
 const END_MARGIN_SECONDS = 15;
 
 /**
- * "Esta pessoa, nesta aula". `enrollmentId` nulo (preview do professor, sessão
- * anônima) mantém tudo no navegador: sem matrícula não há linha a escrever.
+ * "This person, in this lesson". A null `enrollmentId` (teacher preview, anonymous
+ * session) keeps everything in the browser: without an enrollment there is no row to write.
  */
 export type LessonPositionRef = {
   storageKey: string;
@@ -72,7 +72,7 @@ function readLocal(ref: LessonPositionRef | null): number {
 
     return Number.isFinite(seconds) && seconds > 0 ? seconds : 0;
   } catch {
-    // Navegador com armazenamento bloqueado: sem posição, começa do início.
+    // Browser with storage blocked: no position, starts from the beginning.
     return 0;
   }
 }
@@ -90,19 +90,19 @@ function writeLocal(ref: LessonPositionRef | null, seconds: number): void {
 
     window.localStorage.setItem(ref.storageKey, String(seconds));
   } catch {
-    // Cota estourada ou armazenamento bloqueado: retomar é conforto, não
-    // pode derrubar a aula.
+    // Quota exceeded or storage blocked: resuming is a convenience, it
+    // must not take the lesson down.
   }
 }
 
 /**
- * Manda para o banco sem esperar e sem quebrar: a aula continua tocando se a
- * rede cair, e o navegador já guardou a mesma posição.
+ * Sends to the database without waiting and without breaking: the lesson keeps playing if the
+ * network drops, and the browser already saved the same position.
  *
- * ponytail: sem fila e sem trava de concorrência. Os players só gravam a cada
- * 10 s (SAVE_EVERY_SECONDS), então o pior caso de duas escritas se cruzarem na
- * rede custa os 10 s entre elas — e o freio real é `enforce_rate_limit` no
- * servidor. Se um dia a cadência apertar, o lugar de resolver é aqui.
+ * ponytail: no queue and no concurrency lock. The players only save every
+ * 10 s (SAVE_EVERY_SECONDS), so the worst case of two writes crossing on the
+ * network costs the 10 s between them — and the real brake is `enforce_rate_limit` on the
+ * server. If the cadence ever tightens, the place to fix it is here.
  */
 function pushToDatabase(
   ref: LessonPositionRef,
@@ -119,11 +119,11 @@ function pushToDatabase(
     seconds,
     Number.isFinite(duration) ? duration : null,
   ).catch(() => {
-    // Sem posição no banco a aula abre no que o navegador guardou.
+    // With no position in the database the lesson opens at what the browser saved.
   });
 }
 
-/** A aula foi aberta. Só a visita — a posição guardada não é tocada. */
+/** The lesson was opened. Only the visit — the saved position is not touched. */
 export function markLessonOpened(ref: LessonPositionRef | null): void {
   if (ref) {
     pushToDatabase(ref, null);
@@ -131,8 +131,8 @@ export function markLessonOpened(ref: LessonPositionRef | null): void {
 }
 
 /**
- * Banco primeiro (atravessa aparelhos), navegador como reserva quando não há
- * matrícula ou a leitura falha.
+ * Database first (crosses devices), browser as the fallback when there is no
+ * enrollment or the read fails.
  */
 export async function readLessonPosition(
   ref: LessonPositionRef | null,
@@ -149,7 +149,7 @@ export async function readLessonPosition(
         return seconds;
       }
     } catch {
-      // Cai para o navegador: sem rede a aula ainda retoma neste aparelho.
+      // Falls back to the browser: without a network the lesson still resumes on this device.
     }
   }
 
@@ -157,9 +157,9 @@ export async function readLessonPosition(
 }
 
 /**
- * Grava a posição — ou APAGA, quando ela deixa de valer a pena (começo ou fim
- * da aula). Apagar no fim é o que evita o pior caso: terminar a aula, voltar
- * nela e cair direto nos créditos.
+ * Saves the position — or ERASES it, when it stops being worth keeping (start or end
+ * of the lesson). Erasing at the end is what avoids the worst case: finishing the lesson, going back
+ * to it and landing straight on the credits.
  */
 export function saveLessonPosition(
   ref: LessonPositionRef | null,

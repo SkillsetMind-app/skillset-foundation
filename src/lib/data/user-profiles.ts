@@ -53,8 +53,8 @@ export function subscribeToUserProfile(
   // caller in sync via Realtime. RLS scopes postgres_changes to the caller's
   // own row, so no cross-user leakage.
   //
-  // So a leitura mais nova entrega: um "Try again" que volta depois de outra
-  // leitura (ou de uma linha que chegou pelo tempo real) traria o perfil velho.
+  // Only the newest read delivers: a "Try again" that comes back after another
+  // read (or after a row that arrived through realtime) would bring the old profile.
   let active = true;
   let latestLoad = 0;
 
@@ -88,8 +88,8 @@ export function subscribeToUserProfile(
         if (!active) {
           return;
         }
-        // A linha do tempo real e pelo menos tao nova quanto uma leitura que
-        // ainda esta no caminho: essa leitura nao entrega mais.
+        // The realtime row is at least as new as a read that is
+        // still on its way: that read no longer delivers.
         latestLoad += 1;
         if (payload.eventType === "DELETE") {
           callback(null);
@@ -100,8 +100,8 @@ export function subscribeToUserProfile(
     )
     .subscribe();
 
-  // `reload()` le de novo SEM mexer no canal (o "Try again" das preferencias):
-  // sem o intervalo entre sair e entrar de novo no Realtime.
+  // `reload()` reads again WITHOUT touching the channel (the preferences' "Try again"):
+  // without the gap between leaving and rejoining Realtime.
   return Object.assign(
     () => {
       active = false;
@@ -279,18 +279,18 @@ export async function updateUserRoles(
 ) {
   const supabase = getSupabaseBrowserClient();
 
-  // O onboarding SOMA papéis, nunca remove. Antes isto gravava o array recebido
-  // por cima do existente: um professor que reabrisse o onboarding — o que a
-  // própria plataforma sugere ao topar com uma tela sem permissão — clicava nos
-  // três passos aceitando o padrão e voltava com roles = ["student"], sem o
-  // Teacher Studio e sem nenhum aviso de que perdera o acesso.
+  // Onboarding ADDS roles, it never removes them. Before, this wrote the received array
+  // over the existing one: a teacher who reopened onboarding — which the
+  // platform itself suggests when they hit a screen without permission — clicked through the
+  // three steps accepting the default and came back with roles = ["student"], without the
+  // Teacher Studio and without any notice that they had lost access.
   //
-  // O trigger users_field_guard já barra a perda de 'admin' levantando exceção;
-  // 'teacher' está dentro do conjunto auto-atribuível, então essa proteção não
-  // alcançava o caso real.
+  // The users_field_guard trigger already blocks the loss of 'admin' by raising an exception;
+  // 'teacher' is inside the self-assignable set, so that protection
+  // did not reach the real case.
   //
-  // Corrida é aceitável aqui: a única escrita concorrente plausível é o próprio
-  // usuário em outra aba, e a mesclagem só pode ampliar o conjunto.
+  // A race is acceptable here: the only plausible concurrent write is the
+  // user themselves in another tab, and the merge can only widen the set.
   const { data: current } = await supabase
     .from("users")
     .select("roles")

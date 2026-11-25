@@ -4,15 +4,16 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 /**
- * Guardas sobre a definição EFETIVA de funções Postgres que decidem dinheiro e
- * abuso. Vieram da auditoria de 2026-08-30 (achados A-02 e DB-01), onde viviam
- * numa suíte fora de `src/` que nenhuma automação executava — o CI coleta só
- * `src/**\/*.test.{ts,tsx}`, então elas provavam algo que ninguém via.
+ * Guards over the EFFECTIVE definition of Postgres functions that decide money
+ * and abuse. They came from the 2026-08-30 audit (findings A-02 and DB-01),
+ * where they lived in a suite outside `src/` that no automation ran — CI only
+ * collects `src/**\/*.test.{ts,tsx}`, so they proved something nobody saw.
  *
- * Por que ler SQL em vez de chamar a função: o que estas duas provam é sobre a
- * regra escrita na migration, e os smoke tests que rodam de verdade contra um
- * banco (supabase/tests/) dependem de `STAGING_DATABASE_URL`, que não existe em
- * todo PR. Isto é o portão que roda sempre; não substitui o que roda no banco.
+ * Why read SQL instead of calling the function: what these two prove is about
+ * the rule written in the migration, and the smoke tests that really run against
+ * a database (supabase/tests/) depend on `STAGING_DATABASE_URL`, which does not
+ * exist on every PR. This is the gate that always runs; it does not replace what
+ * runs against the database.
  */
 const RAIZ = process.cwd();
 
@@ -44,19 +45,20 @@ describe("creator plan gate - definer boundaries", () => {
   });
 });
 
-describe("contas da casa — plan_grants", () => {
-  // Conta da casa publica sem assinatura. A lista só se escreve por SQL: uma
-  // policy nela abriria a porta para qualquer conta se dar o Enterprise.
-  it("a trava de publicação aceita a concessão e continua aceitando assinatura", () => {
+describe("house accounts — plan_grants", () => {
+  // A house account publishes without a subscription. The list is only written
+  // through SQL: a policy on it would open the door for any account to give
+  // itself Enterprise.
+  it("the publish gate accepts the grant and still accepts a subscription", () => {
     const corpo = definicaoEfetiva("creator_has_current_plan").split("$$;")[0];
     expect(corpo).toMatch(/from\s+public\.plan_grants/i);
     expect(corpo).toMatch(/from\s+public\.subscriptions/i);
     expect(corpo).toMatch(/security definer set search_path = ''/);
   });
 
-  // Só a trava de sessão (restrictive) é aceita: ela só estreita. Sem policy
-  // permissiva, o PostgREST não lê nem escreve nada nesta tabela.
-  it("plan_grants tem RLS ligada e nenhuma policy permissiva", () => {
+  // Only the session lock (restrictive) is accepted: it only narrows. Without a
+  // permissive policy, PostgREST neither reads nor writes anything in this table.
+  it("plan_grants has RLS enabled and no permissive policy", () => {
     const todas = textoDasMigrations();
     expect(todas).toMatch(/alter table public\.plan_grants enable row level security/i);
     const policies = [...todas.matchAll(/policy\s+\S+\s+on\s+public\.plan_grants\b[^;]*/gi)].map((m) => m[0]);
@@ -66,18 +68,18 @@ describe("contas da casa — plan_grants", () => {
 });
 
 /**
- * Corpo da ÚLTIMA definição de uma função na cadeia de migrations.
+ * Body of the LAST definition of a function in the migration chain.
  *
- * `create or replace` faz da migration mais recente a verdade. Olhar o arquivo
- * onde a função nasceu daria um vermelho eterno mesmo depois do conserto,
- * porque migration antiga não se edita — se substitui.
+ * `create or replace` makes the most recent migration the truth. Looking at the
+ * file where the function was born would give a permanent red even after the
+ * fix, because an old migration is not edited — it is replaced.
  */
 function definicaoEfetiva(nomeDaFuncao: string): string {
   const pasta = "supabase/migrations";
   const marcador = `function public.${nomeDaFuncao}`;
   const arquivos = readdirSync(join(RAIZ, pasta))
     .filter((arquivo) => arquivo.endsWith(".sql"))
-    .sort(); // nomes começam com data, então ordem alfabética = cronológica
+    .sort(); // names start with a date, so alphabetical order = chronological
 
   let ultimo: string | null = null;
 
@@ -92,23 +94,23 @@ function definicaoEfetiva(nomeDaFuncao: string): string {
     ultimo = texto.slice(inicio, fecha === -1 ? undefined : fecha);
   }
 
-  expect(ultimo, `nenhuma migration define ${nomeDaFuncao}`).not.toBeNull();
+  expect(ultimo, `no migration defines ${nomeDaFuncao}`).not.toBeNull();
   return ultimo as string;
 }
 
-describe("create_free_course_enrollment — matrícula grátis e oferta paga", () => {
-  // O bug (A-02): a função decidia se o curso era grátis olhando só as colunas
-  // legadas de `courses` (payment_type e price_amount_minor). Uma oferta paga
-  // criada com isDefault=false — o caminho de upsell que product_offers existe
-  // para suportar — não atualiza essas colunas. O curso cobrava 497 no checkout
-  // e era entregue de graça por uma chamada RPC de uma linha.
+describe("create_free_course_enrollment — free enrollment and paid offer", () => {
+  // The bug (A-02): the function decided whether the course was free by looking
+  // only at the legacy columns of `courses` (payment_type and price_amount_minor).
+  // A paid offer created with isDefault=false — the upsell path that
+  // product_offers exists to support — does not update those columns. The course
+  // charged 497 at checkout and was handed out for free by a one-line RPC call.
   const corpo = definicaoEfetiva("create_free_course_enrollment");
 
-  it("consulta product_offers antes de liberar o curso", () => {
+  it("queries product_offers before granting the course", () => {
     expect(corpo).toMatch(/product_offers/);
   });
 
-  it("não decide o preço apenas pelas colunas legadas de courses", () => {
+  it("does not decide the price from the legacy columns of courses alone", () => {
     const soLegado =
       /payment_type\s*=\s*'free'/.test(corpo)
       && /price_amount_minor/.test(corpo)
@@ -116,99 +118,100 @@ describe("create_free_course_enrollment — matrícula grátis e oferta paga", (
 
     expect(
       soLegado,
-      "o portão de preço voltou a ser só payment_type + price_amount_minor: "
-        + "uma oferta paga não-default entrega o curso de graça",
+      "the price gate went back to being only payment_type + price_amount_minor: "
+        + "a paid non-default offer gives the course away for free",
     ).toBe(false);
   });
 });
 
-describe("verify_skillset_certificate — o balde do limite de tentativas", () => {
-  // O bug (DB-01): a chave do limite era coalesce(auth.uid(), p_rate_key,
-  // 'anon'). Para quem não está logado, auth.uid() é nulo e a chave passa a ser
-  // um parâmetro que o próprio chamador manda — um valor novo a cada requisição
-  // dá um balde novo a cada requisição. Pior: cada chave inédita INSERE uma
-  // linha permanente em rate_limits, que não tem limpeza. O mecanismo
-  // anti-abuso vira o vetor de abuso.
+describe("verify_skillset_certificate — the attempt-limit bucket", () => {
+  // The bug (DB-01): the limit key was coalesce(auth.uid(), p_rate_key,
+  // 'anon'). For someone who is not logged in, auth.uid() is null and the key
+  // becomes a parameter the caller sends themselves — a new value on every
+  // request gives a new bucket on every request. Worse: each never-seen key
+  // INSERTS a permanent row in rate_limits, which has no cleanup. The
+  // anti-abuse mechanism becomes the abuse vector.
   const corpo = definicaoEfetiva("verify_skillset_certificate");
 
-  it("não usa a chave do chamador crua: o espaço de chaves é limitado", () => {
+  it("does not use the raw caller key: the key space is bounded", () => {
     const usaCrua =
       /coalesce\(\s*\(?\s*select auth\.uid\(\)[\s\S]{0,120}p_rate_key/i.test(corpo)
       && !/md5\(|hashtext\(|substr\(/i.test(corpo);
 
     expect(
       usaCrua,
-      "a chave cai em p_rate_key quando auth.uid() é nulo, sem limitar o espaço — "
-        + "o anônimo escolhe o próprio balde e cada balde novo grava uma linha permanente",
+      "the key falls back to p_rate_key when auth.uid() is null, without bounding the space — "
+        + "the anonymous caller picks their own bucket and each new bucket writes a permanent row",
     ).toBe(false);
   });
 
-  it("quem está logado tem balde pela identidade que a plataforma emitiu", () => {
+  it("a logged-in user gets a bucket from the identity the platform issued", () => {
     expect(corpo).toMatch(/auth\.uid\(\)/);
   });
 });
 
-describe("delete_or_archive_own_course — apagar não pode virar apagar de quem pagou", () => {
-  // A função é a única entrada do professor para tirar o curso do ar, e o
-  // destino é decidido AQUI, não na tela: sem matrícula e sem pedido o curso
-  // some; com qualquer um dos dois ele vai para 'inactive' e quem comprou
-  // continua entrando. Se a ramificação de arquivar cair, a tela continua
-  // dizendo "seus alunos mantêm o acesso" enquanto o curso é destruído.
+describe("delete_or_archive_own_course — deleting must not become deleting for those who paid", () => {
+  // The function is the teacher's only way to take a course offline, and the
+  // outcome is decided HERE, not on the screen: with no enrollment and no order
+  // the course disappears; with either one it goes to 'inactive' and whoever
+  // bought it can still get in. If the archive branch is lost, the screen keeps
+  // saying "your learners keep access" while the course is destroyed.
   const corpo = definicaoEfetiva("delete_or_archive_own_course");
 
-  it("conta matrículas e pedidos antes de escolher o destino", () => {
+  it("counts enrollments and orders before choosing the outcome", () => {
     expect(corpo).toMatch(/from\s+public\.enrollments\s+where\s+course_id/i);
     expect(corpo).toMatch(/from\s+public\.orders\s+where\s+course_id/i);
   });
 
-  it("tem as duas ramificações: apagar só quando não há comprador", () => {
+  it("has both branches: delete only when there is no buyer", () => {
     expect(corpo).toMatch(/v_enrollments\s*=\s*0\s+and\s+v_orders\s*=\s*0/i);
     expect(corpo).toMatch(/delete\s+from\s+public\.courses/i);
     expect(corpo).toMatch(/'outcome'\s*,\s*'deleted'/i);
   });
 
-  it("arquiva em vez de apagar quando há comprador", () => {
+  it("archives instead of deleting when there is a buyer", () => {
     expect(corpo).toMatch(/update\s+public\.courses[\s\S]*status\s*=\s*'inactive'/i);
     expect(corpo).toMatch(/'outcome'\s*,\s*'archived'/i);
 
-    // O DELETE só pode existir dentro do galho sem comprador: se aparecer
-    // depois do UPDATE de arquivar, o curso com aluno também some.
+    // The DELETE may only exist inside the no-buyer branch: if it shows up
+    // after the archive UPDATE, a course with a learner disappears too.
     const posicaoUpdate = corpo.search(/update\s+public\.courses/i);
     const posicaoDelete = corpo.search(/delete\s+from\s+public\.courses/i);
     expect(
       posicaoDelete < posicaoUpdate,
-      "o delete de courses saiu do galho 'sem comprador'",
+      "the delete from courses left the 'no buyer' branch",
     ).toBe(true);
   });
 
-  it("só o dono, com sessão forte, e sem search_path sequestrável", () => {
+  it("owner only, with a strong session, and no hijackable search_path", () => {
     expect(corpo).toMatch(/security\s+definer/i);
     expect(corpo).toMatch(/set\s+search_path\s+to\s+'public',\s*'pg_temp'/i);
     expect(corpo).toMatch(/require_strong_session\(\)/i);
-    // O dono vai no WHERE do FOR UPDATE: quem não é dono nem trava a linha de
-    // outra pessoa nem descobre se o id existe (revisão do #507, D7).
+    // The owner goes in the WHERE of the FOR UPDATE: someone who is not the owner
+    // neither locks another person's row nor finds out whether the id exists
+    // (review of #507, D7).
     expect(corpo).toMatch(/where\s+id\s*=\s*p_course_id\s+and\s+owner_id\s*=\s*v_uid\s+for\s+update/i);
     expect(corpo).not.toMatch(/Only the course owner can delete it/);
   });
 
-  // Onda G2b: post do professor e convite pendente travavam o DELETE (FK sem
-  // cascata), e assinatura não contava como comprador.
-  it("trava a linha, conta assinatura e limpa os filhos antes de apagar", () => {
+  // Wave G2b: a teacher post and a pending invite blocked the DELETE (FK with no
+  // cascade), and a subscription did not count as a buyer.
+  it("locks the row, counts subscriptions and cleans up the children before deleting", () => {
     expect(corpo).toMatch(/for\s+update/i);
     expect(corpo).toMatch(/from\s+public\.course_subscriptions/i);
     expect(corpo).toMatch(/v_subscriptions\s*=\s*0/i);
 
     const limpa = corpo.search(/clear_course_for_delete\(/i);
     const apaga = corpo.search(/delete\s+from\s+public\.courses/i);
-    expect(limpa, "o delete não limpa mais os filhos sem cascata").toBeGreaterThan(-1);
-    expect(limpa < apaga, "a limpeza dos filhos tem de vir antes do delete").toBe(true);
+    expect(limpa, "the delete no longer cleans up the children without a cascade").toBeGreaterThan(-1);
+    expect(limpa < apaga, "the cleanup of the children has to come before the delete").toBe(true);
   });
 });
 
-describe("delete_course_as_admin — o admin apaga pelo mesmo caminho", () => {
+describe("delete_course_as_admin — the admin deletes through the same path", () => {
   const corpo = definicaoEfetiva("delete_course_as_admin");
 
-  it("segundo fator, só admin, e recusa curso com comprador", () => {
+  it("second factor, admin only, and refuses a course with a buyer", () => {
     expect(corpo).toMatch(/require_strong_session\(\)/i);
     expect(corpo).toMatch(/is_admin\(\)/i);
     expect(corpo).toMatch(/from\s+public\.enrollments\s+where\s+course_id/i);
@@ -216,17 +219,18 @@ describe("delete_course_as_admin — o admin apaga pelo mesmo caminho", () => {
     expect(corpo).toMatch(/from\s+public\.course_subscriptions/i);
   });
 
-  it("limpa os filhos sem cascata antes de apagar", () => {
+  it("cleans up the children without a cascade before deleting", () => {
     const limpa = corpo.search(/clear_course_for_delete\(/i);
     expect(limpa).toBeGreaterThan(-1);
     expect(limpa < corpo.search(/delete\s+from\s+public\.courses/i)).toBe(true);
   });
 });
 
-describe("course_deletions — a fila da limpeza nasce junto com o DELETE", () => {
-  // Depois do DELETE, course_assets cai em cascata e leva a única lista dos
-  // vídeos da Bunny. A fila tem de ser gravada ANTES, na mesma transação.
-  it("um gatilho BEFORE DELETE em courses grava a fila com os vídeos", () => {
+describe("course_deletions — the cleanup queue is born together with the DELETE", () => {
+  // After the DELETE, course_assets goes away in a cascade and takes the only
+  // list of the Bunny videos with it. The queue has to be written BEFORE, in the
+  // same transaction.
+  it("a BEFORE DELETE trigger on courses writes the queue with the videos", () => {
     const gatilho = definicaoEfetiva("course_deletions_record");
     expect(gatilho).toMatch(/insert\s+into\s+public\.course_deletions/i);
     expect(gatilho).toMatch(/bunny_video_id/i);
@@ -235,7 +239,7 @@ describe("course_deletions — a fila da limpeza nasce junto com o DELETE", () =
     );
   });
 
-  it("o cliente não chama a limpeza dos filhos nem a lista de arquivos", () => {
+  it("the client does not call the children cleanup or the file list", () => {
     const todas = textoDasMigrations();
     expect(todas).toMatch(
       /revoke\s+all\s+on\s+function\s+public\.clear_course_for_delete\(text\)\s+from\s+public,\s*anon,\s*authenticated/i,
@@ -245,7 +249,7 @@ describe("course_deletions — a fila da limpeza nasce junto com o DELETE", () =
     );
   });
 
-  it("a lista de arquivos só casa a pasta exata do curso, com a barra final", () => {
+  it("the file list only matches the exact folder of the course, with the trailing slash", () => {
     const lista = definicaoEfetiva("course_storage_objects_for_cleanup");
     expect(lista).toMatch(/is_service_role\(\)/);
     expect(lista).toMatch(/'courses\/'\s*\|\|\s*p_course_id\s*\|\|\s*'\/'/);
@@ -253,8 +257,8 @@ describe("course_deletions — a fila da limpeza nasce junto com o DELETE", () =
     expect(lista).toMatch(/Course id is in use again/);
   });
 
-  // Revisão do #507: id escolhido à mão, arquivo emprestado, vídeo re-checado.
-  it("a lista só traz o que nasceu enquanto o curso existia, da fila pending, e marca o que outra linha usa", () => {
+  // Review of #507: hand-picked id, borrowed file, video re-checked.
+  it("the list only returns what was born while the course existed, from the pending queue, and flags what another row uses", () => {
     const lista = definicaoEfetiva("course_storage_objects_for_cleanup");
     expect(lista).toMatch(/v_job\.status\s*<>\s*'pending'/);
     expect(lista).toMatch(/o\.created_at\s*<=\s*v_job\.requested_at/);
@@ -263,7 +267,7 @@ describe("course_deletions — a fila da limpeza nasce junto com o DELETE", () =
     expect(lista).toMatch(/in_use\s+boolean/i);
   });
 
-  it("vídeo só sai com a fila pending, o id sem curso e ninguém citando", () => {
+  it("a video is only removed with a pending queue, an id with no course and nobody referencing it", () => {
     const video = definicaoEfetiva("course_cleanup_video_deletable");
     expect(video).toMatch(/is_service_role\(\)/);
     expect(video).toMatch(/d\.status\s*=\s*'pending'/);
@@ -271,9 +275,9 @@ describe("course_deletions — a fila da limpeza nasce junto com o DELETE", () =
     expect(video).toMatch(/not\s+exists\s*\(select\s+1\s+from\s+public\.course_cleanup_references\(p_video_id\)\)/i);
   });
 
-  // Terceira rodada: para o cliente o id fica reservado para sempre (qualquer
-  // status), e o gatilho é AFTER (roda depois da RLS: sem oráculo da fila).
-  it("o cliente nunca cria nem renomeia curso para um id que passou pela fila", () => {
+  // Third round: for the client the id stays reserved forever (any status), and
+  // the trigger is AFTER (it runs after RLS: no oracle for the queue).
+  it("the client never creates or renames a course to an id that went through the queue", () => {
     const gatilho = definicaoEfetiva("courses_refuse_id_being_deleted");
     expect(gatilho).toMatch(/auth\.role\(\)\s*\)\s*,\s*''\s*\)\s+in\s*\(\s*'anon'\s*,\s*'authenticated'\s*\)/i);
     expect(gatilho).toMatch(/exists\s*\(select\s+1\s+from\s+public\.course_deletions\s+d\s+where\s+d\.course_id\s*=\s*new\.id\)/i);
@@ -287,58 +291,58 @@ describe("course_deletions — a fila da limpeza nasce junto com o DELETE", () =
     );
   });
 
-  it("o selo mostra só o que ainda está na fila (failed e cancelled não ficam para sempre)", () => {
+  it("the badge only shows what is still in the queue (failed and cancelled do not stay forever)", () => {
     expect(definicaoEfetiva("list_my_courses_being_deleted")).toMatch(/d\.status\s*=\s*'pending'/);
   });
 
-  it("a porta antiga delete_teacher_course_draft não é mais do cliente", () => {
+  it("the old delete_teacher_course_draft door is no longer the client's", () => {
     expect(textoDasMigrations()).toMatch(
       /revoke\s+execute\s+on\s+function\s+public\.delete_teacher_course_draft\(text\)\s+from\s+public,\s*anon,\s*authenticated/i,
     );
   });
 });
 
-describe("courses_delete_owner — a tabela não pode ser a porta dos fundos", () => {
-  // 'inactive' passou a ser também o estado de ARQUIVADO, ou seja, o estado de
-  // um curso que TEM aluno. Sem a condição abaixo, um cliente PostgREST
-  // autenticado apaga pela tabela o que a RPC se recusa a apagar.
+describe("courses_delete_owner — the table must not be the back door", () => {
+  // 'inactive' also became the ARCHIVED state, that is, the state of a course
+  // that HAS a learner. Without the condition below, an authenticated PostgREST
+  // client deletes through the table what the RPC refuses to delete.
   const corpo = policyEfetiva("courses_delete_owner");
 
-  it("recusa DELETE de curso com matrícula ou pedido", () => {
+  it("refuses DELETE of a course with an enrollment or an order", () => {
     expect(corpo).toMatch(/not\s+exists\s*\([\s\S]*public\.enrollments/i);
     expect(corpo).toMatch(/not\s+exists\s*\([\s\S]*public\.orders/i);
   });
 
-  it("continua exigindo o segundo fator", () => {
-    // Recriar a policy do zero é a forma clássica de perder o portão que a
-    // 20260902120000 instalou.
+  it("still requires the second factor", () => {
+    // Recreating the policy from scratch is the classic way to lose the gate that
+    // 20260902120000 installed.
     expect(corpo).toMatch(/session_is_strong\(\)/);
   });
 });
 
-describe("arquivar preserva o acesso de quem comprou", () => {
-  // É esta a promessa do modal: "everyone who bought it keeps full access".
-  // Ela só se sustenta porque as duas portas do conteúdo olham a MATRÍCULA,
-  // nunca o status do curso. No dia em que alguém acrescentar `c.status =
-  // 'published'` a uma delas, arquivar passa a cortar o acesso de quem pagou.
+describe("archiving preserves access for those who bought", () => {
+  // This is the promise of the dialog: "everyone who bought it keeps full access".
+  // It only holds because the two content doors look at the ENROLLMENT, never at
+  // the course status. The day someone adds `c.status = 'published'` to one of
+  // them, archiving starts cutting off access for those who paid.
   it.each(["course_assets_select", "course_content_select"])(
-    "%s não olha o status do curso",
+    "%s does not look at the course status",
     (nome) => {
       const corpo = policyEfetiva(nome);
 
       expect(corpo).toMatch(/enrollments/i);
       expect(
         /c\.status|courses\.status/i.test(corpo),
-        `${nome} passou a filtrar pelo status do curso: arquivar deixa de ser `
-          + "reversível e derruba o aluno que já pagou",
+        `${nome} started filtering by course status: archiving stops being `
+          + "reversible and knocks out the learner who already paid",
       ).toBe(false);
     },
   );
 });
 
 /**
- * Texto de todas as migrations, em ordem, para asserções que não são sobre UMA
- * função — aqui, se o job de limpeza está de fato agendado.
+ * Text of all the migrations, in order, for assertions that are not about ONE
+ * function — here, whether the cleanup job is actually scheduled.
  */
 function textoDasMigrations(): string {
   const pasta = "supabase/migrations";
@@ -349,61 +353,63 @@ function textoDasMigrations(): string {
     .join("\n");
 }
 
-describe("purge_stale_rate_limits — a tabela rate_limits tem teto", () => {
-  // O bug (DB-02): enforce_rate_limit insere uma linha para toda chave inédita
-  // e nada apagava — a mais antiga em produção era de 01/07. Metade das chaves
-  // vem de fora (hash do IP de visitante anônimo), então cada endereço novo era
-  // uma linha para sempre: o anti-abuso como primitivo de enchimento de disco.
+describe("purge_stale_rate_limits — the rate_limits table has a ceiling", () => {
+  // The bug (DB-02): enforce_rate_limit inserts a row for every never-seen key
+  // and nothing deleted them — the oldest in production was from 07/01. Half of
+  // the keys come from outside (hash of the anonymous visitor's IP), so each new
+  // address was a row forever: anti-abuse as a disk-filling primitive.
   const corpo = definicaoEfetiva("purge_stale_rate_limits");
 
-  it("apaga só o que está fora de qualquer janela em uso", () => {
+  it("deletes only what is outside any window in use", () => {
     expect(corpo).toMatch(/delete from public\.rate_limits/i);
-    // 2 dias > 24h, a maior janela (teto diário do advisor e do assistant).
-    // Encurtar isto apagaria baldes ainda em contagem e afrouxaria um limite.
+    // 2 days > 24h, the largest window (daily ceiling of the advisor and the
+    // assistant). Shortening this would delete buckets still counting and loosen
+    // a limit.
     expect(corpo).toMatch(/updated_at\s*<\s*now\(\)\s*-\s*interval\s*'2 days'/i);
   });
 
-  it("está agendada no pg_cron em vez de depender de alguém lembrar", () => {
+  it("is scheduled in pg_cron instead of depending on someone remembering", () => {
     expect(textoDasMigrations()).toMatch(
       /cron\.schedule\(\s*'purge-stale-rate-limits'[\s\S]{0,120}purge_stale_rate_limits\(\)/,
     );
   });
 });
 
-describe("claim_custom_domain — a cota de domínios é atômica", () => {
-  // O bug (A-27): a função contava os domínios do dono e inseria sem travar
-  // nada no meio. Em READ COMMITTED, duas chamadas simultâneas liam o mesmo
-  // count, as duas passavam pela cota e as duas inseriam — um professor em
-  // starter (cota 1) ficava com N domínios pelo preço de 1, cada um anexado ao
-  // projeto Vercel da plataforma. A rota diz ter delegado a cota ao SQL
-  // justamente para não ter essa corrida; ela só tinha sido movida de lugar.
+describe("claim_custom_domain — the domain quota is atomic", () => {
+  // The bug (A-27): the function counted the owner's domains and inserted
+  // without locking anything in between. Under READ COMMITTED, two simultaneous
+  // calls read the same count, both passed the quota and both inserted — a
+  // teacher on starter (quota 1) ended up with N domains for the price of 1,
+  // each one attached to the platform's Vercel project. The route says it
+  // delegated the quota to SQL precisely to avoid this race; it had only been
+  // moved elsewhere.
   const corpo = definicaoEfetiva("claim_custom_domain");
   const travaODono = /from\s+public\.users\s+where\s+uid\s*=\s*v_uid\s+for\s+update/i;
 
-  it("trava a linha do dono em users antes de contar os domínios dele", () => {
+  it("locks the owner's row in users before counting their domains", () => {
     expect(
       corpo,
-      "o SELECT do plano voltou a ser sem `for update`: duas reivindicações "
-        + "simultâneas do mesmo professor passam as duas pela cota",
+      "the plan SELECT is back to having no `for update`: two simultaneous "
+        + "claims from the same teacher both get past the quota",
     ).toMatch(travaODono);
 
-    // A ordem é parte da regra: um lock depois da contagem não serializa nada.
+    // The order is part of the rule: a lock after the count serializes nothing.
     expect(corpo.search(travaODono)).toBeLessThan(corpo.search(/count\(\*\)/));
   });
 
-  it("a cota continua sendo conferida e aplicada aqui, não na rota", () => {
+  it("the quota is still checked and enforced here, not in the route", () => {
     expect(corpo).toMatch(/v_used\s*>=\s*v_limit/);
     expect(corpo).toMatch(/insert into public\.custom_domains/i);
   });
 });
 
 /**
- * Última definição de uma POLICY na cadeia de migrations.
+ * Last definition of a POLICY in the migration chain.
  *
- * Mesma lógica de `definicaoEfetiva`, para o outro tipo de objeto: `create
- * policy` nasce, `alter policy` redefine, e quem manda é a última. Uma
- * expressão de policy não contém ponto e vírgula, então o statement vai do
- * `policy <nome> on` até o próximo `;`.
+ * Same logic as `definicaoEfetiva`, for the other kind of object: `create
+ * policy` creates it, `alter policy` redefines it, and the last one wins. A
+ * policy expression contains no semicolon, so the statement runs from
+ * `policy <name> on` up to the next `;`.
  */
 function policyEfetiva(nomeDaPolicy: string): string {
   const pasta = "supabase/migrations";
@@ -428,58 +434,58 @@ function policyEfetiva(nomeDaPolicy: string): string {
     }
   }
 
-  expect(ultimo, `nenhuma migration define a policy ${nomeDaPolicy}`).not.toBeNull();
+  expect(ultimo, `no migration defines the policy ${nomeDaPolicy}`).not.toBeNull();
   return ultimo as string;
 }
 
-describe("session_is_strong — RLS passa a exigir o segundo fator", () => {
-  // O buraco (A-17, sobra assumida pelo PR #146): o portão do segundo fator
-  // vivia só na tela e em createSupabaseServerClient. Um token aal1 de conta
-  // com TOTP continuava lendo e escrevendo pelo PostgREST direto — com a chave
-  // anon, que é pública — tudo o que as policies liberam para auth.uid().
-  // Nenhuma policy deste banco olhava o AAL: `grep -rin aal supabase/migrations`
-  // devolvia zero linhas.
+describe("session_is_strong — RLS now requires the second factor", () => {
+  // The hole (A-17, leftover accepted by PR #146): the second-factor gate lived
+  // only on the screen and in createSupabaseServerClient. An aal1 token for an
+  // account with TOTP could still read and write through PostgREST directly —
+  // with the anon key, which is public — everything the policies allow for
+  // auth.uid(). No policy in this database looked at the AAL: `grep -rin aal
+  // supabase/migrations` returned zero lines.
   const corpo = definicaoEfetiva("session_is_strong");
 
-  it("decide pela conta: quem não tem fator verificado não muda nada", () => {
+  it("decides by account: someone with no verified factor changes nothing", () => {
     expect(corpo).toMatch(/auth\.mfa_factors/i);
     expect(corpo).toMatch(/status\s*=\s*'verified'/i);
     expect(
       corpo,
-      "a função precisa liberar quem NÃO tem fator (not exists), senão ela "
-        + "fecha a plataforma para todo mundo que não usa segundo fator",
+      "the function has to let through anyone who has NO factor (not exists), otherwise it "
+        + "locks the platform for everyone who does not use a second factor",
     ).toMatch(/not\s+exists/i);
   });
 
-  it("a sessão forte é aal2 lido do token, não uma flag do app", () => {
+  it("a strong session is aal2 read from the token, not an app flag", () => {
     expect(corpo).toMatch(/auth\.jwt\(\)\s*->>\s*'aal'/i);
     expect(corpo).toMatch(/'aal2'/);
   });
 
-  it("é security definer com search_path fixo", () => {
-    // Sem definer ela não lê auth.mfa_factors; com search_path aberto, um
-    // schema no caminho do chamador sequestra o que ela consulta.
+  it("is security definer with a fixed search_path", () => {
+    // Without definer it cannot read auth.mfa_factors; with an open search_path, a
+    // schema on the caller's path hijacks what it queries.
     expect(corpo).toMatch(/security\s+definer/i);
     expect(corpo).toMatch(/set\s+search_path\s*=/i);
   });
 
-  it("anon continua podendo executar, senão a leitura pública aborta com 42501", () => {
-    // O Postgres avalia a expressão de uma policy com os privilégios do papel
-    // corrente, e toda policy deste banco é `TO public` — logo é avaliada
-    // também para anon. Foi o incidente de
-    // 20260901120000_restore_anon_execute_on_rls_predicates. Para anon a função
-    // responde TRUE e o predicado de dono segue filtrando: conceder não concede
-    // poder, revogar fecha o catálogo.
+  it("anon can still execute, otherwise public reads abort with 42501", () => {
+    // Postgres evaluates a policy expression with the privileges of the current
+    // role, and every policy in this database is `TO public` — so it is also
+    // evaluated for anon. That was the incident of
+    // 20260901120000_restore_anon_execute_on_rls_predicates. For anon the function
+    // answers TRUE and the owner predicate keeps filtering: granting gives no
+    // power, revoking closes the catalog.
     expect(textoDasMigrations()).toMatch(
       /grant\s+execute\s+on\s+function\s+public\.session_is_strong\(\)\s+to\s+[^;]*\banon\b/i,
     );
   });
 });
 
-describe("as policies que o segundo fator passa a proteger", () => {
-  // A lista é o contrato. Se alguém reescrever uma destas sem o portão, o
-  // vermelho aparece aqui — e não no dia em que a conta com TOTP for esvaziada
-  // por um token aal1.
+describe("the policies the second factor now protects", () => {
+  // The list is the contract. If someone rewrites one of these without the gate,
+  // the red shows up here — and not on the day the TOTP account is emptied out
+  // by an aal1 token.
   const protegidas = [
     "courses_insert_owner",
     "courses_update_owner",
@@ -501,48 +507,49 @@ describe("as policies que o segundo fator passa a proteger", () => {
     "lesson_comments_insert",
   ];
 
-  it.each(protegidas)("%s exige a sessão forte", (nome) => {
+  it.each(protegidas)("%s requires the strong session", (nome) => {
     expect(
       policyEfetiva(nome),
-      `${nome} voltou a decidir só por auth.uid(): um token aal1 de conta com `
-        + "TOTP passa por ela pelo PostgREST direto",
+      `${nome} went back to deciding only by auth.uid(): an aal1 token for an account with `
+        + "TOTP gets through it via PostgREST directly",
     ).toMatch(/session_is_strong\(\)/);
   });
 
-  it("a leitura pública do catálogo fica de fora do portão", () => {
-    // Gate em policy de leitura pública mata o funil de aquisição inteiro.
+  it("the public catalog read stays outside the gate", () => {
+    // A gate on a public read policy kills the entire acquisition funnel.
     for (const publica of ["courses_select_public", "course_landings_select_public"]) {
       expect(policyEfetiva(publica)).not.toMatch(/session_is_strong/);
     }
   });
 });
 
-describe("sala de controle do Ops — ler a pessoa exige admin com 2FA e não escreve nada", () => {
-  // A lista e o dossiê mostram dado pessoal e financeiro de qualquer conta. O
-  // portão é o do controle de conta do #326: admin ativo E aal2. Trocar por
-  // require_strong_session deixaria admin sem fator cadastrado ler tudo.
+describe("Ops control room — reading a person requires an admin with 2FA and writes nothing", () => {
+  // The list and the dossier show personal and financial data for any account.
+  // The gate is the one from the account control in #326: active admin AND aal2.
+  // Swapping it for require_strong_session would let an admin with no enrolled
+  // factor read everything.
   for (const nome of ["admin_search_users", "admin_get_user_dossier"]) {
     const corpo = definicaoEfetiva(nome);
 
-    it(`${nome}: security definer com search_path fixo`, () => {
+    it(`${nome}: security definer with a fixed search_path`, () => {
       expect(corpo).toMatch(/security\s+definer/i);
       expect(corpo).toMatch(/set\s+search_path\s+to\s+'public',\s*'pg_temp'/i);
     });
 
-    it(`${nome}: recusa quem não é admin ou não tem aal2`, () => {
+    it(`${nome}: refuses anyone who is not an admin or has no aal2`, () => {
       expect(corpo).toMatch(/public\.is_admin\(\)/i);
       expect(corpo).toMatch(/'aal2'/);
       expect(corpo).toMatch(/OPS_ADMIN_MFA_REQUIRED/);
     });
 
-    it(`${nome}: só lê`, () => {
+    it(`${nome}: read only`, () => {
       expect(corpo).not.toMatch(/\binsert\s+into\b|\bupdate\s+public\.|\bdelete\s+from\b/i);
     });
   }
 
-  it("o dossiê mostra contagem e data de conversa privada, nunca o texto", () => {
-    // advisor_messages.content e course_messages.body são conversa privada;
-    // course_lesson_content é o curso pago. O operador vê quanto e quando.
+  it("the dossier shows the count and date of a private conversation, never the text", () => {
+    // advisor_messages.content and course_messages.body are private conversation;
+    // course_lesson_content is the paid course. The operator sees how much and when.
     const corpo = definicaoEfetiva("admin_get_user_dossier");
     expect(corpo).not.toMatch(/\.content\b/);
     expect(corpo).not.toMatch(/\bm\.body\b/);

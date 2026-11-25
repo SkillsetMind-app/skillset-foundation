@@ -72,9 +72,9 @@ function brandFromProfile(profile: BrandProfile): MemberAreaBrand | null {
 }
 
 /**
- * A marca do criador para a área dele (/learn/areas/[criador]), pela mesma
- * regra da sala: o aluno não troca de logo ao sair da aula para a área.
- * `ref` é "@usuario" ou o uid. Falha = sem marca, nunca erro.
+ * The creator's brand for their area (/learn/areas/[criador]), by the same
+ * rule as the classroom: the learner does not switch logos when leaving the lesson for the area.
+ * `ref` is "@usuario" or the uid. A failure = no brand, never an error.
  */
 export async function getCreatorBrand(ref: string): Promise<MemberAreaBrand | null> {
   try {

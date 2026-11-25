@@ -13,10 +13,10 @@ import {
   toSqlTuple,
 } from "@/domain/drip-policy-parity-cases";
 
-// A liberação da aula vale em dois lugares: no JS (rota do vídeo e a sala de
-// aula) e no banco (public.lesson_is_released, nas policies de texto, link e
-// material). Os dois têm de responder igual. Este teste roda a tabela no JS e
-// confere que o smoke SQL roda a MESMA tabela; o smoke roda ela no banco.
+// Lesson release applies in two places: in JS (video route and the
+// classroom) and in the database (public.lesson_is_released, in the text, link and
+// material policies). Both must answer the same. This test runs the table in JS and
+// checks that the SQL smoke runs the SAME table; the smoke runs it in the database.
 const smokePath = join(
   process.cwd(),
   "supabase",
@@ -26,9 +26,9 @@ const smokePath = join(
 const now = new Date("2026-03-01T12:00:00.000Z");
 const dayMs = 24 * 60 * 60 * 1000;
 
-// O mesmo caminho de isLessonDripLocked (src/app/api/courses/video-token):
-// instant abre antes de tudo, aula fora do currículo abre, e a aula de amostra
-// é a free_preview_lesson_id do curso.
+// The same path as isLessonDripLocked (src/app/api/courses/video-token):
+// instant opens before anything else, a lesson outside the curriculum opens, and the sample lesson
+// is the course's free_preview_lesson_id.
 function releasedLikeTheRoute(item: DripParityCase): boolean {
   const course = { ...dripParityCourses[item.course], modules: dripParityModules };
   if ((course.dripStrategy ?? "instant") === "instant") {
@@ -51,12 +51,12 @@ function releasedLikeTheRoute(item: DripParityCase): boolean {
   ).unlocked;
 }
 
-describe("liberação da aula: JS e banco com a mesma tabela", () => {
+describe("lesson release: JS and database with the same table", () => {
   it.each(dripParityCases)("$name", (item) => {
     expect(releasedLikeTheRoute(item)).toBe(item.released);
   });
 
-  it("o smoke SQL roda exatamente estes casos", () => {
+  it("the SQL smoke runs exactly these cases", () => {
     const smoke = readFileSync(smokePath, "utf8");
     const block = smoke.split("-- drip-parity-cases:begin")[1]?.split("-- drip-parity-cases:end")[0] ?? "";
     const sqlTuples = block
@@ -68,7 +68,7 @@ describe("liberação da aula: JS e banco com a mesma tabela", () => {
     expect(sqlTuples.sort()).toEqual(dripParityCases.map(toSqlTuple).sort());
   });
 
-  it("o smoke SQL monta o mesmo currículo e as mesmas estratégias", () => {
+  it("the SQL smoke builds the same curriculum and the same strategies", () => {
     const smoke = readFileSync(smokePath, "utf8");
     for (const lesson of dripParityModules.flatMap((module) => module.lessons)) {
       expect(smoke).toContain(`'id', p || '-${lesson.id}', 'dripDelayDays', ${lesson.dripDelayDays})`);

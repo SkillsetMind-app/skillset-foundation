@@ -1,15 +1,15 @@
-// Trava de saída para o texto que a IA escreve para o professor (título,
-// descrição, quiz). A regra da casa: a plataforma não redige promessa de
-// resultado ou de renda nem alegação de saúde. Se redigir, a responsabilidade
-// vira nossa. O prompt já pede isso; esta lista é o cinto além do suspensório.
+// Output guard for the text the AI writes for the teacher (title,
+// description, quiz). The house rule: the platform does not draft promises of
+// results or income or health claims. If it did, the responsibility
+// would become ours. The prompt already asks for this; this list is the belt on top of the suspenders.
 //
-// Não vale para a legenda: ali a IA transcreve e traduz o que o PROFESSOR disse.
+// Does not apply to captions: there the AI transcribes and translates what the TEACHER said.
 //
-// ponytail: lista de palavras, não classificador. Pega o óbvio e deixa passar
-// paráfrase; o professor revisa tudo antes de usar. Cada termo de saúde é
-// amarrado a um alvo de saúde, para não barrar coaching comum ("treat
+// ponytail: word list, not a classifier. Catches the obvious and lets a
+// paraphrase through; the teacher reviews everything before using it. Each health term is
+// tied to a health target, so ordinary coaching is not blocked ("treat
 // yourself", "diagnose your funnel", "money-back guarantee", "make 3 calls").
-// Endureça com exemplos reais quando aparecerem.
+// Tighten with real examples when they show up.
 
 const HEALTH_TARGET =
   "(?:anxiety|depression|trauma|ptsd|adhd|ocd|insomnia|addiction|disorders?|illness(?:es)?|diseases?|symptoms?|panic attacks?|burnout|grief|cortisol|blood pressure|pain|mental health)";
@@ -71,8 +71,8 @@ const HEALTH_OR_THERAPY = new RegExp(
   "i",
 );
 
-// Frases que NOMEIAM o limite da prática (encaminhar a um profissional, "isto
-// não é terapia") são justamente o que a casa quer: saem antes do teste.
+// Phrases that NAME the limit of the practice (referring to a professional, "this
+// is not therapy") are exactly what the house wants: they are removed before the test.
 const SCOPE_OF_PRACTICE =
   /\brefer\w*\s+(?:\w+\s+){0,4}to\s+(?:a\s+)?(?:licensed\s+)?(?:therapist|counsell?or|mental health professional|doctor|physician)s?\b|\b(?:is\s+not|isn't|not)\s+(?:a\s+)?(?:therapy|therapist|treatment|counsell?ing)\b/gi;
 

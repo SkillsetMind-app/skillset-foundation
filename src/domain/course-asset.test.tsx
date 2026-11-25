@@ -105,8 +105,8 @@ describe("course asset validation", () => {
     );
   });
 
-  // O teto que recusa o envio é o do plano (50 MB), não o do bucket (500 MB).
-  // Validar em 500 MB deixava um PNG de 80 MB passar na tela e cair num 413.
+  // The cap that rejects the upload is the plan's (50 MB), not the bucket's (500 MB).
+  // Validating at 500 MB let an 80 MB PNG pass on the screen and fall into a 413.
   it("rejects a file above the effective Supabase limit even under the bucket ceiling", () => {
     const big = file("render.png", "image/png");
     Object.defineProperty(big, "size", { value: supabaseUploadLimitBytes + 1 });
@@ -222,42 +222,42 @@ describe("lesson video access authorization", () => {
 });
 
 describe("formatCourseAssetSize", () => {
-  // O teto de vídeo do Bunny é 5 GiB e era anunciado como "5120.0 MB".
-  it("usa GB acima de 1 GiB em vez de milhares de MB", () => {
+  // The Bunny video cap is 5 GiB and was announced as "5120.0 MB".
+  it("uses GB above 1 GiB instead of thousands of MB", () => {
     expect(formatCourseAssetSize(5 * 1024 * 1024 * 1024)).toBe("5 GB");
     expect(formatCourseAssetSize(1.5 * 1024 * 1024 * 1024)).toBe("1.5 GB");
   });
 
-  it("mantém as faixas menores intactas", () => {
+  it("keeps the smaller ranges intact", () => {
     expect(formatCourseAssetSize(512)).toBe("512 B");
     expect(formatCourseAssetSize(2 * 1024)).toBe("2.0 KB");
     expect(formatCourseAssetSize(50 * 1024 * 1024)).toBe("50.0 MB");
   });
 });
 
-describe("getCourseAssetUploadErrorMessage — falhas de vídeo", () => {
-  // O criador lia "bunny-create-failed:429" na caixa vermelha do estúdio.
-  it("traduz o rate limit do provedor sem citar código", () => {
+describe("getCourseAssetUploadErrorMessage — video failures", () => {
+  // The creator read "bunny-create-failed:429" in the studio's red box.
+  it("translates the provider's rate limit without citing a code", () => {
     const msg = getCourseAssetUploadErrorMessage(new Error("bunny-create-failed:429"));
     expect(msg).toMatch(/too many uploads/i);
     expect(msg).not.toMatch(/429|bunny/i);
   });
 
-  it("traduz sessão expirada e falta de permissão", () => {
+  it("translates an expired session and missing permission", () => {
     expect(getCourseAssetUploadErrorMessage(new Error("bunny-create-failed:401")))
       .toMatch(/session expired/i);
     expect(getCourseAssetUploadErrorMessage(new Error("bunny-create-failed:403")))
       .toMatch(/permission/i);
   });
 
-  it("trata status desconhecido do provedor como falha temporária", () => {
+  it("treats an unknown provider status as a temporary failure", () => {
     const msg = getCourseAssetUploadErrorMessage(new Error("bunny-create-failed:500"));
     expect(msg).toMatch(/try again/i);
     expect(msg).not.toMatch(/500|bunny/i);
   });
 
-  // tus lança DetailedError, cuja mensagem é um parágrafo de método, URL e offset.
-  it("reconhece queda de conexão do upload retomável pela forma do erro", () => {
+  // tus throws DetailedError, whose message is a paragraph of method, URL and offset.
+  it("recognizes a dropped connection on the resumable upload by the shape of the error", () => {
     const tusError = Object.assign(
       new Error("tus: failed to upload chunk at offset 0, originated from request (method: PATCH, url: https://x)"),
       { originalRequest: {}, originalResponse: {} },
@@ -267,7 +267,7 @@ describe("getCourseAssetUploadErrorMessage — falhas de vídeo", () => {
     expect(msg).not.toMatch(/PATCH|offset|tus:/);
   });
 
-  it("nunca devolve string interna crua como mensagem ao criador", () => {
+  it("never returns a raw internal string as a message to the creator", () => {
     expect(getCourseAssetUploadErrorMessage(new Error("some-service:503")))
       .not.toMatch(/some-service:503/);
     expect(getCourseAssetUploadErrorMessage(new Error("fetch failed")))

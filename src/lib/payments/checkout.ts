@@ -10,7 +10,7 @@ export async function startCourseCheckout(
     offerId?: string;
     offerCode?: string;
     priceId?: string;
-    /** A caixa do acesso imediato (UE, EEE e Reino Unido) foi marcada. */
+    /** The immediate-access checkbox (EU, EEA and UK) was ticked. */
     withdrawalConsent?: boolean;
   },
 ) {
@@ -43,7 +43,7 @@ export async function startGuestCourseCheckout(input: {
   offerId?: string;
   offerCode?: string;
   priceId?: string;
-  /** A caixa do acesso imediato (UE, EEE e Reino Unido) foi marcada. */
+  /** The immediate-access checkbox (EU, EEA and UK) was ticked. */
   withdrawalConsent?: boolean;
 }): Promise<"redirected" | "access_link_sent"> {
   const { courseId, name, email, captchaToken, offerId, offerCode, priceId, withdrawalConsent } = input;

@@ -5,10 +5,10 @@ export type AuthStatus =
   | "authenticated"
   | "unauthenticated"
   /**
-   * Há sessão (aal1), mas a conta tem segundo fator verificado e o código
-   * ainda não foi apresentado. Para o app é o mesmo que deslogado: `user` vem
-   * nulo e nenhuma superfície protegida abre. Só a tela do código de 6 dígitos
-   * sabe sair deste estado.
+   * There is a session (aal1), but the account has a verified second factor and the code
+   * has not been presented yet. For the app this is the same as signed out: `user` comes
+   * null and no protected surface opens. Only the 6-digit code screen
+   * knows how to leave this state.
    */
   | "mfa_required";
 
@@ -35,7 +35,7 @@ export type SignupInput = EmailPasswordCredentials & {
   displayName: string;
   /** UI language at signup, kept in the account metadata. */
   locale?: string;
-  /** Termos e Privacidade marcados no formulario: as versoes atuais vao com a conta. */
+  /** Terms and Privacy ticked in the form: the current versions go with the account. */
   acceptedTerms?: boolean;
 };
 

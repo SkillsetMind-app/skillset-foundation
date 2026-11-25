@@ -93,7 +93,7 @@ describe("getCourseOverviewStats", () => {
     ]);
   });
 
-  // O reembolso parcial muda o status: o pedido sumia da receita do produto.
+  // A partial refund changes the status: the order used to disappear from the product's revenue.
   it("counts a partially refunded order for what the teacher kept", () => {
     const stats = getCourseOverviewStats({
       course,
@@ -106,7 +106,7 @@ describe("getCourseOverviewStats", () => {
     expect(stats.revenue).toEqual([{ currency: "USD", netMinor: 7_000 }]);
   });
 
-  // Mesmo nome da Home e de Ganhos: sem moeda nao vira "USD" aqui.
+  // Same name as Home and Earnings: without a currency it does not become "USD" here.
   it("files an order without currency under UNSPECIFIED", () => {
     const stats = getCourseOverviewStats({
       course,
@@ -274,9 +274,9 @@ describe("getCourseMaintenanceIssues", () => {
     expect(expired?.hint).not.toContain("STILLGOOD");
   });
 
-  // O card "Needs your attention" repetia, palavra por palavra, duas linhas do
-  // checklist de publicacao que fica na MESMA tela: "Cover image" e "Learning
-  // outcomes". Nada que o checklist ja diga entra aqui.
+  // The "Needs your attention" card repeated, word for word, two lines of the
+  // publishing checklist that sits on the SAME screen: "Cover image" and "Learning
+  // outcomes". Nothing the checklist already says goes in here.
   it("leaves the publish checklist to say what the publish checklist already says", () => {
     const issues = getCourseMaintenanceIssues({
       course: { ...course, coverImageUrl: null, learningOutcomes: [] },
@@ -288,8 +288,8 @@ describe("getCourseMaintenanceIssues", () => {
     expect(issues).toEqual([]);
   });
 
-  // Contraprova: o que NAO esta no checklist continua sendo acusado, na mesma
-  // chamada em que capa e resultados estao faltando.
+  // Counter-proof: what is NOT in the checklist is still flagged, in the same
+  // call in which the cover and the outcomes are missing.
   it("still reports what the checklist never looks at", () => {
     const issues = getCourseMaintenanceIssues({
       course: { ...withLessons, coverImageUrl: null, learningOutcomes: [] },

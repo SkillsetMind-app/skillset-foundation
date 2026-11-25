@@ -153,13 +153,13 @@ export function subscribeToUserCourseReview(
 }
 
 /**
- * As avaliações mais recentes de VÁRIOS cursos, numa única leitura.
+ * The most recent reviews from SEVERAL courses, in a single read.
  *
- * ponytail: leitura única, sem realtime. A alternativa era chamar
- * subscribeToCourseReviews uma vez por curso, e cada chamada abre um canal
- * realtime próprio — a Home do professor pagaria N canais para desenhar uma
- * lista de "o que aconteceu". Se a lista precisar mudar sem recarregar, o
- * upgrade é uma inscrição só, filtrada por `in`.
+ * ponytail: single read, no realtime. The alternative was to call
+ * subscribeToCourseReviews once per course, and each call opens its own
+ * realtime channel — the teacher's Home would pay N channels to draw a
+ * list of "what happened". If the list needs to change without reloading, the
+ * upgrade is a single subscription, filtered by `in`.
  */
 export async function getRecentCourseReviews(
   courseIds: string[],

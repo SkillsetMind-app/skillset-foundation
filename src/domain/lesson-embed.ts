@@ -1,8 +1,8 @@
 export type TrustedLessonEmbed = {
   provider: "youtube" | "vimeo";
   embedUrl: string;
-  /** O id limpo do vídeo ([a-zA-Z0-9_-] no YouTube, dígitos no Vimeo). A sala
-   *  usa o do YouTube para a capa da aula sem lesson_thumbnail. */
+  /** The clean video id ([a-zA-Z0-9_-] on YouTube, digits on Vimeo). The classroom
+   *  uses the YouTube one for the lesson cover without lesson_thumbnail. */
   videoId: string;
 };
 

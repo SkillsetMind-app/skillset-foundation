@@ -5,9 +5,9 @@ import { describe, expect, it } from "vitest";
 
 import { planEntitlements } from "./entitlements";
 
-// O teto de IA mora em dois lugares: aiVideoMinutesPerMonth (o que a tela mostra)
-// e ai_video_seconds_limit_for_plan (o que o banco cobra). Este teste lê a
-// migration e trava a divergência.
+// The AI cap lives in two places: aiVideoMinutesPerMonth (what the screen shows)
+// and ai_video_seconds_limit_for_plan (what the database charges). This test reads the
+// migration and locks the two together.
 describe("AI video quota", () => {
   const sql = readFileSync("supabase/migrations/20261114010000_ia_do_professor.sql", "utf8");
   const body = sql.slice(sql.indexOf("function public.ai_video_seconds_limit_for_plan"));

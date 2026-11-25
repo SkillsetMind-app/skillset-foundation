@@ -5,28 +5,29 @@ import { useContext, useSyncExternalStore } from "react";
 import { parseSidebarPref, SIDEBAR_COOKIE, type SidebarPref } from "@/lib/ui/sidebar-cookie";
 import { SidebarPrefContext } from "@/lib/ui/sidebar-preference";
 
-/** 768–1023px: sempre o rail. Aberta, a barra deixaria ~465px de conteúdo e a
- *  barra do topo não cabe (conta em src/app/barra-do-topo-cabe.test.ts). */
+/** 768–1023px: always the rail. Open, the sidebar would leave ~465px of content and the
+ *  top bar does not fit (the math is in src/app/barra-do-topo-cabe.test.ts). */
 const TABLET_QUERY = "(min-width: 768px) and (width < 1024px)";
-/** 1024–1179px: o rail é o padrão de quem nunca escolheu; quem abriu fica aberto. */
+/** 1024–1179px: the rail is the default for anyone who never chose; whoever opened it stays open. */
 const LAPTOP_QUERY = "(min-width: 1024px) and (width < 1180px)";
 
-/** Onde a escolha morava antes do cookie. */
+/** Where the choice lived before the cookie. */
 export const LEGACY_SIDEBAR_KEY = "skillset_sidebar_state";
 
-// A chave velha não é lida (o cookie a substituiu); só é apagada, uma vez por
-// carga, quando este módulo chega ao navegador.
+// The old key is not read (the cookie replaced it); it is only deleted, once per
+// load, when this module reaches the browser.
 if (typeof window !== "undefined") {
   try {
     window.localStorage.removeItem(LEGACY_SIDEBAR_KEY);
   } catch {
-    // ponytail: armazenamento bloqueado (iframe isolado, modo privado): nada a apagar.
+    // ponytail: storage blocked (sandboxed iframe, private mode): nothing to delete.
   }
 }
 
-// O cookie é a fonte da escolha. No servidor (e na hidratação) vale o valor que
-// o layout da área logada leu; no navegador, o próprio cookie — o layout não
-// roda de novo numa navegação, e cada página monta o seu PlatformShell.
+// The cookie is the source of the choice. On the server (and during hydration)
+// the value the logged-in area layout read applies; in the browser, the cookie
+// itself — the layout does not run again on a navigation, and each page mounts
+// its own PlatformShell.
 const listeners = new Set<() => void>();
 const cookiePattern = new RegExp(`(?:^|;\\s*)${SIDEBAR_COOKIE}=([^;]*)`);
 
@@ -45,8 +46,9 @@ function readCookie(): SidebarPref {
   }
 }
 
-// Só o clique no botão (ou num grupo, na barra recolhida do desktop) muda a
-// barra. Sem expandir no hover: o menu pulava quando o cursor passava perto.
+// Only a click on the button (or on a group, in the collapsed desktop sidebar)
+// changes the sidebar. No expanding on hover: the menu jumped when the cursor
+// passed nearby.
 export function useSidebarState() {
   const fromServer = useContext(SidebarPrefContext);
   const pref = useSyncExternalStore(subscribe, readCookie, () => fromServer);
@@ -58,30 +60,30 @@ export function useSidebarState() {
     try {
       document.cookie = `${SIDEBAR_COOKIE}=${isCollapsed ? "expanded" : "collapsed"}; path=/; max-age=31536000; samesite=lax`;
     } catch {
-      // ponytail: página sem cookie (iframe isolado) fica no padrão da tela.
+      // ponytail: a page without cookies (sandboxed iframe) stays on the screen default.
     }
     listeners.forEach((onChange) => onChange());
   }
 
   return {
-    /** Na faixa do rail, um grupo recolhido abre a gaveta em vez da barra. */
+    /** In the rail range, a collapsed group opens the drawer instead of the sidebar. */
     isRail: isTablet || isLaptop,
     isCollapsed,
-    /** Sem escolha salva: o CSS decide a largura pela tela já no 1º quadro. */
+    /** No saved choice: CSS decides the width from the screen already on the 1st frame. */
     isAuto: pref === null,
     toggle,
   };
 }
 
 /**
- * `useSyncExternalStore` em vez de efeito + estado: o instantâneo do servidor é
- * `false` (o servidor não sabe o tamanho da janela), então não há divergência de
- * hidratação nem um render extra a cada montagem. A largura do primeiro quadro
- * vem do CSS (.platform-grid--auto), não daqui.
+ * `useSyncExternalStore` instead of effect + state: the server snapshot is
+ * `false` (the server does not know the window size), so there is no hydration
+ * mismatch and no extra render on every mount. The width of the first frame
+ * comes from CSS (.platform-grid--auto), not from here.
  *
- * ponytail: `matchMedia?.()` porque nem todo ambiente o tem — jsdom sem stub e
- * navegador antigo caem no `false`, que é o desenho de sempre, em vez de
- * derrubar a página inteira.
+ * ponytail: `matchMedia?.()` because not every environment has it — jsdom without
+ * a stub and an old browser fall back to `false`, which is the usual layout,
+ * instead of taking down the whole page.
  */
 function useMediaQuery(query: string) {
   return useSyncExternalStore(

@@ -1,17 +1,17 @@
-// Cliente mínimo da OpenAI para as ferramentas de IA do professor: transcrição
-// (legenda) e texto com saída em JSON (tradução, quiz, sugestões). Mesmo padrão
-// do kimi.ts: um fetch e um corpo JSON, sem SDK para manter sincronizado.
+// Minimal OpenAI client for the teacher's AI tools: transcription
+// (captions) and text with JSON output (translation, quiz, suggestions). Same pattern
+// as kimi.ts: one fetch and a JSON body, with no SDK to keep in sync.
 //
-// SEGURANÇA: OPENAI_API_KEY só no servidor (sem NEXT_PUBLIC), viaja no cabeçalho
-// e nunca numa mensagem de erro. A OpenAI devolve a chave recusada no texto do
-// erro ("Incorrect API key provided: sk-..."), então o texto é limpo antes de
-// virar exceção, que acaba em log.
+// SECURITY: OPENAI_API_KEY only on the server (no NEXT_PUBLIC), travels in the header
+// and never in an error message. OpenAI returns the rejected key in the error
+// text ("Incorrect API key provided: sk-..."), so the text is cleaned before
+// it becomes an exception, which ends up in a log.
 
-// Transcrição: whisper-1 é o modelo mais barato que devolve TEMPO. Os
-// gpt-4o-*-transcribe aceitam só response_format "json" (texto sem tempos),
-// então não geram legenda. Preço oficial: US$ 0,006 por minuto.
+// Transcription: whisper-1 is the cheapest model that returns TIMING. The
+// gpt-4o-*-transcribe models accept only response_format "json" (text without times),
+// so they do not produce captions. Official price: US$ 0.006 per minute.
 export const TRANSCRIBE_MODEL = "whisper-1";
-// Texto: barato, sem raciocínio (responde em segundos) e com saída por esquema.
+// Text: cheap, no reasoning (answers in seconds) and with schema output.
 export const TEXT_MODEL = "gpt-4.1-mini";
 
 const API = "https://api.openai.com/v1";
@@ -25,10 +25,10 @@ export class OpenAIConfigError extends Error {
 }
 
 /**
- * `no_credit`: a conta da OpenAI está sem saldo (429 com
- * insufficient_quota/credit_balance_exhausted). Repetir não adianta; é recarga.
- * `upstream_error`: falha da OpenAI, pode passar. `bad_reply`: a resposta veio
- * fora do formato pedido.
+ * `no_credit`: the OpenAI account is out of balance (429 with
+ * insufficient_quota/credit_balance_exhausted). Retrying does not help; it needs a top-up.
+ * `upstream_error`: an OpenAI failure, may pass. `bad_reply`: the reply came
+ * outside the requested format.
  */
 export class OpenAIError extends Error {
   readonly code: "no_credit" | "upstream_error" | "bad_reply";
@@ -54,7 +54,7 @@ async function failure(response: Response, key: string): Promise<OpenAIError> {
   return new OpenAIError(noCredit ? "no_credit" : "upstream_error", `openai_${response.status}: ${detail}`);
 }
 
-/** Transcreve um pedaço de áudio (até 25 MB) e devolve o WebVTT do Whisper. */
+/** Transcribes an audio chunk (up to 25 MB) and returns Whisper's WebVTT. */
 export async function transcribeToVtt(opts: {
   audio: Uint8Array<ArrayBuffer>;
   fileName: string;
@@ -79,8 +79,8 @@ export async function transcribeToVtt(opts: {
 }
 
 /**
- * Pede ao modelo de texto uma resposta que siga `schema` (structured outputs,
- * strict). Devolve o objeto já lido; quem chama valida o conteúdo.
+ * Asks the text model for an answer that follows `schema` (structured outputs,
+ * strict). Returns the object already parsed; the caller validates the content.
  */
 export async function askJson<T>(opts: {
   system: string;

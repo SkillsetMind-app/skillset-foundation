@@ -23,9 +23,9 @@ export type CourseAsset = {
   isPreview: boolean;
   lessonId: string | null;
   moduleId?: string | null;
-  /** Nome que o professor deu ao arquivo. Nulo: vale o nome do arquivo. */
+  /** Name the teacher gave the file. Null: the file name is used. */
   title?: string | null;
-  /** Ordem na aula, a partir de 0. Nula (arquivo novo): vai para o fim. */
+  /** Order in the lesson, starting at 0. Null (new file): goes to the end. */
   position?: number | null;
   createdAt?: unknown;
   updatedAt?: unknown;
@@ -33,12 +33,12 @@ export type CourseAsset = {
 
 export const courseAssetTitleMaxLength = 180;
 
-/** O que o aluno lê: o nome dado pelo professor, senão o nome do arquivo. */
+/** What the learner reads: the name given by the teacher, otherwise the file name. */
 export function getCourseAssetTitle(asset: Pick<CourseAsset, "title" | "fileName">): string {
   return asset.title?.trim() || asset.fileName;
 }
 
-/** Posição primeiro (sem posição vai para o fim), depois o nome que aparece. */
+/** Position first (no position goes to the end), then the name that is shown. */
 export function compareCourseAssets(left: CourseAsset, right: CourseAsset): number {
   const a = left.position ?? Number.POSITIVE_INFINITY;
   const b = right.position ?? Number.POSITIVE_INFINITY;
@@ -46,10 +46,10 @@ export function compareCourseAssets(left: CourseAsset, right: CourseAsset): numb
   return getCourseAssetTitle(left).localeCompare(getCourseAssetTitle(right));
 }
 
-// Quais kinds contam como "o vídeo da aula". A comparação literal estava aberta
-// em cinco lugares (rótulo de status, filtro de assets, gravação da fonte após o
-// envio, escolha do player); um sexto kind de vídeo teria que ser lembrado em
-// todos eles, e esquecer um significa a fonte parar de ser declarada em silêncio.
+// Which kinds count as "the lesson video". The literal comparison was open-coded
+// in five places (status label, asset filter, saving the source after the
+// upload, player choice); a sixth video kind would have to be remembered in
+// all of them, and forgetting one means the source silently stops being declared.
 export function isVideoAssetKind(kind: CourseAssetKind): boolean {
   return kind === "lesson_video" || kind === "live_recording";
 }
@@ -80,8 +80,8 @@ export const courseAssetAcceptTypes: Record<CourseAssetKind, string> = {
       ".xlsx",
       ".csv",
       ".zip",
-      // E-book e mapas mentais (XMind e FreeMind). O navegador costuma não
-      // saber o tipo deles, então a extensão é que abre o seletor.
+      // E-book and mind maps (XMind and FreeMind). The browser usually does not
+      // know their type, so the extension is what opens the picker.
       ".epub",
       "application/epub+zip",
       ".xmind",
@@ -182,9 +182,9 @@ export function getCourseAssetUploadErrorMessage(
     return translated("permission", "You do not have permission to upload files to this course.");
   }
 
-  // Falhas do provedor de vídeo chegavam como `bunny-create-failed:<status>` e
-  // eram impressas cruas na caixa vermelha do estúdio. O criador lia
-  // "bunny-create-failed:429" sem nenhuma pista de que bastava esperar.
+  // Failures from the video provider arrived as `bunny-create-failed:<status>` and
+  // were printed raw in the studio's red box. The creator read
+  // "bunny-create-failed:429" with no hint that all they had to do was wait.
   const bunnyStatus = /bunny-create-failed:(\d{3})/.exec(message)?.[1];
   if (bunnyStatus) {
     if (bunnyStatus === "429") {
@@ -199,8 +199,8 @@ export function getCourseAssetUploadErrorMessage(
     return translated("videoService", "Our video service did not accept the file just now. Try again in a few minutes.");
   }
 
-  // tus (upload retomável) lança DetailedError, cuja mensagem é um parágrafo de
-  // método, URL e offset. Detecta pela forma, já que não expõe `status`.
+  // tus (resumable upload) throws DetailedError, whose message is a paragraph of
+  // method, URL and offset. Detects it by shape, since it does not expose `status`.
   if (
     error
     && typeof error === "object"
@@ -223,8 +223,8 @@ export function getCourseAssetUploadErrorMessage(
     return t(`courseMedia.upload.errors.${key}`);
   }
 
-  // Última linha de defesa: nunca devolver texto que só faz sentido para quem
-  // escreveu o código.
+  // Last line of defense: never return text that only makes sense to whoever
+  // wrote the code.
   const looksInternal =
     /^[a-z0-9-]+:[0-9]{3}$/i.test(message.trim())
     || /tus:|fetch failed|NetworkError|ECONNRESET|ETIMEDOUT/i.test(message);
@@ -257,8 +257,8 @@ const lessonMaterialMimeTypes = new Set([
   "text/csv",
 ]);
 
-// O navegador manda tipo vazio (ou genérico) para .xmind e .mm, e o .mm vira
-// "código Objective-C++" no Mac. Para estes, a extensão decide o tipo gravado.
+// The browser sends an empty (or generic) type for .xmind and .mm, and .mm becomes
+// "Objective-C++ code" on the Mac. For these, the extension decides the stored type.
 const materialTypesByExtension: Record<string, string> = {
   epub: "application/epub+zip",
   xmind: "application/vnd.xmind.workbook",
@@ -266,11 +266,11 @@ const materialTypesByExtension: Record<string, string> = {
 };
 
 /**
- * O que o bucket `course-content` aceita: tipos que o navegador mostra sem
- * rodar script, ou que ele só baixa. SVG, HTML e XML ficam de fora — abertos
- * pelo link assinado, o script deles rodava no domínio do storage. Espelho de
+ * What the `course-content` bucket accepts: types the browser shows without
+ * running script, or that it only downloads. SVG, HTML and XML are left out: opened
+ * through the signed link, their script ran on the storage domain. Mirror of
  * supabase/migrations/20261008020000_course_content_sem_conteudo_ativo.sql
- * (materiais-extensoes.test.ts confere).
+ * (materiais-extensoes.test.ts checks it).
  */
 export const courseContentMimeTypes: readonly string[] = [
   ...new Set([
@@ -289,7 +289,7 @@ export const courseContentMimeTypes: readonly string[] = [
   ]),
 ];
 
-/** Mesma regra do Storage: o tipo exato ou o curinga da família (`video/*`). */
+/** Same rule as Storage: the exact type or the family wildcard (`video/*`). */
 export function isCourseContentMimeType(type: string): boolean {
   const slash = type.indexOf("/");
   return courseContentMimeTypes.includes(type)
@@ -322,11 +322,11 @@ function getFileExtension(fileName: string) {
 }
 
 /**
- * O tipo gravado no arquivo e na linha. Tipo vazio quebrava o envio: a linha
- * exige ao menos 3 letras em content_type, e um .md ou .xmind sem tipo do
- * navegador caía no erro genérico. Fora de `courseContentMimeTypes` (SVG,
- * HTML, XML, tipo vazio) vira application/octet-stream: o navegador baixa em
- * vez de abrir.
+ * The type stored on the file and on the row. An empty type broke the upload: the row
+ * requires at least 3 letters in content_type, and a .md or .xmind with no browser
+ * type fell into the generic error. Outside `courseContentMimeTypes` (SVG,
+ * HTML, XML, empty type) it becomes application/octet-stream: the browser downloads it
+ * instead of opening it.
  */
 export function getCourseAssetContentType(file: File): string {
   const type = materialTypesByExtension[getFileExtension(file.name)] ?? file.type;
@@ -334,9 +334,9 @@ export function getCourseAssetContentType(file: File): string {
 }
 
 export function isAllowedCourseAssetFile(file: File, kind: CourseAssetKind): boolean {
-  // Valida contra o teto que de fato recusa o envio (o do plano), não contra o
-  // do bucket. Tudo que passa por aqui vai para o Supabase Storage; validar em
-  // 500 MB deixava um PNG de 80 MB "passar" na tela e cair num 413 em seguida.
+  // Validates against the cap that actually rejects the upload (the plan's), not against the
+  // bucket's. Everything that goes through here goes to Supabase Storage; validating at
+  // 500 MB let an 80 MB PNG "pass" on the screen and then fall into a 413.
   if (file.size > supabaseUploadLimitBytes) {
     return false;
   }
@@ -376,9 +376,9 @@ export function formatCourseAssetSize(size: number): string {
     return `${(size / (1024 * 1024)).toFixed(1)} MB`;
   }
 
-  // Sem este ramo, o teto de vídeo do Bunny (5 GiB) era anunciado ao criador
-  // como "5120.0 MB" — um número que ninguém compara mentalmente com o arquivo
-  // que acabou de arrastar.
+  // Without this branch, the Bunny video cap (5 GiB) was announced to the creator
+  // as "5120.0 MB", a number nobody mentally compares with the file
+  // you just dragged in.
   return `${(size / (1024 * 1024 * 1024)).toFixed(size % (1024 * 1024 * 1024) === 0 ? 0 : 1)} GB`;
 }
 
