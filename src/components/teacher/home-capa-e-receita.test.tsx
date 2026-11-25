@@ -78,9 +78,9 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
-// A pessoa nao reconhecia o proprio produto: o card da home era so texto.
-describe("Home do professor: o card do produto mostra a capa", () => {
-  it("usa a capa do produto quando ela existe e o placeholder quando nao existe", async () => {
+// The person did not recognize their own product: the home card was text only.
+describe("Teacher home: the product card shows the cover", () => {
+  it("uses the product cover when it exists and the placeholder when it does not", async () => {
     state.courses = [
       course("com-capa", "Curso com capa", "https://cdn.example/cover.jpg"),
       course("sem-capa", "Curso sem capa", null),
@@ -88,9 +88,9 @@ describe("Home do professor: o card do produto mostra a capa", () => {
 
     render(<TeacherStudioDashboard />);
 
-    // Escopo na secao de produtos: o titulo do curso tambem aparece em
-    // outros blocos da home (Top courses, atividade), e a busca solta ficaria
-    // ambigua conforme esses blocos aparecem ou nao.
+    // Scoped to the products section: the course title also appears in
+    // other home blocks (Top courses, activity), and a loose search would be
+    // ambiguous depending on whether those blocks appear or not.
     const produtos = await screen.findByRole("region", {
       name: "Products in your workspace",
     });
@@ -100,24 +100,24 @@ describe("Home do professor: o card do produto mostra a capa", () => {
     const img = comCapa.querySelector("img");
     expect(img).not.toBeNull();
     expect(img).toHaveAttribute("src", "https://cdn.example/cover.jpg");
-    // Capa decorativa: o titulo do produto ja esta no card como texto.
+    // Decorative cover: the product title is already on the card as text.
     expect(img).toHaveAttribute("alt", "");
 
-    // Sem capa nao inventamos imagem: fica o mesmo icone da lista de produtos.
+    // With no cover we do not invent an image: the same icon as the products list stays.
     expect(semCapa.querySelector("img")).toBeNull();
     expect(semCapa.querySelector("svg")).not.toBeNull();
   });
 });
 
-// Antes da 1a venda o bloco de desempenho era ~700px de nada.
-describe("Home do professor: desempenho so com historico de venda", () => {
-  it("sem nenhuma venda esconde o grafico, o Top courses e os tiles de $0", async () => {
+// Before the 1st sale the performance block was ~700px of nothing.
+describe("Teacher home: performance only with sales history", () => {
+  it("with no sales, hides the chart, Top courses and the $0 tiles", async () => {
     state.courses = [course("c1", "Curso sem venda", null)];
     state.orders = [];
 
     render(<TeacherStudioDashboard />);
 
-    // Os tiles de $0 / 0 tambem saem: so aparecem com a 1a venda paga.
+    // The $0 / 0 tiles also go away: they only appear with the 1st paid sale.
     await screen.findByRole("heading", { level: 1 });
     expect(screen.queryByText("Revenue, 30d")).toBeNull();
     expect(screen.queryByText("New students")).toBeNull();
@@ -127,7 +127,7 @@ describe("Home do professor: desempenho so com historico de venda", () => {
     expect(screen.queryByText("No revenue yet")).toBeNull();
   });
 
-  it("com uma venda paga o grafico e o Top courses voltam", async () => {
+  it("with one paid sale, the chart and Top courses come back", async () => {
     state.courses = [course("c1", "Curso vendido", null)];
     state.orders = [
       {

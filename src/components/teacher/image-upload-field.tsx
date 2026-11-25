@@ -11,48 +11,48 @@ import { UploadProgressNote } from "./upload-progress-note";
 
 type FileInputAttrs = Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "className"> & {
   ref?: Ref<HTMLInputElement>;
-  /** Trocar o valor remonta o campo de arquivo e limpa a escolha anterior. */
+  /** Changing the value remounts the file input and clears the previous choice. */
   resetKey?: number;
 };
 
 export type ImageUploadFieldProps = {
-  /** Nome do campo: o título visível e o nome da região. */
+  /** Field name: the visible title and the name of the region. */
   title: string;
-  /** Regras do arquivo, logo abaixo do título; também descrevem o botão. */
+  /** File rules, right below the title; they also describe the button. */
   help?: string;
   preview: {
     src: string | null | undefined;
     alt: string;
-    /** 2:3 em 128px (capa do módulo); sem isto, 16:9 em até 200px. */
+    /** 2:3 at 128px (module cover); without this, 16:9 up to 200px. */
     portrait?: boolean;
-    /** Outra moldura (proporção e largura) no lugar de 16:9 em até 200px:
-     *  a vitrine usa 1:1 no logo e 16:7 na capa, como já desenhava.
-     *  Ignorada quando `portrait` está ligado (vale a moldura 2:3). */
+    /** Another frame (ratio and width) in place of 16:9 up to 200px:
+     *  the storefront uses 1:1 for the logo and 16:7 for the cover, as it already drew.
+     *  Ignored when `portrait` is on (the 2:3 frame applies). */
     frame?: string;
-    /** A imagem inteira, com folga, em vez de cobrir a moldura (o logo). */
+    /** The whole image, with margin, instead of covering the frame (the logo). */
     contain?: boolean;
-    /** Texto do quadro vazio. */
+    /** Text of the empty box. */
     emptyLabel?: string;
   };
-  /** Rótulo fixo do botão: não vira "Uploading..."; o andamento é a nota. */
+  /** Fixed button label: it does not become "Uploading..."; the progress is the note. */
   triggerLabel: string;
-  /** O campo de arquivo como cada tela já o tinha (accept, onChange, disabled...). */
+  /** The file input as each screen already had it (accept, onChange, disabled...). */
   input: FileInputAttrs;
-  /** "Remove" em texto vermelho, só com imagem e fora da vista durante um envio. */
+  /** "Remove" in red text, only with an image and out of view during an upload. */
   remove?: { label: string; onClick: () => void };
   progress: UploadCourseAssetProgress | null;
   error?: string;
-  /** Linha de ajuda quando nada sobe e não há erro. */
+  /** Help line when nothing is uploading and there is no error. */
   note?: string;
   className?: string;
 };
 
 /**
- * A casca única do campo de imagem (B-05): prévia, botão de escolher/trocar,
- * nota de envio, aviso de erro e o "Remove". Eram quatro desenhos à mão (as
- * duas capas do construtor, a imagem da página de venda e a capa da área de
- * membros). Só apresentação: cada tela segue com o próprio envio, limites,
- * compressão e o que faz com o resultado.
+ * The single shell of the image field (B-05): preview, choose/replace button,
+ * upload note, error notice and the "Remove". There were four hand-made designs (the
+ * two builder covers, the sales page image and the members area
+ * cover). Presentation only: each screen keeps its own upload, limits,
+ * compression and what it does with the result.
  */
 export function ImageUploadField({
   title,
@@ -89,7 +89,7 @@ export function ImageUploadField({
           }`}
         >
           {preview.src ? (
-            // eslint-disable-next-line @next/next/no-img-element -- a imagem vem do Storage ou de um link colado
+            // eslint-disable-next-line @next/next/no-img-element -- the image comes from Storage or a pasted link
             <img src={preview.src} alt={preview.alt} className={preview.contain ? "h-full w-full object-contain p-2" : "h-full w-full object-cover"} />
           ) : (
             <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-[var(--color-ink-soft)]">
@@ -129,7 +129,7 @@ export function ImageUploadField({
             ) : null}
           </div>
 
-          {/* Um lugar só para o estado: andamento, ou erro, ou a ajuda. */}
+          {/* One place for the state: progress, or error, or the help. */}
           {progress ? (
             <UploadProgressNote progress={progress} />
           ) : error ? (

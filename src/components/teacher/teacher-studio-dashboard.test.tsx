@@ -9,11 +9,11 @@ const { mockUser, state, data } = vi.hoisted(() => {
     orders: [] as unknown[],
     profile: { creatorVerificationStatus: "none" } as Record<string, unknown>,
     requireVerification: false,
-    // Quando definido, substitui a resposta do ajuste de verificacao (para
-    // segurar a leitura e ver o estado "carregando").
+    // When set, it replaces the verification adjustment response (to
+    // hold the read and see the "loading" state).
     verificationFlag: null as Promise<boolean> | null,
     activationBlocked: false,
-    // Sem plano ativo nem teste em curso: o passo do plano entra na lista.
+    // No active plan and no trial in progress: the plan step enters the list.
     planRequired: false,
     ordersFail: false,
   };
@@ -25,11 +25,11 @@ const { mockUser, state, data } = vi.hoisted(() => {
       roles: ["teacher"],
     },
     state,
-    // Espioes, nao so stubs: a prova de que a Home le cada dado UMA vez conta
-    // as chamadas a estas tres funcoes.
+    // Spies, not just stubs: the proof that the Home reads each piece of data ONCE counts
+    // the calls to these three functions.
     data: {
       subscribeToTeacherCourses: vi.fn(
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a assinatura real tem o 3o argumento (erro)
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars -- the real signature has the 3rd argument (error)
         (_uid: string, onData: (courses: unknown[]) => void, _onError?: (error: Error) => void) => {
           onData(state.courses);
           return () => undefined;
@@ -42,7 +42,7 @@ const { mockUser, state, data } = vi.hoisted(() => {
             else onData(state.orders);
           };
           read();
-          // Como o de verdade: `reload` le de novo sem mexer no canal.
+          // Like the real one: `reload` re-reads without touching the channel.
           return Object.assign(() => undefined, { reload: async () => read() });
         },
       ),
@@ -63,9 +63,9 @@ vi.mock("@/components/auth/auth-provider", () => ({
   }),
 }));
 
-// Sem mock do i18n: fora do I18nProvider, useTranslation cai no dicionario
-// ingles real. O mock antigo devolvia a CHAVE crua para tudo que nao estava
-// no mapa, e a Home agora le todos os rotulos do dicionario.
+// No i18n mock: outside the I18nProvider, useTranslation falls back to the real
+// English dictionary. The old mock returned the raw KEY for everything that was not
+// in the map, and the Home now reads every label from the dictionary.
 
 vi.mock("@/lib/data/teacher-courses", () => ({
   subscribeToTeacherCourses: data.subscribeToTeacherCourses,
@@ -128,11 +128,11 @@ async function stepLabels() {
     .map((item) => item.querySelector("strong")?.textContent);
 }
 
-// O passo aberto: destacado no proprio lugar da lista, com o botao. Era o
-// painel "Recommended now", que repetia o titulo e a frase do mesmo passo.
+// The open step: highlighted in its own place in the list, with the button. It was the
+// "Recommended now" panel, which repeated the title and the sentence of the same step.
 function currentStep() {
   const step = document.querySelector<HTMLElement>('li[aria-current="step"]');
-  if (!step) throw new Error("nenhum passo aberto");
+  if (!step) throw new Error("no open step");
   return step;
 }
 
@@ -152,7 +152,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("TeacherStudioDashboard", () => {
-  it("leitura de vendas que falha: erro com 'Try again', que le de novo sem abrir outra inscricao", async () => {
+  it("a sales read that fails: error with 'Try again', which re-reads without opening another subscription", async () => {
     state.courses = [course({ status: "published" })];
     state.ordersFail = true;
     render(<TeacherStudioDashboard />);
@@ -167,10 +167,10 @@ describe("TeacherStudioDashboard", () => {
     expect(data.subscribeToTeacherOrders).toHaveBeenCalledTimes(1);
   });
 
-  // Os mesmos quatro tipos da tela de criacao. Gratis, assinatura e programa
-  // guiado deixaram de ser tipo.
+  // The same four types as the creation screen. Free, subscription and guided
+  // program stopped being a type.
   it("routes each of the four product types to the creation screen", async () => {
-    // Os formatos sao atalhos de quem ja tem produto (na 1a visita saem).
+    // The formats are shortcuts for those who already have a product (on the 1st visit they go away).
     state.courses = [course({})];
     render(<TeacherStudioDashboard />);
 
@@ -193,9 +193,9 @@ describe("TeacherStudioDashboard", () => {
     expect(within(formats).queryByText(/Guided program|Subscription|Free program/)).toBeNull();
   });
 
-  // O painel com 0 produtos era uma faixa tracejada com "No products in this
-  // view yet.". Agora e a cena do primeiro produto e o unico botao latao.
-  it("sem produto: a cena do primeiro produto e o botao latao de criar", async () => {
+  // The panel with 0 products was a dashed strip with "No products in this
+  // view yet.". Now it is the first-product scene and the only brass button.
+  it("no product: the first-product scene and the brass create button", async () => {
     render(<TeacherStudioDashboard />);
 
     const heading = await screen.findByRole("heading", { name: "Your first product starts here." });
@@ -207,9 +207,9 @@ describe("TeacherStudioDashboard", () => {
     expect(screen.queryByText("No products in this view yet.")).toBeNull();
   });
 
-  // 1a visita: quatro botoes fortes, cinco filtros sobre lista vazia e quatro
-  // formatos disputavam com o "Create my first product". Agora ele e o unico.
-  it("sem produto: some filtro, 'Show all' e formatos; o vazio guarda o unico botao forte", async () => {
+  // 1st visit: four strong buttons, five filters over an empty list and four
+  // formats competed with "Create my first product". Now it is the only one.
+  it("no product: the filter, 'Show all' and the formats go away; the empty state holds the only strong button", async () => {
     render(<TeacherStudioDashboard />);
 
     await screen.findByRole("heading", { name: "Your first product starts here." });
@@ -221,13 +221,13 @@ describe("TeacherStudioDashboard", () => {
     expect(screen.queryByText("Revenue, 30d")).toBeNull();
     expect(screen.getByRole("link", { name: "New product" })).toHaveClass("button-outline");
     expect(screen.getByRole("link", { name: "Edit storefront" })).not.toHaveClass("button-solid");
-    // O passo "criar" fica destacado, mas sem botao proprio: o do vazio basta.
+    // The "create" step is highlighted, but with no button of its own: the one in the empty state is enough.
     await waitFor(() => expect(currentStep()).toHaveTextContent("Create a product"));
     expect(currentStep().querySelector(".button-solid")).toBeNull();
     expect(document.querySelectorAll(".button-solid")).toHaveLength(0);
   });
 
-  it("com produto: filtros, 'Show all' e o 'New product' solido voltam", async () => {
+  it("with a product: the filters, 'Show all' and the solid 'New product' come back", async () => {
     state.courses = [course({})];
     render(<TeacherStudioDashboard />);
 
@@ -236,9 +236,9 @@ describe("TeacherStudioDashboard", () => {
     expect(screen.getByRole("link", { name: "New product" })).toHaveClass("button-solid");
   });
 
-  // Os filtros de produto sao um filtro, nao abas de secao: o seletor
-  // segmentado da casa (aria-pressed), o mesmo do periodo.
-  it("filtros de produto marcam a escolha com aria-pressed e filtram a lista", async () => {
+  // The product filters are a filter, not section tabs: the house segmented
+  // selector (aria-pressed), the same as the period one.
+  it("product filters mark the choice with aria-pressed and filter the list", async () => {
     state.courses = [course({ title: "Draft course", status: "draft" }), course({ id: "live", title: "Live course", status: "published" })];
     render(<TeacherStudioDashboard />);
 
@@ -254,25 +254,25 @@ describe("TeacherStudioDashboard", () => {
   });
 });
 
-// O que a pessoa sofria: o passo 2 so fechava com verificacao APROVADA e
-// mandava para /teach/verification, que ninguem exige; nao havia passo de
-// publicar; o progresso parava em 67% e o "Recomendado agora" era a
-// verificacao. Os passos agora sao as travas reais do publish.
-describe("Inicio do professor: os passos sao as travas reais do publish", () => {
-  it("professor novo: criar e publicar, sem Stripe nem verificacao", async () => {
+// What the person suffered: step 2 only closed with an APPROVED verification and
+// sent them to /teach/verification, which nobody requires; there was no
+// publish step; progress stopped at 67% and the "Recommended now" was
+// the verification. The steps are now the real publish gates.
+describe("Teacher home: the steps are the real publish gates", () => {
+  it("new teacher: create and publish, no Stripe or verification", async () => {
     render(<TeacherStudioDashboard />);
 
     expect(await stepLabels()).toEqual(["Create a product", "Publish your product"]);
     expect(screen.getByText("0 of 2 complete")).toBeInTheDocument();
     expect(currentStep()).toHaveTextContent("Create a product");
-    // A frase do passo aparece uma vez so (o painel ao lado a repetia).
+    // The step sentence shows up only once (the panel beside it repeated it).
     expect(screen.getAllByText(/Choose the delivery and access model/)).toHaveLength(1);
     expect(screen.queryByText("Recommended now")).toBeNull();
   });
 
-  // O cartao so e pedido depois de criar: o teste gratis e exigido para
-  // publicar, nao para montar o produto.
-  it("sem plano: criar vem antes do plano, e o plano abre os cartoes de plano", async () => {
+  // The card is only asked for after creating: the free trial is required to
+  // publish, not to build the product.
+  it("no plan: create comes before the plan, and the plan opens the plan cards", async () => {
     state.planRequired = true;
     render(<TeacherStudioDashboard />);
 
@@ -282,7 +282,7 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
     expect(currentStep()).toHaveTextContent("Create a product");
   });
 
-  it("sem plano e com produto: o recomendado e o plano, em /account/plans", async () => {
+  it("no plan and with a product: the recommended one is the plan, at /account/plans", async () => {
     state.planRequired = true;
     state.courses = [course({ paymentType: "free", priceAmountMinor: 0 })];
     render(<TeacherStudioDashboard />);
@@ -294,7 +294,7 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
     );
   });
 
-  it("curso pago em rascunho: Stripe entra antes do publish e vira o recomendado", async () => {
+  it("paid course in draft: Stripe comes before publish and becomes the recommended one", async () => {
     state.courses = [course({})];
 
     render(<TeacherStudioDashboard />);
@@ -305,12 +305,12 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
       "Publish your product",
     ]);
     const steps = screen.getByRole("list", { name: "Creator next steps" });
-    // A frase que MOROU na faixa amarela permanente do topo do /teach.
+    // The sentence that LIVED in the permanent yellow strip at the top of /teach.
     expect(within(steps).getByText(/buyers are charged on it directly/i)).toBeInTheDocument();
     expect(screen.getByText("1 of 3 complete")).toBeInTheDocument();
     expect(currentStep()).toHaveTextContent("Connect Stripe");
     expect(within(currentStep()).getByRole("link", { name: /Connect Stripe/ })).toHaveClass("button-solid");
-    // A frase do Stripe aparece uma vez so na tela.
+    // The Stripe sentence shows up only once on the screen.
     expect(screen.getAllByText(/buyers are charged on it directly/i)).toHaveLength(1);
     expect(within(currentStep()).getByRole("link", { name: /Connect Stripe/ })).toHaveAttribute(
       "href",
@@ -318,7 +318,7 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
     );
   });
 
-  it("Stripe pronto: o recomendado e publicar, no painel de publicacao do curso", async () => {
+  it("Stripe ready: the recommended one is publish, in the course's publish panel", async () => {
     state.courses = [course({})];
     state.profile = {
       creatorVerificationStatus: "none",
@@ -338,7 +338,7 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
     );
   });
 
-  it("curso gratis nao pede Stripe", async () => {
+  it("free course does not ask for Stripe", async () => {
     state.courses = [course({ paymentType: "free", priceAmountMinor: 0 })];
 
     render(<TeacherStudioDashboard />);
@@ -346,7 +346,7 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
     expect(await stepLabels()).toEqual(["Create a product", "Publish your product"]);
   });
 
-  it("verificacao so entra quando a plataforma exige", async () => {
+  it("verification only enters when the platform requires it", async () => {
     state.requireVerification = true;
 
     render(<TeacherStudioDashboard />);
@@ -364,9 +364,9 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
     ).toHaveAttribute("href", "/teach/verification");
   });
 
-  // Com tudo feito, o bloco ficava em 100% recomendando "Publish your product"
-  // a quem ja tinha publicado e vendido.
-  it("publicado e com Stripe: chegando com tudo feito, o bloco de passos sai da tela", async () => {
+  // With everything done, the block stayed at 100% recommending "Publish your product"
+  // to someone who had already published and sold.
+  it("published and with Stripe: arriving with everything done, the steps block leaves the screen", async () => {
     state.courses = [course({ status: "published" })];
     state.profile = {
       stripeConnectChargesEnabled: true,
@@ -383,9 +383,9 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
     expect(screen.queryByText(/Review and publish/)).toBeNull();
   });
 
-  // Com a taxa exigida e nao paga, a Home mandava "Review and publish" e o
-  // servidor recusava com "Pay the one-time activation fee...".
-  it("taxa de ativacao pendente: o publish avisa a taxa unica e diz 'Activate and publish'", async () => {
+  // With the fee required and unpaid, the Home sent "Review and publish" and the
+  // server refused with "Pay the one-time activation fee...".
+  it("activation fee pending: publish warns of the one-time fee and says 'Activate and publish'", async () => {
     state.courses = [course({})];
     state.profile = { stripeConnectChargesEnabled: true, stripeConnectPayoutsEnabled: true };
     state.activationBlocked = true;
@@ -400,7 +400,7 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
     expect(within(currentStep()).getByText(/one-time US\$25 activation fee/)).toBeInTheDocument();
   });
 
-  it("taxa paga ou nao exigida: publish sem aviso de taxa", async () => {
+  it("fee paid or not required: publish without a fee notice", async () => {
     state.courses = [course({})];
     state.profile = { stripeConnectChargesEnabled: true, stripeConnectPayoutsEnabled: true };
 
@@ -414,13 +414,13 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
     expect(screen.queryByText(/activation fee/)).toBeNull();
   });
 
-  it("curso pago arquivado nao pede Stripe nem vira alerta urgente", async () => {
-    // Arquivar e status "inactive": o curso saiu da venda.
+  it("archived paid course does not ask for Stripe nor become an urgent alert", async () => {
+    // Archiving is status "inactive": the course left sale.
     state.courses = [course({ status: "inactive" })];
 
     render(<TeacherStudioDashboard />);
 
-    // Sem passo do Stripe, criar e publicar ja estao feitos: o bloco sai.
+    // With no Stripe step, create and publish are already done: the block leaves.
     await waitFor(() =>
       expect(screen.queryByRole("list", { name: "Creator next steps" })).toBeNull(),
     );
@@ -431,10 +431,10 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
     expect(screen.queryByText("Finish your Stripe setup")).toBeNull();
   });
 
-  // Antes de as travas chegarem a lista ainda muda: "1 of 2" e "50%" virariam
-  // "1 of 3", e para quem ja tem tudo pronto o bloco aparecia e sumia. Agora o
-  // bloco so entra com os dados prontos, ja com a contagem certa.
-  it("enquanto as travas carregam, o bloco de passos nao aparece", async () => {
+  // Before the gates arrive the list still changes: "1 of 2" and "50%" would become
+  // "1 of 3", and for someone with everything ready the block appeared and vanished. Now the
+  // block only enters with the data ready, already with the right count.
+  it("while the gates load, the steps block does not show up", async () => {
     let resolveFlag: (value: boolean) => void = () => undefined;
     state.verificationFlag = new Promise<boolean>((resolve) => {
       resolveFlag = resolve;
@@ -457,10 +457,10 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
     expect(within(section).getByText("33%")).toBeInTheDocument();
   });
 
-  // O bloco entra ~0,6 s depois da lista de produtos; sem reserva, "My
-  // products" descia centenas de pixels no celular. A altura da ultima visita
-  // (mesma pessoa, mesma largura de tela) segura o lugar ate os dados chegarem.
-  describe("lugar reservado enquanto as travas carregam", () => {
+  // The block enters ~0.6 s after the product list; with no reserved space, "My
+  // products" dropped hundreds of pixels on the phone. The height from the last visit
+  // (same person, same screen width) holds the place until the data arrives.
+  describe("place reserved while the gates load", () => {
     function holdGates() {
       let release: (value: boolean) => void = () => undefined;
       state.verificationFlag = new Promise<boolean>((resolve) => {
@@ -477,7 +477,7 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
     }
     const placeholder = () => document.querySelector<HTMLElement>('[data-reserved="next-steps"]');
 
-    it("com a altura da ultima visita: reserva o lugar e troca pelo bloco quando os dados chegam", async () => {
+    it("with the last visit's height: reserves the place and swaps for the block when the data arrives", async () => {
       const release = holdGates();
       saveHeight({ h: 312 });
       render(<TeacherStudioDashboard />);
@@ -487,13 +487,13 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
       expect(placeholder()).toHaveAttribute("aria-hidden", "true");
       expect(screen.queryByRole("list", { name: "Creator next steps" })).toBeNull();
 
-      // O jsdom nao mede: a altura do bloco de hoje vem daqui.
+      // jsdom does not measure: today's block height comes from here.
       const offset = vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(280);
       release(true);
 
       await screen.findByRole("list", { name: "Creator next steps" });
       expect(placeholder()).toBeNull();
-      // A visita de hoje grava a sua altura para a proxima.
+      // Today's visit records its height for the next one.
       await waitFor(() =>
         expect(JSON.parse(window.localStorage.getItem("skillset.studio.nextStepsHeight.v1") ?? "{}")).toEqual({
           uid: "teacher-1",
@@ -504,7 +504,7 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
       offset.mockRestore();
     });
 
-    it("chegando com tudo feito: grava 0, e a proxima visita nao reserva nada", async () => {
+    it("arriving with everything done: records 0, and the next visit reserves nothing", async () => {
       saveHeight({ h: 312 });
       state.courses = [course({ status: "published" })];
       state.profile = { stripeConnectChargesEnabled: true, stripeConnectPayoutsEnabled: true };
@@ -520,7 +520,7 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
       ["outra largura de tela", { w: window.innerWidth + 200, h: 312 }],
       ["outra pessoa neste aparelho", { uid: "someone-else", h: 312 }],
       ["o bloco nao aparecia na ultima visita", { h: 0 }],
-    ])("%s: nao reserva nada", async (_label, fields) => {
+    ])("%s: reserves nothing", async (_label, fields) => {
       holdGates();
       saveHeight(fields);
       render(<TeacherStudioDashboard />);
@@ -535,7 +535,7 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
     ["pending", "In review"],
     ["needs_changes", "Edit application"],
     ["rejected", "Edit application"],
-  ])("verificacao '%s': o botao diz '%s'", async (status, action) => {
+  ])("verification '%s': the button says '%s'", async (status, action) => {
     state.requireVerification = true;
     state.courses = [course({ paymentType: "free", priceAmountMinor: 0 })];
     state.profile = { creatorVerificationStatus: status };
@@ -550,11 +550,11 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
   });
 });
 
-// Tres listas de "proximo passo" disputavam a mesma tela: os passos, os marcos
-// e a lista de atencao (que marcava o Stripe como URGENTE antes de existir
-// qualquer curso).
-describe("Inicio do professor: antes do 1o publish so a lista de passos guia", () => {
-  it("rascunho: sem marcos e sem a lista de atencao", async () => {
+// Three "next step" lists competed for the same screen: the steps, the milestones
+// and the attention list (which flagged Stripe as URGENT before any
+// course existed).
+describe("Teacher home: before the 1st publish only the steps list guides", () => {
+  it("draft: no milestones and no attention list", async () => {
     state.courses = [course({})];
 
     render(<TeacherStudioDashboard />);
@@ -565,15 +565,15 @@ describe("Inicio do professor: antes do 1o publish so a lista de passos guia", (
       screen.queryByRole("heading", { name: "What needs your attention today." }),
     ).toBeNull();
     expect(screen.queryByText("Finish your Stripe setup")).toBeNull();
-    // Os produtos e os formatos continuam.
+    // The products and the formats stay.
     expect(
       screen.getByRole("heading", { name: "Products in your workspace" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Choose a product format" })).toBeInTheDocument();
   });
 
-  // Os marcos ("Creator milestones") eram a mesma lista de passos outra vez.
-  it("depois do 1o publish a lista de atencao volta; os marcos nao existem mais", async () => {
+  // The milestones ("Creator milestones") were the same steps list again.
+  it("after the 1st publish the attention list comes back; the milestones no longer exist", async () => {
     state.courses = [course({ status: "published", paymentType: "free", priceAmountMinor: 0 })];
 
     render(<TeacherStudioDashboard />);
@@ -582,13 +582,13 @@ describe("Inicio do professor: antes do 1o publish so a lista de passos guia", (
       await screen.findByRole("heading", { name: "What needs your attention today." }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Creator milestones" })).toBeNull();
-    // So produto gratis: nada de Stripe "urgente".
+    // Only a free product: no "urgent" Stripe.
     expect(screen.queryByText("Finish your Stripe setup")).toBeNull();
   });
 
-  // "Connect Stripe" aparecia 4 vezes: no passo, no painel ao lado, nos marcos
-  // e no cartao urgente "Finish your Stripe setup". Fica so o passo aberto.
-  it("produto pago no ar sem Stripe: a pendencia aparece uma vez, no passo aberto", async () => {
+  // "Connect Stripe" showed up 4 times: in the step, in the panel beside it, in the milestones
+  // and in the urgent card "Finish your Stripe setup". Only the open step stays.
+  it("paid product live without Stripe: the pending item shows up once, in the open step", async () => {
     state.courses = [course({ status: "published" })];
 
     render(<TeacherStudioDashboard />);
@@ -606,8 +606,8 @@ describe("Inicio do professor: antes do 1o publish so a lista de passos guia", (
   });
 });
 
-describe("Inicio do professor: cada dado e lido uma vez", () => {
-  it("cursos, pedidos e perfil: uma leitura cada, com todos os blocos montados", async () => {
+describe("Teacher home: each piece of data is read once", () => {
+  it("courses, orders and profile: one read each, with all blocks mounted", async () => {
     state.courses = [course({ status: "published" })];
     state.orders = [
       {
@@ -623,7 +623,7 @@ describe("Inicio do professor: cada dado e lido uma vez", () => {
 
     render(<TeacherStudioDashboard />);
 
-    // Metricas, grafico (insights) e atividade recente na tela.
+    // Metrics, chart (insights) and recent activity on screen.
     expect(await screen.findByText("Revenue, 30d")).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Revenue" })).toBeInTheDocument();
     expect(await screen.findByText("New sale in Breathwork Basics")).toBeInTheDocument();
@@ -631,15 +631,15 @@ describe("Inicio do professor: cada dado e lido uma vez", () => {
     expect(data.subscribeToTeacherCourses).toHaveBeenCalledTimes(1);
     expect(data.subscribeToTeacherOrders).toHaveBeenCalledTimes(1);
     expect(data.subscribeToUserProfile).toHaveBeenCalledTimes(1);
-    // A taxa de ativacao vem das travas do publish, nao de uma leitura extra.
+    // The activation fee comes from the publish gates, not from an extra read.
     expect(data.fetchCreatorActivationBlocked).toHaveBeenCalledTimes(1);
   });
 });
 
-// --- Onda 6: casca do professor -------------------------------------------
+// --- Wave 6: teacher shell -------------------------------------------
 
-describe("Home do professor: uma manchete, o que aconteceu e a vitrine", () => {
-  it("tem UMA manchete de nivel 1 (o olho 'Producer home' saiu)", async () => {
+describe("Teacher home: one headline, what happened and the storefront", () => {
+  it("has ONE level-1 headline (the 'Producer home' eyebrow is gone)", async () => {
     render(<TeacherStudioDashboard />);
 
     await waitFor(() => {
@@ -651,7 +651,7 @@ describe("Home do professor: uma manchete, o que aconteceu e a vitrine", () => {
     expect(screen.queryByText("Producer home")).toBeNull();
   });
 
-  it("mostra 'Recent activity' com estado vazio honesto para professor novo", async () => {
+  it("shows 'Recent activity' with an honest empty state for a new teacher", async () => {
     render(<TeacherStudioDashboard />);
 
     expect(
@@ -660,7 +660,7 @@ describe("Home do professor: uma manchete, o que aconteceu e a vitrine", () => {
     expect(await screen.findByText("Nothing has happened yet.")).toBeInTheDocument();
   });
 
-  it("mostra 'Your storefront' com o endereco publico e os dois caminhos", async () => {
+  it("shows 'Your storefront' with the public address and the two paths", async () => {
     render(<TeacherStudioDashboard />);
 
     expect(
@@ -675,15 +675,15 @@ describe("Home do professor: uma manchete, o que aconteceu e a vitrine", () => {
       "href",
       "/teach/storefront",
     );
-    // Nada publicado ainda: nao dizemos que a vitrine esta no ar.
+    // Nothing published yet: we do not say the storefront is live.
     expect(
       screen.getByText("The page exists, but nothing is published on it yet."),
     ).toBeInTheDocument();
   });
 
-  it("um nome com $& na manchete aparece literal, sem virar '{name}'", async () => {
-    // Num replace sem callback, "$&" vira o trecho casado ("{name}") e "$'" o
-    // resto da frase. O nome vem do cadastro: e texto da pessoa, nao nosso.
+  it("a name with $& in the headline shows up literally, without becoming '{name}'", async () => {
+    // In a replace without a callback, "$&" becomes the matched piece ("{name}") and "$'" the
+    // rest of the sentence. The name comes from sign-up: it is the person's text, not ours.
     mockUser.displayName = "Mc$&Donald Simon";
     try {
       render(<TeacherStudioDashboard />);
@@ -697,19 +697,19 @@ describe("Home do professor: uma manchete, o que aconteceu e a vitrine", () => {
   });
 });
 
-// --- Primeira visita: nada de "Welcome back" nem quadros de $0 ---------------
+// --- First visit: no "Welcome back" or $0 tiles ---------------
 
-describe("Home do professor: primeira visita", () => {
-  it("sem produto diz 'Welcome', nunca 'Welcome back'", async () => {
+describe("Teacher home: first visit", () => {
+  it("without a product says 'Welcome', never 'Welcome back'", async () => {
     render(<TeacherStudioDashboard />);
 
     const heading = await screen.findByRole("heading", { level: 1 });
-    // Sem ponto final: o titulo da Home segue o cabecalho das telas irmas.
+    // No period: the Home title follows the header of the sibling screens.
     expect(heading).toHaveTextContent(/^Welcome, Patrick$/);
     expect(heading).not.toHaveTextContent("Welcome back");
   });
 
-  it("com um produto volta a dizer 'Welcome back'", async () => {
+  it("with a product it says 'Welcome back' again", async () => {
     state.courses = [course({})];
 
     render(<TeacherStudioDashboard />);
@@ -721,9 +721,9 @@ describe("Home do professor: primeira visita", () => {
     });
   });
 
-  it("antes da 1a venda esconde os quadros de receita, alunos e nota", async () => {
+  it("before the 1st sale it hides the revenue, learners and rating tiles", async () => {
     state.courses = [course({ status: "published" })];
-    // Pedido que nao virou venda (nao pago) nao conta.
+    // An order that did not become a sale (not paid) does not count.
     state.orders = [
       {
         id: "o1",
@@ -744,7 +744,7 @@ describe("Home do professor: primeira visita", () => {
     expect(screen.queryByText("$0")).toBeNull();
   });
 
-  it("com a 1a venda paga os quadros aparecem", async () => {
+  it("with the 1st paid sale the tiles show up", async () => {
     state.courses = [course({ status: "published" })];
     state.orders = [
       {
@@ -762,12 +762,12 @@ describe("Home do professor: primeira visita", () => {
 
     expect(await screen.findByText("Revenue, 30d")).toBeInTheDocument();
     expect(screen.getByText("New students")).toBeInTheDocument();
-    // "Completion" era sempre "--": o valor nao e medido, o quadro saiu.
+    // "Completion" was always "--": the value is not measured, the tile is gone.
     expect(screen.queryByText("Completion")).toBeNull();
     expect(screen.queryByText("Appears once learners finish lessons")).toBeNull();
   });
 
-  it("so com matricula gratis (sem pedido pago) os quadros aparecem", async () => {
+  it("with only a free enrollment (no paid order) the tiles show up", async () => {
     state.courses = [course({ status: "published", paymentType: "free", enrollmentCount: 3 })];
     state.orders = [];
 
@@ -776,7 +776,7 @@ describe("Home do professor: primeira visita", () => {
     expect(await screen.findByText("Revenue, 30d")).toBeInTheDocument();
   });
 
-  it("com produto mas zero matriculas e zero pedidos pagos continua sem quadros", async () => {
+  it("with a product but zero enrollments and zero paid orders it still has no tiles", async () => {
     state.courses = [course({ status: "published", enrollmentCount: 0 })];
     state.orders = [];
 
@@ -786,7 +786,7 @@ describe("Home do professor: primeira visita", () => {
     expect(screen.queryByText("Revenue, 30d")).toBeNull();
   });
 
-  it("enquanto a lista de cursos carrega diz 'Hello', nunca 'Welcome' nem 'Welcome back'", async () => {
+  it("while the course list loads it says 'Hello', never 'Welcome' nor 'Welcome back'", async () => {
     data.subscribeToTeacherCourses.mockImplementationOnce(() => () => undefined);
 
     render(<TeacherStudioDashboard />);
@@ -796,9 +796,9 @@ describe("Home do professor: primeira visita", () => {
     expect(heading).not.toHaveTextContent("Welcome");
   });
 
-  // O esqueleto tem a forma do cartao (capa 16:9 e texto), anunciado uma vez;
-  // e o cabecalho so tem "New product" (o "Storefront" repetia o cartao).
-  it("enquanto os produtos carregam: esqueleto no formato do cartao, e um botao no cabecalho", async () => {
+  // The skeleton has the shape of the card (16:9 cover and text), announced once;
+  // and the header only has "New product" (the "Storefront" repeated the card).
+  it("while the products load: skeleton shaped like the card, and one button in the header", async () => {
     data.subscribeToTeacherCourses.mockImplementationOnce(() => () => undefined);
 
     render(<TeacherStudioDashboard />);
@@ -810,7 +810,7 @@ describe("Home do professor: primeira visita", () => {
     expect(screen.getByRole("link", { name: "New product" })).toBeInTheDocument();
   });
 
-  it("se a assinatura de cursos falhar, mantem 'Welcome back'", async () => {
+  it("if the courses subscription fails, it keeps 'Welcome back'", async () => {
     data.subscribeToTeacherCourses.mockImplementationOnce(
       (_uid: string, _onData: (courses: unknown[]) => void, onError?: (error: Error) => void) => {
         onError?.(new Error("boom"));
@@ -825,17 +825,17 @@ describe("Home do professor: primeira visita", () => {
         "Welcome back, Patrick",
       );
     });
-    // Falha nao e "sem produto": nada de convidar a criar um produto repetido.
+    // A failure is not "no product": no inviting to create a repeated product.
     expect(screen.getByRole("alert")).toHaveTextContent("We could not load your products or sales.");
     expect(screen.queryByRole("heading", { name: "Your first product starts here." })).toBeNull();
     expect(screen.getByRole("link", { name: "New product" })).toHaveClass("button-solid");
   });
 });
 
-// --- Status dos cartoes: cada um com a sua cor, nenhum em latao ---------------
+// --- Card status: each with its own color, none in brass ---------------
 
-describe("Home do professor: o selo do cartao e o tipo gravado", () => {
-  it("mostra o tipo do produto, e gratis ou assinatura nao viram tipo", async () => {
+describe("Teacher home: the card badge is the recorded type", () => {
+  it("shows the product type, and free or subscription do not become a type", async () => {
     state.courses = [
       course({ id: "c1", title: "Grupo", productFormat: "community", paymentType: "subscription_monthly" }),
       course({ id: "c2", title: "Apostila", productFormat: "ebook", paymentType: "free", priceAmountMinor: 0 }),
@@ -852,8 +852,8 @@ describe("Home do professor: o selo do cartao e o tipo gravado", () => {
   });
 });
 
-describe("Home do professor: status dos cartoes de produto", () => {
-  it("Published, Draft e Needs changes saem em StatusChip diferentes", async () => {
+describe("Teacher home: product card status", () => {
+  it("Published, Draft and Needs changes come out in different StatusChips", async () => {
     state.courses = [
       course({ id: "c1", title: "No ar", status: "published" }),
       course({ id: "c2", title: "Rascunho", status: "draft" }),
@@ -875,17 +875,17 @@ describe("Home do professor: status dos cartoes de produto", () => {
     expect(chipOf("Rascunho")).toHaveTextContent("Draft");
     expect(chipOf("Com ajuste")).toHaveClass("status-chip--danger");
     expect(chipOf("Com ajuste")).toHaveTextContent("Needs changes");
-    // O texto dourado de antes nao volta em nenhum cartao.
+    // The earlier gold text does not come back on any card.
     for (const title of ["No ar", "Rascunho", "Com ajuste"]) {
       expect(cardOf(title).innerHTML).not.toContain("--color-accent-fg");
     }
   });
 });
 
-// Onda D na Home: os cartoes chegam em escada e sobem no hover; quem abre a
-// Home com tudo pronto ve o check e o selo parados (festa so na mudanca).
-describe("Home do professor: movimento", () => {
-  it("cartoes em escada (--i por cartao) e com o hover que sobe", async () => {
+// Wave D on the Home: the cards arrive in a staircase and rise on hover; whoever opens the
+// Home with everything ready sees the check and the badge still (celebration only on change).
+describe("Teacher home: motion", () => {
+  it("cards in a staircase (--i per card) and with the hover that rises", async () => {
     state.courses = [
       course({ id: "c1", title: "Primeiro" }),
       course({ id: "c2", title: "Segundo" }),
@@ -901,9 +901,9 @@ describe("Home do professor: movimento", () => {
     expect(within(produtos).getByRole("link", { name: /Primeiro/ })).toHaveClass("motion-hover-lift");
   });
 
-  // Quem chega com tudo pronto nao ve o bloco (teste acima). Se o ultimo passo
-  // fica pronto com a Home aberta, o bloco fica, com a festa: check e selo.
-  it("o ultimo passo fica pronto com a Home aberta: o bloco fica e o check e o selo se desenham", async () => {
+  // Whoever arrives with everything ready does not see the block (test above). If the last step
+  // becomes ready with the Home open, the block stays, with the celebration: check and badge.
+  it("the last step becomes ready with the Home open: the block stays and the check and the badge are drawn", async () => {
     let pushProfile: (profile: unknown) => void = () => undefined;
     data.subscribeToUserProfile.mockImplementationOnce((_uid, onData) => {
       pushProfile = onData;
@@ -928,7 +928,7 @@ describe("Home do professor: movimento", () => {
 });
 vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => state.planRequired }));
 
-// --- Receita por moeda: nada soma reais com dolares --------------------------
+// --- Revenue per currency: nothing adds reais to dollars --------------------------
 
 function paidOrder(fields: Record<string, unknown>) {
   return {
@@ -947,8 +947,8 @@ function revenueTile() {
   return screen.getByText("Revenue, 30d").nextElementSibling as HTMLElement;
 }
 
-describe("Home do professor: receita nunca soma moedas", () => {
-  it("uma moeda so (USD): quadro e grafico como sempre", async () => {
+describe("Teacher home: revenue never adds currencies", () => {
+  it("one currency only (USD): tile and chart as always", async () => {
     state.courses = [course({ status: "published" })];
     state.orders = [paidOrder({})];
 
@@ -960,8 +960,8 @@ describe("Home do professor: receita nunca soma moedas", () => {
     expect(screen.queryByText(/not in this chart/)).toBeNull();
   });
 
-  // R$100 e $20 viravam "$120" no quadro e no grafico.
-  it("duas moedas: cada uma no proprio valor, o grafico desenha uma e diz as outras", async () => {
+  // R$100 and $20 became "$120" in the tile and the chart.
+  it("two currencies: each in its own value, the chart draws one and names the others", async () => {
     state.courses = [course({ status: "published" })];
     state.orders = [
       paidOrder({ id: "brl", currency: "BRL", amountMinor: 10_000 }),
@@ -971,17 +971,17 @@ describe("Home do professor: receita nunca soma moedas", () => {
     render(<TeacherStudioDashboard />);
 
     await screen.findByText("Revenue, 30d");
-    // Lado a lado, a maior primeiro.
+    // Side by side, the largest first.
     expect(revenueTile()).toHaveTextContent("R$100 · $20");
-    // Empate em pedidos: o grafico fica com a primeira em ordem alfabetica.
+    // Tie on orders: the chart takes the first in alphabetical order.
     expect(screen.getByText("R$100", { selector: "strong.num" })).toBeInTheDocument();
     expect(screen.getByText("Other currencies are not in this chart: $20.")).toBeInTheDocument();
     expect(screen.getAllByText("R$0").length).toBeGreaterThan(0);
-    // Nenhuma soma das duas em lugar nenhum da Home.
+    // No sum of the two anywhere on the Home.
     expect(document.body.textContent).not.toMatch(/\$120|R\$120/);
   });
 
-  it("reembolso nao entra na receita, nem na moeda dele", async () => {
+  it("a refund does not count as revenue, nor in its currency", async () => {
     state.courses = [course({ status: "published" })];
     state.orders = [
       paidOrder({ id: "usd" }),
@@ -995,8 +995,8 @@ describe("Home do professor: receita nunca soma moedas", () => {
     expect(document.body.textContent).not.toContain("R$");
   });
 
-  // Linha antiga sem moeda: o Intl recusa o codigo; a Home abre com o valor.
-  it("moeda vazia: cai no texto simples, sem derrubar a Home", async () => {
+  // Old row with no currency: Intl refuses the code; the Home opens with the value.
+  it("empty currency: falls back to plain text, without bringing the Home down", async () => {
     state.courses = [course({ status: "published" })];
     state.orders = [paidOrder({ currency: "" })];
 
@@ -1007,7 +1007,7 @@ describe("Home do professor: receita nunca soma moedas", () => {
     expect(screen.getByRole("img", { name: "Teacher revenue chart" })).toBeInTheDocument();
   });
 
-  it("sem pedido pago (so matricula gratis): zero sem inventar moeda", async () => {
+  it("no paid order (free enrollment only): zero without inventing a currency", async () => {
     state.courses = [course({ status: "published", paymentType: "free", enrollmentCount: 3 })];
     state.orders = [];
 
@@ -1019,11 +1019,11 @@ describe("Home do professor: receita nunca soma moedas", () => {
   });
 });
 
-describe("Home do professor: variacao, Top courses, reembolso parcial e leitura falha", () => {
+describe("Teacher home: change, Top courses, partial refund and failed read", () => {
   const DAY = 24 * 60 * 60 * 1000;
   const revenueCard = () => revenueTile().closest("article") as HTMLElement;
 
-  it("variacao so moeda com moeda: $60 agora contra $50 antes = +20.0%", async () => {
+  it("change only currency with currency: $60 now against $50 before = +20.0%", async () => {
     state.courses = [course({ status: "published" })];
     state.orders = [
       paidOrder({ id: "now", amountMinor: 6_000, createdAt: new Date(Date.now() - 10 * DAY) }),
@@ -1036,7 +1036,7 @@ describe("Home do professor: variacao, Top courses, reembolso parcial e leitura 
     expect(revenueCard()).toHaveTextContent("+20.0%");
   });
 
-  it("BRL agora e USD antes: nenhuma variacao de receita", async () => {
+  it("BRL now and USD before: no revenue change", async () => {
     state.courses = [course({ status: "published" })];
     state.orders = [
       paidOrder({ id: "now", currency: "BRL", amountMinor: 6_000, createdAt: new Date(Date.now() - 10 * DAY) }),
@@ -1049,7 +1049,7 @@ describe("Home do professor: variacao, Top courses, reembolso parcial e leitura 
     expect(revenueCard().textContent).not.toMatch(/%|NaN|Infinity|∞/);
   });
 
-  it("sem periodo anterior: a variacao some, nunca NaN nem infinito", async () => {
+  it("no previous period: the change goes away, never NaN or infinity", async () => {
     state.courses = [course({ status: "published" })];
     state.orders = [paidOrder({ amountMinor: 6_000, createdAt: new Date(Date.now() - 10 * DAY) })];
 
@@ -1059,9 +1059,9 @@ describe("Home do professor: variacao, Top courses, reembolso parcial e leitura 
     expect(revenueCard().textContent).not.toMatch(/%|NaN|Infinity|∞/);
   });
 
-  // Grafico em BRL; o produto que fez $5,000 em USD caia abaixo de produtos
-  // que nunca venderam mas tinham mais aulas.
-  it("Top courses: quem vendeu em outra moeda nao cai abaixo de quem nunca vendeu", async () => {
+  // Chart in BRL; the product that made $5,000 in USD fell below products
+  // that never sold but had more lessons.
+  it("Top courses: whoever sold in another currency does not fall below whoever never sold", async () => {
     state.courses = [
       course({ id: "brl", title: "Reais", status: "published", lessonCount: 1 }),
       course({ id: "usd", title: "Dolares", status: "published", lessonCount: 1 }),
@@ -1079,12 +1079,12 @@ describe("Home do professor: variacao, Top courses, reembolso parcial e leitura 
     const top = (await screen.findByRole("heading", { name: "Top courses" })).closest(".dash-card") as HTMLElement;
     const rows = within(top).getAllByRole("link").filter((link) => link.className.includes("studio-course-row"));
     expect(rows.map((row) => row.querySelector("strong")?.textContent)).toEqual(["Reais", "Dolares", "Vazio Dois"]);
-    // Cada produto no proprio valor: "$5,000", nunca o "R$0" da moeda do grafico.
+    // Each product in its own value: "$5,000", never the "R$0" of the chart's currency.
     expect(within(rows[1]).getByText("$5,000")).toBeInTheDocument();
     expect(within(rows[1]).queryByText("R$0")).toBeNull();
   });
 
-  it("reembolso parcial: $100 com $30 devolvidos conta $70 no quadro, no grafico e no Top courses", async () => {
+  it("partial refund: $100 with $30 returned counts $70 in the tile, the chart and Top courses", async () => {
     state.courses = [course({ status: "published" })];
     state.orders = [paidOrder({ status: "partially_refunded", amountMinor: 10_000, refundedAmountMinor: 3_000 })];
 
@@ -1097,7 +1097,7 @@ describe("Home do professor: variacao, Top courses, reembolso parcial e leitura 
     expect(within(top).getByText("$70")).toBeInTheDocument();
   });
 
-  it("leitura dos pedidos falhou: os quadros dizem Unavailable, nunca 0", async () => {
+  it("the orders read failed: the tiles say Unavailable, never 0", async () => {
     data.subscribeToTeacherOrders.mockImplementationOnce(
       (_uid: string, _onData: (orders: unknown[]) => void, onError?: (error: Error) => void) => {
         onError?.(new Error("boom"));
@@ -1113,7 +1113,7 @@ describe("Home do professor: variacao, Top courses, reembolso parcial e leitura 
     expect(screen.getByText("New students").nextElementSibling).toHaveTextContent("Unavailable");
   });
 
-  it("pedidos ainda carregando: esqueleto, nunca 0", async () => {
+  it("orders still loading: skeleton, never 0", async () => {
     data.subscribeToTeacherOrders.mockImplementationOnce(() => Object.assign(() => undefined, { reload: async () => {} }));
     state.courses = [course({ status: "published", paymentType: "free", enrollmentCount: 3 })];
 

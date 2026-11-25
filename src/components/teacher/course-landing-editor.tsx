@@ -89,8 +89,8 @@ function suggestedBlocks(courseTitle: string, t: (key: string) => string): Cours
   });
 }
 
-// O rótulo da casa (o mesmo do <Field>: 14px, negrito, em frase). Era a
-// etiqueta de 12px em caixa alta, que só este editor usava nos campos.
+// The app's standard label (the same as <Field>: 14px, bold, sentence case). It used to be
+// the 12px uppercase tag that only this editor used on fields.
 const fieldClass = "field-input";
 const labelClass = "grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]";
 
@@ -194,12 +194,12 @@ function BlockFields({
           </label>
           {block.steps.map((step, index) => (
             <div key={index} className="grid gap-2 rounded-md border border-[var(--color-line)] p-3">
-              {/* Rótulo de verdade, não placeholder. Todo campo repetido deste
-                  editor identificava-se só pelo placeholder — que some no
-                  primeiro caractere digitado. Revisando uma página de vendas com
-                  seis passos preenchidos, nada na tela dizia qual caixa era
-                  título e qual era descrição, e leitor de tela não anunciava
-                  nome nenhum. */}
+              {/* A real label, not a placeholder. Every repeated field of this
+                  editor identified itself only by the placeholder — which vanishes at the
+                  first typed character. Reviewing a sales page with
+                  six steps filled in, nothing on screen said which box was
+                  the title and which was the description, and the screen reader announced
+                  no name at all. */}
               <label className={labelClass}>
                 {t("teacherLanding.fields.stepTitle").replace("{count}", () => new Intl.NumberFormat(locale).format(index + 1))}
                 <input
@@ -407,7 +407,7 @@ export function CourseLandingEditor({
   onDirtyChange,
 }: {
   course: TeacherCourse;
-  /** O mesmo "Unsaved changes" da linha ao lado do Save, para o aviso de sair. */
+  /** The same "Unsaved changes" as the line next to Save, for the leave notice. */
   onDirtyChange?: (dirty: boolean) => void;
 }) {
   const { user } = useAuth();
@@ -424,15 +424,15 @@ export function CourseLandingEditor({
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  // A página na tela contra a última que o servidor confirmou (a lida ao
-  // abrir ou a última gravada): "Saved." só enquanto as duas são iguais.
+  // The page on screen against the last one the server confirmed (the one read on
+  // open or the last saved): "Saved." only while the two are equal.
   const draft = useMemo(() => JSON.stringify({ template, blocks }), [template, blocks]);
   const [savedDraft, setSavedDraft] = useState<string | null>(null);
   const dirty = savedDraft !== null && draft !== savedDraft;
   useEffect(() => {
     onDirtyChange?.(dirty);
   }, [dirty, onDirtyChange]);
-  // Seção que pediu para sair, enquanto a pergunta está aberta.
+  // Section that asked to be removed, while the question is open.
   const [removing, setRemoving] = useState<{ id: number; kind: CourseLandingBlockKind } | null>(null);
 
   const load = useCallback(async () => {
@@ -526,9 +526,9 @@ export function CourseLandingEditor({
     }
   }
 
-  // A mesma moldura e o mesmo título (h3, 16px) dos outros cartões da seção
-  // Page: era um cartão branco com sombra e um h2 em letra de destaque entre
-  // dois cartões suaves, e os títulos iam h3 → h2 → h3.
+  // The same frame and the same title (h3, 16px) as the other cards of the
+  // Page section: it was a white card with a shadow and an h2 in a display font between
+  // two soft cards, and the titles went h3 → h2 → h3.
   if (loading) {
     return (
       <PanelCard title={t("teacherLanding.title")}>
@@ -545,10 +545,10 @@ export function CourseLandingEditor({
 
       <div className="mt-5 grid gap-2">
         <span className={labelClass}>{t("teacherLanding.template")}</span>
-        {/* O seletor segmentado do construtor (tema da área de membros): o
-            escolhido é a pastilha clara com sombra, o check e aria-pressed,
-            não só a cor; o hover tinge o fundo sem pastilha nem check, então
-            não se confunde com o escolhido; 44px de alvo. */}
+        {/* The builder's segmented selector (members area theme): the
+            chosen one is the light pill with a shadow, the check and aria-pressed,
+            not just color; hover tints the background without a pill or check, so
+            it is not confused with the chosen one; 44px target. */}
         <div className="inline-flex w-fit flex-wrap gap-1 rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-1">
           {courseLandingTemplates.map((option) => {
             const locked = option !== "classic" && !canChooseTemplate;
@@ -617,11 +617,11 @@ export function CourseLandingEditor({
               >
                 <ChevronDown className="h-4 w-4" />
               </button>
-              {/* Confirmação + folga do vizinho. Este botão fica a 8px do
-                  "Move down", tem o mesmo tamanho e a mesma moldura, e apagava a
-                  seção inteira — com todo o texto digitado dentro dela — em um
-                  clique, sem desfazer. Errar o alvo por um botão custava o
-                  trabalho todo. */}
+              {/* Confirmation + room from the neighbor. This button sits 8px from
+                  "Move down", has the same size and the same frame, and deleted the
+                  whole section — with all the text typed inside it — in one
+                  click, with no undo. Missing the target by one button cost
+                  all the work. */}
               <button
                 type="button"
                 onClick={() => setRemoving({ id, kind: block.kind })}
@@ -673,8 +673,8 @@ export function CourseLandingEditor({
       ) : null}
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
-        {/* O Button da casa (o mesmo de todo Save): era uma caixa navy feita
-            à mão, sem o subir do hover nem a sombra dos outros. */}
+        {/* The app's Button (the same as every Save): it was a hand-made navy box,
+            without the hover lift or the shadow of the others. */}
         <Button onClick={handleSave} loading={saving} busyLabel={t("teacherLanding.saving")}>
           {t("teacherLanding.save")}
         </Button>
@@ -687,8 +687,8 @@ export function CourseLandingEditor({
         />
       </div>
 
-      {/* A frase é a mesma do antigo window.confirm. Tirar a seção continua
-          sendo só no rascunho: nada é gravado até "Save page". */}
+      {/* The sentence is the same as the old window.confirm. Removing the section is still
+          only in the draft: nothing is saved until "Save page". */}
       {removing ? (
         <ConfirmDialog
           title={t("teacherLanding.removeTitle")}

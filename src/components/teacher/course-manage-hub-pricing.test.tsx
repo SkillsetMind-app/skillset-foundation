@@ -4,9 +4,9 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { CourseManageHub } from "@/components/teacher/course-manage-hub";
 import type { TeacherCourse } from "@/domain/teacher-course";
 
-// O que a pessoa sofria: na secao de precos, o mesmo rascunho dizia "Free" no
-// preco e "Monthly subscription" no tipo de pagamento — e o prazo de reembolso,
-// que e o que mais pesa na decisao de compra, nao aparecia em lugar nenhum.
+// What the person went through: in the pricing section, the same draft said "Free" in the
+// price and "Monthly subscription" in the payment type — and the refund period,
+// which weighs most in the purchase decision, did not show up anywhere.
 
 const mocks = vi.hoisted(() => {
   const course: TeacherCourse = {
@@ -19,7 +19,7 @@ const mocks = vi.hoisted(() => {
     status: "draft",
     modules: [],
     lessonCount: 0,
-    // O rascunho do print: sem valor, mas com assinatura mensal gravada.
+    // The draft from the screenshot: no amount, but with a monthly subscription saved.
     priceAmountMinor: 0,
     currency: "USD",
     paymentType: "subscription_monthly",
@@ -114,25 +114,25 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-it("rascunho gratuito: o tipo de pagamento nao se aplica, nunca 'Monthly subscription'", async () => {
+it("free draft: the payment type does not apply, never 'Monthly subscription'", async () => {
   render(<CourseManageHub courseId="course-1" />);
 
   const paymentType = await screen.findByText("How people pay");
   const card = paymentType.parentElement as HTMLElement;
   expect(card).toHaveTextContent("—");
   expect(screen.queryByText(/Monthly (subscription|membership)/)).not.toBeInTheDocument();
-  // E o preco continua dizendo a verdade: gratuito.
+  // And the price still tells the truth: free.
   expect(screen.getByText("Free")).toBeInTheDocument();
 });
 
-it("o prazo de reembolso aparece no resumo, com os dias", async () => {
+it("the refund window shows in the summary, with the days", async () => {
   render(<CourseManageHub courseId="course-1" />);
 
   const refund = await screen.findByText("Refund window");
   expect(refund.parentElement).toHaveTextContent("7 days");
 });
 
-it("precos tem uma unica camada visual, sem moldura envolvendo os quatro resumos", async () => {
+it("pricing has a single visual layer, with no frame around the four summaries", async () => {
   render(<CourseManageHub courseId="course-1" />);
 
   const pricing = await screen.findByRole("region", { name: "Pricing & checkout" });

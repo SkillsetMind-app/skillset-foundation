@@ -30,11 +30,11 @@ export function TeacherMessagesInbox() {
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [notice, setNotice] = useState("");
-  // Mesmo molde da caixa do aluno (student-messages-inbox.tsx): ate a primeira
-  // leitura a caixa esta "carregando", nao "vazia" (antes abria em "No student
-  // messages yet" e depois trocava pelas conversas). A primeira leitura que
-  // falha vira erro com "Try again"; uma releitura que falha com a lista na
-  // tela vira so um aviso no topo.
+  // Same mold as the learner inbox (student-messages-inbox.tsx): until the first
+  // read the inbox is "loading", not "empty" (before, it opened on "No student
+  // messages yet" and then swapped for the conversations). A first read that
+  // fails becomes an error with "Try again"; a re-read that fails with the list on
+  // screen becomes just a notice at the top.
   const [ready, setReady] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
   const [reloadFailed, setReloadFailed] = useState(false);
@@ -70,7 +70,7 @@ export function TeacherMessagesInbox() {
     };
   }, [user]);
 
-  // "Try again" le de novo pelo mesmo canal, sem desligar e religar.
+  // "Try again" re-reads through the same channel, without turning it off and on.
   function retryLoad() {
     setLoadFailed(false);
     void subscription.current?.reload();
@@ -131,8 +131,8 @@ export function TeacherMessagesInbox() {
     );
   }
 
-  // Releitura que falhou com a lista na tela: aviso com "Try again". O aviso
-  // (e o botao, com o foco) fica ate uma leitura dar certo.
+  // A re-read that failed with the list on screen: notice with "Try again". The notice
+  // (and the button, with the focus) stays until a read succeeds.
   const reloadBanner = (className: string) =>
     reloadFailed ? (
       <div className={`grid gap-3 ${className}`}>

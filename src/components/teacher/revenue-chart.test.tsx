@@ -6,10 +6,10 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { niceStep, RevenueChart } from "@/components/teacher/revenue-chart";
 
-// O que a pessoa sofria: sem venda, Relatorios mostrava a caixa "No revenue in
-// this period" encostada no canto inferior direito do grafico — em cima dos
-// rotulos do eixo X — e a etiqueta "$0" do ultimo ponto por cima da caixa
-// (QA visual em producao, 08/09).
+// What the person suffered: with no sales, Reports showed the "No revenue in
+// this period" box pushed into the bottom right corner of the chart, on top of the
+// X axis labels, and the "$0" label of the last point on top of the box
+// (visual QA in production, Sep 8).
 
 const points = [
   { key: "2026-09-01", label: "Sep 1", grossMinor: 0 },
@@ -41,34 +41,34 @@ function renderChart(
 
 afterEach(cleanup);
 
-describe("grafico de receita sem venda", () => {
-  // Carregando ou com erro, "sem receita" afirmaria zero: so o rotulo.
-  it("com dados indisponiveis mostra o rotulo, nunca 'sem receita'", () => {
+describe("revenue chart with no sales", () => {
+  // Loading or with an error, "no revenue" would claim zero: only the label.
+  it("with unavailable data it shows the label, never 'no revenue'", () => {
     renderChart(0, "$0", points, { unavailableLabel: "Unavailable" });
 
     expect(screen.getByRole("status")).toHaveTextContent("Unavailable");
     expect(screen.queryByText("No revenue in this period")).toBeNull();
   });
 
-  it("nao repete o total quando a caixa ja informa que nao ha receita", () => {
+  it("does not repeat the total when the box already says there is no revenue", () => {
     renderChart(0, "$0.00");
 
     expect(screen.getByText("No revenue in this period")).toBeInTheDocument();
     expect(screen.queryByText("$0.00")).toBeNull();
   });
 
-  it("volta a mostrar a etiqueta assim que ha receita", () => {
+  it("shows the label again as soon as there is revenue", () => {
     renderChart(1500, "$15.00");
 
     expect(screen.getByText("$15.00")).toBeInTheDocument();
     expect(screen.queryByText("No revenue in this period")).toBeNull();
   });
 
-  it("centra a caixa de vazio no canvas em vez de encosta-la no eixo", () => {
+  it("centers the empty box in the canvas instead of pushing it against the axis", () => {
     const css = postcss.parse(readFileSync("src/app/globals.css", "utf8"));
     const declarations: Record<string, string> = {};
     css.walkRules(".studio-chart-empty", (rule) => {
-      // A regra de celular (position: static, dentro do @media) nao entra.
+      // The phone rule (position: static, inside the @media) does not count.
       if (rule.parent?.type === "atrule") return;
       rule.walkDecls((decl) => {
         declarations[decl.prop] = decl.value;
@@ -82,16 +82,16 @@ describe("grafico de receita sem venda", () => {
   });
 });
 
-// Com $490, $980, $1.470 e $2.450, o eixo escrevia "$613", "$1k" para 1.225 e
-// "$2k" duas vezes, com o texto dentro do SVG (~4px no celular).
-describe("eixo do grafico de receita", () => {
+// With $490, $980, $1,470 and $2,450, the axis wrote "$613", "$1k" for 1,225 and
+// "$2k" twice, with the text inside the SVG (~4px on a phone).
+describe("revenue chart axis", () => {
   const sales = [49000, 98000, 147000, 245000].map((grossMinor, index) => ({
     key: `2026-0${index + 1}`,
     label: ["Jan", "Feb", "Mar", "Apr"][index],
     grossMinor,
   }));
 
-  it("sobe o topo para um valor redondo e escreve cada linha uma vez, pelo formatador", () => {
+  it("raises the top to a round value and writes each line once, through the formatter", () => {
     renderChart(539000, "$5,390", sales);
 
     const axis = ["$0", "$1K", "$2K", "$3K"];
@@ -99,7 +99,7 @@ describe("eixo do grafico de receita", () => {
     expect(screen.queryByText(/\$613|\$2k/)).toBeNull();
   });
 
-  it("escreve os rotulos fora do SVG, em HTML de 12px", () => {
+  it("writes the labels outside the SVG, in 12px HTML", () => {
     renderChart(539000, "$5,390", sales);
 
     const chart = screen.getByRole("img", { name: "Revenue chart" });
@@ -109,8 +109,8 @@ describe("eixo do grafico de receita", () => {
     expect(chart).toHaveAttribute("preserveAspectRatio", "none");
   });
 
-  // O eixo era USD fixo: quem vende em reais via "$" no eixo.
-  it("escreve o eixo na moeda do grafico e a linha de nota embaixo", () => {
+  // The axis was fixed to USD: whoever sells in reais saw "$" on the axis.
+  it("writes the axis in the chart currency and the note line below", () => {
     renderChart(539000, "R$5,390", sales, {
       currency: "BRL",
       note: "Other currencies are not in this chart: $20.",
@@ -123,9 +123,9 @@ describe("eixo do grafico de receita", () => {
     expect(screen.getByText("Other currencies are not in this chart: $20.")).toBeInTheDocument();
   });
 
-  // Linha antiga sem moeda: o Intl recusa "UNSPECIFIED"; o eixo cai no texto
-  // simples em vez de derrubar a Home.
-  it("com moeda desconhecida o eixo cai no texto simples, sem quebrar", () => {
+  // Old row with no currency: Intl refuses "UNSPECIFIED"; the axis falls back to plain
+  // text instead of bringing down Home.
+  it("with an unknown currency the axis falls back to plain text, without breaking", () => {
     renderChart(539000, "UNSPECIFIED 5390.00", sales, { currency: "UNSPECIFIED" });
 
     expect(screen.getByRole("img", { name: "Revenue chart" })).toBeInTheDocument();
@@ -138,12 +138,12 @@ describe("eixo do grafico de receita", () => {
     [2500, 2500],
     [5000, 5000],
     [130, 200],
-  ])("passo redondo para %d: %d", (value, expected) => {
+  ])("round step for %d: %d", (value, expected) => {
     expect(niceStep(value)).toBe(expected);
   });
 });
 
-describe("total de receita sem recortes", () => {
+describe("revenue total without clipping", () => {
   const paidPoints = [
     { key: "2026-09-01", label: "Sep 1", grossMinor: 5000 },
     { key: "2026-09-02", label: "Sep 2", grossMinor: 20000 },
@@ -154,16 +154,16 @@ describe("total de receita sem recortes", () => {
     maximumFractionDigits: 0,
   });
 
-  it("mantém os elementos dentro do SVG quando o último ponto é o pico", () => {
+  it("keeps the elements inside the SVG when the last point is the peak", () => {
     renderChart(25000, "$250", paidPoints);
 
     const chart = screen.getByRole("img", { name: "Revenue chart" });
     const canvas = chart.closest<HTMLElement>(".studio-chart-canvas")!;
     const percentOf = (value: string) => Number(value.replace("%", ""));
 
-    // A etiqueta original ia de y=-20 a 4 e de x=585 a 663 em um SVG 640x240.
-    // Agora pontos e rotulos sao HTML posicionados em % da area do desenho:
-    // jsdom nao pinta, entao a prova e a posicao emitida (0% a 100%).
+    // The original label went from y=-20 to 4 and from x=585 to 663 in a 640x240 SVG.
+    // Now points and labels are HTML positioned in % of the drawing area:
+    // jsdom does not paint, so the proof is the emitted position (0% to 100%).
     expect(chart.querySelectorAll("circle, text, rect")).toHaveLength(0);
     const dots = [...canvas.querySelectorAll<HTMLElement>("span.rounded-full")];
     expect(dots).toHaveLength(paidPoints.length);
@@ -173,10 +173,10 @@ describe("total de receita sem recortes", () => {
       expect.soft(percentOf(dot.style.top)).toBeGreaterThanOrEqual(0);
       expect.soft(percentOf(dot.style.top)).toBeLessThanOrEqual(100);
     }
-    // O ultimo ponto (o pico) e o dourado.
+    // The last point (the peak) is the gold one.
     expect(dots.at(-1)).toHaveClass("bg-[var(--color-accent)]");
 
-    // Rotulos do eixo Y: dentro da altura e sem repetir texto.
+    // Y axis labels: inside the height and without repeating text.
     const yLabels = [...canvas.querySelectorAll<HTMLElement>("span.tabular-nums")];
     expect(yLabels.length).toBeGreaterThan(1);
     expect(new Set(yLabels.map((label) => label.textContent)).size).toBe(yLabels.length);
@@ -184,13 +184,13 @@ describe("total de receita sem recortes", () => {
       expect.soft(percentOf(label.style.top)).toBeGreaterThanOrEqual(0);
       expect.soft(percentOf(label.style.top)).toBeLessThanOrEqual(100);
     }
-    // Rotulos do eixo X: um por ponto aqui (dois pontos), na ordem da serie.
+    // X axis labels: one per point here (two points), in series order.
     expect(within(canvas).getByText("Sep 1")).toBeInTheDocument();
     expect(within(canvas).getByText("Sep 2")).toBeInTheDocument();
 
-    // O total não pode ser resolvido encolhendo ou deslocando a série. Com o
-    // eixo escrito fora do desenho, a série ocupa a largura toda (0 a 640) e o
-    // pico (US$200, já um topo redondo) chega ao teto.
+    // The total cannot be resolved by shrinking or shifting the series. With the
+    // axis written outside the drawing, the series takes the full width (0 to 640) and the
+    // peak (US$200, already a round top) reaches the ceiling.
     expect(chart.querySelector('path[stroke]')).toHaveAttribute("d", "M0,148 L640,10");
     expect(screen.getByText("$250")).toBeVisible();
   });
@@ -200,7 +200,7 @@ describe("total de receita sem recortes", () => {
     ["maior inteiro de 32 bits", 2147483647],
     ["maior inteiro seguro", Number.MAX_SAFE_INTEGER],
     ["maior número finito", Number.MAX_VALUE],
-  ] as const)("preserva o total completo no cabeçalho: %s", (_case, amountMinor) => {
+  ] as const)("preserves the full total in the header: %s", (_case, amountMinor) => {
     const totalLabel = money.format(amountMinor / 100);
     renderChart(amountMinor, totalLabel, paidPoints);
 

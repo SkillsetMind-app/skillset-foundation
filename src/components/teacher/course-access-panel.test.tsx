@@ -47,8 +47,8 @@ it("keeps keyboard focus through confirmation, Escape, Cancel and revocation", a
   await waitFor(() => expect(screen.getByRole("status")).toHaveFocus());
 });
 
-// F-11: a lista que não carregou mandava recarregar a página. Agora "Try
-// again" lê de novo, e o aviso sai quando a lista chega.
+// F-11: the list that did not load told people to reload the page. Now "Try
+// again" reads again, and the notice goes away when the list arrives.
 it("a load failure offers Try again, which reads the list again", async () => {
   mocks.list.mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce([grant]);
   render(<CourseAccessPanel courseId="course-1" />);

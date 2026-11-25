@@ -30,15 +30,15 @@ describe("upload progress locale", () => {
     if (percent === null) expect(screen.getByRole("status")).not.toHaveTextContent("%");
     else expect(screen.getByRole("status")).toHaveTextContent(`${percent}%`);
     if (percent === 50) expect(screen.getByRole("status")).toHaveTextContent("512 B de 1.0 KB");
-    // F-20: só o envio sem porcentagem ganha a barra que desliza (decorativa).
+    // F-20: only the upload without a percentage gets the sliding bar (decorative).
     const sliding = screen.getByRole("status").querySelector(".upload-indeterminate-fill");
     if (percent === null) expect(sliding?.parentElement).toHaveAttribute("aria-hidden", "true");
     else expect(sliding).toBeNull();
   });
 
-  // F-09: a nota usa a barra da casa (a mesma cara do <progress> de envio), e
-  // a largura não anima mais para quem pediu menos movimento.
-  it("com porcentagem, desenha a barra da casa", () => {
+  // F-09: the note uses the house bar (the same look as the upload <progress>), and
+  // the width no longer animates for whoever asked for less motion.
+  it("with a percentage, it draws the house bar", () => {
     render(
       <I18nProvider initialLocale="en">
         <UploadProgressNote progress={{ percent: 40, state: "running", bytesTransferred: 4, totalBytes: 10 }} />
@@ -51,9 +51,9 @@ describe("upload progress locale", () => {
     expect(bar.firstElementChild?.className).not.toContain("transition-[width]");
   });
 
-  // Um trecho parcial parado se leria como "30% feito": sem movimento, o trilho
-  // inteiro fica preenchido e apagado; o trecho de 30% só existe deslizando.
-  it("parada, a barra sem porcentagem enche o trilho; o trecho de 30% só desliza com movimento", () => {
+  // A parked partial stretch would read as "30% done": with no motion, the whole
+  // track is filled and dimmed; the 30% stretch only exists sliding.
+  it("stopped, the bar with no percentage fills the track; the 30% stretch only slides with motion", () => {
     const css = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
     const rule = (from: number) => css.slice(from, css.indexOf("}", from));
     const base = css.indexOf(".upload-indeterminate-fill {");

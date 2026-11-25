@@ -192,7 +192,7 @@ describe("AdvisorSidebar", () => {
     expect(screen.getByText("Loading your conversation...")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: SUGGESTION })).toBeNull();
     expect(screen.getByRole("button", { name: "Send message" })).toBeDisabled();
-    // Desligado dizendo por que: a frase da conversa carregando.
+    // Disabled, and says why: the sentence about the conversation loading.
     expect(screen.getByRole("button", { name: "Send message" })).toHaveAccessibleDescription(
       "Loading your conversation...",
     );

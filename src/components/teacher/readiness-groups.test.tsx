@@ -7,9 +7,9 @@ import { CourseManageHub } from "@/components/teacher/course-manage-hub";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { publishTeacherCourse, subscribeToTeacherCourse } from "@/lib/data/teacher-courses";
 
-// Mocks copiados de course-readiness-screens.test.tsx: o MESMO usuario e o
-// MESMO curso em todo render. Um objeto novo por render reinscreve os
-// efeitos, entra em laco e trava a maquina.
+// Mocks copied from course-readiness-screens.test.tsx: the SAME user and the
+// SAME course on every render. A new object per render resubscribes the
+// effects, enters a loop and hangs the machine.
 const mocks = vi.hoisted(() => {
   const subscriptionCounts = new Map<string, number>();
   function fused<A extends unknown[]>(name: string, impl: (...args: A) => () => void) {
@@ -23,9 +23,9 @@ const mocks = vi.hoisted(() => {
     };
   }
 
-  // Titulo, resumo, categoria e um modulo prontos; sem aula e sem preco.
-  // Conteudo 2 de 3 · pagina 2 de 2 (capa e resultados sao opcionais) ·
-  // venda 0 de 1 (verificacao nao exigida e opcional; gratis nao pede repasse).
+  // Title, summary, category and one module ready; no lesson and no price.
+  // Content 2 of 3 · page 2 of 2 (cover and results are optional) ·
+  // sale 0 of 1 (verification not required and optional; free does not ask for a payout).
   const course: TeacherCourse = {
     id: "course-1",
     ownerId: "teacher-1",
@@ -110,9 +110,9 @@ vi.mock("@/components/teacher/course-overview-panel", () => ({
   CourseOverviewPanel: () => null,
 }));
 
-// O titulo do grupo e um <p> com o nome num <span> e a contagem em texto
-// solto; getByText so le os nos de texto diretos, entao a comparacao e pelo
-// textContent inteiro do <p>.
+// The group title is a <p> with the name in a <span> and the count as loose
+// text; getByText only reads direct text nodes, so the comparison is on the
+// whole textContent of the <p>.
 function groupTitle(text: string) {
   return screen.getByText((_, el) => el?.tagName === "P" && el.textContent === text);
 }
@@ -130,10 +130,10 @@ const copy = {
   },
 } as const;
 
-// A Hotmart separa conteudo salvo, pagina preparada e venda disponivel; a
-// nossa barra somava os tres. E o editor dela avisa "esse produto nao esta
-// publicado" enquanto e rascunho. Nada aqui segura a publicacao: e rotulo.
-describe("checklist de publicacao em tres blocos e faixa de rascunho", () => {
+// Hotmart separates saved content, prepared page and available sale; our
+// bar added up all three. And its editor warns "this product is not
+// published" while it is a draft. Nothing here blocks publishing: it is a label.
+describe("publishing checklist in three blocks and a draft banner", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.resetSubscriptionCounts();
@@ -146,7 +146,7 @@ describe("checklist de publicacao em tres blocos e faixa de rascunho", () => {
     mocks.searchParams.set("tab", "review");
   });
 
-  it.each(["en", "es"] as const)("construtor em %s: tres titulos com contagem, faixa e link para o painel", async (locale) => {
+  it.each(["en", "es"] as const)("builder in %s: three titles with a count, banner and link to the panel", async (locale) => {
     render(
       <I18nProvider initialLocale={locale}>
         <CourseBuilderStudio />
@@ -157,21 +157,21 @@ describe("checklist de publicacao em tres blocos e faixa de rascunho", () => {
     for (const title of copy[locale].groups) {
       expect(groupTitle(title)).toBeInTheDocument();
     }
-    // Cada item continua na lista, dentro do seu bloco.
+    // Each item stays in the list, inside its own block.
     const review = document.getElementById("builder-sec-review")!;
     expect(review.querySelector('[data-readiness-group="content"]')).toHaveTextContent(/Course title|Título del curso/);
     expect(review.querySelector('[data-readiness-group="content"]')).toHaveTextContent(/Lesson|Lección/);
     expect(review.querySelector('[data-readiness-group="page"]')).toHaveTextContent(/Cover image|Imagen de portada/);
     expect(review.querySelector('[data-readiness-group="sale"]')).toHaveTextContent(/Pricing|Precios/);
 
-    // A faixa azul repetia o selo "Draft": agora e uma frase curta ao lado dele,
-    // e o caminho para o painel e o "Manage product" do mesmo cabecalho.
+    // The blue banner repeated the "Draft" badge: now it is a short sentence next to it,
+    // and the path to the panel is the "Manage product" of the same header.
     const banner = screen.getByText(copy[locale].banner);
     expect(banner.closest(".course-builder-hero")).not.toBeNull();
     const link = screen.getByRole("link", { name: copy[locale].link });
     expect(link).toHaveAttribute("href", "/teach/courses/course-1/manage");
 
-    // Agrupar nao mexe na trava: o mesmo curso continua sem poder publicar.
+    // Grouping does not touch the lock: the same course still cannot be published.
     expect(screen.getByRole("button", { name: /Publish product|Publicar producto/ })).toBeDisabled();
     expect(publishTeacherCourse).not.toHaveBeenCalled();
     expect(subscribeToTeacherCourse).toHaveBeenCalledOnce();
@@ -194,7 +194,7 @@ describe("checklist de publicacao em tres blocos e faixa de rascunho", () => {
     expect(document.querySelectorAll("[data-readiness-group] li")).toHaveLength(9);
   });
 
-  it("curso publicado: os blocos ficam, a faixa some", async () => {
+  it("published course: the blocks stay, the banner goes away", async () => {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emit({ ...mocks.course, status: "published" });
       return Object.assign(() => {}, { reload: async () => {} });
@@ -211,7 +211,7 @@ describe("checklist de publicacao em tres blocos e faixa de rascunho", () => {
     expect(publishTeacherCourse).not.toHaveBeenCalled();
   });
 
-  it("painel do produto: a mesma lista em tres blocos, com o link de verificacao no bloco de venda", async () => {
+  it("product panel: the same list in three blocks, with the verification link in the sale block", async () => {
     render(<CourseManageHub courseId="course-1" />);
     await screen.findByText("Publish checklist");
 

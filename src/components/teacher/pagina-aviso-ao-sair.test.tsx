@@ -6,9 +6,9 @@ import { CourseManageHub } from "@/components/teacher/course-manage-hub";
 import { CONFIRM_GUARD_MS } from "@/components/ui/confirm-dialog";
 import type { TeacherCourse } from "@/domain/teacher-course";
 
-// Manage › Page: o texto de venda e a página têm Save próprio. Sair com
-// "Unsaved changes" perdia o que foi digitado sem aviso. O aviso cobre fechar a
-// aba e a navegação do próprio painel (seções e links dele), não o roteador todo.
+// Manage › Page: the sales text and the page have their own Save. Leaving with
+// "Unsaved changes" lost what was typed without a warning. The warning covers closing the
+// tab and navigation in the panel itself (its sections and links), not the whole router.
 
 const mocks = vi.hoisted(() => ({
   course: {
@@ -59,7 +59,7 @@ vi.mock("@/lib/data/creator-verification", () => ({
 }));
 vi.mock("@/components/teacher/course-overview-panel", () => ({ CourseOverviewPanel: () => null }));
 vi.mock("@/lib/data/course-assets", () => ({ fetchCourseAssets: () => Promise.resolve([]) }));
-// Os editores têm prova própria (a linha "Unsaved changes"); aqui só o sinal.
+// The editors have their own proof (the "Unsaved changes" row); here only the signal.
 vi.mock("@/components/teacher/sales-page-editor", () => ({
   SalesPageEditor: ({ onDirtyChange }: { onDirtyChange?: (dirty: boolean) => void }) => (
     <button type="button" onClick={() => onDirtyChange?.(true)}>Type in sales copy</button>
@@ -99,8 +99,8 @@ function beforeUnloadPrevented() {
   return event.defaultPrevented;
 }
 
-describe("Manage › Page: aviso ao sair com mudanças não salvas", () => {
-  it("sem mudanças, trocar de seção e fechar a aba seguem direto", () => {
+describe("Manage › Page: warning on leaving with unsaved changes", () => {
+  it("with no changes, switching sections and closing the tab go straight through", () => {
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: "Basic info" }));
     expect(mocks.router.push).toHaveBeenCalledOnce();
@@ -108,7 +108,7 @@ describe("Manage › Page: aviso ao sair com mudanças não salvas", () => {
     expect(beforeUnloadPrevented()).toBe(false);
   });
 
-  it("com mudanças, a seção pergunta antes; ficar não navega, sair navega", async () => {
+  it("with changes, the section asks first; staying does not navigate, leaving does", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: "Type in sales copy" }));
@@ -129,7 +129,7 @@ describe("Manage › Page: aviso ao sair com mudanças não salvas", () => {
     expect(mocks.router.push).toHaveBeenCalledExactlyOnceWith("/teach/courses/course-1/manage?section=basic", { scroll: false });
   });
 
-  it("com mudanças, um link do painel também pergunta antes de navegar", () => {
+  it("with changes, a panel link also asks before navigating", () => {
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: "Type in sales copy" }));
 

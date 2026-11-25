@@ -49,8 +49,8 @@ beforeEach(() => {
   state.landing = { template: "classic", blocks: [] };
   vi.mocked(saveCourseLanding).mockResolvedValue({ ok: true });
   vi.mocked(updateTeacherCourseBuilder).mockResolvedValue(undefined);
-  // Tirar uma seção pergunta na janela da plataforma; o jsdom não tem
-  // showModal/close e o stub faz o mínimo que o navegador faz.
+  // Removing a section asks in the platform dialog; jsdom does not have
+  // showModal/close and the stub does the minimum that the browser does.
   Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value() { this.setAttribute("open", ""); } });
   Object.defineProperty(HTMLDialogElement.prototype, "close", { configurable: true, value() { if (!this.hasAttribute("open")) return; this.removeAttribute("open"); this.dispatchEvent(new Event("close")); } });
 });
@@ -90,10 +90,10 @@ describe("ES-09 editors with the shipped dictionaries", () => {
     expect(screen.getByLabelText("Description")).toHaveValue(course.summary);
   });
 
-  // courses.summary e um campo so: criacao, construtor e checklist ja diziam
-  // Description; o editor da pagina de vendas e o Manage diziam "Sales promise
-  // / summary" e "Summary".
-  it("o mesmo campo se chama Description / Descripcion em toda parte, sem 'promise'", () => {
+  // courses.summary is a single field: creation, builder and checklist already said
+  // Description; the sales page editor and Manage said "Sales promise
+  // / summary" and "Summary".
+  it("the same field is called Description / Descripcion everywhere, with no 'promise'", () => {
     for (const [locale, label] of [["en", "Description"], ["es", "Descripción"]] as const) {
       const dictionary = getDictionary(locale);
       expect(translate(dictionary, "teacherSalesCopy.summary")).toBe(label);
@@ -128,13 +128,13 @@ describe("ES-09 editors with the shipped dictionaries", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("A product with this name already exists. Choose a more specific name.");
   });
 
-  // Produto no ar de antes da forma de pagar: o texto salva pela mesma RPC do
-  // construtor, que regrava preco e forma. O banco (20261007030000) recusa
-  // trocar para "cobrado sem valor"; repetir o que esta gravado passa.
+  // A product that went live before the payment form existed: the text is saved through the same RPC as the
+  // builder, which rewrites price and form. The database (20261007030000) refuses
+  // switching to "charged with no amount"; repeating what is stored passes.
   it.each([
     ["sem forma e sem valor (gratis)", undefined, "free"],
     ["pagamento unico sem valor", "one_time", "one_time"],
-  ] as const)("produto antigo no ar, %s: o texto salva sem mexer no preco", async (_label, paymentType, sent) => {
+  ] as const)("existing live product, %s: the text saves without touching the price", async (_label, paymentType, sent) => {
     const legacy: TeacherCourse = { ...course, status: "published", paymentType, priceAmountMinor: null };
     vi.mocked(updateTeacherCourseBuilder).mockImplementationOnce(async (_id, input) => {
       const changed = input.paymentType !== (legacy.paymentType ?? null) || input.priceAmountMinor !== legacy.priceAmountMinor;
@@ -173,10 +173,10 @@ describe("ES-09 editors with the shipped dictionaries", () => {
     }
     expect(screen.getByText("URL de la imagen de fondo")).toBeInTheDocument();
     expect(screen.getByText("URL de tu foto")).toBeInTheDocument();
-    // O botão de imagem é o rótulo do campo de arquivo da casca única (B-05).
+    // The image button is the label of the file field of the single shell (B-05).
     expect(screen.getAllByLabelText("Subir imagen")).toHaveLength(2);
     expect(screen.getAllByLabelText("O pega un enlace")).toHaveLength(2);
-    // Cada link colado mora no grupo com o nome da própria imagem.
+    // Each pasted link lives in the group with the name of its own image.
     for (const image of ["URL de la imagen de fondo", "URL de tu foto"]) {
       expect(within(screen.getByRole("group", { name: image })).getAllByLabelText("O pega un enlace")).toHaveLength(1);
     }

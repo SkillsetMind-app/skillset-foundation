@@ -5,10 +5,10 @@ import { StudioRecentActivity } from "@/components/teacher/studio-recent-activit
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 
-// "O que aconteceu enquanto eu nao olhava?" nao tinha resposta na Home: havia
-// proximos passos, produtos e metricas, e nenhuma linha do tempo. Aqui as
-// quatro fontes que ja existem (vendas, matriculas, avaliacoes e perguntas)
-// entram numa lista so, a mais recente primeiro.
+// "What happened while I was not looking?" had no answer on Home: there were
+// next steps, products and metrics, and no timeline. Here the
+// four sources that already exist (sales, enrollments, reviews and questions)
+// go into a single list, most recent first.
 
 const mocks = vi.hoisted(() => ({
   orders: [] as unknown[],
@@ -22,8 +22,8 @@ vi.mock("@/components/auth/auth-provider", () => ({
   useAuth: () => ({ user: { uid: "teacher-1" } }),
 }));
 
-// As frases da atividade ficam fixas em ingles; o resto (a hora relativa)
-// vem do dicionario do idioma escolhido, como no provider de verdade.
+// The activity sentences stay fixed in English; the rest (the relative time)
+// comes from the chosen language's dictionary, as in the real provider.
 vi.mock("@/components/i18n/i18n-provider", () => ({
   useTranslation: () => ({
     locale: mocks.locale,
@@ -76,15 +76,15 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
-describe("Recent activity na Home do professor", () => {
-  it("professor novo ve um estado vazio honesto, nao uma grade de zeros", async () => {
+describe("Recent activity on the teacher Home", () => {
+  it("a new teacher sees an honest empty state, not a grid of zeros", async () => {
     render(<StudioRecentActivity courses={[]} />);
 
     expect(await screen.findByText("Nothing has happened yet.")).toBeInTheDocument();
     expect(screen.queryByRole("listitem")).toBeNull();
   });
 
-  it("junta venda, matricula, avaliacao e pergunta na mesma lista, a mais recente primeiro", async () => {
+  it("puts sale, enrollment, review and question in the same list, most recent first", async () => {
     mocks.orders = [
       {
         id: "order-1",
@@ -93,7 +93,7 @@ describe("Recent activity na Home do professor", () => {
         courseTitle: "Hypnosis Basics",
         paidAt: isoDaysAgo(3),
       },
-      // Pedido nao pago nao e um evento: ninguem comprou nada.
+      // An unpaid order is not an event: nobody bought anything.
       {
         id: "order-2",
         status: "pending",
@@ -136,7 +136,7 @@ describe("Recent activity na Home do professor", () => {
     expect(screen.queryByText("Nothing has happened yet.")).toBeNull();
   });
 
-  it("cada linha leva para a tela que responde por aquele evento", async () => {
+  it("each row leads to the screen that answers for that event", async () => {
     mocks.orders = [
       {
         id: "order-1",
@@ -155,11 +155,11 @@ describe("Recent activity na Home do professor", () => {
     );
   });
 
-  // O painel de UM produto passa a mesma lista com um curso so. Sem o recorte,
-  // a venda e a matricula de outro produto entravam na atividade dele: as duas
-  // leituras trazem a loja inteira, so as avaliacoes e as perguntas ja vinham
-  // filtradas por curso.
-  it("mostra so o que aconteceu nos cursos que recebeu, nunca na loja inteira", async () => {
+  // The panel of ONE product gets the same list with a single course. Without the filter,
+  // the sale and the enrollment of another product showed up in its activity: both
+  // reads bring the whole store, only the reviews and the questions already came
+  // filtered by course.
+  it("shows only what happened in the courses it received, never in the whole store", async () => {
     mocks.orders = [
       {
         id: "order-2",
@@ -193,9 +193,9 @@ describe("Recent activity na Home do professor", () => {
     expect(items[0].textContent).toContain("Bruno enrolled in Hypnosis Basics");
   });
 
-  // A linha chamava o formatador de hora sem `t` nem `locale`: em espanhol a
-  // hora de cada evento saia em ingles ("1d ago").
-  it("mostra a hora de cada evento no idioma da pessoa", async () => {
+  // The row called the time formatter without `t` or `locale`: in Spanish the
+  // time of each event came out in English ("1d ago").
+  it("shows the time of each event in the person's language", async () => {
     mocks.locale = "es";
     mocks.students = [
       {
@@ -213,10 +213,10 @@ describe("Recent activity na Home do professor", () => {
     expect(item).toHaveTextContent("Hace 1 d");
   });
 
-  // Num replace sem callback, "$&" vira o trecho casado ("{name}", "{course}")
-  // e "$'" o resto da frase. Nome de aluno e titulo de curso sao texto da
-  // pessoa, nao nosso.
-  it("um nome ou titulo com $& aparece literal, sem virar '{name}' ou '{course}'", async () => {
+  // In a replace without a callback, "$&" becomes the matched text ("{name}", "{course}")
+  // and "$'" the rest of the sentence. A learner's name and a course title are the
+  // person's text, not ours.
+  it("a name or title with $& appears literally, without turning into '{name}' or '{course}'", async () => {
     mocks.students = [
       {
         enrollmentId: "enr-1",

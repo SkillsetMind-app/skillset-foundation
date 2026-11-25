@@ -10,12 +10,12 @@ import {
 } from "@/domain/course-readiness";
 import { cn } from "@/lib/cn";
 
-// A barra "N de M" somava titulo, capa e repasse do Stripe como se fossem a
-// mesma coisa. A Hotmart separa em tres estados (conteudo salvo, pagina
-// preparada, venda disponivel) e a pessoa enxerga onde esta travada. Aqui e so
-// o agrupamento com titulo e contagem; cada tela continua desenhando o item
-// do seu jeito (o construtor em caixa, o Manage em linha com o link de
-// verificacao), por isso o item vem por render prop e nao por markup fixo.
+// The "N of M" bar added up the title, cover and Stripe payout as if they were the
+// same thing. Hotmart separates them into three states (content saved, page
+// prepared, sale available) and the person sees where they are stuck. This is only
+// the grouping with a title and a count; each screen still draws the item
+// its own way (the builder in a box, Manage in a line with the verification
+// link), so the item comes through a render prop and not fixed markup.
 export function ReadinessGroups({
   readiness,
   renderItem,
@@ -35,7 +35,7 @@ export function ReadinessGroups({
             <span className={group.ready ? "text-[var(--color-primary)]" : "text-[var(--color-ink)]"}>
               {t(`creatorEditor.readiness.groups.${group.id}`)}
             </span>
-            {/* Grupo sem item (a venda de um produto gratis) dizia "0 of 0". */}
+            {/* A group with no items (the sale of a free product) used to say "0 of 0". */}
             {group.total > 0
               ? ` · ${t("creatorEditor.readiness.groupCount")
                 .replace("{done}", () => String(group.doneCount))

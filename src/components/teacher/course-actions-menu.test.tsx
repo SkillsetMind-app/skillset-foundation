@@ -9,9 +9,9 @@ vi.mock("@/lib/data/teacher-courses", () => ({
   getCourseAudience: vi.fn(),
 }));
 
-// O menu ⋮ dizia role="menu", mas o foco ficava no gatilho e as setas não
-// faziam nada: só o Tab andava pelos itens.
-describe("CourseActionsMenu no teclado", () => {
+// The ⋮ menu said role="menu", but focus stayed on the trigger and the arrows did
+// nothing: only Tab moved through the items.
+describe("CourseActionsMenu on the keyboard", () => {
   function renderMenu() {
     render(
       <>
@@ -28,7 +28,7 @@ describe("CourseActionsMenu no teclado", () => {
     return trigger;
   }
 
-  it("abre com o foco no 1º item; setas, Home e End andam e dão a volta", () => {
+  it("opens with focus on the 1st item; arrows, Home and End move and wrap around", () => {
     renderMenu();
     const [edit, preview, remove] = screen.getAllByRole("menuitem");
     expect(edit).toHaveFocus();
@@ -44,7 +44,7 @@ describe("CourseActionsMenu no teclado", () => {
     expect(edit).toHaveFocus();
   });
 
-  it("Tab para fora do menu fecha; andar entre os itens não", () => {
+  it("Tab out of the menu closes it; moving between items does not", () => {
     const trigger = renderMenu();
     const [edit, preview] = screen.getAllByRole("menuitem");
     fireEvent.focusOut(edit, { relatedTarget: preview });
@@ -55,7 +55,7 @@ describe("CourseActionsMenu no teclado", () => {
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 
-  it("Esc fecha e devolve o foco ao gatilho", () => {
+  it("Esc closes and returns focus to the trigger", () => {
     const trigger = renderMenu();
     fireEvent.keyDown(document, { key: "Escape" });
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();

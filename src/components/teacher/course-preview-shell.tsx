@@ -25,12 +25,12 @@ type CoursePreviewShellProps = {
 const builderHref = (courseId: string) =>
   courseId ? `/teach/builder?courseId=${encodeURIComponent(courseId)}` : "/teach/builder";
 
-// A aba que abriu a prévia (rel="opener" nos links do construtor). Guardada
-// aqui e window.opener zerado na primeira montagem: deixado de pé, uma página de
-// outra origem aberta depois nesta aba poderia trocar o endereço do construtor
-// por ele (tabnabbing). Fechar a aba por script não depende de window.opener.
-// No módulo, não num ref: trocar de aba da prévia remonta o componente e o
-// opener já estaria zerado. undefined = ainda não lida nesta página.
+// The tab that opened the preview (rel="opener" on the builder's links). Kept
+// here and window.opener cleared on the first mount: left standing, a page from
+// another origin opened later in this tab could swap the builder's address
+// for its own (tabnabbing). Closing the tab by script does not depend on window.opener.
+// In the module, not in a ref: switching the preview's tab remounts the component and the
+// opener would already be cleared. undefined = not read yet on this page.
 let builderTab: Window | null | undefined;
 
 function takeBuilderTab(): Window | null {
@@ -41,9 +41,9 @@ function takeBuilderTab(): Window | null {
   return builderTab;
 }
 
-// Só fecha esta aba se a de origem ainda estiver aberta, nesta origem, no
-// construtor DESTE curso. Fechada, ou já em outro curso ou outra tela, fechar
-// deixaria a pessoa sem o construtor (ou na tela errada).
+// Only closes this tab if the origin one is still open, on this origin, on the
+// builder of THIS course. If it is closed, or already on another course or screen, closing
+// would leave the person without the builder (or on the wrong screen).
 function builderTabOn(courseId: string): Window | null {
   const tab = takeBuilderTab();
   try {
@@ -59,11 +59,11 @@ function builderTabOn(courseId: string): Window | null {
 }
 
 /**
- * "Exit preview" e "Back" NAVEGAVAM esta aba para o construtor: ficavam dois
- * construtores salvando sozinhos o mesmo curso. Com o construtor deste curso
- * ainda aberto na aba de origem, esta aba fecha e a pessoa volta a ele. Em
- * qualquer outro caso o link segue para o construtor do curso, nesta aba; e se
- * o navegador recusar fechar, a aba vai para lá depois de um instante.
+ * "Exit preview" and "Back" used to NAVIGATE this tab to the builder: two
+ * builders ended up saving the same course on their own. With this course's builder
+ * still open in the origin tab, this tab closes and the person goes back to it. In
+ * any other case the link goes to the course's builder, in this tab; and if
+ * the browser refuses to close, the tab goes there after a moment.
  */
 function useLeavePreview(courseId: string) {
   const router = useRouter();
@@ -97,7 +97,7 @@ export function CoursePreviewShell({
   const [course, setCourse] = useState<TeacherCourse | null>(null);
   const [isLoading, setIsLoading] = useState(shouldLoadCourse);
   const [hasLoadError, setHasLoadError] = useState(false);
-  // "Try again" da falha: assina de novo o mesmo curso (F-11).
+    // "Try again" on the failure: subscribes to the same course again (F-11).
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
@@ -105,7 +105,7 @@ export function CoursePreviewShell({
       return;
     }
 
-    // `attempt` nas dependências: cada "Try again" fecha a assinatura e abre outra.
+        // `attempt` in the dependencies: each "Try again" closes the subscription and opens another.
     return subscribeToTeacherCourse(
       courseId,
       (nextCourse) => {
@@ -140,9 +140,9 @@ export function CoursePreviewShell({
     );
   }
 
-  // A espera da sala do aluno (a mesma do fallback da rota e da própria sala,
-  // com a mesma frase): antes era um cartão com uma frase, e a sala trocava
-  // para os blocos dela logo depois — duas esperas de cara diferente (F-03).
+    // The wait of the learner's classroom (the same as the route's fallback and the classroom's own,
+    // with the same sentence): before it was a card with a sentence, and the classroom switched
+    // to its own blocks right after — two waits that looked different (F-03).
   if (isLoading) {
     return <ClassroomLoading label={t("learnWave2.courseLoading.title")} />;
   }
@@ -173,9 +173,9 @@ export function CoursePreviewShell({
   }
 
   const exitHref = `${builderHref(course.id)}&tab=members`;
-  // O "Exit preview" mora na sala do aluno (learn/), que só recebe o endereço:
-  // a captura aqui em volta decide antes do Link. `contents`: o invólucro não
-  // entra no layout da sala.
+    // The "Exit preview" lives in the learner's classroom (learn/), which only receives the address:
+    // the capture around it decides before the Link. `contents`: the wrapper does not
+    // enter the classroom's layout.
   return (
     <div className="contents" onClickCapture={(event) => leavePreview(event, exitHref)}>
       <EnrolledCourseWorkspace
@@ -190,8 +190,8 @@ export function CoursePreviewShell({
   );
 }
 
-// Erro e "sem curso": a frase de sempre, sem título de destaque, e a volta é o
-// construtor DESTE curso (antes, o início do estúdio).
+// Error and "no course": the usual sentence, with no featured title, and the way back is the
+// builder of THIS course (before, the studio start).
 function PreviewState({
   courseId,
   title,
@@ -201,7 +201,7 @@ function PreviewState({
   courseId: string;
   title: string;
   detail: string;
-  /** Só na falha de leitura: lê o curso de novo, sem recarregar a página. */
+    /** Only on a read failure: reads the course again, without reloading the page. */
   onRetry?: () => void;
 }) {
   const { t } = useTranslation();

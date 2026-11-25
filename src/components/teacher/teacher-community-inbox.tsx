@@ -34,20 +34,20 @@ import {
 import { isRateLimitError } from "@/lib/data/rate-limit-error";
 import { subscribeToTeacherCourse } from "@/lib/data/teacher-courses";
 
-// A comunidade, vista pelo professor (mockup 5, 11d).
+// The community, seen by the teacher (mockup 5, 11d).
 //
-// POR QUE ISTO EXISTE
+// WHY THIS EXISTS
 //
-// O professor nao tinha tela nenhuma da propria comunidade: ou abria a sala
-// como se fosse aluno (e nem podia, sem matricula), ou nao via nada. O que
-// ele precisa e uma CAIXA DE ENTRADA: "Waiting for an answer · N" no topo,
-// com a resposta escrita ali mesmo e ja marcada como A resposta; e o resto em
-// cartoes curtos. Espacos, automacoes e moderadores nao existem no sistema —
-// entao nao aparecem aqui fingindo existir.
+// The teacher had no screen for their own community: they either opened the room
+// as if they were a learner (and could not even, without an enrollment), or saw nothing. What
+// they need is an INBOX: "Waiting for an answer · N" at the top,
+// with the answer written right there and already marked as The answer; and the rest in
+// short cards. Spaces, automations and moderators do not exist in the system —
+// so they do not appear here pretending to exist.
 //
-// "All posts" e o lugar de moderar: o professor so via a fila de perguntas, e
-// o spam de um aluno ficava no mural sem botao para tirar. Aqui ele abre,
-// desafixa e apaga qualquer post ou resposta do proprio curso.
+// "All posts" is the place to moderate: the teacher only saw the question queue, and
+// a learner's spam stayed on the wall with no button to remove it. Here they open,
+// unpin and delete any post or reply in their own course.
 
 export function TeacherCommunityInbox({ courseId }: { courseId: string }) {
   const { user } = useAuth();
@@ -57,15 +57,15 @@ export function TeacherCommunityInbox({ courseId }: { courseId: string }) {
   const [courseReady, setCourseReady] = useState(false);
   const [loadedPosts, setPosts] = useState<CommunityPost[]>([]);
   const [loadedComments, setComments] = useState<CommunityComment[]>([]);
-  // O que o professor apagou agora some na hora (o DELETE nao chega pelo
-  // realtime filtrado por curso).
+  // What the teacher just deleted disappears right away (the DELETE does not arrive through
+  // the realtime filtered by course).
   const [deleted, setDeleted] = useState<ReadonlySet<string>>(() => new Set());
   const hide = useCallback((id: string) => setDeleted((current) => new Set(current).add(id)), []);
   const [openPostId, setOpenPostId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [now, setNow] = useState(() => Date.now());
-  // "Try again" assina de novo a leitura que falhou (curso ou posts); antes a
-  // unica saida era recarregar a pagina.
+  // "Try again" subscribes again to the read that failed (course or posts); before, the
+  // only way out was reloading the page.
   const [courseAttempt, setCourseAttempt] = useState(0);
   const [postsAttempt, setPostsAttempt] = useState(0);
 
@@ -110,7 +110,7 @@ export function TeacherCommunityInbox({ courseId }: { courseId: string }) {
     return () => window.clearInterval(timer);
   }, []);
 
-  // Ja vem com os fixados no topo e o mais novo primeiro (subscribeToCommunityPosts).
+  // It already comes with pinned posts on top and the newest first (subscribeToCommunityPosts).
   const posts = useMemo(() => withoutDeleted(loadedPosts, deleted), [deleted, loadedPosts]);
   const comments = useMemo(() => withoutDeleted(loadedComments, deleted), [deleted, loadedComments]);
   const commentsByPost = useMemo(() => groupCommentsByPost(comments), [comments]);
@@ -128,15 +128,15 @@ export function TeacherCommunityInbox({ courseId }: { courseId: string }) {
   );
 
   if (!courseReady) {
-    // Igual ao fallback da rota (F-03): a espera não muda de cara no meio.
+    // Same as the route fallback (F-03): the wait does not change its look midway.
     return <BuilderSkeleton label={t("teacherCommunity.loading")} />;
   }
 
   if (!course || !user) {
     return (
       <section className="grid gap-3 rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
-        {/* Falha de leitura no vermelho da casa e com saida; curso que nao
-            existe continua a frase neutra. */}
+        {/* A read failure in the app's red and with a way out; a course that does not
+            exist stays the neutral sentence. */}
         {error === "teacherCommunity.courseError" ? (
           <>
             <InlineAlert tone="error">{t(error)}</InlineAlert>
@@ -544,8 +544,8 @@ function UpdateComposer({
 
 // ---------------------------------------------------------------------------
 
-/** Mediana, em horas, entre a pergunta e a PRIMEIRA resposta do instrutor.
- *  Sem pergunta respondida pelo instrutor, nao ha numero — e nao se inventa. */
+/** Median, in hours, between the question and the instructor's FIRST reply.
+ * With no question answered by the instructor, there is no number — and none is invented. */
 export function medianInstructorReplyHours(
   posts: CommunityPost[],
   comments: CommunityComment[],

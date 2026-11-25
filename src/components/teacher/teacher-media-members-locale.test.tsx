@@ -64,7 +64,7 @@ describe("ES-12 media and members with real dictionaries", () => {
 
   it("localizes filters, alt text and sizes; preserves names, URLs, kind values and search draft", () => {
     mount(<TeacherMediaLibrary />);
-    // O titulo da Midia e o h1 da pagina (era um h3 dentro do cartao, sem h1).
+    // The Media title is the page h1 (it was an h3 inside the card, with no h1).
     expect(screen.getByRole("heading", { level: 1, name: "Archivos del curso y recursos de las lecciones" })).toBeInTheDocument();
     const image = screen.getByRole("img", { name: "Portada del curso: Original $&.jpg" });
     expect(image).toHaveAttribute("src", "/uploads/original.jpg");
@@ -83,8 +83,8 @@ describe("ES-12 media and members with real dictionaries", () => {
     expect(screen.getByRole("link", { name: "Open builder" })).toHaveAttribute("href", "/teach/builder?courseId=course-1&tab=content");
   });
 
-  // "Vista previa" só vale para vídeo (a aula de amostra). Material marcado
-  // como prévia no tempo da caixa que saiu continua privado.
+  // "Vista previa" only applies to video (the sample lesson). Material marked
+  // as a preview back when the checkbox existed (now removed) stays private.
   it("localizes nonimage MIME categories and private lesson metadata", () => {
     state.assets = [
       { ...cover, kind: "lesson_material", contentType: "application/pdf",
@@ -117,10 +117,10 @@ describe("ES-12 media and members with real dictionaries", () => {
     expect(screen.getByRole("link", { name: "Abrir área de subida del editor" })).toBeInTheDocument();
   });
 
-  // Com arquivos na biblioteca, uma busca ou um tipo sem resultado nao e a
-  // primeira vez: nada de "suba pelo editor", e sim "nenhum resultado" com o
-  // caminho de volta.
-  it("busca sem resultado mostra 'nenhum resultado' e limpa os filtros", () => {
+  // With files in the library, a search or a type with no results is not the
+  // first time: no "upload from the editor", but "no results" with the
+  // way back.
+  it("a search with no results shows 'no results' and clears the filters", () => {
     const es = getDictionary("es");
     mount(<TeacherMediaLibrary />);
     fireEvent.change(screen.getByRole("combobox", { name: "Tipo" }), { target: { value: "course_cover" } });
@@ -145,7 +145,7 @@ describe("ES-12 media and members with real dictionaries", () => {
   it("localizes member metadata, singular counts and theme without translating course content", () => {
     mount(<TeacherMembersAreaHub />);
     expect(screen.getByRole("heading", { level: 1, name: "Miembros y comunidades" })).toBeInTheDocument();
-    // O seletor segmentado da casa (botoes com aria-pressed), nao mais radios.
+    // The house segmented selector (buttons with aria-pressed), no longer radios.
     expect(screen.getByRole("group", { name: "Tipo de contenido para miembros" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Espacios de productos" })).toHaveAttribute("aria-pressed", "true");
     const card = screen.getByRole("article");
@@ -181,7 +181,7 @@ describe("ES-12 media and members with real dictionaries", () => {
     state.courseError = true;
     mount(<TeacherMembersAreaHub />);
     expect(screen.getByRole("alert")).toHaveTextContent("No pudimos cargar tus áreas de miembros. Inténtalo de nuevo.");
-    // Falha na leitura nao e "nenhum espaco ainda": sem o vazio, com "Try again".
+    // A read failure is not "no space yet": no empty state, with "Try again".
     expect(screen.queryByRole("heading", { name: translate(getDictionary("es"), "teacherMembers.noSpace") })).toBeNull();
     expect(screen.getByRole("button", { name: translate(getDictionary("es"), "appErrors.retry") })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "EN" }));

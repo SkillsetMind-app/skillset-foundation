@@ -8,8 +8,8 @@ import { ImageUploadField, type ImageUploadFieldProps } from "./image-upload-fie
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
-// A casca única do campo de imagem (B-05). Não envia nada: os estados vêm por
-// props e o arquivo escolhido vai para o onChange de quem a usa.
+// The single shell of the image field (B-05). It does not upload anything: the states come in by
+// props and the chosen file goes to the onChange of whoever uses it.
 const running: UploadCourseAssetProgress = { bytesTransferred: 512, totalBytes: 1024, percent: 50, state: "running" };
 
 function setup(overrides: Partial<ImageUploadFieldProps> = {}) {
@@ -36,7 +36,7 @@ function setup(overrides: Partial<ImageUploadFieldProps> = {}) {
 describe("ImageUploadField", () => {
   afterEach(cleanup);
 
-  it("vazio: quadro sem imagem, botão com as regras e sem Remove", () => {
+  it("empty: frame with no image, button with the rules and no Remove", () => {
     const { region } = setup({ preview: { src: null, alt: "Cover", emptyLabel: "No cover yet" }, note: "Add a cover." });
     expect(within(region).queryByRole("img")).toBeNull();
     expect(within(region).getByText("No cover yet")).toBeInTheDocument();
@@ -48,7 +48,7 @@ describe("ImageUploadField", () => {
     expect(within(region).getByText("Add a cover.")).toBeInTheDocument();
   });
 
-  it("com imagem: prévia com o alt de quem chama e o Remove em texto", () => {
+  it("with an image: preview with the caller's alt and Remove as text", () => {
     const { region, onRemove } = setup({ preview: { src: "/capa.png", alt: "Cover of Course" }, triggerLabel: "Replace cover" });
     expect(within(region).getByRole("img", { name: "Cover of Course" })).toHaveAttribute("src", "/capa.png");
     expect(within(region).getByLabelText("Replace cover")).toBeEnabled();
@@ -56,7 +56,7 @@ describe("ImageUploadField", () => {
     expect(onRemove).toHaveBeenCalledOnce();
   });
 
-  it("o arquivo escolhido vai inteiro para o onChange de quem chama", () => {
+  it("the chosen file goes whole to the caller's onChange", () => {
     const { region, onChange } = setup();
     const file = new File(["x"], "capa.png", { type: "image/png" });
     fireEvent.change(within(region).getByLabelText("Upload cover"), { target: { files: [file] } });
@@ -64,7 +64,7 @@ describe("ImageUploadField", () => {
     expect(onChange.mock.calls[0][0].target.files[0]).toBe(file);
   });
 
-  it("enviando: rótulo fixo, nota de andamento, botão travado e Remove fora da vista", () => {
+  it("uploading: fixed label, progress note, locked button and Remove out of view", () => {
     const { region } = setup({
       preview: { src: "/capa.png", alt: "Cover" },
       triggerLabel: "Replace cover",
@@ -79,13 +79,13 @@ describe("ImageUploadField", () => {
     expect(within(region).queryByText("Add a cover.")).toBeNull();
   });
 
-  it("erro: o aviso da casa, anunciado, no lugar da ajuda", () => {
+  it("error: the house notice, announced, in place of the help", () => {
     const { region } = setup({ error: "We could not upload this image.", note: "Add a cover." });
     expect(within(region).getByRole("alert")).toHaveTextContent("We could not upload this image.");
     expect(within(region).queryByText("Add a cover.")).toBeNull();
   });
 
-  it("2:3 para a capa do módulo; 16:9 nas outras", () => {
+  it("2:3 for the module cover; 16:9 for the others", () => {
     const { region } = setup({ preview: { src: null, alt: "Module cover", portrait: true } });
     expect(region.querySelector(".aspect-\\[2\\/3\\]")).not.toBeNull();
     cleanup();
@@ -93,7 +93,7 @@ describe("ImageUploadField", () => {
     expect(second.region.querySelector(".aspect-video")).not.toBeNull();
   });
 
-  it("moldura e encaixe próprios só quando pedidos (o logo da vitrine)", () => {
+  it("own frame and fit only when requested (the storefront logo)", () => {
     const { region } = setup({ preview: { src: "/logo.png", alt: "", frame: "aspect-square w-24", contain: true } });
     expect(region.querySelector(".aspect-square.w-24")).not.toBeNull();
     expect(region.querySelector(".aspect-video")).toBeNull();

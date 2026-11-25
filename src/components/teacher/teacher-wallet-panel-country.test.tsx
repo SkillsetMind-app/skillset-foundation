@@ -127,7 +127,7 @@ it("sends a creator with an account straight to onboarding and shows the payout 
   expect(JSON.parse(String(sessionCalls()[0][1].body))).toEqual({});
   expect(screen.getByText(copy("teach.earnings.payoutCountry"))).toBeInTheDocument();
   expect(screen.getByText("United Kingdom")).toBeInTheDocument();
-  // Com conta conectada, "Open my Stripe" aparece (sem conta so dava erro).
+  // With a connected account, "Open my Stripe" shows up (without one it only gave an error).
   expect(screen.getByRole("button", { name: copy("stripeDashboard.open") })).toBeInTheDocument();
 });
 

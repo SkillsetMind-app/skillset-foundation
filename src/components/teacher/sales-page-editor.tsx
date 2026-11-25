@@ -24,7 +24,7 @@ export function SalesPageEditor({
   onDirtyChange,
 }: {
   course: TeacherCourse;
-  /** O mesmo "Unsaved changes" da linha ao lado do Save, para o aviso de sair. */
+  /** The same "Unsaved changes" as the line next to Save, for the leave warning. */
   onDirtyChange?: (dirty: boolean) => void;
 }) {
   const { t } = useTranslation();
@@ -36,8 +36,8 @@ export function SalesPageEditor({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  // O que está na tela contra o que o servidor confirmou por último: "Saved"
-  // só vale enquanto os dois são iguais.
+  // What is on screen versus what the server last confirmed: "Saved"
+  // only holds while the two are equal.
   const draft = JSON.stringify([title, summary, outcomesText]);
   const [savedDraft, setSavedDraft] = useState(draft);
   const dirty = draft !== savedDraft;
@@ -69,9 +69,9 @@ export function SalesPageEditor({
         categories: course.categories ?? [],
         learningOutcomes,
         modules: course.modules ?? [],
-        // Mesma leitura do construtor: sem forma gravada e sem valor e gratis.
-        // Mandar "pagamento unico a 0" num produto no ar era recusado
-        // (PAID_PRODUCT_NEEDS_PRICE) e o texto nao salvava.
+        // Same reading as the builder: with no stored form and no value, it is free.
+        // Sending "one-time payment at 0" on a live product was refused
+        // (PAID_PRODUCT_NEEDS_PRICE) and the text did not save.
         paymentType: course.paymentType ?? (course.priceAmountMinor ? "one_time" : "free"),
         priceAmountMinor: course.priceAmountMinor ?? null,
         currency: course.currency ?? "USD",
@@ -145,8 +145,8 @@ export function SalesPageEditor({
           />
         </label>
         <div className="flex flex-wrap items-center gap-2">
-          {/* Contorno: na seção Page o único botão cheio é o "Save page" do
-              editor de blocos logo abaixo. */}
+          {/* Outline: in the Page section the only filled button is the "Save page" of the
+              block editor right below. */}
           <button type="submit" className="button-outline px-4 py-2 text-xs" disabled={saving}>
             <BusyLabel busy={saving} idle={t("teacherSalesCopy.save")} busyText={t("teacherSalesCopy.saving")} />
           </button>

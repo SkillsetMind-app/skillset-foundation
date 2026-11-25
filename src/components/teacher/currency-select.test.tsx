@@ -15,9 +15,9 @@ function SwitchLanguage() {
   return <button onClick={() => setLocale(locale === "en" ? "es" : "en")}>Switch language</button>;
 }
 
-// O seletor de moeda saía do cartão: a coluna era 140px fixos e um <select>
-// nunca fica mais estreito que a sua opção mais larga. E em Gerenciar → Preços
-// a moeda era um campo de texto livre de três letras.
+// The currency select left the card: the column was a fixed 140px and a <select>
+// is never narrower than its widest option. And in Manage → Prices
+// the currency was a free text field of three letters.
 
 describe("CurrencySelect", () => {
   it("keeps the selected code and options while names and groups follow the locale", () => {
@@ -42,7 +42,7 @@ describe("CurrencySelect", () => {
     expect(onChange).toHaveBeenCalledExactlyOnceWith("MXN");
   });
 
-  it("oferece exatamente as moedas que o Stripe aceita, nenhuma a mais", () => {
+  it("offers exactly the currencies Stripe accepts, none more", () => {
     render(<CurrencySelect value="USD" onChange={() => {}} />);
 
     const options = screen
@@ -53,7 +53,7 @@ describe("CurrencySelect", () => {
     expect(options).toHaveLength(supportedStripeCurrencies.length);
   });
 
-  it("encolhe junto com a coluna em vez de empurrar a borda do cartao", () => {
+  it("shrinks along with the column instead of pushing the card border", () => {
     render(<CurrencySelect value="USD" onChange={() => {}} />);
 
     const select = screen.getByRole("combobox");
@@ -61,10 +61,10 @@ describe("CurrencySelect", () => {
     expect(select.className).toMatch(/\bmin-w-0\b/);
   });
 
-  it("fechado mostra so o codigo; as outras opcoes trazem codigo + nome", () => {
-    // Um <select> fechado exibe o texto da opcao selecionada: com
-    // "USD - US Dollar" ali, a moeda escolhida chegava cortada no meio do nome
-    // numa coluna estreita.
+  it("closed shows only the code; the other options carry code + name", () => {
+    // A closed <select> shows the text of the selected option: with
+    // "USD - US Dollar" there, the chosen currency arrived cut off in the middle of the name
+    // in a narrow column.
     render(<CurrencySelect value="USD" onChange={() => {}} />);
 
     const options = screen.getAllByRole("option") as HTMLOptionElement[];
@@ -75,7 +75,7 @@ describe("CurrencySelect", () => {
     expect(other?.textContent).toBe("BRL - Brazilian Real");
   });
 
-  it("trocar de moeda move o rotulo curto junto — a nova e que fica so o codigo", () => {
+  it("changing currency moves the short label along — the new one is the one that shows only the code", () => {
     const { rerender } = render(<CurrencySelect value="USD" onChange={() => {}} />);
     rerender(<CurrencySelect value="BRL" onChange={() => {}} />);
 
@@ -86,7 +86,7 @@ describe("CurrencySelect", () => {
     );
   });
 
-  it("devolve o codigo escolhido", () => {
+  it("returns the chosen code", () => {
     const onChange = vi.fn();
     render(<CurrencySelect value="USD" onChange={onChange} />);
 
@@ -96,18 +96,18 @@ describe("CurrencySelect", () => {
   });
 });
 
-describe("a grade de preco e moeda do construtor", () => {
+describe("the builder's price and currency grid", () => {
   const source = readFileSync(
     path.join(process.cwd(), "src/components/teacher/course-builder-studio.tsx"),
     "utf8",
   );
 
-  it("usa minmax(0, ...) nas duas colunas, nunca 140px fixos", () => {
+  it("uses minmax(0, ...) on both columns, never a fixed 140px", () => {
     expect(source).not.toContain("md:grid-cols-[1fr_140px]");
     expect(source).toContain("md:grid-cols-[minmax(0,1fr)_minmax(0,200px)]");
   });
 
-  it("usa o mesmo seletor que Gerenciar -> Precos e ofertas", () => {
+  it("uses the same select as Manage -> Prices and offers", () => {
     const offers = readFileSync(
       path.join(process.cwd(), "src/components/teacher/course-offers-panel.tsx"),
       "utf8",
@@ -115,7 +115,7 @@ describe("a grade de preco e moeda do construtor", () => {
 
     expect(source).toContain("<CurrencySelect");
     expect(offers).toContain("<CurrencySelect");
-    // O campo de texto livre de tres letras foi embora.
+    // The free three-letter text field is gone.
     expect(offers).not.toContain("toUpperCase().slice(0, 3)");
   });
 });

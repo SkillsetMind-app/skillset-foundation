@@ -10,7 +10,7 @@ import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 import { useWelcomeTour } from "@/lib/ui/use-welcome-tour";
 
 type TourStep = {
-  // A faixa de gravura do passo (no lugar do iconezinho redondo).
+  // The step's engraving strip (in place of the small round icon).
   scene: SpotArtScene;
   title: string;
   body: string;
@@ -21,8 +21,8 @@ function buildSteps(firstName: string, t: (key: string) => string): TourStep[] {
     ? t("teach.tour.welcomeNamed").replace("{name}", () => firstName)
     : t("teach.tour.welcome");
 
-  // Dois passos: "Publicar e vender" e "Ganhos e ajuda" saíram, porque a lista
-  // de próximos passos do estúdio já leva a eles. A Ajuda ficou no passo 2.
+  // Two steps: "Publish and sell" and "Earnings and help" left, because the studio's
+  // next-steps list already leads to them. Help stayed on step 2.
   return [
     {
       scene: "firstProduct",
@@ -43,8 +43,8 @@ type TeacherWelcomeTourProps = {
   hasProducts?: boolean;
 };
 
-// A janela dos termos vem antes (o mesmo do tour do aluno): enquanto ela está
-// na tela, ou ainda não se sabe, o tour nem monta e não marca "visto".
+// The terms dialog comes first (the same as in the learner tour): while it is
+// on screen, or we do not know yet, the tour does not mount and does not mark "seen".
 export function TeacherWelcomeTour(props: TeacherWelcomeTourProps) {
   return useLegalGateWaiting() ? null : <TeacherWelcomeTourDialog {...props} />;
 }
@@ -57,9 +57,9 @@ function TeacherWelcomeTourDialog({
   const { t } = useTranslation();
   const { open, dismiss } = useWelcomeTour(userId, "teacher");
   const [stepIndex, setStepIndex] = useState(0);
-  // O mesmo do tour do aluno (learn/welcome-tour.tsx): só depois da primeira
-  // troca de passo o texto e a cena entram subindo. Na abertura a janela já
-  // entra pelo .modal-panel; os dois juntos davam a animação duas vezes.
+  // The same as the learner tour (learn/welcome-tour.tsx): only after the first
+  // step change do the text and scene rise in. On opening the dialog already
+  // enters through .modal-panel; both together made the animation play twice.
   const [stepChanged, setStepChanged] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -72,8 +72,8 @@ function TeacherWelcomeTourDialog({
     setStepIndex(Math.max(0, Math.min(steps.length - 1, next)));
   }
 
-  // Trocou de passo: o foco vai para o título novo. Voltar ao passo 1 tira o
-  // "Back" da tela com o foco nele, e o foco caía atrás da janela.
+  // Changed step: focus goes to the new title. Going back to step 1 takes the
+  // "Back" off the screen with focus on it, and focus fell behind the dialog.
   useEffect(() => {
     if (stepChanged) titleRef.current?.focus();
   }, [stepIndex, stepChanged]);
@@ -113,17 +113,17 @@ function TeacherWelcomeTourDialog({
         className="dialog-panel modal-panel modal-panel-scroll overflow-hidden outline-none"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        {/* Faixa estreita de gravura com a cena do passo (altura fixa, h-20).
-            key: trocar de passo remonta a cena e ela entra de novo. Um
-            controle de pular só, o "Skip" do rodapé (e o Esc): o X do topo
-            ("Skip the tour") fazia a mesma coisa. */}
+        {/* Narrow engraving strip with the step's scene (fixed height, h-20).
+            key: switching steps remounts the scene and it enters again. A single
+            skip control, the footer "Skip" (and Esc): the X at the top
+            ("Skip the tour") did the same thing. */}
         <div className="border-b border-[var(--color-line)] bg-[var(--color-surface-soft)] px-6 py-3">
           <SpotArt key={step.scene} scene={step.scene} className={`mx-auto h-20 w-auto ${stepChanged ? "spot-art-in" : ""}`} />
         </div>
 
-        {/* Os passos na mesma célula da grade: a caixa tem a altura do
-            passo mais longo, então trocar de passo não mexe nos botões de
-            baixo. Só o atual aparece (e existe para o leitor de tela). */}
+        {/* The steps in the same grid cell: the box has the height of the
+            longest step, so switching steps does not move the buttons
+            below. Only the current one shows (and exists for the screen reader). */}
         <div className="grid px-6 pb-2 pt-4">
           {steps.map((item, index) => {
             const current = index === stepIndex;
@@ -147,8 +147,8 @@ function TeacherWelcomeTourDialog({
           })}
         </div>
 
-        {/* Traços de largura fixa: só a cor do atual muda (antes o ativo
-            crescia de 6 para 24px e refazia o layout). */}
+        {/* Fixed-width dashes: only the current one's color changes (before, the active one
+            grew from 6 to 24px and redid the layout). */}
         <div className="flex items-center gap-2 px-6 py-3" aria-hidden="true">
           {steps.map((item, index) => (
             <span
@@ -161,9 +161,9 @@ function TeacherWelcomeTourDialog({
           ))}
         </div>
 
-        {/* O rodapé da casa (filete, respiro), mas sem empilhar no celular:
-            o Back só aparece do 2º passo, e empilhado ele mudaria a altura
-            da janela entre os passos. O Skip fica à esquerda. */}
+        {/* The house footer (hairline, breathing room), but without stacking on the phone:
+            Back only shows from the 2nd step, and stacked it would change the height
+            of the dialog between steps. Skip stays on the left. */}
         <div className="dialog-footer flex-row flex-wrap items-center justify-between">
           <button
             type="button"
@@ -182,9 +182,9 @@ function TeacherWelcomeTourDialog({
                 {t("learn.tour.back")}
               </button>
             ) : null}
-            {/* O tour so descrevia e terminava em "Open your studio", que so
-                fechava. Sem produto ainda, a ultima pagina leva a acao que ele
-                descreveu: criar o primeiro produto. */}
+            {/* The tour only described and ended at "Open your studio", which only
+                closed. With no product yet, the last page leads to the action it
+                described: creating the first product. */}
             {isLast && !hasProducts ? (
               <Link
                 href="/teach/builder?newCourse=1&format=course"

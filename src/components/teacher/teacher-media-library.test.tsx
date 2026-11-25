@@ -6,14 +6,14 @@ import type { TeacherCourse } from "@/domain/teacher-course";
 
 const state = vi.hoisted(() => ({
   assets: [] as CourseAsset[],
-  // "data": chega na hora; "pending": ainda nao chegou; "error": falhou.
+  // "data": arrives right away; "pending": has not arrived yet; "error": failed.
   assetsMode: "data" as "data" | "pending" | "error",
   coursesFail: false,
   emitAssets: (() => undefined) as (assets: CourseAsset[]) => void,
   assetReloads: 0,
   courseReloads: 0,
-  // Objeto estável: o componente depende de `[user]` num efeito, e um objeto
-  // novo a cada render vira loop infinito de inscrição.
+  // Stable object: the component depends on `[user]` in an effect, and a new
+  // object on every render becomes an infinite subscription loop.
   user: { uid: "teacher-1" },
 }));
 
@@ -50,7 +50,7 @@ vi.mock("@/lib/data/course-assets", () => ({
     state.emitAssets = onAssets;
     if (state.assetsMode === "data") onAssets(state.assets);
     if (state.assetsMode === "error") onError(new Error("offline"));
-    // Como a de verdade: a releitura que da certo entrega a lista.
+    // Like the real one: the re-read that works delivers the list.
     return Object.assign(() => {}, {
       reload: async () => {
         state.assetReloads += 1;
@@ -91,12 +91,12 @@ describe("TeacherMediaLibrary", () => {
     state.courseReloads = 0;
   });
 
-  it("antes de os arquivos chegarem mostra carregando, nao 'no files'", () => {
+  it("before the files arrive it shows loading, not 'no files'", () => {
     state.assetsMode = "pending";
     render(<TeacherMediaLibrary />);
 
     expect(screen.getByRole("status")).toHaveTextContent("Loading this course's files...");
-    // T-07: cartões no formato do arquivo, não uma frase num cartão.
+    // T-07: cards shaped like the file, not a sentence in a card.
     expect(screen.getByRole("status")).toHaveAttribute("data-skeleton", "cards");
     expect(screen.queryByText("Upload from the builder.")).toBeNull();
 
@@ -104,7 +104,7 @@ describe("TeacherMediaLibrary", () => {
     expect(screen.getByText("Upload from the builder.")).toBeInTheDocument();
   });
 
-  it("falha nos arquivos: erro com 'Try again', que le de novo pelo mesmo canal", async () => {
+  it("files failure: error with 'Try again', which re-reads through the same channel", async () => {
     state.assetsMode = "error";
     state.assets = [asset({})];
     render(<TeacherMediaLibrary />);
@@ -121,7 +121,7 @@ describe("TeacherMediaLibrary", () => {
     expect(screen.getByText("IMG_4821.jpg")).toBeInTheDocument();
   });
 
-  it("falha nos cursos nao diz 'crie seu primeiro curso'", async () => {
+  it("a courses failure does not say 'create your first course'", async () => {
     state.coursesFail = true;
     render(<TeacherMediaLibrary />);
 
@@ -136,9 +136,9 @@ describe("TeacherMediaLibrary", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  // Três capas chamadas IMG_xxxx.jpg eram três quadrados idênticos escritos
-  // "image". A URL pública já estava na linha e não era usada.
-  it("mostra a miniatura da capa em vez da palavra 'image'", async () => {
+  // Three covers named IMG_xxxx.jpg were three identical squares labeled
+  // "image". The public URL was already on the row and was not used.
+  it("shows the cover thumbnail instead of the word 'image'", async () => {
     state.assets = [asset({})];
 
     render(<TeacherMediaLibrary />);
@@ -153,7 +153,7 @@ describe("TeacherMediaLibrary", () => {
     expect(screen.queryByText("image")).not.toBeInTheDocument();
   });
 
-  it("mantém o rótulo de tipo para arquivos sem URL pública", async () => {
+  it("keeps the type label for files without a public URL", async () => {
     state.assets = [
       asset({
         id: "asset-2",

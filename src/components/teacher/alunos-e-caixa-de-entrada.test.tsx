@@ -6,10 +6,10 @@ import { TeacherStudentsList } from "@/components/teacher/teacher-students-list"
 import { useTeacherInboxCount } from "@/components/teacher/use-teacher-inbox-count";
 import { countThreadsAwaitingReply } from "@/domain/course-message";
 
-// As duas paginas novas do professor: Alunos (todos os alunos de todos os
-// produtos) e a Caixa de entrada (perguntas da comunidade + mensagens), com o
-// numero de pendentes que aparece na barra. As consultas em si (colunas,
-// ordem, filtros) estao em src/lib/data/caixa-de-entrada-leituras.test.ts.
+// The two new teacher pages: Students (all learners of all
+// products) and the Inbox (community questions + messages), with the
+// number of pending items shown in the bar. The queries themselves (columns,
+// order, filters) are in src/lib/data/caixa-de-entrada-leituras.test.ts.
 
 const mocks = vi.hoisted(() => ({
   getMyCourseSummaries: vi.fn(),
@@ -80,8 +80,8 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe("Alunos: todos os produtos numa lista", () => {
-  it("conta pessoas, nao matriculas, e leva para a lista do produto e para a comunidade", async () => {
+describe("Students: all products in one list", () => {
+  it("counts people, not enrollments, and links to the product list and to the community", async () => {
     render(<TeacherStudentsList />);
 
     expect(await screen.findByText("2 active students")).toBeInTheDocument();
@@ -89,20 +89,20 @@ describe("Alunos: todos os produtos numa lista", () => {
     expect(rows).toHaveLength(3);
 
     const ana = rows.find((row) => within(row).queryByText("Leadership"))!;
-    // O proprio nome e o link (sem a parede de botoes iguais em toda linha).
+    // The name itself is the link (no wall of identical buttons on every row).
     expect(within(ana).getByRole("link", { name: /^Ana: See in product/ })).toHaveAttribute(
       "href",
       "/teach/courses/c-1/manage?section=students",
     );
     expect(within(ana).getByRole("link", { name: /Community/ })).toHaveAttribute("href", "/teach/courses/c-1/community");
 
-    // Produto sem comunidade: sem o link que daria numa caixa vazia.
+    // Product without a community: no link that would lead to an empty inbox.
     const bruno = rows.find((row) => within(row).queryByText("Bruno"))!;
     expect(within(bruno).queryByRole("link", { name: /Community/ })).toBeNull();
   });
 
-  // Antes, quem pediu reembolso continuava contando como aluno, sem marca.
-  it("reembolsado, removido e expirado aparecem com a situacao e nao contam como alunos", async () => {
+  // Before, someone who asked for a refund kept counting as a learner, with no mark.
+  it("refunded, removed and expired appear with their status and do not count as learners", async () => {
     mocks.getMyCourseStudents.mockResolvedValue([
       enrollment("e-1", "c-1", "s-1", "Ana", "active"),
       enrollment("e-2", "c-2", "s-2", "Bruno", "completed"),
@@ -123,9 +123,9 @@ describe("Alunos: todos os produtos numa lista", () => {
     expect(within(statusOf("Edu")).getByText("Expired")).toBeInTheDocument();
   });
 
-  // Antes nao havia como achar uma pessoa: era rolar a tabela inteira. A busca
-  // filtra o que ja veio (nome, e-mail, produto), sem consulta nova.
-  it("busca por nome, e-mail ou produto no que ja carregou, e diz quando nada bate", async () => {
+  // Before, there was no way to find a person: you had to scroll the whole table. The search
+  // filters what has already loaded (name, e-mail, product), with no new query.
+  it("searches by name, e-mail or product in what has already loaded, and says when nothing matches", async () => {
     mocks.getMyCourseStudents.mockResolvedValue([
       enrollment("e-1", "c-1", "s-1", "Ana", "active"),
       { ...enrollment("e-2", "c-2", "s-2", "Bruno", "completed"), email: "bruno@example.com" },
@@ -134,8 +134,8 @@ describe("Alunos: todos os produtos numa lista", () => {
 
     const search = await screen.findByLabelText("Search students by name, e-mail or product");
     const bodyRows = () => screen.getAllByRole("row").slice(1);
-    // A região viva já existe, vazia, antes de não sobrar ninguém: inserida
-    // já com o texto, muitos leitores de tela não a anunciavam.
+    // The live region already exists, empty, before no one is left: inserted
+    // already containing the text, many screen readers did not announce it.
     expect(screen.getByRole("status")).toBeEmptyDOMElement();
     fireEvent.change(search, { target: { value: "BRUNO@" } });
     expect(bodyRows()).toHaveLength(1);
@@ -146,12 +146,12 @@ describe("Alunos: todos os produtos numa lista", () => {
     fireEvent.change(search, { target: { value: "nobody" } });
     expect(screen.queryByRole("table")).toBeNull();
     expect(screen.getByRole("status")).toHaveTextContent("No student matches this search or filter.");
-    // A contagem e de todos, nao do recorte da busca.
+    // The count is of everyone, not of the search subset.
     expect(screen.getByText("2 active students")).toBeInTheDocument();
     expect(mocks.getMyCourseStudents).toHaveBeenCalledTimes(1);
   });
 
-  it("so com matriculas encerradas, a conta diz zero", async () => {
+  it("with only ended enrollments, the count says zero", async () => {
     mocks.getMyCourseStudents.mockResolvedValue([enrollment("e-1", "c-1", "s-1", "Ana", "refunded")]);
     render(<TeacherStudentsList />);
 
@@ -159,8 +159,8 @@ describe("Alunos: todos os produtos numa lista", () => {
     expect(within(screen.getAllByRole("row")[1]).getByText("Refunded")).toBeInTheDocument();
   });
 
-  // O filtro de acesso da lista por produto, tambem so sobre o que ja veio.
-  it("filtra por acesso sem ler de novo, e a contagem continua a de todos", async () => {
+  // The access filter of the per-product list, also only over what has already loaded.
+  it("filters by access without reading again, and the count stays the one for everyone", async () => {
     mocks.getMyCourseStudents.mockResolvedValue([
       enrollment("e-1", "c-1", "s-1", "Ana", "active"),
       enrollment("e-2", "c-2", "s-2", "Bruno", "completed"),
@@ -181,8 +181,8 @@ describe("Alunos: todos os produtos numa lista", () => {
     expect(mocks.getMyCourseStudents).toHaveBeenCalledTimes(1);
   });
 
-  // Antes a tabela mostrava todas as matriculas de uma vez, sem limite.
-  it("mostra 50 por vez e 'Show N more' abre as proximas, sem ler de novo", async () => {
+  // Before, the table showed all enrollments at once, with no limit.
+  it("shows 50 at a time and 'Show N more' opens the next ones, without reading again", async () => {
     mocks.getMyCourseStudents.mockResolvedValue(
       Array.from({ length: 120 }, (_, index) => ({
         ...enrollment(`e-${index}`, "c-1", `s-${index}`, `Aluno ${index}`, "active"),
@@ -196,19 +196,19 @@ describe("Alunos: todos os produtos numa lista", () => {
     expect(bodyRows()).toHaveLength(50);
     fireEvent.click(screen.getByRole("button", { name: "Show 50 more" }));
     expect(bodyRows()).toHaveLength(100);
-    // O foco segue para a primeira linha nova, onde a leitura continua.
+    // Focus moves to the first new row, where reading continues.
     expect(bodyRows()[50]).toHaveFocus();
     fireEvent.click(screen.getByRole("button", { name: "Show 20 more" }));
     expect(bodyRows()).toHaveLength(120);
-    // O ultimo clique tira o botao; o foco nao cai no body.
+    // The last click removes the button; focus does not fall to the body.
     expect(screen.queryByRole("button", { name: /Show \d+ more/ })).toBeNull();
     expect(bodyRows()[100]).toHaveFocus();
     expect(mocks.getMyCourseStudents).toHaveBeenCalledTimes(1);
   });
 
-  // Ir e voltar no filtro (ou buscar) recomeca nas primeiras 50: antes, depois
-  // de abrir tudo, as 120 voltavam de uma vez.
-  it("filtro ou busca novos recomecam nas primeiras 50", async () => {
+  // Going back and forth on the filter (or searching) restarts at the first 50: before, after
+  // opening everything, all 120 came back at once.
+  it("a new filter or search restarts at the first 50", async () => {
     mocks.getMyCourseStudents.mockResolvedValue(
       Array.from({ length: 120 }, (_, index) => ({
         ...enrollment(`e-${index}`, "c-1", `s-${index}`, `Aluno ${index}`, "active"),
@@ -233,9 +233,9 @@ describe("Alunos: todos os produtos numa lista", () => {
     expect(screen.getByRole("button", { name: "Show 50 more" })).toBeInTheDocument();
   });
 
-  // T-18: a lista nao tinha Export. Ele leva o recorte inteiro da busca e do
-  // filtro (nao so as 50 abertas), sem ler de novo.
-  it("Export leva tudo o que a busca e o filtro acham, nao so as linhas abertas", async () => {
+  // T-18: the list had no Export. It takes the whole subset of the search and
+  // filter (not just the 50 open), without reading again.
+  it("Export takes everything the search and filter find, not just the open rows", async () => {
     mocks.getMyCourseStudents.mockResolvedValue([
       ...Array.from({ length: 60 }, (_, index) => ({
         ...enrollment(`e-${index}`, "c-1", `s-${index}`, `Aluno ${index}`, "active"),
@@ -278,16 +278,16 @@ describe("Alunos: todos os produtos numa lista", () => {
     vi.restoreAllMocks();
   });
 
-  it("sem alunos, um estado vazio que explica", async () => {
+  it("with no learners, an empty state that explains", async () => {
     mocks.getMyCourseStudents.mockResolvedValue([]);
     render(<TeacherStudentsList />);
 
     expect(await screen.findByRole("heading", { name: /No students yet/ })).toBeInTheDocument();
   });
 
-  // Falha nao e "nenhum aluno": o erro com "Try again", que pede a mesma
-  // leitura de novo.
-  it("leitura que falha mostra o erro e Try again le de novo", async () => {
+  // A failure is not "no learners": the error with "Try again", which asks for the same
+  // read again.
+  it("a read that fails shows the error and Try again reads again", async () => {
     mocks.getMyCourseStudents.mockRejectedValueOnce(new Error("down"));
     render(<TeacherStudentsList />);
 
@@ -299,8 +299,8 @@ describe("Alunos: todos os produtos numa lista", () => {
   });
 });
 
-describe("Caixa de entrada: perguntas que esperam pelo professor", () => {
-  it("mostra quantas sao e leva cada uma para a caixa da comunidade do curso", async () => {
+describe("Inbox: questions waiting for the teacher", () => {
+  it("shows how many there are and links each one to the course's community inbox", async () => {
     render(<TeacherInboxQuestions />);
 
     const heading = await screen.findByRole("heading", { name: /Questions waiting for you/ });
@@ -308,13 +308,13 @@ describe("Caixa de entrada: perguntas que esperam pelo professor", () => {
     const answers = screen.getAllByRole("link", { name: /Answer/ });
     expect(answers[0]).toHaveAttribute("href", "/teach/courses/c-1/community");
     expect(screen.getAllByText(/Leadership · Ana/)).toHaveLength(2);
-    // Curso com a comunidade desligada fica de fora da busca.
+    // A course with the community turned off is left out of the search.
     expect(mocks.getOpenCommunityQuestions).toHaveBeenCalledWith(["c-1"], "teacher-1");
-    // O texto so e lido para as perguntas que esperam.
+    // The text is only read for the questions that are waiting.
     expect(mocks.getCommunityPostsByIds).toHaveBeenCalledWith(["p-1", "p-2"]);
   });
 
-  it("nada esperando: diz isso", async () => {
+  it("nothing waiting: says so", async () => {
     mocks.getOpenCommunityQuestions.mockResolvedValue([]);
     mocks.getCommunityPostsByIds.mockResolvedValue([]);
     render(<TeacherInboxQuestions />);
@@ -322,9 +322,9 @@ describe("Caixa de entrada: perguntas que esperam pelo professor", () => {
     expect(await screen.findByText(/No questions waiting/)).toBeInTheDocument();
   });
 
-  // Enquanto le, o cartao mostra a forma das linhas (antes ficava so o titulo);
-  // falha nao e "nada esperando": erro com "Try again".
-  it("carregando mostra a espera; falha mostra o erro e Try again le de novo", async () => {
+  // While reading, the card shows the shape of the rows (before, only the title stayed);
+  // a failure is not "nothing waiting": error with "Try again".
+  it("loading shows the wait; a failure shows the error and Try again reads again", async () => {
     mocks.getOpenCommunityQuestions.mockRejectedValueOnce(new Error("down"));
     render(<TeacherInboxQuestions />);
 
@@ -335,9 +335,9 @@ describe("Caixa de entrada: perguntas que esperam pelo professor", () => {
     expect(await screen.findAllByRole("link", { name: /Answer/ })).toHaveLength(2);
   });
 
-  // Na pagina Inbox a casca (numero da barra) e a lista pedem juntas: uma
-  // leitura so de cursos, perguntas e conversas.
-  it("na pagina Inbox, o numero da barra e a lista dividem a mesma leitura", async () => {
+  // On the Inbox page the shell (bar number) and the list ask together: one
+  // read of just courses, questions and conversations.
+  it("on the Inbox page, the bar number and the list share the same read", async () => {
     function InboxPage() {
       const count = useTeacherInboxCount("teacher-1");
       return (
@@ -357,22 +357,22 @@ describe("Caixa de entrada: perguntas que esperam pelo professor", () => {
   });
 });
 
-describe("o numero de pendentes da barra", () => {
-  it("soma perguntas sem resposta (so de comunidades ligadas) e conversas em que o aluno falou por ultimo", async () => {
+describe("the pending number in the bar", () => {
+  it("adds unanswered questions (only from communities that are on) and conversations where the learner spoke last", async () => {
     const { result } = renderHook(() => useTeacherInboxCount("teacher-1"));
 
     await waitFor(() => expect(result.current).toBe(3));
     expect(mocks.getOpenCommunityQuestions).toHaveBeenCalledWith(["c-1"], "teacher-1");
   });
 
-  it("desligado fora do lado do professor", () => {
+  it("off outside the teacher side", () => {
     const { result } = renderHook(() => useTeacherInboxCount(null));
 
     expect(result.current).toBeUndefined();
     expect(mocks.getMyCourseSummaries).not.toHaveBeenCalled();
   });
 
-  it("uma leitura que falha so deixa a barra sem numero", async () => {
+  it("a read that fails only leaves the bar without a number", async () => {
     mocks.countThreadsAwaitingTeacher.mockRejectedValue(new Error("offline"));
     const { result } = renderHook(() => useTeacherInboxCount("teacher-1"));
 
@@ -381,7 +381,7 @@ describe("o numero de pendentes da barra", () => {
     expect(result.current).toBeUndefined();
   });
 
-  it("a conversa espera o professor quando a ultima mensagem e do aluno, em qualquer ordem", () => {
+  it("the conversation waits for the teacher when the last message is from the learner, in any order", () => {
     const message = (studentId: string, senderId: string, minute: number) => ({
       courseId: "c-1",
       studentId,

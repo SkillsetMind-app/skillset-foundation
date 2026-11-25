@@ -51,10 +51,10 @@ const eventTypes: CourseEventType[] = [
 const FILTERS = ["upcoming", "past", "cancelled", "all"] as const;
 type EventFilter = (typeof FILTERS)[number];
 
-// Tres baldes que nao se sobrepoem e cobrem a agenda inteira: por isso os tres
-// tiles do topo somam o total e cada filtro tem um numero correspondente.
-// Data ilegivel conta como "upcoming" — sumir com a sessao seria pior do que
-// mostra-la com "Date pending".
+// Three buckets that do not overlap and cover the whole schedule: that is why the three
+// tiles at the top add up to the total and each filter has a matching number.
+// An unreadable date counts as "upcoming" — hiding the session would be worse than
+// showing it with "Date pending".
 function bucketOf(event: CourseEvent, now: number): Exclude<EventFilter, "all"> {
   if (event.status === "cancelled") {
     return "cancelled";
@@ -69,8 +69,8 @@ function bucketOf(event: CourseEvent, now: number): Exclude<EventFilter, "all"> 
   return startsAt < now ? "past" : "upcoming";
 }
 
-// Um instante como os valores locais dos campos de data e de hora
-// ("YYYY-MM-DD", "HH:mm"), para editar e copiar a sessao na hora certa.
+// An instant as the local values of the date and time fields
+// ("YYYY-MM-DD", "HH:mm"), to edit and copy the session at the right time.
 function toLocalDateAndTime(date: Date): [string, string] {
   if (Number.isNaN(date.getTime())) {
     return ["", ""];
@@ -81,9 +81,9 @@ function toLocalDateAndTime(date: Date): [string, string] {
   return [local.slice(0, 10), local.slice(11, 16)];
 }
 
-// O fuso do computador ("America/Chicago"): e o que `new Date(...)` usa para
-// ler o que a pessoa digita. No servidor fica vazio: o render do servidor nao
-// sabe o fuso de quem abre a pagina.
+// The computer's time zone ("America/Chicago"): it is what `new Date(...)` uses to
+// read what the person types. On the server it is empty: the server render does not
+// know the time zone of whoever opens the page.
 const noSubscription = () => () => {};
 function useComputerZone(): string {
   return useSyncExternalStore(
@@ -102,9 +102,9 @@ export function TeacherEventStudio() {
   const [courseId, setCourseId] = useState(searchParams.get("courseId") ?? "");
   const [type, setType] = useState<CourseEventType>("live_class");
   const [title, setTitle] = useState("");
-  // Data e hora em dois campos (como a criacao do produto "Live event"): o
-  // datetime-local vinha em pedacinhos dificeis de editar. Junta como antes:
-  // "YYYY-MM-DDTHH:mm", lido no fuso do computador.
+  // Date and time in two fields (like the creation of the "Live event" product): the
+  // datetime-local came in tiny pieces that were hard to edit. Joined as before:
+  // "YYYY-MM-DDTHH:mm", read in the computer's time zone.
   const [eventDate, setEventDate] = useState("");
   const [eventTime, setEventTime] = useState("");
   const startsAt = eventDate && eventTime ? `${eventDate}T${eventTime}` : "";
@@ -113,53 +113,53 @@ export function TeacherEventStudio() {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [eventsLoaded, setEventsLoaded] = useState(false);
-  // Leitura da agenda que falhou nao e agenda vazia: no lugar do "No sessions"
-  // (com o convite a criar uma) fica o erro com "Try again".
+  // A schedule read that failed is not an empty schedule: in place of "No sessions"
+  // (with the invitation to create one) comes the error with "Try again".
   const [eventsFailed, setEventsFailed] = useState(false);
   const eventsSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
-  // Guarda o CODIGO do erro, nao a frase: o efeito de inscricao nao pode
-  // depender de `t` (fora do provider ele e uma funcao nova a cada render, e o
-  // efeito reinscreveria em laco) e a frase troca de idioma na hora.
+  // Stores the error CODE, not the sentence: the subscription effect cannot
+  // depend on `t` (outside the provider it is a new function on every render, and the
+  // effect would resubscribe in a loop) and the sentence changes language right away.
   const [error, setError] = useState("");
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
-  // Como a sessao editada estava: data passada so trava se a pessoa mudou a
-  // data, e descricao que ja era vazia (sessao criada junto com o produto)
-  // nao obriga a escrever 12 letras so para acrescentar o link.
-  // `storedStartsAt`: o instante gravado, devolvido intacto quando a data nao
-  // mudou. Reler o valor local trocava a hora na hora repetida de novembro
-  // (1:30 AM PST virava 1:30 AM PDT, uma hora antes).
+  // How the edited session was: a past date only blocks if the person changed the
+  // date, and a description that was already empty (session created together with the product)
+  // does not force writing 12 letters just to add the link.
+  // `storedStartsAt`: the stored instant, returned untouched when the date did not
+  // change. Re-reading the local value changed the time on the repeated hour of November
+  // (1:30 AM PST became 1:30 AM PDT, an hour earlier).
   const [editingBase, setEditingBase] = useState<
     { startsAt: string; storedStartsAt: string; descriptionWasEmpty: boolean } | null
   >(null);
   const [actioningEventId, setActioningEventId] = useState<string | null>(null);
-  // Pergunta aberta (cancelar ou excluir) e o aviso de que deu certo: antes a
-  // sessao sumia ou mudava de estado sem nenhuma frase dizendo o que houve.
+  // An open question (cancel or delete) and the notice that it worked: before, the
+  // session vanished or changed state with no sentence saying what happened.
   const [asking, setAsking] = useState<{ action: "cancel" | "delete"; event: CourseEvent } | null>(null);
   const [notice, setNotice] = useState<
     "cancelledNotice" | "deletedNotice" | "scheduledNotice" | "updatedNotice" | null
   >(null);
-  // Quantos disseram "vou" em cada sessao, para a janela de excluir dizer
-  // quem perde a resposta. Vem da leitura que cada cartao ja faz.
+  // How many said "I'm going" in each session, so the delete dialog can say
+  // who loses their response. It comes from the read that each card already does.
   const [goingByEvent, setGoingByEvent] = useState<Record<string, number>>({});
   const reportGoing = useCallback((eventId: string, count: number) => {
     setGoingByEvent((current) => (current[eventId] === count ? current : { ...current, [eventId]: count }));
   }, []);
   const computerZone = useComputerZone();
-  // O formulario e um pedido, nao a pagina. Quem chega pelo fluxo de criacao de
-  // produto (`?newEvent=1`, create-course-start.tsx) ja pediu, e so para essa
-  // pessoa ele nasce aberto.
+  // The form is a request, not the page. Whoever arrives through the product creation
+  // flow (`?newEvent=1`, create-course-start.tsx) already asked for it, and only for that
+  // person does it start open.
   const [isFormOpen, setIsFormOpen] = useState(
     searchParams.get("newEvent") === "1",
   );
   const [formStep, setFormStep] = useState<1 | 2>(1);
-  // Produto da sessao recem-marcada. Antes a pessoa ficava na Agenda sem
-  // caminho para preco e publicacao.
+  // Product of the session just scheduled. Before, the person stayed on the Schedule with no
+  // path to pricing and publishing.
   const [nextStepCourseId, setNextStepCourseId] = useState<string | null>(null);
   const stepHeading = useRef<HTMLHeadingElement>(null);
   const [filter, setFilter] = useState<EventFilter>("upcoming");
   const [search, setSearch] = useState("");
-  // O "agora" anda a cada 30 s: a sessao que comeca passa de Upcoming para Past
-  // sem recarregar a pagina.
+  // The "now" ticks every 30 s: a session that starts moves from Upcoming to Past
+  // without reloading the page.
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -194,7 +194,7 @@ export function TeacherEventStudio() {
       return;
     }
 
-    // Releitura que falha com a agenda na tela mantem a lista (so o aviso).
+    // A re-read that fails with the schedule on screen keeps the list (only the notice).
     let loaded = false;
     const current = subscribeToTeacherCourseEvents(
       user.uid,
@@ -219,8 +219,8 @@ export function TeacherEventStudio() {
     };
   }, [user]);
 
-  // "Try again" le de novo pelo mesmo canal. Sem agenda na tela, a lista volta
-  // ao "carregando"; com agenda (a releitura e que falhou), ela fica.
+  // "Try again" reads again through the same channel. With no schedule on screen, the list goes back
+  // to "loading"; with a schedule (the re-read is what failed), it stays.
   function retryEvents() {
     if (eventsFailed) {
       setEventsFailed(false);
@@ -260,9 +260,9 @@ export function TeacherEventStudio() {
       return `${event.title} ${event.courseTitle}`.toLowerCase().includes(needle);
     });
 
-    // A leitura vem da mais antiga para a mais nova. "Past": a mais recente
-    // primeiro. "All": as que vem, da proxima em diante, e depois as que
-    // passaram, da mais recente para tras. Data ilegivel fica com as que vem.
+    // The read comes from oldest to newest. "Past": most recent
+    // first. "All": the ones that are coming, from the next one onward, and then the ones that
+    // have passed, from most recent backwards. An unreadable date stays with the ones coming.
     if (filter === "past") {
       return matching.reverse();
     }
@@ -309,11 +309,11 @@ export function TeacherEventStudio() {
     setIsFormOpen(true);
   }
 
-  // "edit" muda a propria sessao; "copy" e "Schedule another like this": o
-  // formulario de uma sessao NOVA, igual a esta, uma semana depois (mesma
-  // hora do relogio, mesmo com troca de horario de verao no meio). Copiada de
-  // uma sessao antiga, pula de semana em semana ate a primeira que ainda nao
-  // passou. Nada e gravado ate a pessoa confirmar.
+  // "edit" changes the session itself; "copy" is "Schedule another like this": the
+  // form of a NEW session, identical to this one, a week later (same
+  // clock time, even with a daylight saving change in between). Copied from
+  // an old session, it skips week by week until the first one that has not
+  // passed yet. Nothing is saved until the person confirms.
   function openPrefilled(event: CourseEvent, mode: "edit" | "copy") {
     const when = new Date(event.startsAt);
     if (mode === "copy") {
@@ -347,8 +347,8 @@ export function TeacherEventStudio() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    // Antes das checagens: um "Session deleted." antigo não pode ficar ao
-    // lado do erro novo do formulário.
+    // Before the checks: an old "Session deleted." must not stay next to
+    // the form's new error.
     setNotice(null);
 
     if (!user || isSaving || !event.currentTarget.reportValidity()) {
@@ -366,8 +366,8 @@ export function TeacherEventStudio() {
       return;
     }
 
-    // Data passada gravava sem aviso (ou caia no erro generico do banco). A
-    // sessao antiga que a pessoa so corrige, sem mexer na data, segue editavel.
+    // A past date used to save without a warning (or fall into the generic database error). An
+    // old session that the person only corrects, without touching the date, stays editable.
     const dateChanged = !editingBase || editingBase.startsAt !== startsAt;
     if (dateChanged && new Date(startsAt).getTime() <= Date.now()) {
       setError("past");
@@ -381,7 +381,7 @@ export function TeacherEventStudio() {
       return;
     }
 
-    // O mesmo https:// do blur, para quem enviou sem sair do campo.
+    // The same https:// as on blur, for whoever submitted without leaving the field.
     const link = withLinkScheme(externalUrl);
     if (!isEventLinkAcceptable(type, link)) {
       setError("url");
@@ -432,8 +432,8 @@ export function TeacherEventStudio() {
     }
   }
 
-  // Roda só pelo confirmar da janela, que antes era o OK do window.confirm.
-  // O pedido em si não mudou.
+  // Runs only through the dialog's confirm, which used to be the OK of window.confirm.
+  // The request itself did not change.
   async function handleCancelEvent(event: CourseEvent) {
     setError("");
     setNotice(null);
@@ -489,19 +489,19 @@ export function TeacherEventStudio() {
     },
   ];
 
-  // Publicado nao precisa do passo; o status vem da inscricao, entao o aviso
-  // some sozinho quando o produto for publicado. Em revisao o construtor abre
-  // so para leitura: o atalho levaria a uma tela sem nada para fazer.
+  // A published product does not need the step; the status comes from the subscription, so the notice
+  // goes away by itself when the product is published. In review the builder opens
+  // read-only: the shortcut would lead to a screen with nothing to do.
   const nextStepCourse = courses.find(
     (course) =>
       course.id === nextStepCourseId
       && teacherCanEditCourse(course.status)
       && course.status !== "published",
   );
-  // Gratis nao tem preco para definir: o passo e so publicar.
+  // Free has no price to set: the step is just publish.
   const nextStepIsFree = nextStepCourse?.paymentType === "free";
-  // So o curso exige aula para publicar (publish_teacher_course,
-  // 20261007010000). Evento ao vivo, comunidade e e-book publicam sem.
+  // Only a course requires a lesson to publish (publish_teacher_course,
+  // 20261007010000). A live event, community and e-book publish without one.
   const nextStepNeedsLesson = nextStepCourse
     ? (nextStepCourse.productFormat ?? "course") === "course"
       && countCourseLessons(nextStepCourse.modules ?? []) === 0
@@ -511,24 +511,24 @@ export function TeacherEventStudio() {
     .replace("{count}", () => String(visible.length))
     .replace("{filter}", () => t(`${copy}.filter.${filter}`));
 
-  // Erro de data mora junto dos campos de data e hora (e e lido com eles);
-  // os outros seguem no aviso do topo.
+  // A date error lives with the date and time fields (and is read with them);
+  // the others stay in the notice at the top.
   const dateError = error === "startsAt" || error === "past";
   const [today] = toLocalDateAndTime(new Date(now));
   const usPreview = formatEventTimeInZones(startsAt, locale, US_PREVIEW_TIME_ZONES);
   const descriptionOptional = Boolean(editingBase?.descriptionWasEmpty);
   const zoneLabel = computerZone ? describeTimeZone(computerZone, locale, now) : "";
   const fieldClass = "field-input";
-  // Data e hora maiores que os outros campos: e o que a pessoa mais precisa ler.
-  // O campo da casa com 48px e 16px; o `!` vence o 14px do .field-input, que
-  // fica fora de camada.
+  // Date and time larger than the other fields: it is what the person most needs to read.
+  // The app's field is 48px and 16px; the `!` beats the 14px of .field-input, which
+  // is outside a layer.
   const whenFieldClass = "field-input min-h-12 text-base!";
   const whenDescribedBy = ["event-zone-line", dateError ? "event-when-error" : ""].join(" ").trim();
 
   return (
     <section className="grid min-w-0 gap-5">
-      {/* O quadro de numero da casa. Tres lado a lado so a partir de 480px:
-          no celular o rotulo em maiusculas nao cabia num terco da tela. */}
+      {/* The app's number tile. Three side by side only from 480px:
+          on a phone the uppercase label did not fit in a third of the screen. */}
       <dl className="grid gap-3 min-[480px]:grid-cols-3">
         {tiles.map((tile) => (
           <MetricCard
@@ -536,7 +536,7 @@ export function TeacherEventStudio() {
             labelAs="dt"
             label={tile.label}
             loading={!eventsLoaded}
-            // Leitura que falhou nao e "0 sessoes": fica o traco.
+            // A read that failed is not "0 sessions": a dash stays.
             unavailable={eventsFailed}
             value={eventsFailed ? "—" : tile.value}
             hint={tile.hint}
@@ -566,13 +566,13 @@ export function TeacherEventStudio() {
           </button>
         </div>
 
-        {/* Erro fora do formulario: cancelar e excluir tambem falham, e com o
-            formulario fechado a mensagem ficava invisivel. */}
+        {/* Error outside the form: cancel and delete fail too, and with the
+            form closed the message was invisible. */}
         {error && !(dateError && isFormOpen) ? (
           <InlineAlert tone="error" className="mt-4">{t(`${copy}.errors.${error}`)}</InlineAlert>
         ) : null}
-        {/* Sessao marcada em produto por publicar ja tem a frase no quadro do
-            proximo passo, logo abaixo: nao repete. */}
+        {/* A session scheduled on a product that is not yet published already has the sentence in the
+            next-step tile, right below: it does not repeat. */}
         {notice && !(notice === "scheduledNotice" && nextStepCourse) ? (
           <p role="status" className="info-notice mt-4">
             {t(`${copy}.${notice}`)}
@@ -653,8 +653,8 @@ export function TeacherEventStudio() {
                   ))}
                 </select>
               </label>
-              {/* F-12: o curso trava ao editar e nada dizia por quê. Fora do
-                  <label> para não entrar no nome do campo. */}
+              {/* F-12: the course locks while editing and nothing said why. Outside the
+                  <label> so it does not enter the field's name. */}
               {editingEventId ? (
                 <span id="event-course-locked" className="text-xs text-[var(--color-ink-muted)]">
                   {t(`${copy}.courseLocked`)}
@@ -677,9 +677,9 @@ export function TeacherEventStudio() {
                 </select>
               </label>
 
-              {/* Os mesmos dois campos da criacao do produto "Live event". O
-                  minimo de hoje so vale para sessao nova: a sessao que ja
-                  passou continua editavel sem mexer na data. */}
+              {/* The same two fields as the creation of the "Live event" product. The
+                  minimum of today only applies to a new session: a session that has already
+                  passed stays editable without touching the date. */}
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
                   {t("courseCreation.eventDate")}
@@ -706,8 +706,8 @@ export function TeacherEventStudio() {
                     className={whenFieldClass}
                   />
                 </label>
-                {/* De quem e a hora: a do computador, que e o fuso que
-                    `new Date(...)` usa para ler o que foi digitado. */}
+                {/* Whose time it is: the computer's, which is the time zone that
+                    `new Date(...)` uses to read what was typed. */}
                 <p id="event-zone-line" className="text-sm text-[var(--color-ink-soft)] sm:col-span-2">
                   {zoneLabel ? t(`${copy}.timeZoneLine`).replace("{zone}", () => zoneLabel) : null}
                 </p>
@@ -721,8 +721,8 @@ export function TeacherEventStudio() {
               <p className="break-words text-sm text-[var(--color-ink-soft)]">
                 {selectedCourse?.title} · {t(`${copy}.type.${type}`)} · {formatEventDateTime(startsAt, locale, t("platform.events.datePending"), undefined, now)}
               </p>
-              {/* Alunos em varios fusos dos EUA: a professora ve, antes de
-                  salvar, a hora de cada um. */}
+              {/* Learners in several US time zones: the teacher sees, before
+                  saving, the time for each one. */}
               {usPreview.length > 0 ? (
                 <p className="break-words text-sm text-[var(--color-ink-soft)]">
                   {t(`${copy}.usPreview`).replace("{times}", () => usPreview.join(" · "))}
@@ -740,11 +740,11 @@ export function TeacherEventStudio() {
                 />
               </label>
 
-              {/* inputMode="url": o celular abre o teclado de endereco. Sem
-                  type="url": a validacao do navegador barrava "zoom.us/j/1"
-                  (Enter, ou o toque no iOS que nao tira o foco) antes do
-                  https:// do envio. Ao sair do campo ele ja entra. Prazo nao e
-                  reuniao: so ele pode ficar sem link. */}
+              {/* inputMode="url": the phone opens the address keyboard. Without
+                  type="url": the browser validation blocked "zoom.us/j/1"
+                  (Enter, or a tap on iOS that does not drop focus) before the
+                  https:// of the submit. When leaving the field it already goes in. A deadline is not a
+                  meeting: only it can go without a link. */}
               <div className="grid gap-2">
                 <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
                   {t(`${copy}.urlLabel`)}
@@ -771,8 +771,8 @@ export function TeacherEventStudio() {
 
               <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
                 {t(`${copy}.descriptionLabel`)}
-                {/* Sem `required` so na sessao que ja tinha descricao vazia; o
-                    minimo de 12 letras vale para o que for escrito. */}
+                {/* No `required` only on a session that already had an empty description; the
+                    12-letter minimum applies to whatever is written. */}
                 <textarea
                   value={description}
                   onChange={(event) => setDescription(event.target.value)}
@@ -794,12 +794,12 @@ export function TeacherEventStudio() {
                 <button
                   type="submit"
                   disabled={isSaving || isLoading || (!editingEventId && !selectedCourse)}
-                  // F-12: o motivo logo abaixo agora e lido junto com o botao.
+                  // F-12: the reason right below is now read together with the button.
                   aria-describedby={!editingEventId && !selectedCourse && !isLoading ? "event-submit-reason" : undefined}
                   className="button-solid min-h-11 gap-2 px-4 py-2.5 text-sm"
                 >
-                  {/* Só o passo 2 grava (o 1 só avança), então o passo e a
-                      edição não mudam durante a espera. */}
+                  {/* Only step 2 saves (step 1 only advances), so the step and the
+                      edit do not change during the wait. */}
                   <BusyLabel
                     busy={isSaving}
                     idle={
@@ -835,8 +835,8 @@ export function TeacherEventStudio() {
           </div>
         ) : null}
 
-        {/* Moldura sempre visivel: mesmo sem nenhuma sessao a pessoa ve DE QUE
-            recorte a lista fala, em vez de um vazio sem contexto (#265). */}
+        {/* Always-visible frame: even with no session the person sees WHICH
+            slice the list is talking about, instead of an empty state with no context (#265). */}
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <label htmlFor="events-filter" className="sr-only">
             {t(`${copy}.filterLabel`)}
@@ -856,7 +856,7 @@ export function TeacherEventStudio() {
           <label htmlFor="events-search" className="sr-only">
             {t(`${copy}.searchLabel`)}
           </label>
-          {/* min-w-[12rem]: mesma moldura de Vendas, mesmo encolhimento a 390 px. */}
+          {/* min-w-[12rem]: same frame as Sales, same shrinking at 390 px. */}
           <input
             id="events-search"
             type="search"
@@ -865,7 +865,7 @@ export function TeacherEventStudio() {
             placeholder={t(`${copy}.searchPlaceholder`)}
             className="field-input field-input--inline min-w-[12rem] flex-1"
           />
-          {/* Sem a leitura das sessoes, zero linhas nao quer dizer "agenda vazia". */}
+          {/* Without the sessions read, zero rows does not mean "empty schedule". */}
           <ExportTableButton
             rows={exportRows}
             filename="skillset-events"
@@ -877,19 +877,19 @@ export function TeacherEventStudio() {
         {eventsFailed ? null : <p className="mt-3 text-sm text-[var(--color-ink-soft)]">{countLine}</p>}
 
         <div className="mt-4 grid gap-3">
-          {/* Releitura que falhou com a agenda na tela: a lista fica, e o
-              "Try again" vem antes dela (o aviso ja esta no topo). */}
+          {/* A re-read that failed with the schedule on screen: the list stays, and the
+              "Try again" comes before it (the notice is already at the top). */}
           {eventsLoaded && !eventsFailed && error === "events" ? (
             <button type="button" onClick={retryEvents} className="button-outline justify-self-start px-4 text-sm">
               {t("appErrors.retry")}
             </button>
           ) : null}
-          {/* Cartões de sessão no lugar da frase num cartão (T-07). */}
+          {/* Session cards in place of a sentence in a card (T-07). */}
           {!eventsLoaded ? (
             <CardStackSkeleton label={t(`${copy}.loading`)} />
           ) : eventsFailed ? (
-            // O erro ja esta anunciado no aviso do topo; aqui fica o caminho
-            // de volta, no lugar onde a lista apareceria.
+            // The error is already announced in the notice at the top; here stays the way
+            // back, in the place where the list would appear.
             <button type="button" onClick={retryEvents} className="button-outline justify-self-start px-4 text-sm">
               {t("appErrors.retry")}
             </button>
@@ -954,8 +954,8 @@ export function TeacherEventStudio() {
                   >
                     {t(`${copy}.edit`)}
                   </button>
-                  {/* Grupo semanal: a proxima sessao em dois toques, em vez de
-                      digitar tudo de novo. */}
+                  {/* Weekly group: the next session in two taps, instead of
+                      typing everything again. */}
                   <button
                     type="button"
                     onClick={() => openPrefilled(event, "copy")}
@@ -992,7 +992,7 @@ export function TeacherEventStudio() {
         </div>
       </div>
 
-      {/* A frase é a mesma do antigo window.confirm; o que muda é a caixa. */}
+      {/* The sentence is the same as the old window.confirm; what changes is the box. */}
       {asking ? (
         <ConfirmDialog
           title={t(`${copy}.${asking.action === "cancel" ? "cancelTitle" : "deleteTitle"}`)}
@@ -1013,8 +1013,8 @@ export function TeacherEventStudio() {
               () => asking.event.title,
             )}
           </p>
-          {/* Excluir apaga as respostas junto e nao avisa ninguem: a pessoa
-              sabe quantos perdem a resposta antes de confirmar. */}
+          {/* Deleting erases the responses too and tells nobody: the person
+              knows how many lose their response before confirming. */}
           {asking.action === "delete" && (goingByEvent[asking.event.id] ?? 0) > 0 ? (
             <p className="mt-2 font-semibold text-[var(--color-ink)]">
               {t(`${copy}.${goingByEvent[asking.event.id] === 1 ? "deleteGoingOne" : "deleteGoing"}`).replace(
@@ -1060,14 +1060,14 @@ function TeacherEventRsvpSummary({
   const attendingCount = rsvps.filter((rsvp) => rsvp.status === "attending").length;
   const notAttendingCount = rsvps.filter((rsvp) => rsvp.status === "not_attending").length;
 
-  // Contagem que nao carregou nao vira "0": a janela de excluir so fala dela
-  // quando a leitura chegou.
+  // A count that did not load does not become "0": the delete dialog only speaks of it
+  // when the read has arrived.
   useEffect(() => {
     if (!isLoading && !error) onGoingCount(eventId, attendingCount);
   }, [attendingCount, error, eventId, isLoading, onGoingCount]);
 
-  // Nome e e-mail ja chegam nesta leitura (o dono le as respostas pela RLS):
-  // quem vai primeiro, depois quem nao vai, cada grupo em ordem de nome.
+  // Name and email already arrive in this read (the owner reads the responses through RLS):
+  // those going first, then those not going, each group in name order.
   const answered = [...rsvps].sort(
     (left, right) => Number(left.status !== "attending") - Number(right.status !== "attending"),
   );
@@ -1084,15 +1084,15 @@ function TeacherEventRsvpSummary({
         {t(`${copy}.rsvp`)}
       </p>
       {isLoading ? (
-        // A forma das duas contagens que vem; a frase fica para o leitor de tela.
+        // The shape of the two counts that are coming; the sentence is left for the screen reader.
         <div className="mt-2 flex gap-2">
           <span className="sr-only">{t(`${copy}.rsvpLoading`)}</span>
           <span aria-hidden="true" className="h-7 w-20 animate-pulse rounded-md bg-[var(--color-surface-strong)]" />
           <span aria-hidden="true" className="h-7 w-24 animate-pulse rounded-md bg-[var(--color-surface-strong)]" />
         </div>
       ) : error ? (
-        // Aviso (polite), não erro: a linha se repete em cada cartão de evento,
-        // e oito erros assertivos interrompiam o leitor de tela oito vezes.
+        // A notice (polite), not an error: the line repeats on every event card,
+        // and eight assertive errors interrupted the screen reader eight times.
         <InlineAlert tone="warning" className="mt-2">{t(`${copy}.rsvpError`)}</InlineAlert>
       ) : (
         <div className="mt-2 flex flex-wrap gap-2 text-sm">
@@ -1104,8 +1104,8 @@ function TeacherEventRsvpSummary({
           </span>
         </div>
       )}
-      {/* Antes so os numeros: o professor nao sabia QUEM vinha. A lista abre
-          e fecha (details nativo) para nao alongar cada cartao. */}
+      {/* Before, only the numbers: the teacher did not know WHO was coming. The list opens
+          and closes (native details) so as not to lengthen each card. */}
       {!isLoading && !error && answered.length > 0 ? (
         <details className="mt-2">
           <summary className="cursor-pointer py-3 text-sm font-semibold text-[var(--color-primary)]">
@@ -1118,7 +1118,7 @@ function TeacherEventRsvpSummary({
               </li>
             ))}
           </ul>
-          {/* O botao da casa diz so "Export"; o grupo diz o que sai dele. */}
+          {/* The app's button says only "Export"; the group says what comes out of it. */}
           <div role="group" aria-label={t(`${copy}.exportAttendees`)} className="mt-3">
             <ExportTableButton rows={exportRows} filename={`attendees-${eventTitle}`} />
           </div>

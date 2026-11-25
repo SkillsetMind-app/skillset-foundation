@@ -7,10 +7,10 @@ import type { CourseAsset } from "@/domain/course-asset";
 import type { TeacherCourse, TeacherLesson } from "@/domain/teacher-course";
 import { updateTeacherCourseBuilder } from "@/lib/data/teacher-courses";
 
-// Sair pelo voltar/avancar do navegador (popstate do App Router), gesto do
-// trackpad ou Alt+Esquerda desmonta o builder sem clique em link. O que ainda
-// estava no debounce de 1,8 s do autosave se perdia, e o link digitado no
-// estudio sem blur tambem. beforeunload nao dispara nessa navegacao.
+// Leaving through the browser back/forward (App Router popstate), a trackpad
+// gesture or Alt+Left unmounts the builder without a link click. What was still in
+// the autosave's 1.8 s debounce was lost, and so was a link typed in the
+// studio without blur. beforeunload does not fire on this navigation.
 
 const youtube = "https://www.youtube.com/watch?v=abc";
 const vimeo = "https://vimeo.com/123456";
@@ -99,8 +99,8 @@ async function renderBuilder() {
   return view;
 }
 
-// A aula abre como pagina (?lesson=L): segue a ultima URL que o builder pediu,
-// como o navegador faria.
+// The lesson opens as a page (?lesson=L): it follows the last URL the builder asked for,
+// as the browser would.
 function followPush(view: RenderResult) {
   const href = String(mocks.router.push.mock.calls.at(-1)?.[0]);
   mocks.searchParams = new URL(href, "https://example.test").searchParams;
@@ -115,7 +115,7 @@ const moduleName = () => screen.getByRole("textbox", { name: "Module 1" });
 const lastPayload = () => vi.mocked(updateTeacherCourseBuilder).mock.calls.at(-1)?.[1];
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-describe("builder grava o rascunho pendente ao sair", () => {
+describe("the builder saves the pending draft on exit", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.course = courseWith();
@@ -128,7 +128,7 @@ describe("builder grava o rascunho pendente ao sair", () => {
     Reflect.deleteProperty(document, "visibilityState");
   });
 
-  it("sair (desmontar) antes dos 1,8 s grava a edicao uma vez so", async () => {
+  it("leaving (unmounting) before 1.8 s saves the edit only once", async () => {
     const { unmount } = await renderBuilder();
     fireEvent.change(moduleName(), { target: { value: "Start here, renamed" } });
 
@@ -136,12 +136,12 @@ describe("builder grava o rascunho pendente ao sair", () => {
 
     expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(1);
     expect(lastPayload()?.modules?.[0].title).toBe("Start here, renamed");
-    // O debounce morreu com a descarga: nada de segundo save.
+    // The debounce died with the flush: no second save.
     await wait(2200);
     expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(1);
   }, 10000);
 
-  it("pagehide e aba escondida gravam na hora, sem save repetido", async () => {
+  it("pagehide and a hidden tab save right away, with no repeated save", async () => {
     const { unmount } = await renderBuilder();
     fireEvent.change(moduleName(), { target: { value: "Start here, renamed" } });
 
@@ -156,7 +156,7 @@ describe("builder grava o rascunho pendente ao sair", () => {
     expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(1);
   }, 10000);
 
-  it("sem edicao pendente, sair nao grava nada", async () => {
+  it("with no pending edit, leaving saves nothing", async () => {
     const { unmount } = await renderBuilder();
 
     window.dispatchEvent(new Event("pagehide"));
@@ -165,7 +165,7 @@ describe("builder grava o rascunho pendente ao sair", () => {
     expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
   });
 
-  it("link digitado no estudio e ainda sem blur vai junto ao sair", async () => {
+  it("a link typed in the studio with no blur yet is saved along on exit", async () => {
     mocks.course = courseWith([
       { id: "l1", title: "Welcome", type: "video", description: "", videoSource: "youtube", externalUrl: youtube },
     ]);
@@ -185,7 +185,7 @@ describe("builder grava o rascunho pendente ao sair", () => {
     );
   });
 
-  it("sair nunca abre confirmacao: link que pediria uma nao e gravado", async () => {
+  it("leaving never opens a confirmation: a link that would ask for one is not saved", async () => {
     mocks.course = courseWith([
       { id: "l1", title: "Welcome", type: "video", description: "", externalUrl: drive },
     ]);
@@ -202,15 +202,15 @@ describe("builder grava o rascunho pendente ao sair", () => {
     unmount();
 
     expect(confirm).not.toHaveBeenCalled();
-    // A pergunta mora na janela da plataforma (<dialog>), não mais no
-    // window.confirm: a descarga silenciosa não abre nenhuma.
+    // The question lives in the platform dialog (<dialog>), no longer in
+    // window.confirm: the silent flush does not open any.
     expect(document.querySelector("dialog")).toBeNull();
     expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
   });
 
-  // Trocar de app ou de aba e voltar: a descarga silenciosa recusava o link
-  // (pedia confirmacao) e zerava o campo com o builder ainda montado.
-  it("aba escondida e pagehide nao apagam o link digitado que pediria confirmacao", async () => {
+  // Switching apps or tabs and coming back: the silent flush used to refuse the link
+  // (it asked for confirmation) and cleared the field with the builder still mounted.
+  it("a hidden tab and pagehide do not erase the typed link that would ask for confirmation", async () => {
     mocks.course = courseWith([
       { id: "l1", title: "Welcome", type: "video", description: "", externalUrl: drive },
     ]);
@@ -232,22 +232,22 @@ describe("builder grava o rascunho pendente ao sair", () => {
     });
     expect(field()).toHaveValue(vimeo);
 
-    // pagehide (o bfcache pode trazer a pagina de volta): recusa sem perguntar
-    // e sem apagar o que foi digitado.
+    // pagehide (the bfcache may bring the page back): refuses without asking
+    // and without erasing what was typed.
     act(() => {
       window.dispatchEvent(new Event("pagehide"));
     });
     expect(field()).toHaveValue(vimeo);
     expect(confirm).not.toHaveBeenCalled();
-    // Com o builder ainda montado, uma pergunta aberta aqui apareceria: a
-    // descarga silenciosa não abre a janela da plataforma (<dialog>).
+    // With the builder still mounted, a question opened here would show up: the
+    // silent flush does not open the platform dialog (<dialog>).
     expect(document.querySelector("dialog")).toBeNull();
     expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
   });
 
-  // Duas trocas totais diferentes no ar ao mesmo tempo: a descarga nao comeca
-  // uma segunda; o save no ar e o autosave normal levam a edicao nova.
-  it("com save no ar, sair nao comeca uma segunda gravacao", async () => {
+  // Two different full swaps in flight at the same time: the flush does not start
+  // a second one; the in-flight save and the normal autosave carry the new edit.
+  it("with a save in flight, leaving does not start a second save", async () => {
     let finishFirst = () => {};
     vi.mocked(updateTeacherCourseBuilder).mockImplementationOnce(
       () => new Promise<void>((resolve) => { finishFirst = resolve; }),
@@ -285,10 +285,10 @@ describe("builder grava o rascunho pendente ao sair", () => {
     expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(1);
   });
 
-  // Com o save da descarga ainda no ar, o efeito agenda um timer novo com o
-  // MESMO payload (a pessoa mexeu e voltou ao que ja foi mandado). Ele nao pode
-  // reenviar o mesmo save.
-  it("timer novo com o mesmo payload nao reenvia o save da descarga ainda no ar", async () => {
+  // With the flush save still in flight, the effect schedules a new timer with the
+  // SAME payload (the person edited and went back to what was already sent). It must not
+  // resend the same save.
+  it("a new timer with the same payload does not resend the unload save that is still in flight", async () => {
     let finishFlush = () => {};
     vi.mocked(updateTeacherCourseBuilder).mockImplementationOnce(
       () => new Promise<void>((resolve) => { finishFlush = resolve; }),

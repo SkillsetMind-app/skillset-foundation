@@ -11,8 +11,8 @@ import { subscribeToTeacherCourse, updateTeacherCourseBuilder } from "@/lib/data
 import { fetchCourseAssets, uploadCourseAsset, uploadLessonVideoToBunny } from "@/lib/data/course-assets";
 import { activateUploadedLessonVideo } from "@/lib/data/lesson-video-selection";
 
-// Pagina da aula: Curso > Modulo > Aula, no lugar do modal. A aula mora na URL
-// (?module=M&lesson=L), igual ao modulo (#373), e o voltar do navegador funciona.
+// Lesson page: Course > Module > Lesson, in place of the modal. The lesson lives in the URL
+// (?module=M&lesson=L), like the module (#373), and the browser back button works.
 
 const youtube = "https://www.youtube.com/watch?v=abc";
 const vimeo = "https://vimeo.com/123456";
@@ -21,7 +21,7 @@ const mocks = vi.hoisted(() => ({
   onAuthChange: null as ((event: string, session: { user: { id: string } } | null) => void) | null,
   bunnyConfigured: false,
   course: null as TeacherCourse | null,
-  // Lista de arquivos do curso: a busca do builder e o realtime do estudio.
+  // Course file list: the builder's fetch and the studio's realtime.
   assets: [] as CourseAsset[],
   user: { uid: "teacher-1" },
   router: { push: vi.fn(), replace: vi.fn(), refresh: vi.fn() },
@@ -112,7 +112,7 @@ function courseFixture(): TeacherCourse {
   };
 }
 
-// Curso com uma aula sem conteudo nenhum (Intro): so um arquivo enviado conta.
+// Course with a lesson that has no content at all (Intro): only an uploaded file counts.
 function withIntro(): TeacherCourse {
   const course = courseFixture();
   course.modules[0].lessons.push({ id: "l2", title: "Intro", type: "video", description: "" });
@@ -154,8 +154,8 @@ function openAt(url: string) {
   mocks.searchParams = new URL(url, "https://example.test").searchParams;
 }
 
-// O navegador trocou a URL (clique, voltar/avancar): o builder re-renderiza
-// com os parametros novos, sem desmontar.
+// The browser changed the URL (click, back/forward): the builder re-renders
+// with the new parameters, without unmounting.
 function navigateTo(url: string) {
   openAt(url);
   view.rerender(tree());
@@ -167,8 +167,8 @@ async function renderBuilder() {
 }
 
 const card = () => document.querySelector("#builder-sec-modules") as HTMLElement;
-// Na pagina da aula nao ha Back/Continue do construtor (a saida e o "Back to
-// module"): trocar de aba e pelo passo a passo, o mesmo selectTab.
+// On the lesson page there is no builder Back/Continue (the way out is "Back to
+// module"): switching tabs goes through the step-by-step, the same selectTab.
 const pricingStep = () =>
   within(screen.getByRole("navigation", { name: "Course creation steps" })).getByRole("button", { name: /Pricing/ });
 
@@ -181,7 +181,7 @@ function startUpload() {
 const linkField = () => screen.getByRole("textbox", { name: "YouTube or Vimeo URL" });
 const lastPayload = () => vi.mocked(updateTeacherCourseBuilder).mock.calls.at(-1)?.[1];
 
-describe("pagina da aula no builder", () => {
+describe("lesson page in the builder", () => {
   let restoreDialogs = () => {};
   beforeEach(() => {
     vi.clearAllMocks();
@@ -198,7 +198,7 @@ describe("pagina da aula no builder", () => {
     restoreDialogs();
   });
 
-  // O aviso do envio em curso: janela da plataforma (era o window.alert).
+  // The notice for an upload in progress: a platform dialog (it used to be window.alert).
   const uploadNotice = () => screen.queryByRole("dialog", { name: "Upload in progress" });
 
   it("keeps upload status and original lesson persistence after the entire editor unmounts", async () => {
@@ -245,8 +245,8 @@ describe("pagina da aula no builder", () => {
     const panel = screen.getByRole("complementary", { name: "Lesson upload" });
     expect(panel).toHaveClass("max-h-[calc(100svh-2rem)]", "overflow-y-auto");
     expect(screen.queryByRole("button", { name: /Cancel upload/i })).not.toBeInTheDocument();
-    // C-12: com o envio correndo, nada de X que fecha; cancelar é um botão
-    // que diz o que faz. O X ("Dismiss upload status") só sem envio no ar.
+    // C-12: with an upload running, no X that closes; canceling is a button
+    // that says what it does. The X ("Dismiss upload status") only when no upload is in flight.
     expect(within(panel).queryByRole("button", { name: "Dismiss upload status" })).toBeNull();
     if (bunnyConfigured) {
       act(() => vi.mocked(uploadLessonVideoToBunny).mock.calls[0][0].onCancelAvailable?.(vi.fn()));
@@ -334,8 +334,8 @@ describe("pagina da aula no builder", () => {
       expect(uploadNotice()).toHaveAccessibleDescription(
         "An upload is in progress. Wait for it to finish before leaving this page.",
       );
-      // Aviso de um botao so, que vale no primeiro toque; a pagina fica e o
-      // envio segue.
+      // A one-button notice, which works on the first tap; the page stays and the
+      // upload continues.
       expect(within(uploadNotice()!).getAllByRole("button")).toHaveLength(1);
       fireEvent.click(within(uploadNotice()!).getByRole("button", { name: "OK, I'll wait" }));
       await waitFor(() => expect(uploadNotice()).toBeNull());
@@ -351,7 +351,7 @@ describe("pagina da aula no builder", () => {
     }
   });
 
-  it("?module=M&lesson=L mostra Curso > Modulo, o nome da aula uma vez e a aba de video, sem dialogo", async () => {
+  it("?module=M&lesson=L shows Course > Module, the lesson name once and the video tab, with no dialog", async () => {
     openAt(lessonUrl);
     await renderBuilder();
 
@@ -359,21 +359,21 @@ describe("pagina da aula no builder", () => {
     expect(within(trail).getByRole("link", { name: "Clinical performance foundations" }))
       .toHaveAttribute("href", "/teach/builder?courseId=course-1&tab=content");
     expect(within(trail).getByRole("link", { name: "Start here" })).toHaveAttribute("href", moduleUrl);
-    // O nome da aula aparecia tres vezes na tela: trilha, titulo e a linha
-    // "Module 1 - ... / Lesson 1". Agora so o titulo e visivel; na trilha a aula
-    // fica para o leitor de tela, como item atual.
+    // The lesson name showed up three times on screen: trail, title and the line
+    // "Module 1 - ... / Lesson 1". Now only the title is visible; in the trail the lesson
+    // is left for the screen reader, as the current item.
     const current = within(trail).getByText("Welcome");
     expect(current.closest("[aria-current='page']")).toBe(current);
     expect(current).toHaveClass("sr-only");
     const visible = within(card()).getAllByText("Welcome").filter((element) => !element.closest(".sr-only"));
     expect(visible).toEqual([within(card()).getByRole("heading", { name: "Welcome" })]);
-    // O cabecalho da aba Curriculum nao fica entre o construtor e a aula.
+    // The Curriculum tab header does not sit between the builder and the lesson.
     expect(screen.queryByRole("heading", { name: "Build the curriculum." })).not.toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(linkField()).toHaveValue(youtube);
   });
 
-  it("link digitado e ainda sem blur e gravado ao clicar no modulo da trilha", async () => {
+  it("a typed link with no blur yet is saved when clicking the module in the trail", async () => {
     openAt(lessonUrl);
     await renderBuilder();
     fireEvent.change(linkField(), { target: { value: vimeo } });
@@ -388,12 +388,12 @@ describe("pagina da aula no builder", () => {
     );
   }, 10000);
 
-  it("voltar do navegador na aula leva a pagina do modulo com a edicao mantida", async () => {
+  it("browser back on the lesson goes to the module page with the edit kept", async () => {
     openAt(lessonUrl);
     await renderBuilder();
     fireEvent.change(linkField(), { target: { value: vimeo } });
 
-    // Voltar: a URL perde o ?lesson, sem clique nenhum na pagina.
+    // Back: the URL loses ?lesson, with no click on the page at all.
     navigateTo(moduleUrl);
 
     expect(within(card()).getByRole("heading", { name: "Start here" })).toBeInTheDocument();
@@ -404,7 +404,7 @@ describe("pagina da aula no builder", () => {
     );
   }, 10000);
 
-  it("as entradas do antigo modal abrem a pagina: o botao da aula e a aula recem-criada", async () => {
+  it("the old modal's entry points open the page: the lesson button and the newly created lesson", async () => {
     let emitCourse: (course: TeacherCourse | null) => void = () => {};
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emitCourse = emit;
@@ -414,14 +414,14 @@ describe("pagina da aula no builder", () => {
     openAt(moduleUrl);
     await renderBuilder();
 
-    // Botao da aula na pagina do modulo.
+    // Lesson button on the module page.
     fireEvent.click(within(card()).getByRole("button", { name: "Edit content" }));
     expect(mocks.router.push).toHaveBeenLastCalledWith(lessonUrl, { scroll: false });
     navigateTo(lessonUrl);
     expect(within(card()).getByRole("navigation", { name: "Breadcrumb" })).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
-    // Aula nova: quando o eco confirma o save, a pagina dela abre sozinha.
+    // New lesson: when the echo confirms the save, its page opens by itself.
     navigateTo(moduleUrl);
     fireEvent.click(within(card()).getByRole("button", { name: "Add lesson to module 1" }));
     const form = card().querySelector("form") as HTMLElement;
@@ -437,10 +437,10 @@ describe("pagina da aula no builder", () => {
     );
   }, 10000);
 
-  // Com o modal virando pagina, voltar/avancar ou outra aba desmontavam o
-  // estudio no meio de um envio: o envio ficava sem dono e reabrir a aula
-  // comecava outro.
-  it.each([false, true])("envio segura a aula ao mudar parametros no mesmo editor (Bunny: %s)", async (bunnyConfigured) => {
+  // With the modal becoming a page, back/forward or another tab unmounted the
+  // studio in the middle of an upload: the upload was left with no owner and reopening the lesson
+  // started another one.
+  it.each([false, true])("the upload holds the lesson when parameters change in the same editor (Bunny: %s)", async (bunnyConfigured) => {
     mocks.course = withIntro();
     mocks.bunnyConfigured = bunnyConfigured;
     const transport = bunnyConfigured ? uploadLessonVideoToBunny : uploadCourseAsset;
@@ -457,24 +457,24 @@ describe("pagina da aula no builder", () => {
     fireEvent.click(screen.getByRole("button", { name: "Upload file" }));
     expect(transport).toHaveBeenCalledTimes(1);
 
-    // Voltar do navegador no meio do envio: a pagina da aula continua.
+    // Browser back in the middle of the upload: the lesson page stays.
     navigateTo(moduleUrl);
     expect(screen.getByRole("heading", { name: "Intro" })).toBeInTheDocument();
 
-    // Trocar de aba pelo passo a passo tambem nao acontece durante o envio, e
-    // o Back/Continue do construtor nao aparece na pagina da aula.
+    // Switching tabs through the step-by-step also does not happen during the upload, and
+    // the builder's Back/Continue does not appear on the lesson page.
     expect(screen.queryByRole("button", { name: /^Continue to/ })).toBeNull();
     mocks.router.push.mockClear();
     fireEvent.click(pricingStep());
     expect(mocks.router.push).not.toHaveBeenCalled();
 
-    // O envio acaba: a tela volta a seguir a URL, e nao ha segundo envio.
+    // The upload ends: the screen follows the URL again, and there is no second upload.
     await act(async () => finishUpload("asset-intro"));
     expect(within(card()).getByRole("heading", { name: "Start here" })).toBeInTheDocument();
     expect(transport).toHaveBeenCalledTimes(1);
   }, 10000);
 
-  it("depois do envio a prontidao do Publish ve o arquivo, e Continue sai sem ?lesson", async () => {
+  it("after the upload, Publish readiness sees the file, and Continue leaves without ?lesson", async () => {
     mocks.course = withIntro();
     let finishUpload: (assetId: string) => void = () => {};
     vi.mocked(uploadCourseAsset).mockImplementationOnce(
@@ -498,9 +498,9 @@ describe("pagina da aula no builder", () => {
     expect(next).not.toContain("lesson=");
   }, 10000);
 
-  // O servidor nao cobra conteudo na aula: com a lista velha, o Publish
-  // publicava uma aula vazia depois de apagar o unico video dela.
-  it("apagar o video na pagina da aula tira a aula da prontidao do Publish", async () => {
+  // The server does not charge for lesson content: with the old list, Publish
+  // published an empty lesson after deleting its only video.
+  it("deleting the video on the lesson page takes the lesson out of Publish readiness", async () => {
     mocks.course = withIntro();
     mocks.assets = [introVideo()];
     openAt(introUrl);
@@ -520,22 +520,22 @@ describe("pagina da aula no builder", () => {
     clickConfirm(asking, "Delete file");
 
     await waitFor(() => expect(screen.getAllByText(missingIntro).length).toBeGreaterThan(0));
-    // O Publish mora na aba Publish: la, a aula volta a ser pendencia e o
-    // botao fica apagado.
+    // Publish lives in the Publish tab: there, the lesson is a pending item again and the
+    // button is dimmed.
     expect(screen.queryByRole("button", { name: "Publish product" })).toBeNull();
     navigateTo("/teach/builder?courseId=course-1&tab=review");
     const review = await waitFor(() => {
       const found = document.getElementById("builder-sec-review");
-      if (!found) throw new Error("aba Publish nao abriu");
+      if (!found) throw new Error("the Publish tab did not open");
       return found;
     });
     await waitFor(() => expect(within(review).getByText(missingIntro)).toBeInTheDocument());
     expect(screen.getByRole("button", { name: "Publish product" })).toBeDisabled();
   }, 10000);
 
-  // Sem a camada do antigo modal, a barra lateral ficou clicavel no meio de um
-  // envio: sair desmontava o builder e o envio seguia sem dono.
-  it("durante um envio, link para fora do builder nao navega", async () => {
+  // Without the old modal layer, the sidebar became clickable in the middle of an
+  // upload: leaving unmounted the builder and the upload continued with no owner.
+  it("during an upload, a link out of the builder does not navigate", async () => {
     mocks.course = withIntro();
     vi.mocked(uploadCourseAsset).mockImplementationOnce(() => new Promise<string>(() => {}));
     openAt(introUrl);
@@ -549,16 +549,16 @@ describe("pagina da aula no builder", () => {
 
     expect(fireEvent.click(leave)).toBe(false);
     expect(uploadNotice()).toBeInTheDocument();
-    // Fechar o aviso (Esc) nao solta a saida: o clique ja parou.
+    // Closing the notice (Esc) does not release the exit: the click already stopped.
     fireEvent(uploadNotice()!, new Event("cancel", { cancelable: true }));
     expect(uploadNotice()).toBeNull();
     expect(screen.getByRole("heading", { name: "Intro" })).toBeInTheDocument();
     expect(uploadCourseAsset).toHaveBeenCalledTimes(1);
   });
 
-  // O erro caia na pagina da aula no mesmo instante em que ela saia da tela
-  // (a URL ja estava no modulo): a falha ficava invisivel.
-  it.each([false, true])("falha depois de mudar parametros mantem o erro na aula (Bunny: %s)", async (bunnyConfigured) => {
+  // The error landed on the lesson page at the same moment it left the screen
+  // (the URL was already on the module): the failure stayed invisible.
+  it.each([false, true])("a failure after parameters change keeps the error on the lesson (Bunny: %s)", async (bunnyConfigured) => {
     mocks.course = withIntro();
     mocks.bunnyConfigured = bunnyConfigured;
     const transport = bunnyConfigured ? uploadLessonVideoToBunny : uploadCourseAsset;
@@ -578,16 +578,16 @@ describe("pagina da aula no builder", () => {
     expect(within(card()).getByRole("alert")).toBeInTheDocument();
   });
 
-  it("link direto na pagina da aula carrega a lista de arquivos do curso", async () => {
+  it("a direct link to the lesson page loads the course file list", async () => {
     mocks.course = withIntro();
     openAt(introUrl);
     await renderBuilder();
 
-    // Sem a lista, o item "conteudo em toda aula" nem aparece; com ela, cobra a Intro.
+    // Without the list, the "content in every lesson" item does not even appear; with it, it charges Intro.
     expect((await screen.findAllByText(missingIntro)).length).toBeGreaterThan(0);
   });
 
-  it("entrar na pagina da aula foca o titulo dela", async () => {
+  it("entering the lesson page focuses its title", async () => {
     openAt(moduleUrl);
     await renderBuilder();
 
@@ -597,13 +597,13 @@ describe("pagina da aula no builder", () => {
     expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Welcome" }));
   });
 
-  it("sair por Back to module troca a entrada do historico e devolve o foco ao botao da aula", async () => {
+  it("leaving through Back to module replaces the history entry and returns focus to the lesson button", async () => {
     openAt(moduleUrl);
     await renderBuilder();
     fireEvent.click(within(card()).getByRole("button", { name: "Edit content" }));
     navigateTo(lessonUrl);
 
-    // "Done" era tambem o estado da aba Description: o botao diz para onde leva.
+    // "Done" was also the state of the Description tab: the button says where it leads.
     expect(screen.queryByRole("button", { name: "Done" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Back to module" }));
     expect(mocks.router.replace).toHaveBeenLastCalledWith(moduleUrl, { scroll: false });

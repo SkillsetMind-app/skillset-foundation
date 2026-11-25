@@ -6,9 +6,9 @@ import { CourseBuilderStudio } from "@/components/teacher/course-builder-studio"
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { uploadCourseAsset } from "@/lib/data/course-assets";
 
-// Decisão: a capa do módulo é vertical 2:3 e comprimida no navegador (10 MB
-// entram, uns 300 KB saem). A capa da área de membros não muda. jsdom não tem
-// createImageBitmap nem canvas de verdade: os dois são dublados.
+// Decision: the module cover is vertical 2:3 and compressed in the browser (10 MB
+// go in, about 300 KB come out). The members area cover does not change. jsdom has no
+// createImageBitmap or a real canvas: both are stubbed.
 
 const mocks = vi.hoisted(() => {
   const course: TeacherCourse = {
@@ -90,10 +90,10 @@ async function moduleCoverInput() {
   );
   await screen.findByRole("heading", { name: mocks.course.title });
   const card = document.querySelector("#builder-sec-modules");
-  if (!card) throw new Error("a aba de conteudo nao abriu");
+  if (!card) throw new Error("the content tab did not open");
   const region = within(card as HTMLElement).getByRole("region", { name: "Module cover" });
   const input = region.querySelector<HTMLInputElement>('input[type="file"]');
-  if (!input) throw new Error("o campo da capa do modulo nao tem input de arquivo");
+  if (!input) throw new Error("the module cover field has no file input");
   return input;
 }
 
@@ -101,7 +101,7 @@ function choose(input: HTMLInputElement, file: File) {
   fireEvent.change(input, { target: { files: [file] } });
 }
 
-describe("capa do módulo: 2:3 comprimida no navegador", () => {
+describe("module cover: 2:3 compressed in the browser", () => {
   beforeEach(() => {
     vi.mocked(uploadCourseAsset).mockClear();
     vi.stubGlobal(
@@ -124,9 +124,9 @@ describe("capa do módulo: 2:3 comprimida no navegador", () => {
     vi.restoreAllMocks();
   });
 
-  it("sobe a imagem comprimida em WebP, como capa do módulo", async () => {
+  it("uploads the image compressed to WebP, as the module cover", async () => {
     const input = await moduleCoverInput();
-    // A casca única (B-05) recebe o accept da capa do módulo como era.
+    // The single shell (B-05) receives the module cover's accept as it was.
     expect(input).toHaveAttribute("accept", "image/*");
     choose(input, new File(["foto grande"], "capa.png", { type: "image/png" }));
 
@@ -138,7 +138,7 @@ describe("capa do módulo: 2:3 comprimida no navegador", () => {
     expect(sent.file.name).toBe("capa.webp");
   });
 
-  it("recusa arquivo de 11 MB e mostra o erro, sem subir nada", async () => {
+  it("refuses an 11 MB file and shows the error, uploading nothing", async () => {
     const input = await moduleCoverInput();
     const big = new File(["x"], "enorme.jpg", { type: "image/jpeg" });
     Object.defineProperty(big, "size", { value: 11 * 1024 * 1024 });
@@ -150,10 +150,10 @@ describe("capa do módulo: 2:3 comprimida no navegador", () => {
     expect(uploadCourseAsset).not.toHaveBeenCalled();
   });
 
-  // O botao dizia "Uploading..." e a nota de baixo repetia. O rotulo agora e
-  // fixo; enquanto a imagem comprime (antes do envio), a nota ja diz que esta
-  // enviando, sem porcentagem.
-  it("enquanto comprime, a nota de envio aparece e o rotulo do botao nao muda", async () => {
+  // The button said "Uploading..." and the note below repeated it. The label is now
+  // fixed; while the image compresses (before the upload), the note already says it is
+  // sending, with no percentage.
+  it("while compressing, the upload note appears and the button label does not change", async () => {
     vi.mocked(createImageBitmap).mockImplementationOnce(() => new Promise<ImageBitmap>(() => {}));
     const input = await moduleCoverInput();
     choose(input, new File(["foto"], "capa.png", { type: "image/png" }));
@@ -166,8 +166,8 @@ describe("capa do módulo: 2:3 comprimida no navegador", () => {
     expect(uploadCourseAsset).not.toHaveBeenCalled();
   });
 
-  it("se o navegador não abre a imagem (HEIC), sobe o original sem mexer", async () => {
-    vi.mocked(createImageBitmap).mockRejectedValueOnce(new Error("formato não suportado"));
+  it("if the browser cannot open the image (HEIC), uploads the original untouched", async () => {
+    vi.mocked(createImageBitmap).mockRejectedValueOnce(new Error("unsupported format"));
     const input = await moduleCoverInput();
     const heic = new File(["original"], "foto.heic", { type: "image/heic" });
     choose(input, heic);

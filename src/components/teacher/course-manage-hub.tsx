@@ -106,13 +106,13 @@ type SectionId = (typeof manageSections)[number]["id"] | (typeof roadmapSections
 const hubMenuItemClass =
   "flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]";
 
-// Cada linha do checklist so DESCREVIA a pendencia ("Add at least one module")
-// e nao levava a lugar nenhum: a pessoa lia o que faltava e tinha de caçar
-// onde arrumar. Aqui fica o destino de cada linha, sempre a tela que EDITA o
-// campo. Os cards "basic" e "pricing" do proprio hub sao so leitura — o botao
-// deles ja manda para o construtor —, entao apontamos direto para la e
-// poupamos um clique. `outcomes` e a excecao porque o hub tem editor de
-// verdade (SalesPageEditor, na secao "page"), e ali a pessoa nem sai do hub.
+// Each checklist row only DESCRIBED the pending item ("Add at least one module")
+// and led nowhere: the person read what was missing and had to hunt for
+// where to fix it. Here lives the destination of each row, always the screen that EDITS the
+// field. The "basic" and "pricing" cards of the hub itself are read-only — their button
+// already sends to the builder —, so we point straight there and
+// save one click. `outcomes` is the exception because the hub has a real
+// editor (SalesPageEditor, in the "page" section), and there the person never leaves the hub.
 function readinessEditHref(item: CourseReadinessItem, courseId: string): string | null {
   const id = encodeURIComponent(courseId);
   switch (item.id) {
@@ -135,16 +135,16 @@ function readinessEditHref(item: CourseReadinessItem, courseId: string): string 
       return `/teach/activate?courseId=${id}`;
     case "plan":
       return "/account/billing";
-    // `verification` ja tem o proprio link dentro da dica; um segundo link na
-    // mesma linha, com outro rotulo e o mesmo destino, so confunde.
+    // `verification` already has its own link inside the hint; a second link on the
+    // same row, with another label and the same destination, only confuses.
     default:
       return null;
   }
 }
 
-// Como o curso cobra sai INTEIRO de `getCoursePricingShape` (dominio). Ler o
-// preco de um jeito aqui e o `paymentType` cru logo ali era o que fazia a mesma
-// tela dizer "Free" e "Monthly subscription" sobre o mesmo rascunho.
+// How the course charges comes ENTIRELY from `getCoursePricingShape` (domain). Reading the
+// price one way here and the raw `paymentType` right there was what made the same
+// screen say "Free" and "Monthly subscription" about the same draft.
 function priceLabel(pricing: CoursePricingShape, t: Translate): string {
   if (pricing.free) {
     return t("publicCourses.free");
@@ -179,16 +179,16 @@ const allSectionIds = new Set<string>([
   ...roadmapSections.map((s) => s.id),
 ]);
 
-// O supabase-js devolve o erro do rpc como objeto (nem sempre Error): o texto
-// vem de `message` em qualquer dos dois.
+// supabase-js returns the rpc error as an object (not always an Error): the text
+// comes from `message` in either case.
 function serverMessage(cause: unknown): string {
   const message = (cause as { message?: unknown } | null)?.message;
   return typeof message === "string" ? message.trim() : "";
 }
 
-// A recusa do banco (set_own_course_featured) e em ingles de desenvolvedor.
-// Cada recusa conhecida vira a frase da casa que mantem o que fazer; o resto,
-// "recarregue e tente de novo": se o botao estava ligado, a tela estava velha.
+// The database's refusal (set_own_course_featured) is in developer English.
+// Each known refusal becomes the house sentence that keeps what to do; the rest,
+// "reload and try again": if the button was on, the screen was stale.
 function highlightRefusalKey(detail: string): string {
   const text = detail.toLowerCase();
   const reason = text.includes("sign in")
@@ -210,8 +210,8 @@ function highlightRefusalKey(detail: string): string {
  * second round-trip, and `featured` is read straight off the realtime course
  * row — so after the RPC lands, the subscription repaints this card. The
  * numbers here are the *display*; `set_own_course_featured` is what actually
- * enforces the quota. Quando ela recusa, a tela diz a frase da casa com o que
- * fazer (ver highlightRefusalKey); o texto cru do banco fica recolhido no
+ * enforces the quota. When it refuses, the screen shows the house sentence with what to
+ * do (see highlightRefusalKey); the raw database text stays collapsed in
  * "Details for support".
  */
 function MarketplaceHighlightPanel({
@@ -225,8 +225,8 @@ function MarketplaceHighlightPanel({
 }) {
   const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
-  // Chave do dicionario (segue a troca de idioma com o cartao aberto) e o
-  // texto cru do servidor, que so vai para o "Details for support".
+  // Dictionary key (follows the language switch with the card open) and the
+  // raw server text, which only goes to "Details for support".
   const [error, setError] = useState<{ key: string; detail: string } | null>(null);
 
   const featured = course.featured === true;
@@ -347,7 +347,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
     return raw && allSectionIds.has(raw) ? (raw as SectionId) : null;
   })();
   const [course, setCourse] = useState<TeacherCourse | null>(null);
-  // /@usuario quando o perfil público tem @ (é o link que vai para a bio).
+  // /@user when the public profile has an @ (it is the link that goes in the bio).
   const storefrontPath = useStorefrontPath(course?.ownerId ?? "");
   // Which courseId the subscription has answered for — derives the loading
   // state without a synchronous setState reset when the route param changes.
@@ -400,10 +400,10 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
 
   const courseLoaded = loadedCourseId === courseId;
 
-  // Manage › Page: o texto de venda e a página têm Save próprio, e sair com
-  // "Unsaved changes" perdia o que foi digitado sem uma palavra. O aviso vale
-  // para fechar ou recarregar a aba e para a navegação que ESTE painel controla
-  // (as seções e os links dele). A barra lateral não é dele e segue direto.
+  // Manage › Page: the sales text and the page have their own Save, and leaving with
+  // "Unsaved changes" lost what was typed without a word. The warning applies
+  // to closing or reloading the tab and to the navigation THIS panel controls
+  // (its sections and links). The sidebar is not its own and goes straight through.
   const [salesDirty, setSalesDirty] = useState(false);
   const [landingDirty, setLandingDirty] = useState(false);
   const pageDirty = section === "page" && (salesDirty || landingDirty);
@@ -431,9 +431,9 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
       run: go,
     });
   };
-  // Links do painel (voltar ao construtor, "Edit in Builder", menu do curso):
-  // a captura segura o clique antes do Link do Next e, confirmado, navega.
-  // Aba nova e clique modificado não desmontam nada e seguem direto.
+  // Panel links (back to the builder, "Edit in Builder", course menu):
+  // the capture holds the click before Next's Link and, once confirmed, navigates.
+  // A new tab and a modified click do not unmount anything and go straight through.
   const guardPageLinks = (event: ReactMouseEvent<HTMLElement>) => {
     if (!pageDirty || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     const anchor = (event.target as Element | null)?.closest?.("a[href]");
@@ -482,10 +482,10 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
     return subscribeToTeacherCourses(user.uid, setMyCourses, () => undefined);
   }, [user]);
 
-  // O que o tipo entrega, como o construtor le: a sessao por vir do evento ao
-  // vivo e o arquivo do e-book. Sem eles a porcentagem daqui chegava a 100%
-  // com o construtor dizendo "nao esta pronto". Lista que nao chega deixa o
-  // item de fora, como no construtor; o servidor segue cobrando.
+  // What the kind delivers, as the builder reads it: the live event's upcoming session and
+  // the e-book file. Without them the percentage here reached 100%
+  // with the builder saying "not ready". A list that does not arrive leaves the
+  // item out, as in the builder; the server keeps charging.
   const productFormat = course?.productFormat ?? "course";
   const ownerUid = user?.uid;
   const [sessionCount, setSessionCount] = useState<{ courseId: string; count: number } | null>(null);
@@ -499,14 +499,14 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
       () => {},
     );
   }, [ownerUid, courseId, productFormat]);
-  // A lista de arquivos, como o construtor le: o arquivo do e-book e o
-  // "conteudo em toda aula". Sem ela o Manage tirava esse item e mostrava
-  // outra porcentagem para o mesmo curso. Lida de novo a cada snapshot do
-  // curso, como era a do e-book.
+  // The file list, as the builder reads it: the e-book file and the
+  // "content in every lesson". Without it Manage dropped that item and showed
+  // a different percentage for the same course. Read again on every snapshot of the
+  // course, as the e-book one was.
   const courseModules = course?.modules;
   const [courseAssets, setCourseAssets] = useState<{ courseId: string; list: CourseAsset[] } | null>(null);
-  // A falha da lista era engolida, e o Manage seguia com outra porcentagem.
-  // Agora a conta espera ("—%") e a falha ganha "Try again" (B-15).
+  // The list's failure was swallowed, and Manage went on with a different percentage.
+  // Now the count waits ("—%") and the failure gets "Try again" (B-15).
   const [assetsFailedFor, setAssetsFailedFor] = useState<string | null>(null);
   const readinessLineRef = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
@@ -537,8 +537,8 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   const activationBlocked = account.verificationRequired && !account.verificationApproved;
 
   if (!courseLoaded) {
-    // Igual ao fallback da rota (F-03): blocos no lugar do cabeçalho, da
-    // fileira e do painel, e uma frase só para o leitor de tela.
+    // Same as the route fallback (F-03): blocks in place of the header, the
+    // row and the panel, and a single sentence for the screen reader.
     return <BuilderSkeleton label={t("teacherRouteResidual.manageLoading")} />;
   }
 
@@ -560,10 +560,10 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
     );
   }
 
-  // A mesma lista do construtor, com as mesmas entradas: a lista de arquivos
-  // decide "conteudo em toda aula" (lessonMedia) e o arquivo do e-book, pela
-  // mesma regra do aviso "aulas sem conteudo" do painel. Antes o Manage tirava
-  // o lessonMedia e a porcentagem podia diferir da do construtor.
+  // The same list as the builder, with the same entries: the file list
+  // decides "content in every lesson" (lessonMedia) and the e-book file, by the
+  // same rule as the panel's "lessons without content" warning. Before, Manage dropped
+  // lessonMedia and the percentage could differ from the builder's.
   const assets = courseAssets?.courseId === course.id ? courseAssets.list : null;
   const readiness = getCourseReadiness(
     {
@@ -577,18 +577,18 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
     account,
     t,
   );
-  // A linha "6 of 8 required steps done · 75% ready" e o nome da barra.
+  // The "6 of 8 required steps done · 75% ready" line is the bar's name.
   const readinessText = t("creatorPanel.hub.checklist.progress")
     .replace("{done}", () => String(readiness.doneCount))
     .replace("{total}", () => String(readiness.total))
     .replace("{percent}", () => String(readiness.percent));
-  // Com aula no curso, a conta depende da lista de arquivos: sem ela o número
-  // sairia diferente do construtor. Até ela chegar, "—%" e nada de barra.
+  // With a lesson in the course, the count depends on the file list: without it the number
+  // would differ from the builder's. Until it arrives, "—%" and no bar.
   const readinessPending = !assets && course.modules.some((courseModule) => courseModule.lessons.length > 0);
   const assetsFailed = readinessPending && assetsFailedFor === course.id;
   const pricing = getCoursePricingShape(course);
-  // "Add the yearly plan" na etapa de preco chega com ?addPrice=yearly&amount=
-  // (em centavos): o formulario de outro preco ja abre com o plano anual.
+  // "Add the yearly plan" in the price step arrives with ?addPrice=yearly&amount=
+  // (in cents): the other-price form already opens with the yearly plan.
   const yearlyPrefillMinor = searchParams?.get("addPrice") === "yearly"
     ? Number(searchParams.get("amount"))
     : Number.NaN;
@@ -676,7 +676,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                   const next = event.target.value;
                   leavePage(() => router.push(`/teach/courses/${next}/manage`));
                 }}
-                // Até a largura da linha: um título longo não passa da tela de 375px.
+                // Up to the row width: a long title does not go past the 375px screen.
                 className="field-input field-input--inline max-w-full"
               >
                 <option value={course.id}>{course.title}</option>
@@ -693,9 +693,9 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
             >
               {t("creatorPanel.hub.editInBuilder")}
             </Link>
-            {/* Mesma posicao da Hotmart: o caret ao lado do seletor de produto.
-                E a unica entrada do professor para tirar o curso do ar — antes
-                so o admin conseguia, pelo /ops. */}
+            {/* Same position as Hotmart: the caret beside the product selector.
+                It is the teacher's only way to take the course offline — before,
+                only the admin could, through /ops. */}
             <CourseActionsMenu courseTitle={courseTitle} icon={ChevronDown}>
               <Link
                 href="/teach/builder?newCourse=1&format=course"
@@ -723,9 +723,9 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
           </div>
         </div>
         {course.status === "inactive" ? (
-          // Arquivar sem dizer o que fazer depois deixa o professor achando que
-          // perdeu o curso. O chip diz o estado; esta linha diz a saida.
-          // Sem o flex próprio: ganha o ícone de aviso, e o link segue a frase.
+          // Archiving without saying what to do next leaves the teacher thinking they
+          // lost the course. The chip says the state; this line says the way out.
+          // Without its own flex: it gets the warning icon, and the link follows the sentence.
           <InlineAlert tone="warning" className="mt-4">
             {t("creatorPanel.hub.header.archivedNotice")}{" "}
             <Link
@@ -745,9 +745,9 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
           onCancel={() => setConfirmingDelete(false)}
           onDone={(result) => {
             setConfirmingDelete(false);
-            // Apagado, este hub nao existe mais: a assinatura em tempo real
-            // devolveria "curso nao encontrado" no lugar da tela. Arquivado,
-            // ela mesma traz o novo status e o chip troca sozinho.
+            // Deleted, this hub no longer exists: the realtime subscription
+            // would return "course not found" in place of the screen. Archived,
+            // it brings the new status itself and the chip switches on its own.
             if (result.outcome === "deleted") {
               router.push("/teach/builder");
             }
@@ -788,7 +788,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
               <button
                 key={item.id}
                 ref={section === item.id ? activeSectionRef : undefined}
-                // A seção aberta era só cor: o leitor de tela não sabia onde estava.
+                // The open section was only color: the screen reader did not know where it was.
                 aria-current={section === item.id ? "page" : undefined}
                 type="button"
                 onClick={() => (item.id === section ? undefined : leavePage(() => setSection(item.id)))}
@@ -826,12 +826,12 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
         </nav>
 
         <div className="grid gap-4">
-          {/* A ordem depende do estado do produto. PUBLICADO: o painel vem
-              primeiro, porque quem abre esta tela abre para saber como o
-              produto esta indo. AINDA NAO PUBLICADO: os numeros sao todos
-              vazios ("ninguem comprou ainda", "nenhuma atividade") e o
-              professor tinha de rolar tres caixas vazias para descobrir o que
-              falta para publicar — entao o checklist sobe e o painel desce. */}
+          {/* The order depends on the product's state. PUBLISHED: the panel comes
+              first, because whoever opens this screen opens it to know how the
+              product is doing. NOT YET PUBLISHED: the numbers are all
+              empty ("nobody bought yet", "no activity") and the
+              teacher had to scroll past three empty boxes to find out what
+              is missing to publish — so the checklist goes up and the panel goes down. */}
           {section === "overview" && published ? (
             <CourseOverviewPanel course={course} />
           ) : null}
@@ -841,17 +841,17 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
               title={t("creatorPanel.hub.checklist.title")}
               description={t(`creatorPanel.hub.status.${course.status}`)}
             >
-              {/* A mesma barra do construtor (a compartilhada): as duas telas
-                  desenhavam a mesma prontidão de jeitos diferentes. */}
+              {/* The same bar as the builder (the shared one): the two screens
+                  drew the same readiness in different ways. */}
               {readinessPending ? (
-                // O trilho vazio guarda o lugar da barra: nada pula quando a
-                // conta chega, e nenhum número falso é anunciado.
+                // The empty track holds the bar's place: nothing jumps when the
+                // count arrives, and no false number is announced.
                 <div aria-hidden="true" className="mt-4 h-1.5 rounded-full bg-[var(--color-line)]" />
               ) : (
                 <ProgressBar value={readiness.percent} label={readinessText} className="mt-4" />
               )}
-              {/* aria-hidden: a barra acima já diz esta frase (é o nome dela).
-                  Esperando, não há barra: a frase fica para o leitor de tela. */}
+              {/* aria-hidden: the bar above already says this sentence (it is its name).
+                  While waiting, there is no bar: the sentence stays for the screen reader. */}
               <p
                 ref={readinessLineRef}
                 tabIndex={-1}
@@ -871,9 +871,9 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 renderItem={(item) => {
                   const editHref = readinessEditHref(item, course.id);
                   return (
-                    // A mesma linha do construtor: feito = check desenhado em
-                    // verde (com "Done" para o leitor de tela), pendente =
-                    // círculo vazio. Era um "✓" digitado numa bolinha azul.
+                    // The same row as the builder: done = a drawn check in
+                    // green (with "Done" for the screen reader), pending =
+                    // empty circle. It used to be a typed "✓" in a blue dot.
                     <li
                       key={item.id}
                       data-readiness-item={item.id}
@@ -912,9 +912,9 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                         </p>
                       </div>
                       {editHref ? (
-                        // Rotulo visivel curto, nome acessivel completo: sao
-                        // ate onze links "Edit" na mesma lista e um leitor de
-                        // tela precisa saber qual e qual.
+                        // Short visible label, full accessible name: there are
+                        // up to eleven "Edit" links in the same list and a screen
+                        // reader needs to know which is which.
                         <Link
                           href={editHref}
                           aria-label={t("creatorPanel.hub.checklist.editItem").replace(
@@ -983,8 +983,8 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 path={`/courses/${encodeURIComponent(courseId)}`}
                 title={courseTitle}
               />
-              {/* A vitrine do criador e a terceira porta de venda: sai na mesma
-                  base publica da pagina do produto, com o mesmo trio de botoes. */}
+              {/* The creator's storefront is the third sales door: it goes out on the same
+                  public base as the product page, with the same trio of buttons. */}
               <CourseShareLink
                 label={t("creatorPanel.hub.links.storefront")}
                 path={storefrontPath}
@@ -1235,8 +1235,8 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 title={t("creatorPanel.hub.page.title")}
                 description={t("creatorPanel.hub.page.description")}
               >
-                {/* Um botão cheio por seção: aqui é o "Save page" do editor
-                    de blocos. Abrir a página é ação secundária. */}
+                {/* One filled button per section: here it is the block editor's "Save page".
+                    Opening the page is a secondary action. */}
                 <Link
                   href={`/courses/${course.id}`}
                   className="button-outline mt-5 inline-flex px-4 py-2 text-xs"

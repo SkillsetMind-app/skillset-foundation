@@ -41,16 +41,16 @@ import {
   refreshTeacherStripeAccountStatus,
 } from "@/lib/payments/connect";
 
-// Mostrado (como aviso calmo, nunca com cara de erro) quando a PLATAFORMA ainda
-// nao habilitou o Stripe Connect — estado de configuracao do lado da
-// SkillsetMind, nao falha e nada que o professor possa resolver.
+// Shown (as a calm notice, never looking like an error) when the PLATFORM has not yet
+// enabled Stripe Connect — a configuration state on the
+// SkillsetMind side, not a failure and nothing the teacher can solve.
 const PAYOUTS_UNAVAILABLE_KEY = "teach.earnings.payoutsUnavailable";
 
 type LedgerReadState = "loading" | "ready" | "error";
 
-// O construtor manda ?returnTo= para a volta cair na aba Publish do curso.
-// So um caminho do proprio construtor passa (getSafeReturnTo ja barra outro
-// site e "//host"); qualquer outra coisa nao vira botao.
+// The builder sends ?returnTo= so the return lands on the course's Publish tab.
+// Only a path inside the builder itself goes through (getSafeReturnTo already blocks another
+// site and "//host"); anything else does not become a button.
 function readBuilderReturnTo(): string | null {
   const target = getSafeReturnTo(new URLSearchParams(window.location.search));
   return target?.startsWith("/teach/builder?") ? target : null;
@@ -61,29 +61,29 @@ type Translate = (key: string) => string;
 type Reloadable = { reload?: () => Promise<void> };
 type Notice = { text: string; tone: "info" | "success" };
 
-// O osso dos esqueletos da casa (surface-strong), pulsando so ele.
+// The bone of the house skeletons (surface-strong), only it pulsing.
 const bone = "animate-pulse rounded-md bg-[var(--color-surface-strong)]";
 
 export function TeacherWalletPanel() {
   const { user } = useAuth();
   const uid = user?.uid;
   const { locale, t } = useTranslation();
-  // `t` fica fora das dependencias dos efeitos: com ele la, um provider que
-  // devolva funcao nova por render reinscreve tudo em laco (a suite do CI
-  // ficou muda 16 min). Os efeitos guardam estado, nunca frase traduzida.
+  // `t` stays out of the effects' dependencies: with it in, a provider that
+  // returns a new function on every render re-subscribes everything in a loop (the CI suite
+  // went silent for 16 min). The effects keep state, never a translated sentence.
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [error, setError] = useState("");
-  // As duas leituras com "Try again": o reload le de novo sem mexer no canal.
+  // The two reads with "Try again": reload re-reads without touching the channel.
   const profileRead = useRef<Reloadable | null>(null);
   const ledgerRead = useRef<Reloadable | null>(null);
-  // Ficam na tela nos dois desfechos da releitura e recebem o foco do clique.
+  // They stay on screen in both outcomes of the re-read and receive the click's focus.
   const connectRef = useRef<HTMLElement>(null);
   const statementsRef = useRef<HTMLElement>(null);
   const [courseTitles, setCourseTitles] = useState<ReadonlyMap<string, string>>(() => new Map());
   const [isRefreshingStripe, setIsRefreshingStripe] = useState(false);
-  // Lido no cliente: no servidor (e na hidratacao) nao ha botao de volta.
+  // Read on the client: on the server (and on hydration) there is no back button.
   const returnTo = useSyncExternalStore(noSubscribe, readBuilderReturnTo, () => null);
   const [ledgerEntries, setLedgerEntries] = useState<PayoutLedgerEntry[]>([]);
   const [ledgerState, setLedgerState] = useState<LedgerReadState>("loading");
@@ -99,8 +99,8 @@ export function TeacherWalletPanel() {
       return;
     }
 
-    // A falha do perfil e dita UMA vez, no bloco da conta, com "Try again":
-    // antes saia tambem na caixa do topo, a mesma frase duas vezes.
+    // The profile failure is said ONCE, in the account block, with "Try again":
+    // before it also showed up in the top box, the same sentence twice.
     const subscription = subscribeToUserProfile(
       user.uid,
       (nextProfile) => {
@@ -120,7 +120,7 @@ export function TeacherWalletPanel() {
       return;
     }
 
-    // Idem para o extrato: o aviso com "Try again" mora no proprio extrato.
+    // Same for the statement: the notice with "Try again" lives in the statement itself.
     const subscription = subscribeToTeacherPayoutLedger(
       user.uid,
       (entries) => {
@@ -135,12 +135,12 @@ export function TeacherWalletPanel() {
     return subscription;
   }, [user]);
 
-  // O nome do produto em cada linha do extrato. A barra do professor ja le os
-  // produtos nesta pagina (o numero da Caixa de entrada); loadTeacherInbox junta
-  // pedidos simultaneos, entao a linha ganha o nome sem leitura nova. Falhou, a
-  // linha fica com o codigo curto do pedido, como em Vendas.
-  // Pelo id, nao pelo objeto: a renovacao do login entrega outro `user` com o
-  // mesmo id, e isso nao pode disparar as tres consultas da Caixa de novo.
+  // The product name on each statement row. The teacher bar already reads the
+  // products on this page (the Inbox number); loadTeacherInbox merges
+  // simultaneous requests, so the row gets the name without a new read. If it fails, the
+  // row keeps the order's short code, as in Sales.
+  // By id, not by object: the login renewal delivers another `user` with the
+  // same id, and that must not fire the Inbox's three queries again.
   useEffect(() => {
     if (!uid) {
       return;
@@ -235,9 +235,9 @@ export function TeacherWalletPanel() {
     () => summarizeCreatorWallet(ledgerEntries),
     [ledgerEntries],
   );
-  // Um total vazio sai como zero na moeda das outras somas quando ha uma so.
-  // Com nenhuma ou varias, "0" puro: "$0.00" ao lado de "R$100.00" de
-  // reembolso diria que o neto e de outra moeda.
+  // An empty total comes out as zero in the currency of the other sums when there is only one.
+  // With none or several, a plain "0": "$0.00" next to "R$100.00" of
+  // refund would say the net is in another currency.
   const currencies = new Set(
     [
       financials.grossPaidByCurrency,
@@ -275,11 +275,11 @@ export function TeacherWalletPanel() {
 
   return (
     <section className="payouts-shell">
-      {/* O cabecalho das telas irmas do estudio (30px em qualquer largura, sem
-          o rotulo "Earnings" que so repetia o nome da barra). h1: a casca de
-          /account/payments esconde o dela, e e este que abre a pagina. O "?"
-          fica ao lado do titulo, nao dentro dele: dentro, o leitor de tela
-          lia "... Help about Payout schedule" como parte do nome da pagina. */}
+      {/* The header of the studio's sibling screens (30px at any width, without
+          the "Earnings" label that only repeated the bar's name). h1: the shell of
+          /account/payments hides its own, and this is the one that opens the page. The "?"
+          sits beside the title, not inside it: inside, the screen reader
+          read "... Help about Payout schedule" as part of the page name. */}
       <PlatformPageHeader
         title={t("teach.earnings.title")}
         titleAside={
@@ -295,8 +295,8 @@ export function TeacherWalletPanel() {
           </p>
         }
       >
-        {/* Uma frase, e o resto recolhido. `details` nativo: sem estado, sem
-            portal, e o texto longo so ocupa a tela de quem pediu por ele. */}
+        {/* One sentence, and the rest collapsed. Native `details`: no state, no
+            portal, and the long text only takes up the screen of whoever asked for it. */}
         <details className="mt-2 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
           <summary className="cursor-pointer font-semibold text-[var(--color-primary)] pointer-coarse:py-2">
             {t("teach.earnings.learnMore")}
@@ -305,18 +305,18 @@ export function TeacherWalletPanel() {
         </details>
       </PlatformPageHeader>
 
-      {/* Os avisos da casa (anunciados ao leitor de tela, com icone): eram
-          duas caixas feitas a mao, mudas, e a vermelha some no tema escuro. */}
+      {/* The house notices (announced to the screen reader, with an icon): they were
+          two hand-made boxes, silent, and the red one disappears in the dark theme. */}
       {notice ? <InlineAlert tone={notice.tone}>{notice.text}</InlineAlert> : null}
       {error ? <InlineAlert tone="error">{error}</InlineAlert> : null}
-      {/* UM aviso de espera para a pagina inteira, sempre montado (para o
-          leitor de tela ouvir a troca): o bloco da conta e o extrato esperam
-          ao mesmo tempo, e dois avisos falavam juntos. Os esqueletos sao mudos. */}
+      {/* ONE wait notice for the whole page, always mounted (so the
+          screen reader hears the swap): the account block and the statement wait
+          at the same time, and two notices spoke together. The skeletons are silent. */}
       <p role="status" className="sr-only">
         {isLoading || ledgerState === "loading" ? t("teach.earnings.pageLoading") : ""}
       </p>
-      {/* Veio do Publish do construtor: pagamentos prontos, o caminho de volta
-          para publicar e um botao, nao a barra lateral. */}
+      {/* Came from the builder's Publish: payments ready, the way back
+          to publishing is a button, not the sidebar. */}
       {ready && returnTo ? (
         <Link href={returnTo} className="button-solid button-lg w-full sm:w-fit">
           {t("teach.earnings.backToCourse")}
@@ -331,8 +331,8 @@ export function TeacherWalletPanel() {
           <p className="num mt-3 break-words text-3xl font-bold leading-tight text-white sm:text-4xl">
             {money(financials.teacherNetByCurrency)}
           </p>
-          {/* Uma linha ao lado do numero grande. O resto (cobranca na conta do
-              professor, timing de repasse da Stripe) esta no "Learn more". */}
+          {/* One line beside the big number. The rest (charge on the teacher's
+              account, Stripe's payout timing) is in "Learn more". */}
           <p className="mt-2 text-sm text-[rgba(255,255,255,0.72)]">
             {t("teach.earnings.netHint")}
           </p>
@@ -345,9 +345,9 @@ export function TeacherWalletPanel() {
           </div>
 
           <div className="mt-6 flex flex-wrap gap-2">
-            {/* Um botao de atualizar so, o do cartao da conta: com a conta
-                pronta havia dois ("Refresh Stripe" aqui e "Refresh account"
-                ao lado), fazendo a mesma coisa. */}
+            {/* Only one refresh button, the account card's: with the account
+                ready there were two ("Refresh Stripe" here and "Refresh account"
+                beside it), doing the same thing. */}
             {ready ? null : (
               <a href="#stripe-connect" className="button-solid-light px-4 py-2.5 text-sm">
                 {t("teach.earnings.completeSetup")}
@@ -365,10 +365,10 @@ export function TeacherWalletPanel() {
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
                 {t("teach.earnings.destination")}
               </p>
-              {/* "Stripe Connect" e o nome do produto da Stripe, nao do que a
-                  pessoa tem: para quem nao e tecnico, e a conta dela.
-                  h2, como os outros titulos de cartao da pagina: o h1 e o do
-                  topo e a navegacao por titulos pulava do 1 para o 3. */}
+              {/* "Stripe Connect" is the name of Stripe's product, not of what the
+                  person has: for someone non-technical, it is their account.
+                  h2, like the other card titles on the page: the h1 is the one at the
+                  top and heading navigation jumped from 1 to 3. */}
               <h2 className="mt-2 text-lg font-semibold text-[var(--color-ink)]">
                 {t("teach.earnings.stripeAccount")}
               </h2>
@@ -383,7 +383,7 @@ export function TeacherWalletPanel() {
                       ? "pending"
                       : "draft"
               }
-              // Perfil que nao veio nao e "Not connected": nao se sabe.
+              // A profile that did not arrive is not "Not connected": we do not know.
               label={isLoading
                 ? t("teach.earnings.loadingStatus")
                 : profile
@@ -395,9 +395,9 @@ export function TeacherWalletPanel() {
             {t("teach.earnings.bankNote")}
           </p>
 
-          {/* As linhas de estado so quando a conta existe: sem conta eram tres
-              linhas ("Not created", "Pending", "Pending") repetindo o selo
-              "Not connected" logo acima. */}
+          {/* The status rows only when the account exists: without an account there were three
+              rows ("Not created", "Pending", "Pending") repeating the
+              "Not connected" badge right above. */}
           {connected ? (
           <div className="mt-5 grid gap-3">
             <PayoutStatusRow
@@ -450,8 +450,8 @@ export function TeacherWalletPanel() {
           </div>
           ) : null}
 
-          {/* Sem conta conectada o botao so devolvia o erro "conecte o
-              Stripe", com o passo de conectar logo ao lado. */}
+          {/* With no connected account the button only returned the error "connect
+              Stripe", with the connect step right beside it. */}
           {connected && !platformPayoutsUnavailable ? (
             <div className="mt-5">
               <StripeDashboardButton />
@@ -471,8 +471,8 @@ export function TeacherWalletPanel() {
         </aside>
       </div>
 
-      {/* Sao QUATRO tiles: em `md:grid-cols-3` o quarto sobrava sozinho numa
-          linha. 2x2 no tablet, 4 colunas no desktop — nenhum orfao. */}
+      {/* There are FOUR tiles: with `md:grid-cols-3` the fourth was left alone on a
+          row. 2x2 on tablet, 4 columns on desktop — no orphan. */}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           unavailable={!financialsReady}
@@ -529,8 +529,8 @@ export function TeacherWalletPanel() {
                 to load is just as unknown: never offer the permanent country
                 choice to someone who may already have an account. */}
             {isLoading ? (
-              // A forma do primeiro passo (o pais da conta e o botao), no
-              // lugar de um bloco vazio em que o formulario caia depois.
+              // The shape of the first step (the account's country and the button), in
+              // place of an empty block into which the form dropped later.
               <div aria-hidden="true" data-skeleton="connect" className="grid gap-3">
                 <div className={`h-4 w-48 ${bone}`} />
                 <div className={`h-11 w-full max-w-sm ${bone}`} />
@@ -569,15 +569,15 @@ export function TeacherWalletPanel() {
               {t("teach.earnings.statementsBody")}
             </p>
           </div>
-          {/* Aqui havia "Export after first payout", desligado para sempre:
-              nem depois do primeiro repasse ele ligava. O extrato de vendas
-              exporta em Vendas. */}
+          {/* Here there was "Export after first payout", off forever:
+              not even after the first payout did it turn on. The sales statement
+              exports in Sales. */}
         </div>
 
         <div className="mt-5 overflow-hidden rounded-lg border border-[var(--color-line)]">
           {ledgerState === "loading" ? (
-            // Linhas no formato do extrato (data, produto, situacao, valor),
-            // no lugar de uma frase numa caixa que depois virava a lista.
+            // Rows in the shape of the statement (date, product, status, amount),
+            // in place of a sentence in a box that later became the list.
             <div aria-hidden="true" data-skeleton="statement" className="divide-y divide-[var(--color-line)]">
               {[0, 1, 2].map((row) => (
                 <div
@@ -609,11 +609,11 @@ export function TeacherWalletPanel() {
             </div>
           ) : (
             <div className="divide-y divide-[var(--color-line)]">
-              {/* O ledger é carregado em ordem CRESCENTE (o cálculo de saldo
-                  depende disso), então .slice(0, 6) mostrava as seis vendas
-                  MAIS ANTIGAS sob o título "recentes" — para um criador com
-                  histórico, a venda de hoje nunca aparecia. Ordena por data
-                  decrescente só para exibir, sem mexer na fonte. */}
+              {/* The ledger is loaded in ASCENDING order (the balance calculation
+                  depends on it), so .slice(0, 6) showed the six OLDEST
+                  sales under the "recent" title — for a creator with
+                  history, today's sale never showed up. It sorts by date
+                  descending only for display, without touching the source. */}
               {[...ledgerEntries]
                 .sort((a, b) => {
                   const left = Date.parse(String(a.createdAt ?? ""));
@@ -690,9 +690,9 @@ function PayoutStatusRow({
   );
 }
 
-// A linha diz o produto e o codigo curto do pedido ("Order #1A2B3C4D", o mesmo
-// de Vendas): era "Order {uuid}" e "Payment pi_..." crus. O id do pagamento
-// fica na venda, um clique adiante, com o botao de copiar.
+// The row says the product and the order's short code ("Order #1A2B3C4D", the same
+// as in Sales): it was raw "Order {uuid}" and "Payment pi_...". The payment id
+// stays on the sale, one click ahead, with the copy button.
 function LedgerRow({
   entry,
   courseTitle,
@@ -704,7 +704,7 @@ function LedgerRow({
   t: Translate;
   locale: string;
 }) {
-  // `?? ""`: linha antiga sem pedido nao derruba a pagina do dinheiro.
+  // `?? ""`: an old row with no order does not bring down the money page.
   const orderRef = t("teach.earnings.orderLabel").replace("{id}", () => formatOrderRef(entry.orderId ?? ""));
   return (
     <Link
@@ -736,10 +736,10 @@ function LedgerRow({
   );
 }
 
-// Dinheiro e data na lingua da tela, como em Vendas. O maior numero de Ganhos
-// saia "0" sem moeda para professor novo, e "USD 49.00 + EUR 10.00" depois;
-// as datas saiam sempre em ingles, inclusive na tela em espanhol. O dinheiro
-// (com o recuo para moeda que o Intl recusa) mora em @/lib/format-money.
+// Money and date in the screen's language, as in Sales. The biggest Earnings number
+// came out "0" with no currency for a new teacher, and "USD 49.00 + EUR 10.00" later;
+// dates always came out in English, including on the Spanish screen. Money
+// (with the fallback for a currency Intl refuses) lives in @/lib/format-money.
 function formatDate(value: unknown, pendingLabel: string, locale: string) {
   const date = toDate(value);
   if (!date) {

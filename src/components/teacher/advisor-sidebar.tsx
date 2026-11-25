@@ -100,18 +100,18 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
     triggerRef.current?.focus({ preventScroll: true });
   }
 
-  // Com o gatilho na barra do topo (768px+), a conversa cai 8px abaixo dele,
-  // alinhada a direita do botao (como o painel do sino), e nao no rodape, a
-  // ~500px do clique. So posicao: medida ao abrir e quando a janela muda, e
-  // presa para o painel inteiro caber na tela.
+  // With the trigger in the top bar (768px+), the conversation drops 8px below it,
+  // aligned to the right of the button (like the bell panel), and not at the bottom,
+  // ~500px from the click. Position only: measured on open and when the window changes, and
+  // clamped so the whole panel fits on screen.
   const floatRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const float = floatRef.current;
     if (!open || !header || !float) return;
     const place = () => {
       const box = header.getBoundingClientRect();
-      // O topo conta da borda de baixo da barra, nao do botao: medido pelo
-      // botao, o painel comecava 2px dentro da barra.
+      // The top is counted from the bottom edge of the bar, not of the button: measured from the
+      // button, the panel started 2px inside the bar.
       const barBottom = header.closest(".platform-topbar")?.getBoundingClientRect().bottom ?? box.bottom;
       const panelWidth = Math.min(380, window.innerWidth - 40);
       const right = Math.min(window.innerWidth - box.right, window.innerWidth - panelWidth - 16);
@@ -338,8 +338,8 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
       aria-label={open ? t("advisor.close") : t("advisor.open")}
       aria-expanded={open}
       title={open ? t("advisor.close") : t("advisor.open")}
-      // Passar o mouse sobe 1px, como os outros botoes (crescer 3% nao e o
-      // gesto da casa).
+      // Hovering lifts it 1px, like the other buttons (growing 3% is not the
+      // app's style).
       className={"advisor-trigger flex items-center gap-2 rounded-md bg-[var(--color-primary)] px-4 py-3 text-sm font-semibold text-[var(--color-base)] shadow-[0_10px_30px_rgba(15,31,58,0.3)] transition-transform duration-[180ms] motion-safe:hover:-translate-y-px" + (header ? " advisor-trigger--header" : "")}
     >
       <Sparkles className="h-4 w-4" aria-hidden="true" />
@@ -355,9 +355,9 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
         ref={floatRef}
         className={`floating-action floating-action--advisor flex flex-col items-end gap-3${header ? " floating-action--anchored" : ""}`}
       >
-      {/* Preso ao botao do topo, cai como os menus (motion-drop-in). No
-          celular, onde o botao flutua embaixo, abria seco: sobe 8px como a
-          gaveta (motion-panel-in). As duas so em no-preference. */}
+      {/* Pinned to the top button, it drops like the menus (motion-drop-in). On
+          phones, where the button floats at the bottom, it used to appear abruptly: it rises 8px like the
+          drawer (motion-panel-in). Both only under no-preference. */}
       {open ? (
         <section
           role="dialog"
@@ -479,8 +479,8 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
               type="submit"
               disabled={isSending || historyStatus !== "ready" || input.trim().length === 0}
               aria-label={t("advisor.send")}
-              // Desligado enquanto a conversa carrega: o motivo e a frase
-              // "Loading your conversation..." que ja esta na tela.
+              // Disabled while the conversation loads: the reason is the sentence
+              // "Loading your conversation..." that is already on screen.
               aria-describedby={historyStatus === "loading" ? "advisor-history-loading" : undefined}
               className="button-solid flex h-10 w-10 shrink-0 items-center justify-center rounded-md p-0"
             >

@@ -35,16 +35,16 @@ describe("LandingImageField", () => {
     mocks.uploadLandingImage.mockReset();
   });
 
-  // B-05: a casca única das capas. O botão é o rótulo do campo de arquivo
-  // (como nas capas do construtor), com as regras como descrição.
+  // B-05: the single shell of the covers. The button is the label of the file input
+  // (as on the builder covers), with the rules as the description.
   it("offers an upload button, named by its field and described by the rules", () => {
     setup();
     const input = screen.getByLabelText("Upload image");
     expect(input).toHaveAttribute("type", "file");
     expect(input).toHaveAccessibleDescription("JPG, PNG or WebP, up to 5.0 MB.");
     expect(screen.getByRole("region", { name: "Photo" })).toContainElement(input);
-    // O link colado fica no grupo com o nome do bloco: com duas imagens na
-    // página, cada "Or paste a link" diz de qual imagem é.
+    // The pasted link stays in the group with the block's name: with two images on the
+    // page, each "Or paste a link" says which image it is for.
     const group = screen.getByRole("group", { name: "Photo" });
     expect(group).toContainElement(input);
     expect(group).toContainElement(screen.getByLabelText("Or paste a link"));
@@ -67,7 +67,7 @@ describe("LandingImageField", () => {
     const onChange = setup();
     const file = new File(["x"], "foto.png", { type: "image/png" });
     pick(file);
-    // Rótulo fixo; o andamento sai uma vez, na nota (como nas capas do construtor).
+    // Fixed label; the progress comes out once, in the note (as on the builder covers).
     expect(await screen.findByRole("status")).toHaveTextContent("Sending...");
     expect(screen.getByLabelText("Upload image")).toBeDisabled();
     expect(screen.queryByText("Uploading...")).toBeNull();

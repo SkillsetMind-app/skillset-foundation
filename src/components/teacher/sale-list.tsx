@@ -17,10 +17,10 @@ import { subscribeToTeacherOrders } from "@/lib/data/orders";
 import { toDate } from "@/lib/format-date";
 import { formatMoney } from "@/lib/format-money";
 
-// A moldura de operacao (periodo, busca, status, exportar) e desenhada com ou
-// sem pedidos. Antes, zero pedidos trocava a pagina inteira por um card de
-// vazio: a pessoa nao sabia se "nenhuma venda" era nenhuma venda NUNCA ou
-// nenhuma venda nos ultimos 30 dias, porque nao havia periodo nenhum na tela.
+// The operations frame (period, search, status, export) is drawn with or
+// without orders. Before, zero orders swapped the whole page for an empty
+// card: the person could not tell whether "no sales" meant no sales EVER or
+// no sales in the last 30 days, because there was no period on the screen at all.
 
 const copy = "creatorPanel.sales";
 
@@ -57,9 +57,9 @@ export function SaleList() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
-  // Uma releitura que falha com a tabela na tela nao apaga as vendas: o aviso
-  // com "Try again" vai por cima delas. So sem nenhuma leitura boa a tela
-  // inteira vira o erro.
+  // A re-read that fails with the table on screen does not erase the sales: the notice
+  // with "Try again" goes on top of them. Only with no good read at all does the whole
+  // screen become the error.
   const [loaded, setLoaded] = useState(false);
   const [period, setPeriod] = useState<Period>("30d");
   const [search, setSearch] = useState("");
@@ -96,7 +96,7 @@ export function SaleList() {
     };
   }, [user]);
 
-  // "Try again" le de novo pelo mesmo canal, sem desligar e religar.
+  // "Try again" reads again through the same channel, without unsubscribing and resubscribing.
   function retryLoad() {
     setError(false);
     if (!loaded) setIsLoading(true);
@@ -115,15 +115,15 @@ export function SaleList() {
   }, [period]);
 
   const visible = useMemo(() => {
-    // A tabela mostra o codigo como "#1A2B3C4D", mas o id guardado nao tem
-    // "#": colar o codigo da tela nao achava nada. O codigo e o fim do id.
+    // The table shows the code as "#1A2B3C4D", but the stored id has no
+    // "#": pasting the code from the screen found nothing. The code is the end of the id.
     const needle = search.trim().replace(/^#/, "").toLowerCase();
     const fromMs = range?.from.getTime() ?? 0;
 
     return orders
       .filter((order) => {
         const createdMs = toMillis(order.createdAt);
-        // createdMs === 0 e data ausente: nao escondemos o pedido por isso.
+        // createdMs === 0 is a missing date: we do not hide the order because of that.
         if (createdMs && createdMs < fromMs) {
           return false;
         }
@@ -161,13 +161,13 @@ export function SaleList() {
   );
 
   if (isLoading) {
-    // Periodo, busca, status e exportar: os quatro controles da moldura.
+    // Period, search, status and export: the four controls of the frame.
     return <TableSkeleton label={t(`${copy}.loading`)} controls={4} />;
   }
 
   if (error && !loaded) {
-    // Era uma caixa vermelha muda: a lista sumia, aparecia vermelho, e nada
-    // era anunciado.
+    // It used to be a silent red box: the list vanished, red appeared, and nothing
+    // was announced.
     return (
       <div className="grid gap-3">
         <InlineAlert tone="error" className="p-6">
@@ -204,9 +204,9 @@ export function SaleList() {
           </button>
         </div>
       ) : null}
-      {/* O comprador paga na conta Stripe do professor: com pedido, a conta
-          existe. Sem nenhum pedido o botao so podia dar o erro "conecte o
-          Stripe" (o aviso de conectar ja esta logo acima). */}
+      {/* The buyer pays into the teacher's Stripe account: with an order, the account
+          exists. With no order the button could only give the error "connect
+          Stripe" (the connect notice is already right above). */}
       {orders.length > 0 ? (
         <>
           <StripeDashboardButton />
@@ -237,9 +237,9 @@ export function SaleList() {
         <label htmlFor="sales-search" className="sr-only">
           {t(`${copy}.searchLabel`)}
         </label>
-        {/* min-w-[12rem]: com flex-1 e min-w-0 a busca encolhia para 35 px a
-            390 px, espremida entre os dois selects (QA visual, 08/09). Com um
-            minimo ela pula para a linha de baixo e ocupa a largura toda. */}
+        {/* min-w-[12rem]: with flex-1 and min-w-0 the search shrank to 35 px at
+            390 px, squeezed between the two selects (visual QA, 08/09). With a
+            minimum it jumps to the next line and takes the full width. */}
         <input
           id="sales-search"
           type="search"
@@ -269,8 +269,8 @@ export function SaleList() {
       <p className="text-sm text-[var(--color-ink-soft)]">{countLine}</p>
 
       {orders.length === 0 ? (
-        // Nenhuma venda nunca: a cena do recibo, sem moeda e sem número. O
-        // "nenhuma venda neste período" fica para quando já houve venda.
+        // No sales ever: the receipt scene, without currency and without a number. The
+        // "no sales in this period" message is left for when there has already been a sale.
         <EmptyState
           as="h2"
           art={<SpotArt scene="noSales" />}
@@ -294,11 +294,11 @@ export function SaleList() {
           </Link>
         </Card>
       ) : (
-        // Uma tabela num cartao so: antes eram ate 50 cartoes soltos, sem
-        // colunas, com o valor andando para os lados conforme a largura do
-        // selo de status. Cartao estreito (celular, ou barra lateral aberta
-        // num tablet): cada venda vira um bloco curto, com o valor a vista,
-        // em vez de uma tabela que esconderia valor e link na rolagem lateral.
+        // A table in a single card: before, there were up to 50 loose cards, with no
+        // columns, with the amount shifting sideways depending on the width of the
+        // status badge. Narrow card (phone, or open sidebar
+        // on a tablet): each sale becomes a short block, with the amount in view,
+        // instead of a table that would hide the amount and link in the side scroll.
         <Card as="div" padding="none" className="@container overflow-hidden">
           <ul className="@2xl:hidden">
             {visibleOrders.map((order) => (
@@ -377,9 +377,9 @@ export function SaleList() {
                           t(`${copy}.datePending`),
                         )}
                       </td>
-                      {/* O valor do pedido, na moeda DELE (nada soma moedas
-                          aqui). Reembolso parcial: o valor cobrado e o selo
-                          dizem o que aconteceu; o que sobrou fica na venda. */}
+                      {/* The order amount, in ITS currency (nothing adds currencies together
+                          here). Partial refund: the amount charged and the badge
+                          say what happened; what is left stays on the sale. */}
                       <td className="num whitespace-nowrap px-4 py-3 text-right font-bold text-[var(--color-primary)]">
                         {formatMoney(order.amountMinor, order.currency, locale)}
                       </td>

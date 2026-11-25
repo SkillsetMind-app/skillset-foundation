@@ -7,9 +7,9 @@ import { clickConfirm, stubDialogs } from "@/components/teacher/confirm-test-hel
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { subscribeToTeacherCourse, updateTeacherCourseBuilder } from "@/lib/data/teacher-courses";
 
-// Fatia 4 do editor (decisao de 14/09): clicar num modulo abre a pagina dele
-// DENTRO do builder (?module=M), com "Curso > Modulo", capa vertical 2:3, nome,
-// descricao e as aulas. A lista do curso vira uma linha por modulo.
+// Slice 4 of the editor (decision of Sep 14): clicking a module opens its page
+// INSIDE the builder (?module=M), with "Course > Module", vertical 2:3 cover, name,
+// description and the lessons. The course list becomes one row per module.
 
 const mocks = vi.hoisted(() => {
   const course: TeacherCourse = {
@@ -85,8 +85,8 @@ vi.mock("@/components/teacher/course-asset-uploader", () => ({
   CourseAssetUploader: () => null,
 }));
 
-// Marcador do estudio da aula: o que importa aqui e PARA QUAL modulo e aula ele
-// abre, nao o que faz por dentro (isso e lesson-content-modal.test.tsx).
+// Lesson studio marker: what matters here is WHICH module and lesson it
+// opens, not what it does inside (that is lesson-content-modal.test.tsx).
 vi.mock("@/components/teacher/lesson-content-modal", () => ({
   LessonContentModal: (props: {
     module: { id: string };
@@ -114,8 +114,8 @@ function tree() {
 
 let view: RenderResult;
 
-// A aula abre como pagina (?lesson=L) e volta ao modulo pelo router: segue a
-// ultima URL que o builder pediu, como o navegador faria.
+// The lesson opens as a page (?lesson=L) and goes back to the module through the router: it follows the
+// last URL the builder asked for, as the browser would.
 function followPush(kind: "push" | "replace" = "push") {
   const href = String(mocks.router[kind].mock.calls.at(-1)?.[0]);
   openAt(href.slice(href.indexOf("?") + 1));
@@ -126,11 +126,11 @@ async function renderBuilder() {
   view = render(tree());
   await screen.findByRole("heading", { name: mocks.course.title });
   const card = document.querySelector("#builder-sec-modules");
-  if (!card) throw new Error("a aba de conteudo nao abriu");
+  if (!card) throw new Error("the content tab did not open");
   return card as HTMLElement;
 }
 
-describe("pagina do modulo dentro do builder", () => {
+describe("module page inside the builder", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     openAt("courseId=course-1&tab=content");
@@ -140,7 +140,7 @@ describe("pagina do modulo dentro do builder", () => {
     cleanup();
   });
 
-  it("com ?module=M abre a pagina do modulo: titulo, trilha, capa 2:3 e as aulas", async () => {
+  it("with ?module=M it opens the module page: title, trail, 2:3 cover and the lessons", async () => {
     openAt("courseId=course-1&tab=content&module=m2");
     const card = await renderBuilder();
 
@@ -156,8 +156,8 @@ describe("pagina do modulo dentro do builder", () => {
       "Protect the hours that matter.",
     );
 
-    // As acoes que ja existiam na aula continuam na pagina do modulo: na
-    // linha, a principal (em contorno) e subir/descer; o resto em "Mais acoes".
+    // The actions that already existed on the lesson stay on the module page: on the
+    // row, the main one (outlined) and move up/down; the rest in "More actions".
     expect(within(card).getByRole("textbox", { name: "Lesson title" })).toHaveValue("Focus blocks");
     for (const name of ["Add video", "Up", "Down"]) {
       expect(within(card).getByRole("button", { name })).toBeInTheDocument();
@@ -171,16 +171,16 @@ describe("pagina do modulo dentro do builder", () => {
     for (const name of ["Mark free preview", "Delete lesson"]) {
       expect(within(card).getByRole("button", { name })).toBeInTheDocument();
     }
-    // A previa gratis marcada aparece na propria linha.
+    // The marked free preview shows up on the row itself.
     fireEvent.click(within(card).getByRole("button", { name: "Mark free preview" }));
     expect(within(card).getByText("Free preview")).toBeInTheDocument();
-    // So este modulo: o outro fica na lista do curso.
+    // Only this module: the other one stays in the course list.
     expect(within(card).queryByText("Start here")).not.toBeInTheDocument();
-    // Abrir o builder ja num modulo (link direto, recarga) nao rouba o foco.
+    // Opening the builder already on a module (direct link, reload) does not steal focus.
     expect(document.activeElement).toBe(document.body);
   });
 
-  it("renomear o modulo na pagina dele preserva descricao, capa e aulas no autosave", async () => {
+  it("renaming the module on its page preserves description, cover and lessons in the autosave", async () => {
     openAt("courseId=course-1&tab=content&module=m2");
     const card = await renderBuilder();
     within(card).getByRole("navigation", { name: "Breadcrumb" });
@@ -200,10 +200,10 @@ describe("pagina do modulo dentro do builder", () => {
     );
   }, 10000);
 
-  // Bug de dado: todo snapshot (inclusive o eco do nosso autosave) voltava o
-  // modulo da aula para o 1o. Com o formulario ainda aberto no m2, a segunda
-  // aula ia gravada no m1, e o estudio e o upload de video iam junto.
-  it("a aula adicionada depois do eco do autosave fica no modulo aberto", async () => {
+  // Data bug: every snapshot (including the echo of our own autosave) returned the lesson's
+  // module to the 1st. With the form still open on m2, the second
+  // lesson was saved in m1, and the studio and the video upload went along with it.
+  it("a lesson added after the autosave echo stays in the open module", async () => {
     let emitCourse: (course: TeacherCourse | null) => void = () => {};
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emitCourse = emit;
@@ -225,10 +225,10 @@ describe("pagina do modulo dentro do builder", () => {
     followPush();
     expect(screen.getByRole("dialog")).toHaveTextContent("m2:Lesson A");
     fireEvent.click(screen.getByRole("button", { name: "Close studio" }));
-    // Done/fechar troca a entrada do historico (router.replace).
+    // Done/close replaces the history entry (router.replace).
     followPush("replace");
 
-    // Mesma pagina, mesmo formulario aberto, depois do eco.
+    // Same page, same form open, after the echo.
     fireEvent.change(within(form()).getByRole("textbox", { name: "Lesson title" }), {
       target: { value: "Lesson B" },
     });
@@ -246,7 +246,7 @@ describe("pagina do modulo dentro do builder", () => {
     expect(screen.getByRole("dialog")).toHaveTextContent("m2:Lesson B");
   }, 15000);
 
-  it("abrir e voltar do modulo leva o foco ao titulo e depois a linha de onde saiu", async () => {
+  it("opening and going back from the module moves focus to the title and then to the row it came from", async () => {
     const { rerender } = render(tree());
     await screen.findByRole("heading", { name: mocks.course.title });
     const card = () => document.querySelector("#builder-sec-modules") as HTMLElement;
@@ -262,10 +262,10 @@ describe("pagina do modulo dentro do builder", () => {
     expect(document.activeElement).toBe(within(card()).getByRole("link", { name: /Deep work/ }));
   });
 
-  // Perda de conteudo: o snapshot do realtime (eco de um save ANTERIOR)
-  // sobrescrevia o rascunho local com edicao ainda nao gravada, e o autosave
-  // nunca a regravava. A aula sumia da tela e o estudio nunca abria.
-  it("eco de um save anterior nao apaga edicao local ainda nao gravada", async () => {
+  // Content loss: the realtime snapshot (the echo of an EARLIER save)
+  // overwrote the local draft with an edit not yet saved, and the autosave
+  // never saved it again. The lesson vanished from the screen and the studio never opened.
+  it("the echo of an earlier save does not erase a local edit not yet saved", async () => {
     let emitCourse: (course: TeacherCourse | null) => void = () => {};
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emitCourse = emit;
@@ -279,14 +279,14 @@ describe("pagina do modulo dentro do builder", () => {
     openAt("courseId=course-1&tab=content&module=m1");
     const card = await renderBuilder();
 
-    // 1) Autosave de um titulo sai e fica no ar.
+    // 1) Autosave of a title goes out and stays in flight.
     fireEvent.change(within(card).getByRole("textbox", { name: "Module 1" }), {
       target: { value: "Start here, renamed" },
     });
     await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(1), { timeout: 5000 });
     const first = vi.mocked(updateTeacherCourseBuilder).mock.calls[0][1];
 
-    // 2) Edicao nova enquanto ele esta no ar: uma aula.
+    // 2) New edit while it is in flight: a lesson.
     fireEvent.click(within(card).getByRole("button", { name: "Add lesson to module 1" }));
     const form = card.querySelector("form") as HTMLElement;
     fireEvent.change(within(form).getByRole("textbox", { name: "Lesson title" }), {
@@ -294,11 +294,11 @@ describe("pagina do modulo dentro do builder", () => {
     });
     fireEvent.click(within(form).getByRole("button", { name: "Add lesson" }));
 
-    // 3) Chega o eco do 1o save (sem a aula) e depois o save volta.
+    // 3) The echo of the 1st save arrives (without the lesson) and then the save returns.
     act(() => emitCourse({ ...mocks.course, ...first }));
     await act(async () => finishFirst());
 
-    // A aula continua na tela, na pagina do modulo...
+    // The lesson stays on screen, on the module page...
     expect(within(card).getByRole("navigation", { name: "Breadcrumb" })).toBeInTheDocument();
     expect(within(card).getAllByRole("textbox", { name: "Lesson title" }).map((input) => (input as HTMLInputElement).value))
       .toContain("Fresh lesson");
@@ -309,15 +309,15 @@ describe("pagina do modulo dentro do builder", () => {
       title: "Start here, renamed",
       lessons: [expect.objectContaining({ title: "Fresh lesson" })],
     }));
-    // O eco desse save confirma a aula e abre o estudio nela.
+    // The echo of that save confirms the lesson and opens the studio on it.
     act(() => emitCourse({ ...mocks.course, ...second }));
     followPush();
     expect(screen.getByRole("dialog")).toHaveTextContent("m1:Fresh lesson");
   }, 15000);
 
-  // Ctrl/Cmd/Shift/Alt+clique ou botao do meio abrem outra aba: esta aba nao
-  // navega, entao nao pode ficar pedido de foco para o proximo voltar/avancar.
-  it("clique que abre outra aba nao deixa pedido de foco pendurado", async () => {
+  // Ctrl/Cmd/Shift/Alt+click or middle button open another tab: this tab does not
+  // navigate, so a focus request must not be left over for the next back/forward.
+  it("a click that opens another tab does not leave a focus request hanging", async () => {
     const { rerender } = render(tree());
     await screen.findByRole("heading", { name: mocks.course.title });
     const card = () => document.querySelector("#builder-sec-modules") as HTMLElement;
@@ -325,7 +325,7 @@ describe("pagina do modulo dentro do builder", () => {
     for (const init of [{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }, { altKey: true }, { button: 1 }]) {
       fireEvent.click(within(card()).getByRole("link", { name: /Deep work/ }), init);
     }
-    // Depois, o voltar/avancar do navegador troca a URL sem clique nesta aba.
+    // Afterwards, the browser's back/forward changes the URL with no click in this tab.
     openAt("courseId=course-1&tab=content&module=m2");
     rerender(tree());
     expect(document.activeElement).toBe(document.body);
@@ -336,9 +336,9 @@ describe("pagina do modulo dentro do builder", () => {
     expect(document.activeElement).toBe(document.body);
   });
 
-  // Aula L sai no autosave e e apagada antes do eco. O eco (com L) abria um
-  // estudio "fantasma" para L, sem modal, e a proxima aula nova nunca abria.
-  it("aula apagada antes do eco nao abre estudio fantasma nem trava a proxima", async () => {
+  // Lesson L goes out in the autosave and is deleted before the echo. The echo (with L) opened a
+  // "ghost" studio for L, with no modal, and the next new lesson never opened.
+  it("a lesson deleted before the echo does not open a ghost studio or block the next one", async () => {
     let emitCourse: (course: TeacherCourse | null) => void = () => {};
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emitCourse = emit;
@@ -368,7 +368,7 @@ describe("pagina do modulo dentro do builder", () => {
       act(() => emitCourse({ ...mocks.course, ...first }));
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
-      // A proxima aula nova ainda abre o estudio sozinha.
+      // The next new lesson still opens the studio by itself.
       fireEvent.change(within(form()).getByRole("textbox", { name: "Lesson title" }), {
         target: { value: "Lesson M" },
       });
@@ -384,10 +384,10 @@ describe("pagina do modulo dentro do builder", () => {
     }
   }, 15000);
 
-  // Snapshot novo (outra aba, ou a pagina de vendas no Manage) chega com o
-  // rascunho sujo e fica de fora. Se a pessoa desfaz a edicao, o rascunho fica
-  // limpo com a copia velha, e a proxima edicao qualquer a gravava por cima.
-  it("snapshot pulado com rascunho sujo vale quando o rascunho volta a ficar limpo", async () => {
+  // A new snapshot (another tab, or the sales page in Manage) arrives with the
+  // draft dirty and is left out. If the person undoes the edit, the draft stays
+  // clean with the old copy, and the next edit of any kind saved it over.
+  it("a snapshot skipped while the draft was dirty applies once the draft is clean again", async () => {
     let emitCourse: (course: TeacherCourse | null) => void = () => {};
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emitCourse = emit;
@@ -400,15 +400,15 @@ describe("pagina do modulo dentro do builder", () => {
 
     fireEvent.change(name(), { target: { value: "Start here, draft" } });
     act(() => emitCourse({ ...mocks.course, title: "Renamed in another tab" }));
-    // Desfaz: o rascunho volta a bater com o ultimo save.
+    // Undo: the draft matches the last save again.
     fireEvent.change(name(), { target: { value: "Start here" } });
 
     expect(await screen.findByRole("heading", { name: "Renamed in another tab" })).toBeInTheDocument();
-    // Nenhum autosave da copia velha.
+    // No autosave of the old copy.
     await new Promise((resolve) => setTimeout(resolve, 2200));
     expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
 
-    // A proxima edicao qualquer grava por cima da copia nova, nao da velha.
+    // The next edit of any kind saves over the new copy, not the old one.
     fireEvent.change(within(card).getByRole("textbox", { name: "Module 1 description" }), {
       target: { value: "Fresh summary" },
     });
@@ -416,10 +416,10 @@ describe("pagina do modulo dentro do builder", () => {
     expect(vi.mocked(updateTeacherCourseBuilder).mock.calls[0][1].title).toBe("Renamed in another tab");
   }, 15000);
 
-  // O eco do save no ar chega antes da resposta HTTP e fica guardado; antes da
-  // resposta, a pessoa volta exatamente ao estado anterior. Aplicar o guardado
-  // ai ressuscitava o save, e a volta nunca era gravada.
-  it("voltar ao estado anterior durante um save no ar nao ressuscita o eco dele", async () => {
+  // The echo of the in-flight save arrives before the HTTP response and is held; before the
+  // response, the person goes back exactly to the previous state. Applying the held one
+  // then resurrected the save, and the return was never saved.
+  it("going back to the previous state during an in-flight save does not resurrect its echo", async () => {
     let emitCourse: (course: TeacherCourse | null) => void = () => {};
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emitCourse = emit;
@@ -448,7 +448,7 @@ describe("pagina do modulo dentro do builder", () => {
     expect(vi.mocked(updateTeacherCourseBuilder).mock.calls[1][1].modules?.[0].title).toBe("Start here");
   }, 15000);
 
-  it("se o save no ar falha com o rascunho limpo, o snapshot guardado vale", async () => {
+  it("if the in-flight save fails with a clean draft, the held snapshot applies", async () => {
     let emitCourse: (course: TeacherCourse | null) => void = () => {};
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emitCourse = emit;
@@ -469,21 +469,21 @@ describe("pagina do modulo dentro do builder", () => {
     act(() => emitCourse({ ...mocks.course, ...first }));
     fireEvent.change(name(), { target: { value: "Start here" } });
     await act(async () => {});
-    // Com o save no ar, a volta da pessoa fica na tela.
+    // With the save in flight, the person's return stays on screen.
     expect(name()).toHaveValue("Start here");
 
-    // Ele falha, mas o eco ja mostrou o que o servidor gravou.
+    // It fails, but the echo already showed what the server saved.
     await act(async () => failFirst(new Error("network")));
     expect(name()).toHaveValue("Start here, v1");
   }, 15000);
 
-  // Perda real (do #376), antes vista como teste intermitente. Ordem forcada:
-  // o save volta mas o commit dele ainda nao aconteceu; o eco chega nesse meio,
-  // le o rascunho ainda "sujo" e vai para o guardado; o commit deixa o rascunho
-  // limpo e agenda aplicar o guardado num microtask; a pessoa digita antes de
-  // o microtask rodar. Aplicar as cegas trocava a digitacao pelo eco velho e
-  // marcava como salvo: a edicao nunca chegava ao servidor.
-  it("snapshot guardado nao apaga a edicao feita logo depois de o save voltar", async () => {
+  // Real loss (from #376), previously seen as an intermittent test. Forced order:
+  // the save returns but its commit has not happened yet; the echo arrives in between,
+  // reads the draft still "dirty" and goes to the held slot; the commit leaves the draft
+  // clean and schedules applying the held one in a microtask; the person types before
+  // the microtask runs. Applying blindly swapped the typing for the old echo and
+  // marked it as saved: the edit never reached the server.
+  it("a held snapshot does not erase an edit made right after the save returns", async () => {
     let emitCourse: (course: TeacherCourse | null) => void = () => {};
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emitCourse = emit;
@@ -502,18 +502,18 @@ describe("pagina do modulo dentro do builder", () => {
     await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(1), { timeout: 5000 });
     const first = vi.mocked(updateTeacherCourseBuilder).mock.calls[0][1];
 
-    // 1) O save volta: so microtasks rodam, o React ainda nao comita.
+    // 1) The save returns: only microtasks run, React has not committed yet.
     finishFirst();
     await Promise.resolve();
     await Promise.resolve();
     await Promise.resolve();
     await Promise.resolve();
-    // 2) O eco chega antes do commit e vai para o guardado; o commit, no fim
-    //    do mesmo act, deixa o rascunho limpo e agenda aplicar o guardado.
+    // 2) The echo arrives before the commit and goes to the held slot; the commit, at the end
+    //    of the same act, leaves the draft clean and schedules applying the held one.
     act(() => emitCourse({ ...mocks.course, ...first }));
-    // 3) A pessoa digita antes de o microtask rodar (sem await no meio).
+    // 3) The person types before the microtask runs (no await in between).
     fireEvent.change(name(), { target: { value: "Start here, v2" } });
-    // 4) Agora o microtask roda.
+    // 4) Now the microtask runs.
     await act(async () => {});
 
     expect(name()).toHaveValue("Start here, v2");
@@ -521,7 +521,7 @@ describe("pagina do modulo dentro do builder", () => {
     expect(vi.mocked(updateTeacherCourseBuilder).mock.calls[1][1].modules?.[0].title).toBe("Start here, v2");
   }, 15000);
 
-  it("sem ?module mostra uma linha por modulo, com nome em negrito e numero de aulas", async () => {
+  it("without ?module it shows one row per module, with a bold name and the number of lessons", async () => {
     const card = await renderBuilder();
 
     const rows = Array.from(card.querySelectorAll("article")) as HTMLElement[];
@@ -532,15 +532,15 @@ describe("pagina do modulo dentro do builder", () => {
     );
     expect(rows[1].querySelector("strong")).toHaveTextContent("Deep work");
     expect(within(rows[1]).getByText("1 lesson")).toBeInTheDocument();
-    // A lista nao edita mais o nome no lugar: isso mora na pagina do modulo.
+    // The list no longer edits the name in place: that lives on the module page.
     expect(within(card).queryByRole("textbox")).not.toBeInTheDocument();
     expect(within(card).queryByRole("navigation", { name: "Breadcrumb" })).not.toBeInTheDocument();
     expect(within(card).getByRole("button", { name: "Add module" })).toBeInTheDocument();
   });
 
-  // O aviso caia no cartao do rodape, telas abaixo do botao: "Add lesson" sem
-  // titulo parecia nao fazer nada.
-  it("aula nova sem titulo: o aviso sai no formulario dela, uma vez so", async () => {
+  // The notice landed on the footer card, screens below the button: "Add lesson" with no
+  // title seemed to do nothing.
+  it("new lesson with no title: the notice appears in its form, only once", async () => {
     openAt("courseId=course-1&tab=content&module=m1");
     const card = await renderBuilder();
 
@@ -554,7 +554,7 @@ describe("pagina do modulo dentro do builder", () => {
     expect(title).toHaveAccessibleDescription("Add a lesson title before creating the lesson.");
     expect(screen.getAllByRole("alert")).toHaveLength(1);
 
-    // Digitou o titulo: o aviso sai sem esperar outro clique.
+    // Typed the title: the notice goes away without waiting for another click.
     fireEvent.change(title, { target: { value: "Primeira aula" } });
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(title).not.toHaveAttribute("aria-invalid");
@@ -566,7 +566,7 @@ describe("pagina do modulo dentro do builder", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("id de modulo desconhecido ou apagado cai na lista, nao em tela vazia", async () => {
+  it("an unknown or deleted module id falls back to the list, not an empty screen", async () => {
     openAt("courseId=course-1&tab=content&module=ghost");
     const card = await renderBuilder();
 
@@ -575,11 +575,11 @@ describe("pagina do modulo dentro do builder", () => {
     expect(within(card).getByRole("link", { name: /Deep work/ })).toBeInTheDocument();
   });
 
-  it("o selo fica em Saving enquanto qualquer gravacao estiver pendente", async () => {
+  it("the badge stays on Saving while any write is pending", async () => {
     const pending: Array<() => void> = [];
     const hold = () => new Promise<void>((resolve) => pending.push(resolve));
-    // Once, nao mockImplementation: clearAllMocks nao desfaz implementacao, e
-    // uma gravacao que nunca volta vazaria para os testes seguintes.
+    // Once, not mockImplementation: clearAllMocks does not undo an implementation, and
+    // a write that never returns would leak into the following tests.
     vi.mocked(updateTeacherCourseBuilder).mockImplementationOnce(hold).mockImplementationOnce(hold);
     openAt("courseId=course-1&tab=content&module=m1");
     const card = await renderBuilder();
@@ -588,15 +588,15 @@ describe("pagina do modulo dentro do builder", () => {
     fireEvent.change(within(card).getByRole("textbox", { name: "Module 1" }), {
       target: { value: "Start here, renamed" },
     });
-    // Autosave de verdade (debounce de 1,8 s) sai e fica pendente.
+    // Real autosave (1.8 s debounce) goes out and stays pending.
     await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(1), { timeout: 5000 });
     expect(screen.getByText("Saving")).toBeInTheDocument();
 
-    // O professor clica em Salvar com o autosave ainda no ar.
+    // The teacher clicks Save with the autosave still in flight.
     fireEvent.click(screen.getAllByRole("button", { name: "Save draft" })[0]);
     expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(2);
 
-    // A primeira volta; a segunda ainda nao. "Saved" aqui seria mentira.
+    // The first returns; the second does not yet. "Saved" here would be a lie.
     await act(async () => pending[0]());
     expect(screen.getByText("Saving")).toBeInTheDocument();
     expect(screen.queryByText("All changes saved")).not.toBeInTheDocument();

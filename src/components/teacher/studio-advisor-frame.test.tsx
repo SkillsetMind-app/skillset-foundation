@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import TeachLayout from "@/app/teach/layout";
 
 vi.mock("@/lib/advisor/config", () => ({ isAdvisorEnabled: true }));
-// O layout lê o cookie da barra no servidor (cookies() fora de pedido falha no jsdom).
+// The layout reads the bar cookie on the server (cookies() outside a request fails in jsdom).
 vi.mock("@/components/platform/sidebar-preference-layout", () => ({
   default: ({ children }: { children: ReactNode }) => children,
 }));

@@ -11,7 +11,7 @@ afterEach(() => {
   mocks.publicProfile = null;
 });
 
-// O cartão da Home do estúdio mostra o endereço que o criador cola na bio.
+// The Studio Home card shows the address the creator pastes in their bio.
 it("shows and opens /@username when the public profile has one", async () => {
   mocks.publicProfile = { username: "ana.souza" };
   render(<StudioStorefrontCard uid="teacher-1" courses={[]} coursesLoaded />);
@@ -20,8 +20,8 @@ it("shows and opens /@username when the public profile has one", async () => {
   expect(screen.getByRole("link", { name: /Open/ })).toHaveAttribute("href", "/@ana.souza");
 });
 
-// Lugar fixo do selo: o que resta depois de 3 "Not now" na oferta. Só para
-// quem pode pedir (none/rejected); status desconhecido (null) não mostra nada.
+// Fixed spot for the badge: what is left after 3 "Not now" on the offer. Only for
+// those who can ask (none/rejected); unknown status (null) shows nothing.
 it.each(["none", "rejected"])("badge slot for %s links to the request", async (status) => {
   render(<StudioStorefrontCard uid="teacher-1" courses={[]} coursesLoaded verificationStatus={status} />);
 

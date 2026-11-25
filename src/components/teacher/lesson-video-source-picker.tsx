@@ -9,36 +9,36 @@ import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
 
 export type LessonVideoMode = "upload" | "link";
 
-// O modal chama flushLink antes de fechar por Esc ou clique fora: nesses
-// caminhos o campo e desmontado sem blur que chegue ao React 19, e o link
-// digitado se perdia. "rejected" e "declined" seguram o modal aberto, com o
-// erro ou o aviso na tela, em vez de perder o link calado.
+// The modal calls flushLink before closing on Esc or an outside click: on those
+// paths the field is unmounted with no blur reaching React 19, and the typed
+// link was lost. "rejected" and "declined" keep the modal open, with the
+// error or the notice on screen, instead of silently losing the link.
 export type LinkCommitResult = "saved" | "unchanged" | "rejected" | "declined";
-// `silent`: descarga ao sair da pagina. Nunca abre confirmacao; o que pediria
-// uma ("declined") simplesmente nao e gravado.
+// `silent`: flush on leaving the page. It never opens a confirmation; whatever would ask
+// for one ("declined") is simply not saved.
 export type LessonVideoSourcePickerHandle = {
   flushLink: (options?: { silent?: boolean }) => LinkCommitResult;
 };
 
-// Um input type="url" tira quebras de linha e os espacos das pontas do valor:
-// o valor esperado de uma colagem e comparado ja limpo.
+// An input type="url" strips line breaks and the spaces at the ends of the value:
+// the value expected from a paste is compared already cleaned.
 function cleanUrlInput(value: string) {
   return value.replace(/[\r\n]/g, "").trim();
 }
 
-// Sem esquema ("youtube.com/watch?v=..."), assume https:// antes de validar; o
-// link gravado ja sai normalizado.
+// With no scheme ("youtube.com/watch?v=..."), it assumes https:// before validating; the
+// saved link already comes out normalized.
 function normalizeLink(value: string) {
   const trimmed = value.trim();
   return !trimmed || /^[a-z][a-z\d+.-]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
-// Uma aula, um video (decisao de 14/09): o estudio mostra OU o envio OU o link
-// do YouTube/Vimeo, nunca os dois. Trocar e uma acao explicita ("Replace with
-// link" / "Replace with upload") e nao apaga nada: o envio antigo continua
-// listado no modal, com o proprio botao de apagar.
-// ponytail: o ref sai de `props` na desestruturacao; se ficasse, a regra
-// react-hooks/refs tratava todo `props.x` como leitura de ref no render.
+// One lesson, one video (decision of Sep 14): the studio shows EITHER the upload OR the
+// YouTube/Vimeo link, never both. Switching is an explicit action ("Replace with
+// link" / "Replace with upload") and deletes nothing: the old upload stays
+// listed in the modal, with its own delete button.
+// ponytail: the ref comes out of `props` in the destructuring; if it stayed, the
+// react-hooks/refs rule treated every `props.x` as a ref read during render.
 export function LessonVideoSourcePicker({ replaceButtonRef, linkHandleRef, ...props }: {
   mode: LessonVideoMode;
   disabled?: boolean;
@@ -47,17 +47,17 @@ export function LessonVideoSourcePicker({ replaceButtonRef, linkHandleRef, ...pr
   embedStatus: string;
   onModeChange: (next: LessonVideoMode) => void;
   onSelectFile: (file: File) => void;
-  // So recebe link aceito (YouTube/Vimeo), ou null quando o professor apaga o
-  // link aceito que o campo mostrava. Link recusado nunca sai daqui. Devolve
-  // false quando o modal nao gravou (o professor nao confirmou): o campo volta
-  // ao que esta salvo.
+  // Only receives an accepted link (YouTube/Vimeo), or null when the teacher deletes the
+  // accepted link the field was showing. A rejected link never leaves here. Returns
+  // false when the modal did not save (the teacher did not confirm): the field goes back
+  // to what is saved.
   onLinkChange: (next: string | null, options?: { silent?: boolean }) => boolean | void;
   uploadPanel?: ReactNode;
-  // Alvo estavel de foco para o modal (ex.: depois de tirar o link antigo).
+  // Stable focus target for the modal (e.g. after removing the old link).
   replaceButtonRef?: Ref<HTMLButtonElement>;
   linkHandleRef?: Ref<LessonVideoSourcePickerHandle>;
-  // Com texto, o campo de link fica so leitura e mostra este aviso (ex.: os
-  // arquivos da aula ainda nao chegaram).
+  // With text, the link field becomes read-only and shows this notice (e.g. the lesson's
+  // files have not arrived yet).
   linkLockedHint?: string;
 }) {
   const { t } = useTranslation();
@@ -67,26 +67,26 @@ export function LessonVideoSourcePicker({ replaceButtonRef, linkHandleRef, ...pr
   const noteId = useId();
   const [isDragActive, setIsDragActive] = useState(false);
   const savedIsEmbed = Boolean(getTrustedLessonEmbed(props.externalUrl));
-  // Rascunho local: o que o professor digita so vira dado quando e link aceito.
-  // Um link antigo que nao e video (Drive etc.) nao entra no campo: o modal o
-  // mostra a parte, so leitura.
+  // Local draft: what the teacher types only becomes data when it is an accepted link.
+  // An old link that is not a video (Drive etc.) does not go into the field: the modal
+  // shows it separately, read-only.
   const [draft, setDraft] = useState(() => (savedIsEmbed ? props.externalUrl : ""));
   const [rejected, setRejected] = useState(false);
-  // Valor que a ultima colagem deve produzir; o onChange seguinte o consome.
+  // Value the last paste should produce; the next onChange consumes it.
   const pastedValueRef = useRef<string | null>(null);
   const locked = Boolean(props.linkLockedHint);
 
   function selectFile(file: File) {
-    // Escolher um arquivo NÃO declara a fonte da aula. Antes declarava, e isso
-    // apagava a aula para quem já tinha pago: `videoSource` é persistido pelo
-    // autosave de 1,8s e é o campo que o aluno lê para escolher o player. Com a
-    // fonte em "upload" e nenhum arquivo enviado — porque o professor escolheu o
-    // arquivo errado, ou desistiu ao estourar o limite —, o aluno passava a ver
-    // "Media not attached yet", enquanto o link do YouTube continuava salvo e
-    // válido, só nunca mais consultado.
+    // Choosing a file does NOT declare the lesson's source. It used to, and that
+    // wiped the lesson for someone who had already paid: `videoSource` is persisted by the
+    // 1.8s autosave and is the field the learner reads to choose the player. With the
+    // source on "upload" and no file uploaded — because the teacher chose the wrong
+    // file, or gave up on hitting the limit —, the learner started seeing
+    // "Media not attached yet", while the YouTube link stayed saved and
+    // valid, just never consulted again.
     //
-    // Quem declara a fonte é o caminho de SUCESSO do envio, no
-    // lesson-content-modal — quando existe, de fato, um arquivo para tocar.
+    // Whoever declares the source is the upload's SUCCESS path, in
+    // lesson-content-modal — when there is, in fact, a file to play.
     props.onSelectFile(file);
   }
 
@@ -107,8 +107,8 @@ export function LessonVideoSourcePicker({ replaceButtonRef, linkHandleRef, ...pr
     }
   }
 
-  // Grava so ao sair do campo, no Enter ou ao colar: salvar a cada tecla
-  // gravava ids de video truncados e acusava erro no meio da digitacao.
+  // Saves only on leaving the field, on Enter or on paste: saving on every keystroke
+  // saved truncated video ids and reported an error in the middle of typing.
   function commitLink(value: string, silent = false): LinkCommitResult {
     if (locked) {
       return "unchanged";
@@ -122,8 +122,8 @@ export function LessonVideoSourcePicker({ replaceButtonRef, linkHandleRef, ...pr
     }
 
     setRejected(false);
-    // Campo vazio tira o link aceito que ele mostrava. Um link antigo nunca
-    // aparece aqui (a base e ""), entao nunca e apagado por este caminho.
+    // An empty field removes the accepted link it was showing. An old link never
+    // shows up here (the base is ""), so it is never deleted by this path.
     const saved = savedIsEmbed ? props.externalUrl : "";
     if (url === saved) {
       setDraft(url);
@@ -132,9 +132,9 @@ export function LessonVideoSourcePicker({ replaceButtonRef, linkHandleRef, ...pr
     const kept = (silent
       ? props.onLinkChange(url || null, { silent: true })
       : props.onLinkChange(url || null)) !== false;
-    // Nao gravou: o campo volta ao salvo, senao cada blur seguinte (X, aba,
-    // "Replace with upload") perguntava de novo e comia o clique. Na descarga
-    // silenciosa ninguem foi perguntado: o que foi digitado fica no campo.
+    // Did not save: the field goes back to the saved value, otherwise every following blur (X, tab,
+    // "Replace with upload") asked again and swallowed the click. On the silent flush
+    // nobody was asked: what was typed stays in the field.
     if (kept || !silent) {
       setDraft(kept ? url : saved);
     }
@@ -219,11 +219,11 @@ export function LessonVideoSourcePicker({ replaceButtonRef, linkHandleRef, ...pr
               aria-invalid={rejected || undefined}
               aria-describedby={[rejected ? errorId : locked ? hintId : null, noteId].filter(Boolean).join(" ")}
               placeholder="https://www.youtube.com/watch?v=..."
-              // O navegador cola no cursor ou na selecao (e o Ctrl+Z desfaz);
-              // aqui so se anota o valor que a colagem deve produzir, e o
-              // onChange seguinte grava se o valor bater. Colar o mesmo texto
-              // (ou nada) nao dispara onChange, e a anotacao nao bate com a
-              // tecla seguinte, entao nenhuma tecla vira colagem.
+              // The browser pastes at the cursor or the selection (and Ctrl+Z undoes it);
+              // here we only note the value the paste should produce, and the next
+              // onChange saves it if the value matches. Pasting the same text
+              // (or nothing) does not fire onChange, and the note does not match the
+              // next key, so no keystroke becomes a paste.
               onPaste={(event) => {
                 const text = event.clipboardData?.getData("text") ?? "";
                 const input = event.currentTarget;
@@ -258,7 +258,7 @@ export function LessonVideoSourcePicker({ replaceButtonRef, linkHandleRef, ...pr
                 {t("creatorEditor.videoSource.rejected")}
               </small>
             ) : locked ? (
-              // Carregando, ou o erro de carga: anunciado e ligado ao campo.
+              // Loading, or the load error: announced and tied to the field.
               <small id={hintId} role="status">{props.linkLockedHint}</small>
             ) : (
               <small>{props.embedStatus}</small>

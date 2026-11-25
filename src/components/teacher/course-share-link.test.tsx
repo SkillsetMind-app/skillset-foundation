@@ -5,15 +5,15 @@ import { I18nProvider } from "@/components/i18n/i18n-provider";
 
 import { CourseShareLink } from "./course-share-link";
 
-// O I18nProvider pede o router para dar refresh quando o idioma troca. Aqui
-// ninguem troca, mas o hook precisa existir fora do Next.
+// The I18nProvider asks for the router to refresh when the language changes. Here
+// nobody switches, but the hook has to exist outside Next.
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 const title = "Coaching & Sales 101";
-// Literais, nao encodeURIComponent: a prova e que o "&" e os espacos do titulo
-// nao quebram a query string de nenhuma rede.
+// Literals, not encodeURIComponent: the proof is that the "&" and the spaces in the title
+// do not break the query string of any network.
 const encodedTitle = "Coaching%20%26%20Sales%20101";
 const encodedUrl = "https%3A%2F%2Fwww.skillsetmind.com%2Fcourses%2Fcourse-1";
 
@@ -30,9 +30,9 @@ describe("CourseShareLink", () => {
     expect(writeText).toHaveBeenCalledWith(url);
   });
 
-  // O link de checkout é o que o professor cola em anúncio e story: em produção
-  // ele sai no host curto de pagamento, com a oferta preservada, e é esse URL
-  // que aparece, é copiado, é aberto e viaja nas redes.
+  // The checkout link is what the teacher pastes in an ad and a story: in production
+  // it goes out on the short payment host, with the offer preserved, and that is the URL
+  // that is shown, copied, opened and sent to the networks.
   it("publishes a checkout link on pay.skillsetmind.com in production, offer included", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal("navigator", { clipboard: { writeText } });
@@ -52,8 +52,8 @@ describe("CourseShareLink", () => {
     expect(within(menu).getByRole("menuitem", { name: "LinkedIn" })).toHaveAttribute("href", `https://www.linkedin.com/sharing/share-offsite/?url=${encodedPayUrl}`);
   });
 
-  // Fora de produção o host curto não resolve; o link fica relativo para que
-  // quem testa num preview da Vercel continue no preview em vez de cair em produção.
+  // Outside production the short host does not resolve; the link stays relative so that
+  // whoever tests on a Vercel preview stays on the preview instead of landing in production.
   it.each(["skillset-foundation-git-feat-links-skillsetmind.vercel.app", "localhost"])(
     "keeps a checkout link relative when viewed from %s",
     (hostname) => {
@@ -72,9 +72,9 @@ describe("CourseShareLink", () => {
     expect(screen.getByRole("link", { name: "Open Product page" })).toHaveAttribute("href", "https://www.skillsetmind.com/courses/course-1");
   });
 
-  // Copiar e acao secundaria: contorno. O "copiado" aparece no proprio botao
-  // por 2s (a caixa nao cresce), e o nome do botao acompanha o texto: um
-  // aria-label fixo de "Copy ..." contradiria o "Link copied." da tela.
+  // Copy is a secondary action: outline. The "copied" state shows on the button itself
+  // for 2s (the box does not grow), and the button's name follows the text: a fixed
+  // aria-label of "Copy ..." would contradict the screen's "Link copied.".
   it("copy is an outline button whose own label says copied for two seconds", async () => {
     vi.stubGlobal("navigator", { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } });
     render(<CourseShareLink label="Checkout" path="/courses/course-1/checkout" title={title} />);
@@ -179,7 +179,7 @@ describe("CourseShareLink", () => {
       expect(item).toHaveAttribute("target", "_blank");
       expect(item).toHaveAttribute("rel", "noopener noreferrer");
     }
-    // O mailto abre o app de e-mail; nova aba seria uma aba em branco.
+    // The mailto opens the email app; a new tab would be a blank tab.
     expect(within(menu).getByRole("menuitem", { name: "Email" })).not.toHaveAttribute("target");
   });
 
@@ -195,7 +195,7 @@ describe("CourseShareLink", () => {
     expect(share).toHaveFocus();
   });
 
-  // O foco ficava no botão e as setas não andavam: o menu só funcionava no Tab.
+  // Focus stayed on the button and the arrows did not move: the menu only worked with Tab.
   it("opens with focus on the first target and moves with the arrow keys", () => {
     render(<CourseShareLink label="Checkout" path="/courses/course-1/checkout" title={title} />);
     fireEvent.click(screen.getByRole("button", { name: "Share Checkout" }));
@@ -244,10 +244,10 @@ describe("CourseShareLink", () => {
   });
 });
 
-// O marco de publicar (painel "Publicado!") leva o foco ao botao latao. Mas
-// publicar espera duas idas a rede e os campos seguem editaveis: quem clicou
-// num campo e continuou digitando perdia as teclas para o botao, e um Espaco
-// copiava o link sem querer.
+// The publish milestone ("Published!" panel) takes focus to the brass button. But
+// publishing waits for two network round trips and the fields stay editable: whoever clicked
+// a field and kept typing lost the keys to the button, and a Space
+// copied the link by accident.
 describe("CourseShareLink no marco (focusCopy)", () => {
   function Page({ published }: { published: boolean }) {
     return (
@@ -267,14 +267,14 @@ describe("CourseShareLink no marco (focusCopy)", () => {
     );
   }
 
-  it("leva o foco ao botao de copiar quando ninguem esta com ele", () => {
+  it("moves focus to the copy button when nobody has it", () => {
     const { rerender } = render(<Page published={false} />);
     expect(document.activeElement).toBe(document.body);
     rerender(<Page published />);
     expect(screen.getByRole("button", { name: "Copy my page link" })).toHaveFocus();
   });
 
-  it("nao rouba o foco de quem esta digitando em outro campo", () => {
+  it("does not steal focus from someone typing in another field", () => {
     const { rerender } = render(<Page published={false} />);
     const input = screen.getByLabelText("Course title");
     input.focus();
@@ -283,7 +283,7 @@ describe("CourseShareLink no marco (focusCopy)", () => {
     expect(screen.getByRole("button", { name: "Copy my page link" })).not.toHaveFocus();
   });
 
-  it("no marco, Abrir e Compartilhar saem no tamanho do botao latao, e o menu cai", () => {
+  it("at the milestone, Abrir and Compartilhar come out at the brass button size, and the menu drops down", () => {
     render(<Page published />);
     expect(screen.getByRole("button", { name: "Copy my page link" })).toHaveClass("button-accent", "button-lg");
     expect(screen.getByRole("link", { name: "Open Product page" })).toHaveClass("button-outline", "button-lg");

@@ -8,10 +8,10 @@ import { LessonAiCaptions } from "@/components/teacher/lesson-ai-captions";
 import { LessonAiQuiz } from "@/components/teacher/lesson-ai-quiz";
 import { callTeachAi, loadTeachAi, type TeachAiResult } from "@/lib/ai/teach-ai-client";
 
-// As ajudas de IA nao mostravam que estavam trabalhando, o erro saia no cinza
-// do sucesso e nao havia como tentar de novo (o quiz que nao carregava ficava
-// sem nenhum botao). Agora: botao travado com "...", erro em alerta e "Try
-// again" repetindo o MESMO pedido.
+// The AI helpers did not show that they were working, the error came out in the success
+// gray and there was no way to try again (the quiz that failed to load was left
+// without any button). Now: button locked with "...", error as an alert and "Try
+// again" repeating the SAME request.
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
@@ -31,8 +31,8 @@ const mount = (ui: ReactElement) => render(<I18nProvider initialLocale="en">{ui}
 beforeEach(() => vi.clearAllMocks());
 afterEach(cleanup);
 
-describe("ajudas de IA: andamento, erro e tentar de novo", () => {
-  it("sugerir: trava o botao enquanto pede e o erro vem em alerta com Try again", async () => {
+describe("AI helpers: progress, error and try again", () => {
+  it("suggest: locks the button while requesting and the error comes as an alert with Try again", async () => {
     let finish!: (result: TeachAiResult) => void;
     vi.mocked(callTeachAi).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
     mount(<AiSuggest {...ids} target="lesson" onUseTitle={vi.fn()} onUseDescription={vi.fn()} />);
@@ -54,7 +54,7 @@ describe("ajudas de IA: andamento, erro e tentar de novo", () => {
     expect(vi.mocked(callTeachAi).mock.calls[1]).toEqual(vi.mocked(callTeachAi).mock.calls[0]);
   });
 
-  it("quiz que nao carregou: Try again le de novo e os botoes voltam", async () => {
+  it("quiz that failed to load: Try again reads it again and the buttons come back", async () => {
     vi.mocked(loadTeachAi).mockResolvedValueOnce(failed);
     mount(<LessonAiQuiz {...ids} />);
     expect(await screen.findByRole("alert")).toHaveTextContent("We couldn't reach the server.");
@@ -66,7 +66,7 @@ describe("ajudas de IA: andamento, erro e tentar de novo", () => {
     expect(loadTeachAi).toHaveBeenCalledTimes(2);
   });
 
-  it("legenda: um pedido que falhou e repetido igual pelo Try again", async () => {
+  it("captions: a failed request is repeated identically by Try again", async () => {
     vi.mocked(loadTeachAi).mockResolvedValue({
       ok: true,
       status: 200,
@@ -85,8 +85,8 @@ describe("ajudas de IA: andamento, erro e tentar de novo", () => {
     expect(await screen.findByRole("status")).toHaveTextContent("Draft ready. Review it, then publish.");
   });
 
-  // Repetir um "salvar" antigo depois de editar gravaria o texto velho por cima.
-  it("quiz: editar depois de um salvar que falhou tira o Try again do pedido antigo", async () => {
+  // Repeating an old "save" after an edit would write the old text over the new one.
+  it("quiz: editing after a failed save removes Try again for the old request", async () => {
     vi.mocked(loadTeachAi).mockResolvedValueOnce({
       ok: true,
       status: 200,
@@ -104,9 +104,9 @@ describe("ajudas de IA: andamento, erro e tentar de novo", () => {
     expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
   });
 
-  // Trocar o idioma depois da falha: o "Try again" refaria o pedido no idioma
-  // antigo (e gastaria as horas de IA nele). Vale para os dois seletores.
-  it("legenda: trocar o idioma falado ou o de destino tira o Try again do pedido antigo", async () => {
+  // Changing the language after the failure: "Try again" would redo the request in the old
+  // language (and spend AI hours on it). Applies to both selectors.
+  it("captions: changing the spoken or target language removes Try again for the old request", async () => {
     vi.mocked(loadTeachAi).mockResolvedValueOnce({
       ok: true,
       status: 200,
@@ -132,9 +132,9 @@ describe("ajudas de IA: andamento, erro e tentar de novo", () => {
     }
   });
 
-  // Publicar com texto editado grava e depois publica: o "Try again" de uma
-  // gravacao que falhou refaz os dois passos, nao so o primeiro.
-  it("legenda: Try again de um Publish que falhou ao gravar refaz gravar e publicar", async () => {
+  // Publishing with edited text saves and then publishes: the "Try again" of a
+  // failed save redoes both steps, not just the first.
+  it("captions: Try again after a Publish that failed to save redoes save and publish", async () => {
     vi.mocked(loadTeachAi).mockResolvedValueOnce({
       ok: true,
       status: 200,

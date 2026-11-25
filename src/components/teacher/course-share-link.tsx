@@ -36,18 +36,18 @@ export function CourseShareLink({
    */
   entry?: EntryKind;
   /**
-   * Texto visível do botão de copiar ("Copy my page link"). Com ele, o nome
-   * acessível é o próprio texto, não o aria-label genérico.
+   * Visible text of the copy button ("Copy my page link"). With it, the accessible
+   * name is the text itself, not the generic aria-label.
    */
   copyLabel?: string;
-  /** Latão: só no marco (painel "Publicado!"), no máximo 1 por tela. */
+  /** Brass: only on the milestone ("Published!" panel), at most 1 per screen. */
   accent?: boolean;
-  /** Leva o foco ao botão de copiar ao montar (marco de publicação). */
+  /** Takes focus to the copy button on mount (publish milestone). */
   focusCopy?: boolean;
   copyDescribedBy?: string;
   /**
-   * Só o botão de copiar, sem a caixa (linha de uma lista de preços). A caixa
-   * inteira, com Abrir e Compartilhar, fica em Promo links.
+   * Only the copy button, without the box (a row in a price list). The whole
+   * box, with Open and Share, lives in Promo links.
    */
   compact?: boolean;
 }) {
@@ -70,8 +70,8 @@ export function CourseShareLink({
     }
   }, [focusCopy]);
 
-  // "Copied" mora no próprio botão por 2s e some: antes entrava uma linha nova
-  // embaixo que nunca saía, e a caixa crescia.
+  // "Copied" lives on the button itself for 2s and goes away: before, a new line came in
+  // below that never left, and the box grew.
   useEffect(() => {
     if (result !== "copied") return;
     const timer = window.setTimeout(() => setResult(null), 2000);
@@ -85,7 +85,7 @@ export function CourseShareLink({
       return;
     }
 
-    // Aberto, o foco vai ao 1º destino e as setas andam entre eles.
+    // Once open, focus goes to the 1st destination and the arrows move between them.
     menuRef.current?.querySelector<HTMLElement>(MENU_ITEM)?.focus({ preventScroll: true });
 
     function handlePointerDown(event: MouseEvent) {
@@ -139,19 +139,19 @@ export function CourseShareLink({
       ref={copyRef}
       type="button"
       onClick={() => void copyLink()}
-      // O nome acompanha o texto: por 2s o botão diz "Link copied." e o nome
-      // é esse mesmo (um aria-label fixo de "Copy ..." contradiria a tela).
+      // The name follows the text: for 2s the button says "Link copied." and the name
+      // is that same text (a fixed aria-label of "Copy ..." would contradict the screen).
       aria-label={copyLabel || copied ? undefined : forLabel("creatorPanel.shareLink.copyAria")}
       aria-describedby={copyDescribedBy}
-      // O marco sai no tamanho do fluxo (48px, 15px/600), não no 12px da fileira.
-      // Fora dele copiar é ação secundária: contorno, nunca o azul cheio.
+      // The milestone goes out at the flow size (48px, 15px/600), not the row's 12px.
+      // Outside it, copy is a secondary action: outline, never the full blue.
       className={accent ? "button-accent button-lg" : `button-outline gap-1.5 ${actionClass}`}
     >
       <CopyIcon aria-hidden="true" size={14} />
       {copied ? t("creatorPanel.shareLink.copied") : (copyLabel ?? t("creatorPanel.shareLink.copy"))}
     </button>
   );
-  // Anunciado uma vez, sem linha visível a mais (o botão já mostra).
+  // Announced once, with no extra visible line (the button already shows it).
   const feedback = (
     <>
       {copied ? <p role="status" className="sr-only">{t("creatorPanel.shareLink.copied")}</p> : null}
@@ -164,7 +164,7 @@ export function CourseShareLink({
       <div className="mt-2 min-w-0">
         {copyButton}
         {feedback}
-        {/* Sem a caixa, o "copie o link acima" precisa de um link para copiar. */}
+        {/* Without the box, the "copy the link above" needs a link to copy. */}
         {result === "error" ? <p className="mt-1 break-all font-mono text-xs text-[var(--color-ink)]">{url}</p> : null}
       </div>
     );
@@ -178,7 +178,7 @@ export function CourseShareLink({
           from the row's left edge and never runs past the card on a phone. */}
       <div
         ref={rowRef}
-        // Tab para fora do menu fecha (o foco começa dentro dele).
+        // Tab out of the menu closes it (focus starts inside it).
         onBlur={(event) => {
           const next = event.relatedTarget;
           if (open && next instanceof Node && !event.currentTarget.contains(next)) {
@@ -217,8 +217,8 @@ export function CourseShareLink({
                 role="menuitem"
                 target={href.startsWith("mailto:") ? undefined : "_blank"}
                 rel="noopener noreferrer"
-                // Escolher um destino devolve o foco ao Share, em vez de
-                // deixá-lo cair no body.
+                // Picking a destination returns focus to Share, instead of
+                // letting it fall on the body.
                 onClick={() => {
                   setOpen(false);
                   shareRef.current?.focus();

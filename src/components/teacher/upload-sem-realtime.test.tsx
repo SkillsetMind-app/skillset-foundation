@@ -7,10 +7,10 @@ import type { CourseAsset } from "@/domain/course-asset";
 import type { TeacherCourse, TeacherCourseModule } from "@/domain/teacher-course";
 import { updateTeacherCourseBuilder } from "@/lib/data/teacher-courses";
 
-// 06/10: o Realtime recusava todo canal em produção, e o construtor só sabia que
-// um módulo estava gravado pelo eco dele. A capa do módulo novo ficou
-// desabilitada para sempre ("o botão não funciona"). Aqui NENHUM evento do
-// Realtime chega: o que destrava é o construtor buscar de novo por conta própria.
+// 06/10: Realtime refused every channel in production, and the builder only knew that
+// a module was saved from its echo. The new module's cover stayed
+// disabled forever ("the button does not work"). Here NO Realtime event
+// arrives: what unlocks it is the builder fetching again on its own.
 
 const MODULE_UUID = "00000000-0000-4000-8000-000000000001";
 const MODULE_ID = `module-${MODULE_UUID}`;
@@ -33,7 +33,7 @@ const mocks = vi.hoisted(() => {
 
   return {
     course,
-    // O que o servidor tem agora. Muda só quando o autosave grava.
+    // What the server has now. It changes only when the autosave writes.
     serverModules: [] as TeacherCourseModule[],
     courseAssets: [] as CourseAsset[],
     user: { uid: "teacher-1" },
@@ -55,7 +55,7 @@ vi.mock("@/lib/data/teacher-courses", () => ({
   subscribeToTeacherCourse: vi.fn((_id: string, onData: (course: TeacherCourse) => void) => {
     const emit = () => onData({ ...mocks.course, modules: mocks.serverModules });
     emit();
-    // Sem evento do Realtime: só a recarga avulsa traz o que o servidor tem.
+    // No Realtime event: only the standalone reload brings what the server has.
     return Object.assign(() => undefined, { reload: vi.fn(async () => emit()) });
   }),
   publishTeacherCourse: vi.fn(() => Promise.resolve()),
@@ -118,7 +118,7 @@ function renderBuilder(query: string) {
   );
 }
 
-describe("upload sem depender do Realtime", () => {
+describe("upload without depending on Realtime", () => {
   beforeEach(() => {
     mocks.serverModules = [];
     mocks.courseAssets = [];
@@ -131,7 +131,7 @@ describe("upload sem depender do Realtime", () => {
     vi.restoreAllMocks();
   });
 
-  it("módulo criado na sessão libera o upload da capa depois do autosave", async () => {
+  it("a module created in the session unlocks the cover upload after the autosave", async () => {
     renderBuilder(`courseId=course-1&tab=content&module=${MODULE_ID}`);
     await screen.findByRole("heading", { name: mocks.course.title });
 
@@ -141,26 +141,26 @@ describe("upload sem depender do Realtime", () => {
     const coverInput = () => {
       const region = screen.getByRole("region", { name: "Module cover" });
       const input = region.querySelector<HTMLInputElement>('input[type="file"]');
-      if (!input) throw new Error("a capa do modulo nao tem input de arquivo");
+      if (!input) throw new Error("the module cover has no file input");
       return input;
     };
 
-    // Ainda só no rascunho: o upload precisa do id já gravado no servidor.
+    // Still only in draft: the upload needs the id already saved on the server.
     expect(coverInput()).toBeDisabled();
 
-    // Autosave real (debounce de 1,8 s): folga larga para máquina carregada.
+    // Real autosave (1.8 s debounce): wide margin for a loaded machine.
     await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalled(), { timeout: 8000 });
     await waitFor(() => expect(coverInput()).not.toBeDisabled(), { timeout: 8000 });
   }, 20000);
 
-  it("capa da área de membros aparece na prévia logo depois do upload", async () => {
+  it("the members area cover shows up in the preview right after the upload", async () => {
     renderBuilder("courseId=course-1&tab=members");
     await screen.findByRole("heading", { name: mocks.course.title });
 
     const region = screen.getByRole("region", { name: "Members area cover" });
     expect(within(region).queryByRole("img")).not.toBeInTheDocument();
     const input = region.querySelector<HTMLInputElement>('input[type="file"]');
-    if (!input) throw new Error("a capa da area de membros nao tem input de arquivo");
+    if (!input) throw new Error("the members area cover has no file input");
     fireEvent.change(input, { target: { files: [new File(["png"], "capa.png", { type: "image/png" })] } });
 
     await waitFor(() => {

@@ -43,21 +43,21 @@ export function LessonUploadProvider({ children }: { children: ReactNode }) {
     <Context.Provider value={actorId ? { actorId, job } : null}>
       {children}
       {job && (
-        // Camada de status (66): abaixo das janelas (em 90 o cartão ficava
-        // claro e clicável por cima de qualquer popup escurecido) e também do
-        // Advisor e do menu de categoria, que no celular ele cobriria. Por trás
-        // de uma janela o cartão some; só a janela da MESMA aula mostra o envio
-        // no rodapé dela. No celular, globals.css o sobe acima da barra de
-        // baixo (.lesson-upload-card).
+        // Status layer (66): below the dialogs (at 90 the card stayed
+        // bright and clickable on top of any darkened popup) and also below
+        // the Advisor and the category menu, which it would cover on a phone. Behind
+        // a dialog the card disappears; only the dialog for the SAME lesson shows the upload
+        // in its footer. On a phone, globals.css lifts it above the bottom
+        // bar (.lesson-upload-card).
         <aside aria-label={t("lessonUpload.title")} className="lesson-upload-card fixed bottom-4 left-4 z-[var(--z-status)] max-h-[calc(100svh-2rem)] w-[min(24rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4 text-[var(--color-ink)] shadow-lg">
           <div className="flex items-start gap-3">
             <div className="min-w-0 flex-1">
               <p className="break-words text-sm font-semibold">{job.fileName}</p>
               <p role={job.status === "error" ? "alert" : "status"} className="mt-1 text-sm">{t(`lessonUpload.${job.status}`)}</p>
             </div>
-            {/* O X só fecha o cartão, e só quando nada está correndo. Antes o
-                mesmo X também cancelava o envio: cancelar agora é um botão
-                escrito "Cancel upload", embaixo. */}
+            {/* The X only closes the card, and only when nothing is running. Before, the
+                same X also canceled the upload: canceling is now a button
+                labeled "Cancel upload", below. */}
             {!lessonUploadIsBusy(job) && (
               <button type="button" className="button-icon" onClick={dismissLessonUpload} aria-label={t("lessonUpload.close")} title={t("lessonUpload.close")}><X size={18} aria-hidden="true" /></button>
             )}

@@ -8,9 +8,9 @@ import { deleteCourseAsset, subscribeToCourseAssets } from "@/lib/data/course-as
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import { CONFIRM_GUARD_MS } from "@/components/ui/confirm-dialog";
 
-// Apagar um arquivo pergunta na janela da plataforma (não mais no
-// window.confirm). O jsdom não tem showModal/close: o stub faz o mínimo que o
-// navegador faz.
+// Deleting a file asks in the platform dialog (no longer in
+// window.confirm). jsdom has no showModal/close: the stub does the minimum the
+// browser does.
 const originalShow = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal");
 const originalClose = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "close");
 
@@ -76,7 +76,7 @@ describe("CourseAssetUploader", () => {
     vi.clearAllMocks();
     mocks.assets = [];
     mocks.uploadCourseAsset.mockReset();
-    // jsdom não implementa object URLs; o componente usa para a prévia local.
+    // jsdom does not implement object URLs; the component uses them for the local preview.
     URL.createObjectURL = vi.fn(() => "blob:preview-1");
     URL.revokeObjectURL = vi.fn();
     Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value() { this.setAttribute("open", ""); } });
@@ -115,7 +115,7 @@ describe("CourseAssetUploader", () => {
     });
     const targetCourse = { ...course, modules: [{ id: "m1", title: "Módulo $$ $&", lessons: [] }] };
     const { unmount } = render(<I18nProvider initialLocale="en"><SwitchLanguage /><CourseAssetUploader course={targetCourse} isEditable /></I18nProvider>);
-    // Os cartões de tipo saíram (repetiam o select): o tipo se escolhe no select.
+    // The type cards are gone (they repeated the select): the type is chosen in the select.
     expect(screen.queryByRole("list", { name: "Upload type" })).toBeNull();
     fireEvent.change(screen.getByLabelText("Asset type"), { target: { value: "module_cover" } });
     fireEvent.change(screen.getByLabelText("Attach to module"), { target: { value: "m1" } });
@@ -134,7 +134,7 @@ describe("CourseAssetUploader", () => {
     expect(URL.revokeObjectURL).not.toHaveBeenCalled();
     expect(mocks.uploadCourseAsset).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Subir archivo" }));
-    // A capa do módulo passa pela compressão (assíncrona) antes do envio.
+    // The module cover goes through compression (async) before the upload.
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("50%"));
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
     expect(screen.getByRole("status")).toHaveTextContent("50%");
@@ -152,7 +152,7 @@ describe("CourseAssetUploader", () => {
     expect(mocks.unsubscribe).toHaveBeenCalledOnce();
   });
 
-  it("liga a nova capa ao modulo tambem pela biblioteca de midia", async () => {
+  it("also links the new cover to the module through the media library", async () => {
     const onModuleCoverUploaded = vi.fn();
     mocks.uploadCourseAsset.mockResolvedValueOnce("poster-library");
     render(<I18nProvider initialLocale="en"><CourseAssetUploader
@@ -168,9 +168,9 @@ describe("CourseAssetUploader", () => {
     await waitFor(() => expect(onModuleCoverUploaded).toHaveBeenCalledWith("m1", "poster-library"));
   });
 
-  it("mostra o arquivo enviado na lista sem esperar evento do Realtime", async () => {
-    // course_assets não está na publicação do Realtime: só a recarga avulsa
-    // traz a lista nova.
+  it("shows the uploaded file in the list without waiting for a Realtime event", async () => {
+    // course_assets is not in the Realtime publication: only the standalone reload
+    // brings the new list.
     const uploaded: CourseAsset = { id: "a-new", courseId: course.id, ownerId: course.ownerId, kind: "course_cover", fileName: "capa.png", contentType: "image/png", size: 3, storagePath: "fixture/a-new.png", downloadUrl: "/fixture-new.png", isPreview: false, lessonId: null };
     vi.mocked(subscribeToCourseAssets).mockImplementationOnce((_courseId, onAssets) => {
       onAssets([]);
@@ -180,7 +180,7 @@ describe("CourseAssetUploader", () => {
     render(<I18nProvider initialLocale="en"><CourseAssetUploader course={course} isEditable /></I18nProvider>);
     chooseCover();
     fireEvent.click(screen.getByRole("button", { name: "Upload asset" }));
-    // A lista nomeia cada miniatura "<tipo>: <arquivo>"; a prévia local é outra.
+    // The list names each thumbnail "<type>: <file>"; the local preview is another one.
     expect(await screen.findByRole("img", { name: /: capa\.png$/ })).toHaveAttribute("src", "/fixture-new.png");
   });
 
@@ -195,7 +195,7 @@ describe("CourseAssetUploader", () => {
     fireEvent.click(screen.getByRole("button", { name: "Upload asset" }));
   }
 
-  it("capa do modulo pela biblioteca tambem sai recortada 2:3 e comprimida", async () => {
+  it("module cover through the library is also cropped 2:3 and compressed", async () => {
     vi.stubGlobal("createImageBitmap", vi.fn(async () => ({ width: 3000, height: 2000, close: vi.fn() })));
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
       { drawImage: vi.fn(), fillRect: vi.fn() } as unknown as CanvasRenderingContext2D,
@@ -214,7 +214,7 @@ describe("CourseAssetUploader", () => {
     expect(sent.file.name).toBe("cover.webp");
   });
 
-  it("capa do modulo acima de 10 MB pela biblioteca e recusada, sem subir", () => {
+  it("module cover above 10 MB through the library is refused, without uploading", () => {
     const big = new File(["x"], "enorme.png", { type: "image/png" });
     Object.defineProperty(big, "size", { value: 11 * 1024 * 1024 });
 
@@ -236,7 +236,7 @@ describe("CourseAssetUploader", () => {
     expect(screen.getByText("Archivo subido.")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Portada del curso: Portada $$ $&.png" })).toHaveAttribute("src", "/fixture-cover.png");
     fireEvent.click(screen.getByRole("button", { name: "Eliminar" }));
-    // A frase de sempre, agora na janela; desistir não apaga nada.
+    // The usual sentence, now in the dialog; giving up deletes nothing.
     const dialog = screen.getByRole("dialog", { name: "¿Eliminar este archivo?" });
     expect(dialog).toHaveTextContent('¿Eliminar "Portada $$ $&.png"? El archivo se eliminará de forma permanente.');
     fireEvent.click(within(dialog).getByRole("button", { name: "Mantener el archivo" }));
@@ -267,7 +267,7 @@ describe("CourseAssetUploader", () => {
     const asset: CourseAsset = { id: "a1", courseId: course.id, ownerId: course.ownerId, kind: "course_cover", fileName: "Portada.png", contentType: "image/png", size: 3, storagePath: "fixture/a1.png", downloadUrl: "/fixture-cover.png", isPreview: false, lessonId: null };
     mocks.assets = [asset];
     if (fails) vi.mocked(deleteCourseAsset).mockRejectedValueOnce(new Error("Fixture failure"));
-    // Só o Date é falso: o confirmar ignora cliques nos primeiros 500ms.
+    // Only Date is fake: the confirm ignores clicks in the first 500ms.
     vi.useFakeTimers({ toFake: ["Date"] });
     const onAssetDeleted = vi.fn();
     render(<I18nProvider initialLocale="en"><SwitchLanguage /><CourseAssetUploader course={course} isEditable onAssetDeleted={onAssetDeleted} /></I18nProvider>);
@@ -278,7 +278,7 @@ describe("CourseAssetUploader", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Delete file" }));
     await screen.findByText(fails ? /We could not delete this asset/ : "Asset deleted.");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    // Deu certo: o aviso é anunciado (role="status"); falhou: só o erro.
+    // Success: the notice is announced (role="status"); failure: only the error.
     if (fails) expect(screen.queryByRole("status")).not.toBeInTheDocument();
     else expect(screen.getByRole("status")).toHaveTextContent("Asset deleted.");
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
@@ -289,16 +289,16 @@ describe("CourseAssetUploader", () => {
     expect(mocks.uploadCourseAsset).not.toHaveBeenCalled();
   });
 
-  // O único limite escrito na tela era o do bucket (500 MB), dez vezes o teto
-  // real do plano. O professor preparava o arquivo dentro dele e era recusado.
-  it("mostra o teto real antes de o professor escolher o arquivo", () => {
+  // The only limit written on the screen was the bucket's (500 MB), ten times the real
+  // plan cap. The teacher prepared the file within it and was refused.
+  it("shows the real cap before the teacher chooses the file", () => {
     render(<CourseAssetUploader course={course} isEditable />);
 
     expect(screen.getByText(/Image up to 50\.0 MB\./)).toBeInTheDocument();
     expect(screen.queryByText(/500\.0 MB/)).not.toBeInTheDocument();
   });
 
-  it("mostra a prévia da imagem escolhida antes de enviar", () => {
+  it("shows a preview of the chosen image before uploading", () => {
     render(<CourseAssetUploader course={course} isEditable />);
 
     chooseCover();
@@ -309,7 +309,7 @@ describe("CourseAssetUploader", () => {
     );
   });
 
-  it("mostra a miniatura das capas já enviadas", () => {
+  it("shows the thumbnail of the covers already uploaded", () => {
     mocks.assets = [
       {
         id: "asset-1",
@@ -333,9 +333,9 @@ describe("CourseAssetUploader", () => {
     ).toHaveAttribute("src", "https://media.example/public-media/capa.png");
   });
 
-  // O catch descartava o erro sem ler e culpava "permissões" — inclusive para
-  // o 413 do teto de tamanho, cuja mensagem certa já vinha pronta do domínio.
-  it("mostra o motivo real quando o envio falha, não a acusação de permissão", async () => {
+  // The catch discarded the error without reading it and blamed "permissions" — even for
+  // the 413 size cap, whose right message already came ready from the domain.
+  it("shows the real reason when the upload fails, not the permission accusation", async () => {
     mocks.uploadCourseAsset.mockRejectedValueOnce(
       new Error(
         "This file exceeds the current upload limit (~50.0 MB). Use a YouTube link or a smaller file.",
@@ -352,9 +352,9 @@ describe("CourseAssetUploader", () => {
     expect(screen.queryByText(/course ownership/)).not.toBeInTheDocument();
   });
 
-  // A barra ficava em 0% o envio inteiro (o Storage não informa progresso) e
-  // isso se lia como "travou". Sem número do transporte, não há número na tela.
-  it("não inventa porcentagem quando o transporte não informa progresso", async () => {
+  // The bar stayed at 0% for the whole upload (Storage does not report progress) and
+  // that read as "stuck". Without a number from the transport, there is no number on screen.
+  it("does not invent a percentage when the transport does not report progress", async () => {
     mocks.uploadCourseAsset.mockImplementation((input) => {
       input.onProgress?.(running(null));
       return new Promise(() => undefined);
@@ -369,7 +369,7 @@ describe("CourseAssetUploader", () => {
     expect(status).not.toHaveTextContent("%");
   });
 
-  it("mostra a barra quando o transporte informa porcentagem de verdade", async () => {
+  it("shows the bar when the transport really reports a percentage", async () => {
     mocks.uploadCourseAsset.mockImplementation((input) => {
       input.onProgress?.(running(42));
       return new Promise(() => undefined);
@@ -380,16 +380,16 @@ describe("CourseAssetUploader", () => {
     fireEvent.click(screen.getByRole("button", { name: "Upload asset" }));
 
     expect(await screen.findByRole("status")).toHaveTextContent("42%");
-    // Rótulo fixo: o botão não vira "Uploading..."; o andamento é só a nota.
+    // Fixed label: the button does not become "Uploading..."; the progress is only the note.
     expect(screen.getByRole("button", { name: "Upload asset" })).toHaveAttribute("aria-busy", "true");
     expect(screen.queryByText("Uploading...")).toBeNull();
-    // O anel entra no lugar que a face da espera já guardava: mesma largura.
+    // The ring takes the place that the waiting face already reserved: same width.
     expect(screen.getByRole("button", { name: "Upload asset" }).querySelectorAll('[class*="grid-area"]')).toHaveLength(2);
   });
 
-  // Falhou depois de começar: o progresso antigo não pode ficar na tela ao
-  // lado da caixa vermelha dizendo que não foi possível enviar.
-  it("limpa o progresso quando o envio falha", async () => {
+  // Failed after starting: the old progress must not stay on screen next to
+  // the red box saying it was not possible to upload.
+  it("clears the progress when the upload fails", async () => {
     mocks.uploadCourseAsset.mockImplementation(async (input) => {
       input.onProgress?.(running(null));
       throw new Error("Row-level security policy violation");

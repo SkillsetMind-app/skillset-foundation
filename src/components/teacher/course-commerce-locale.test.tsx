@@ -147,8 +147,8 @@ describe("commerce with real EN/ES dictionaries", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Keep the tax registration under 80 characters.");
   });
 
-  // F-05: o "salvo" era uma caixa verde embaixo do formulário. Agora é o check
-  // verde na linha do botão, e sai quando a pessoa mexe de novo.
+  // F-05: the "saved" note used to be a green box below the form. Now it is the green
+  // check on the button's row, and it goes away when the person touches the form again.
   it("tax saved: the saved note sits beside the button and leaves on the next edit", async () => {
     mount(true);
     const button = screen.getByRole("button", { name: "Guardar configuración fiscal" });

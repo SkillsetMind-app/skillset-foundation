@@ -3,10 +3,10 @@ import { vi } from "vitest";
 
 import { CONFIRM_GUARD_MS } from "@/components/ui/confirm-dialog";
 
-// Apoio dos testes que passam pela janela de confirmacao (ConfirmDialog).
-// O jsdom nao implementa showModal/close: o stub faz o minimo que o navegador
-// faz (atributo open e o evento close), como em confirm-dialog.test. Devolve
-// quem desfaz, para o prototipo voltar ao que era no afterEach.
+// Support for the tests that go through the confirmation dialog (ConfirmDialog).
+// jsdom does not implement showModal/close: the stub does the minimum the browser
+// does (open attribute and the close event), as in confirm-dialog.test. It returns
+// the function that undoes it, so the prototype goes back to what it was in afterEach.
 export function stubDialogs() {
   const originalShow = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal");
   const originalClose = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "close");
@@ -32,8 +32,8 @@ export function stubDialogs() {
   };
 }
 
-// A janela ignora o confirmar nos primeiros CONFIRM_GUARD_MS (toque duplo):
-// o relogio anda ate la so para este clique.
+// The dialog ignores the confirm in the first CONFIRM_GUARD_MS (double tap):
+// the clock advances to there just for this click.
 export function clickConfirm(dialog: HTMLElement, name: string | RegExp) {
   const now = Date.now();
   const clock = vi.spyOn(Date, "now").mockReturnValue(now + CONFIRM_GUARD_MS);

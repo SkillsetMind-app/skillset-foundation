@@ -9,9 +9,9 @@ import { Button } from "@/components/ui";
 import { CAPTION_LANGUAGES, captionLanguageName, isCaptionLanguage } from "@/domain/caption-languages";
 import { callTeachAi, loadTeachAi, teachAiErrorText, type TeachAiResult } from "@/lib/ai/teach-ai-client";
 
-// Legendas com IA no estúdio da aula (aba Vídeo, só vídeo enviado para a Bunny).
-// A IA escreve um rascunho a partir do áudio; o professor lê, corrige e publica.
-// O aluno só vê a legenda publicada, no botão CC do player da Bunny.
+// AI captions in the lesson studio (Video tab, only video uploaded to Bunny).
+// The AI writes a draft from the audio; the teacher reads, corrects and publishes.
+// The learner only sees the published caption, on the CC button of the Bunny player.
 
 type Caption = {
   language: string;
@@ -22,7 +22,7 @@ type Caption = {
   stale: boolean;
 };
 type Usage = { usedSeconds: number; limitSeconds: number };
-// O erro guarda o pedido que falhou: "Try again" repete exatamente ele.
+// The error keeps the request that failed: "Try again" repeats exactly that one.
 type Notice = { kind: "ok"; text: string } | { kind: "error"; text: string; retry: () => void } | null;
 
 function captionState(caption: Caption): "stale" | "draft" | "changed" | "published" {
@@ -42,7 +42,7 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
   const [notice, setNotice] = useState<Notice>(null);
   const [spoken, setSpoken] = useState<string>(isCaptionLanguage(locale) ? locale : "en");
   const [target, setTarget] = useState("");
-  // Cada tentativa de leitura: "Try again" depois de uma falha lê de novo.
+  // Each read attempt: "Try again" after a failure reads again.
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
@@ -66,7 +66,7 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
       setCaptions(loaded);
       setTexts(Object.fromEntries(loaded.map((caption) => [caption.language, caption.vtt])));
       setUsage(result.body.usage as Usage);
-      // O idioma falado é o da legenda que não é tradução, se já houver uma.
+      // The spoken language is that of the caption that is not a translation, if there is one already.
       const original = loaded.find((caption) => !caption.stale && !caption.translatedFrom);
       if (original) setSpoken(original.language);
     });
@@ -83,9 +83,9 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
     setTexts((current) => ({ ...current, [caption.language]: caption.vtt }));
   }
 
-  // `retry`: o que o "Try again" refaz. Sem ele, o mesmo pedido; o Publish
-  // passa a ação inteira (gravar e publicar), não só o passo que falhou.
-  // `handled`: erro que quem chamou trata sozinho (true = sem alerta).
+  // `retry`: what "Try again" redoes. Without it, the same request; Publish
+  // passes the whole action (save and publish), not only the step that failed.
+  // `handled`: an error the caller handles on its own (true = no alert).
   async function run(
     action: string,
     extra: Record<string, unknown>,
@@ -118,8 +118,8 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
     return true;
   }
 
-  // Publicar com texto editado grava antes: o professor não precisa adivinhar
-  // que "Save" vem primeiro.
+  // Publishing with edited text saves first: the teacher does not have to guess
+  // that "Save" comes first.
   async function publish(caption: Caption) {
     const again = () => void publish(caption);
     const edited = texts[caption.language] !== caption.vtt;
@@ -129,8 +129,8 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
     }
     const busyKey = `publish-${caption.language}`;
     const okText = t("creatorEditor.lesson.ai.publishedNotice");
-    // O video ja tem legenda neste idioma, feita fora daqui: publicar substitui.
-    // Pergunta; cancelar nao muda nada e nao mostra erro.
+    // The video already has a caption in this language, made outside here: publishing replaces it.
+    // Asks; canceling changes nothing and shows no error.
     await run("publishCaption", { language: caption.language }, busyKey, okText, again, (result) => {
       if (result.body.code !== "caption_exists") return false;
       ask({
@@ -144,9 +144,9 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
     });
   }
 
-  // Mudou o texto ou um idioma depois da falha: o "Try again" refaria o pedido
-  // antigo (texto velho por cima, ou outro idioma gastando as horas de IA). O
-  // erro sai; o botão da ação usa o que está na tela.
+  // The text or a language changed after the failure: "Try again" would redo the old
+  // request (old text on top, or another language spending the AI hours). The
+  // error goes away; the action button uses what is on screen.
   function dropStaleRetry() {
     setNotice((current) => (current?.kind === "error" ? null : current));
   }
@@ -174,8 +174,8 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
         </p>
       ) : null}
 
-      {/* A forma da linha que vem (idioma + botão), não uma frase solta
-          (F-03). O aria-busy da seção já diz que está carregando. */}
+      {/* The shape of the row that comes next (language + button), not a loose sentence
+          (F-03). The section's aria-busy already says it is loading. */}
       {captions === null ? (
         <div className="flex animate-pulse flex-wrap items-end gap-3">
           <span className="sr-only">{t("creatorEditor.lesson.ai.loading")}</span>
@@ -207,7 +207,7 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
                 const generate = () => {
                   void run("transcribe", { language: spoken }, "transcribe", t("creatorEditor.lesson.ai.generated"));
                 };
-                // Gerar de novo apaga as correções e gasta as horas do vídeo outra vez.
+                // Generating again erases the corrections and spends the video's hours once more.
                 if (!spokenExists) return generate();
                 ask({
                   title: t("creatorEditor.lesson.ai.confirmRegenerateTitle"),
@@ -218,9 +218,9 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
                 });
               }}
             >
-              {/* Fica trocando o rótulo, de propósito: a espera é uma frase
-                  (cerca de três vezes o "Generate captions") e reservá-la
-                  deixaria o botão largo e o seletor de idioma espremido. */}
+              {/* The label keeps swapping, on purpose: the wait is a sentence
+                  (about three times "Generate captions") and reserving it
+                  would leave the button wide and the language selector squeezed. */}
               {busy === "transcribe"
                 ? t("creatorEditor.lesson.ai.generating")
                 : t(spokenExists ? "creatorEditor.lesson.ai.regenerate" : "creatorEditor.lesson.ai.generate")}
@@ -329,8 +329,8 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
                 onClick={() => void run("translate", { from: source.language, to: target }, "translate",
                   t("creatorEditor.lesson.ai.translated"))}
               >
-                {/* Como o "Generate captions": reservar spinner e
-                    "Translating..." espremeria o seletor de idioma ao lado. */}
+                {/* Like "Generate captions": reserving spinner and
+                    "Translating..." would squeeze the language selector beside it. */}
                 {busy === "translate" ? t("creatorEditor.lesson.ai.translating") : t("creatorEditor.lesson.ai.translate")}
               </Button>
             </div>

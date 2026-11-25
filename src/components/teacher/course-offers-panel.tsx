@@ -32,11 +32,11 @@ type OfferRow = {
   prices: OfferPrice[];
 };
 
-// A pele de todo campo da plataforma (44px, borda que aparece no branco).
+// The skin of every platform field (44px, a border that shows on white).
 const inputClass = "field-input";
 
-// O tipo de pagamento vem da API como texto livre. So os quatro conhecidos tem
-// traducao; qualquer outro cai no formato antigo em vez de virar chave crua.
+// The payment type comes from the API as free text. Only the four known ones have a
+// translation; any other falls back to the old format instead of becoming a raw key.
 const KNOWN_PAYMENT_TYPES = new Set([
   "free",
   "one_time",
@@ -44,14 +44,14 @@ const KNOWN_PAYMENT_TYPES = new Set([
   "subscription_yearly",
 ]);
 
-// Os motivos da rota que a pessoa consegue resolver viram frase da casa; o
-// resto cai na frase geral. A mensagem crua do servidor (em inglês, às vezes
-// técnica) nunca vai para a tela. Mesmo molde do toMessageKey dos cupons.
+// The route's reasons that the person can resolve become the house sentence; the
+// rest falls to the general sentence. The server's raw message (in English, sometimes
+// technical) never goes on screen. Same mold as the coupons' toMessageKey.
 const offerErrorKeys: Record<string, string> = {
   "A paid offer must have a positive price.": "creatorPanel.offers.invalidAmount",
   "A free offer must have a zero price.": "creatorPanel.offers.invalidAmount",
   "amountMinor must be a non-negative whole number.": "creatorPanel.offers.invalidAmount",
-  // O limite de tentativas (429): a pessoa precisa saber que é para esperar.
+  // The attempt limit (429): the person needs to know it means wait.
   "Too many attempts. Please wait before trying again.": "creatorPanel.offers.rateError",
 };
 
@@ -72,11 +72,11 @@ function money(amountMinor: number, currency: string): string {
   }
 }
 
-// "Adicionar outro preco" fica dentro da forma de pagar escolhida em Preco,
-// em vez de ser um segundo "Payment type" que podia contradizer a etapa de
-// preco: pagamento unico ganha outro valor; mensalidade, outro mensal ou o
-// plano anual; gratis nao tem outro preco. Sem o preco do curso (chamada
-// antiga), as quatro formas continuam.
+// "Add another price" stays inside the way to pay chosen in Price,
+// instead of being a second "Payment type" that could contradict the price
+// step: one-time payment gets another value; monthly fee, another monthly or the
+// yearly plan; free has no other price. Without the course's price (old
+// call), the four forms remain.
 function paymentTypesFor(coursePricing?: CoursePricingShape): TeacherCoursePaymentType[] {
   if (!coursePricing) {
     return ["one_time", "subscription_monthly", "subscription_yearly", "free"];
@@ -101,26 +101,26 @@ export function CourseOffersPanel({
 }: {
   courseId: string;
   courseTitle: string;
-  /** Como o curso cobra hoje: e daqui que a primeira oferta nasce. */
+  /** How the course charges today: the first offer is born from here. */
   coursePricing?: CoursePricingShape;
-  /** "Adicionar o plano anual" da etapa de preco: o formulario ja abre assim. */
+  /** "Add the yearly plan" from the price step: the form already opens like that. */
   prefill?: { paymentType: TeacherCoursePaymentType; amountMinor: number } | null;
 }) {
   const paymentTypes = paymentTypesFor(coursePricing);
   const startWith = prefill && paymentTypes.includes(prefill.paymentType) ? prefill : null;
   const { t } = useTranslation();
-  // `t` fica fora das dependencias dos efeitos: com ele la, um provider que
-  // devolva funcao nova por render reinscreve tudo em laco (a suite do CI
-  // ficou muda 16 min). Por isso erro e aviso guardam a CHAVE e o texto sai
-  // no render, no idioma da hora.
+  // `t` stays out of the effects' dependencies: with it there, a provider that
+  // returns a new function per render resubscribes everything in a loop (the CI
+  // suite went silent for 16 min). So error and warning keep the KEY and the text comes out
+  // at render, in the language of the moment.
   const [offers, setOffers] = useState<OfferRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  // Falha de LEITURA da lista, separada do erro de criar: com ela a tela não
-  // sabe se há preço, então não diz "nenhum preço" nem abre o formulário de
-  // criar (com a lista vazia ele gravaria outro preço principal), e oferece
-  // "Try again" no lugar da lista (F-11).
+  // READ failure of the list, separate from the create error: with it the screen does not
+  // know whether there is a price, so it does not say "no price" nor open the
+  // create form (with the list empty it would save another main price), and it offers
+  // "Try again" in place of the list (F-11).
   const [loadError, setLoadError] = useState("");
   const headingRef = useRef<HTMLHeadingElement>(null);
   const [notice, setNotice] = useState("");
@@ -131,10 +131,10 @@ export function CourseOffersPanel({
         : "creatorPanel.offers.defaultName",
     ),
   );
-  // O formulario nascia com 97 USD avulso mesmo num curso gratuito ou por
-  // assinatura: a tela pedia para confirmar um preco que nao era o do curso.
-  // Semente unica, no primeiro render — reagir a cada mudanca do curso
-  // apagaria o que a pessoa ja estivesse digitando.
+  // The form was born with a one-time 97 USD even on a free or
+  // subscription course: the screen asked to confirm a price that was not the course's.
+  // A single seed, on first render — reacting to every course change
+  // would erase what the person was already typing.
   const [amount, setAmount] = useState(() =>
     startWith
       ? String(startWith.amountMinor / 100)
@@ -149,12 +149,12 @@ export function CourseOffersPanel({
       ?? coursePricing?.paymentType
       ?? (coursePricing?.free ? "free" : "one_time"),
   );
-  // O plano anual e um preco a mais: nao toma o lugar do mensal na pagina.
+  // The yearly plan is an extra price: it does not take the monthly's place on the page.
   const [isDefault, setIsDefault] = useState(!startWith);
   const [publicCode, setPublicCode] = useState("");
-  // Com oferta na mesa, a tabela e o assunto; criar outra e uma acao, nao o
-  // primeiro que a pessoa ve. Sem nenhuma, o formulario aberto guia melhor que
-  // uma tabela vazia.
+  // With an offer on the table, the table is the subject; creating another is an action, not the
+  // first thing the person sees. With none, the open form guides better than
+  // an empty table.
   const [creating, setCreating] = useState(Boolean(startWith));
 
   const paymentTypeLabel = (value: string) =>
@@ -164,10 +164,10 @@ export function CourseOffersPanel({
 
   const hasOffers = !loading && offers.length > 0;
   const canAddPrice = paymentTypes.length > 0;
-  // Sem nenhuma oferta o formulario segue aberto: vazio guiado bate tabela vazia.
+  // With no offer the form stays open: a guided empty state beats an empty table.
   const formOpen = canAddPrice && !loadError && (creating || (!loading && offers.length === 0));
-  // Sem preco principal, o checkout usa o primeiro preco ativo daqui
-  // (resolveCoursePrice). Quem adiciona um preco a mais precisa saber disso.
+  // Without a main price, checkout uses the first active price from here
+  // (resolveCoursePrice). Whoever adds an extra price needs to know that.
   const hasMainPrice = offers.some((offer) => offer.isDefault && offer.active);
   const mainPriceFirst = !isDefault && !hasMainPrice && coursePricing !== undefined && !coursePricing.free;
 
@@ -185,8 +185,8 @@ export function CourseOffersPanel({
         throw new Error(data.error);
       }
       setOffers(data.offers ?? []);
-      // A rota responde 200 com aviso quando não leu a lista: é falha de
-      // leitura, não "nenhum preço" (e o aviso vinha em inglês, cru).
+      // The route answers 200 with a warning when it did not read the list: it is a read
+      // failure, not "no price" (and the warning came in raw English).
       if (data.warning) {
         setLoadError("creatorPanel.offers.loadError");
       }
@@ -200,7 +200,7 @@ export function CourseOffersPanel({
 
   useEffect(() => {
     // Defer so the effect body itself does not synchronously setState (lint).
-    // Renomeado de `t`: agora `t` e o tradutor do escopo de cima.
+    // Renamed from `t`: now `t` is the translator of the outer scope.
     const timer = window.setTimeout(() => {
       void reload();
     }, 0);
@@ -231,10 +231,10 @@ export function CourseOffersPanel({
       }
     };
     try {
-      // Um preco a mais nunca entra sozinho: sem preco principal, o checkout
-      // cobra o primeiro preco daqui (resolveCoursePrice) e o plano anual
-      // virava o preco da pagina. O preco atual do produto vira o principal
-      // antes; set_default_product_offer regrava o curso com os mesmos valores.
+      // An extra price never goes in alone: without a main price, checkout
+      // charges the first price from here (resolveCoursePrice) and the yearly plan
+      // became the page's price. The product's current price becomes the main one
+      // first; set_default_product_offer rewrites the course with the same values.
       if (mainPriceFirst && coursePricing?.paymentType) {
         await postOffer({
           name: courseTitle,
@@ -243,8 +243,8 @@ export function CourseOffersPanel({
           paymentType: coursePricing.paymentType,
           isDefault: true,
         });
-        // Se o segundo falhar, a lista ja tem o principal e tentar de novo
-        // nao cria outro.
+        // If the second fails, the list already has the main one and trying again
+        // does not create another.
         await reload();
       }
       await postOffer({ name, amountMinor, currency, paymentType, isDefault, publicCode });
@@ -261,14 +261,14 @@ export function CourseOffersPanel({
 
   return (
     <section aria-labelledby="course-offers-title">
-      {/* tabIndex -1: o "Try again" põe o foco aqui antes de sumir. */}
+      {/* tabIndex -1: "Try again" puts focus here before disappearing. */}
       <h2 ref={headingRef} tabIndex={-1} id="course-offers-title" className="text-xl font-semibold text-[var(--color-ink)]">
         {t("creatorPanel.offers.title")}
       </h2>
-      {/* Com oferta criada, o formulario empurrava a lista real para baixo:
-          quem ja precificou vem aqui para conferir ou copiar link, nao para
-          criar de novo. */}
-      {/* "Sem outros precios" so e verdade sem nenhum na lista. */}
+      {/* With an offer created, the form pushed the real list down:
+          whoever already priced comes here to check or copy a link, not to
+          create again. */}
+      {/* "No other prices" is only true with none in the list. */}
       {canAddPrice || loading || loadError || offers.length ? null : (
         <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
           {t("creatorPanel.offers.free")}
@@ -289,7 +289,7 @@ export function CourseOffersPanel({
         </div>
       ) : null}
 
-      {/* A forma da lista que vem (linhas de preço), não uma frase (F-03). */}
+      {/* The shape of the incoming list (price rows), not a sentence (F-03). */}
       {loading ? (
         <div role="status" className="mt-4 grid animate-pulse gap-2">
           <span className="sr-only">{t("creatorPanel.offers.loading")}</span>
@@ -399,9 +399,9 @@ export function CourseOffersPanel({
             <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
               {t("creatorPanel.offers.currency")}
             </span>
-            {/* Era um campo de texto livre de três letras: aceitava "ABC", que o
-                Stripe recusa só na hora de cobrar. O mesmo seletor do construtor,
-                com exatamente a lista que o Stripe aceita. */}
+            {/* It was a free-text field of three letters: it accepted "ABC", which
+                Stripe refuses only at charge time. The same selector as the builder,
+                with exactly the list Stripe accepts. */}
             <CurrencySelect
               value={currency}
               onChange={setCurrency}
@@ -463,9 +463,9 @@ export function CourseOffersPanel({
         </form>
       ) : null}
 
-      {/* Anunciados: criar um preço e falhar não acontecia de modo audível. */}
+      {/* Announced: creating a price and failing did not happen audibly. */}
       {error ? <InlineAlert tone="error" className="mt-3">{t(error)}</InlineAlert> : null}
-      {/* "Criado" com cara de criado (o check verde), não o cinza de uma dica. */}
+      {/* "Created" looking created (the green check), not the gray of a hint. */}
       {notice ? (
         <p className="mt-3">
           <SavedNote text={t(notice)} />

@@ -34,15 +34,15 @@ function videoFile(name = "lesson.mp4") {
   return new File(["video-bytes"], name, { type: "video/mp4" });
 }
 
-// O host tem de ser do YouTube ou do Vimeo: e o que getTrustedLessonEmbed
-// aceita. Nada e buscado; o resto usa example.test.
+// The host must be YouTube or Vimeo: that is what getTrustedLessonEmbed
+// accepts. Nothing is fetched; the rest uses example.test.
 const vimeo = "https://vimeo.com/123456";
 const urlField = () => screen.queryByRole("textbox", { name: "YouTube or Vimeo URL" });
-// jsdom nao tem DataTransfer: a colagem leva so o getData que o campo le.
+// jsdom has no DataTransfer: the paste carries only the getData the field reads.
 const clipboard = (text: string) => ({ getData: () => text });
 
-// Simula a colagem do navegador: o evento paste (que o campo le) e depois a
-// insercao do texto no cursor ou na selecao, que o jsdom nao faz sozinho.
+// Simulates the browser paste: the paste event (which the field reads) and then the
+// insertion of the text at the cursor or the selection, which jsdom does not do by itself.
 function paste(field: HTMLInputElement, text: string) {
   const start = field.selectionStart ?? field.value.length;
   const end = field.selectionEnd ?? start;
@@ -54,8 +54,8 @@ function paste(field: HTMLInputElement, text: string) {
 }
 
 describe("LessonVideoSourcePicker", () => {
-  // Um video por aula (decisao de 14/09): o envio OU o link, nunca os dois.
-  it("no modo envio mostra so a area de envio e o botao de trocar para link", () => {
+  // One video per lesson (decision of Sep 14): the upload OR the link, never both.
+  it("in upload mode it shows only the upload area and the button to switch to link", () => {
     const props = renderPicker();
     const fileInput = screen.getByLabelText("Upload a lesson video");
 
@@ -68,7 +68,7 @@ describe("LessonVideoSourcePicker", () => {
     expect(props.onModeChange).toHaveBeenCalledExactlyOnceWith("link");
   });
 
-  it("no modo link mostra so o campo, com a ajuda fora do rotulo, e o botao de trocar para envio", () => {
+  it("in link mode it shows only the field, with the help outside the label, and the button to switch to upload", () => {
     const props = renderPicker({ mode: "link" });
 
     expect(urlField()).toBeInTheDocument();
@@ -79,7 +79,7 @@ describe("LessonVideoSourcePicker", () => {
     expect(props.onModeChange).toHaveBeenCalledExactlyOnceWith("upload");
   });
 
-  it("a ajuda diz que so YouTube e Vimeo sao aceitos, com area de toque cheia", () => {
+  it("the help says only YouTube and Vimeo are accepted, with a full touch target", () => {
     renderPicker({ mode: "link", externalUrl: vimeo });
     const help = screen.getByRole("button", { name: "How the YouTube or Vimeo URL field works" });
 
@@ -91,7 +91,7 @@ describe("LessonVideoSourcePicker", () => {
     expect(screen.getByDisplayValue(vimeo)).toBeInTheDocument();
   });
 
-  it("grava so link aceito; link recusado mostra erro e nao sai do campo", () => {
+  it("saves only an accepted link; a rejected link shows an error and does not leave the field", () => {
     const props = renderPicker({ mode: "link" });
 
     fireEvent.change(urlField() as HTMLElement, { target: { value: "https://example.test/v.mp4" } });
@@ -107,9 +107,9 @@ describe("LessonVideoSourcePicker", () => {
     expect(props.onLinkChange).toHaveBeenCalledExactlyOnceWith(vimeo);
   });
 
-  // Gravar a cada tecla persistia ids truncados ("vimeo.com/12") enquanto a
-  // tela dizia "This link was not saved", e acusava erro no meio da digitacao.
-  it("digitar nao grava nem acusa erro; grava ao sair do campo ou no Enter", () => {
+  // Saving on every keystroke persisted truncated ids ("vimeo.com/12") while the
+  // screen said "This link was not saved", and reported an error in the middle of typing.
+  it("typing neither saves nor reports an error; it saves on leaving the field or on Enter", () => {
     const props = renderPicker({ mode: "link" });
 
     for (const partial of ["h", "https://vim", "https://vimeo.com/12", vimeo]) {
@@ -122,7 +122,7 @@ describe("LessonVideoSourcePicker", () => {
     fireEvent.keyDown(urlField() as HTMLElement, { key: "Enter" });
     expect(props.onLinkChange).toHaveBeenCalledExactlyOnceWith(vimeo);
 
-    // Colar valida na hora, e o erro acompanha aria-invalid.
+    // Pasting validates right away, and the error follows aria-invalid.
     fireEvent.change(urlField() as HTMLElement, { target: { value: "" } });
     paste(urlField() as HTMLInputElement, "https://example.test/v.mp4");
     expect(urlField()).toHaveValue("https://example.test/v.mp4");
@@ -134,7 +134,7 @@ describe("LessonVideoSourcePicker", () => {
     expect(props.onLinkChange).toHaveBeenCalledOnce();
   });
 
-  it("sem https:// completa o esquema antes de validar e grava o link normalizado", () => {
+  it("without https:// it completes the scheme before validating and saves the normalized link", () => {
     const props = renderPicker({ mode: "link" });
 
     fireEvent.change(urlField() as HTMLElement, { target: { value: " vimeo.com/123456 " } });
@@ -145,10 +145,10 @@ describe("LessonVideoSourcePicker", () => {
     expect(urlField()).toHaveValue(vimeo);
   });
 
-  it("apagar o campo tira o link aceito salvo, so ao sair do campo", () => {
+  it("clearing the field removes the saved accepted link, only on leaving the field", () => {
     const props = renderPicker({ mode: "link", externalUrl: vimeo });
 
-    // Sair sem mudar o link salvo nao grava de novo.
+    // Leaving without changing the saved link does not save again.
     fireEvent.blur(urlField() as HTMLElement);
     fireEvent.change(urlField() as HTMLElement, { target: { value: "" } });
     expect(props.onLinkChange).not.toHaveBeenCalled();
@@ -156,7 +156,7 @@ describe("LessonVideoSourcePicker", () => {
     expect(props.onLinkChange).toHaveBeenCalledExactlyOnceWith(null);
   });
 
-  it("colar um link aceito grava na hora, sem esperar o blur", () => {
+  it("pasting an accepted link saves right away, without waiting for the blur", () => {
     const props = renderPicker({ mode: "link" });
 
     paste(urlField() as HTMLInputElement, ` ${vimeo} `);
@@ -165,9 +165,9 @@ describe("LessonVideoSourcePicker", () => {
     expect(urlField()).toHaveValue(vimeo);
   });
 
-  // A colagem trocava o campo inteiro: digitar "https://youtu.be/" e colar o
-  // id virava "https://abc..." e era recusado.
-  it("colar no cursor completa o que ja foi digitado", () => {
+  // The paste replaced the whole field: typing "https://youtu.be/" and pasting the
+  // id became "https://abc..." and was rejected.
+  it("pasting at the cursor completes what was already typed", () => {
     const props = renderPicker({ mode: "link" });
     const field = urlField() as HTMLInputElement;
     fireEvent.change(field, { target: { value: "https://youtu.be/" } });
@@ -180,7 +180,7 @@ describe("LessonVideoSourcePicker", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("colar sobre um trecho selecionado troca so esse trecho", () => {
+  it("pasting over a selected range replaces only that range", () => {
     const props = renderPicker({ mode: "link", externalUrl: vimeo });
     const field = urlField() as HTMLInputElement;
     field.setSelectionRange("https://vimeo.com/".length, vimeo.length);
@@ -191,14 +191,14 @@ describe("LessonVideoSourcePicker", () => {
     expect(field).toHaveValue("https://vimeo.com/654321");
   });
 
-  // A marca de "colou" so saia no onChange. Colar o mesmo texto (ou imagem, ou
-  // nada) nao dispara onChange, e a tecla seguinte era tratada como colagem:
-  // o Backspace gravava https://vimeo.com/12345, outro video valido.
-  it("colar o mesmo link e apagar um caractere nao grava outro video; colar vazio nao acusa erro", () => {
+  // The "pasted" mark was only cleared in onChange. Pasting the same text (or an image, or
+  // nothing) does not fire onChange, and the next key was treated as a paste:
+  // Backspace saved https://vimeo.com/12345, another valid video.
+  it("pasting the same link and deleting one character does not save another video; pasting nothing does not report an error", () => {
     const props = renderPicker({ mode: "link", externalUrl: vimeo });
 
     const field = urlField() as HTMLInputElement;
-    // O mesmo texto sobre a mesma selecao: o valor nao muda, nao ha onChange.
+    // The same text over the same selection: the value does not change, there is no onChange.
     field.setSelectionRange(0, vimeo.length);
     paste(field, vimeo);
     fireEvent.change(field, { target: { value: vimeo.slice(0, -1) } });
@@ -213,9 +213,9 @@ describe("LessonVideoSourcePicker", () => {
     expect(props.onLinkChange).not.toHaveBeenCalled();
   });
 
-  // Um link antigo (Drive etc.) nao entra no campo. Digitar e apagar ali nao
-  // pode apaga-lo: quem tira o link antigo e o botao proprio, no modal.
-  it("com link antigo que nao e video, o campo comeca vazio e apagar nao grava nada", () => {
+  // An old link (Drive etc.) does not go into the field. Typing and deleting there
+  // must not delete it: what removes the old link is its own button, in the modal.
+  it("with an old link that is not a video, the field starts empty and deleting saves nothing", () => {
     const props = renderPicker({ mode: "link", externalUrl: "https://drive.example.test/file/d/x/view" });
 
     expect(urlField()).toHaveValue("");
@@ -225,7 +225,7 @@ describe("LessonVideoSourcePicker", () => {
     expect(props.onLinkChange).not.toHaveBeenCalled();
   });
 
-  it("mantem o rascunho do link ao trocar de idioma", () => {
+  it("keeps the link draft when switching language", () => {
     const onLinkChange = vi.fn();
     render(
       <I18nProvider initialLocale="en">
@@ -242,9 +242,9 @@ describe("LessonVideoSourcePicker", () => {
     expect(onLinkChange).not.toHaveBeenCalled();
   });
 
-  // Auditoria student-video-access-server-side: link do YouTube/Vimeo e um
-  // embed publico; drip e matricula nao o protegem. O aviso fica sob o campo.
-  it("avisa sob o campo de link que o video do YouTube/Vimeo nao e protegido", () => {
+  // Audit student-video-access-server-side: a YouTube/Vimeo link is a public
+  // embed; drip and enrollment do not protect it. The notice stays under the field.
+  it("warns under the link field that the YouTube/Vimeo video is not protected", () => {
     render(
       <I18nProvider initialLocale="en">
         <ChangeLanguage />
@@ -253,8 +253,8 @@ describe("LessonVideoSourcePicker", () => {
       </I18nProvider>,
     );
 
-    // A aula de previa gratis entrega o envio a qualquer visitante: o texto nao
-    // promete "so matriculados", so que o envio passa pelo controle de acesso.
+    // A free preview lesson hands the upload to any visitor: the text does not
+    // promise "enrolled only", only that the upload goes through the access check.
     const en = "YouTube and Vimeo videos stay viewable by anyone with the link, even outside SkillsetMind. Upload the video here so playback goes through SkillsetMind's access check.";
     const es = "Cualquiera que tenga el enlace puede ver los videos de YouTube y Vimeo, incluso fuera de SkillsetMind. Sube el video aquí para que la reproducción pase por el control de acceso de SkillsetMind.";
     expect(screen.getByText(en)).toBeInTheDocument();
@@ -264,7 +264,7 @@ describe("LessonVideoSourcePicker", () => {
     expect(screen.getByRole("textbox", { name: "URL de YouTube o Vimeo" })).toHaveAccessibleDescription(es);
   });
 
-  it("o aviso de protecao continua na descricao do campo junto do erro de link recusado", () => {
+  it("the protection notice stays in the field description alongside the rejected link error", () => {
     renderPicker({ mode: "link" });
 
     fireEvent.change(urlField() as HTMLElement, { target: { value: "https://example.test/v.mp4" } });
@@ -274,7 +274,7 @@ describe("LessonVideoSourcePicker", () => {
     );
   });
 
-  it("mantem a area de soltar ativa ao trocar de idioma", () => {
+  it("keeps the drop area active when switching language", () => {
     const onSelectFile = vi.fn();
     render(
       <I18nProvider initialLocale="en">
@@ -295,11 +295,11 @@ describe("LessonVideoSourcePicker", () => {
     expect(onSelectFile).toHaveBeenCalledExactlyOnceWith(file);
   });
 
-  // Escolher NAO declara a fonte: `videoSource` e persistido pelo autosave e e
-  // o campo que o aluno le para escolher o player. Quem declara a fonte e o
-  // caminho de sucesso do envio, no lesson-content-modal. (Auditoria de produto
-  // de 2026-08-30, achado P-01.)
-  it("seleciona o video solto sem declarar a fonte nem trocar de modo", () => {
+  // Choosing does NOT declare the source: `videoSource` is persisted by the autosave and is
+  // the field the learner reads to choose the player. Whoever declares the source is the
+  // upload's success path, in lesson-content-modal. (Product audit
+  // of 2026-08-30, finding P-01.)
+  it("selects the dropped video without declaring the source or switching mode", () => {
     const props = renderPicker();
     const file = videoFile();
 
@@ -312,7 +312,7 @@ describe("LessonVideoSourcePicker", () => {
     expect(props.onLinkChange).not.toHaveBeenCalled();
   });
 
-  it("ignora arquivo solto que nao e video", () => {
+  it("ignores a dropped file that is not a video", () => {
     const props = renderPicker();
 
     fireEvent.drop(screen.getByText(/Drag & drop your video here/i), {
@@ -324,7 +324,7 @@ describe("LessonVideoSourcePicker", () => {
     expect(props.onSelectFile).not.toHaveBeenCalled();
   });
 
-  it("seleciona o video escolhido no navegador sem declarar a fonte", () => {
+  it("selects the video chosen in the browser without declaring the source", () => {
     const props = renderPicker();
     const file = videoFile();
 
@@ -336,13 +336,13 @@ describe("LessonVideoSourcePicker", () => {
     expect(props.onModeChange).not.toHaveBeenCalled();
   });
 
-  it("mostra o estado do link embutido", () => {
+  it("shows the embedded link state", () => {
     renderPicker({ mode: "link", embedStatus: "YouTube embed detected." });
 
     expect(screen.getByText("YouTube embed detected.")).toBeInTheDocument();
   });
 
-  it("desabilitado: nada responde, nem a troca de modo", () => {
+  it("disabled: nothing responds, not even the mode switch", () => {
     const props = renderPicker({ disabled: true });
 
     expect(screen.getByLabelText("Upload a lesson video")).toBeDisabled();

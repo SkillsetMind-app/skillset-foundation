@@ -16,23 +16,23 @@ import {
 const authState = vi.hoisted(() => ({
   user: { uid: "teacher-1", roles: ["teacher"] },
 }));
-// A agenda que a inscricao entrega; cada teste decide o que ha nela.
+// The schedule that the subscription delivers; each test decides what is in it.
 const agenda = vi.hoisted(() => ({
   events: [] as CourseEvent[],
   params: "courseId=event-product-1&newEvent=1",
-  // Modulos e status do produto de evento: o proximo passo depende deles.
+  // Modules and status of the event product: the next step depends on them.
   productModules: [] as Array<Record<string, unknown>>,
   productStatus: "draft",
   productPaymentType: "one_time",
   productFormat: undefined as string | undefined,
-  // A primeira leitura da agenda falha; o "Try again" le de novo pelo canal.
+  // The first schedule read fails; "Try again" reads again through the channel.
   eventsFail: false,
   reload: vi.fn(),
-  // O canal ao vivo: uma releitura posterior que falha chega por aqui.
+  // The live channel: a later re-read that fails arrives through here.
   failLater: null as ((error: Error) => void) | null,
 }));
 
-// O I18nProvider chama useRouter() para o refresh ao trocar de idioma.
+// The I18nProvider calls useRouter() for the refresh when switching language.
 const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }));
 vi.mock("next/navigation", () => ({
   useRouter: () => router,
@@ -106,9 +106,9 @@ describe("TeacherEventStudio", () => {
     vi.clearAllMocks();
   });
 
-  // Leitura que falhou nao e agenda vazia: nada de "No sessions" com o convite
-  // a marcar uma, nem "0" nos quadros. Fica o erro e o "Try again".
-  it("agenda que nao carregou mostra o erro e Try again, nunca o vazio", async () => {
+  // A read that failed is not an empty schedule: no "No sessions" with the invitation
+  // to schedule one, nor "0" in the tiles. What stays is the error and "Try again".
+  it("a schedule that failed to load shows the error and Try again, never the empty state", async () => {
     agenda.eventsFail = true;
     agenda.params = "";
     render(<TeacherEventStudio />);
@@ -116,20 +116,20 @@ describe("TeacherEventStudio", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("We could not load your scheduled sessions.");
     expect(screen.queryByText("No sessions in this view.")).toBeNull();
     expect(screen.getAllByText("—")).toHaveLength(3);
-    // Exportar desligado diz que a leitura falhou, nao "nada para exportar".
+    // Disabled export says the read failed, not "nothing to export".
     const exportButton = screen.getByRole("button", { name: "Export" });
     expect(exportButton).toBeDisabled();
     expect(exportButton).toHaveAccessibleDescription("Export is off because this data could not be loaded.");
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(agenda.reload).toHaveBeenCalledTimes(1);
     expect(screen.getByText("Loading scheduled sessions...")).toBeInTheDocument();
-    // A espera tem a forma dos cartoes de sessao, nao uma frase num cartao.
+    // The wait has the shape of the session cards, not a sentence in a card.
     expect(screen.getByText("Loading scheduled sessions...").closest('[role="status"]')).toHaveAttribute("data-skeleton", "cards");
   });
 
-  // Releitura que falha com a agenda na tela: as sessoes ficam, o aviso sobe e
-  // o "Try again" vem antes da lista (sem voltar ao "carregando").
-  it("releitura que falha mantem as sessoes na tela, com Try again", async () => {
+  // A re-read that fails with the schedule on screen: the sessions stay, the notice goes up and
+  // "Try again" comes before the list (without going back to "loading").
+  it("a re-read that fails keeps the sessions on screen, with Try again", async () => {
     agenda.params = "";
     agenda.events = [{
       id: "event-kept", courseId: "course-1", courseSlug: "course-1", courseTitle: "Existing course",
@@ -150,7 +150,7 @@ describe("TeacherEventStudio", () => {
     expect(screen.queryByText("Loading scheduled sessions...")).toBeNull();
   });
 
-  // Data e hora em dois campos, como na criacao do produto "Live event".
+  // Date and time in two fields, as in the creation of the "Live event" product.
   function fillWhen(date: string, time: string) {
     fireEvent.change(screen.getByLabelText("Date"), { target: { value: date } });
     fireEvent.change(screen.getByLabelText("Time"), { target: { value: time } });
@@ -166,16 +166,16 @@ describe("TeacherEventStudio", () => {
     await waitFor(() => expect(createCourseEvent).toHaveBeenCalledTimes(1));
   }
 
-  // Depois de marcar a sessao a pessoa ficava presa na Agenda, sem caminho
-  // para preco e publicacao. O servidor (publish_teacher_course) ainda exige
-  // uma aula com conteudo, entao o atalho da aula de boas-vindas vem junto.
-  it("depois de marcar a sessao mostra o proximo passo: preco e publicar, com a aula de boas-vindas", async () => {
+  // After scheduling the session the person was stuck on the Schedule, with no path
+  // to pricing and publishing. The server (publish_teacher_course) still requires
+  // a lesson with content, so the welcome lesson shortcut comes along.
+  it("after scheduling the session shows the next step: price and publish, with the welcome lesson", async () => {
     render(<TeacherEventStudio />);
     expect(screen.queryByRole("link", { name: "Set the price and publish" })).not.toBeInTheDocument();
     await scheduleSession();
 
     const next = await screen.findByRole("region", { name: "Session scheduled. Next: set the price and publish." });
-    // O quadro ja diz "Session scheduled": a linha de confirmacao nao repete.
+    // The tile already says "Session scheduled": the confirmation line does not repeat it.
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
     const pricing = within(next).getByRole("link", { name: "Set the price and publish" });
     expect(pricing).toHaveAttribute("href", "/teach/builder?courseId=event-product-1&tab=pricing");
@@ -187,9 +187,9 @@ describe("TeacherEventStudio", () => {
     expect(lesson).toHaveClass("button-outline");
   });
 
-  // F-04: o botao nao muda de largura ao gravar. "Saving..." continua escrito
-  // e vira o nome do botao; o "Schedule session" fica no lugar, escondido.
-  it("Schedule session vira Saving... na espera, sem perder o lugar do rotulo", async () => {
+  // F-04: the button does not change width when saving. "Saving..." is still written
+  // and becomes the button's name; "Schedule session" stays in place, hidden.
+  it("Schedule session becomes Saving... while waiting, without losing the label's place", async () => {
     let finish!: (id: string) => void;
     vi.mocked(createCourseEvent).mockReturnValueOnce(new Promise<string>((resolve) => { finish = resolve; }));
     render(<TeacherEventStudio />);
@@ -213,7 +213,7 @@ describe("TeacherEventStudio", () => {
     await act(async () => finish("event-1"));
   });
 
-  it("produto que ja tem aula: o proximo passo e so preco e publicar", async () => {
+  it("product that already has a lesson: the next step is only price and publish", async () => {
     agenda.productModules = [{ id: "m1", title: "Welcome", lessons: [{ id: "l1", title: "Hello", type: "text", description: "" }] }];
     render(<TeacherEventStudio />);
     await scheduleSession();
@@ -223,8 +223,8 @@ describe("TeacherEventStudio", () => {
     expect(within(next).queryByRole("link", { name: "Add a short welcome lesson" })).not.toBeInTheDocument();
   });
 
-  // Evento ao vivo publica sem aula (20261007010000): nada de aula de boas-vindas.
-  it("evento ao vivo: o proximo passo e so preco e publicar, sem aula", async () => {
+  // A live event publishes without a lesson (20261007010000): no welcome lesson.
+  it("live event: the next step is only price and publish, no lesson", async () => {
     agenda.productFormat = "live_event";
     render(<TeacherEventStudio />);
     await scheduleSession();
@@ -235,9 +235,9 @@ describe("TeacherEventStudio", () => {
     expect(within(next).queryByRole("link", { name: "Add a short welcome lesson" })).not.toBeInTheDocument();
   });
 
-  // Gratis nao tem preco: o atalho mandava para a aba de preco, onde a propria
-  // tela pergunta "quer cobrar?". O passo vira so publicar, na revisao.
-  it("produto gratis: o proximo passo e publicar, sem falar de preco", async () => {
+  // Free has no price: the shortcut sent people to the price tab, where the screen itself
+  // asks "want to charge?". The step becomes just publish, in the review.
+  it("free product: the next step is to publish, with no mention of price", async () => {
     agenda.productPaymentType = "free";
     render(<TeacherEventStudio />);
     await scheduleSession();
@@ -249,8 +249,8 @@ describe("TeacherEventStudio", () => {
     expect(within(next).getByRole("link", { name: "Add a short welcome lesson" })).toBeInTheDocument();
   });
 
-  // Em revisao o construtor abre so para leitura: nenhum atalho para la.
-  it("produto em revisao: nada de proximo passo", async () => {
+  // In review the builder opens read-only: no shortcut to it.
+  it("product under review: no next step", async () => {
     agenda.productStatus = "in_review";
     render(<TeacherEventStudio />);
     await scheduleSession();
@@ -259,14 +259,14 @@ describe("TeacherEventStudio", () => {
     expect(screen.queryByRole("region", { name: /Session scheduled/ })).not.toBeInTheDocument();
   });
 
-  it("produto ja publicado: nada de proximo passo", async () => {
+  it("product already published: no next step", async () => {
     agenda.productStatus = "published";
     render(<TeacherEventStudio />);
     await scheduleSession();
 
     await waitFor(() => expect(screen.queryByLabelText("Session title")).not.toBeInTheDocument());
     expect(screen.queryByRole("link", { name: "Set the price and publish" })).not.toBeInTheDocument();
-    // O formulario fechava sem nenhuma frase: agora diz que deu certo.
+    // The form closed without any sentence: now it says it worked.
     expect(screen.getByRole("status")).toHaveTextContent("Session scheduled.");
   });
 
@@ -276,7 +276,7 @@ describe("TeacherEventStudio", () => {
     const course = screen.getByRole("combobox", { name: "Course" });
     expect(course).toHaveValue("");
     expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
-    // Desligado diz por que (F-12).
+    // Disabled says why (F-12).
     expect(screen.getByRole("button", { name: "Continue" })).toHaveAccessibleDescription("Choose an available course");
     fillWhen("2027-03-14", "15:30");
     const form = course.closest("form");
@@ -360,12 +360,12 @@ describe("TeacherEventStudio", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Session updated.");
   });
 
-  // O estudio inteiro ainda fala ingles; so a data passou a seguir o idioma da
-  // pessoa, e a data invalida mostra o texto traduzido em vez de "Date pending".
-  it("na agenda, a data da sessao sai no idioma da pessoa e data invalida vira 'Fecha pendiente'", async () => {
-    // Data no futuro: a agenda abre no filtro "Upcoming", entao uma sessao
-    // passada nao estaria na lista. O que este teste prova (data no idioma da
-    // pessoa e o fallback da data invalida) nao muda com isso.
+  // The whole studio still speaks English; only the date now follows the language of the
+  // person, and the invalid date shows the translated text instead of "Date pending".
+  it("in the schedule, the session date comes out in the person's language and an invalid date becomes 'Fecha pendiente'", async () => {
+    // Date in the future: the schedule opens on the "Upcoming" filter, so a past
+    // session would not be in the list. What this test proves (date in the language of the
+    // person and the fallback of the invalid date) does not change because of that.
     const startsAt = "2027-03-14T15:30:00.000Z";
     const base = {
       courseId: "course-1",
@@ -390,9 +390,9 @@ describe("TeacherEventStudio", () => {
     expect(screen.getByText("Fecha pendiente")).toBeInTheDocument();
   });
 
-  // A professora digitava "7:00 PM" sem saber de quem era a hora, e os alunos
-  // estao em varios fusos dos EUA.
-  it("diz de quem e a hora e mostra a previa nos quatro fusos dos EUA antes de salvar", () => {
+  // The teacher typed "7:00 PM" without knowing whose time it was, and the learners
+  // are in several US time zones.
+  it("says whose time it is and shows the preview in the four US time zones before saving", () => {
     const real = Intl.DateTimeFormat.prototype.resolvedOptions;
     const zone = vi.spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions").mockImplementation(function (
       this: Intl.DateTimeFormat,
@@ -401,13 +401,13 @@ describe("TeacherEventStudio", () => {
     });
     render(<TeacherEventStudio />);
 
-    // O nome do fuso, com a cidade do id so entre parenteses: quem mora em
-    // Dallas nao le "Chicago" como se fosse o lugar dela.
+    // The time zone name, with the id's city only in parentheses: someone who lives in
+    // Dallas does not read "Chicago" as if it were their place.
     const line = "Time zone: Central Time (Chicago), from this computer";
     expect(screen.getByText(line)).toBeInTheDocument();
     expect(screen.getByLabelText("Date")).toHaveAccessibleDescription(line);
     expect(screen.getByLabelText("Time")).toHaveAccessibleDescription(line);
-    // Campos maiores, com o teclado certo de cada um.
+    // Larger fields, with the right keyboard for each one.
     expect(screen.getByLabelText("Date")).toHaveAttribute("type", "date");
     expect(screen.getByLabelText("Time")).toHaveAttribute("type", "time");
     expect(screen.getByLabelText("Date")).toHaveClass("field-input", "min-h-12", "text-base!");
@@ -423,7 +423,7 @@ describe("TeacherEventStudio", () => {
     expect(preview.textContent?.replace(/\s+/g, " ")).toMatch(/ ET · .+ CT · .+ MT · .+ PT$/);
   });
 
-  it("data e hora que ja passaram travam antes de salvar, com a frase ligada aos campos", () => {
+  it("a date and time that have already passed block before saving, with the sentence tied to the fields", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date(2027, 2, 14, 12, 0));
     try {
@@ -448,8 +448,8 @@ describe("TeacherEventStudio", () => {
     }
   });
 
-  // Prazo nao e reuniao: pedir um link de Zoom para ele nao fazia sentido.
-  it("prazo (Deadline) salva sem link; os outros tipos continuam pedindo", async () => {
+  // A deadline is not a meeting: asking for a Zoom link for it made no sense.
+  it("deadline (Deadline) saves without a link; the other types still ask for one", async () => {
     render(<TeacherEventStudio />);
     fireEvent.change(screen.getByRole("combobox", { name: "Session type" }), { target: { value: "deadline" } });
     fillWhen("2027-03-14", "15:30");
@@ -468,13 +468,13 @@ describe("TeacherEventStudio", () => {
     expect(screen.getByLabelText("External class link")).toBeRequired();
   });
 
-  it("o link abre o teclado de endereco e ganha o https:// que faltava ao sair do campo", async () => {
+  it("the link opens the address keyboard and gets the missing https:// when leaving the field", async () => {
     render(<TeacherEventStudio />);
     fillWhen("2027-03-14", "15:30");
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     const link = screen.getByLabelText("External class link");
-    // Sem type="url": a validacao do navegador barraria "zoom.us/j/123" antes
-    // do https:// do envio. O teclado de endereco vem do inputmode.
+    // Without type="url": the browser validation would block "zoom.us/j/123" before
+    // the https:// of the submit. The address keyboard comes from inputmode.
     expect(link).not.toHaveAttribute("type", "url");
     expect(link).toHaveAttribute("inputmode", "url");
     expect(link).toHaveAttribute("autocapitalize", "none");
@@ -489,9 +489,9 @@ describe("TeacherEventStudio", () => {
     await waitFor(() => expect(createCourseEvent).toHaveBeenCalledWith(expect.objectContaining({ externalUrl: "https://zoom.us/j/123" })));
   });
 
-  // Enter no campo (ou o toque no iOS que nao tira o foco) envia sem blur: o
-  // https:// entra no envio mesmo assim.
-  it("link sem esquema enviado com Enter, sem sair do campo, grava com https://", async () => {
+  // Enter in the field (or a tap on iOS that does not drop focus) submits without blur: the
+  // https:// goes into the submit anyway.
+  it("a link without a scheme submitted with Enter, without leaving the field, is saved with https://", async () => {
     render(<TeacherEventStudio />);
     fillWhen("2027-03-14", "15:30");
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
@@ -503,9 +503,9 @@ describe("TeacherEventStudio", () => {
     await waitFor(() => expect(createCourseEvent).toHaveBeenCalledWith(expect.objectContaining({ externalUrl: "https://zoom.us/j/456" })));
   });
 
-  // A sessao criada junto com o produto nasce com descricao vazia: a
-  // professora que so quer pôr o link nao pode ser barrada pelas 12 letras.
-  it("sessao que ja tinha descricao vazia salva so com o link; sessao nova exige a descricao", async () => {
+  // A session created together with the product starts with an empty description: a
+  // teacher who only wants to add the link cannot be blocked by the 12 letters.
+  it("a session that already had an empty description saves with only the link; a new session requires the description", async () => {
     agenda.params = "";
     agenda.events = [{
       id: "event-bare", courseId: "event-product-1", courseSlug: "event-product-1", courseTitle: "Live supervision intensive",
@@ -529,8 +529,8 @@ describe("TeacherEventStudio", () => {
     expect(screen.getByLabelText("Session description")).toBeRequired();
   });
 
-  // Grupo semanal: digitava tudo de novo a cada semana.
-  it("agendar outra igual abre o formulario preenchido uma semana depois e so grava ao confirmar", async () => {
+  // Weekly group: they used to retype everything every week.
+  it("scheduling another like it opens the form filled in a week later and only saves on confirm", async () => {
     agenda.params = "";
     agenda.events = [{
       id: "event-weekly", courseId: "course-1", courseSlug: "course-1", courseTitle: "Existing course",
@@ -559,7 +559,7 @@ describe("TeacherEventStudio", () => {
     expect(updateCourseEvent).not.toHaveBeenCalled();
   });
 
-  it("copiada de uma sessao antiga, a proxima cai na primeira semana que ainda nao passou", () => {
+  it("copied from an old session, the next one lands on the first week that has not passed yet", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date(2027, 2, 30, 12, 0));
     try {
@@ -580,23 +580,23 @@ describe("TeacherEventStudio", () => {
     }
   });
 
-  // F-14: cancelar e excluir abriam a caixa cinza do navegador ("OK /
-  // Cancel") e, depois de excluir, nada dizia que tinha dado certo.
-  describe("cancelar e excluir perguntam na janela da plataforma", () => {
+  // F-14: cancel and delete opened the browser's gray box ("OK /
+  // Cancel") and, after deleting, nothing said it had worked.
+  describe("cancel and delete ask in the platform dialog", () => {
     const session: CourseEvent = {
       id: "event-live", courseId: "course-1", courseSlug: "course-1", courseTitle: "Existing course",
       ownerId: "teacher-1", title: "Live $& session", description: "", type: "live_class",
       status: "scheduled", startsAt: "2027-03-14T15:30:00.000Z",
       externalUrl: "https://meet.example.com/live", recordingAssetId: null,
     };
-    // O jsdom não tem showModal/close: o stub faz o mínimo que o navegador faz.
+    // jsdom does not have showModal/close: the stub does the minimum that the browser does.
     const originalShow = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal");
     const originalClose = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "close");
 
     beforeEach(() => {
       agenda.params = "";
       agenda.events = [session];
-      // Só o Date é falso: o confirmar ignora cliques nos primeiros 500ms.
+      // Only Date is fake: the confirm ignores clicks in the first 500ms.
       vi.useFakeTimers({ toFake: ["Date"] });
       Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value() { this.setAttribute("open", ""); } });
       Object.defineProperty(HTMLDialogElement.prototype, "close", { configurable: true, value() { if (!this.hasAttribute("open")) return; this.removeAttribute("open"); this.dispatchEvent(new Event("close")); } });
@@ -612,33 +612,33 @@ describe("TeacherEventStudio", () => {
     it.each([
       {
         trigger: "Cancel session", title: "Cancel this session?", confirm: "Cancel session", action: cancelCourseEvent,
-        // A frase diz o que e verdade: o aluno ve a sessao marcada como
-        // cancelada, na agenda e na aba da sala, ate uma semana depois da data,
-        // e ninguem e avisado sozinho.
+        // The sentence says what is true: the learner sees the session marked as
+        // canceled, in the schedule and on the room tab, until a week after the date,
+        // and nobody is notified automatically.
         sentence: "Cancel \"Live $& session\"? Learners see it marked as cancelled in their live sessions agenda and in the course's Live sessions tab until a week after its date. They are not notified automatically, so let them know.", notice: "Session cancelled.",
       },
       {
         trigger: "Delete", title: "Delete this session?", confirm: "Delete session", action: deleteCourseEvent,
         sentence: "Permanently delete \"Live $& session\"? This cannot be undone.", notice: "Session deleted.",
       },
-    ])("$trigger: mostra a frase, nada acontece sem confirmar e confirmar roda uma vez", async ({ trigger, title, confirm, action, sentence, notice }) => {
+    ])("$trigger: shows the phrase, nothing happens without confirming and confirming runs once", async ({ trigger, title, confirm, action, sentence, notice }) => {
       const nativeConfirm = vi.spyOn(window, "confirm");
       vi.mocked(action).mockResolvedValue(undefined);
       render(<TeacherEventStudio />);
 
-      // (a) a frase de sempre, agora na janela da plataforma;
+      // (a) the usual sentence, now in the platform dialog;
       fireEvent.click(screen.getByRole("button", { name: trigger }));
       const dialog = screen.getByRole("dialog", { name: title });
       expect(dialog).toHaveTextContent(sentence);
       expect(nativeConfirm).not.toHaveBeenCalled();
-      // (b) desistir não faz nada;
+      // (b) giving up does nothing;
       fireEvent.click(within(dialog).getByRole("button", { name: "Keep session" }));
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
       expect(action).not.toHaveBeenCalled();
       expect(screen.queryByRole("status")).not.toBeInTheDocument();
 
-      // (c) confirmar chama a ação uma vez, com a mesma sessão. O clique
-      // colado na abertura (toque duplo) é descartado.
+      // (c) confirming calls the action once, with the same session. A click
+      // stuck to the opening (double tap) is discarded.
       fireEvent.click(screen.getByRole("button", { name: trigger }));
       const again = screen.getByRole("dialog", { name: title });
       fireEvent.click(within(again).getByRole("button", { name: confirm }));
@@ -646,29 +646,29 @@ describe("TeacherEventStudio", () => {
       vi.advanceTimersByTime(CONFIRM_GUARD_MS);
       fireEvent.click(within(again).getByRole("button", { name: confirm }));
       expect(action).toHaveBeenCalledExactlyOnceWith("event-live");
-      // e diz que deu certo.
+      // and says it worked.
       expect(await screen.findByRole("status")).toHaveTextContent(notice);
       await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
       expect(action).toHaveBeenCalledOnce();
       nativeConfirm.mockRestore();
     });
 
-    it("o aviso de sucesso some quando a pessoa volta a mexer na agenda", async () => {
+    it("the success notice disappears when the person edits the schedule again", async () => {
       render(<TeacherEventStudio />);
       fireEvent.click(screen.getByRole("button", { name: "Cancel session" }));
       vi.advanceTimersByTime(CONFIRM_GUARD_MS);
       fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel session" }));
       expect(await screen.findByRole("status")).toHaveTextContent("Session cancelled.");
 
-      // Editar outra coisa: o "Session cancelled." antigo não fica ao lado do
-      // formulário (nem de um erro novo dele).
+      // Editing something else: the old "Session cancelled." does not stay next to the
+      // form (nor next to a new error from it).
       fireEvent.click(screen.getByRole("button", { name: "Edit" }));
       expect(screen.queryByRole("status")).not.toBeInTheDocument();
     });
 
-    // Nome e e-mail ja chegavam na leitura das respostas, mas a tela so
-    // mostrava "3 going". E excluir apagava as respostas sem dizer nada.
-    it("mostra quem respondeu, exporta nome, e-mail e resposta, e excluir diz quantos perdem a resposta", async () => {
+    // Name and email already arrived in the responses read, but the screen only
+    // showed "3 going". And deleting erased the responses without saying anything.
+    it("shows who responded, exports name, email and response, and delete says how many lose their response", async () => {
       const rsvp = { eventId: "event-live", courseSlug: "course-1", userId: "u" };
       vi.mocked(subscribeToCourseEventRsvps).mockImplementationOnce((_eventId, onData) => {
         onData([
@@ -687,7 +687,7 @@ describe("TeacherEventStudio", () => {
       expect(screen.getByText("2 going")).toBeInTheDocument();
       const answers = screen.getByText("See who answered").closest("details")!;
       fireEvent.click(screen.getByText("See who answered"));
-      // Quem vai primeiro, depois quem nao vai.
+      // Those who are going first, then those who are not.
       expect(within(answers).getAllByRole("listitem").map((item) => item.textContent)).toEqual([
         "Ana Lima · Going",
         "Carla · Going",
@@ -715,7 +715,7 @@ describe("TeacherEventStudio", () => {
       Reflect.deleteProperty(URL, "revokeObjectURL");
     });
 
-    it("quando excluir falha, o erro aparece onde já aparecia e não há aviso de sucesso", async () => {
+    it("when delete fails, the error appears where it already did and there is no success notice", async () => {
       vi.mocked(deleteCourseEvent).mockRejectedValueOnce(new Error("Delete unavailable"));
       render(<TeacherEventStudio />);
 
@@ -730,11 +730,11 @@ describe("TeacherEventStudio", () => {
     });
   });
 
-  // A hora repetida de novembro: 09:30Z em 1/nov/2026 e 1:30 AM PST em Los
-  // Angeles, e "01:30" relido vira 1:30 AM PDT (08:30Z). Editar so o titulo
-  // salvava a sessao uma hora antes. Fica por ultimo no arquivo: o fuso do
-  // processo muda.
-  it("editar sem mexer na data devolve o instante gravado, mesmo na hora repetida de novembro", async () => {
+  // The repeated hour of November: 09:30Z on Nov 1, 2026 is 1:30 AM PST in Los
+  // Angeles, and "01:30" read back becomes 1:30 AM PDT (08:30Z). Editing only the title
+  // saved the session an hour earlier. It goes last in the file: the process
+  // time zone changes.
+  it("editing without touching the date returns the stored instant, even on the repeated hour of November", async () => {
     vi.stubEnv("TZ", "America/Los_Angeles");
     try {
       expect(new Date("2026-11-01T09:30:00.000Z").getTimezoneOffset()).toBe(480);

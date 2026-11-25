@@ -24,8 +24,8 @@ export function TeacherMembersAreaHub() {
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-  // A primeira leitura que falhou nao e "nenhum espaco ainda": a lista nao
-  // mostra o vazio, e o aviso ganha "Try again".
+  // A first read that failed is not "no space yet": the list does not
+  // show the empty state, and the notice gets "Try again".
   const [loaded, setLoaded] = useState(false);
   const subscription = useRef<{ reload: () => Promise<void> } | null>(null);
 
@@ -56,7 +56,7 @@ export function TeacherMembersAreaHub() {
 
   function retryLoad() {
     setError("");
-    // Com a lista na tela ela fica; so a primeira leitura volta ao esqueleto.
+    // With the list on screen it stays; only the first read goes back to the skeleton.
     if (!loaded) setIsLoading(true);
     void subscription.current?.reload();
   }
@@ -91,7 +91,7 @@ export function TeacherMembersAreaHub() {
         </div>
       ) : null}
 
-      {/* A área do criador junta todos os produtos; os espaços abaixo são de cada produto. */}
+      {/* The creator area gathers all products; the spaces below belong to each product. */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-[var(--color-ink)]">{t("teacherMembers.creatorAreaTitle")}</p>
@@ -103,8 +103,8 @@ export function TeacherMembersAreaHub() {
       </div>
 
       <section aria-labelledby="members-products-title">
-        {/* O seletor de uma entre poucas opcoes da casa (o mesmo do periodo
-            dos relatorios), no lugar do bloco azul cheio feito so aqui. */}
+        {/* The selector for one among a few options, the house one (the same as the reports
+            period), in place of the full blue block made only here. */}
         <div className="mb-5">
           <PeriodTabs
             options={["members", "communities"] as const}
@@ -196,8 +196,8 @@ export function TeacherMembersAreaHub() {
                 <div className="flex flex-wrap gap-2 lg:justify-end">
                   <Link
                     href={`/teach/builder/${encodeURIComponent(course.id)}/preview`}
-                    // Acao de linha em contorno: com um "Preview" solido por
-                    // produto, a lista tinha um botao forte em cada linha.
+                    // Outline row action: with a solid "Preview" per
+                    // product, the list had a strong button on every row.
                     className={buttonClasses({ variant: "outline", size: "sm" })}
                   >
                     <ExternalLink aria-hidden="true" size={14} strokeWidth={1.8} />

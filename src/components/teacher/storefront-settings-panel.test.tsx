@@ -199,7 +199,7 @@ describe("StorefrontSettingsPanel", () => {
     });
 
     expect(saveButton).toBeDisabled();
-    // Desligado, mas dizendo por que (antes so ficava cinza).
+    // Disabled, but saying why (before, it was only grayed out).
     expect(saveButton).toHaveAccessibleDescription("You can save when the image finishes uploading.");
 
     await act(async () => {
@@ -281,15 +281,15 @@ describe("StorefrontSettingsPanel", () => {
     expect(
       screen.getByText(/old image could not be removed/i),
     ).toBeInTheDocument();
-    // F-05: o "salvo" nasce ao lado do botão (mesma linha, depois dele) e é
-    // anunciado; acima, empurrava o botão recém-clicado para baixo.
+    // F-05: the "saved" message appears next to the button (same line, after it) and is
+    // announced; above it, it pushed the just-clicked button down.
     const saved = screen.getByRole("status");
     expect(saved).toHaveTextContent("Storefront saved.");
     expect(saved.classList.contains("info-notice")).toBe(false);
     expect(saved.parentElement).toBe(screen.getByRole("button", { name: "Save storefront" }).parentElement);
 
-    // Editar de novo tira o "salvo" (a frase só vale para o que foi gravado);
-    // o aviso de erro da limpeza fica, e nada é gravado por isso.
+    // Editing again removes the "saved" message (the sentence only holds for what was saved);
+    // the cleanup error notice stays, and nothing is saved because of it.
     const saves = mocks.updateUserStorefront.mock.calls.length;
     fireEvent.change(screen.getByLabelText("Tagline"), { target: { value: "A new line" } });
     expect(screen.queryByText("Storefront saved.")).toBeNull();
@@ -297,10 +297,10 @@ describe("StorefrontSettingsPanel", () => {
     expect(mocks.updateUserStorefront.mock.calls.length).toBe(saves);
   });
 
-  // A rejeição era escrita no rodapé do formulário, ~120 linhas abaixo do
-  // botão — fora da tela no celular — e sem role="alert", então nem o leitor
-  // de tela avisava. O botão voltava a "Upload" como se nada tivesse acontecido.
-  it("anuncia a rejeição do arquivo ao lado do botão que a disparou", async () => {
+  // The rejection was written in the form footer, ~120 lines below the
+  // button — off screen on a phone — and without role="alert", so not even the screen
+  // reader announced it. The button went back to "Upload" as if nothing had happened.
+  it("announces the file rejection next to the button that triggered it", async () => {
     render(<StorefrontSettingsPanel />);
 
     const logoInput = await screen.findByLabelText("Upload storefront logo");
@@ -310,7 +310,7 @@ describe("StorefrontSettingsPanel", () => {
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Use a JPG, PNG, or WebP under 5 MB image.");
-    // Fica no campo do logo: vem ANTES do campo da capa, não no fim do form.
+    // It stays in the logo field: it comes BEFORE the cover field, not at the end of the form.
     const heroInput = screen.getByLabelText("Upload storefront hero image");
     expect(
       alert.compareDocumentPosition(heroInput) & Node.DOCUMENT_POSITION_FOLLOWING,
@@ -318,7 +318,7 @@ describe("StorefrontSettingsPanel", () => {
     expect(mocks.uploadUserStorefrontImage).not.toHaveBeenCalled();
   });
 
-  it("mostra a falha do envio no campo da capa, antes do select de tema", async () => {
+  it("shows the upload failure in the cover field, before the theme select", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     mocks.uploadUserStorefrontImage.mockRejectedValueOnce(
       new Error("Storage is offline"),
@@ -340,10 +340,10 @@ describe("StorefrontSettingsPanel", () => {
     ).toBeTruthy();
   });
 
-  // O painel mostrava "Uploading 0%" o envio inteiro: o Storage não informa
-  // progresso, e 0% parado se lia como "travou". Mesmo contrato do #138 —
-  // sem número do transporte, não há número na tela.
-  it("não inventa porcentagem enquanto o logo sobe", async () => {
+  // The panel showed "Uploading 0%" during the whole upload: Storage does not report
+  // progress, and a stuck 0% read as "frozen". Same contract as #138 —
+  // no number from the transport, no number on screen.
+  it("does not invent a percentage while the logo uploads", async () => {
     mocks.uploadUserStorefrontImage.mockImplementation(
       (
         _uid: string,
@@ -373,9 +373,9 @@ describe("StorefrontSettingsPanel", () => {
     expect(status).not.toHaveTextContent("%");
   });
 
-  // B-05: logo e capa desenham a casca única de imagem. Cada um segue com o
-  // próprio envio, tipos, limite, remover e moldura; o Save manda o mesmo.
-  describe("logo e capa no campo único de imagem", () => {
+  // B-05: logo and cover draw the single image shell. Each one keeps its
+  // own upload, types, limit, remove and frame; Save sends the same thing.
+  describe("logo and cover in the single image field", () => {
     const logoUrl = "https://media.example/storefront-logo.png?v=1";
     const heroUrl = "https://media.example/storefront-hero.png?v=1";
 
@@ -389,7 +389,7 @@ describe("StorefrontSettingsPanel", () => {
     it.each([
       ["logo", "Storefront logo", "Upload storefront logo", ".aspect-square.w-24", true],
       ["hero", "Storefront cover", "Upload storefront hero image", ".aspect-\\[16\\/7\\]", false],
-    ] as const)("%s: mesmo accept, mesma moldura, a escolha zerada e o arquivo inteiro no envio", async (kind, title, inputLabel, frame, contain) => {
+    ] as const)("%s: same accept, same frame, the choice reset and the whole file on upload", async (kind, title, inputLabel, frame, contain) => {
       givenImages({ logoUrl, heroImageUrl: heroUrl });
       mocks.uploadUserStorefrontImage.mockReturnValueOnce(new Promise<string>(() => undefined));
       render(<StorefrontSettingsPanel />);
@@ -405,7 +405,7 @@ describe("StorefrontSettingsPanel", () => {
       expect(image?.classList.contains("object-contain")).toBe(contain);
       expect(image?.classList.contains("object-cover")).toBe(!contain);
 
-      // A escolha é zerada no onChange: o mesmo arquivo pode vir de novo.
+      // The choice is reset in onChange: the same file can come in again.
       let resetTo: string | undefined;
       Object.defineProperty(input, "value", {
         configurable: true,
@@ -422,7 +422,7 @@ describe("StorefrontSettingsPanel", () => {
     it.each([
       ["logo", "Upload storefront logo", "Remove storefront logo"],
       ["hero", "Upload storefront hero image", "Remove storefront hero image"],
-    ] as const)("%s: travado e sem Remove enquanto sobe; o Remove volta depois de uma falha", async (_kind, inputLabel, removeLabel) => {
+    ] as const)("%s: locked and no Remove while uploading; Remove comes back after a failure", async (_kind, inputLabel, removeLabel) => {
       vi.spyOn(console, "error").mockImplementation(() => undefined);
       givenImages({ logoUrl, heroImageUrl: heroUrl });
       let fail: (reason: Error) => void = () => undefined;
@@ -446,7 +446,7 @@ describe("StorefrontSettingsPanel", () => {
       ["só com o logo", { logoUrl }],
       ["só com a capa", { heroImageUrl: heroUrl }],
       ["com as duas", { logoUrl, heroImageUrl: heroUrl }],
-    ] as const)("Save manda o mesmo pacote %s", async (_state, branding: { logoUrl?: string; heroImageUrl?: string }) => {
+    ] as const)("Save sends the same payload %s", async (_state, branding: { logoUrl?: string; heroImageUrl?: string }) => {
       givenImages(branding);
       render(<StorefrontSettingsPanel />);
       fireEvent.click(await screen.findByRole("button", { name: "Save storefront" }));
@@ -462,7 +462,7 @@ describe("StorefrontSettingsPanel", () => {
       expect(mocks.removeUserStorefrontImage).not.toHaveBeenCalled();
     });
 
-    it("Save depois de trocar o logo e tirar a capa: o mesmo pacote e a limpeza só da capa", async () => {
+    it("Save after swapping the logo and removing the cover: the same payload and the cleanup of only the cover", async () => {
       givenImages({ logoUrl, heroImageUrl: heroUrl });
       const newLogo = "https://media.example/storefront-logo.png?v=2";
       mocks.uploadUserStorefrontImage.mockResolvedValueOnce(newLogo);
@@ -483,7 +483,7 @@ describe("StorefrontSettingsPanel", () => {
       expect(mocks.removeUserStorefrontImage).toHaveBeenCalledOnce();
     });
 
-    it("escolher uma imagem segue tirando o \"salvo\" (o campo continua dentro do formulário)", async () => {
+    it("choosing an image still clears the \"saved\" state (the field stays inside the form)", async () => {
       render(<StorefrontSettingsPanel />);
       fireEvent.click(await screen.findByRole("button", { name: "Save storefront" }));
       expect(await screen.findByText("Storefront saved.")).toBeInTheDocument();
@@ -495,8 +495,8 @@ describe("StorefrontSettingsPanel", () => {
     });
   });
 
-  describe("idioma real da vitrine", () => {
-    it.each(["en", "es"] as const)("traduz o formulário desde %s e preserva rascunho, ordem, destaque e dados autorais", async (initialLocale) => {
+  describe("real storefront language", () => {
+    it.each(["en", "es"] as const)("translates the form from %s and preserves the draft, order, featured placement and authored data", async (initialLocale) => {
       const author = "Autoria $$ e $&";
       const firstTitle = "Curso $$ e $& de autoria";
       const secondTitle = "Outro curso autoral";
@@ -563,7 +563,7 @@ describe("StorefrontSettingsPanel", () => {
       }));
     });
 
-    it("mantém os uploads concorrentes e traduz a conclusão após EN↔ES", async () => {
+    it("keeps concurrent uploads and translates the completion after EN↔ES", async () => {
       let finishLogo: (url: string) => void = () => undefined;
       let finishHero: (url: string) => void = () => undefined;
       const logoUpload = new Promise<string>((resolve) => { finishLogo = resolve; });
@@ -600,7 +600,7 @@ describe("StorefrontSettingsPanel", () => {
       expect(mocks.updateUserStorefront).not.toHaveBeenCalled();
     });
 
-    it("retraduz erros visíveis e preserva os limites de arquivo, cor e tagline", async () => {
+    it("re-translates visible errors and keeps the file, color and tagline limits", async () => {
       renderWithLocale();
       fireEvent.change(await screen.findByLabelText("Upload storefront logo"), {
         target: { files: [new File([], "empty.png", { type: "image/png" })] },
@@ -620,7 +620,7 @@ describe("StorefrontSettingsPanel", () => {
       expect(mocks.getUserProfile).toHaveBeenCalledOnce();
     });
 
-    it("bloqueia alterações após falha de carga e recupera os dados salvos só no retry, preservando EN↔ES", async () => {
+    it("blocks changes after a load failure and recovers the saved data only on retry, preserving EN↔ES", async () => {
       const savedProfile = {
         displayName: "Autoria $$ e $&",
         storefront: {
@@ -665,7 +665,7 @@ describe("StorefrontSettingsPanel", () => {
 
       const { container } = renderWithLocale();
       expect(screen.getByText("Loading storefront settings...")).toBeInTheDocument();
-      // T-07: a forma da tela (prévia e campos), não uma frase solta.
+      // T-07: the shape of the screen (preview and fields), not a loose sentence.
       expect(screen.getByText("Loading storefront settings...").closest('[role="status"]'))
         .toHaveAttribute("data-skeleton", "storefront");
       expectNoStorefrontActions();
@@ -722,7 +722,7 @@ describe("StorefrontSettingsPanel", () => {
       expectNoWrites();
     });
 
-    it("não salva uma lista de cursos desconhecida e recupera só a subscription sem perder o rascunho", async () => {
+    it("does not save an unknown course list and recovers only the subscription without losing the draft", async () => {
       const savedBranding = {
         accentColor: "#2468ab",
         logoUrl: "https://media.example/saved-logo.png?v=1",
@@ -789,8 +789,8 @@ describe("StorefrontSettingsPanel", () => {
       expect(mocks.getUserProfile).toHaveBeenCalledOnce();
       expect(mocks.subscribeToTeacherCourses).toHaveBeenCalledOnce();
 
-      // "Intentar de nuevo" le de novo pela mesma inscricao (reload): nao
-      // desliga o canal nem abre outra inscricao.
+      // "Intentar de nuevo" reads again through the same subscription (reload): it does not
+      // shut down the channel or open another subscription.
       fireEvent.click(screen.getByRole("button", { name: "Intentar de nuevo" }));
       await waitFor(() => expect(reloadCourses).toHaveBeenCalledOnce());
       expect(mocks.subscribeToTeacherCourses).toHaveBeenCalledOnce();
@@ -825,7 +825,7 @@ describe("StorefrontSettingsPanel", () => {
       expect(mocks.removeUserStorefrontImage).not.toHaveBeenCalled();
     });
 
-    it("traduz remoção e limpeza posterior sem apagar o objeto antes da persistência", async () => {
+    it("translates removal and later cleanup without deleting the object before persistence", async () => {
       mocks.getUserProfile.mockResolvedValueOnce({
         displayName: "Autor $$ e $&",
         storefront: { branding: { themePreset: "default", logoUrl: "https://media.example/logo.png" }, showcase: {} },
@@ -854,7 +854,7 @@ describe("StorefrontSettingsPanel", () => {
       expect(mocks.getUserProfile).toHaveBeenCalledOnce();
     });
 
-    it("traduz falha ao salvar e usa fallback de upload sem vazar texto técnico", async () => {
+    it("translates save failure and uses the upload fallback without leaking technical text", async () => {
       vi.spyOn(console, "error").mockImplementation(() => undefined);
       mocks.uploadUserStorefrontImage.mockRejectedValueOnce(new Error("LOCAL TEST: storage backend detail"));
       mocks.updateUserStorefront.mockRejectedValueOnce(new Error("LOCAL TEST: save failed"));
@@ -873,10 +873,10 @@ describe("StorefrontSettingsPanel", () => {
     });
   });
 
-  // O que a pessoa sofria: nao havia caminho daqui para a vitrine publica, a
-  // pagina nunca dizia se ela estava no ar, e a frase sobre "um passo
-  // posterior" ficava mesmo com curso ja publicado — ou seja, mentia.
-  describe("estado da vitrine publica", () => {
+  // What the person suffered: there was no path from here to the public storefront, the
+  // page never said whether it was live, and the sentence about "a later
+  // step" stayed even with a course already published — that is, it lied.
+  describe("public storefront state", () => {
     function givenPublishedCourses(titles: string[]) {
       mocks.subscribeToTeacherCourses.mockImplementation(
         (_uid: string, onData: (courses: unknown[]) => void) => {
@@ -895,7 +895,7 @@ describe("StorefrontSettingsPanel", () => {
       );
     }
 
-    it("leva para a pagina publica e diz que ela esta publicada", async () => {
+    it("links to the public page and says it is published", async () => {
       givenPublishedCourses(["Facilitacao para grupos"]);
 
       render(<StorefrontSettingsPanel />);
@@ -907,7 +907,7 @@ describe("StorefrontSettingsPanel", () => {
       expect(screen.queryByText(/goes live in a later step/)).not.toBeInTheDocument();
     });
 
-    it("sem curso publicado, avisa que ainda nao esta no ar e mantem a frase do passo posterior", async () => {
+    it("with no published course, warns that it is not live yet and keeps the later-step sentence", async () => {
       render(<StorefrontSettingsPanel />);
 
       expect(await screen.findByText("Not published yet")).toBeInTheDocument();
@@ -915,7 +915,7 @@ describe("StorefrontSettingsPanel", () => {
       expect(screen.getByText("No published course yet")).toBeInTheDocument();
     });
 
-    it("a previa mostra nome, resumo, cor e os cursos que a vitrine exibe", async () => {
+    it("the preview shows the name, summary, color and the courses the storefront displays", async () => {
       mocks.getUserProfile.mockResolvedValue({
         displayName: "Dr. Ana Silva",
         storefront: {

@@ -8,13 +8,13 @@ import { CourseManageHub } from "@/components/teacher/course-manage-hub";
 import { TeacherCourseStudio } from "@/components/teacher/teacher-course-studio";
 import type { TeacherCourse } from "@/domain/teacher-course";
 
-// O que a pessoa sofria: o professor so conseguia apagar RASCUNHO, e so pelo ⋮
-// da lista. No hub do produto — a tela onde ele passa o dia — nao havia acao
-// nenhuma, e um curso publicado so saia do ar se um admin despublicasse.
+// What the person suffered: the teacher could only delete a DRAFT, and only via the ⋮
+// on the list. In the product hub — the screen where they spend the day — there was no action
+// at all, and a published course only went offline if an admin unpublished it.
 //
-// Estas provas cobrem a entrada nova (o menu no cabecalho do hub, no mesmo
-// lugar do caret da Hotmart), o modal que troca de texto conforme o curso tem
-// ou nao comprador, e os dois destinos que o servidor devolve.
+// These tests cover the new entry point (the menu in the hub header, in the same
+// place as the Hotmart caret), the modal that changes text depending on whether the course has
+// a buyer or not, and the two outcomes the server returns.
 
 const mocks = vi.hoisted(() => {
   const course: TeacherCourse = {
@@ -34,8 +34,8 @@ const mocks = vi.hoisted(() => {
 
   return {
     course,
-    // O MESMO objeto em todo render: um usuario novo por render reinscreve os
-    // efeitos e entra em laco.
+    // The SAME object on every render: a new user per render resubscribes the
+    // effects and enters a loop.
     user: { uid: "teacher-1", displayName: "Patricia", roles: ["teacher"] },
     router: { push: vi.fn(), replace: vi.fn(), refresh: vi.fn() },
     searchParams: new URLSearchParams(),
@@ -142,7 +142,7 @@ async function abreModalDoHub() {
   const menu = await abreMenuDoHub();
   fireEvent.click(within(menu).getByRole("menuitem", { name: "Delete course" }));
   const dialog = await screen.findByRole("dialog", { name: "Delete Facilitation foundations" });
-  // O modal so libera a confirmacao depois de saber quantos compradores existem.
+  // The modal only enables the confirmation after it knows how many buyers exist.
   await waitFor(() => expect(mocks.getCourseAudience).toHaveBeenCalledWith("course-1"));
   await waitFor(() => expect(within(dialog).queryByText("Remove product")).toBeNull());
   return dialog;
@@ -159,10 +159,10 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
-describe("hub do curso — entrada de excluir/arquivar", () => {
-  // A Hotmart poe a acao no caret ao lado de "Trocar Produto". Aqui ela fica no
-  // mesmo lugar: ao lado do seletor de produto e do "Edit in Builder".
-  it("oferece novo produto, prévia e excluir, nessa ordem, no cabeçalho", async () => {
+describe("course hub — delete/archive entry point", () => {
+  // Hotmart puts the action in the caret next to "Trocar Produto". Here it sits in the
+  // same place: next to the product selector and "Edit in Builder".
+  it("offers new product, preview and delete, in that order, in the header", async () => {
     const menu = await abreMenuDoHub();
     const itens = within(menu)
       .getAllByRole("menuitem")
@@ -178,9 +178,9 @@ describe("hub do curso — entrada de excluir/arquivar", () => {
     ).toHaveAttribute("href", "/teach/builder/course-1/preview");
   });
 
-  // O ⋮ da lista chamava `delete_teacher_course_draft` e sumia fora de
-  // rascunho. Agora ele abre o MESMO modal, para um curso publicado inclusive.
-  it("a lista de produtos abre a mesma ação, mesmo com o curso publicado", async () => {
+  // The list's ⋮ called `delete_teacher_course_draft` and vanished for anything that is not a
+  // draft. Now it opens the SAME modal, for a published course too.
+  it("the product list opens the same action, even with the course published", async () => {
     renderEn(<TeacherCourseStudio />);
     fireEvent.click(await screen.findByRole("button", { name: MENU_TRIGGER }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Delete" }));
@@ -189,10 +189,10 @@ describe("hub do curso — entrada de excluir/arquivar", () => {
     await waitFor(() => expect(mocks.getCourseAudience).toHaveBeenCalledWith("course-1"));
   });
 
-  // "Comprei e não entrou": o professor precisa de um número para procurar.
-  // O id de curso de verdade é UUID e sai curto (ver short-id.test); o deste
-  // teste ("course-1") não é, então sai inteiro.
-  it("a lista e o painel do produto mostram o ID, com copiar", async () => {
+  // "I bought and did not get in": the teacher needs a number to search for.
+  // A real course id is a UUID and comes out short (see short-id.test); this
+  // test's ("course-1") is not, so it comes out whole.
+  it("the list and the product panel show the ID, with copy", async () => {
     const list = renderEn(<TeacherCourseStudio />);
     expect(await screen.findByRole("button", { name: "Copy course-1" })).toBeInTheDocument();
     expect(screen.getByText("Product ID")).toBeInTheDocument();
@@ -204,11 +204,11 @@ describe("hub do curso — entrada de excluir/arquivar", () => {
   });
 });
 
-describe("o menu abre para dentro da tela", () => {
-  // jsdom nao mede layout: o retangulo do gatilho e a largura da janela sao
-  // simulados. O que se prova e a conta — um menu de 224 px nunca nasce fora
-  // da janela, por nenhum dos dois lados, e no desktop alinha a direita do
-  // gatilho como sempre alinhou.
+describe("the menu opens inward on the screen", () => {
+  // jsdom does not measure layout: the trigger's rectangle and the window width are
+  // simulated. What is proven is the math — a 224 px menu is never born outside
+  // the window, on either side, and on desktop it aligns to the right of the
+  // trigger as it always did.
   const MENU = 224;
   const GATILHO = 44;
 
@@ -232,14 +232,14 @@ describe("o menu abre para dentro da tela", () => {
     };
   }
 
-  // Borda esquerda do menu em coordenadas da janela: o gatilho esta em `left`
-  // e o menu e posicionado em relacao a ele.
+  // Left edge of the menu in window coordinates: the trigger is at `left`
+  // and the menu is positioned relative to it.
   async function bordaEsquerdaDoMenu(left: number) {
     const menu = await abreMenuDoHub();
     return left + Number.parseFloat(menu.style.left);
   }
 
-  it("no celular, com o gatilho na borda esquerda, o menu começa a 8 px da borda", async () => {
+  it("on the phone, with the trigger on the left edge, the menu starts 8 px from the edge", async () => {
     const desfaz = simula(95, 390);
     try {
       expect(await bordaEsquerdaDoMenu(95)).toBe(8);
@@ -248,7 +248,7 @@ describe("o menu abre para dentro da tela", () => {
     }
   });
 
-  it("no celular, com o gatilho na borda direita, o menu não passa da janela", async () => {
+  it("on the phone, with the trigger on the right edge, the menu does not go past the window", async () => {
     const desfaz = simula(340, 390);
     try {
       const x = await bordaEsquerdaDoMenu(340);
@@ -259,7 +259,7 @@ describe("o menu abre para dentro da tela", () => {
     }
   });
 
-  it("no desktop, com o gatilho na borda direita, o menu alinha à direita dele", async () => {
+  it("on desktop, with the trigger on the right edge, the menu aligns to its right", async () => {
     const desfaz = simula(1337, 1440);
     try {
       expect((await bordaEsquerdaDoMenu(1337)) + MENU).toBe(1337 + GATILHO);
@@ -269,10 +269,10 @@ describe("o menu abre para dentro da tela", () => {
   });
 });
 
-describe("modal de excluir/arquivar — o texto segue o dado", () => {
-  // O modal abria dizendo "Delete" em vermelho e virava "Archive" em azul
-  // quando a contagem chegava. Antes dela: texto neutro e confirmar travado.
-  it("enquanto a contagem nao chega, nao promete apagar nem arquivar", async () => {
+describe("delete/archive dialog — the text follows the data", () => {
+  // The modal opened saying "Delete" in red and became "Archive" in blue
+  // when the count arrived. Before it: neutral text and confirm locked.
+  it("while the count has not arrived, does not promise to delete or archive", async () => {
     let answer!: (audience: { enrollments: number; orders: number; subscriptions: number }) => void;
     mocks.getCourseAudience.mockReturnValue(new Promise((resolve) => { answer = resolve; }));
     const menu = await abreMenuDoHub();
@@ -292,7 +292,7 @@ describe("modal de excluir/arquivar — o texto segue o dado", () => {
     expect(within(dialog).queryByText("Remove product")).toBeNull();
   });
 
-  it("sem comprador, avisa que a exclusão é permanente", async () => {
+  it("with no buyer, warns that the deletion is permanent", async () => {
     const dialog = await abreModalDoHub();
 
     expect(within(dialog).getByText("Delete this course?")).toBeInTheDocument();
@@ -305,9 +305,9 @@ describe("modal de excluir/arquivar — o texto segue o dado", () => {
     expect(within(dialog).queryByRole("button", { name: "Archive course" })).toBeNull();
   });
 
-  // Onda G2b: o que some junto vem escrito antes do clique, e o botão final
-  // parece perigo (vermelho cheio), não um contorno vermelho em fundo branco.
-  it("sem comprador, lista o que some, diz quando a limpeza começa e confirma em vermelho cheio", async () => {
+  // Wave G2b: what goes away with it is written before the click, and the final button
+  // looks like danger (solid red), not a red outline on a white background.
+  it("with no buyer, lists what goes away, says when the cleanup starts and confirms in solid red", async () => {
     const dialog = await abreModalDoHub();
 
     await within(dialog).findByText("This also deletes:");
@@ -330,7 +330,7 @@ describe("modal de excluir/arquivar — o texto segue o dado", () => {
     );
   });
 
-  it("com comprador, não promete apagar nada e confirma em azul", async () => {
+  it("with a buyer, does not promise to delete anything and confirms in blue", async () => {
     mocks.getCourseAudience.mockResolvedValue({ enrollments: 1, orders: 0, subscriptions: 0 });
     const dialog = await abreModalDoHub();
 
@@ -341,9 +341,9 @@ describe("modal de excluir/arquivar — o texto segue o dado", () => {
     expect(within(dialog).queryByText(/about a day after/)).toBeNull();
   });
 
-  // Produto só com assinatura: o servidor arquiva (assinatura é comprador), e
-  // o modal dizia "Yes, delete" e prometia apagar arquivos e vídeos.
-  it("só com assinatura, também promete arquivar, nunca apagar", async () => {
+  // Product with only a subscription: the server archives (a subscription counts as a buyer), and
+  // the modal said "Yes, delete" and promised to delete files and videos.
+  it("with only a subscription, also promises to archive, never delete", async () => {
     mocks.getCourseAudience.mockResolvedValue({ enrollments: 0, orders: 0, subscriptions: 1 });
     const dialog = await abreModalDoHub();
 
@@ -352,7 +352,7 @@ describe("modal de excluir/arquivar — o texto segue o dado", () => {
     expect(within(dialog).queryByText("This also deletes:")).toBeNull();
   });
 
-  it("se o servidor recusar, diz que nada foi apagado (e não fala mais em rascunho)", async () => {
+  it("if the server refuses, says nothing was deleted (and no longer mentions draft)", async () => {
     mocks.deleteOrArchiveCourse.mockRejectedValue(new Error("23503"));
     const dialog = await abreModalDoHub();
     fireEvent.click(within(dialog).getByRole("button", { name: "Yes, delete" }));
@@ -364,7 +364,7 @@ describe("modal de excluir/arquivar — o texto segue o dado", () => {
     ).toBeInTheDocument();
   });
 
-  it("com comprador, promete arquivar e manter o acesso de quem pagou", async () => {
+  it("with a buyer, promises to archive and keep access for whoever paid", async () => {
     mocks.getCourseAudience.mockResolvedValue({ enrollments: 3, orders: 3, subscriptions: 0 });
     const dialog = await abreModalDoHub();
 
@@ -382,8 +382,8 @@ describe("modal de excluir/arquivar — o texto segue o dado", () => {
   });
 });
 
-describe("modal de excluir/arquivar — o X do cabeçalho", () => {
-  it("fecha como o Cancelar, sem apagar nada", async () => {
+describe("delete/archive modal — the header X", () => {
+  it("closes like Cancel, deleting nothing", async () => {
     const dialog = await abreModalDoHub();
     const close = within(dialog).getByRole("button", { name: "Close" });
     expect(close).toHaveClass("button-icon");
@@ -394,7 +394,7 @@ describe("modal de excluir/arquivar — o X do cabeçalho", () => {
     expect(mocks.deleteOrArchiveCourse).not.toHaveBeenCalled();
   });
 
-  it("some enquanto apaga, quando o Cancelar também trava", async () => {
+  it("disappears while deleting, when Cancel is also locked", async () => {
     let fail!: (reason: unknown) => void;
     mocks.deleteOrArchiveCourse.mockReturnValue(new Promise((_, reject) => { fail = reject; }));
     const dialog = await abreModalDoHub();
@@ -402,7 +402,7 @@ describe("modal de excluir/arquivar — o X do cabeçalho", () => {
 
     await waitFor(() => expect(within(dialog).getByRole("button", { name: "Cancel" })).toBeDisabled());
     expect(within(dialog).queryByRole("button", { name: "Close" })).toBeNull();
-    // Esc e o clique no fundo seguem o Cancelar travado.
+    // Esc and clicking the backdrop follow the locked Cancel.
     fireEvent.keyDown(document, { key: "Escape" });
     fireEvent.mouseDown(dialog.parentElement!);
     expect(screen.getByRole("dialog", { name: "Delete Facilitation foundations" })).toBe(dialog);
@@ -412,8 +412,8 @@ describe("modal de excluir/arquivar — o X do cabeçalho", () => {
   });
 });
 
-describe("o que acontece depois da ação", () => {
-  it("apagado, o hub sai de cena e volta para a lista", async () => {
+describe("what happens after the action", () => {
+  it("once deleted, the hub leaves the scene and goes back to the list", async () => {
     const dialog = await abreModalDoHub();
     fireEvent.click(within(dialog).getByRole("button", { name: "Yes, delete" }));
 
@@ -421,7 +421,7 @@ describe("o que acontece depois da ação", () => {
     await waitFor(() => expect(mocks.router.push).toHaveBeenCalledWith("/teach/builder"));
   });
 
-  it("arquivado, o hub continua de pé e mostra como republicar", async () => {
+  it("once archived, the hub stays up and shows how to republish", async () => {
     mocks.course.status = "inactive";
     mocks.getCourseAudience.mockResolvedValue({ enrollments: 3, orders: 3, subscriptions: 0 });
     mocks.deleteOrArchiveCourse.mockResolvedValue({
@@ -443,10 +443,10 @@ describe("o que acontece depois da ação", () => {
 });
 vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));
 
-// B-11: a pagina de tras rolava por baixo da janela. No painel quem rola e o
-// .platform-content, nao o body.
-describe("modal de excluir/arquivar — a pagina de tras", () => {
-  it("trava a rolagem do .platform-content enquanto aberto e devolve ao fechar", async () => {
+// B-11: the page behind scrolled underneath the dialog. In the panel, what scrolls is the
+// .platform-content, not the body.
+describe("delete/archive dialog — the page behind it", () => {
+  it("locks the scroll of .platform-content while open and restores it on close", async () => {
     const { unmount } = renderEn(
       <section className="platform-content">
         <DeleteOrArchiveCourseDialog courseId="course-1" courseTitle="Facilitation foundations" onCancel={vi.fn()} onDone={vi.fn()} />
@@ -461,13 +461,13 @@ describe("modal de excluir/arquivar — a pagina de tras", () => {
   });
 });
 
-// A contagem de compradores que não carrega: "Try again" relê SÓ a contagem, e
-// o confirmar segue travado até ela chegar (sem contagem, nem apagar nem arquivar).
-describe("modal de excluir/arquivar — contagem que não carrega", () => {
+// The buyer count that fails to load: "Try again" re-reads ONLY the count, and
+// confirm stays locked until it arrives (without a count, neither delete nor archive).
+describe("delete/archive modal — count that fails to load", () => {
   const deleteError = "We could not delete this product. Nothing was removed. Please try again or contact SkillsetMind support.";
   const audienceError = "We could not check who bought this product. Nothing was removed.";
 
-  it("ganha \"Try again\", relê a contagem uma vez só e só então libera o confirmar", async () => {
+  it("gets \"Try again\", re-reads the count just once and only then enables confirm", async () => {
     let resolve!: (value: { enrollments: number; orders: number; subscriptions: number }) => void;
     mocks.getCourseAudience
       .mockReset()
@@ -475,7 +475,7 @@ describe("modal de excluir/arquivar — contagem que não carrega", () => {
       .mockReturnValueOnce(new Promise((done) => { resolve = done; }));
     renderEn(<DeleteOrArchiveCourseDialog courseId="course-1" courseTitle="Facilitation foundations" onCancel={vi.fn()} onDone={vi.fn()} />);
     const dialog = await screen.findByRole("dialog", { name: "Delete Facilitation foundations" });
-    // A frase da contagem, nunca a do apagar: o "Try again" não tenta apagar.
+    // The count sentence, never the delete one: "Try again" does not try to delete.
     expect(await within(dialog).findByText(audienceError)).toBeInTheDocument();
     expect(within(dialog).queryByText(deleteError)).toBeNull();
     expect(within(dialog).getByRole("button", { name: "Yes, delete" })).toBeDisabled();
@@ -483,7 +483,7 @@ describe("modal de excluir/arquivar — contagem que não carrega", () => {
     const retry = within(dialog).getByRole("button", { name: "Try again" });
     fireEvent.click(retry);
     fireEvent.click(retry);
-    // Lendo: as linhas de espera e o confirmar ainda travado.
+    // Loading: the waiting rows and confirm still locked.
     expect(within(dialog).queryByText(audienceError)).toBeNull();
     expect(within(dialog).getByRole("button", { name: "Checking for buyers..." })).toBeDisabled();
 
@@ -493,7 +493,7 @@ describe("modal de excluir/arquivar — contagem que não carrega", () => {
     expect(mocks.deleteOrArchiveCourse).not.toHaveBeenCalled();
   });
 
-  it("a falha de apagar não ganha \"Try again\"", async () => {
+  it("the delete failure does not get \"Try again\"", async () => {
     mocks.deleteOrArchiveCourse.mockRejectedValue(new Error("23503"));
     renderEn(<DeleteOrArchiveCourseDialog courseId="course-1" courseTitle="Facilitation foundations" onCancel={vi.fn()} onDone={vi.fn()} />);
     const dialog = await screen.findByRole("dialog", { name: "Delete Facilitation foundations" });

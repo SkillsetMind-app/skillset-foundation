@@ -8,11 +8,11 @@ import type { RevenuePoint } from "@/domain/creator-reports";
 import { formatMoney } from "@/lib/format-money";
 
 /**
- * O grafico de receita que so existia na home. Agora e um componente so, usado
- * pela home e pela pagina de relatorios; quem chama decide o periodo, os
- * rotulos e o que vai no canto direito do cabecalho (as abas de periodo).
- * Desenha UMA moeda (`currency`): quem chama escolhe qual e diz em `note` o
- * que ficou de fora, em vez de somar moedas diferentes.
+ * The revenue chart that used to live only on the home page. Now it is a single component, used
+ * by the home page and the reports page; the caller decides the period, the
+ * labels and what goes in the right corner of the header (the period tabs).
+ * It draws ONE currency (`currency`): the caller picks which one and says in `note` what
+ * was left out, instead of adding different currencies together.
  */
 export function RevenueChart({
   points,
@@ -30,11 +30,11 @@ export function RevenueChart({
 }: {
   points: RevenuePoint[];
   currency: string;
-  /** Uma linha sob o grafico (ex.: as outras moedas, que nao estao nele). */
+  /** A line under the chart (e.g. the other currencies, which are not in it). */
   note?: string;
   /**
-   * Dados ainda carregando ou leitura que falhou: no lugar de "sem receita"
-   * (que afirmaria zero), so este rotulo.
+   * Data still loading or a read that failed: instead of "no revenue"
+   * (which would claim zero), only this label.
    */
   unavailableLabel?: string;
   totalMinor: number;
@@ -48,36 +48,36 @@ export function RevenueChart({
 }) {
   const { locale } = useTranslation();
   const chart = buildChart(points);
-  // Eixo pelo formatador da lingua ("$1.5K"): o "$2k" feito a mao arredondava
-  // $1.500 para $2k e escrevia "$2k" em duas linhas. O minimo de casas vai
-  // explicito: sem ele, versoes do ICU escrevem "$1.0K" e "$0.0". A moeda e a
-  // do grafico (era USD fixo, mesmo para quem vende em reais).
+  // Axis through the locale formatter ("$1.5K"): the hand-made "$2k" rounded
+  // $1,500 up to $2k and wrote "$2k" on two lines. The minimum number of decimals is
+  // explicit: without it, ICU versions write "$1.0K" and "$0.0". The currency is the
+  // chart's (it used to be fixed USD, even for people who sell in reais).
   const axisMoney = (amountMinor: number) =>
     formatMoney(amountMinor, currency, locale, {
       notation: "compact",
       minimumFractionDigits: 0,
       maximumFractionDigits: 1,
     });
-  // 90 baldes diarios (ou 24 mensais) escreviam 90 rotulos e viravam borrao.
-  // Um a cada N mantem no maximo ~12 em qualquer periodo (~4 no celular).
+  // 90 daily buckets (or 24 monthly ones) wrote 90 labels and turned into a blur.
+  // One in every N keeps at most ~12 in any period (~4 on a phone).
   const labelEvery = Math.max(1, Math.ceil(points.length / 12));
   const percent = (value: number, total: number) => `${(value / total) * 100}%`;
   const yTexts = chart.yLabels.map((label) => axisMoney(label.amountMinor));
-  // A coluna do eixo tem a largura do maior rotulo: "2,5 mil US$" em espanhol
-  // e bem mais largo que "$2.5K" e seria cortado numa coluna fixa.
+  // The axis column is as wide as the widest label: "2,5 mil US$" in Spanish
+  // is much wider than "$2.5K" and would be cut off in a fixed-width column.
   const axisWidth = `${Math.max(1, ...yTexts.map((text) => text.length)) + 1}ch`;
 
   return (
     <div className="studio-chart-card dash-card p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 max-w-full">
-          {/* O total e o numero que o professor veio ver: ele e o destaque, e
-              "Revenue" vira o rotulo. */}
+          {/* The total is the number the teacher came to see: it is the highlight, and
+              "Revenue" becomes the label. */}
           <h3 className="text-sm font-semibold text-[var(--color-ink-soft)]">
             {title}
           </h3>
-          {/* O total é agregado, não o valor do último ponto. Fora do SVG,
-              ele pode quebrar linha sem ser cortado. */}
+          {/* The total is the aggregate, not the value of the last point. Outside the SVG,
+              it can wrap to a new line without being cut off. */}
           {points.length > 0 && totalMinor ? (
             <strong className="num mt-1 block max-w-full break-all text-3xl font-bold text-[var(--color-primary)]">
               {totalLabel}
@@ -91,10 +91,10 @@ export function RevenueChart({
       </div>
 
       <div className="studio-chart-canvas">
-        {/* O texto do eixo morava DENTRO do SVG, que escala com o cartao: 10
-            unidades viravam ~9px no computador e ~4px no celular. Agora os
-            rotulos sao HTML em volta do desenho e ficam sempre em 12px; o
-            desenho estica (preserveAspectRatio none) e o traco nao engorda. */}
+        {/* The axis text used to live INSIDE the SVG, which scales with the card: 10
+            units became ~9px on a computer and ~4px on a phone. Now the
+            labels are HTML around the drawing and always stay at 12px; the
+            drawing stretches (preserveAspectRatio none) and the stroke does not get thicker. */}
         <div className="flex h-[200px] gap-2">
           <div className="relative shrink-0 text-xs" style={{ width: axisWidth }} aria-hidden="true">
             {chart.yLabels.map((label, index) => (
@@ -144,8 +144,8 @@ export function RevenueChart({
                 vectorEffect="non-scaling-stroke"
               />
             </svg>
-            {/* Os pontos sao HTML: com o desenho esticado, um circulo do SVG
-                viraria elipse. */}
+            {/* The points are HTML: with the drawing stretched, an SVG circle
+                would turn into an ellipse. */}
             {chart.points.map(([x, y], index) => {
               const last = index === chart.points.length - 1;
               return (
@@ -168,9 +168,9 @@ export function RevenueChart({
         >
           {points.map((point, index) =>
             index % labelEvery === 0 ? (
-              // A chave era o rotulo: em 24 meses "Sep" aparecia duas vezes e
-              // o React reclamava de chave repetida. O 1o e o ultimo rotulo
-              // encostam na borda em vez de vazar dela.
+              // The key was the label: over 24 months "Sep" showed up twice and
+              // React complained about a repeated key. The first and the last label
+              // hug the edge instead of spilling over it.
               <span
                 key={point.key}
                 className={`absolute top-0 whitespace-nowrap text-xs font-semibold text-[var(--color-ink-muted)] ${
@@ -197,7 +197,7 @@ export function RevenueChart({
           </div>
         ) : !totalMinor ? (
           <div className="studio-chart-empty">
-            {/* A cena do recibo, sem moeda: nada aqui sugere quanto vai entrar. */}
+            {/* The receipt scene, without currency: nothing here hints at how much will come in. */}
             <SpotArt scene="noSales" className="spot-art-in mx-auto mb-2 max-w-[6.5rem]" />
             <p>{emptyTitle}</p>
             <span>{emptyDetail}</span>
@@ -209,14 +209,14 @@ export function RevenueChart({
 }
 
 function buildChart(points: RevenuePoint[]) {
-  // Os rotulos ficam fora do desenho: sem margem lateral para eles.
+  // The labels sit outside the drawing: no side margin for them.
   const width = 640;
   const height = 200;
   const padTop = 10;
   const padBottom = 6;
   const innerHeight = height - padTop - padBottom;
-  // O topo era o maior mes exato: o ponto encostava no teto e o eixo escrevia
-  // valores quebrados. Agora sobe para um passo redondo (1, 2, 2.5 ou 5 x 10^n).
+  // The top used to be the exact largest month: the point touched the ceiling and the axis wrote
+  // broken values. Now it rounds up to a round step (1, 2, 2.5 or 5 x 10^n).
   const peak = Math.max(...points.map((point) => point.grossMinor), 10000);
   const step = niceStep(peak / 4);
   const intervals = Math.max(1, Math.ceil(peak / step));
@@ -250,8 +250,8 @@ function buildChart(points: RevenuePoint[]) {
   };
 }
 
-// Menor passo "redondo" (1, 2, 2.5 ou 5 vezes uma potencia de 10) que cobre o
-// valor pedido. Exportado so para o teste.
+// Smallest "round" step (1, 2, 2.5 or 5 times a power of 10) that covers the
+// requested value. Exported only for the test.
 export function niceStep(value: number) {
   const magnitude = 10 ** Math.floor(Math.log10(value));
   const factor = [1, 2, 2.5, 5, 10].find((candidate) => candidate * magnitude >= value) ?? 10;

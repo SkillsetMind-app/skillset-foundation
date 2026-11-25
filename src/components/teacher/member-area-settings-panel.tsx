@@ -41,15 +41,15 @@ import { getUserProfile } from "@/lib/data/user-profiles";
 
 const maxName = 80;
 const maxWelcome = 2000;
-/** Teto de save_my_member_area_products: o resto segue a ordem padrão, visível. */
+/** Cap for save_my_member_area_products: the rest follows the default order, visible. */
 const maxProducts = 500;
-/** A principal não tem id enquanto é virtual: esta é a chave dela na tela. */
+/** The main one has no id while it is virtual: this is its key on screen. */
 const mainKey = "main";
 
 type LoadState = "loading" | "ready" | "error";
 type Creator = { name: string; username: string | null };
 
-// O campo da casa (globals.css): a borda fina de antes sumia no cartão branco.
+// The house field (globals.css): the thin border from before disappeared on the white card.
 const fieldClass = "field-input";
 const smallButtonClass =
   "inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md border border-[var(--color-line)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-ink-soft)] disabled:opacity-60";
@@ -57,8 +57,8 @@ const smallButtonClass =
 const areaKey = (area: MyMemberAreaEditorArea) => (area.slug === null ? mainKey : (area.id ?? mainKey));
 
 /**
- * /teach/member-area: as áreas do criador. A principal junta todos os
- * produtos; no Pro há até 2 extras, cada uma só com os produtos postos nela.
+ * /teach/member-area: the creator's areas. The main one gathers all the
+ * products; on Pro there are up to 2 extras, each with only the products put in it.
  */
 export function MemberAreaSettingsPanel() {
   const { user } = useAuth();
@@ -74,8 +74,8 @@ export function MemberAreaSettingsPanel() {
   const [coursesFailed, setCoursesFailed] = useState(false);
   const [selected, setSelected] = useState(mainKey);
   const [creating, setCreating] = useState(false);
-  // A assinatura da lista de produtos, para o "Try again" ler de novo sem
-  // sair e entrar outra vez no canal do tempo real.
+  // The product list subscription, so "Try again" can read again without
+  // leaving and re-entering the realtime channel.
   const coursesRead = useRef<{ reload: () => Promise<void> } | null>(null);
 
   async function reload(nextSelected?: string) {
@@ -95,8 +95,8 @@ export function MemberAreaSettingsPanel() {
       .then(([next, profile]) => {
         if (!mounted) return;
         setCreator({ name: profile?.displayName ?? "", username: profile?.username ?? null });
-        // Sem perfil, o plano mais apertado: a tela oferece menos do que o
-        // banco aceita, nunca mais.
+        // With no profile, the tightest plan: the screen offers less than the
+        // database accepts, never more.
         setPlanId(profile?.currentPlanId ?? "free");
         setEditor(next);
         setLoadState("ready");
@@ -126,8 +126,8 @@ export function MemberAreaSettingsPanel() {
     };
   }, [uid, retryKey]);
 
-  // Volta à espera da lista (e o "Save" trava, como antes da primeira leitura)
-  // até a leitura nova responder: nunca a lista velha no lugar do erro.
+  // Goes back to waiting for the list (and "Save" locks, as before the first read)
+  // until the new read responds: never the old list in place of the error.
   function retryCourses() {
     setCourses(null);
     setCoursesFailed(false);
@@ -153,12 +153,12 @@ export function MemberAreaSettingsPanel() {
   }
 
   if (!uid || !editor) {
-    // A forma do cartão que vem, não uma frase solta (F-03).
+    // The shape of the card that is coming, not a loose sentence (F-03).
     return <CardPageSkeleton label={t("teach.memberAreaEditor.loading")} header={false} />;
   }
 
-  // A principal conta como 1. Extra além do limite (o plano caiu) fica no ar
-  // para o aluno e travada aqui; o banco decide de verdade (member_area_editable).
+  // The main one counts as 1. An extra beyond the limit (the plan dropped) stays live
+  // for the learner and locked here; the database really decides (member_area_editable).
   const limit = planEntitlements[planId].quotas.memberAreas ?? 1;
   const extras = editor.areas.slice(1);
   const lockedIds = new Set(extras.slice(Math.max(0, limit - 1)).map((area) => area.id));
@@ -180,8 +180,8 @@ export function MemberAreaSettingsPanel() {
               .replace("{limit}", () => String(limit))}
           </p>
         </div>
-        {/* As abas da casa (setas, Home/End). O "New area" saiu de dentro da
-            lista de abas: e um botao, nao uma aba. */}
+        {/* The house tabs (arrows, Home/End). "New area" moved out of the
+            tab list: it is a button, not a tab. */}
         <div className="flex flex-wrap items-end gap-2">
           <HorizontalTabs
             className="min-w-0 max-w-full"
@@ -319,7 +319,7 @@ function NewAreaForm({
   );
 }
 
-/** O formulário de uma área. Montado de novo a cada troca de área (key). */
+/** The form for one area. Mounted again on each area switch (key). */
 function MemberAreaForm({
   uid,
   area,
@@ -344,7 +344,7 @@ function MemberAreaForm({
   locked: boolean;
   lockedIds: ReadonlySet<string | null>;
   areaLabel: (area: MyMemberAreaEditorArea) => string;
-  /** Relê as áreas: o que entrou ou saiu desta lista mudou de área. */
+  /** Re-reads the areas: what came into or left this list changed area. */
   onSaved: () => Promise<void>;
   onDeleted: () => void;
 }) {
@@ -362,11 +362,11 @@ function MemberAreaForm({
   const [hidden, setHidden] = useState<Set<string>>(
     () => new Set([...editor.placement].filter(([, place]) => place.areaId === area.id && !place.visible).map(([id]) => id)),
   );
-  // Só nas extras: o que entrou (veio de outra área) e o que saiu (volta para a principal).
+  // Only on extras: what came in (from another area) and what left (goes back to the main one).
   const [added, setAdded] = useState<string[]>([]);
   const [removed, setRemoved] = useState<Set<string>>(new Set());
-  // Tamanho do arquivo em envio (null = nada subindo): a nota de andamento,
-  // a mesma das capas do construtor, diz "Sending..." e o tamanho.
+  // Size of the file being uploaded (null = nothing uploading): the progress note,
+  // the same as the builder covers, says "Sending..." and the size.
   const [uploadingBytes, setUploadingBytes] = useState<number | null>(null);
   const uploading = uploadingBytes !== null;
   const [coverError, setCoverError] = useState<"" | "invalid" | "upload">("");
@@ -379,8 +379,8 @@ function MemberAreaForm({
 
   const own = useMemo(() => memberAreaProductsOf(courses ?? [], editor, area), [courses, editor, area]);
 
-  // A ordem salva (ou a padrão); o que o criador mexer aqui vence, e produto
-  // novo entra no fim sem desfazer a ordem já arrumada.
+  // The saved order (or the default); what the creator moves here wins, and a new
+  // product goes at the end without undoing the order already arranged.
   const orderedCourses = useMemo(() => {
     const addedCourses = (courses ?? []).filter((course) => added.includes(course.id) && !own.courses.includes(course));
     const base = [
@@ -392,7 +392,7 @@ function MemberAreaForm({
     return [...base].sort((a, b) => (rank.get(a.id) ?? order.length) - (rank.get(b.id) ?? order.length));
   }, [courses, own, added, removed, order]);
 
-  // O que pode vir para esta extra: produto de outra área que não esteja travada.
+  // What can come into this extra: a product from another area that is not locked.
   const addable = isExtra
     ? (courses ?? []).flatMap((course) => {
         if (orderedCourses.some((current) => current.id === course.id)) return [];
@@ -403,8 +403,8 @@ function MemberAreaForm({
       })
     : [];
 
-  // Só produto community publicado e com a comunidade ligada. Uma escolha que
-  // deixou de valer (despublicada, comunidade desligada) aparece e salva como nenhuma.
+  // Only a published community product with the community turned on. A choice that
+  // stopped being valid (unpublished, community turned off) shows up and saves as none.
   const communityProducts = (courses ?? []).filter(
     (course) => course.productFormat === "community" && course.communityEnabled !== false && course.status === "published",
   );
@@ -456,8 +456,8 @@ function MemberAreaForm({
     setCoverError("");
     setUploadingBytes(file.size);
     try {
-      // ponytail: capa enviada e trocada antes de salvar fica órfã no bucket.
-      // Apagar aqui arriscava apagar a que o banco ainda usa; limpar órfãs é outro trabalho.
+      // ponytail: a cover uploaded and replaced before saving is left orphaned in the bucket.
+      // Deleting here risked deleting the one the database still uses; cleaning orphans is another job.
       const path = await uploadMemberAreaCover(uid, file);
       setCoverPath(path);
       setFeedback("");
@@ -470,8 +470,8 @@ function MemberAreaForm({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    // Enter num campo não salva com a lista de produtos lendo de novo (ou
-    // falhada): a ordem gravada sairia da lista velha.
+    // Enter in a field does not save while the product list is re-reading (or
+    // failed): the saved order would come out of the old list.
     if (courses === null || coursesFailed) return;
     setSaving(true);
     setFeedback("");
@@ -483,8 +483,8 @@ function MemberAreaForm({
       setSaving(false);
       return;
     }
-    // O banco já aponta para a capa nova: a anterior pode sair, mesmo que a
-    // lista de produtos falhe logo abaixo.
+    // The database already points to the new cover: the previous one can go, even if the
+    // product list fails right below.
     setSavedCoverPath(coverPath);
     setSavedOnce(true);
     if (previousCover && previousCover !== coverPath) {
@@ -506,7 +506,7 @@ function MemberAreaForm({
     } catch {
       communityFailed = true;
     }
-    // Relê onde cada produto mora antes de largar o rascunho da lista.
+    // Re-reads where each product lives before dropping the list draft.
     await onSaved();
     setAdded([]);
     setRemoved(new Set());
@@ -531,8 +531,8 @@ function MemberAreaForm({
   }
 
   const coverUrl = coverPath ? memberAreaCoverUrl(coverPath) : "";
-  // O "Save" apagado diz por quê, numa linha ligada a ele (F-12). Salvando não
-  // precisa: o próprio botão diz "Saving...".
+  // The dimmed "Save" says why, in a line tied to it (F-12). While saving it is not
+  // needed: the button itself says "Saving...".
   const saveBlockedKey = saving
     ? null
     : locked
@@ -545,7 +545,7 @@ function MemberAreaForm({
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-5">
-      {/* Travado enquanto salva, e de vez numa área que o plano não cobre mais. */}
+      {/* Locked while saving, and for good in an area the plan no longer covers. */}
       <fieldset disabled={saving || locked} className="grid min-w-0 gap-5">
       {locked ? <InlineAlert tone="error">{t("teach.memberAreaEditor.lockedNote")}</InlineAlert> : null}
       {!configured ? <p className="info-notice">{t("teach.memberAreaEditor.virtualNote")}</p> : null}
@@ -600,8 +600,8 @@ function MemberAreaForm({
           </div>
         </fieldset>
 
-        {/* A casca de imagem das capas do construtor (B-05). O envio, o limite
-            e o que se guarda seguem daqui. */}
+        {/* The image shell of the builder covers (B-05). The upload, the limit
+            and what is stored follow from here. */}
         <ImageUploadField
           title={t("teach.memberAreaEditor.cover")}
           help={t("teach.memberAreaEditor.coverHelp")}
@@ -650,11 +650,11 @@ function MemberAreaForm({
       </Card>
       </fieldset>
 
-      {/* O cartão de produtos fica fora do fieldset travado: o "Try again" da
-          leitura funciona mesmo numa área travada ou salvando. O que edita a
-          lista segue travado no fieldset de dentro. */}
+      {/* The products card stays outside the locked fieldset: the "Try again" of
+          the read works even in a locked area or while saving. What edits the
+          list stays locked in the inner fieldset. */}
       <Card tone="soft" padding="sm" shadow={false} className="grid gap-3">
-        {/* Fica na tela nos dois desfechos do "Try again" e recebe o foco. */}
+        {/* Stays on screen in both outcomes of "Try again" and receives focus. */}
         <div ref={productsRef} tabIndex={-1} className="outline-none">
           <p className="text-sm font-semibold text-[var(--color-ink)]">{t("teach.memberAreaEditor.products")}</p>
           <p className="mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">{t("teach.memberAreaEditor.productsHelp")}</p>
@@ -665,14 +665,14 @@ function MemberAreaForm({
           ) : null}
         </div>
         {coursesFailed ? (
-          // A frase antiga mandava recarregar a página; agora o botão lê de novo.
+          // The old sentence told the person to reload the page; now the button reads again.
           <LoadErrorAlert onRetry={onRetryCourses} focusRef={productsRef}>
             {t("creatorPanel.products.loadError")}
           </LoadErrorAlert>
         ) : null}
         <fieldset disabled={saving || locked} className="grid min-w-0 gap-3 empty:hidden">
         {coursesFailed ? null : courses === null ? (
-          // A forma das linhas de produto, não uma frase solta.
+          // The shape of the product rows, not a loose sentence.
           <CardStackSkeleton label={t("teach.memberAreaEditor.loading")} cards={2} />
         ) : orderedCourses.length === 0 ? (
           <p className="text-xs text-[var(--color-ink-soft)]">
@@ -809,8 +809,8 @@ function MemberAreaForm({
           }`)}
         </InlineAlert>
       ) : null}
-      {/* O "salvo" fica na linha dos botões (último, para não empurrar o
-          "Preview"): acima deles, nascia e empurrava o botão recém-clicado. */}
+      {/* The "saved" stays in the buttons row (last, so as not to push
+          "Preview"): above them, it appeared and pushed the button just clicked. */}
       <div className="flex flex-wrap items-center gap-3">
         <Button
           type="submit"
@@ -844,10 +844,10 @@ function MemberAreaForm({
       {isExtra && area.id ? (
         <div className="grid justify-items-start gap-2 border-t border-[var(--color-line)] pt-4">
           <p className="text-xs text-[var(--color-ink-soft)]">{t("teach.memberAreaEditor.deleteAreaHelp")}</p>
-          {/* Apagar era um clique duplo no mesmo botão de contorno ("Delete
-              area" virava "Yes, delete this area" no lugar). Agora pergunta
-              na janela da plataforma, dizendo o nome da área; o apagar é o
-              mesmo, e o erro continua aqui embaixo. */}
+          {/* Deleting was a double click on the same outlined button ("Delete
+              area" became "Yes, delete this area" in place). Now it asks
+              in the platform dialog, saying the area name; the delete is the
+              same, and the error stays down here. */}
           <Button
             type="button"
             variant="danger"

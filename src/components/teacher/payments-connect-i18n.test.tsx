@@ -116,10 +116,10 @@ it("keeps platform unavailability distinct and retries only on explicit check", 
   const onAvailabilityChange = vi.fn();
   mount({ onAvailabilityChange });
   await screen.findByRole("heading", { name: copy("es", "connectOnboarding.unavailableTitle") });
-  // O titulo aparece no commit; o aviso ao pai sai de um useEffect, que o React
-  // roda numa tarefa SEGUINTE do scheduler. Num runner lento o findByRole volta
-  // entre as duas e a ultima chamada ainda e o `false` da montagem. Esperar o
-  // proprio aviso, nao o titulo como indicio dele.
+  // The title appears on commit; the notice to the parent comes out of a useEffect, which React
+  // runs in a LATER scheduler task. On a slow runner findByRole returns
+  // between the two and the last call is still the mount `false`. Wait for the
+  // notice itself, not for the title as a hint of it.
   await waitFor(() => expect(onAvailabilityChange).toHaveBeenLastCalledWith(true));
   expect(screen.queryByRole("alert")).toBeNull();
   expect(mocks.initialize).not.toHaveBeenCalled();
@@ -145,7 +145,7 @@ it.each([
   expect(screen.getByRole("button", { name: copy("es", "connectOnboarding.continueSecure") })).toBeInTheDocument();
   fireEvent.click(screen.getByText("EN"));
   expect(screen.getByRole("alert")).toHaveTextContent(copy("en", `connectOnboarding.error.${key}`));
-  // O codigo da resposta so no recolhido "para o suporte", nunca "HTTP" na frase.
+  // The response code only in the collapsed "for support" section, never "HTTP" in the sentence.
   expect(screen.getByText(`Error code: ${status}`)).toBeInTheDocument();
   expect(screen.queryByText(/HTTP/)).toBeNull();
   expect(screen.queryByText(/RAW CONNECT TRANSPORT/)).toBeNull();

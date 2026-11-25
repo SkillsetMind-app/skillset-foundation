@@ -4,19 +4,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { StatusBanner } from "@/components/platform/status-banner";
 import { StripeConnectNotice } from "@/components/teacher/stripe-connect-notice";
 
-// O aviso do Stripe era uma faixa amarela FIXA no topo de todo o /teach, que so
-// sumia quando a conta conectasse: dias ou semanas de alerta permanente, o que
-// e o mesmo que nenhum alerta. Virou uma linha dispensavel, so onde se fala de
-// dinheiro, que some sozinha quando cobrancas e repasses estao ligados.
+// The Stripe notice was a FIXED yellow banner at the top of all of /teach, which only
+// went away when the account connected: days or weeks of a permanent alert, which
+// is the same as no alert. It became a dismissible line, only where money is
+// discussed, that disappears by itself when charges and payouts are enabled.
 
 const mocks = vi.hoisted(() => ({
-  // true: o perfil ainda nao chegou (a inscricao nao responde).
+  // true: the profile has not arrived yet (the subscription does not respond).
   profilePending: false,
-  // true: a leitura do perfil falha.
+  // true: the profile read fails.
   profileFails: false,
-  // Termos ja aceitos de proposito: sem isso a faixa de termos dispara antes e
-  // o teste "a faixa fixa nao existe mais" passaria mesmo com o ramo do Stripe
-  // de volta no lugar.
+  // Terms already accepted on purpose: without this the terms banner fires first and
+  // the "the fixed banner no longer exists" test would pass even with the Stripe branch
+  // back in place.
   profile: {
     teacherTermsAcceptedAt: "2026-01-01T00:00:00.000Z",
     stripeConnectChargesEnabled: false,
@@ -76,8 +76,8 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
-describe("aviso do Stripe nas telas de venda", () => {
-  it("a faixa fixa do topo nao existe mais", async () => {
+describe("Stripe notice on the sales screens", () => {
+  it("the fixed banner at the top no longer exists", async () => {
     render(<StatusBanner />);
 
     await waitFor(() => {
@@ -85,7 +85,7 @@ describe("aviso do Stripe nas telas de venda", () => {
     });
   });
 
-  it("diz que o dinheiro cai direto na conta do professor, com caminho para conectar", async () => {
+  it("says the money goes straight to the teacher's account, with a path to connect", async () => {
     render(<StripeConnectNotice />);
 
     expect(
@@ -97,7 +97,7 @@ describe("aviso do Stripe nas telas de venda", () => {
     );
   });
 
-  it("some ao ser dispensado e nao volta nesta sessao", async () => {
+  it("disappears when dismissed and does not come back this session", async () => {
     const { unmount } = render(<StripeConnectNotice />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Dismiss this notice" }));
@@ -111,12 +111,12 @@ describe("aviso do Stripe nas telas de venda", () => {
     });
   });
 
-  // O aviso esperava o perfil e empurrava a lista de vendas 117px para baixo.
-  describe("antes de o perfil chegar", () => {
+  // The notice waited for the profile and pushed the sales list 117px down.
+  describe("before the profile arrives", () => {
     const remember = (uid: string, ready: boolean) =>
       window.localStorage.setItem("skillset:stripe-connect-notice-last", JSON.stringify({ uid, ready }));
 
-    it("quem nao tinha conectado na ultima visita ve o aviso desde o primeiro quadro", () => {
+    it("someone who had not connected on the last visit sees the notice from the first frame", () => {
       mocks.profilePending = true;
       remember("teacher-1", false);
       render(<StripeConnectNotice />);
@@ -128,7 +128,7 @@ describe("aviso do Stripe nas telas de venda", () => {
       ["sem visita anterior", null],
       ["conta ja conectada na ultima visita", { uid: "teacher-1", ready: true }],
       ["ultima visita foi de outra pessoa", { uid: "someone-else", ready: false }],
-    ])("%s: nada ate o perfil chegar", (_label, saved) => {
+    ])("%s: nothing until the profile arrives", (_label, saved) => {
       mocks.profilePending = true;
       if (saved) remember(saved.uid, saved.ready);
       render(<StripeConnectNotice />);
@@ -136,7 +136,7 @@ describe("aviso do Stripe nas telas de venda", () => {
       expect(screen.queryByText(/buyers are charged on it directly/)).toBeNull();
     });
 
-    it("leitura do perfil falhou: a marca da ultima visita nao basta para afirmar", () => {
+    it("profile read failed: the last-visit mark is not enough to assert", () => {
       mocks.profileFails = true;
       remember("teacher-1", false);
       render(<StripeConnectNotice />);
@@ -144,7 +144,7 @@ describe("aviso do Stripe nas telas de venda", () => {
       expect(screen.queryByText(/buyers are charged on it directly/)).toBeNull();
     });
 
-    it("conectou desde a ultima visita: o aviso sai quando o perfil chega e a marca vira", async () => {
+    it("connected since the last visit: the notice disappears when the profile arrives and the mark flips", async () => {
       remember("teacher-1", false);
       mocks.profile = { ...mocks.profile, stripeConnectChargesEnabled: true, stripeConnectPayoutsEnabled: true };
       render(<StripeConnectNotice />);
@@ -159,7 +159,7 @@ describe("aviso do Stripe nas telas de venda", () => {
     });
   });
 
-  it("nao aparece quando a conta ja esta conectada", async () => {
+  it("does not appear when the account is already connected", async () => {
     mocks.profile = {
       teacherTermsAcceptedAt: "2026-01-01T00:00:00.000Z",
       stripeConnectChargesEnabled: true,

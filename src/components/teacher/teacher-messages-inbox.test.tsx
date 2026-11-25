@@ -5,11 +5,11 @@ import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { TeacherMessagesInbox } from "@/components/teacher/teacher-messages-inbox";
 import type { CourseMessage } from "@/domain/course-message";
 
-// Mesmo molde do student-messages-inbox.test.tsx: um objeto de usuario para a
-// sessao inteira e a assinatura devolvendo as mensagens na hora.
+// Same mold as student-messages-inbox.test.tsx: one user object for the
+// whole session and the subscription returning the messages right away.
 const mocks = vi.hoisted(() => ({
   messages: [] as unknown[],
-  // "data": a leitura chega na hora; "pending": ainda nao chegou; "error": falhou.
+  // "data": the read arrives right away; "pending": has not arrived yet; "error": failed.
   mode: "data" as "data" | "pending" | "error",
   emit: (() => undefined) as (messages: unknown[]) => void,
   fail: (() => undefined) as () => void,
@@ -21,7 +21,7 @@ const mocks = vi.hoisted(() => ({
   },
 }));
 
-// O I18nProvider chama useRouter() para o refresh ao trocar de idioma.
+// The I18nProvider calls useRouter() for the refresh when the language changes.
 const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }));
 vi.mock("next/navigation", async (importOriginal) => ({
   ...await importOriginal<typeof import("next/navigation")>(),
@@ -42,7 +42,7 @@ vi.mock("@/lib/data/course-messages", () => ({
       mocks.emit = onNext;
       mocks.fail = () => onError(new Error("offline"));
       read();
-      // Como o de verdade: desligar o canal, e `reload` que le de novo sem mexer nele.
+      // Like the real one: turn off the channel, and `reload` re-reads without touching it.
       return Object.assign(mocks.unsubscribe, {
         reload: vi.fn(async () => {
           mocks.reloads += 1;
@@ -82,8 +82,8 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-describe("caixa do professor antes, durante e depois da leitura", () => {
-  it("antes da primeira leitura mostra carregando, nao 'No student messages yet'", () => {
+describe("teacher inbox before, during and after the read", () => {
+  it("before the first read it shows loading, not 'No student messages yet'", () => {
     mocks.mode = "pending";
     show();
     expect(screen.getByRole("status")).toHaveTextContent("Loading your student messages...");
@@ -93,7 +93,7 @@ describe("caixa do professor antes, durante e depois da leitura", () => {
     expect(screen.getByText("No student messages yet")).toBeTruthy();
   });
 
-  it("se a primeira leitura falha: erro com 'Try again', que le de novo pelo mesmo canal", async () => {
+  it("if the first read fails: error with 'Try again', which re-reads through the same channel", async () => {
     mocks.mode = "error";
     show();
     expect(screen.getByRole("alert")).toHaveTextContent("We could not load your student messages.");
@@ -110,7 +110,7 @@ describe("caixa do professor antes, durante e depois da leitura", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  it("releitura que falha com a lista na tela: a lista fica, e o aviso traz 'Try again'", async () => {
+  it("a re-read that fails with the list on screen: the list stays, and the notice carries 'Try again'", async () => {
     mocks.messages = [fromStudent];
     show();
     act(() => mocks.fail());
@@ -126,10 +126,10 @@ describe("caixa do professor antes, durante e depois da leitura", () => {
   });
 });
 
-describe("caixa de mensagens do professor", () => {
-  // A lista e a conversa chamavam o formatador de hora sem `t` nem `locale`:
-  // em espanhol a hora saia em ingles ("5m ago").
-  it("mostra a hora da conversa no idioma da pessoa", () => {
+describe("teacher messages inbox", () => {
+  // The list and the conversation called the time formatter without `t` or `locale`:
+  // in Spanish the time came out in English ("5m ago").
+  it("shows the conversation time in the person's language", () => {
     mocks.messages = [fromStudent];
     render(
       <I18nProvider initialLocale="es">
@@ -137,8 +137,8 @@ describe("caixa de mensagens do professor", () => {
       </I18nProvider>,
     );
 
-    // Uma vez na lista de alunos, outra na mensagem aberta (a primeira
-    // conversa ja vem aberta).
+    // Once in the learner list, once in the open message (the first
+    // conversation already comes open).
     expect(screen.getAllByText(/Hace 5 min/)).toHaveLength(2);
   });
 });

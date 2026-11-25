@@ -42,7 +42,7 @@ beforeEach(() => {
 });
 
 describe("localized preview entry without reconnecting the course", () => {
-  // A volta é o construtor (do curso, quando há um), não o início do estúdio.
+    // The way back is the builder (of the course, when there is one), not the studio start.
   it.each([
     ["", true, "Course not selected.", "Curso no seleccionado.", "Vuelve al editor y abre la vista previa de un curso específico.", "/teach/builder"],
     ["course-1", false, "Preview is not connected.", "La vista previa no está conectada.", "La conexión con la plataforma debe estar disponible para cargar la vista previa.", "/teach/builder?courseId=course-1"],
@@ -59,8 +59,8 @@ describe("localized preview entry without reconnecting the course", () => {
     expect(mocks.subscribe).toHaveBeenCalledTimes(subscriptions);
   });
 
-  // Carregando: a espera da sala (ClassroomLoading), a mesma do fallback da
-  // rota e da propria sala, sem titulo nem "Back" para uma espera (F-03).
+    // Loading: the classroom's wait (ClassroomLoading), the same as the route's fallback
+    // and the classroom's own, with no title or "Back" for a wait (F-03).
   it("keeps the classroom's loading blocks while the course loads", () => {
     renderPreview();
     expect(screen.getByRole("status")).toHaveTextContent("Loading course...");
@@ -71,8 +71,8 @@ describe("localized preview entry without reconnecting the course", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Cargando curso...");
   });
 
-  // F-11: a falha tinha so "Back". "Try again" assina o curso de novo, sem
-  // recarregar a pagina.
+    // F-11: the failure only had "Back". "Try again" subscribes to the course again, without
+    // reloading the page.
   it("offers Try again on a load failure and subscribes again", () => {
     let fail: () => void = () => {};
     let emit: (course: TeacherCourse | null) => void = () => {};
@@ -118,8 +118,8 @@ describe("localized preview entry without reconnecting the course", () => {
     expect(mocks.unsubscribe).toHaveBeenCalledOnce();
   });
 
-  // "Exit preview" navegava esta aba para o construtor: dois construtores
-  // salvando o mesmo curso. Aberta pelo construtor, a aba fecha.
+    // "Exit preview" navigated this tab to the builder: two builders
+    // saving the same course. When opened by the builder, the tab closes.
   describe("leaving the preview", () => {
     const course = { id: "course-1", ownerId: "teacher-1", title: "Curso", summary: "", category: "Leadership", status: "draft" as const, modules: [], lessonCount: 0 };
     const exitHref = "/teach/builder?courseId=course-1&tab=members";
@@ -136,12 +136,12 @@ describe("localized preview entry without reconnecting the course", () => {
       };
     }
 
-    // A aba de origem fica guardada no módulo (sobrevive à troca de aba da
-    // prévia): cada caso carrega o módulo de novo, com o seu opener.
+        // The origin tab is kept in the module (it survives the preview's tab
+        // switch): each case loads the module again, with its own opener.
     async function exitClick(opener: unknown, { closes = true }: { closes?: boolean } = {}) {
-      // Relógio simulado em TODO caso: o clique agenda um setTimeout de 150 ms
-      // que lê window.closed. Com relógio real, o de um caso disparava no meio
-      // do seguinte (o afterEach já devolveu closed=false) e chamava o push.
+            // Simulated clock in EVERY case: the click schedules a 150 ms setTimeout
+            // that reads window.closed. With a real clock, one case's timer fired in the middle
+            // of the next one (afterEach had already returned closed=false) and called push.
       vi.useFakeTimers({ toFake: ["setTimeout"] });
       vi.resetModules();
       Object.defineProperty(window, "opener", { configurable: true, writable: true, value: opener });
@@ -153,7 +153,7 @@ describe("localized preview entry without reconnecting the course", () => {
       const { I18nProvider: Provider } = await import("@/components/i18n/i18n-provider");
       const { CoursePreviewShell: Shell } = await import("@/components/teacher/course-preview-shell");
       render(<Provider initialLocale="en"><Shell courseId="course-1" tab="materials" /></Provider>);
-      // Montou: a referência foi guardada e window.opener zerado (tabnabbing).
+            // Mounted: the reference was kept and window.opener cleared (tabnabbing).
       const openerAfterMount = window.opener;
       const click = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 });
       screen.getByRole("link", { name: "Fixture exit" }).dispatchEvent(click);

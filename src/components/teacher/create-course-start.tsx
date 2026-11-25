@@ -40,8 +40,8 @@ type CreateCourseStartProps = {
   initialFormat?: TeacherCourseProductFormat;
 };
 
-// Os cinco estagios do fluxo inteiro. Formato e basico acontecem nesta tela,
-// em duas etapas; o resto continua no construtor, e o rail diz isso.
+// The five stages of the whole flow. Format and basics happen on this screen,
+// in two steps; the rest continues in the builder, and the rail says so.
 const creationStages = [
   { id: "format", label: "courseCreation.format", detail: "courseCreation.formatDetail", where: "here" },
   { id: "basics", label: "courseCreation.basics", detail: "courseCreation.basicsDetail", where: "here" },
@@ -60,10 +60,10 @@ const formatIcons: Record<TeacherCourseProductFormat, LucideIcon> = {
 export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateCourseStartProps) {
   const router = useRouter();
   const { t } = useTranslation();
-  // Tela 1: o que vai entregar. Tela 2: o nome (e, no evento, quando e onde).
+  // Screen 1: what it will deliver. Screen 2: the name (and, for an event, when and where).
   const [step, setStep] = useState<1 | 2>(1);
-  // So a troca de passo anima o painel; o passo de abertura entra parado (o
-  // titulo dele e o maior texto da tela, candidato a LCP).
+  // Only the step change animates the panel; the opening step comes in still (its
+  // title is the biggest text on the screen, an LCP candidate).
   const panelIn = useJustDone([String(step)]).has(String(step)) ? "motion-panel-in" : undefined;
   const [productFormat, setProductFormat] = useState<TeacherCourseProductFormat>(initialFormat);
   const [title, setTitle] = useState("");
@@ -72,14 +72,14 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
   const [eventDate, setEventDate] = useState("");
   const [eventTime, setEventTime] = useState("");
   const [eventLink, setEventLink] = useState("");
-  // "Agora" amostrado na montagem (o render tem de ser puro, como na Agenda);
-  // o envio confere de novo com o relogio da hora.
+  // "Now" sampled on mount (render has to be pure, as in the Agenda);
+  // the submit checks again with the clock of the moment.
   const [now] = useState(() => Date.now());
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
-  // Trocar de etapa leva o foco ao titulo da etapa nova, como a Agenda faz:
-  // quem usa leitor de tela ouve onde esta, e o Tab continua dali. Na
-  // primeira pintura o foco fica onde a pagina deixou.
+  // Changing step takes focus to the new step's title, as the Agenda does:
+  // whoever uses a screen reader hears where they are, and Tab continues from there. On the
+  // first paint focus stays where the page left it.
   const stepHeading = useRef<HTMLHeadingElement>(null);
   const stepChanged = useRef(false);
   useEffect(() => {
@@ -88,10 +88,10 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
   const isLiveEvent = productFormat === "live_event";
   const startsAt = eventDate && eventTime ? new Date(`${eventDate}T${eventTime}`) : null;
   const startsAtValid = Boolean(startsAt && Number.isFinite(startsAt.getTime()));
-  // O dia de hoje no fuso de quem cria: o minimo do campo de data.
+  // Today's date in the creator's time zone: the date field's minimum.
   const today = new Date(now - new Date(now).getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
   const linkIsValid = !eventLink.trim() || isValidExternalEventUrl(eventLink.trim());
-  // Cada condicao que trava o envio, com o texto que diz o que fazer.
+  // Each condition that blocks submit, with the text that says what to do.
   const submitBlockers = [
     title.trim().length >= 3 ? null : t("courseCreation.titleRequired"),
     summary.trim().length >= 20
@@ -99,8 +99,8 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
       : t("courseCreation.summaryRequired"),
     selectedCategories.length > 0 ? null : t("courseCreation.categoryRequired"),
     !isLiveEvent || startsAtValid ? null : t("courseCreation.whenRequired"),
-    // Sessao no passado: o produto nasceria sem data para vender, e publicar
-    // recusa (publish_teacher_course so aceita sessao por vir).
+    // A session in the past: the product would be born with no date to sell, and publishing
+    // refuses (publish_teacher_course only accepts an upcoming session).
     !isLiveEvent || !startsAtValid || (startsAt?.getTime() ?? 0) > now ? null : t("courseCreation.whenPast"),
     !isLiveEvent || linkIsValid ? null : t("courseCreation.linkInvalid"),
   ].filter((item): item is string => item !== null);
@@ -165,8 +165,8 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
         paymentType: defaultPaymentTypeForProductFormat(productFormat),
         communityEnabled: productFormat === "community",
         productFormat,
-        // Curso nasce com "Modulo 1, Aula 1"; o e-book com uma aula com o nome
-        // do produto, que guarda o arquivo para baixar.
+        // A course is born with "Module 1, Lesson 1"; the e-book with one lesson named
+        // after the product, which holds the file to download.
         moduleTitle: t(productFormat === "ebook" ? "courseCreation.ebookModule" : "courseCreation.starterModule"),
         lessonTitle: productFormat === "ebook" ? title.trim() : t("courseCreation.starterLesson"),
       });
@@ -174,8 +174,8 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
       track.courseDraftCreated({ course_id: courseId, teacher_id: ownerId });
 
       if (isLiveEvent && startsAt) {
-        // ponytail: se a sessao falhar, o produto ja existe; o construtor
-        // mostra "Schedule the session" e a pessoa marca de novo de la.
+        // ponytail: if the session fails, the product already exists; the builder
+        // shows "Schedule the session" and the person books again from there.
         await createCourseEvent({
           courseId,
           courseSlug: courseId,
@@ -189,8 +189,8 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
         }).catch(() => null);
       }
 
-      // created=1: o construtor mostra a faixa de marco uma vez e tira o
-      // parametro da URL.
+      // created=1: the builder shows the milestone banner once and removes the
+      // parameter from the URL.
       router.push(`/teach/builder?courseId=${encodeURIComponent(courseId)}&tab=content&created=1`);
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : "";
@@ -260,8 +260,8 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
           })}
         </ol>
 
-        {/* O vao marinho embaixo dos passos ganha a cena do primeiro produto,
-            na versao clara. Some quando a coluna vira faixa. */}
+        {/* The navy gap under the steps gets the first-product scene,
+            in the light version. It goes away when the column becomes a strip. */}
         <div className="create-course-screen__art">
           <SpotArt scene="firstProduct" tone="light" />
         </div>
@@ -291,7 +291,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
                     detail={t(`courseCreation.types.${format}.help`)}
                     icon={formatIcons[format]}
                     label={t(`courseCreation.types.${format}.label`)}
-                    // Clicar no cartao ja escolhe e avanca.
+                    // Clicking the card already picks and advances.
                     onClick={() => {
                       setProductFormat(format);
                       goTo(2);
@@ -447,8 +447,8 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
                 <ArrowLeft aria-hidden="true" size={15} strokeWidth={1.9} />
                 {t("courseCreation.back")}
               </Button>
-              {/* Criar o produto é um dos dois marcos da jornada: latão, e o
-                  "criando" acontece dentro do próprio botão. */}
+              {/* Creating the product is one of the two journey milestones: brass, and the
+                  "creating" state happens inside the button itself. */}
               <Button
                 type="submit"
                 variant="accent"

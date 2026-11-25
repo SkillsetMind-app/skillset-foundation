@@ -9,12 +9,12 @@ import type { CourseAsset } from "@/domain/course-asset";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { syncLessonPreviewAssets } from "@/lib/data/course-assets";
 
-// A aula de amostra se escolhe em quatro lugares: a página da aula, o seletor
-// da aba Pricing, o menu da linha e a caixa de aula nova. Só a página da aula
-// sincronizava os vídeos (is_preview): nos outros três a loja dizia "Video
-// unavailable" para a amostra e, trocando de A para B, os vídeos de A seguiam
-// marcados como amostra e os de B não. Agora os quatro passam pela mesma
-// função (course-builder-studio.tsx, chooseFreePreviewLesson).
+// The sample lesson is chosen in four places: the lesson page, the picker
+// on the Pricing tab, the row menu and the new-lesson box. Only the lesson page
+// synced the videos (is_preview): in the other three the storefront said "Video
+// unavailable" for the sample and, when switching from A to B, A's videos stayed
+// marked as sample and B's did not. Now all four go through the same
+// function (course-builder-studio.tsx, chooseFreePreviewLesson).
 
 const mocks = vi.hoisted(() => ({
   course: null as TeacherCourse | null,
@@ -121,7 +121,7 @@ async function renderBuilder() {
 
 const card = () => document.querySelector("#builder-sec-modules") as HTMLElement;
 
-describe("aula de amostra: as quatro portas sincronizam os vídeos", () => {
+describe("sample lesson: the four entry points sync the videos", () => {
   let restoreDialogs = () => {};
   beforeEach(() => {
     vi.clearAllMocks();
@@ -138,7 +138,7 @@ describe("aula de amostra: as quatro portas sincronizam os vídeos", () => {
     restoreDialogs();
   });
 
-  it("página da aula: marcar sincroniza a aula, desmarcar sincroniza nenhuma", async () => {
+  it("lesson page: checking syncs the lesson, unchecking syncs none", async () => {
     openAt("courseId=course-1&tab=content&module=m1&lesson=l1");
     await renderBuilder();
     fireEvent.click(screen.getByRole("tab", { name: /^Settings/ }));
@@ -148,16 +148,16 @@ describe("aula de amostra: as quatro portas sincronizam os vídeos", () => {
     expect(sync).toHaveBeenCalledExactlyOnceWith("course-1", "l1");
     expect(toggle()).toHaveAttribute("aria-checked", "true");
 
-    // A mesma aula de novo: limpa, nunca sincroniza "l1" uma segunda vez.
+    // The same lesson again: it clears, and never syncs "l1" a second time.
     fireEvent.click(toggle());
     expect(sync.mock.calls).toEqual([["course-1", "l1"], ["course-1", ""]]);
   });
 
-  // O "mesmo valor não sincroniza" não se prova aqui: o React não dispara o
-  // onChange do <select> quando o valor não muda. Nas duas chaves (página da
-  // aula e menu da linha) ele se prova: escolher a amostra que já é a amostra
-  // limpa (uma sincronia com ""), nunca uma segunda sincronia com a mesma aula.
-  it("seletor da aba Pricing: troca sincroniza, vazio limpa", async () => {
+  // The "same value does not sync" case is not proved here: React does not fire the
+  // onChange of the <select> when the value does not change. In the two toggles (lesson page
+  // and row menu) it is proved: choosing the sample that already is the sample
+  // clears it (a sync with ""), never a second sync with the same lesson.
+  it("Pricing tab picker: switching syncs, empty clears", async () => {
     openAt("courseId=course-1&tab=pricing");
     await renderBuilder();
     const select = await screen.findByRole("combobox", { name: "Free preview lesson" });
@@ -172,7 +172,7 @@ describe("aula de amostra: as quatro portas sincronizam os vídeos", () => {
     expect(sync.mock.calls).toEqual([["course-1", "l2"], ["course-1", "l1"], ["course-1", ""]]);
   });
 
-  it("menu da linha: marca e desmarca pela mesma função; falha na sincronia não derruba nada", async () => {
+  it("row menu: marks and unmarks through the same function; a sync failure does not break anything", async () => {
     openAt("courseId=course-1&tab=content&module=m1");
     await renderBuilder();
     fireEvent.click(within(card()).getByRole("button", { name: 'More actions for "Welcome"' }));
@@ -180,17 +180,17 @@ describe("aula de amostra: as quatro portas sincronizam os vídeos", () => {
     sync.mockRejectedValueOnce(new Error("offline"));
     fireEvent.click(within(card()).getByRole("button", { name: "Mark free preview" }));
     expect(sync).toHaveBeenCalledExactlyOnceWith("course-1", "l1");
-    // A promessa recusada é engolida: a tela segue de pé, com a marca.
+    // The rejected promise is swallowed: the screen stays up, with the mark.
     await Promise.resolve();
     expect(within(card()).getByRole("button", { name: "Free preview selected" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: title, level: 1 })).toBeInTheDocument();
 
-    // A mesma aula de novo: limpa, nunca sincroniza "l1" uma segunda vez.
+    // The same lesson again: it clears, and never syncs "l1" a second time.
     fireEvent.click(within(card()).getByRole("button", { name: "Free preview selected" }));
     expect(sync.mock.calls).toEqual([["course-1", "l1"], ["course-1", ""]]);
   });
 
-  it("caixa de aula nova com a amostra marcada: sincroniza a aula nova", async () => {
+  it("new-lesson box with the sample checked: syncs the new lesson", async () => {
     openAt("courseId=course-1&tab=content&module=m1");
     await renderBuilder();
     fireEvent.click(screen.getByRole("button", { name: "Add lesson to module 1" }));

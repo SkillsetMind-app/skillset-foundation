@@ -6,9 +6,9 @@ import { getCourseOverviewStats } from "@/domain/course-overview";
 import type { CourseMaintenanceIssue } from "@/domain/course-overview";
 import type { TeacherCourse } from "@/domain/teacher-course";
 
-// A aba "Panel" do produto so respondia "quanto falta para publicar". Estas
-// provas cobrem o que ela passou a responder: os quatro numeros do produto, o
-// estado vazio de quem ainda nao vendeu, e a lista de manutencao.
+// The product's "Panel" tab only answered "how much is left to publish". These
+// proofs cover what it now answers: the product's four numbers, the
+// empty state for someone who has not sold yet, and the maintenance list.
 
 const course = {
   id: "course-1",
@@ -25,7 +25,7 @@ const busyStats = getCourseOverviewStats({
   students: [
     { courseId: "course-1", status: "active", progressPercent: 100, enrolledAt: "2026-08-01" },
     { courseId: "course-1", status: "active", progressPercent: 20, enrolledAt: "2026-08-02" },
-    // Aluno de OUTRO produto: a leitura traz a loja inteira.
+        // Learner from ANOTHER product: the read brings the whole store.
     { courseId: "course-2", status: "active", progressPercent: 90, enrolledAt: "2026-08-03" },
   ],
   orders: [
@@ -53,7 +53,7 @@ describe("CourseOverviewPanelView", () => {
       />,
     );
 
-    // Matriculados, receita, conclusao e nota — deste produto, nao da loja.
+        // Enrolled, revenue, completion and grade — of this product, not of the store.
     expect(screen.getByText("2")).toBeInTheDocument();
     expect(screen.getByText("$99.00")).toBeInTheDocument();
     expect(screen.getByText("50%")).toBeInTheDocument();

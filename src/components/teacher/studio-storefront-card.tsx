@@ -9,10 +9,10 @@ import { buttonClasses, Card, Eyebrow } from "@/components/ui";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { useStorefrontPath } from "@/components/teacher/use-storefront-path";
 
-// "Onde as pessoas me compram?" não tinha resposta na Home: a vitrine pública
-// existe em /instructors/{uid} desde sempre, mas o único caminho até ela era o
-// editor — o professor nunca via o próprio endereço, nem conseguia abri-lo para
-// conferir o que o comprador vê.
+// "Where do people buy from me?" had no answer on Home: the public storefront
+// has always existed at /instructors/{uid}, but the only path to it was the
+// editor — the teacher never saw their own address, nor could open it to
+// check what the buyer sees.
 
 export function StudioStorefrontCard({
   uid,
@@ -23,14 +23,14 @@ export function StudioStorefrontCard({
   uid: string;
   courses: TeacherCourse[];
   coursesLoaded: boolean;
-  /** Status do selo; null/undefined = desconhecido (a linha não aparece). */
+  /** Badge status; null/undefined = unknown (the row does not appear). */
   verificationStatus?: string | null;
 }) {
   const { t } = useTranslation();
   const path = useStorefrontPath(uid);
   const published = courses.filter((course) => course.status === "published").length;
-  // Sem nada publicado a vitrine existe mas está vazia: dizer "está no ar" seria
-  // mentira, então o cartão manda publicar em vez de mandar visitar.
+  // With nothing published the storefront exists but is empty: saying "it is live" would be
+  // a lie, so the card tells the person to publish instead of telling them to visit.
   const isLive = published > 0;
 
   return (
@@ -73,8 +73,8 @@ export function StudioStorefrontCard({
           >
             {t("teach.storefrontCard.open")}
           </Link>
-          {/* Contorno, nao solido: na Home o botao forte e o da proxima acao
-              (o passo aberto ou o "Create my first product"), nao a vitrine. */}
+          {/* Outline, not solid: on Home the strong button is the next action's
+              (the open step or "Create my first product"), not the storefront. */}
           <Link
             href="/teach/storefront"
             className={buttonClasses({ variant: "outline", size: "sm" })}
@@ -83,8 +83,8 @@ export function StudioStorefrontCard({
           </Link>
         </div>
 
-        {/* Lugar fixo do selo: depois de 3 "Agora não" na oferta, é só aqui.
-            Só para quem pode pedir; status desconhecido não oferece nada. */}
+        {/* Fixed spot for the badge: after 3 "Not now" on the offer, it is only here.
+            Only for those who can ask; unknown status offers nothing. */}
         {verificationStatus === "none" || verificationStatus === "rejected" ? (
           <div data-verified-badge-slot="" className="mt-4 border-t border-[var(--color-line)] pt-3 text-sm">
             <Link

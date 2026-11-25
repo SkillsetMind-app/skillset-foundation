@@ -26,9 +26,9 @@ import { getMyCourseStudents, type CourseStudent } from "@/lib/data/enrollments"
 // `enrollments` only lets the STUDENT read their own row, so a teacher SELECT
 // returns zero rows with no error. See the migration for the full reasoning.
 //
-// O que faltava depois disso: a tabela vinha sozinha. Numa turma de 40 pessoas
-// nao dava para achar ninguem, nem separar quem terminou de quem nem comecou,
-// nem falar com um aluno sem sair da tela.
+// What was missing after that: the table came alone. In a class of 40 people
+// you could not find anyone, nor separate who finished from who had not even started,
+// nor talk to a learner without leaving the screen.
 
 const sourceLabels: Record<string, string> = {
   payment: "One-time purchase",
@@ -101,12 +101,12 @@ function selectClasses() {
 }
 
 /**
- * Compositor de mensagem por aluno.
+ * Per-learner message composer.
  *
- * `send_course_message` e a MESMA porta que o aluno usa: SECURITY DEFINER,
- * checa a matricula e limita a taxa por remetente. E por isso que nao existe
- * botao de "mensagem para todos" aqui — nao ha envio em lote do outro lado, e
- * um laco no cliente bateria no limite de taxa no terceiro aluno.
+ * `send_course_message` is the SAME door the learner uses: SECURITY DEFINER,
+ * it checks the enrollment and rate-limits per sender. That is why there is no
+ * "message everyone" button here — there is no bulk send on the other side, and
+ * a loop on the client would hit the rate limit on the third learner.
  */
 function MessageComposer({
   courseId,
@@ -124,14 +124,14 @@ function MessageComposer({
   const [sent, setSent] = useState(false);
   const fieldRef = useRef<HTMLTextAreaElement>(null);
 
-  // Abriu, o foco vai para a caixa: antes ela aparecia sem aviso e o teclado
-  // continuava no botao "Message".
+  // Once open, focus goes to the box: before, it appeared without notice and the keyboard
+  // stayed on the "Message" button.
   useEffect(() => {
     fieldRef.current?.focus();
   }, []);
 
-  // Enviou: o "Send" some da tela e o foco cairia no corpo da pagina, onde o
-  // Esc da caixa ja nao chega. Vai para o "Close".
+  // Sent: the "Send" leaves the screen and focus would fall on the page body, where the
+  // box's Esc no longer reaches. It goes to "Close".
   useEffect(() => {
     if (sent) document.getElementById(`message-close-${student.enrollmentId}`)?.focus();
   }, [sent, student.enrollmentId]);
@@ -209,9 +209,9 @@ export function CourseStudentRosterView({
   students: CourseStudent[];
   courseId: string;
   now?: Date;
-  /** Produto publicado: a lista vazia oferece "Copy my page link". */
+  /** Published product: the empty list offers "Copy my page link". */
   share?: { title: string };
-  /** Lê a lista de novo depois de uma falha; `retrying` trava o botão. */
+  /** Reads the list again after a failure; `retrying` locks the button. */
   onRetry?: () => void;
   retrying?: boolean;
 }) {
@@ -220,15 +220,15 @@ export function CourseStudentRosterView({
   const [progress, setProgress] = useState<ProgressFilter>("all");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [openThread, setOpenThread] = useState<string | null>(null);
-  // Fechar (Cancel, Close ou Esc) devolve o foco ao "Message" daquele aluno,
-  // que continua na tela: o teclado nao cai no topo da pagina.
+  // Closing (Cancel, Close or Esc) returns focus to that learner's "Message",
+  // which is still on screen: the keyboard does not fall to the top of the page.
   const closeComposer = (enrollmentId: string) => {
     setOpenThread(null);
     document.getElementById(`message-toggle-${enrollmentId}`)?.focus();
   };
-  // Um unico "agora" por montagem: `new Date()` no valor padrao da prop cria
-  // uma dependencia nova a cada render, e a janela de "esta semana" andava
-  // sozinha entre um render e o seguinte.
+  // A single "now" per mount: `new Date()` in the prop's default value creates
+  // a new dependency on every render, and the "this week" window moved
+  // on its own between one render and the next.
   const [mountedAt] = useState(() => new Date());
   const clock = now ?? mountedAt;
 
@@ -281,7 +281,7 @@ export function CourseStudentRosterView({
   if (state === "loading") {
     return (
       <PanelCard title={t("courseRoster.title")} description={t("courseRoster.description")}>
-        {/* Os quatro quadros, busca + dois filtros + exportar, e as linhas. */}
+        {/* The four frames, search + two filters + export, and the rows. */}
         <div className="mt-5">
           <TableSkeleton label={t("courseRoster.loading")} tiles={4} controls={4} />
         </div>
@@ -290,8 +290,8 @@ export function CourseStudentRosterView({
   }
 
   if (state === "error") {
-    // O erro no vermelho da casa, anunciado, e com saída: antes era uma frase
-    // cinza e o único jeito de tentar de novo era recarregar a página.
+    // The error in the house red, announced, and with a way out: before it was a
+    // gray sentence and the only way to try again was to reload the page.
     return (
       <PanelCard title={t("courseRoster.title")} description={t("courseRoster.description")}>
         <InlineAlert tone="error" className="mt-5">{t("courseRoster.loadError")}</InlineAlert>
@@ -313,8 +313,8 @@ export function CourseStudentRosterView({
           title={t("courseRoster.emptyTitle")}
           className="mt-5"
         />
-        {/* O link da pagina so serve depois de publicar: rascunho nao tem
-            pagina aberta para mandar a ninguem. */}
+        {/* The page link only works after publishing: a draft has no
+            open page to send to anyone. */}
         {share ? (
           <CourseShareLink
             label={t("creatorPanel.hub.sections.page")}
@@ -423,8 +423,8 @@ export function CourseStudentRosterView({
                     {student.email ? (
                       <a
                         href={`mailto:${student.email}`}
-                        // Navy, como sempre apareceu: o `underline` não vale num
-                        // link (text-decoration global) e a cor é o único sinal.
+                        // Navy, as it always looked: `underline` does not apply on a
+                        // link (global text-decoration) and the color is the only signal.
                         className="text-xs text-[var(--color-primary)] underline"
                       >
                         {student.email}
@@ -437,9 +437,9 @@ export function CourseStudentRosterView({
                   <td className="py-3 pr-4 tabular-nums text-[var(--color-ink)]">
                     {student.progressPercent}%
                   </td>
-                  {/* "Emitido" nao da para saber daqui: a tabela de certificados
-                      so e legivel pelo dono do certificado. Isto e elegibilidade,
-                      a mesma regra do fluxo de emissao, e o rotulo diz isso. */}
+                  {/* "Issued" cannot be known from here: the certificates table
+                      is only readable by the certificate's owner. This is eligibility,
+                      the same rule as the issuing flow, and the label says so. */}
                   <td className="py-3 pr-4 text-xs text-[var(--color-ink-soft)]">
                     {isCourseStudentComplete(student) ? t("courseRoster.ready") : t("courseRoster.inProgress")}
                   </td>
@@ -454,9 +454,9 @@ export function CourseStudentRosterView({
                       id={`message-toggle-${student.enrollmentId}`}
                       variant="outline"
                       size="sm"
-                      // O nome do aluno entra no rotulo, nao no texto visivel:
-                      // numa lista de 40 linhas, "Message" sozinho deixa 40
-                      // botoes com o mesmo nome acessivel.
+                      // The learner's name goes in the label, not in the visible text:
+                      // in a list of 40 rows, "Message" alone leaves 40
+                      // buttons with the same accessible name.
                       aria-label={t("courseRoster.messageLabel").replace("{name}", () => student.displayName || t("courseRoster.student"))}
                       aria-expanded={openThread === student.enrollmentId}
                       aria-controls={openThread === student.enrollmentId ? `message-row-${student.enrollmentId}` : undefined}
@@ -471,10 +471,10 @@ export function CourseStudentRosterView({
                     </Button>
                   </td>
                 </tr>
-                {/* A caixa numa linha propria, logo abaixo do aluno: dentro da
-                    celula do nome ela esticava a linha ~170px, soltava as outras
-                    colunas e, no celular, ficava meio escondida atras da rolagem
-                    lateral. O `sticky` a prende no canto visivel da tabela. */}
+                {/* The box on its own row, right below the learner: inside the
+                    name cell it stretched the row ~170px, loosened the other
+                    columns and, on a phone, was half hidden behind the side
+                    scroll. The `sticky` pins it to the visible corner of the table. */}
                 {openThread === student.enrollmentId ? (
                   <tr id={`message-row-${student.enrollmentId}`} className="border-b fine-rule last:border-b-0">
                     <td colSpan={7} className="bg-[var(--color-surface-soft)] px-4 py-3">
@@ -544,7 +544,7 @@ export function CourseStudentRoster({ courseId, share }: { courseId: string; sha
       share={share}
       retrying={retrying}
       onRetry={() => {
-        // A mesma leitura de quando um acesso muda: só roda de novo o efeito.
+        // The same read as when an access changes: only the effect runs again.
         setRetrying(true);
         setRevision((value) => value + 1);
       }}

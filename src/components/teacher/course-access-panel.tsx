@@ -49,8 +49,8 @@ export function CourseAccessPanel({ courseId, onChange }: { courseId: string; on
   const [messageStatus, setMessageStatus] = useState<CourseAccessGrant["access_status"]>("pending");
   const [error, setError] = useState("");
   const [confirmId, setConfirmId] = useState<string | null>(null);
-  // Falha da LEITURA da lista, à parte do erro de conceder: ela ganha um "Try
-  // again" que lê de novo. Antes a frase mandava recarregar a página (F-11).
+  // Failure of READING the list, separate from the grant error: it gets a "Try
+  // again" that reads again. Before, the sentence told people to reload the page (F-11).
   const [loadFailed, setLoadFailed] = useState(false);
   const titleRef = useRef<HTMLParagraphElement>(null);
 
@@ -67,7 +67,7 @@ export function CourseAccessPanel({ courseId, onChange }: { courseId: string; on
       setGrants(await listCourseAccess(courseId));
       setLoadFailed(false);
     } catch {
-      // Continua o aviso com o "Try again".
+      // The notice with the "Try again" stays.
     }
   }
 

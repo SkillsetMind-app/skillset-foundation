@@ -97,10 +97,10 @@ describe("CourseStudentRosterView", () => {
     renderRoster([]);
 
     expect(screen.getByRole("heading", { name: "When someone joins, you'll see them here." })).toBeInTheDocument();
-    // A cena "ainda sem alunos", escondida do leitor de tela.
+    // The "no learners yet" scene, hidden from the screen reader.
     expect(document.querySelector('svg[data-scene="noStudents"]')).toHaveAttribute("aria-hidden", "true");
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
-    // Sem produto publicado nao ha pagina para mandar a ninguem.
+    // Without a published product there is no page to send to anyone.
     expect(screen.queryByRole("button", { name: "Copy my page link" })).toBeNull();
   });
 
@@ -117,20 +117,20 @@ describe("CourseStudentRosterView", () => {
     expect(screen.queryByText("When someone joins, you'll see them here.")).not.toBeInTheDocument();
   });
 
-  // F-11: a falha é anunciada e tem saída; enquanto lê de novo, o botão trava.
+  // F-11: the failure is announced and has a way out; while it reads again, the button locks.
   it("announces the failed read and offers Try again, locked while it runs", () => {
     const onRetry = vi.fn();
     const { rerender } = render(<CourseStudentRosterView state="error" students={[]} courseId="course-1" onRetry={onRetry} />);
 
     expect(screen.getByRole("alert")).toHaveTextContent(/could not load the roster/);
-    // A frase não manda mais recarregar a página: o botão está ao lado.
+    // The sentence no longer tells you to reload the page: the button is beside it.
     expect(screen.getByRole("alert")).not.toHaveTextContent(/reload/i);
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(onRetry).toHaveBeenCalledTimes(1);
 
     rerender(<CourseStudentRosterView state="error" students={[]} courseId="course-1" onRetry={onRetry} retrying />);
     expect(screen.getByRole("button", { name: "Try again" })).toBeDisabled();
-    // O mesmo nome nas duas faces; o anel entra no lugar já guardado.
+    // The same name on both faces; the ring goes in the spot already kept.
     expect(screen.getByRole("button", { name: "Try again" })).toHaveAttribute("aria-busy", "true");
     expect(screen.getByRole("button", { name: "Try again" }).querySelectorAll('[class*="grid-area"]')).toHaveLength(2);
   });
@@ -145,7 +145,7 @@ describe("CourseStudentRosterView", () => {
     const average = summary.getByText("Average progress").closest("div");
 
     expect(enrolled).toHaveTextContent("3");
-    // So Ana entrou nos ultimos 7 dias.
+    // Only Ana joined in the last 7 days.
     expect(newThisWeek).toHaveTextContent("1");
     expect(completed).toHaveTextContent("1");
     expect(average).toHaveTextContent("47%");
@@ -224,7 +224,7 @@ describe("CourseStudentRosterView", () => {
       }),
     );
     expect(await screen.findByText(/Message sent to Maria Silva/)).toBeInTheDocument();
-    // O "Send" sumiu: o foco vai para o "Close", e o Esc continua fechando.
+    // The "Send" is gone: focus goes to "Close", and Esc still closes.
     const close = screen.getByRole("button", { name: "Close" });
     await waitFor(() => expect(close).toHaveFocus());
     fireEvent.keyDown(close, { key: "Escape" });
@@ -232,8 +232,8 @@ describe("CourseStudentRosterView", () => {
     expect(screen.getByRole("button", { name: /Message Maria Silva/ })).toHaveFocus();
   });
 
-  // Antes a caixa abria DENTRO da celula do nome: a linha crescia ~170px e,
-  // no celular, a caixa ficava meio escondida atras da rolagem lateral.
+  // Before, the box opened INSIDE the name cell: the row grew ~170px and,
+  // on a phone, the box was half hidden behind the side scroll.
   it("opens the composer in its own row below the student, focused, and Esc closes it", () => {
     renderRoster([student, finished]);
 
@@ -246,7 +246,7 @@ describe("CourseStudentRosterView", () => {
     expect(toggle).toHaveAttribute("aria-expanded", "true");
     const cell = box.closest("td")!;
     expect(cell).toHaveAttribute("colspan", "7");
-    // A linha da caixa vem logo depois da linha da Maria, nao dentro dela.
+    // The box row comes right after Maria's row, not inside it.
     const studentRow = within(screen.getByRole("table")).getByText("Maria Silva").closest("tr")!;
     expect(studentRow.nextElementSibling).toBe(cell.closest("tr"));
     expect(toggle).toHaveAttribute("aria-controls", cell.closest("tr")!.id);

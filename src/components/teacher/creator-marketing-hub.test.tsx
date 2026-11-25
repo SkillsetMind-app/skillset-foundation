@@ -5,11 +5,11 @@ import { CreatorMarketingHub } from "@/components/teacher/creator-marketing-hub"
 import type { CourseMessage } from "@/domain/course-message";
 import type { TeacherCourse } from "@/domain/teacher-course";
 
-// O que a pessoa sofria: Marketing era uma lista de cinco linhas sem nenhum
-// estado — nao dava para saber se a vitrine estava no ar, quantas mensagens
-// esperavam resposta nem quantos arquivos havia na midia sem abrir cada tela.
-// Estas provas cobrem os estados reais dos cartoes e o caso em que o dado nao
-// existe: o cartao aparece sem numero, nunca com numero inventado.
+// What the person suffered: Marketing was a five-row list with no
+// state — you could not tell if the storefront was live, how many messages
+// were waiting for a reply or how many files were in media without opening each screen.
+// These tests cover the real states of the cards and the case where the data does not
+// exist: the card shows with no number, never with an invented number.
 
 const mocks = vi.hoisted(() => {
   const course = (id: string, status: TeacherCourse["status"]): TeacherCourse => ({
@@ -42,8 +42,8 @@ const mocks = vi.hoisted(() => {
   return {
     course,
     message,
-    // O MESMO objeto em todo render: um usuario novo por render reinscreve os
-    // efeitos e entra em laco.
+    // The SAME object on every render: a new user per render resubscribes the
+    // effects and loops.
     user: { uid: "teacher-1", displayName: "Ana", roles: ["teacher"] },
     subscribeToTeacherCourses: vi.fn(),
     subscribeToTeacherMessages: vi.fn(),
@@ -105,9 +105,9 @@ describe("CreatorMarketingHub", () => {
     );
   }
 
-  it("mostra os quatro cartoes com o estado real de cada um", async () => {
+  it("shows the four cards with the real state of each one", async () => {
     givenCourses([mocks.course("c1", "published"), mocks.course("c2", "draft")]);
-    // Duas conversas: a do aluno espera resposta, a que o professor respondeu nao.
+    // Two conversations: the learner's waits for a reply, the one the teacher answered does not.
     givenMessages([
       mocks.message("a", "student-a"),
       mocks.message("b", "teacher-1"),
@@ -128,17 +128,17 @@ describe("CreatorMarketingHub", () => {
     expect(
       within(cardNamed("Buyer messages")).getByText("1 awaiting reply"),
     ).toBeInTheDocument();
-    // Cupom mora em cada produto: o cartao leva para a lista de produtos e diz
-    // isso no botao, em vez de passar por /teach/coupons (que so redireciona).
+    // Coupon lives in each product: the card leads to the product list and says
+    // so on the button, instead of going through /teach/coupons (which only redirects).
     const coupons = cardNamed("Coupons & promotions");
     expect(within(coupons).getByText("Set per product")).toBeInTheDocument();
     expect(within(coupons).getByRole("link", { name: /Open your products/ })).toHaveAttribute("href", "/teach/builder");
-    // "Integrations — See what's planned" caia em Ganhos: saiu.
+    // "Integrations — See what's planned" used to land on Earnings: gone.
     expect(screen.queryByRole("heading", { name: "Integrations" })).toBeNull();
     expect(document.querySelector('a[href="/teach/integrations"], a[href="/teach/coupons"]')).toBeNull();
   });
 
-  it("no zero, diz que a vitrine nao esta publicada e que nada espera resposta", async () => {
+  it("at zero, says the storefront is not published and that nothing is waiting for a reply", async () => {
     givenCourses([mocks.course("c1", "draft")]);
     givenMessages([]);
     mocks.countCourseAssets.mockResolvedValue(0);
@@ -154,29 +154,29 @@ describe("CreatorMarketingHub", () => {
     ).toBeInTheDocument();
   });
 
-  it("sem o dado, o cartao aparece sem numero em vez de inventar um", async () => {
+  it("without the data, the card shows no number instead of inventing one", async () => {
     givenCourses([mocks.course("c1", "published")]);
-    // A inscricao falha: o callback de erro zera as mensagens carregadas.
+    // The subscription fails: the error callback zeroes the loaded messages.
     mocks.subscribeToTeacherMessages.mockImplementation(
       (_uid: string, _onData: unknown, onError: () => void) => {
         onError();
         return vi.fn();
       },
     );
-    mocks.countCourseAssets.mockRejectedValue(new Error("sem permissao"));
+    mocks.countCourseAssets.mockRejectedValue(new Error("without permission"));
 
     render(<CreatorMarketingHub />);
 
-    // O cartao da vitrine responde, entao a tela ja renderizou o estado.
+    // The storefront card answers, so the screen has already rendered the state.
     expect(await screen.findByText("Published")).toBeInTheDocument();
     expect(screen.queryByText(/file(s)?$/)).not.toBeInTheDocument();
     expect(screen.queryByText(/awaiting reply/)).not.toBeInTheDocument();
     expect(screen.queryByText("No reply pending")).not.toBeInTheDocument();
-    // O cartao continua na grade, so sem numero.
+    // The card stays in the grid, just without a number.
     expect(cardNamed("Media library")).toBeInTheDocument();
     expect(cardNamed("Buyer messages")).toBeInTheDocument();
   });
-  // O link da vitrine é o que o criador cola na bio: /@usuario quando há @.
+  // The storefront link is what the creator pastes in the bio: /@user when there is an @.
   it("opens the storefront at the creator's @handle when the public profile has one", async () => {
     mocks.publicProfile = { username: "ana.souza" };
     givenCourses([mocks.course("c1", "published")]);

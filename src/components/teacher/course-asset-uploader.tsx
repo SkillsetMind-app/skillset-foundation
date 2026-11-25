@@ -34,8 +34,8 @@ const uploadPresets: Array<{
 }> = [
   {
     kind: "module_cover",
-    // A proporção é a do poster de modulo (2/3, object-cover):
-    // sem dizer isso aqui o professor só descobria o enquadramento na área do aluno.
+    // The proportion is that of the module poster (2/3, object-cover):
+    // without saying so here the teacher only found out the framing in the learner area.
     detail: "creatorEditor.assets.presets.module",
   },
   {
@@ -69,7 +69,7 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
   >(null);
   const [success, setSuccess] = useState<"uploaded" | "deleted" | null>(null);
   const [deletingAssetId, setDeletingAssetId] = useState<string | null>(null);
-  // Arquivo que pediu para ser apagado, enquanto a pergunta está aberta.
+  // File that asked to be deleted, while the question is open.
   const [askingAsset, setAskingAsset] = useState<CourseAsset | null>(null);
   const allLessons = course.modules.flatMap((module) =>
     module.lessons.map((lesson) => ({
@@ -97,8 +97,8 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
         ? t("creatorEditor.members.coverTooLarge")
         : t(`creatorEditor.assets.errors.${error.kind}`);
 
-  // Prévia do arquivo escolhido antes de enviar. Os dois presets deste painel
-  // são imagens; sem isto o professor subia a capa do módulo às cegas.
+  // Preview of the chosen file before uploading. Both presets in this panel
+  // are images; without this the teacher uploaded the module cover blind.
   const previewUrl = useMemo(
     () =>
       selectedFile?.type.startsWith("image/")
@@ -115,8 +115,8 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
     };
   }, [previewUrl]);
 
-  // course_assets não está na publicação do Realtime: depois de enviar ou
-  // apagar, a lista busca de novo em vez de esperar um evento que não vem.
+  // course_assets is not in the Realtime publication: after uploading or
+  // deleting, the list fetches again instead of waiting for an event that never comes.
   const assetsReloadRef = useRef<(() => Promise<void>) | null>(null);
   useEffect(() => {
     const subscription = subscribeToCourseAssets(
@@ -147,7 +147,7 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
       return;
     }
 
-    // Capa do módulo: mesmo teto de 10 MB do campo da página do módulo.
+    // Module cover: same 10 MB cap as the module page field.
     if (kind === "module_cover" && selectedFile.size > MAX_SOURCE_IMAGE_BYTES) {
       setError({ kind: "tooLarge" });
       return;
@@ -161,8 +161,8 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
     setIsUploading(true);
 
     try {
-      // Mesmo recorte 2:3 e compressão do campo da página do módulo; se falhar,
-      // sobe o original.
+      // Same 2:3 crop and compression as the module page field; if it fails,
+      // it uploads the original.
       const file = kind === "module_cover"
         ? await compressImage(selectedFile).catch(() => selectedFile)
         : selectedFile;
@@ -185,8 +185,8 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
       setUploadProgress(null);
       setFileInputKey((current) => current + 1);
     } catch (uploadError) {
-      // O motivo real (teto de tamanho, permissão, conexão) já vem pronto do
-      // domínio; o texto genérico culpava "permissões" por um 413 de tamanho.
+      // The real reason (size cap, permission, connection) already comes ready from the
+      // domain; the generic text blamed "permissions" for a size 413.
       setUploadProgress(null);
       setError({ kind: "upload", cause: uploadError });
     } finally {
@@ -194,7 +194,7 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
     }
   }
 
-  // Roda só pelo confirmar da janela, que antes era o OK do window.confirm.
+  // Runs only through the dialog's confirm, which used to be the OK of window.confirm.
   async function handleDeleteAsset(asset: CourseAsset) {
     if (!isEditable) {
       return;
@@ -223,8 +223,8 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             {t("creatorEditor.assets.label")}
           </p>
-          {/* Título de seção da casa, não display de 30px: a biblioteca é uma
-              ferramenta embaixo do construtor, não o assunto da página. */}
+          {/* Section title in the app's style, not a 30px display: the library is a
+              tool under the builder, not the subject of the page. */}
           <h3 className="mt-2 text-lg font-semibold text-[var(--color-ink)]">
             {t("creatorEditor.assets.title")}
           </h3>
@@ -243,10 +243,10 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
       ) : null}
 
       <form className="mt-5 grid gap-3" onSubmit={handleUpload}>
-        {/* Uma linha: tipo, módulo (na capa do módulo) e arquivo. Antes
-            eram dois cartões de tipo, uma caixa "UPLOADING" que não enviava
-            nada, o mesmo tipo de novo num select e o arquivo nativo esticado,
-            um embaixo do outro. Os campos e o envio são os mesmos. */}
+        {/* One row: type, module (for the module cover) and file. Before
+            there were two type cards, an "UPLOADING" box that uploaded
+            nothing, the same type again in a select and the native file input stretched,
+            one under the other. The fields and the upload are the same. */}
         <div className="flex flex-wrap items-end gap-3">
           <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
             {t("creatorEditor.assets.assetType")}
@@ -324,7 +324,7 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
         {selectedFile ? (
           <div className="flex items-center gap-3 rounded-md bg-[var(--color-surface-soft)] px-4 py-3 text-xs font-semibold text-[var(--color-primary)]">
             {previewUrl ? (
-              // Blob URL local; next/image não se aplica a um objeto em memória.
+              // Local blob URL; next/image does not apply to an in-memory object.
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={previewUrl}
@@ -338,10 +338,10 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
           </div>
         ) : null}
 
-        {/* Depois da opção de prévia e da miniatura: quem envia vê antes tudo o
-            que muda o envio. Rótulo fixo: o andamento é só a nota logo abaixo
-            (ela dizia "Uploading 45%" embaixo de um botão "Uploading...").
-            A face da espera repete o rótulo com o anel, no lugar já guardado. */}
+        {/* After the preview option and the thumbnail: whoever uploads sees first everything
+            that changes the upload. Fixed label: the progress is only the note right below
+            (it used to say "Uploading 45%" under an "Uploading..." button).
+            The waiting face repeats the label with the ring, in the already reserved place. */}
         <Button
           type="submit"
           loading={isUploading}
@@ -404,7 +404,7 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
         )}
       </div>
 
-      {/* A frase é a mesma do antigo window.confirm; o que muda é a caixa. */}
+      {/* The sentence is the same as the old window.confirm; what changes is the box. */}
       {askingAsset ? (
         <ConfirmDialog
           title={t("creatorEditor.lesson.deleteTitle")}
@@ -465,7 +465,7 @@ function AssetGroup({
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 {asset.downloadUrl && asset.contentType.startsWith("image/") ? (
-                  // Capas vivem no bucket público: a URL já está na linha.
+                  // Covers live in the public bucket: the URL is already on the row.
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={asset.downloadUrl}
@@ -473,9 +473,9 @@ function AssetGroup({
                     className={`shrink-0 rounded-md border border-[var(--color-line)] bg-white object-cover ${asset.kind === "module_cover" ? "aspect-[2/3] w-24" : "h-16 w-24"}`}
                   />
                 ) : null}
-                {/* basis-32: a 375px, ao lado da miniatura e do selo, o nome do
-                    arquivo ficava com 72px e quebrava em ate 7 linhas. Com a
-                    base ele fica com 160px e o selo desce. */}
+                {/* basis-32: at 375px, next to the thumbnail and the badge, the file name
+                    was left with 72px and broke into up to 7 lines. With the
+                    basis it gets 160px and the badge drops. */}
                 <div className="min-w-0 flex-1 basis-32">
                   <p className="wrap-anywhere text-sm font-semibold text-[var(--color-ink)]">
                     {asset.fileName}

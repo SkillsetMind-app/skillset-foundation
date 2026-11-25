@@ -5,18 +5,18 @@ import type { ReactNode } from "react";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 
 /**
- * O que so o suporte precisa (o codigo do erro, ids, slug) fica recolhido num
- * "Details for support": a pessoa le a frase do que fazer, e o resto continua
- * na pagina, selecionavel, para quem for colar num chamado. Antes era
- * "Reference: HTTP 409" na cara de quem tentava pagar, e "Course ID ... Slug
- * ..." em texto cru no detalhe da venda.
+ * What only support needs (the error code, ids, slug) stays collapsed in a
+ * "Details for support": the person reads the sentence about what to do, and the rest stays
+ * on the page, selectable, for whoever pastes it into a ticket. Before it was
+ * "Reference: HTTP 409" in the face of someone trying to pay, and "Course ID ... Slug
+ * ..." in raw text in the sale detail.
  */
 export function SupportDetails({
   code,
   className = "",
   children,
 }: {
-  /** Status da resposta que falhou: sai como "Error code: 409". */
+  /** Status of the response that failed: shows as "Error code: 409". */
   code?: number;
   className?: string;
   children?: ReactNode;

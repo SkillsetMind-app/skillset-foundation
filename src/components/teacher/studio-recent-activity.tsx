@@ -19,10 +19,10 @@ import { subscribeToTeacherOrders } from "@/lib/data/orders";
 import { logSubscriptionError } from "@/lib/data/subscription-error";
 import { toDate } from "@/lib/format-date";
 
-// "O que aconteceu enquanto eu não olhava": matrículas, vendas, avaliações e
-// perguntas da comunidade numa linha do tempo só. A Home tinha painel de
-// próximos passos, painel de produtos e painel de métricas — nenhum respondia a
-// pergunta que o professor faz primeiro ao abrir o estúdio.
+// "What happened while I was not looking": enrollments, sales, reviews and
+// community questions in a single timeline. Home had a next-steps
+// panel, a products panel and a metrics panel — none answered the
+// question the teacher asks first when opening the studio.
 
 type ActivityKind = "sale" | "enrollment" | "review" | "question";
 
@@ -100,10 +100,10 @@ export function StudioRecentActivity({
     const ids = courseIdsKey ? courseIdsKey.split(",") : [];
     let alive = true;
 
-    // As duas leituras seguem o mesmo caminho e falham do mesmo jeito: sem os
-    // dados, a lista mostra os tipos que carregaram, nunca um erro por cima da
-    // Home. `loaded` só vira true depois das duas para o estado vazio não
-    // piscar antes da resposta.
+    // The two reads follow the same path and fail the same way: without the
+    // data, the list shows the types that loaded, never an error on top of
+    // Home. `loaded` only becomes true after both so the empty state does not
+    // flash before the answer.
     void Promise.allSettled([
       getRecentCourseReviews(ids),
       getRecentCommunityQuestions(ids),
@@ -123,9 +123,9 @@ export function StudioRecentActivity({
 
   const events = useMemo(() => {
     const items: ActivityEvent[] = [];
-    // Vendas e matriculas chegam da loja INTEIRA (as duas leituras nao aceitam
-    // filtro por curso). As avaliacoes e as perguntas ja vinham recortadas; sem
-    // este recorte, o painel de um produto so mostraria a venda de outro.
+    // Sales and enrollments arrive for the WHOLE store (the two reads do not accept a
+    // course filter). The reviews and the questions already came filtered; without
+    // this filter, the panel of one product would only show another product's sale.
     const mine = new Set(courseIds);
 
     for (const order of orders) {
@@ -201,7 +201,7 @@ export function StudioRecentActivity({
       {!loaded ? (
         <div className="mt-4 h-24 animate-pulse rounded-md bg-[var(--color-surface-strong)]" />
       ) : events.length === 0 ? (
-        // Professor novo não vê uma grade de zeros fingindo ser um painel.
+        // A new teacher does not see a grid of zeros pretending to be a dashboard.
         <EmptyState
           className="mt-4"
           as="h3"

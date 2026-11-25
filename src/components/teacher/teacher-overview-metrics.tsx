@@ -41,7 +41,7 @@ export function TeacherOverviewMetrics({
   courses: TeacherCourse[];
   orders: Order[];
   isLoading: boolean;
-  /** A leitura dos pedidos falhou: receita e alunos dizem "Unavailable", nunca 0. */
+  /** The orders read failed: revenue and learners say "Unavailable", never 0. */
   ordersFailed?: boolean;
 }) {
   const { locale, t } = useTranslation();
@@ -53,13 +53,13 @@ export function TeacherOverviewMetrics({
   const inReviewCount = courses.filter(
     (course) => course.status === "in_review",
   ).length;
-  // Pago ou com reembolso parcial (conta o que ficou).
+  // Paid or partially refunded (counts what was left).
   const paidOrders = orders.filter(isRevenueOrder);
 
-  // Antes da 1a venda os quatro quadros eram $0 / 0 / -- / --: so frase
-  // negativa na primeira visita. Aparecem com o primeiro pedido pago OU a
-  // primeira matricula: matricula gratis nao grava pedido, e quem so vende
-  // gratis tem numeros reais (nota media, matriculas) para ver.
+  // Before the 1st sale the four tiles were $0 / 0 / -- / --: only a negative
+  // phrase on the first visit. They show up with the first paid order OR the
+  // first enrollment: a free enrollment does not record an order, and whoever only sells
+  // for free has real numbers (average rating, enrollments) to look at.
   const hasEnrollment = courses.some((course) => (course.enrollmentCount ?? 0) > 0);
   if (paidOrders.length === 0 && !hasEnrollment) {
     return null;
@@ -77,9 +77,9 @@ export function TeacherOverviewMetrics({
 
     return now - createdAt <= 30 * 24 * 60 * 60 * 1000;
   });
-  // Receita POR MOEDA: R$100 e $20 eram somados e escritos "$120". Uma moeda
-  // sai nela; varias saem lado a lado, a maior primeiro; nenhuma, zero na
-  // unica moeda que o professor ja vendeu (ou "0" puro).
+  // Revenue PER CURRENCY: R$100 and $20 were added up and written "$120". One currency
+  // comes out in it; several come out side by side, the largest first; none, zero in the
+  // only currency the teacher has ever sold in (or a plain "0").
   const revenue30d = groupPaidOrdersByCurrency(paidOrders30d)
     .map((group) => ({ currency: group.currency, amountMinor: group.totalMinor }))
     .sort((left, right) => right.amountMinor - left.amountMinor);
@@ -97,8 +97,8 @@ export function TeacherOverviewMetrics({
       now - createdAt <= 2 * THIRTY_DAYS_MS
     );
   });
-  // A variacao so compara moeda com moeda: com mais de uma moeda nas duas
-  // janelas nao ha numero honesto, e a seta some.
+  // The change only compares currency with currency: with more than one currency in both
+  // windows there is no honest number, and the arrow goes away.
   const comparable = groupPaidOrdersByCurrency([...paidOrders30d, ...prevWindow]);
   const revenueDelta =
     comparable.length === 1
@@ -150,9 +150,9 @@ export function TeacherOverviewMetrics({
       delta: ordersFailed ? null : percentDelta(paidOrders30d.length, newStudentsPrev30d),
       unavailable: ordersFailed,
     },
-    // O quadro "Completion" saiu: o valor era fixo em "--", com a dica
-    // "Appears once learners finish lessons", que nunca se cumpria. Volta
-    // quando a Home tiver a conclusao medida.
+    // The "Completion" tile is gone: the value was fixed at "--", with the hint
+    // "Appears once learners finish lessons", which never came true. It comes back
+    // when the Home has measured completion.
     {
       label: t("teach.metrics.avgRating"),
       value: averageRating ? averageRating.toFixed(1) : "--",

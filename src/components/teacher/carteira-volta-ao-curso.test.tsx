@@ -4,11 +4,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { TeacherWalletPanel } from "@/components/teacher/teacher-wallet-panel";
 
-// O professor saia do Publish para "Set up how you get paid" (antes "Finish payout onboarding"), passava pelas
-// telas da Stripe e caia numa linha de status, sem caminho de volta para o
-// curso. O construtor manda ?returnTo=; com pagamentos prontos, vira botao.
+// The teacher left Publish for "Set up how you get paid" (before "Finish payout onboarding"), went through the
+// Stripe screens and landed on a status line, with no way back to the
+// course. The builder sends ?returnTo=; with payments ready, it becomes a button.
 
-// Referencias ESTAVEIS: o painel assina perfil e ledger com `[user]`.
+// STABLE references: the panel subscribes to profile and ledger with `[user]`.
 const mocks = vi.hoisted(() => ({
   user: { uid: "teacher-1" },
   profile: {} as Record<string, unknown>,
@@ -59,20 +59,20 @@ function openAt(search: string) {
 
 const back = () => screen.queryByRole("link", { name: "Back to your course to publish" });
 
-describe("carteira: volta para o curso depois dos pagamentos", () => {
+describe("wallet: back to the course after payments", () => {
   afterEach(() => {
     cleanup();
     window.history.replaceState(null, "", "/");
     mocks.profile = {};
   });
 
-  it("pagamentos prontos e returnTo do construtor: botao de volta para a aba Publish", () => {
+  it("payments ready and returnTo from the builder: back button to the Publish tab", () => {
     mocks.profile = ready;
     openAt(`?returnTo=${encodeURIComponent(builderPublish)}`);
     expect(back()).toHaveAttribute("href", builderPublish);
   });
 
-  it("pagamentos ainda pendentes: sem botao, a pessoa termina o cadastro primeiro", () => {
+  it("payments still pending: no button, the person finishes signing up first", () => {
     mocks.profile = { stripeConnectedAccountId: "acct_1" };
     openAt(`?returnTo=${encodeURIComponent(builderPublish)}`);
     expect(back()).toBeNull();
@@ -84,13 +84,13 @@ describe("carteira: volta para o curso depois dos pagamentos", () => {
     "/\\evil.example",
     "/account/billing",
     "/teach/builderx?courseId=1",
-  ])("destino que nao e o construtor (%s) nao vira botao", (target) => {
+  ])("a destination that is not the builder (%s) does not become a button", (target) => {
     mocks.profile = ready;
     openAt(`?returnTo=${encodeURIComponent(target)}`);
     expect(back()).toBeNull();
   });
 
-  it("sem returnTo, nada muda", () => {
+  it("without returnTo, nothing changes", () => {
     mocks.profile = ready;
     openAt("");
     expect(back()).toBeNull();

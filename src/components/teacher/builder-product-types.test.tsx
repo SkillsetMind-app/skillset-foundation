@@ -8,9 +8,9 @@ import type { CourseEvent } from "@/domain/course-event";
 import type { TeacherCourse, TeacherCourseProductFormat } from "@/domain/teacher-course";
 import { updateTeacherCourseBuilder } from "@/lib/data/teacher-courses";
 
-// O construtor se adapta ao tipo gravado na criacao (courses.product_format):
-// comunidade com aula opcional, evento com a sessao no lugar da aula, e-book
-// so com o arquivo. Curso continua igual.
+// The builder adapts to the type saved at creation (courses.product_format):
+// community with optional lesson, event with the session in place of the lesson, e-book
+// with only the file. Course stays the same.
 
 const mocks = vi.hoisted(() => ({
   course: null as TeacherCourse | null,
@@ -110,7 +110,7 @@ function session(): CourseEvent {
     description: "",
     type: "live_class",
     status: "scheduled",
-    // Sessao por vir: a data antiga (20/11/2026) venceu e derrubava o teste.
+    // Upcoming session: the old date (20/11/2026) expired and broke the test.
     startsAt: "2099-11-20T22:30:00.000Z",
     externalUrl: "",
     recordingAssetId: null,
@@ -145,7 +145,7 @@ function renderBuilder(tab: string) {
   );
 }
 
-// Itens obrigatorios da lista "o que falta para publicar".
+// Required items of the "what is missing to publish" list.
 async function requiredChecklist() {
   renderBuilder("review");
   const groups = await screen.findAllByText(/^(Content saved|Page prepared|Sale available)/);
@@ -155,7 +155,7 @@ async function requiredChecklist() {
 beforeEach(() => {
   mocks.assets = [];
   mocks.sessions = [];
-  // Nenhum preco em Outros precos: a etapa de preco mostra os cartoes.
+  // No price in Other prices: the pricing step shows the cards.
   vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ offers: [] }) })));
 });
 
@@ -167,8 +167,8 @@ afterEach(() => {
   mocks.searchParams.delete("lesson");
 });
 
-describe("comunidade: aulas opcionais", () => {
-  it("a aba de conteudo diz que aula e opcional e continua deixando criar modulo", async () => {
+describe("community: optional lessons", () => {
+  it("the content tab says a lesson is optional and still lets you create a module", async () => {
     mocks.course = product("community", false);
     renderBuilder("content");
 
@@ -176,7 +176,7 @@ describe("comunidade: aulas opcionais", () => {
     expect(screen.getByText("Add your first module")).toBeInTheDocument();
   });
 
-  it("publicar nao cobra modulo nem aula, so a comunidade ligada", async () => {
+  it("publishing does not require a module or lesson, only the community turned on", async () => {
     mocks.course = product("community", false);
     const [content] = await requiredChecklist();
 
@@ -186,8 +186,8 @@ describe("comunidade: aulas opcionais", () => {
   });
 });
 
-describe("evento ao vivo: a sessao e o conteudo", () => {
-  it("sem sessao: diz que falta e leva a Agenda com o formulario aberto", async () => {
+describe("live event: the session is the content", () => {
+  it("without a session: says it is missing and leads to the Agenda with the form open", async () => {
     mocks.course = product("live_event", false);
     renderBuilder("content");
 
@@ -200,7 +200,7 @@ describe("evento ao vivo: a sessao e o conteudo", () => {
     expect(screen.getByText("Replay (optional)")).toBeInTheDocument();
   });
 
-  it("com sessao: mostra a data, avisa do link que falta e leva a Agenda para editar", async () => {
+  it("with a session: shows the date, warns about the missing link and leads to the Agenda to edit", async () => {
     mocks.course = product("live_event", false);
     mocks.sessions = [session()];
     renderBuilder("content");
@@ -212,8 +212,8 @@ describe("evento ao vivo: a sessao e o conteudo", () => {
     );
   });
 
-  // A sessao que ja passou nao se vende: o servidor cobra uma sessao por vir.
-  it("sessao que ja passou nao conta", async () => {
+  // A session that already passed is not sold: the server requires an upcoming session.
+  it("a session that already passed does not count", async () => {
     mocks.course = product("live_event", false);
     mocks.sessions = [pastSession()];
     renderBuilder("content");
@@ -222,7 +222,7 @@ describe("evento ao vivo: a sessao e o conteudo", () => {
     expect(screen.getByRole("link", { name: "Schedule the session" })).toBeInTheDocument();
   });
 
-  it("publicar cobra a sessao, nao a aula", async () => {
+  it("publishing requires the session, not the lesson", async () => {
     mocks.course = product("live_event", false);
     const [content] = await requiredChecklist();
 
@@ -231,8 +231,8 @@ describe("evento ao vivo: a sessao e o conteudo", () => {
   });
 });
 
-describe("e-book: so o arquivo", () => {
-  it("a aba de conteudo mostra o envio de arquivo, sem modulo, aula nem video", async () => {
+describe("e-book: only the file", () => {
+  it("the content tab shows the file upload, with no module, lesson or video", async () => {
     mocks.course = product("ebook", true);
     renderBuilder("content");
 
@@ -244,8 +244,8 @@ describe("e-book: so o arquivo", () => {
     expect(screen.queryByText(/1 module/i)).toBeNull();
   });
 
-  // O link "Open" do envio leva ?module&lesson; o e-book continua so com arquivos.
-  it("com a aula na URL, continua so com o envio de arquivo", async () => {
+  // The upload "Open" link carries ?module&lesson; the e-book still has only files.
+  it("with the lesson in the URL, it still shows only the file upload", async () => {
     mocks.course = product("ebook", true);
     mocks.searchParams.set("module", "m1");
     mocks.searchParams.set("lesson", "l1");
@@ -256,7 +256,7 @@ describe("e-book: so o arquivo", () => {
     expect(screen.queryByText("Workbook")).toBeNull();
   });
 
-  it("publicar cobra um arquivo e fica pronto quando ele chega", async () => {
+  it("publishing requires a file and is ready when it arrives", async () => {
     mocks.course = product("ebook", true);
     const [content] = await requiredChecklist();
     expect(within(content).getByText("File to download")).toBeInTheDocument();
@@ -271,8 +271,8 @@ describe("e-book: so o arquivo", () => {
   });
 });
 
-describe("curso: igual a antes", () => {
-  it("publicar cobra modulo e aula", async () => {
+describe("course: same as before", () => {
+  it("publishing requires a module and a lesson", async () => {
     mocks.course = product("course", false);
     const [content] = await requiredChecklist();
 
@@ -281,8 +281,8 @@ describe("curso: igual a antes", () => {
   });
 });
 
-// "Como as pessoas vao pagar?": uma pergunta so, com os cartoes do tipo.
-describe("como as pessoas vao pagar", () => {
+// "How will people pay?": a single question, with the type's cards.
+describe("how will people pay", () => {
   function paid(
     productFormat: TeacherCourseProductFormat,
     paymentType: TeacherCourse["paymentType"],
@@ -294,7 +294,7 @@ describe("como as pessoas vao pagar", () => {
 
   function cardTitles() {
     const group = screen.getByRole("group", { name: /How will people pay\?/ });
-    // So os cartoes: o botao de ajuda da pergunta mora na legenda.
+    // Only the cards: the question's help button lives in the legend.
     return within(group)
       .getAllByRole("button")
       .filter((button) => button.hasAttribute("aria-pressed"))
@@ -317,20 +317,20 @@ describe("como as pessoas vao pagar", () => {
     ["community", "subscription_monthly", ["Free", "Monthly membership"], "Monthly membership"],
     ["live_event", "one_time", ["Free", "Ticket"], "Ticket"],
     ["ebook", "one_time", ["Free", "One payment"], "One payment"],
-  ] as const)("%s: os cartoes do tipo e o que ja vem marcado", async (format, paymentType, titles, selected) => {
+  ] as const)("%s: the type's cards and what comes selected", async (format, paymentType, titles, selected) => {
     mocks.course = paid(format, paymentType, 0);
     renderBuilder("pricing");
     await screen.findByRole("group", { name: /How will people pay\?/ });
 
     expect(cardTitles()).toEqual(titles);
     expect(pressed()).toEqual([selected]);
-    // O exemplo em numeros, na moeda do produto.
+    // The example in numbers, in the product's currency.
     if (format === "live_event") {
       expect(screen.getByRole("button", { name: /Ticket/ })).toHaveTextContent("Ex.: $300.");
     }
   });
 
-  it("os campos so aparecem depois de escolher: gratis nao tem nenhum", async () => {
+  it("the fields only appear after choosing: free has none", async () => {
     mocks.course = paid("live_event", "free", 0);
     renderBuilder("pricing");
     await screen.findByRole("group", { name: /How will people pay\?/ });
@@ -344,7 +344,7 @@ describe("como as pessoas vao pagar", () => {
     expect(screen.queryByRole("checkbox", { name: "Also offer a yearly plan" })).toBeNull();
   });
 
-  it("mensalidade: o anual so abre quando marcado, com a economia calculada", async () => {
+  it("monthly: the yearly option only opens when checked, with the savings calculated", async () => {
     mocks.course = paid("course", "one_time", 14900);
     renderBuilder("pricing");
     await screen.findByRole("group", { name: /How will people pay\?/ });
@@ -358,7 +358,7 @@ describe("como as pessoas vao pagar", () => {
     fireEvent.click(yearly);
     fireEvent.change(screen.getByRole("textbox", { name: "Price per year" }), { target: { value: "290" } });
     expect(screen.getByText("They save $58 compared to 12 monthly payments.")).toBeInTheDocument();
-    // O Manage le o curso salvo: o link so aparece com o mensal gravado.
+    // Manage reads the saved course: the link only appears with the monthly plan saved.
     expect(screen.queryByRole("link", { name: "Add the yearly plan" })).toBeNull();
     expect(await screen.findByRole("link", { name: "Add the yearly plan" }, { timeout: 4000 })).toHaveAttribute(
       "href",
@@ -369,8 +369,8 @@ describe("como as pessoas vao pagar", () => {
     expect(screen.getByText("This costs the same as 12 monthly payments, or more.")).toBeInTheDocument();
   });
 
-  // Cada forma de pagar ja gravada cai num cartao e a tela nao grava nada
-  // por conta propria.
+  // Each payment form already saved lands on a card and the screen saves nothing
+  // on its own.
   it.each([
     ["course", "free", 0, {}, "Free", null, null],
     ["course", "one_time", 14900, { installmentsEnabled: true, installmentsMax: 6 }, "One payment", "Price", "149"],
@@ -379,7 +379,7 @@ describe("como as pessoas vao pagar", () => {
     ["community", "subscription_yearly", 29000, {}, "Monthly membership", "Price per year", "290"],
     ["live_event", "one_time", 4900, {}, "Ticket", "Price", "49"],
     ["ebook", "one_time", 1900, {}, "One payment", "Price", "19"],
-  ] as const)("produto existente %s/%s: cartao certo, preco igual e nada salvo", async (format, paymentType, price, extra, selected, field, value) => {
+  ] as const)("existing product %s/%s: right card, same price and nothing saved", async (format, paymentType, price, extra, selected, field, value) => {
     vi.useFakeTimers();
     mocks.course = paid(format, paymentType, price, extra);
     renderBuilder("pricing");
@@ -396,9 +396,9 @@ describe("como as pessoas vao pagar", () => {
     expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
   });
 
-  // Produto no ar que cobra por ano: "Charge every month instead" limpa o
-  // valor. Gravar assim deixava o preco nulo e a entrada gratis.
-  it("produto publicado anual: trocar para mensal nao salva sem valor", async () => {
+  // Live product that charges per year: "Charge every month instead" clears the
+  // value. Saving like that left the price null and entry free.
+  it("published yearly product: switching to monthly does not save without a value", async () => {
     vi.useFakeTimers();
     mocks.course = paid("course", "subscription_yearly", 29000, { status: "published" });
     renderBuilder("pricing");
@@ -418,8 +418,8 @@ describe("como as pessoas vao pagar", () => {
     );
   });
 
-  // Sem forma gravada e sem valor, o checkout e o banco leem gratis.
-  it("produto antigo sem forma e sem valor: aparece gratis e nada salvo", async () => {
+  // With no saved form and no value, checkout and the database read free.
+  it("old product with no form and no value: shows as free and nothing saved", async () => {
     vi.useFakeTimers();
     mocks.course = paid("community", undefined, undefined as unknown as number, { status: "published" });
     renderBuilder("pricing");
@@ -430,10 +430,10 @@ describe("como as pessoas vao pagar", () => {
     expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
   });
 
-  // Com preco principal em Outros precos, o checkout cobra ele. Os cartoes
-  // daqui mudariam so o construtor: a etapa diz o que a pagina cobra e leva
-  // para la, e nao deixa virar Gratis com a cobranca de pe.
-  describe("com preco principal em Outros precos", () => {
+  // With a main price in Other prices, checkout charges that. The cards
+  // here would only change the builder: the step says what the page charges and links
+  // there, and does not let it become Free with the charge still active.
+  describe("with a main price in Other prices", () => {
     function stubOffers(offers: unknown[]) {
       vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ offers }) })));
     }
@@ -450,7 +450,7 @@ describe("como as pessoas vao pagar", () => {
       ["o mesmo modelo", "one_time", 9700],
       ["um construtor que diz gratis", "free", 0],
       ["um construtor que diz mensal", "subscription_monthly", 2900],
-    ] as const)("com %s: mostra o que a pagina cobra, sem cartoes nem campos", async (_label, paymentType, price) => {
+    ] as const)("with %s: shows what the page charges, without cards or fields", async (_label, paymentType, price) => {
       stubOffers([main]);
       mocks.course = paid("course", paymentType, price, { status: "published" });
       renderBuilder("pricing");
@@ -465,7 +465,7 @@ describe("como as pessoas vao pagar", () => {
       expect(screen.queryByRole("textbox", { name: /Price/ })).toBeNull();
     });
 
-    it("oferta inativa nao conta: os cartoes voltam", async () => {
+    it("an inactive offer does not count: the cards come back", async () => {
       stubOffers([{ ...main, active: false }]);
       mocks.course = paid("course", "one_time", 9700);
       renderBuilder("pricing");
@@ -474,12 +474,12 @@ describe("como as pessoas vao pagar", () => {
       expect(screen.queryByText(/^Your page charges/)).toBeNull();
     });
 
-    // Sem a lista, o preco principal e desconhecido: os cartoes mudariam so o
-    // construtor. A rota devolve 200 com warning quando a leitura falha.
+    // Without the list, the main price is unknown: the cards would only change the
+    // builder. The route returns 200 with a warning when the read fails.
     it.each([
       ["a leitura falha", { ok: false, json: async () => ({}) }],
       ["a rota avisa que nao leu", { ok: true, json: async () => ({ offers: [], warning: "Offers are unavailable." }) }],
-    ])("quando %s: sem cartoes, e Try again le de novo", async (_label, response) => {
+    ])("when %s: no cards, and Try again reads again", async (_label, response) => {
       vi.stubGlobal("fetch", vi.fn(async () => response));
       mocks.course = paid("course", "one_time", 9700, { status: "published" });
       renderBuilder("pricing");
@@ -489,16 +489,16 @@ describe("como as pessoas vao pagar", () => {
       expect(screen.queryByRole("textbox", { name: /Price/ })).toBeNull();
       expect(screen.queryByText("$97")).toBeNull();
 
-      // A mesma leitura, de novo, sem recarregar a pagina.
+      // The same read, again, without reloading the page.
       stubOffers([]);
       fireEvent.click(screen.getByRole("button", { name: "Try again" }));
       expect(await screen.findByRole("group", { name: /How will people pay\?/ })).toBeInTheDocument();
       expect(screen.queryByRole("alert")).toBeNull();
     });
 
-    // Quem nao e dono do curso (equipe da plataforma) nao le os precos: a rota
-    // responde 403. A etapa diz isso, em vez de um erro com "Try again".
-    it("quem nao e dono do curso ve o aviso, sem erro e sem Try again", async () => {
+    // Someone who is not the course owner (platform staff) does not read the prices: the route
+    // returns 403. The step says so, instead of an error with "Try again".
+    it("someone who is not the course owner sees the notice, with no error and no Try again", async () => {
       vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, json: async () => ({ error: "Only the course owner can list offers." }) })));
       mocks.course = paid("course", "one_time", 9700, { status: "published", ownerId: "another-teacher" });
       renderBuilder("pricing");
@@ -508,9 +508,9 @@ describe("como as pessoas vao pagar", () => {
       expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
     });
 
-    // Enquanto a lista chega: um bloco por cartao, no lugar deles, e os tres
-    // cartoes do curso numa linha so (em duas colunas o terceiro sobrava).
-    it("carregando: blocos no lugar dos cartoes; carregado: tres colunas", async () => {
+    // While the list arrives: one block per card, in their place, and the three
+    // course cards on a single row (in two columns the third was left over).
+    it("loading: blocks in place of the cards; loaded: three columns", async () => {
       let answer!: (value: unknown) => void;
       vi.stubGlobal("fetch", vi.fn(() => new Promise((resolve) => { answer = resolve; })));
       mocks.course = paid("course", "one_time", 9700);
@@ -528,9 +528,9 @@ describe("como as pessoas vao pagar", () => {
       expect(group.querySelector(".display-title")).toBeNull();
     });
 
-    // Aba aberta antes do preco principal: outra aba cria o preco, e ao voltar
-    // para esta a etapa le de novo e mostra o que a pagina cobra.
-    it("ao voltar para a aba, le de novo: os cartoes saem", async () => {
+    // Tab opened before the main price: another tab creates the price, and when coming back
+    // to this one the step reads again and shows what the page charges.
+    it("when returning to the tab, it reads again: the cards go away", async () => {
       mocks.course = paid("course", "subscription_monthly", 2900);
       renderBuilder("pricing");
       await screen.findByRole("group", { name: /How will people pay\?/ });
@@ -541,14 +541,14 @@ describe("como as pessoas vao pagar", () => {
 
       expect(await screen.findByText(/^Your page charges \$97 \(One payment\)\./)).toBeInTheDocument();
       expect(screen.queryByRole("group", { name: /How will people pay\?/ })).toBeNull();
-      // O resumo ao lado tambem diz o que a pagina cobra.
+      // The summary beside it also says what the page charges.
       expect(screen.queryByText("$29 / month")).toBeNull();
       expect(screen.getByText("$97")).toBeInTheDocument();
     });
 
-    // A releitura do foco que falha nao apaga a lista boa da tela: o aviso com
-    // "Try again" sai acima dela, como em toda lista.
-    it("releitura que falha mantem os precos na tela, com Try again", async () => {
+    // A re-read on focus that fails does not erase the good list from the screen: the notice with
+    // "Try again" appears above it, as in every list.
+    it("a re-read that fails keeps the prices on screen, with Try again", async () => {
       stubOffers([main]);
       mocks.course = paid("course", "one_time", 9700, { status: "published" });
       renderBuilder("pricing");
@@ -561,24 +561,24 @@ describe("como as pessoas vao pagar", () => {
       expect(screen.getByText(/^Your page charges \$97 \(One payment\)\./)).toBeInTheDocument();
       expect(screen.getByText("$97")).toBeInTheDocument();
 
-      // Enquanto tenta de novo, o aviso fica, com o botão em espera.
+      // While it tries again, the notice stays, with the button waiting.
       let answer!: (value: unknown) => void;
       vi.stubGlobal("fetch", vi.fn(() => new Promise((resolve) => { answer = resolve; })));
       fireEvent.click(screen.getByRole("button", { name: "Try again" }));
       expect(screen.getByText("Couldn't refresh your prices. These are the last ones loaded.")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Try again" })).toHaveAttribute("aria-busy", "true");
-      // O RetryAlert guarda o lugar do anel: o mesmo nome nas duas faces.
+      // RetryAlert keeps the ring's place: the same name on both faces.
       expect(screen.getByRole("button", { name: "Try again" }).querySelectorAll('[class*="grid-area"]')).toHaveLength(2);
       await act(async () => answer({ ok: true, json: async () => ({ offers: [main] }) }));
       await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
       expect(screen.getByText(/^Your page charges \$97 \(One payment\)\./)).toBeInTheDocument();
     });
 
-    // A lista mantida tambem alimenta a regra do Save: produto no ar, cobrado
-    // pela oferta e sem valor no construtor. Antes a falha virava "preco
-    // desconhecido" e o Save era recusado ("livePrice"); agora vale a ultima
-    // lista boa, e o Save grava.
-    it("produto no ar cobrado pela oferta: com a releitura falhando, o Save ainda grava", async () => {
+    // The kept list also feeds the Save rule: live product, charged
+    // by the offer and with no value in the builder. Before, the failure became "unknown
+    // price" and Save was refused ("livePrice"); now the last good
+    // list applies, and Save saves.
+    it("live product charged by the offer: with the re-read failing, Save still saves", async () => {
       stubOffers([main]);
       mocks.course = paid("course", "one_time", 0, { status: "published" });
       renderBuilder("pricing");
@@ -593,8 +593,8 @@ describe("como as pessoas vao pagar", () => {
     });
   });
 
-  // Produto criado antes da regra: a tela mostra o que ele e e avisa.
-  it("comunidade antiga por pagamento unico: o cartao aparece, com o aviso", async () => {
+  // Product created before the rule: the screen shows what it is and warns.
+  it("old community with one-time payment: the card shows up, with the notice", async () => {
     mocks.course = paid("community", "one_time", 9900);
     renderBuilder("pricing");
     await screen.findByRole("group", { name: /How will people pay\?/ });

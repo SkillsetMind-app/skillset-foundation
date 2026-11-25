@@ -11,12 +11,12 @@ const { rpc } = vi.hoisted(() => ({ rpc: vi.fn() }));
 vi.mock("@/lib/supabase/client", () => ({ getSupabaseBrowserClient: () => ({ rpc }) }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
-// P-24: o tour cobre a tela inteira no primeiro login e oferece duas saídas
-// explícitas — o X (16px de ícone + 4px de padding = 24px) e o "Skip" (texto
-// sem padding, 20px de altura). Menos da metade do alvo mínimo de 44px que a
-// própria casa fixa em .button-solid/.button-outline, dentro do mesmo modal.
-// jsdom não mede layout, então o que dá para morder é a classe de tamanho.
-describe("saídas do tour de boas-vindas", () => {
+// P-24: the tour covers the whole screen on the first login and offers two
+// explicit exits — the X (16px icon + 4px padding = 24px) and the "Skip" (text
+// with no padding, 20px tall). Less than half of the 44px minimum target that the
+// house itself fixes in .button-solid/.button-outline, inside the same modal.
+// jsdom does not measure layout, so what can be bitten is the size class.
+describe("welcome tour exits", () => {
   beforeEach(() => {
     rpc.mockReset().mockResolvedValue({ data: true, error: null });
     window.localStorage.clear();
@@ -26,10 +26,10 @@ describe("saídas do tour de boas-vindas", () => {
     cleanup();
   });
 
-  // C-17: no tour do professor também ficou só o "Skip" do rodapé (e o Esc);
-  // o X ("Skip the tour") fazia a mesma coisa. A saída que resta tem nome
-  // visível e alvo de 44px.
-  it("no tour do professor, a única saída (Skip) tem nome e alvo de 44px", async () => {
+  // C-17: in the teacher tour only the footer "Skip" stayed (and Esc);
+  // the X ("Skip the tour") did the same thing. The exit that remains has a
+  // visible name and a 44px target.
+  it("in the teacher tour, the only exit (Skip) has a name and a 44px target", async () => {
     render(<TeacherWelcomeTour userId="teacher-1" firstName="Ana" />);
 
     const dialog = await screen.findByRole("dialog");
@@ -39,10 +39,10 @@ describe("saídas do tour de boas-vindas", () => {
     expect(within(dialog).getByRole("button", { name: "Skip" })).toHaveClass("min-h-11");
   });
 
-  // C-17: trocar de passo não muda a altura (os passos na mesma célula da
-  // grade), o foco vai para o título novo e só o passo atual existe para o
-  // leitor de tela. Os traços não animam largura. O-11: são dois passos.
-  it("no tour do professor, a altura não pula e o foco vai ao título do passo", async () => {
+  // C-17: switching steps does not change the height (the steps in the same grid
+  // cell), focus goes to the new title and only the current step exists for the
+  // screen reader. The dashes do not animate width. O-11: there are two steps.
+  it("in the teacher tour, the height does not jump and focus goes to the step title", async () => {
     render(<TeacherWelcomeTour userId="teacher-steady" firstName="Ana" />);
     const dialog = await screen.findByRole("dialog");
     const titles = dialog.querySelectorAll("h2");
@@ -50,7 +50,7 @@ describe("saídas do tour de boas-vindas", () => {
     const stack = titles[0].parentElement!.parentElement!;
     expect(stack).toHaveClass("grid");
     for (const title of titles) expect(title.parentElement).toHaveClass("[grid-area:1/1]");
-    // Na abertura quem entra é a janela; o texto não sobe junto.
+    // On opening it is the dialog that enters; the text does not rise with it.
     expect(titles[0].parentElement).not.toHaveClass("motion-panel-in");
 
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
@@ -66,15 +66,15 @@ describe("saídas do tour de boas-vindas", () => {
       expect(dot.className).not.toContain("transition-all");
     }
 
-    // Voltar ao passo 1 tira o "Back" da tela: o foco não cai atrás da janela.
+    // Going back to step 1 takes the "Back" off the screen: focus does not fall behind the dialog.
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
     expect(screen.getByRole("heading", { name: "Welcome to your studio, Ana" })).toHaveFocus();
   });
 
-  // C-17: no tour do aluno o X ("Skip the tour") e o "Skip" faziam a mesma
-  // coisa; ficou só o "Skip" do rodapé (e o Esc). A saída que resta continua
-  // com nome visível e alvo de 44px.
-  it("no tour do aluno, a única saída (Skip) tem nome e alvo de 44px", async () => {
+  // C-17: in the learner tour the X ("Skip the tour") and the "Skip" did the same
+  // thing; only the footer "Skip" stayed (and Esc). The exit that remains still has
+  // a visible name and a 44px target.
+  it("in the learner tour, the only exit (Skip) has a name and a 44px target", async () => {
     render(<WelcomeTour userId="student-1" firstName="Ana" />);
 
     const dialog = await screen.findByRole("dialog");
@@ -84,9 +84,9 @@ describe("saídas do tour de boas-vindas", () => {
     expect(within(dialog).getByRole("button", { name: "Skip" })).toHaveClass("min-h-11");
   });
 
-  it("no tour do aluno, um nome com $& aparece literal, sem virar '{name}'", async () => {
-    // Num replace sem callback, "$&" vira o trecho casado ("{name}") e "$'" o
-    // resto da frase. O nome vem do cadastro: é texto da pessoa, não nosso.
+  it("in the learner tour, a name with $& shows up literally, without becoming '{name}'", async () => {
+    // In a replace without a callback, "$&" becomes the matched piece ("{name}") and "$'" the
+    // rest of the sentence. The name comes from sign-up: it is the person's text, not ours.
     render(<WelcomeTour userId="student-1" firstName="Mc$&Donald" />);
 
     expect(await screen.findByRole("heading", { name: "Welcome, Mc$&Donald" })).toBeInTheDocument();
@@ -96,20 +96,20 @@ describe("saídas do tour de boas-vindas", () => {
     render(<I18nProvider initialLocale={locale}><TeacherWelcomeTour userId={`locale-${locale}`} firstName="Mc$&Donald" /></I18nProvider>);
     expect(await screen.findByRole("heading", { name: locale === "en" ? "Welcome to your studio, Mc$&Donald" : "Bienvenido a tu espacio, Mc$&Donald" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Next" : "Siguiente" }));
-    // A Ajuda mora no menu (barra lateral; no celular, dentro da gaveta), nao no topo.
+    // Help lives in the menu (sidebar; on the phone, inside the drawer), not at the top.
     expect(screen.getByText(locale === "en" ? /Help in the menu/ : /Ayuda en el menú/)).toBeInTheDocument();
     // The advisor is open on every account: the tour no longer ties it to a fee.
     expect(screen.queryByText(/active storefront|tienda activa/)).not.toBeInTheDocument();
-    // Sem produto, a ultima pagina leva a criar o primeiro, em vez de so fechar.
+    // With no product, the last page leads to creating the first one, instead of just closing.
     const create = screen.getByRole("link", { name: locale === "en" ? "Create my first product" : "Crear mi primer producto" });
     expect(create).toHaveAttribute("href", "/teach/builder?newCourse=1&format=course");
     expect(screen.queryByRole("button", { name: locale === "en" ? "Open your studio" : "Abrir mi espacio" })).not.toBeInTheDocument();
-    // O link leva a criar E fecha o tour na hora.
+    // The link leads to creating AND closes the tour right away.
     fireEvent.click(create);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("com produto, a ultima pagina so fecha o tour ('Open your studio')", async () => {
+  it("with a product, the last page only closes the tour ('Open your studio')", async () => {
     render(<TeacherWelcomeTour userId="teacher-with-product" firstName="Ana" hasProducts />);
     await screen.findByRole("dialog");
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
@@ -118,9 +118,9 @@ describe("saídas do tour de boas-vindas", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  // O iconezinho redondo de cada passo virou uma faixa de gravura com a cena
-  // do passo: produto e aula. O-11: no segundo passo o tour acaba (sem "Next").
-  it("no tour do professor, cada passo mostra a sua cena de gravura", async () => {
+  // The little round icon of each step became an engraving strip with the scene
+  // of the step: product and lesson. O-11: on the second step the tour ends (no "Next").
+  it("in the teacher tour, each step shows its engraving scene", async () => {
     render(<TeacherWelcomeTour userId="teacher-scenes" firstName="Ana" />);
     const dialog = await screen.findByRole("dialog");
     const scenes: string[] = [];
@@ -135,7 +135,7 @@ describe("saídas do tour de boas-vindas", () => {
   });
 });
 
-// Quantos passos cada tour tem (O-11: o do professor ficou com dois).
+// How many steps each tour has (O-11: the teacher's one stayed with two).
 describe.each([
   ["teacher", TeacherWelcomeTour, 2],
   ["student", WelcomeTour, 4],
@@ -155,8 +155,8 @@ describe.each([
     for (const button of within(actions).getAllByRole("button")) expect(button).toHaveClass("shrink-0");
   });
 
-  // A janela dos termos vem antes: com as duas abertas, o Tab preso no tour
-  // deixava o foco atrás dela. Enquanto ela espera, o tour nem pede o "visto".
+  // The terms dialog comes first: with both open, Tab trapped in the tour
+  // left focus behind it. While it waits, the tour does not even ask for the "seen" mark.
   it("waits for the legal window: no claim and no dialog while it is open, then opens", async () => {
     const gated = (waiting: boolean) => (
       <LegalGateContext.Provider value={waiting}><Tour userId="legal-first" firstName="Ana" /></LegalGateContext.Provider>
@@ -237,7 +237,7 @@ describe.each([
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("storage unavailable"); });
     render(<Tour userId="no-storage" firstName="Ana" />);
     await screen.findByRole("dialog");
-    // "Skip" existe nos dois tours (no do aluno é a única saída).
+    // "Skip" exists in both tours (in the learner's it is the only exit).
     fireEvent.click(screen.getByRole("button", { name: "Skip" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
