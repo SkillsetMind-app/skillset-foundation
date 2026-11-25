@@ -148,15 +148,15 @@ export function WatermarkedVideoPlayer({
     // The position comes from the database (it crosses devices) and so it
     // arrives after the metadata. Remember WHICH lesson asked: if the learner
     // switched lessons while the response was on its way, it no longer applies.
-    const pedido = resume;
+    const requested = resume;
 
-    void readLessonPosition(pedido).then((seconds) => {
+    void readLessonPosition(requested).then((seconds) => {
       const video = videoRef.current;
 
       // `seconds < duration` is the circuit breaker: a position from another
       // recording of the same lesson (the teacher re-recorded it) must not
       // throw the learner outside the timeline.
-      if (video && pedido === resume && seconds > 0 && seconds < video.duration) {
+      if (video && requested === resume && seconds > 0 && seconds < video.duration) {
         video.currentTime = seconds;
       }
     });

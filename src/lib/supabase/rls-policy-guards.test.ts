@@ -31,7 +31,7 @@ import { describe, expect, it } from "vitest";
  * it catches is forgetting, which is how the three violations of this series
  * were born.
  */
-const RAIZ = process.cwd();
+const ROOT = process.cwd();
 
 /**
  * Documented exceptions. The list has to be the same as the one in the database
@@ -48,26 +48,26 @@ const RAIZ = process.cwd();
  *   here would OPEN the hole, a course with a dead enrollment would become
  *   deletable again. See 20260908120000_excluir_ou_arquivar_curso_do_professor.sql.
  */
-const EXCECOES = new Set(["lesson_progress_select_owner", "courses_delete_owner"]);
+const EXCEPTIONS = new Set(["lesson_progress_select_owner", "courses_delete_owner"]);
 
-type Politica = { tabela: string; corpo: string; arquivo: string };
+type Policy = { table: string; body: string; file: string };
 
-function arquivosSql(pasta: string): string[] {
-  return readdirSync(join(RAIZ, pasta))
-    .filter((arquivo) => arquivo.endsWith(".sql"))
+function sqlFiles(dir: string): string[] {
+  return readdirSync(join(ROOT, dir))
+    .filter((file) => file.endsWith(".sql"))
     .sort() // names start with a date, so alphabetical order = chronological
-    .map((arquivo) => join(pasta, arquivo));
+    .map((file) => join(dir, file));
 }
 
 /** `create policy` and `alter policy` from ONE SQL file, in the order they appear. */
-function definicoesDePolitica(texto: string, arquivo: string): Array<[string, Politica]> {
-  const definicoes = texto.matchAll(
+function policyDefinitions(text: string, file: string): Array<[string, Policy]> {
+  const definitions = text.matchAll(
     /\b(?:create|alter)\s+policy\s+"?([a-z0-9_]+)"?\s+on\s+"?([a-z0-9_."]+)"?([\s\S]*?);/gi,
   );
 
-  return [...definicoes].map(([, nome, tabela, corpo]) => [
-    nome.toLowerCase(),
-    { tabela: tabela.replace(/"/g, ""), corpo, arquivo },
+  return [...definitions].map(([, name, table, body]) => [
+    name.toLowerCase(),
+    { tabela: table.replace(/"/g, ""), corpo: body, arquivo: file },
   ]);
 }
 
@@ -82,14 +82,14 @@ function definicoesDePolitica(texto: string, arquivo: string): Array<[string, Po
  * in rpc-definition-guards. It is enough, because the clause it does NOT name
  * was already judged when it was born.
  */
-function politicasEfetivas(): Map<string, Politica> {
-  const efetivas = new Map<string, Politica>();
-  const arquivos = [...arquivosSql("supabase/schema"), ...arquivosSql("supabase/migrations")];
+function effectivePolicies(): Map<string, Policy> {
+  const efetivas = new Map<string, Policy>();
+  const files = [...sqlFiles("supabase/schema"), ...sqlFiles("supabase/migrations")];
 
-  for (const arquivo of arquivos) {
-    const texto = readFileSync(join(RAIZ, arquivo), "utf8");
-    for (const [nome, politica] of definicoesDePolitica(texto, arquivo)) {
-      efetivas.set(nome, politica);
+  for (const file of files) {
+    const text = readFileSync(join(ROOT, file), "utf8");
+    for (const [name, policy] of policyDefinitions(text, file)) {
+      efetivas.set(name, policy);
     }
   }
 
@@ -97,17 +97,17 @@ function politicasEfetivas(): Map<string, Politica> {
 }
 
 /** Policies that query `enrollments` without also checking the status. */
-function politicasSemStatus(efetivas: Map<string, Politica>): string[] {
+function policiesWithoutStatus(efetivas: Map<string, Policy>): string[] {
   return [...efetivas.entries()]
-    .filter(([nome, { corpo }]) => {
-      if (EXCECOES.has(nome)) return false;
-      return /\benrollments\b/i.test(corpo) && !/e\.status/i.test(corpo);
+    .filter(([name, { corpo: body }]) => {
+      if (EXCEPTIONS.has(name)) return false;
+      return /\benrollments\b/i.test(body) && !/e\.status/i.test(body);
     })
-    .map(([nome, { tabela, arquivo }]) => `${tabela}.${nome} (${arquivo})`);
+    .map(([name, { tabela: table, arquivo: file }]) => `${table}.${name} (${file})`);
 }
 
 describe("RLS policies that read enrollments", () => {
-  const efetivas = politicasEfetivas();
+  const efetivas = effectivePolicies();
 
   it("finds the repository policies", () => {
     // Without this, a broken regex would leave the test below green for having
@@ -116,7 +116,7 @@ describe("RLS policies that read enrollments", () => {
   });
 
   it("checks the enrollment status in every policy that queries it", () => {
-    const infratoras = politicasSemStatus(efetivas);
+    const infratoras = policiesWithoutStatus(efetivas);
 
     expect(
       infratoras,
@@ -139,7 +139,7 @@ describe("RLS policies that read enrollments", () => {
       "  using (exists (select 1 from public.enrollments e where e.course_id = fixture.id));",
     ].join("\n");
 
-    expect(politicasSemStatus(new Map(definicoesDePolitica(fixture, "fixture.sql")))).toEqual([
+    expect(policiesWithoutStatus(new Map(policyDefinitions(fixture, "fixture.sql")))).toEqual([
       "public.fixture.fixture_owner (fixture.sql)",
     ]);
   });
@@ -148,13 +148,13 @@ describe("RLS policies that read enrollments", () => {
     // Both guards prove the same rule, so an exception that only one side
     // knows about is a hole in the other. The smoke test excludes by `p.polname <> '...'`.
     const smoke = readFileSync(
-      join(RAIZ, "supabase/tests/20260901180000_dead_enrollments_lose_the_classroom_smoke.sql"),
+      join(ROOT, "supabase/tests/20260901180000_dead_enrollments_lose_the_classroom_smoke.sql"),
       "utf8",
     );
     const noSmoke = [...smoke.matchAll(/p\.polname\s*<>\s*'([a-z0-9_]+)'/g)]
-      .map(([, nome]) => nome);
+      .map(([, name]) => name);
 
-    expect(new Set(noSmoke)).toEqual(EXCECOES);
+    expect(new Set(noSmoke)).toEqual(EXCEPTIONS);
   });
 
   it("keeps the SQL guard looking at WITH CHECK as well", () => {
@@ -162,9 +162,9 @@ describe("RLS policies that read enrollments", () => {
     // only `polqual`, it was blind to every INSERT policy — the hole this series
     // of fixes closed. If someone rewrites it without `polwithcheck`, the blind
     // spot comes back and this file becomes the only defense.
-    const guardas = arquivosSql("supabase/migrations")
-      .map((arquivo) => readFileSync(join(RAIZ, arquivo), "utf8"))
-      .filter((texto) => texto.includes("polqual"));
+    const guardas = sqlFiles("supabase/migrations")
+      .map((file) => readFileSync(join(ROOT, file), "utf8"))
+      .filter((text) => text.includes("polqual"));
 
     expect(guardas.length).toBeGreaterThan(0);
     expect(guardas.at(-1)).toMatch(/polwithcheck/);

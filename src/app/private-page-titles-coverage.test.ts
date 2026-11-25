@@ -11,7 +11,7 @@ import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 // generateMetadata): it checks that the list of covered pages is exactly the
 // one that exists on disk, that the helper's key matches the header's, and that
 // the key exists in both dictionaries.
-const PAGINAS_COM_TITULO_PROPRIO = [
+const PAGES_WITH_OWN_TITLE = [
   "account/billing/page.tsx",
   "account/billing/return/page.tsx",
   "account/billing/upgrade/page.tsx",
@@ -64,11 +64,11 @@ function pagesWithPrivateMetadataOnDisk(): string[] {
 describe("tab title of the signed-in pages", () => {
   it("the list of covered pages is exactly the one on disk (it does not shrink by accident)", () => {
     expect(pagesWithPrivateMetadataOnDisk().sort()).toEqual(
-      [...PAGINAS_COM_TITULO_PROPRIO].sort(),
+      [...PAGES_WITH_OWN_TITLE].sort(),
     );
   });
 
-  it.each(PAGINAS_COM_TITULO_PROPRIO)(
+  it.each(PAGES_WITH_OWN_TITLE)(
     "%s: the helper key is the same as the header key and exists in en/es",
     (relPath) => {
       const source = readPage(relPath);

@@ -15,10 +15,10 @@ import { describe, expect, it } from "vitest";
  * exist on every PR. This is the gate that always runs; it does not replace what
  * runs against the database.
  */
-const RAIZ = process.cwd();
+const ROOT = process.cwd();
 
 describe("creator plan gate - definer boundaries", () => {
-  const sql = readFileSync(join(RAIZ, "supabase/migrations/20261010010000_creator_plan_publish_gate.sql"), "utf8");
+  const sql = readFileSync(join(ROOT, "supabase/migrations/20261010010000_creator_plan_publish_gate.sql"), "utf8");
 
   it.each([
     ["creator_has_current_plan", "text", "service_role"],
@@ -50,18 +50,18 @@ describe("house accounts — plan_grants", () => {
   // through SQL: a policy on it would open the door for any account to give
   // itself Enterprise.
   it("the publish gate accepts the grant and still accepts a subscription", () => {
-    const corpo = definicaoEfetiva("creator_has_current_plan").split("$$;")[0];
-    expect(corpo).toMatch(/from\s+public\.plan_grants/i);
-    expect(corpo).toMatch(/from\s+public\.subscriptions/i);
-    expect(corpo).toMatch(/security definer set search_path = ''/);
+    const body = effectiveDefinition("creator_has_current_plan").split("$$;")[0];
+    expect(body).toMatch(/from\s+public\.plan_grants/i);
+    expect(body).toMatch(/from\s+public\.subscriptions/i);
+    expect(body).toMatch(/security definer set search_path = ''/);
   });
 
   // Only the session lock (restrictive) is accepted: it only narrows. Without a
   // permissive policy, PostgREST neither reads nor writes anything in this table.
   it("plan_grants has RLS enabled and no permissive policy", () => {
-    const todas = textoDasMigrations();
-    expect(todas).toMatch(/alter table public\.plan_grants enable row level security/i);
-    const policies = [...todas.matchAll(/policy\s+\S+\s+on\s+public\.plan_grants\b[^;]*/gi)].map((m) => m[0]);
+    const all = migrationsText();
+    expect(all).toMatch(/alter table public\.plan_grants enable row level security/i);
+    const policies = [...all.matchAll(/policy\s+\S+\s+on\s+public\.plan_grants\b[^;]*/gi)].map((m) => m[0]);
     expect(policies.length).toBeGreaterThan(0);
     for (const policy of policies) expect(policy).toMatch(/\bas\s+restrictive\b/i);
   });
@@ -74,28 +74,28 @@ describe("house accounts — plan_grants", () => {
  * file where the function was born would give a permanent red even after the
  * fix, because an old migration is not edited — it is replaced.
  */
-function definicaoEfetiva(nomeDaFuncao: string): string {
-  const pasta = "supabase/migrations";
-  const marcador = `function public.${nomeDaFuncao}`;
-  const arquivos = readdirSync(join(RAIZ, pasta))
-    .filter((arquivo) => arquivo.endsWith(".sql"))
+function effectiveDefinition(functionName: string): string {
+  const dir = "supabase/migrations";
+  const marcador = `function public.${functionName}`;
+  const files = readdirSync(join(ROOT, dir))
+    .filter((file) => file.endsWith(".sql"))
     .sort(); // names start with a date, so alphabetical order = chronological
 
-  let ultimo: string | null = null;
+  let last: string | null = null;
 
-  for (const arquivo of arquivos) {
-    const texto = readFileSync(join(RAIZ, pasta, arquivo), "utf8");
-    const inicio = texto.indexOf(marcador);
+  for (const file of files) {
+    const text = readFileSync(join(ROOT, dir, file), "utf8");
+    const start = text.indexOf(marcador);
 
-    if (inicio === -1) continue;
+    if (start === -1) continue;
 
-    const abre = texto.indexOf("$function$", inicio);
-    const fecha = texto.indexOf("$function$", abre + 1);
-    ultimo = texto.slice(inicio, fecha === -1 ? undefined : fecha);
+    const open = text.indexOf("$function$", start);
+    const close = text.indexOf("$function$", open + 1);
+    last = text.slice(start, close === -1 ? undefined : close);
   }
 
-  expect(ultimo, `no migration defines ${nomeDaFuncao}`).not.toBeNull();
-  return ultimo as string;
+  expect(last, `no migration defines ${functionName}`).not.toBeNull();
+  return last as string;
 }
 
 describe("create_free_course_enrollment — free enrollment and paid offer", () => {
@@ -104,20 +104,20 @@ describe("create_free_course_enrollment — free enrollment and paid offer", () 
   // A paid offer created with isDefault=false — the upsell path that
   // product_offers exists to support — does not update those columns. The course
   // charged 497 at checkout and was handed out for free by a one-line RPC call.
-  const corpo = definicaoEfetiva("create_free_course_enrollment");
+  const body = effectiveDefinition("create_free_course_enrollment");
 
   it("queries product_offers before granting the course", () => {
-    expect(corpo).toMatch(/product_offers/);
+    expect(body).toMatch(/product_offers/);
   });
 
   it("does not decide the price from the legacy columns of courses alone", () => {
-    const soLegado =
-      /payment_type\s*=\s*'free'/.test(corpo)
-      && /price_amount_minor/.test(corpo)
-      && !/product_offers|product_prices/.test(corpo);
+    const legacyOnly =
+      /payment_type\s*=\s*'free'/.test(body)
+      && /price_amount_minor/.test(body)
+      && !/product_offers|product_prices/.test(body);
 
     expect(
-      soLegado,
+      legacyOnly,
       "the price gate went back to being only payment_type + price_amount_minor: "
         + "a paid non-default offer gives the course away for free",
     ).toBe(false);
@@ -131,12 +131,12 @@ describe("verify_skillset_certificate — the attempt-limit bucket", () => {
   // request gives a new bucket on every request. Worse: each never-seen key
   // INSERTS a permanent row in rate_limits, which has no cleanup. The
   // anti-abuse mechanism becomes the abuse vector.
-  const corpo = definicaoEfetiva("verify_skillset_certificate");
+  const body = effectiveDefinition("verify_skillset_certificate");
 
   it("does not use the raw caller key: the key space is bounded", () => {
     const usaCrua =
-      /coalesce\(\s*\(?\s*select auth\.uid\(\)[\s\S]{0,120}p_rate_key/i.test(corpo)
-      && !/md5\(|hashtext\(|substr\(/i.test(corpo);
+      /coalesce\(\s*\(?\s*select auth\.uid\(\)[\s\S]{0,120}p_rate_key/i.test(body)
+      && !/md5\(|hashtext\(|substr\(/i.test(body);
 
     expect(
       usaCrua,
@@ -146,7 +146,7 @@ describe("verify_skillset_certificate — the attempt-limit bucket", () => {
   });
 
   it("a logged-in user gets a bucket from the identity the platform issued", () => {
-    expect(corpo).toMatch(/auth\.uid\(\)/);
+    expect(body).toMatch(/auth\.uid\(\)/);
   });
 });
 
@@ -156,73 +156,73 @@ describe("delete_or_archive_own_course — deleting must not become deleting for
   // the course disappears; with either one it goes to 'inactive' and whoever
   // bought it can still get in. If the archive branch is lost, the screen keeps
   // saying "your learners keep access" while the course is destroyed.
-  const corpo = definicaoEfetiva("delete_or_archive_own_course");
+  const body = effectiveDefinition("delete_or_archive_own_course");
 
   it("counts enrollments and orders before choosing the outcome", () => {
-    expect(corpo).toMatch(/from\s+public\.enrollments\s+where\s+course_id/i);
-    expect(corpo).toMatch(/from\s+public\.orders\s+where\s+course_id/i);
+    expect(body).toMatch(/from\s+public\.enrollments\s+where\s+course_id/i);
+    expect(body).toMatch(/from\s+public\.orders\s+where\s+course_id/i);
   });
 
   it("has both branches: delete only when there is no buyer", () => {
-    expect(corpo).toMatch(/v_enrollments\s*=\s*0\s+and\s+v_orders\s*=\s*0/i);
-    expect(corpo).toMatch(/delete\s+from\s+public\.courses/i);
-    expect(corpo).toMatch(/'outcome'\s*,\s*'deleted'/i);
+    expect(body).toMatch(/v_enrollments\s*=\s*0\s+and\s+v_orders\s*=\s*0/i);
+    expect(body).toMatch(/delete\s+from\s+public\.courses/i);
+    expect(body).toMatch(/'outcome'\s*,\s*'deleted'/i);
   });
 
   it("archives instead of deleting when there is a buyer", () => {
-    expect(corpo).toMatch(/update\s+public\.courses[\s\S]*status\s*=\s*'inactive'/i);
-    expect(corpo).toMatch(/'outcome'\s*,\s*'archived'/i);
+    expect(body).toMatch(/update\s+public\.courses[\s\S]*status\s*=\s*'inactive'/i);
+    expect(body).toMatch(/'outcome'\s*,\s*'archived'/i);
 
     // The DELETE may only exist inside the no-buyer branch: if it shows up
     // after the archive UPDATE, a course with a learner disappears too.
-    const posicaoUpdate = corpo.search(/update\s+public\.courses/i);
-    const posicaoDelete = corpo.search(/delete\s+from\s+public\.courses/i);
+    const updatePosition = body.search(/update\s+public\.courses/i);
+    const deletePosition = body.search(/delete\s+from\s+public\.courses/i);
     expect(
-      posicaoDelete < posicaoUpdate,
+      deletePosition < updatePosition,
       "the delete from courses left the 'no buyer' branch",
     ).toBe(true);
   });
 
   it("owner only, with a strong session, and no hijackable search_path", () => {
-    expect(corpo).toMatch(/security\s+definer/i);
-    expect(corpo).toMatch(/set\s+search_path\s+to\s+'public',\s*'pg_temp'/i);
-    expect(corpo).toMatch(/require_strong_session\(\)/i);
+    expect(body).toMatch(/security\s+definer/i);
+    expect(body).toMatch(/set\s+search_path\s+to\s+'public',\s*'pg_temp'/i);
+    expect(body).toMatch(/require_strong_session\(\)/i);
     // The owner goes in the WHERE of the FOR UPDATE: someone who is not the owner
     // neither locks another person's row nor finds out whether the id exists
     // (review of #507, D7).
-    expect(corpo).toMatch(/where\s+id\s*=\s*p_course_id\s+and\s+owner_id\s*=\s*v_uid\s+for\s+update/i);
-    expect(corpo).not.toMatch(/Only the course owner can delete it/);
+    expect(body).toMatch(/where\s+id\s*=\s*p_course_id\s+and\s+owner_id\s*=\s*v_uid\s+for\s+update/i);
+    expect(body).not.toMatch(/Only the course owner can delete it/);
   });
 
   // Wave G2b: a teacher post and a pending invite blocked the DELETE (FK with no
   // cascade), and a subscription did not count as a buyer.
   it("locks the row, counts subscriptions and cleans up the children before deleting", () => {
-    expect(corpo).toMatch(/for\s+update/i);
-    expect(corpo).toMatch(/from\s+public\.course_subscriptions/i);
-    expect(corpo).toMatch(/v_subscriptions\s*=\s*0/i);
+    expect(body).toMatch(/for\s+update/i);
+    expect(body).toMatch(/from\s+public\.course_subscriptions/i);
+    expect(body).toMatch(/v_subscriptions\s*=\s*0/i);
 
-    const limpa = corpo.search(/clear_course_for_delete\(/i);
-    const apaga = corpo.search(/delete\s+from\s+public\.courses/i);
-    expect(limpa, "the delete no longer cleans up the children without a cascade").toBeGreaterThan(-1);
-    expect(limpa < apaga, "the cleanup of the children has to come before the delete").toBe(true);
+    const cleanup = body.search(/clear_course_for_delete\(/i);
+    const deletion = body.search(/delete\s+from\s+public\.courses/i);
+    expect(cleanup, "the delete no longer cleans up the children without a cascade").toBeGreaterThan(-1);
+    expect(cleanup < deletion, "the cleanup of the children has to come before the delete").toBe(true);
   });
 });
 
 describe("delete_course_as_admin — the admin deletes through the same path", () => {
-  const corpo = definicaoEfetiva("delete_course_as_admin");
+  const body = effectiveDefinition("delete_course_as_admin");
 
   it("second factor, admin only, and refuses a course with a buyer", () => {
-    expect(corpo).toMatch(/require_strong_session\(\)/i);
-    expect(corpo).toMatch(/is_admin\(\)/i);
-    expect(corpo).toMatch(/from\s+public\.enrollments\s+where\s+course_id/i);
-    expect(corpo).toMatch(/from\s+public\.orders\s+where\s+course_id/i);
-    expect(corpo).toMatch(/from\s+public\.course_subscriptions/i);
+    expect(body).toMatch(/require_strong_session\(\)/i);
+    expect(body).toMatch(/is_admin\(\)/i);
+    expect(body).toMatch(/from\s+public\.enrollments\s+where\s+course_id/i);
+    expect(body).toMatch(/from\s+public\.orders\s+where\s+course_id/i);
+    expect(body).toMatch(/from\s+public\.course_subscriptions/i);
   });
 
   it("cleans up the children without a cascade before deleting", () => {
-    const limpa = corpo.search(/clear_course_for_delete\(/i);
-    expect(limpa).toBeGreaterThan(-1);
-    expect(limpa < corpo.search(/delete\s+from\s+public\.courses/i)).toBe(true);
+    const cleanup = body.search(/clear_course_for_delete\(/i);
+    expect(cleanup).toBeGreaterThan(-1);
+    expect(cleanup < body.search(/delete\s+from\s+public\.courses/i)).toBe(true);
   });
 });
 
@@ -231,44 +231,44 @@ describe("course_deletions — the cleanup queue is born together with the DELET
   // list of the Bunny videos with it. The queue has to be written BEFORE, in the
   // same transaction.
   it("a BEFORE DELETE trigger on courses writes the queue with the videos", () => {
-    const gatilho = definicaoEfetiva("course_deletions_record");
+    const gatilho = effectiveDefinition("course_deletions_record");
     expect(gatilho).toMatch(/insert\s+into\s+public\.course_deletions/i);
     expect(gatilho).toMatch(/bunny_video_id/i);
-    expect(textoDasMigrations()).toMatch(
+    expect(migrationsText()).toMatch(
       /before\s+delete\s+on\s+public\.courses[\s\S]{0,80}course_deletions_record\(\)/i,
     );
   });
 
   it("the client does not call the children cleanup or the file list", () => {
-    const todas = textoDasMigrations();
-    expect(todas).toMatch(
+    const all = migrationsText();
+    expect(all).toMatch(
       /revoke\s+all\s+on\s+function\s+public\.clear_course_for_delete\(text\)\s+from\s+public,\s*anon,\s*authenticated/i,
     );
-    expect(todas).toMatch(
+    expect(all).toMatch(
       /revoke\s+all\s+on\s+function\s+public\.course_storage_objects_for_cleanup\(text\)\s+from\s+public,\s*anon,\s*authenticated/i,
     );
   });
 
   it("the file list only matches the exact folder of the course, with the trailing slash", () => {
-    const lista = definicaoEfetiva("course_storage_objects_for_cleanup");
-    expect(lista).toMatch(/is_service_role\(\)/);
-    expect(lista).toMatch(/'courses\/'\s*\|\|\s*p_course_id\s*\|\|\s*'\/'/);
-    expect(lista).toMatch(/\^\[A-Za-z0-9\]\[A-Za-z0-9_-\]\*\$/);
-    expect(lista).toMatch(/Course id is in use again/);
+    const list = effectiveDefinition("course_storage_objects_for_cleanup");
+    expect(list).toMatch(/is_service_role\(\)/);
+    expect(list).toMatch(/'courses\/'\s*\|\|\s*p_course_id\s*\|\|\s*'\/'/);
+    expect(list).toMatch(/\^\[A-Za-z0-9\]\[A-Za-z0-9_-\]\*\$/);
+    expect(list).toMatch(/Course id is in use again/);
   });
 
   // Review of #507: hand-picked id, borrowed file, video re-checked.
   it("the list only returns what was born while the course existed, from the pending queue, and flags what another row uses", () => {
-    const lista = definicaoEfetiva("course_storage_objects_for_cleanup");
-    expect(lista).toMatch(/v_job\.status\s*<>\s*'pending'/);
-    expect(lista).toMatch(/o\.created_at\s*<=\s*v_job\.requested_at/);
-    expect(lista).toMatch(/o\.created_at\s*>=\s*v_job\.course_created_at/);
-    expect(lista).toMatch(/course_cleanup_references\(/);
-    expect(lista).toMatch(/in_use\s+boolean/i);
+    const list = effectiveDefinition("course_storage_objects_for_cleanup");
+    expect(list).toMatch(/v_job\.status\s*<>\s*'pending'/);
+    expect(list).toMatch(/o\.created_at\s*<=\s*v_job\.requested_at/);
+    expect(list).toMatch(/o\.created_at\s*>=\s*v_job\.course_created_at/);
+    expect(list).toMatch(/course_cleanup_references\(/);
+    expect(list).toMatch(/in_use\s+boolean/i);
   });
 
   it("a video is only removed with a pending queue, an id with no course and nobody referencing it", () => {
-    const video = definicaoEfetiva("course_cleanup_video_deletable");
+    const video = effectiveDefinition("course_cleanup_video_deletable");
     expect(video).toMatch(/is_service_role\(\)/);
     expect(video).toMatch(/d\.status\s*=\s*'pending'/);
     expect(video).toMatch(/not\s+exists\s*\(select\s+1\s+from\s+public\.courses/i);
@@ -278,11 +278,11 @@ describe("course_deletions — the cleanup queue is born together with the DELET
   // Third round: for the client the id stays reserved forever (any status), and
   // the trigger is AFTER (it runs after RLS: no oracle for the queue).
   it("the client never creates or renames a course to an id that went through the queue", () => {
-    const gatilho = definicaoEfetiva("courses_refuse_id_being_deleted");
+    const gatilho = effectiveDefinition("courses_refuse_id_being_deleted");
     expect(gatilho).toMatch(/auth\.role\(\)\s*\)\s*,\s*''\s*\)\s+in\s*\(\s*'anon'\s*,\s*'authenticated'\s*\)/i);
     expect(gatilho).toMatch(/exists\s*\(select\s+1\s+from\s+public\.course_deletions\s+d\s+where\s+d\.course_id\s*=\s*new\.id\)/i);
     expect(gatilho).not.toMatch(/status/i);
-    const migrations = textoDasMigrations();
+    const migrations = migrationsText();
     expect(migrations).toMatch(
       /after\s+insert\s+or\s+update\s+of\s+id\s+on\s+public\.courses[\s\S]{0,80}courses_refuse_id_being_deleted\(\)/i,
     );
@@ -292,11 +292,11 @@ describe("course_deletions — the cleanup queue is born together with the DELET
   });
 
   it("the badge only shows what is still in the queue (failed and cancelled do not stay forever)", () => {
-    expect(definicaoEfetiva("list_my_courses_being_deleted")).toMatch(/d\.status\s*=\s*'pending'/);
+    expect(effectiveDefinition("list_my_courses_being_deleted")).toMatch(/d\.status\s*=\s*'pending'/);
   });
 
   it("the old delete_teacher_course_draft door is no longer the client's", () => {
-    expect(textoDasMigrations()).toMatch(
+    expect(migrationsText()).toMatch(
       /revoke\s+execute\s+on\s+function\s+public\.delete_teacher_course_draft\(text\)\s+from\s+public,\s*anon,\s*authenticated/i,
     );
   });
@@ -306,17 +306,17 @@ describe("courses_delete_owner — the table must not be the back door", () => {
   // 'inactive' also became the ARCHIVED state, that is, the state of a course
   // that HAS a learner. Without the condition below, an authenticated PostgREST
   // client deletes through the table what the RPC refuses to delete.
-  const corpo = policyEfetiva("courses_delete_owner");
+  const body = effectivePolicy("courses_delete_owner");
 
   it("refuses DELETE of a course with an enrollment or an order", () => {
-    expect(corpo).toMatch(/not\s+exists\s*\([\s\S]*public\.enrollments/i);
-    expect(corpo).toMatch(/not\s+exists\s*\([\s\S]*public\.orders/i);
+    expect(body).toMatch(/not\s+exists\s*\([\s\S]*public\.enrollments/i);
+    expect(body).toMatch(/not\s+exists\s*\([\s\S]*public\.orders/i);
   });
 
   it("still requires the second factor", () => {
     // Recreating the policy from scratch is the classic way to lose the gate that
     // 20260902120000 installed.
-    expect(corpo).toMatch(/session_is_strong\(\)/);
+    expect(body).toMatch(/session_is_strong\(\)/);
   });
 });
 
@@ -327,13 +327,13 @@ describe("archiving preserves access for those who bought", () => {
   // them, archiving starts cutting off access for those who paid.
   it.each(["course_assets_select", "course_content_select"])(
     "%s does not look at the course status",
-    (nome) => {
-      const corpo = policyEfetiva(nome);
+    (entryName) => {
+      const body = effectivePolicy(entryName);
 
-      expect(corpo).toMatch(/enrollments/i);
+      expect(body).toMatch(/enrollments/i);
       expect(
-        /c\.status|courses\.status/i.test(corpo),
-        `${nome} started filtering by course status: archiving stops being `
+        /c\.status|courses\.status/i.test(body),
+        `${entryName} started filtering by course status: archiving stops being `
           + "reversible and knocks out the learner who already paid",
       ).toBe(false);
     },
@@ -344,12 +344,12 @@ describe("archiving preserves access for those who bought", () => {
  * Text of all the migrations, in order, for assertions that are not about ONE
  * function — here, whether the cleanup job is actually scheduled.
  */
-function textoDasMigrations(): string {
-  const pasta = "supabase/migrations";
-  return readdirSync(join(RAIZ, pasta))
-    .filter((arquivo) => arquivo.endsWith(".sql"))
+function migrationsText(): string {
+  const dir = "supabase/migrations";
+  return readdirSync(join(ROOT, dir))
+    .filter((file) => file.endsWith(".sql"))
     .sort()
-    .map((arquivo) => readFileSync(join(RAIZ, pasta, arquivo), "utf8"))
+    .map((file) => readFileSync(join(ROOT, dir, file), "utf8"))
     .join("\n");
 }
 
@@ -358,18 +358,18 @@ describe("purge_stale_rate_limits — the rate_limits table has a ceiling", () =
   // and nothing deleted them — the oldest in production was from 07/01. Half of
   // the keys come from outside (hash of the anonymous visitor's IP), so each new
   // address was a row forever: anti-abuse as a disk-filling primitive.
-  const corpo = definicaoEfetiva("purge_stale_rate_limits");
+  const body = effectiveDefinition("purge_stale_rate_limits");
 
   it("deletes only what is outside any window in use", () => {
-    expect(corpo).toMatch(/delete from public\.rate_limits/i);
+    expect(body).toMatch(/delete from public\.rate_limits/i);
     // 2 days > 24h, the largest window (daily ceiling of the advisor and the
     // assistant). Shortening this would delete buckets still counting and loosen
     // a limit.
-    expect(corpo).toMatch(/updated_at\s*<\s*now\(\)\s*-\s*interval\s*'2 days'/i);
+    expect(body).toMatch(/updated_at\s*<\s*now\(\)\s*-\s*interval\s*'2 days'/i);
   });
 
   it("is scheduled in pg_cron instead of depending on someone remembering", () => {
-    expect(textoDasMigrations()).toMatch(
+    expect(migrationsText()).toMatch(
       /cron\.schedule\(\s*'purge-stale-rate-limits'[\s\S]{0,120}purge_stale_rate_limits\(\)/,
     );
   });
@@ -383,23 +383,23 @@ describe("claim_custom_domain — the domain quota is atomic", () => {
   // each one attached to the platform's Vercel project. The route says it
   // delegated the quota to SQL precisely to avoid this race; it had only been
   // moved elsewhere.
-  const corpo = definicaoEfetiva("claim_custom_domain");
-  const travaODono = /from\s+public\.users\s+where\s+uid\s*=\s*v_uid\s+for\s+update/i;
+  const body = effectiveDefinition("claim_custom_domain");
+  const locksTheOwner = /from\s+public\.users\s+where\s+uid\s*=\s*v_uid\s+for\s+update/i;
 
   it("locks the owner's row in users before counting their domains", () => {
     expect(
-      corpo,
+      body,
       "the plan SELECT is back to having no `for update`: two simultaneous "
         + "claims from the same teacher both get past the quota",
-    ).toMatch(travaODono);
+    ).toMatch(locksTheOwner);
 
     // The order is part of the rule: a lock after the count serializes nothing.
-    expect(corpo.search(travaODono)).toBeLessThan(corpo.search(/count\(\*\)/));
+    expect(body.search(locksTheOwner)).toBeLessThan(body.search(/count\(\*\)/));
   });
 
   it("the quota is still checked and enforced here, not in the route", () => {
-    expect(corpo).toMatch(/v_used\s*>=\s*v_limit/);
-    expect(corpo).toMatch(/insert into public\.custom_domains/i);
+    expect(body).toMatch(/v_used\s*>=\s*v_limit/);
+    expect(body).toMatch(/insert into public\.custom_domains/i);
   });
 });
 
@@ -411,31 +411,31 @@ describe("claim_custom_domain — the domain quota is atomic", () => {
  * policy expression contains no semicolon, so the statement runs from
  * `policy <name> on` up to the next `;`.
  */
-function policyEfetiva(nomeDaPolicy: string): string {
-  const pasta = "supabase/migrations";
-  const marcador = new RegExp(String.raw`\bpolicy\s+${nomeDaPolicy}\s+on\b`, "i");
-  const arquivos = readdirSync(join(RAIZ, pasta))
-    .filter((arquivo) => arquivo.endsWith(".sql"))
+function effectivePolicy(policyName: string): string {
+  const dir = "supabase/migrations";
+  const marcador = new RegExp(String.raw`\bpolicy\s+${policyName}\s+on\b`, "i");
+  const files = readdirSync(join(ROOT, dir))
+    .filter((file) => file.endsWith(".sql"))
     .sort();
 
-  let ultimo: string | null = null;
+  let last: string | null = null;
 
-  for (const arquivo of arquivos) {
-    const texto = readFileSync(join(RAIZ, pasta, arquivo), "utf8");
-    let posicao = texto.search(marcador);
+  for (const file of files) {
+    const text = readFileSync(join(ROOT, dir, file), "utf8");
+    let position = text.search(marcador);
 
-    while (posicao !== -1) {
-      const fim = texto.indexOf(";", posicao);
-      ultimo = texto.slice(posicao, fim === -1 ? undefined : fim);
+    while (position !== -1) {
+      const end = text.indexOf(";", position);
+      last = text.slice(position, end === -1 ? undefined : end);
 
-      const resto = texto.slice(posicao + 1);
+      const resto = text.slice(position + 1);
       const proxima = resto.search(marcador);
-      posicao = proxima === -1 ? -1 : posicao + 1 + proxima;
+      position = proxima === -1 ? -1 : position + 1 + proxima;
     }
   }
 
-  expect(ultimo, `no migration defines the policy ${nomeDaPolicy}`).not.toBeNull();
-  return ultimo as string;
+  expect(last, `no migration defines the policy ${policyName}`).not.toBeNull();
+  return last as string;
 }
 
 describe("session_is_strong — RLS now requires the second factor", () => {
@@ -445,28 +445,28 @@ describe("session_is_strong — RLS now requires the second factor", () => {
   // with the anon key, which is public — everything the policies allow for
   // auth.uid(). No policy in this database looked at the AAL: `grep -rin aal
   // supabase/migrations` returned zero lines.
-  const corpo = definicaoEfetiva("session_is_strong");
+  const body = effectiveDefinition("session_is_strong");
 
   it("decides by account: someone with no verified factor changes nothing", () => {
-    expect(corpo).toMatch(/auth\.mfa_factors/i);
-    expect(corpo).toMatch(/status\s*=\s*'verified'/i);
+    expect(body).toMatch(/auth\.mfa_factors/i);
+    expect(body).toMatch(/status\s*=\s*'verified'/i);
     expect(
-      corpo,
+      body,
       "the function has to let through anyone who has NO factor (not exists), otherwise it "
         + "locks the platform for everyone who does not use a second factor",
     ).toMatch(/not\s+exists/i);
   });
 
   it("a strong session is aal2 read from the token, not an app flag", () => {
-    expect(corpo).toMatch(/auth\.jwt\(\)\s*->>\s*'aal'/i);
-    expect(corpo).toMatch(/'aal2'/);
+    expect(body).toMatch(/auth\.jwt\(\)\s*->>\s*'aal'/i);
+    expect(body).toMatch(/'aal2'/);
   });
 
   it("is security definer with a fixed search_path", () => {
     // Without definer it cannot read auth.mfa_factors; with an open search_path, a
     // schema on the caller's path hijacks what it queries.
-    expect(corpo).toMatch(/security\s+definer/i);
-    expect(corpo).toMatch(/set\s+search_path\s*=/i);
+    expect(body).toMatch(/security\s+definer/i);
+    expect(body).toMatch(/set\s+search_path\s*=/i);
   });
 
   it("anon can still execute, otherwise public reads abort with 42501", () => {
@@ -476,7 +476,7 @@ describe("session_is_strong — RLS now requires the second factor", () => {
     // 20260901120000_restore_anon_execute_on_rls_predicates. For anon the function
     // answers TRUE and the owner predicate keeps filtering: granting gives no
     // power, revoking closes the catalog.
-    expect(textoDasMigrations()).toMatch(
+    expect(migrationsText()).toMatch(
       /grant\s+execute\s+on\s+function\s+public\.session_is_strong\(\)\s+to\s+[^;]*\banon\b/i,
     );
   });
@@ -507,10 +507,10 @@ describe("the policies the second factor now protects", () => {
     "lesson_comments_insert",
   ];
 
-  it.each(protegidas)("%s requires the strong session", (nome) => {
+  it.each(protegidas)("%s requires the strong session", (entryName) => {
     expect(
-      policyEfetiva(nome),
-      `${nome} went back to deciding only by auth.uid(): an aal1 token for an account with `
+      effectivePolicy(entryName),
+      `${entryName} went back to deciding only by auth.uid(): an aal1 token for an account with `
         + "TOTP gets through it via PostgREST directly",
     ).toMatch(/session_is_strong\(\)/);
   });
@@ -518,7 +518,7 @@ describe("the policies the second factor now protects", () => {
   it("the public catalog read stays outside the gate", () => {
     // A gate on a public read policy kills the entire acquisition funnel.
     for (const publica of ["courses_select_public", "course_landings_select_public"]) {
-      expect(policyEfetiva(publica)).not.toMatch(/session_is_strong/);
+      expect(effectivePolicy(publica)).not.toMatch(/session_is_strong/);
     }
   });
 });
@@ -528,31 +528,31 @@ describe("Ops control room — reading a person requires an admin with 2FA and w
   // The gate is the one from the account control in #326: active admin AND aal2.
   // Swapping it for require_strong_session would let an admin with no enrolled
   // factor read everything.
-  for (const nome of ["admin_search_users", "admin_get_user_dossier"]) {
-    const corpo = definicaoEfetiva(nome);
+  for (const entryName of ["admin_search_users", "admin_get_user_dossier"]) {
+    const body = effectiveDefinition(entryName);
 
-    it(`${nome}: security definer with a fixed search_path`, () => {
-      expect(corpo).toMatch(/security\s+definer/i);
-      expect(corpo).toMatch(/set\s+search_path\s+to\s+'public',\s*'pg_temp'/i);
+    it(`${entryName}: security definer with a fixed search_path`, () => {
+      expect(body).toMatch(/security\s+definer/i);
+      expect(body).toMatch(/set\s+search_path\s+to\s+'public',\s*'pg_temp'/i);
     });
 
-    it(`${nome}: refuses anyone who is not an admin or has no aal2`, () => {
-      expect(corpo).toMatch(/public\.is_admin\(\)/i);
-      expect(corpo).toMatch(/'aal2'/);
-      expect(corpo).toMatch(/OPS_ADMIN_MFA_REQUIRED/);
+    it(`${entryName}: refuses anyone who is not an admin or has no aal2`, () => {
+      expect(body).toMatch(/public\.is_admin\(\)/i);
+      expect(body).toMatch(/'aal2'/);
+      expect(body).toMatch(/OPS_ADMIN_MFA_REQUIRED/);
     });
 
-    it(`${nome}: read only`, () => {
-      expect(corpo).not.toMatch(/\binsert\s+into\b|\bupdate\s+public\.|\bdelete\s+from\b/i);
+    it(`${entryName}: read only`, () => {
+      expect(body).not.toMatch(/\binsert\s+into\b|\bupdate\s+public\.|\bdelete\s+from\b/i);
     });
   }
 
   it("the dossier shows the count and date of a private conversation, never the text", () => {
     // advisor_messages.content and course_messages.body are private conversation;
     // course_lesson_content is the paid course. The operator sees how much and when.
-    const corpo = definicaoEfetiva("admin_get_user_dossier");
-    expect(corpo).not.toMatch(/\.content\b/);
-    expect(corpo).not.toMatch(/\bm\.body\b/);
-    expect(corpo).not.toMatch(/course_lesson_content/);
+    const body = effectiveDefinition("admin_get_user_dossier");
+    expect(body).not.toMatch(/\.content\b/);
+    expect(body).not.toMatch(/\bm\.body\b/);
+    expect(body).not.toMatch(/course_lesson_content/);
   });
 });

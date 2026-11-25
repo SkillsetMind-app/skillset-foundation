@@ -38,7 +38,7 @@ vi.mock("@/lib/data/notifications", () => ({
   markAllNotificationsAsRead: vi.fn(async () => undefined),
 }));
 
-function aviso(extra: Partial<AppNotification> & Pick<AppNotification, "id" | "type">): AppNotification {
+function notice(extra: Partial<AppNotification> & Pick<AppNotification, "id" | "type">): AppNotification {
   return { title: "", body: "", read: false, ...extra };
 }
 
@@ -94,12 +94,12 @@ describe("o sino antes, durante e depois da leitura", () => {
     // O botao saiu da tela: o foco foi para o titulo, nao caiu na pagina.
     expect(screen.getByRole("heading", { name: "Notifications" })).toHaveFocus();
 
-    act(() => mocks.next?.([aviso({ id: "s", type: "support_reply", link: "/support" })]));
+    act(() => mocks.next?.([notice({ id: "s", type: "support_reply", link: "/support" })]));
     expect(hrefOf("Support replied to your request")).toBe("/support");
   });
 
   it("uma releitura que falha com a lista na tela mantem a lista", () => {
-    mocks.rows = [aviso({ id: "s", type: "support_reply", link: "/support" })];
+    mocks.rows = [notice({ id: "s", type: "support_reply", link: "/support" })];
     openBell("en");
 
     act(() => mocks.fail?.(new Error("offline")));
@@ -112,7 +112,7 @@ describe("o sino antes, durante e depois da leitura", () => {
   it("'Mark all read' que falha diz no painel e deixa os avisos nao lidos", async () => {
     const { markAllNotificationsAsRead } = await import("@/lib/data/notifications");
     vi.mocked(markAllNotificationsAsRead).mockRejectedValueOnce(new Error("offline"));
-    mocks.rows = [aviso({ id: "s", type: "support_reply", link: "/support" })];
+    mocks.rows = [notice({ id: "s", type: "support_reply", link: "/support" })];
     openBell("en");
 
     expect(screen.queryByRole("alert")).toBeNull();
@@ -157,7 +157,7 @@ describe("o sino antes, durante e depois da leitura", () => {
   });
 
   it("o X fecha e devolve o foco ao sino; os alvos tem 44px", () => {
-    mocks.rows = [aviso({ id: "s", type: "support_reply", link: "/support" })];
+    mocks.rows = [notice({ id: "s", type: "support_reply", link: "/support" })];
     openBell("en");
 
     expect(screen.getByRole("button", { name: "Mark all read" })).toHaveClass("min-h-11");
@@ -193,27 +193,27 @@ describe("o sino antes, durante e depois da leitura", () => {
 describe("o sino com os avisos de resposta", () => {
   it("monta cada frase em espanhol e leva direto ao lugar da resposta", () => {
     mocks.rows = [
-      aviso({
+      notice({
         id: "q", type: "community_question", actorName: "Ana", body: "¿Cómo exporto la hoja?",
         link: "/teach/courses/c1/community", params: { postId: "p1", courseId: "c1" },
       }),
-      aviso({
+      notice({
         id: "c", type: "community_comment", actorName: "Bia", body: "Usa el botón exportar.",
         link: "/learn/courses/c1/community/q/p1", params: { postId: "p1", commentId: "k1", category: "question" },
       }),
-      aviso({
+      notice({
         id: "d", type: "community_comment", actorName: "Dani",
         link: "/learn/courses/c1/community/q/p2", params: { postId: "p2", commentId: "k2", category: "discussion" },
       }),
-      aviso({
+      notice({
         id: "r", type: "community_reply", actorName: "Caio",
         link: "/learn/courses/c1/community/q/p1", params: { postId: "p1", commentId: "k3", category: "question" },
       }),
-      aviso({
+      notice({
         id: "s", type: "support_reply", body: "No puedo cambiar mi correo",
         link: "/support", params: { ticketId: "t1" },
       }),
-      aviso({
+      notice({
         id: "m", type: "course_message", title: "New message from your teacher",
         body: "Prof: Hola", link: "/learn/courses/c1/messages",
       }),
@@ -234,11 +234,11 @@ describe("o sino com os avisos de resposta", () => {
 
   it("em ingles, e com 'Someone' quando nao ha nome de quem respondeu", () => {
     mocks.rows = [
-      aviso({
+      notice({
         id: "c", type: "community_comment", actorName: null,
         link: "/learn/courses/c1/community/q/p1", params: { category: "question" },
       }),
-      aviso({ id: "s", type: "support_reply", link: "/support" }),
+      notice({ id: "s", type: "support_reply", link: "/support" }),
     ];
     openBell("en");
 
@@ -247,7 +247,7 @@ describe("o sino com os avisos de resposta", () => {
   });
 
   it("um nome com '$&' aparece como foi escrito", () => {
-    mocks.rows = [aviso({ id: "q", type: "community_question", actorName: "A$&B", link: "/teach/courses/c1/community" })];
+    mocks.rows = [notice({ id: "q", type: "community_question", actorName: "A$&B", link: "/teach/courses/c1/community" })];
     openBell("en");
 
     expect(screen.getByText("A$&B asked a question in your course")).toBeTruthy();
