@@ -38,7 +38,7 @@ describe("purchase access email", () => {
     expect(email.subject).toBe("Your course is ready: <script>alert(1)</script> Part 2");
   });
 
-  // Assinatura: o e-mail da primeira cobrança confirma os termos da renovação.
+  // Subscription: the email for the first charge confirms the renewal terms.
   it("confirms the renewal terms and how to cancel on a subscription, in both languages", () => {
     const renewal = { amountMinor: 2900, currency: "usd", interval: "month" as const };
     const english = buildPurchaseAccessEmail({ ...sale, renewal });
@@ -54,7 +54,7 @@ describe("purchase access email", () => {
     expect(spanish.text).toContain("elige «Cancelar suscripción» en Suscripción");
   });
 
-  // UE, EEE e Reino Unido: a confirmação do acesso imediato em meio durável.
+  // EU, EEA and UK: the immediate-access confirmation on a durable medium.
   it("confirms the immediate-access consent only when it was given, in both languages", () => {
     const english = buildPurchaseAccessEmail({ ...sale, withdrawalConsent: true });
     const sentence = "At checkout you asked for access to start right away and acknowledged that you lose your 14-day right of withdrawal once access starts.";

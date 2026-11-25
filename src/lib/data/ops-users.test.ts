@@ -16,7 +16,7 @@ function row(overrides: Record<string, unknown> = {}) {
 }
 
 describe("searchOpsUsers", () => {
-  it("manda filtros e página para o banco e omite o que está vazio", async () => {
+  it("sends filters and page to the database and omits what is empty", async () => {
     rpc.mockResolvedValue({ data: [], error: null });
     await searchOpsUsers({ search: "  ", status: "suspended", role: null, page: 2 });
     expect(rpc).toHaveBeenCalledWith("admin_search_users", {
@@ -25,7 +25,7 @@ describe("searchOpsUsers", () => {
     });
   });
 
-  it("deriva o status (banido vence suspenso), descarta papel desconhecido e lê o total", async () => {
+  it("derives the status (banned beats suspended), discards an unknown role and reads the total", async () => {
     rpc.mockResolvedValue({
       data: [row(), row({ uid: "u-2", suspended: true }), row({ uid: "u-3", suspended: true, blocked: true }), row({ uid: null })],
       error: null,
@@ -36,21 +36,21 @@ describe("searchOpsUsers", () => {
     expect(page.users[0].roles).toEqual(["teacher"]);
   });
 
-  it("propaga a recusa do banco sem traduzir", async () => {
+  it("passes the database refusal through without translating it", async () => {
     rpc.mockResolvedValue({ data: null, error: { message: "OPS_ADMIN_MFA_REQUIRED" } });
     await expect(searchOpsUsers()).rejects.toMatchObject({ message: "OPS_ADMIN_MFA_REQUIRED" });
   });
 });
 
 describe("getOpsUserDossier", () => {
-  it("pede o dossiê pelo uid e limpa os papéis", async () => {
+  it("asks for the dossier by uid and cleans the roles", async () => {
     rpc.mockResolvedValue({ data: { identity: { uid: "u-1", roles: ["admin", "root"] } }, error: null });
     const dossier = await getOpsUserDossier("u-1");
     expect(rpc).toHaveBeenCalledWith("admin_get_user_dossier", { p_uid: "u-1" });
     expect(dossier.identity.roles).toEqual(["admin"]);
   });
 
-  it("respostas do cadastro que não são objeto viram objeto vazio, e a linha do tempo vira lista", () => {
+  it("signup answers that are not an object become an empty object, and the timeline becomes a list", () => {
     const parsed = parseDossier({ identity: { uid: "u-1", roles: [] }, onboarding: { answers: ["x"] }, timeline: null });
     expect(parsed.onboarding.answers).toEqual({});
     expect(parsed.timeline).toEqual([]);
@@ -58,7 +58,7 @@ describe("getOpsUserDossier", () => {
     expect(kept.onboarding.answers).toEqual({ profession: "Coach" });
   });
 
-  it("recusa resposta sem identidade", () => {
+  it("refuses a response without an identity", () => {
     expect(() => parseDossier({ access: {} })).toThrow("USER_DOSSIER_MALFORMED");
     expect(() => parseDossier(null)).toThrow("USER_DOSSIER_MALFORMED");
   });

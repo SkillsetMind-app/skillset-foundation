@@ -19,8 +19,8 @@ export function onFloatingActionOpened(
   return () => window.removeEventListener(FLOATING_ACTION_OPENED, handleOpened);
 }
 
-// O botao Ajuda ("Como faco X na plataforma") abre o Advisor do estudio sem
-// conhecer o componente: pede pelo mesmo barramento de eventos da janela.
+// The Help button ("How do I do X on the platform") opens the studio Advisor
+// without knowing the component: it asks through the same window event bus.
 const ADVISOR_OPEN_REQUESTED = "skillsetmind:advisor-open-requested";
 
 export function requestAdvisorOpen() {

@@ -104,44 +104,44 @@ describe("lesson progress helpers", () => {
   });
 });
 
-// O "Continuar" do painel abria a capa do curso: a pessoa tinha que achar
-// sozinha onde parou. Estes helpers dao ao painel a aula certa e o rotulo
-// "Module N · Lesson M · X min left" sem inventar numero.
-describe("aula a retomar no painel", () => {
-  // last_lesson_id e a ultima aula CONCLUIDA (e o que o banco grava). Retomar
-  // e a seguinte — nao a que a pessoa acabou de terminar.
-  it("retoma na aula seguinte a ultima concluida, com posicao 1-based", () => {
+// The panel's "Continue" opened the course cover: the person had to find
+// on their own where they had stopped. These helpers give the panel the right lesson and the label
+// "Module N · Lesson M · X min left" without inventing a number.
+describe("lesson to resume on the panel", () => {
+  // last_lesson_id is the last COMPLETED lesson (it is what the database stores). Resuming
+  // means the next one, not the one the person just finished.
+  it("resumes at the lesson after the last completed one, with a 1-based position", () => {
     const resume = getResumeCourseLesson(course, "lesson-2");
     expect(resume?.lesson.id).toBe("lesson-3");
     expect(resume?.moduleNumber).toBe(2);
     expect(resume?.lessonNumber).toBe(1);
   });
 
-  it("concluiu a ultima aula: o cartao fica nela, sem inventar uma proxima", () => {
+  it("completed the last lesson: the card stays on it, without inventing a next one", () => {
     const resume = getResumeCourseLesson(course, "lesson-3");
     expect(resume?.lesson.id).toBe("lesson-3");
   });
 
-  it("sem registro, ou com id que nao existe mais, cai na primeira aula", () => {
+  it("with no record, or with an id that no longer exists, falls back to the first lesson", () => {
     expect(getResumeCourseLesson(course, null)?.lesson.id).toBe("lesson-1");
     expect(getResumeCourseLesson(course, "ghost-lesson")?.lesson.id).toBe("lesson-1");
     expect(getResumeCourseLesson(course, null)?.moduleNumber).toBe(1);
     expect(getResumeCourseLesson(course, null)?.lessonNumber).toBe(1);
   });
 
-  it("curso sem aulas nao tem o que retomar", () => {
+  it("a course with no lessons has nothing to resume", () => {
     expect(getResumeCourseLesson({ ...course, modules: [] }, null)).toBeNull();
   });
 
-  it("soma os minutos da aula retomada ate o fim", () => {
+  it("adds up the minutes from the resumed lesson to the end", () => {
     expect(getRemainingMinutesFrom(course, "lesson-1")).toBe(40);
     expect(getRemainingMinutesFrom(course, "lesson-2")).toBe(32);
     expect(getRemainingMinutesFrom(course, "lesson-3")).toBe(20);
   });
 
-  it("omite os minutos quando alguma aula restante nao traz numero", () => {
-    // Cursos reais gravam "Self-paced" quando o professor nao informa duracao
-    // (published-courses.ts). Uma soma parcial mentiria o total.
+  it("omits the minutes when any remaining lesson has no number", () => {
+    // Real courses store "Self-paced" when the teacher does not give a duration
+    // (published-courses.ts). A partial sum would lie about the total.
     const selfPaced = {
       ...course,
       modules: [
@@ -156,7 +156,7 @@ describe("aula a retomar no painel", () => {
       ],
     };
     expect(getRemainingMinutesFrom(selfPaced, "lesson-1")).toBeNull();
-    // A aula ilegivel ja ficou para tras: dali em diante o total e legivel.
+    // The unreadable lesson is already behind: from there on the total is readable.
     expect(getRemainingMinutesFrom(selfPaced, "lesson-2")).toBe(32);
     expect(getRemainingMinutesFrom(course, "ghost-lesson")).toBeNull();
   });

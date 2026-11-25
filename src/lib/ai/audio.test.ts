@@ -61,7 +61,7 @@ describe("extractAudioChunks", () => {
     expect(args[args.indexOf("-segment_time") + 1]).toBe(String(CHUNK_SECONDS));
     expect(args).toContain("libopus");
     expect(chunks.map((c) => [c.fileName, c.offset])).toEqual([["part000.ogg", 0], ["part001.ogg", CHUNK_SECONDS]]);
-    // A pasta temporária some no fim.
+    // The temporary folder disappears at the end.
     expect(existsSync(dirname(args.at(-1)!))).toBe(false);
   });
 

@@ -1,13 +1,13 @@
 import type { CommunityComment, CommunityPost } from "@/domain/community-post";
 
-// A comunidade simplificada (mockup 5, rodada 11): um feed, tres filtros,
-// duas acoes. Este arquivo e a parte PURA — o que e pergunta, o que e
-// "respondida", qual resposta aparece dentro do cartao, o que o professor
-// tem esperando. As telas so leem daqui; por isso da para provar tudo sem
-// renderizar nada.
+// The simplified community (mockup 5, wave 11): one feed, three filters,
+// two actions. This file is the PURE part: what a question is, what is
+// "answered", which answer shows inside the card, what the teacher
+// has waiting. The screens only read from here; that is why everything can be proven without
+// rendering anything.
 
-/** O que a pessoa faz: pergunta, compartilha, ou (instrutor) publica um aviso.
- *  Mapeado sobre a coluna `category` que ja existia — sem coluna nova. */
+/** What the person does: asks, shares, or (instructor) publishes a notice.
+ *  Mapped onto the `category` column that already existed, with no new column. */
 export type CommunityPostKind = "question" | "share" | "update";
 
 export type CommunityFeedFilter = "all" | "questions" | "instructor";
@@ -22,7 +22,7 @@ export function postKind(post: Pick<CommunityPost, "category">): CommunityPostKi
   return "share";
 }
 
-/** Instrutor = quem escreveu com papel de professor/admin, ou o dono do curso. */
+/** Instructor = whoever wrote with a teacher/admin role, or the owner of the course. */
 export function isInstructor(
   author: Pick<CommunityPost, "authorId" | "authorRole">,
   instructorIds: ReadonlySet<string> | string[] = [],
@@ -39,7 +39,7 @@ export function isAnswered(post: Pick<CommunityPost, "category" | "acceptedComme
   return post.category === "question" && Boolean(post.acceptedCommentId);
 }
 
-/** Tres filtros no lugar de seis espacos com ordenacao. Pinned sempre no topo. */
+/** Three filters in place of six spaces with sorting. Pinned always on top. */
 export function filterPosts(
   posts: CommunityPost[],
   filter: CommunityFeedFilter,
@@ -73,18 +73,18 @@ export function filterPosts(
   });
 }
 
-/** Aceita qualquer coisa com as duas colunas da regra: o contador da aba
- *  Community le so `category` e `accepted_comment_id`, sem trazer o post
- *  inteiro do banco. */
+/** Accepts anything with the two columns of the rule: the tab counter
+ *  Community reads only `category` and `accepted_comment_id`, without bringing the post
+ *  entire post from the database. */
 export function countOpenQuestions(
   posts: Pick<CommunityPost, "category" | "acceptedCommentId">[],
 ): number {
   return posts.filter((post) => postKind(post) === "question" && !isAnswered(post)).length;
 }
 
-/** Comentarios de nivel superior por post (respostas a respostas ficam de fora
- *  da contagem "View N replies"? Nao: contam todos — e o numero que a pessoa
- *  ve ao abrir). */
+/** Top-level comments per post (do replies to replies stay out
+ *  of the "View N replies" count? No: they all count, and it is the number the person
+ *  sees when they open it). */
 export function groupCommentsByPost(
   comments: CommunityComment[],
 ): Map<string, CommunityComment[]> {
@@ -100,8 +100,8 @@ export function groupCommentsByPost(
   return byPost;
 }
 
-/** A resposta que aparece DENTRO do cartao: a aceita; senao, a do instrutor;
- *  senao, a primeira de nivel superior. */
+/** The answer shown INSIDE the card: the accepted one; otherwise, the instructor's;
+ *  otherwise, the first top-level one. */
 export function pickInlineReply(
   post: Pick<CommunityPost, "id" | "acceptedCommentId">,
   comments: CommunityComment[],
@@ -124,9 +124,9 @@ export function pickInlineReply(
   return own.find((c) => !c.parentId) ?? own[0];
 }
 
-/** Enquanto a pessoa digita a pergunta, perguntas parecidas JA RESPONDIDAS.
- *  Metade das duvidas se resolve sem postar. Criterio: pelo menos duas
- *  palavras de 4+ letras em comum com o titulo. */
+/** While the person types the question, similar questions that are ALREADY ANSWERED.
+ *  Half of the doubts get solved without posting. Criterion: at least two
+ *  words of 4+ letters in common with the title. */
 export function findSimilarAnswered(
   query: string,
   posts: CommunityPost[],
@@ -148,8 +148,8 @@ export function findSimilarAnswered(
     .map(({ post }) => post);
 }
 
-/** Para o professor: perguntas em aberto — sem resposta aceita e sem resposta
- *  do instrutor — da mais antiga para a mais nova. */
+/** For the teacher: open questions, with no accepted answer and no answer
+ *  from the instructor, from the oldest to the newest. */
 export function openQuestions(
   posts: CommunityPost[],
   comments: CommunityComment[],
@@ -163,7 +163,7 @@ export function openQuestions(
     .sort((a, b) => toMillis(a.createdAt) - toMillis(b.createdAt));
 }
 
-/** "waiting 2 days" — e vermelho depois de 24 h. */
+/** "waiting 2 days": and red after 24 h. */
 export function waitingFor(
   post: Pick<CommunityPost, "createdAt">,
   now = Date.now(),
@@ -181,7 +181,7 @@ export function waitingFor(
   return { label: `waiting ${days} day${days === 1 ? "" : "s"}`, overdue: true };
 }
 
-/** "This week": posts, perguntas, compartilhamentos e quem participou. */
+/** "This week": posts, questions, shares and who took part. */
 export function weekSummary(
   posts: CommunityPost[],
   comments: CommunityComment[],
@@ -211,8 +211,8 @@ function tokens(text: string): Set<string> {
   );
 }
 
-/** createdAt vem do Supabase como ISO; linhas antigas podem trazer
- *  { seconds }. Sem data = 0 (vai para o fim). */
+/** createdAt comes from Supabase as ISO; old rows may bring
+ *  { seconds }. No date = 0 (goes to the end). */
 export function toMillis(value: unknown): number {
   if (typeof value === "string") {
     const parsed = Date.parse(value);
@@ -225,9 +225,9 @@ export function toMillis(value: unknown): number {
   return 0;
 }
 
-/** Tira da tela o que a pessoa acabou de apagar, sem esperar o realtime (o
- *  DELETE nao chega pelo canal filtrado por curso). Como a cascata do banco,
- *  as respostas de um post apagado e de uma resposta apagada somem junto. */
+/** Removes from the screen what the person just deleted, without waiting for realtime (the
+ *  DELETE does not arrive through the channel filtered by course). Like the database cascade,
+ *  the replies of a deleted post and of a deleted reply disappear along with it. */
 export function withoutDeleted<T extends { id: string; postId?: string; parentId?: string | null }>(
   items: T[],
   deleted: ReadonlySet<string>,

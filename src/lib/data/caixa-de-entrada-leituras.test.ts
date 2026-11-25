@@ -3,9 +3,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { getOpenCommunityQuestions } from "@/lib/data/community-posts";
 import { countThreadsAwaitingTeacher } from "@/lib/data/course-messages";
 
-// As leituras do numero da Caixa de entrada rodam em TODA pagina do professor.
-// Aqui se confere a consulta em si: as mais novas primeiro, os filtros no
-// banco e so as colunas que a conta usa (nada de texto de mensagem).
+// The reads of the Inbox count run on EVERY teacher page.
+// Here the query itself is checked: newest first, filters in the
+// database and only the columns the count uses (no message text).
 
 type Call = [method: string, args: unknown[]];
 
@@ -39,11 +39,11 @@ afterEach(() => {
   db.calls = {};
 });
 
-describe("perguntas que esperam pelo professor", () => {
-  it("le as mais novas primeiro, filtra no banco e so os ids", async () => {
-    // O banco devolve na ordem pedida: da mais nova para a mais velha.
+describe("questions waiting for the teacher", () => {
+  it("reads the newest first, filters in the database and only the ids", async () => {
+    // The database returns in the requested order: from newest to oldest.
     db.rows.community_posts = [{ id: "p-3" }, { id: "p-2" }, { id: "p-1" }];
-    // O professor ja respondeu a p-2 (sem marcar como aceita).
+    // The teacher already answered p-2 (without marking it as accepted).
     db.rows.community_comments = [{ post_id: "p-2" }];
 
     const open = await getOpenCommunityQuestions(["c-1", "c-2"], "teacher-1");
@@ -57,7 +57,7 @@ describe("perguntas que esperam pelo professor", () => {
       ["order", ["created_at", { ascending: false }]],
       ["limit", [200]],
     ]);
-    // Das respostas, so as de instrutor (a regra de isInstructor) e so post_id.
+    // Of the replies, only the instructor ones (the isInstructor rule) and only post_id.
     expect(db.calls.community_comments).toEqual([
       ["select", ["post_id"]],
       ["in", ["post_id", ["p-3", "p-2", "p-1"]]],
@@ -66,14 +66,14 @@ describe("perguntas que esperam pelo professor", () => {
     ]);
   });
 
-  it("sem comunidade ligada, nem pergunta ao banco", async () => {
+  it("with no community connected, it does not even ask the database", async () => {
     expect(await getOpenCommunityQuestions([], "teacher-1")).toEqual([]);
     expect(db.calls.community_posts).toBeUndefined();
   });
 });
 
-describe("conversas que esperam pelo professor", () => {
-  it("le so quem mandou e quando, das 400 mais novas, e conta as que terminam no aluno", async () => {
+describe("conversations waiting for the teacher", () => {
+  it("reads only who sent it and when, from the 400 newest, and counts the ones that end with the learner", async () => {
     db.rows.course_messages = [
       { course_id: "c-1", student_id: "s-1", sender_id: "s-1", created_at: "2026-10-02T00:00:00Z" },
       { course_id: "c-1", student_id: "s-2", sender_id: "teacher-1", created_at: "2026-10-02T00:00:00Z" },

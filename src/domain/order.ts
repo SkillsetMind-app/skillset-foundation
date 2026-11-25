@@ -75,11 +75,12 @@ export function isPaidOrder(status: OrderStatus): boolean {
 }
 
 /**
- * Quanto um pedido ainda conta como receita, na moeda dele: o valor menos o
- * reembolso ja devolvido (`refundedAmountMinor`, que o webhook do Stripe grava
- * acumulado). Um reembolso PARCIAL muda o status para "partially_refunded":
- * filtrar so "paid" fazia uma venda de $100 com $30 devolvidos virar $0 em vez
- * de $70. null = nao e receita (pendente, falho, reembolsado inteiro...).
+ * How much an order still counts as revenue, in its own currency: the amount
+ * minus the refund already returned (`refundedAmountMinor`, which the Stripe
+ * webhook stores as a running total). A PARTIAL refund changes the status to
+ * "partially_refunded": filtering on "paid" only made a $100 sale with $30
+ * refunded count as $0 instead of $70. null = not revenue (pending, failed,
+ * fully refunded...).
  */
 type RevenueFields = { status: string; amountMinor: number; refundedAmountMinor?: number };
 
@@ -92,7 +93,7 @@ export function isRevenueOrder(order: RevenueFields): boolean {
   return orderRevenueMinor(order) !== null;
 }
 
-/** Codigo curto do pedido ("#1A2B3C4D"), o mesmo na lista e na venda. */
+/** Short order code ("#1A2B3C4D"), the same in the list and in the sale. */
 export function formatOrderRef(id: string): string {
   const tail = id.slice(-8).toUpperCase();
   return tail ? `#${tail}` : `#${id.toUpperCase()}`;

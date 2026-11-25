@@ -32,14 +32,14 @@ export type LessonUnlockState = {
   unlocked: boolean;
   unlocksAt: Date | null;
   reason: "available" | "previous_lesson_required" | "scheduled";
-  /** Sequencial trancado: a aula que falta concluir. A tela diz o nome dela e
-   *  leva até ela. Só a tela usa: o espelho no banco (public.lesson_is_released,
-   *  migration 20260915020000) responde só aberta/fechada e não precisa dele. */
+  /** Sequential locked: the lesson that is still to be completed. The screen says its name and
+   *  takes you to it. Only the screen uses it: the mirror in the database (public.lesson_is_released,
+   *  migration 20260915020000) answers only open/closed and does not need it. */
   previousLessonId?: string;
 };
 
-// A data em que a aula abre, no mesmo formato no painel, na playlist e na
-// lista de aulas ("Unlocks Mar 5, 2026").
+// The date the lesson opens, in the same format in the panel, in the playlist and in the
+// lesson list ("Unlocks Mar 5, 2026").
 export function formatUnlockDate(date: Date, locale: string): string {
   return new Intl.DateTimeFormat(locale, {
     month: "short",

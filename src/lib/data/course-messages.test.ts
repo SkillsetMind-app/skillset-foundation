@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
-// O "Try again" da caixa do aluno e a releitura que uma mensagem nova dispara
-// podem voltar fora de ordem. So a leitura mais nova entrega: a antiga traria a
-// conversa sem a mensagem nova, ate o proximo evento.
+// The learner inbox's "Try again" and the re-read that a new message triggers
+// can come back out of order. Only the newest read delivers: the old one would bring the
+// conversation without the new message, until the next event.
 
 type Answer = { data: unknown[] | null; error: Error | null };
 
@@ -50,7 +50,7 @@ function row(id: string) {
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe("subscribeToStudentMessages", () => {
-  it("so a leitura mais nova entrega, mesmo que a antiga volte depois", async () => {
+  it("only the newest read delivers, even if the old one comes back later", async () => {
     const callback = vi.fn();
     const onError = vi.fn();
     const subscription = subscribeToStudentMessages("s-1", callback, onError);
@@ -58,7 +58,7 @@ describe("subscribeToStudentMessages", () => {
     fake.reads[0]({ data: null, error: new Error("offline") });
     await vi.waitFor(() => expect(onError).toHaveBeenCalledOnce());
 
-    // "Try again" (leitura 2) e, antes de ela voltar, uma mensagem nova (leitura 3).
+    // "Try again" (read 2) and, before it comes back, a new message (read 3).
     void subscription.reload();
     fake.onChange();
     fake.reads[2]({ data: [row("nova"), row("velha")], error: null });
@@ -70,7 +70,7 @@ describe("subscribeToStudentMessages", () => {
     expect(callback.mock.calls[0][0]).toHaveLength(2);
     expect(fake.removeChannel).not.toHaveBeenCalled();
 
-    // Desligada, a leitura que ainda volte nao entrega nada.
+    // Once shut down, a read that still comes back delivers nothing.
     fake.onChange();
     subscription();
     fake.reads[3]({ data: [], error: null });

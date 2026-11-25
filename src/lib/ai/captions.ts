@@ -4,15 +4,15 @@ import { extractAudioChunks } from "./audio";
 import { askJson, transcribeToVtt } from "./openai";
 import { buildVtt, mergeVtt, parseVtt } from "./vtt";
 
-// Legenda a partir do vídeo da aula: áudio em pedaços, um pedido ao Whisper por
-// pedaço (em paralelo) e o .vtt montado de volta com o tempo de cada pedaço.
+// Captions from the lesson video: audio in chunks, one Whisper request per
+// chunk (in parallel) and the .vtt put back together with the time of each chunk.
 export async function transcribeLessonVideo(opts: {
   videoUrl: string;
   referer: string;
   language: string;
   maxSeconds: number;
   deadline: AbortSignal;
-  /** Chamado antes do primeiro pedido à OpenAI: dali em diante há custo. */
+  /** Called before the first request to OpenAI: from there on there is a cost. */
   onSpend?: () => void;
 }): Promise<string> {
   const chunks = await extractAudioChunks({
@@ -36,14 +36,14 @@ export async function transcribeLessonVideo(opts: {
   return mergeVtt(parts);
 }
 
-// Falas por pedido de tradução: cabe folgado no contexto e uma resposta
-// truncada perde pouco. Uma aula de 2 h tem ~1.000 falas, ~10 pedidos.
+// Lines of speech per translation request: fits comfortably in the context and a
+// truncated answer loses little. A 2 h lesson has ~1,000 lines, ~10 requests.
 const LINES_PER_BATCH = 100;
-// Pedidos ao mesmo tempo: não esgota o limite de taxa da conta da OpenAI, que é
-// o mesmo para todos os professores.
+// Requests at the same time: does not exhaust the rate limit of the OpenAI account, which is
+// the same for all teachers.
 const PARALLEL_BATCHES = 4;
-// Legenda de origem maior que isso não é de uma aula de 2 h: foi editada à mão
-// para crescer. Recusa antes de gastar.
+// A source caption bigger than this is not from a 2 h lesson: it was edited by hand
+// to grow. Refused before spending.
 export const MAX_TRANSLATE_CUES = 2_000;
 export const MAX_TRANSLATE_CHARS = 150_000;
 
@@ -55,9 +55,9 @@ const LINES_SCHEMA = {
 };
 
 /**
- * Traduz o texto de cada fala e mantém os tempos. O modelo devolve uma linha
- * por fala, na mesma ordem; se a contagem não bate nem na segunda tentativa, a
- * tradução inteira falha (legenda com fala trocada de lugar é pior que nenhuma).
+ * Translates the text of each line of speech and keeps the times. The model returns one line
+ * per line of speech, in the same order; if the count does not match even on the second attempt, the
+ * whole translation fails (a caption with speech swapped around is worse than none).
  */
 export async function translateVtt(opts: {
   vtt: string;
@@ -100,8 +100,8 @@ export async function translateVtt(opts: {
 
   const translated: string[][] = new Array(batches.length);
   let next = 0;
-  // ponytail: fila simples com N trabalhadores; uma falha derruba o resto
-  // pelo Promise.all, e os lotes já enviados terminam sozinhos.
+  // ponytail: simple queue with N workers; one failure takes down the rest
+  // through Promise.all, and the batches already sent finish on their own.
   await Promise.all(
     Array.from({ length: Math.min(PARALLEL_BATCHES, batches.length) }, async () => {
       while (next < batches.length) {

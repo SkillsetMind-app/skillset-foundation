@@ -44,16 +44,16 @@ export type TeacherCoursePaymentType =
   | "subscription_yearly"
   | "free";
 
-// O que o produto entrega, gravado em courses.product_format. Decide o que o
-// construtor mostra e o que publicar cobra (getCourseReadiness aqui e
-// publish_teacher_course no banco). "Programa guiado" virou a liberacao aos
-// poucos do curso; "Gratis" e "Assinatura" sao respostas da etapa de preco.
+// What the product delivers, stored in courses.product_format. It decides what
+// the builder shows and what publishing charges for (getCourseReadiness here and
+// publish_teacher_course in the database). "Guided program" became the
+// invite-only release of the course; "Free" and "Subscription" are answers of the price step.
 export const teacherCourseProductFormats = ["course", "community", "live_event", "ebook"] as const;
 
 export type TeacherCourseProductFormat = (typeof teacherCourseProductFormats)[number];
 
-// Links antigos (?format=program, event, free, subscription) e linha sem a
-// coluna caem no tipo que os absorveu.
+// Old links (?format=program, event, free, subscription) and a row without the
+// column fall to the type that absorbed them.
 export function parseTeacherCourseProductFormat(value: unknown): TeacherCourseProductFormat {
   if (value === "event") {
     return "live_event";
@@ -64,17 +64,17 @@ export function parseTeacherCourseProductFormat(value: unknown): TeacherCoursePr
     : "course";
 }
 
-// Comunidade nasce como mensalidade; o resto como pagamento unico. A etapa de
-// preco troca depois (inclusive para Gratis).
+// Community starts out as a monthly fee; the rest as a one-time payment. The
+// price step changes it later (including to Free).
 export function defaultPaymentTypeForProductFormat(
   format: TeacherCourseProductFormat,
 ): TeacherCoursePaymentType {
   return format === "community" ? "subscription_monthly" : "one_time";
 }
 
-// As formas de pagar que cada tipo aceita. Evento e e-book nao cobram todo
-// mes; comunidade nao se vende por pagamento unico. O banco cobra a mesma
-// lista ao criar, salvar, publicar e criar preco extra
+// The ways to pay that each type accepts. Event and e-book do not charge every
+// month; a community is not sold as a one-time payment. The database enforces the same
+// list on create, save, publish and creating an extra price
 // (course_payment_type_fits_format, 20261007030000_como_vao_pagar.sql).
 const paymentTypesByProductFormat: Record<
   TeacherCourseProductFormat,
@@ -181,8 +181,8 @@ export type CreateTeacherCourseInput = {
   paymentType?: TeacherCoursePaymentType;
   communityEnabled?: boolean;
   productFormat?: TeacherCourseProductFormat;
-  // Curso e e-book nascem com o primeiro modulo e a primeira aula, com estes
-  // nomes (no idioma da pessoa).
+  // Course and e-book start out with the first module and the first lesson, with these
+  // names (in the person's language).
   moduleTitle?: string;
   lessonTitle?: string;
 };
@@ -215,10 +215,10 @@ export function countCourseLessons(modules: TeacherCourseModule[]): number {
   return modules.reduce((total, module) => total + module.lessons.length, 0);
 }
 
-// Duração somada das aulas, no formato da página de venda ("1h 30m", "25 min").
-// Só quando TODAS as aulas declaram minutos: com parte delas sem o dado, a soma
-// vira um total menor que o curso (17 aulas exibidas como "10 min"). Não se
-// estima tempo de curso. Serve ao curso inteiro e a cada módulo.
+// Total duration of the lessons, in the sales page format ("1h 30m", "25 min").
+// Only when ALL lessons declare minutes: if some of them lack the data, the sum
+// becomes a total smaller than the course (17 lessons shown as "10 min"). Course
+// time is not estimated. Works for the whole course and for each module.
 export function formatTotalMinutes(minutes: Array<number | null | undefined>): string | null {
   if (minutes.length === 0 || minutes.some((value) => !value || value <= 0)) return null;
   const total = minutes.reduce<number>((sum, value) => sum + (value ?? 0), 0);
@@ -329,18 +329,18 @@ export function inferLessonVideoSource(params: {
   return null;
 }
 
-// A fonte declarada só vale enquanto a mídia que ela promete ainda existe.
+// The declared source only counts while the media it promises still exists.
 //
-// `videoSource` é um campo persistido, e todo campo persistido descola do mundo
-// mais cedo ou mais tarde: o professor apaga o arquivo enviado e o campo segue
-// dizendo "upload"; troca o link do YouTube por um inválido e o campo segue
-// dizendo "youtube". Quem lia o campo cru caía no vazio — "Media not attached
-// yet" numa aula paga que ainda tinha um embed válido salvo e nunca consultado.
+// `videoSource` is a persisted field, and every persisted field drifts away from
+// the world sooner or later: the teacher deletes the uploaded file and the field
+// keeps saying "upload"; swaps the YouTube link for an invalid one and the field
+// keeps saying "youtube". Whoever read the raw field fell into the void — "Media not attached
+// yet" on a paid lesson that still had a valid embed saved and never consulted.
 //
-// Por isso a decisão é tomada AQUI, uma vez, e não em cada leitor: confirmar a
-// fonte declarada contra a evidência e, quando ela não se sustenta, cair para o
-// que de fato existe. Isso cura sozinho os dados já gravados errados — não
-// depende de todo escritor ter feito a limpeza na hora certa.
+// So the decision is made HERE, once, and not in each reader: check the
+// declared source against the evidence and, when it does not hold up, fall back to
+// what actually exists. This heals data already stored wrong on its own — it does not
+// depend on every writer having done the cleanup at the right time.
 export function resolveLessonVideoSource(params: {
   declared?: LessonVideoSource | null;
   hasVideoAsset: boolean;
@@ -422,9 +422,9 @@ export function isInternalSmokeCourse(course: Pick<TeacherCourse, "id" | "title"
     || course.title.startsWith(INTERNAL_COURSE_TITLE_PREFIX);
 }
 
-// `teacherCanDeleteCourse` morreu aqui: quem decide entre apagar e arquivar
-// nao e mais o status, e sim ter ou nao comprador — pergunta que so o banco
-// responde, dentro de `delete_or_archive_own_course`.
+// `teacherCanDeleteCourse` died here: what decides between deleting and archiving
+// is no longer the status, but whether there is a buyer — a question only the database
+// answers, inside `delete_or_archive_own_course`.
 
 /**
  * Admin-only marketplace controls for courses that have left the review

@@ -89,10 +89,10 @@ describe("profile media storefront uploads", () => {
   });
 });
 
-// Mesmo contrato dos uploads de curso (#138): o Storage não informa progresso,
-// então "running" sai sem porcentagem — um 0% parado o envio inteiro se lia
-// como "travou" — e "success" só sai depois da última escrita.
-describe("profile media — progresso honesto", () => {
+// Same contract as the course uploads (#138): Storage does not report progress,
+// so "running" goes out without a percentage — a 0% stuck for the whole upload
+// read as "frozen" — and "success" only goes out after the last write.
+describe("profile media — honest progress", () => {
   type Seen = Pick<UploadAvatarProgress, "percent" | "state">;
 
   function record(events: Seen[]) {
@@ -100,7 +100,7 @@ describe("profile media — progresso honesto", () => {
       events.push({ percent: progress.percent, state: progress.state });
   }
 
-  it("storefront: 'running' sem número, e 'success' com 100% só depois de o objeto subir", async () => {
+  it("storefront: 'running' without a number, and 'success' with 100% only after the object is uploaded", async () => {
     const events: Seen[] = [];
     mocks.upload.mockImplementationOnce(async () => {
       expect(events).toEqual([{ percent: null, state: "running" }]);
@@ -120,7 +120,7 @@ describe("profile media — progresso honesto", () => {
     ]);
   });
 
-  it("avatar: sem 'success' se a gravação em users falha depois de o objeto subir", async () => {
+  it("avatar: no 'success' if the write to users fails after the object is uploaded", async () => {
     const events: Seen[] = [];
     mocks.eq.mockResolvedValueOnce({ error: new Error("update failed") });
 

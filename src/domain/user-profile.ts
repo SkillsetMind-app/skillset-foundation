@@ -15,7 +15,7 @@ export type UserGoal = (typeof userGoalOptions)[number];
 export type OnboardingPath = "student" | "teacher" | "both";
 
 export type OnboardingAnswers = {
-  /** Pais declarado (ISO alpha-2 ou "other"); nao verifica nem habilita recebimentos. */
+  /** Declared country (ISO alpha-2 or "other"); it neither verifies nor enables payouts. */
   payoutCountry?: string;
   path?: OnboardingPath;
   /** Teacher-only: what they practice (coach, facilitator, mentor, ...). */
@@ -26,7 +26,7 @@ export type OnboardingAnswers = {
   primaryGoal?: string[];
   instagramHandle?: string;
   audienceSize?: string;
-  /** Nome e telefone ja foram gravados no perfil (primeiro passo do /welcome). */
+  /** Name and phone have already been saved on the profile (first step of /welcome). */
   profileConfirmed?: boolean;
 };
 
@@ -86,23 +86,23 @@ export const maxStorefrontSectionLabels = 20;
 export const maxStorefrontSectionLabelLength = 60;
 
 /**
- * Endereco da vitrine publica do professor. O caminho `/instructors/{uid}`
- * estava escrito a mao em cada tela que precisava dele; com tres telas
- * apontando para la (Home, Marketing e a propria pagina de vitrine), uma
- * funcao evita que uma delas mude e as outras fiquem para tras.
+ * Address of the teacher's public storefront. The path `/instructors/{uid}`
+ * was written by hand on every screen that needed it; with three screens
+ * pointing there (Home, Marketing and the storefront page itself), one
+ * function keeps one of them from changing and leaving the others behind.
  *
- * Com @usuario, o endereco e `/@usuario` (o link da bio do Instagram; o
- * next.config reescreve para esta mesma pagina). `/instructors/{uid}` segue
- * funcionando para quem nao tem @ e para os links antigos.
+ * With @username, the address is `/@username` (the Instagram bio link; the
+ * next.config rewrites it to this same page). `/instructors/{uid}` keeps
+ * working for people with no @ and for old links.
  */
 export function instructorPagePath(uid: string, username?: string | null): string {
   return username && !isReservedHandle(username) ? `/@${username}` : `/instructors/${uid}`;
 }
 
 /**
- * @ que imitam a plataforma: `/@support` com o perfil de um professor qualquer
- * seria um convite a golpe. A rota do perfil responde 404 para eles, e o link
- * de quem já tem um desses cai no endereço pelo uid.
+ * @ handles that imitate the platform: `/@support` showing the profile of any
+ * teacher would be an invitation to scams. The profile route answers 404 for them, and the link
+ * of anyone who already has one of these falls back to the address by uid.
  */
 export const RESERVED_HANDLES: ReadonlySet<string> = new Set([
   "skillsetmind", "support", "admin", "help", "ops", "api",
@@ -304,36 +304,36 @@ export type PublicProfile = {
    */
   storefront?: StorefrontConfig | null;
   /**
-   * Selo "profissional verificado" (cosmético). Null sem aprovação. Só a
-   * espécie e a data saem do banco: o número de registro nunca é público.
+   * "Verified professional" badge (cosmetic). Null without approval. Only the
+   * kind and the date come out of the database: the registration number is never public.
    */
   verification?: ProfessionalVerification | null;
   updatedAt?: unknown;
 };
 
 /**
- * O que o público sabe do selo: licença conferida ou evidência profissional
- * revisada. Coach, holístico etc. ficam no caso privado (minimização).
+ * What the public knows about the badge: license checked or professional evidence
+ * reviewed. Coach, holistic etc. stay in the private case (minimization).
  */
 export type ProfessionalVerificationKind = "license" | "evidence";
 
 export type ProfessionalVerification = {
   kind: ProfessionalVerificationKind;
-  /** ISO da revisão (reviewed_at); null quando o caso não tem data de revisão. */
+  /** ISO of the review (reviewed_at); null when the case has no review date. */
   verifiedAt: string | null;
 };
 
 /**
- * Nome que o perfil publico mostra: o nome de exibicao, senao o @. Null quando
- * nao ha nenhum dos dois (quem chama poe o rotulo generico traduzido).
+ * Name the public profile shows: the display name, otherwise the @. Null when
+ * there is neither (the caller puts in the translated generic label).
  */
 export function publicProfileName(profile: Pick<PublicProfile, "displayName" | "username">): string | null {
   return profile.displayName?.trim() || profile.username || null;
 }
 
-// Telefone do perfil: aceita o que a pessoa digitar (espacos, parenteses,
-// hifen, +55) e exige entre 8 e 15 digitos — o intervalo do E.164 mais os
-// fixos curtos. Nao formata: o campo guarda o que a pessoa escreveu.
+// Profile phone: accepts whatever the person types (spaces, parentheses,
+// hyphen, +55) and requires between 8 and 15 digits — the E.164 range plus
+// short landlines. It does not format: the field keeps what the person wrote.
 export function isValidPhoneNumber(value: string): boolean {
   const digits = value.replace(/\D/g, "");
   return digits.length >= 8 && digits.length <= 15;

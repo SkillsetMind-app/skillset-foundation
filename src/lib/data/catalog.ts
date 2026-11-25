@@ -18,9 +18,9 @@ export type CourseCard = {
   freePreviewHref?: string;
   sourceLabel?: string;
   ratingLabel?: string;
-  // Dono do curso, quando o cartao vem de um curso publicado por professor.
-  // O nome nao viaja aqui: o cartao resolve os perfis publicos em UMA consulta
-  // por lista (useInstructorNames), em vez de uma por cartao.
+  // Course owner, when the card comes from a course published by a teacher.
+  // The name does not travel here: the card resolves the public profiles in ONE query
+  // per list (useInstructorNames), instead of one per card.
   ownerId?: string;
   // Raw numeric signals carried alongside the display strings so the
   // marketplace can offer sort options (price, rating) without re-parsing the

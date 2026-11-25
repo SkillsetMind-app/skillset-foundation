@@ -18,13 +18,13 @@ afterEach(() => {
 });
 
 it("points at the 240p MP4 on the library CDN", () => {
-  // Sem a chave do player o link sai como antes, sem assinatura.
+  // Without the player key the link goes out as before, unsigned.
   vi.stubEnv("BUNNY_STREAM_TOKEN_KEY", "");
   expect(bunnyLowestMp4Url("vid 1")).toBe("https://vz-test.b-cdn.net/vid%201/play_240p.mp4");
 });
 
-// Com a chave do player, o link sai assinado no formato do token avançado da
-// CDN: "HS256-" + Base64URL sem "=" do HMAC-SHA256(chave, caminho + expires).
+// With the player key, the link goes out signed in the CDN's advanced token
+// format: "HS256-" + Base64URL without "=" of HMAC-SHA256(key, path + expires).
 it("signs the 240p MP4 with the library token key when there is one", () => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-11-24T00:00:00Z"));

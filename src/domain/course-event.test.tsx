@@ -51,47 +51,47 @@ describe("isValidExternalEventUrl", () => {
   });
 });
 
-// O ICU de algumas versoes do Node poe um espaco estreito antes de "PM".
+// The ICU of some Node versions puts a narrow space before "PM".
 const plain = (text: string) => text.replace(/\s+/g, " ");
 
 describe("formatEventDateTime", () => {
-  // A mesma sessao (7 PM em Nova York) parecia ter tres horarios porque
-  // nenhuma tela dizia de quem era a hora. Fuso e idioma passados aqui: o
-  // resultado nao depende do relogio da maquina do CI.
+  // The same session (7 PM in New York) seemed to have three times because
+  // no screen said whose time it was. Time zone and language are passed in here: the
+  // result does not depend on the clock of the CI machine.
   const sevenPmNewYork = "2026-11-26T00:00:00.000Z";
   const in2026 = Date.UTC(2026, 10, 22, 12);
   const in2027 = Date.UTC(2027, 1, 10, 12);
 
-  it("escreve dia da semana e o fuso de quem le, em ingles e em espanhol", () => {
+  it("writes the weekday and the time zone of whoever reads, in English and in Spanish", () => {
     expect(plain(formatEventDateTime(sevenPmNewYork, "en", "Date pending", "America/Los_Angeles", in2026))).toBe(
       "Wed, Nov 25, 4:00 PM PT",
     );
     expect(plain(formatEventDateTime(sevenPmNewYork, "en", "Date pending", "America/New_York", in2026))).toBe(
       "Wed, Nov 25, 7:00 PM ET",
     );
-    // Espanhol: o nome longo, nunca "GMT-8".
+    // Spanish: the long name, never "GMT-8".
     const spanish = formatEventDateTime(sevenPmNewYork, "es", "Fecha pendiente", "America/Los_Angeles", in2026);
     expect(plain(spanish)).toBe("mié, 25 nov, 16:00 hora del Pacífico");
     expect(spanish).not.toMatch(/GMT/);
   });
 
-  // "Past" e "All" mostravam a sessao do ano passado sem o ano.
-  it("o ano entra so quando nao e o ano de agora, no fuso de quem le", () => {
+  // "Past" and "All" showed last year's session without the year.
+  it("the year is included only when it is not the current year, in the time zone of whoever reads", () => {
     expect(plain(formatEventDateTime(sevenPmNewYork, "en", "Date pending", "America/Los_Angeles", in2027))).toBe(
       "Wed, Nov 25, 2026, 4:00 PM PT",
     );
     expect(plain(formatEventDateTime(sevenPmNewYork, "es", "Fecha pendiente", "America/Los_Angeles", in2027))).toBe(
       "mié, 25 nov 2026, 16:00 hora del Pacífico",
     );
-    // Virada do ano: 31/dez as 11 PM em Los Angeles ja e 2027 em UTC. Conta o
-    // ano de quem le.
+    // Turn of the year: Dec 31 at 11 PM in Los Angeles is already 2027 in UTC. It counts the
+    // year of whoever reads.
     expect(plain(formatEventDateTime("2027-01-01T07:00:00.000Z", "en", "Date pending", "America/Los_Angeles", in2026))).toBe(
       "Thu, Dec 31, 11:00 PM PT",
     );
   });
 
-  // Motor sem os nomes genericos: a frase sai com o "short", sem apagar a tela.
-  it("sem shortGeneric/longGeneric no motor, cai no nome curto", () => {
+  // Engine without the generic names: the phrase comes out with "short", without blanking the screen.
+  it("without shortGeneric/longGeneric in the engine, falls back to the short name", () => {
     const Real = Intl.DateTimeFormat;
     function WithoutGeneric(locale?: string | string[], options?: Intl.DateTimeFormatOptions) {
       if (options?.timeZoneName === "shortGeneric" || options?.timeZoneName === "longGeneric") {
@@ -124,15 +124,15 @@ describe("formatEventDateTime", () => {
 describe("describeTimeZone", () => {
   const at = Date.UTC(2026, 10, 22, 12);
 
-  // So a cidade do id enganava: quem mora em Dallas lia "Chicago".
-  it("o nome do fuso em palavras, com a cidade entre parenteses", () => {
+  // Only the city from the id misled: someone living in Dallas read "Chicago".
+  it("the time zone name in words, with the city in parentheses", () => {
     expect(describeTimeZone("America/Chicago", "en", at)).toBe("Central Time (Chicago)");
     expect(describeTimeZone("America/Chicago", "es", at)).toBe("hora central (Chicago)");
     expect(describeTimeZone("America/New_York", "en", at)).toBe("Eastern Time (New York)");
   });
 
-  // "Etc/GMT+5" e cinco horas ANTES de Greenwich: o id tem o sinal invertido.
-  it("Etc/* e zonas sem cidade ficam so com o nome do formatador", () => {
+  // "Etc/GMT+5" is five hours BEHIND Greenwich: the id has the sign inverted.
+  it("Etc/* and zones without a city keep only the formatter's name", () => {
     const etc = describeTimeZone("Etc/GMT+5", "en", at);
     expect(etc).not.toMatch(/Etc|GMT\+5/);
     expect(etc).toMatch(/05/);
@@ -141,7 +141,7 @@ describe("describeTimeZone", () => {
 });
 
 describe("formatEventTimeInZones", () => {
-  it("uma hora nos quatro fusos dos EUA, sem dia quando todos caem no mesmo dia", () => {
+  it("one time in the four US time zones, with no day when all fall on the same day", () => {
     expect(formatEventTimeInZones("2026-11-26T00:00:00.000Z", "en", US_PREVIEW_TIME_ZONES).map(plain)).toEqual([
       "7:00 PM ET",
       "6:00 PM CT",
@@ -153,7 +153,7 @@ describe("formatEventTimeInZones", () => {
     ]);
   });
 
-  it("fusos em dias diferentes ganham o dia da semana; data invalida nao gera nada", () => {
+  it("time zones on different days get the weekday; an invalid date produces nothing", () => {
     expect(formatEventTimeInZones("2026-11-26T06:00:00.000Z", "en", US_PREVIEW_TIME_ZONES).map(plain)).toEqual([
       "Thu, 1:00 AM ET",
       "Thu, 12:00 AM CT",
@@ -164,9 +164,9 @@ describe("formatEventTimeInZones", () => {
   });
 });
 
-describe("link da sessao", () => {
-  // Prazo nao e reuniao: so ele aceita ficar sem link.
-  it("so o prazo (deadline) pode ficar sem link; link preenchido segue a regra de sempre", () => {
+describe("session link", () => {
+  // A deadline is not a meeting: only it may go without a link.
+  it("only the deadline can go without a link; a filled-in link follows the usual rule", () => {
     expect(isEventLinkAcceptable("deadline", "")).toBe(true);
     expect(isEventLinkAcceptable("deadline", "   ")).toBe(true);
     expect(isEventLinkAcceptable("live_class", "")).toBe(false);
@@ -175,7 +175,7 @@ describe("link da sessao", () => {
     expect(isEventLinkAcceptable("mentorship", "https://zoom.us/j/1")).toBe(true);
   });
 
-  it("completa o https:// do link digitado sem esquema e nao mexe no resto", () => {
+  it("adds the https:// to a typed link with no scheme and leaves the rest alone", () => {
     expect(withLinkScheme("zoom.us/j/123")).toBe("https://zoom.us/j/123");
     expect(withLinkScheme("  meet.google.com/abc  ")).toBe("https://meet.google.com/abc");
     expect(withLinkScheme("http://192.168.0.10/room")).toBe("http://192.168.0.10/room");
@@ -184,12 +184,12 @@ describe("link da sessao", () => {
   });
 });
 
-// Tudo em UTC e com `now` explícito: nada depende do fuso nem do relógio da máquina.
+// Everything in UTC and with an explicit `now`: nothing depends on the time zone or the machine clock.
 const START = "2026-11-25T21:00:00.000Z";
 const at = (minutes: number) => Date.parse(START) + minutes * 60_000;
 
-describe("janela ao vivo (uma regra para as quatro telas)", () => {
-  it("upcoming até 15 min antes, startingSoon até o início, live por 3 h, depois over", () => {
+describe("live window (one rule for the four screens)", () => {
+  it("upcoming until 15 min before, startingSoon until the start, live for 3 h, then over", () => {
     expect(getEventLiveState(START, at(-16))).toBe("upcoming");
     expect(getEventLiveState(START, at(-15))).toBe("startingSoon");
     expect(getEventLiveState(START, at(-1))).toBe("startingSoon");
@@ -200,42 +200,42 @@ describe("janela ao vivo (uma regra para as quatro telas)", () => {
     expect(EVENT_LIVE_WINDOW_MS).toBe(3 * 3_600_000);
   });
 
-  it("data inválida fica na lista ('Date pending'), não some", () => {
+  it("an invalid date stays in the list ('Date pending'), it does not disappear", () => {
     expect(getEventLiveState("not a date", at(0))).toBe("upcoming");
     expect(getEventLiveState("not a date", at(0), "deadline")).toBe("upcoming");
   });
 
-  it("prazo nunca fica 'começando' nem 'ao vivo': vale até vencer e depois passou", () => {
+  it("a deadline is never 'starting' or 'live': it counts until it is due and then it has passed", () => {
     expect(getEventLiveState(START, at(-10), "deadline")).toBe("upcoming");
     expect(getEventLiveState(START, at(-1), "deadline")).toBe("upcoming");
     expect(getEventLiveState(START, at(0), "deadline")).toBe("over");
     expect(getEventLiveState(START, at(30), "deadline")).toBe("over");
-    // Os outros tipos seguem a janela de sempre.
+    // The other types follow the usual window.
     expect(getEventLiveState(START, at(30), "webinar")).toBe("live");
   });
 
-  it("entre duas sessões a 90 min, a de início mais perto de agora; no empate, a que não começou", () => {
+  it("between two sessions 90 min apart, the one whose start is closest to now; on a tie, the one that has not started", () => {
     const webinar = { id: "webinar", startsAt: START };
     const office = { id: "office", startsAt: new Date(at(90)).toISOString() };
-    // 7:20 com o webinar às 6:00: o plantão das 7:30 (10 min), não o webinar (80 min).
+    // 7:20 with the webinar at 6:00: the 7:30 office hours (10 min), not the webinar (80 min).
     expect(pickClosestEvent([webinar, office], at(80))).toBe(office);
-    // 6:10: o webinar que começou há 10 min.
+    // 6:10: the webinar that started 10 min ago.
     expect(pickClosestEvent([webinar, office], at(10))).toBe(webinar);
-    // Empate (45 min de cada lado): a que ainda vai começar.
+    // Tie (45 min on each side): the one that has not started yet.
     expect(pickClosestEvent([webinar, office], at(45))).toBe(office);
     expect(pickClosestEvent([office, webinar], at(45))).toBe(office);
     expect(pickClosestEvent([{ id: "x", startsAt: "not a date" }], at(0))).toBeNull();
     expect(pickClosestEvent([], at(0))).toBeNull();
   });
 
-  it("a cancelada fica à vista por 7 dias depois da hora marcada", () => {
+  it("a cancelled one stays visible for 7 days after the scheduled time", () => {
     expect(isCancelledEventShown(START, at(-60))).toBe(true);
     expect(isCancelledEventShown(START, at(7 * 24 * 60 - 1))).toBe(true);
     expect(isCancelledEventShown(START, at(7 * 24 * 60))).toBe(false);
     expect(isCancelledEventShown("not a date", at(0))).toBe(false);
   });
 
-  it("'Updated' só quando a sessão mudou mais de 1 min depois de criada", () => {
+  it("'Updated' only when the session changed more than 1 min after it was created", () => {
     expect(getEventUpdatedAt({ createdAt: START, updatedAt: START })).toBeNull();
     expect(getEventUpdatedAt({ createdAt: START, updatedAt: new Date(at(1)).toISOString() })).toBeNull();
     expect(getEventUpdatedAt({ createdAt: START, updatedAt: "2026-11-26T09:00:00.000Z" })).toBe("2026-11-26T09:00:00.000Z");
@@ -244,7 +244,7 @@ describe("janela ao vivo (uma regra para as quatro telas)", () => {
   });
 });
 
-describe("adicionar ao calendário", () => {
+describe("add to calendar", () => {
   const event = {
     id: "ev-42",
     title: "Liderança; ação, \"Q&A\"",
@@ -254,7 +254,7 @@ describe("adicionar ao calendário", () => {
   };
   const link = "https://zoom.us/j/123?pwd=a,b";
 
-  it("Google: link TEMPLATE com início e fim em UTC (60 min) e o link de entrar", () => {
+  it("Google: TEMPLATE link with start and end in UTC (60 min) and the join link", () => {
     const url = new URL(buildGoogleCalendarUrl(event, link)!);
     expect(`${url.origin}${url.pathname}`).toBe("https://calendar.google.com/calendar/render");
     expect(url.searchParams.get("action")).toBe("TEMPLATE");
@@ -265,14 +265,14 @@ describe("adicionar ao calendário", () => {
     expect(CALENDAR_EVENT_MINUTES).toBe(60);
   });
 
-  it("Google sem link: nem location nem link na descrição; data inválida não gera link", () => {
+  it("Google without a link: no location and no link in the description; an invalid date produces no link", () => {
     const url = new URL(buildGoogleCalendarUrl(event, null)!);
     expect(url.searchParams.has("location")).toBe(false);
     expect(url.searchParams.get("details")).not.toContain("https://");
     expect(buildGoogleCalendarUrl({ ...event, startsAt: "not a date" }, link)).toBeNull();
   });
 
-  it(".ics: CRLF, UTC com Z, UID estável e texto escapado; acentos intactos", () => {
+  it(".ics: CRLF, UTC with Z, stable UID and escaped text; accents intact", () => {
     const ics = buildEventIcs(event, link, Date.parse("2026-11-20T12:00:00.000Z"))!;
     expect(ics.endsWith("\r\n")).toBe(true);
     expect(ics.replace(/\r\n/g, "")).not.toContain("\n");
@@ -285,11 +285,11 @@ describe("adicionar ao calendário", () => {
     expect(lines).toContain("SUMMARY:Liderança\\; ação\\, \"Q&A\"");
     expect(lines).toContain(`DESCRIPTION:Curso\\, avançado\\n\\nLinha 1\\nLinha 2\\n\\n${link.replace(",", "\\,")}`);
     expect(lines).toContain(`URL:${link}`);
-    // O mesmo arquivo baixado de novo tem o mesmo UID.
+    // The same file downloaded again has the same UID.
     expect(buildEventIcs(event, link, Date.now())).toContain("UID:course-event-ev-42@skillsetmind.com");
   });
 
-  it(".ics sem link não leva URL; linha longa dobra em até 75 bytes sem partir acento", () => {
+  it(".ics without a link carries no URL; a long line folds at up to 75 bytes without splitting an accent", () => {
     const long = { ...event, title: "Sessão é ótima ".repeat(10) };
     const ics = buildEventIcs(long, null, at(0))!;
     expect(ics).not.toContain("URL:");
@@ -301,20 +301,20 @@ describe("adicionar ao calendário", () => {
     expect(buildEventIcs({ ...event, startsAt: "" }, null, at(0))).toBeNull();
   });
 
-  it("um link com quebra de linha escondida não vira propriedade nova", () => {
+  it("a link with a hidden line break does not become a new property", () => {
     const ics = buildEventIcs(event, "https://zoom.us/j/1\nATTACH:evil", at(0))!;
     expect(ics).not.toMatch(/\r\nATTACH:/);
   });
 
-  it("um CR sozinho no texto vira \\n, não quebra a linha do arquivo", () => {
+  it("a lone CR in the text becomes \\n, does not break the file line", () => {
     const ics = buildEventIcs({ ...event, title: "Parte 1\rATTACH:evil" }, null, at(0))!;
     expect(ics.replace(/\r\n/g, "")).not.toContain("\r");
     expect(ics.replace(/\r\n /g, "").split("\r\n")).toContain("SUMMARY:Parte 1\\nATTACH:evil");
   });
 
-  // Remarcada e baixada de novo: o mesmo UID com SEQUENCE maior troca a
-  // entrada do calendário em vez de criar outra.
-  it("SEQUENCE cresce a cada edição e LAST-MODIFIED traz a última mudança; nunca editada, 0", () => {
+  // Rescheduled and downloaded again: the same UID with a higher SEQUENCE replaces the
+  // calendar entry instead of creating another one.
+  it("SEQUENCE grows with each edit and LAST-MODIFIED carries the last change; never edited, 0", () => {
     const lines = (input: typeof event & { createdAt?: unknown; updatedAt?: unknown }) =>
       buildEventIcs(input, null, at(0))!.split("\r\n");
     const created = "2026-11-01T10:00:00.000Z";

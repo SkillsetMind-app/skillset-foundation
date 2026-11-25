@@ -144,8 +144,8 @@ describe("resolveCoursePrice", () => {
 });
 
 describe("getCoursePricingShape", () => {
-  // A tela mostrava "Free" e "Monthly subscription" juntos no mesmo rascunho.
-  it("um curso sem valor e gratuito, e o tipo de pagamento nao se aplica", () => {
+  // The screen showed "Free" and "Monthly subscription" together in the same draft.
+  it("a course with no price is free, and the payment type does not apply", () => {
     const shape = getCoursePricingShape({
       priceAmountMinor: 0,
       currency: "usd",
@@ -160,12 +160,12 @@ describe("getCoursePricingShape", () => {
     expect(shape.amountMinor).toBe(0);
   });
 
-  it("preco nulo ou negativo tambem e gratuito", () => {
+  it("a null or negative price is also free", () => {
     expect(getCoursePricingShape({ priceAmountMinor: null }).free).toBe(true);
     expect(getCoursePricingShape({ priceAmountMinor: -100 }).free).toBe(true);
   });
 
-  it("assinatura com valor mantem o tipo e a moeda em maiuscula", () => {
+  it("a subscription with a price keeps its type and the currency in uppercase", () => {
     const shape = getCoursePricingShape({
       priceAmountMinor: 2900,
       currency: "brl",
@@ -181,7 +181,7 @@ describe("getCoursePricingShape", () => {
     });
   });
 
-  it("curso pago sem paymentType gravado vende avulso e conta as parcelas", () => {
+  it("a paid course with no stored paymentType sells as a one-time purchase and counts the installments", () => {
     const shape = getCoursePricingShape({
       priceAmountMinor: 9900,
       installmentsEnabled: true,
@@ -194,41 +194,41 @@ describe("getCoursePricingShape", () => {
   });
 });
 
-// "Como as pessoas vao pagar?": tres cartoes lidos do que ja esta gravado.
+// "How will people pay?": three cards, read from what is already stored.
 describe("os cartoes de pagamento", () => {
-  // Cada forma gravada hoje cai num cartao, sem mudar nada: o anual sozinho
-  // (produto antigo) fica em Mensalidade, como anual.
+  // Each form stored today lands on one card, changing nothing: the yearly one
+  // alone (old product) stays under Monthly fee, as yearly.
   it.each([
     ["free", "free"],
     ["one_time", "one_payment"],
     ["subscription_monthly", "membership"],
     ["subscription_yearly", "membership"],
-  ] as const)("%s aparece no cartao %s", (paymentType, choice) => {
+  ] as const)("%s appears on the %s card", (paymentType, choice) => {
     expect(paymentChoiceOf(paymentType)).toBe(choice);
   });
 
-  it("escolher um cartao grava a forma dele; Mensalidade nasce mensal", () => {
+  it("choosing a card stores its form; Monthly fee starts out monthly", () => {
     expect(paymentTypeOfChoice("free")).toBe("free");
     expect(paymentTypeOfChoice("one_payment")).toBe("one_time");
     expect(paymentTypeOfChoice("membership")).toBe("subscription_monthly");
   });
 
-  it("cada tipo mostra os seus cartoes, na ordem da tela", () => {
+  it("each type shows its cards, in screen order", () => {
     expect(paymentChoicesFor("course")).toEqual(["free", "one_payment", "membership"]);
     expect(paymentChoicesFor("community")).toEqual(["free", "membership"]);
     expect(paymentChoicesFor("live_event")).toEqual(["free", "one_payment"]);
     expect(paymentChoicesFor("ebook")).toEqual(["free", "one_payment"]);
   });
 
-  // Produto criado antes da regra: a tela mostra o que ele e.
-  it("o cartao ja gravado aparece mesmo fora da lista do tipo", () => {
+  // Product created before the rule: the screen shows what it is.
+  it("the stored card appears even outside the type's list", () => {
     expect(paymentChoicesFor("community", "one_payment")).toEqual(["free", "one_payment", "membership"]);
     expect(paymentChoicesFor("live_event", "membership")).toEqual(["free", "one_payment", "membership"]);
     expect(paymentChoicesFor("ebook", "one_payment")).toEqual(["free", "one_payment"]);
   });
 
-  // Espelho de course_payment_type_fits_format (20261007030000).
-  it("as formas que cada tipo aceita", () => {
+  // Mirror of course_payment_type_fits_format (20261007030000).
+  it("the forms each type accepts", () => {
     const types = ["free", "one_time", "subscription_monthly", "subscription_yearly"] as const;
     const accepted = (format: Parameters<typeof paymentTypeFitsFormat>[0]) =>
       types.filter((type) => paymentTypeFitsFormat(format, type));
@@ -240,7 +240,7 @@ describe("os cartoes de pagamento", () => {
 });
 
 describe("economia do plano anual", () => {
-  it("compara com 12 mensalidades", () => {
+  it("compares against 12 monthly payments", () => {
     expect(yearlySavingMinor(2900, 29000)).toBe(5800);
     expect(yearlySavingMinor(2900, 34800)).toBe(0);
     expect(yearlySavingMinor(2900, 40000)).toBe(-5200);

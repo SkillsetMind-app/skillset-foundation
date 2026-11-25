@@ -61,8 +61,8 @@ describe("legal acceptance writes must land on a row", () => {
   });
 });
 
-// O aceite do cadastro e gravado na primeira pagina logada, as vezes dias
-// depois do tique. A hora gravada tem que ser a do tique, nao a da gravacao.
+// Signup acceptance is saved on the first signed-in page, sometimes days
+// after the tick. The saved time has to be the tick's, not the save's.
 describe("acceptUserTerms records when the box was ticked", () => {
   it("stores the given acceptance time for terms and privacy, and now as the update time", async () => {
     const { client, calls } = buildAcceptClient([{ uid: "u-1" }]);
@@ -108,12 +108,12 @@ function buildClient(errors: Array<unknown | null>) {
   return { client, updates };
 }
 
-describe("updateUserIdentity — sufixo automático de username", () => {
+describe("updateUserIdentity — automatic username suffix", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("tenta o sufixo -2 quando o username base já existe", async () => {
+  it("tries the -2 suffix when the base username already exists", async () => {
     const { client, updates } = buildClient([usernameCollision, null]);
     supabaseMocks.getSupabaseBrowserClient.mockReturnValue(client);
 
@@ -128,7 +128,7 @@ describe("updateUserIdentity — sufixo automático de username", () => {
     );
   });
 
-  it("grava null quando o username base e os sufixos até -9 já existem", async () => {
+  it("writes null when the base username and the suffixes up to -9 already exist", async () => {
     const { client, updates } = buildClient(Array(9).fill(usernameCollision));
     supabaseMocks.getSupabaseBrowserClient.mockReturnValue(client);
 
@@ -148,7 +148,7 @@ describe("updateUserIdentity — sufixo automático de username", () => {
     ]);
   });
 
-  it("reserva espaço para o sufixo sem ultrapassar 32 caracteres", async () => {
+  it("reserves room for the suffix without exceeding 32 characters", async () => {
     const { client, updates } = buildClient([usernameCollision, null]);
     supabaseMocks.getSupabaseBrowserClient.mockReturnValue(client);
     const base = "a".repeat(32);
@@ -158,7 +158,7 @@ describe("updateUserIdentity — sufixo automático de username", () => {
     expect(updates.map((patch) => patch.username)).toEqual([base, `${"a".repeat(30)}-2`]);
   });
 
-  it("mantém o username base quando não há colisão", async () => {
+  it("keeps the base username when there is no collision", async () => {
     const { client, updates } = buildClient([null]);
     supabaseMocks.getSupabaseBrowserClient.mockReturnValue(client);
 

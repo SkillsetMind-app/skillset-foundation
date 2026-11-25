@@ -22,9 +22,9 @@ export const storefrontImageRequirementLabel = "JPG, PNG, or WebP under 5 MB";
 
 export type StorefrontImageKind = "logo" | "hero";
 
-// Mesmo contrato de progresso dos uploads de curso (#138): `percent` é null
-// enquanto o transporte não informa nada, e `success` só sai depois de a
-// escrita existir. Assim a mesma UploadProgressNote serve às duas famílias.
+// Same progress contract as the course uploads (#138): `percent` is null
+// while the transport reports nothing, and `success` only goes out after the
+// write exists. That way the same UploadProgressNote serves both families.
 export type UploadAvatarProgress = UploadCourseAssetProgress;
 
 const publicMediaBucket = "public-media";
@@ -37,11 +37,11 @@ export function isAllowedAvatarFile(file: File) {
 
 type OnProgress = ((progress: UploadAvatarProgress) => void) | undefined;
 
-// ponytail: supabase-js upload() exposes no per-byte progress. "running" sai
-// sem porcentagem (a UI mostra "Sending..." e o tamanho); um 0% parado o envio
-// inteiro se lia como "travou". Cada função exportada emite "success" no fim,
-// depois da SUA última escrita — o avatar e a assinatura ainda gravam em
-// `users` depois de o objeto subir.
+// ponytail: supabase-js upload() exposes no per-byte progress. "running" goes out
+// without a percentage (the UI shows "Sending..." and the size); a 0% stuck for the
+// whole upload read as "frozen". Each exported function emits "success" at the end,
+// after ITS last write — the avatar and the signature still write to
+// `users` after the object is uploaded.
 function emitProgress(file: File, state: "running" | "success", onProgress: OnProgress) {
   onProgress?.({
     bytesTransferred: state === "success" ? file.size : 0,
@@ -157,8 +157,8 @@ export async function uploadUserStorefrontImage(
     throw new Error(`Use a ${storefrontImageRequirementLabel} image.`);
   }
 
-  // Aqui a única escrita é o objeto no Storage: a URL só vai para o perfil
-  // quando o professor salva a vitrine.
+  // Here the only write is the object in Storage: the URL only goes to the profile
+  // when the teacher saves the storefront.
   const url = await uploadUserPublicImage(
     uid,
     `storefront/${kind}/${kind}`,

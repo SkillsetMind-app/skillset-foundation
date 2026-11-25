@@ -42,21 +42,23 @@ export async function createSupabaseServerClient(): Promise<
 }
 
 /**
- * Sessão aal1 de conta com segundo fator verificado não é login (A-17).
+ * An aal1 session for an account with a verified second factor is not a login (A-17).
  *
- * `signInWithPassword` grava o cookie aal1 ANTES do código TOTP, e cada rota
- * decide "está logado?" com `auth.getUser()`. Onze rotas passam por
- * requireUserId e seis leem getUser() direto — o único ponto por onde TODAS
- * passam é este cliente. Então é aqui que a resposta muda: para uma sessão que
- * ainda deve o segundo fator, `getUser()` responde como se não houvesse
- * sessão, com `error.code = "mfa_required"`. Toda rota já trata "sem usuário".
+ * `signInWithPassword` writes the aal1 cookie BEFORE the TOTP code, and each
+ * route decides "is the user logged in?" with `auth.getUser()`. Eleven routes go
+ * through requireUserId and six read getUser() directly — the only point ALL of
+ * them go through is this client. So this is where the answer changes: for a
+ * session that still owes the second factor, `getUser()` answers as if there
+ * were no session, with `error.code = "mfa_required"`. Every route already
+ * handles "no user".
  *
- * Quem decide é o banco: `session_is_strong()` lê o `aal` do mesmo JWT que o
- * PostgREST validou e os fatores direto de `auth.mfa_factors`. A resposta do
- * GoTrue não traz `user.factors` para a sessão aal1, então ela não serve para
- * esta decisão. O caminho comum continua com uma consulta só (session_is_strong já inclui
- * account_session_allowed); a segunda, só quando a sessão é fraca, separa
- * "deve o código" de "conta bloqueada". Erro em qualquer uma: fecha.
+ * The database decides: `session_is_strong()` reads the `aal` from the same JWT
+ * that PostgREST validated and the factors straight from `auth.mfa_factors`. The
+ * GoTrue response does not carry `user.factors` for the aal1 session, so it
+ * cannot be used for this decision. The common path stays at a single query
+ * (session_is_strong already includes account_session_allowed); the second one,
+ * only when the session is weak, tells "owes the code" apart from "account
+ * blocked". An error in either one: close.
  */
 function withSecondFactorGate(
   client: SupabaseClient<Database>,

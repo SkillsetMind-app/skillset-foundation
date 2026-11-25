@@ -68,26 +68,26 @@ export function listenToAuthState(callback: (session: AuthSession) => void) {
   let eventSeq = 0;
   let active = true;
 
-  // Última sessão realmente emitida, para não emitir de novo o que não mudou.
+  // Last session actually emitted, so we do not emit again what did not change.
   //
-  // POR QUE ISTO EXISTE
+  // WHY THIS EXISTS
   //
-  // `onAuthStateChange` dispara em coisas que não mudam nada para o app —
-  // `TOKEN_REFRESHED` (a cada ~1h), `SIGNED_IN` ao voltar o foco da aba. A cada
-  // disparo, `mapSupabaseUser` devolvia um OBJETO NOVO com exatamente o mesmo
-  // conteúdo. E 41 efeitos deste app declaram `[user]` como dependência — o
-  // objeto, não o uid.
+  // `onAuthStateChange` fires on things that change nothing for the app —
+  // `TOKEN_REFRESHED` (about every hour), `SIGNED_IN` when the tab regains focus. On each
+  // firing, `mapSupabaseUser` returned a NEW OBJECT with exactly the same
+  // content. And 41 effects in this app declare `[user]` as a dependency — the
+  // object, not the uid.
   //
-  // Cinco desses efeitos semeiam campos EDITÁVEIS a partir do servidor
-  // (perfil, storefront, verificação de criador, eventos). O professor escrevia
-  // a tagline, o token era renovado no meio, o efeito rodava de novo e
-  // sobrescrevia tudo com o último valor salvo. Digitação perdida sem uma
-  // palavra, e sem nada que o usuário pudesse ter feito diferente.
+  // Five of those effects seed EDITABLE fields from the server
+  // (profile, storefront, creator verification, events). The teacher was writing
+  // the tagline, the token was renewed in the middle, the effect ran again and
+  // overwrote everything with the last saved value. Typing lost without a
+  // word, and with nothing the user could have done differently.
   //
-  // O conserto vai na FONTE, não nos 41 chamadores: emitir só quando o conteúdo
-  // muda de fato. `SkillsetUser` é um objeto raso de primitivos mais um array
-  // de papéis, então comparar o JSON é confiável e barato. Um falso "mudou"
-  // apenas repete o comportamento antigo — o erro seguro é para este lado.
+  // The fix goes at the SOURCE, not in the 41 callers: emit only when the content
+  // actually changes. `SkillsetUser` is a shallow object of primitives plus an array
+  // of roles, so comparing the JSON is reliable and cheap. A false "changed"
+  // just repeats the old behavior — the safe error is on this side.
   let lastEmitted: string | null = null;
   let currentSession: AuthSession = { status: "loading", user: null };
 
@@ -118,7 +118,7 @@ export function listenToAuthState(callback: (session: AuthSession) => void) {
     }
 
     if (currentSession.user && currentSession.user.uid !== user.id) {
-      // A conta anterior nao fica acessivel enquanto a nova e verificada.
+      // The previous account does not stay accessible while the new one is verified.
       emit({ status: "loading", user: null });
     }
     let mfaApproved = false;
@@ -128,11 +128,11 @@ export function listenToAuthState(callback: (session: AuthSession) => void) {
     // then hangs on "loading" forever (documented onAuthStateChange gotcha).
     // Defer the profile read to the next tick so it runs outside the lock.
     async function resolveProfile(currentUser: User) {
-      // Sessão aal1 de conta com segundo fator verificado NÃO é login. O cookie
-      // existe desde o signInWithPassword, antes do código — emitir
-      // "authenticated" aqui era o que tornava o TOTP decorativo (A-17): todo
-      // guard do app só olhava `user`. O estado próprio, com user nulo, faz o
-      // app inteiro se comportar como deslogado; só a tela do código sabe sair.
+      // An aal1 session of an account with a verified second factor is NOT a login. The cookie
+      // exists since signInWithPassword, before the code — emitting
+      // "authenticated" here was what made TOTP decorative (A-17): every
+      // guard in the app only looked at `user`. The dedicated state, with a null user, makes the
+      // whole app behave as signed out; only the code screen knows how to leave it.
       if (await isSecondFactorPending(supabase, true)) {
         if (seq === eventSeq) {
           emit({ status: "mfa_required", user: null });
@@ -172,8 +172,8 @@ export function listenToAuthState(callback: (session: AuthSession) => void) {
     window.setTimeout(() => {
       if (!active || seq !== eventSeq) return;
       void resolveProfile(user).catch(() => {
-        // Renovacao e retomada de foco podem conservar a mesma sessao valida.
-        // Falha de MFA, troca de conta e login inicial continuam fechados.
+        // Renewal and focus resume may keep the same valid session.
+        // MFA failure, account switch and initial login stay closed.
         if (active && seq === eventSeq) {
           if ((event === "TOKEN_REFRESHED" || event === "SIGNED_IN") && mfaApproved
             && currentSession.status === "authenticated"
@@ -186,7 +186,7 @@ export function listenToAuthState(callback: (session: AuthSession) => void) {
 
   async function refreshUser() {
     if (!active) throw new Error("Auth subscription is inactive");
-    // Eventos e refreshes disputam a mesma sequencia e a mesma deduplicacao.
+    // Events and refreshes compete for the same sequence and the same deduplication.
     const seq = ++eventSeq;
     try {
       const next = await getCurrentAuthSession((uid) => {
@@ -198,8 +198,8 @@ export function listenToAuthState(callback: (session: AuthSession) => void) {
       if (!active || seq !== eventSeq) throw new Error("Auth refresh was superseded");
       emit(next);
     } catch (error) {
-      // A troca de uid ja fechou a conta anterior. Sem sessao valida, sair do
-      // loading permite tentar login; uma geracao antiga nao pode interferir.
+      // The uid change already closed the previous account. Without a valid session, leaving
+      // loading lets a login be attempted; an old generation must not interfere.
       if (active && seq === eventSeq
         && (currentSession.status !== "authenticated" || !currentSession.user)) {
         emit({ status: "unauthenticated", user: null });
@@ -218,10 +218,10 @@ export function listenToAuthState(callback: (session: AuthSession) => void) {
 }
 
 /**
- * Snapshot da sessão sem abrir um listener, para o provider re-ler depois de
- * uma mudança de perfil. Passa pelo mesmo portão de segundo fator do listener:
- * montar "authenticated" aqui à mão era um caminho paralelo que voltava a
- * tratar uma sessão aal1 como login.
+ * Snapshot of the session without opening a listener, for the provider to re-read after
+ * a profile change. Goes through the same second-factor gate as the listener:
+ * building "authenticated" by hand here was a parallel path that went back to
+ * treating an aal1 session as a login.
  */
 export async function getCurrentAuthSession(
   onIdentity?: (uid: string) => void,
@@ -234,14 +234,14 @@ export async function getCurrentAuthSession(
       return { status: "unauthenticated", user: null };
     }
     user = result.data.user;
-    // Fecha a conta anterior antes de aguardar o perfil de outra identidade.
+    // Closes the previous account before awaiting the profile of another identity.
     onIdentity?.(user.id);
 
     if (await isSecondFactorPending(supabase, true)) {
       return { status: "mfa_required", user: null };
     }
   } catch {
-    // Sem confirmar autenticacao/MFA, nenhum snapshot pode liberar a tela.
+    // Without confirming authentication/MFA, no snapshot may release the screen.
     return { status: "unauthenticated", user: null };
   }
 
@@ -315,16 +315,16 @@ export async function signUpWithEmail(
         ...getFirstTouch(),
         ...(locale ? { locale } : {}),
         ...(trimmedName ? { display_name: trimmedName, name: trimmedName } : {}),
-        // Os termos marcados no formulario. Sem sessao (cadastro que espera a
-        // confirmacao) o perfil ainda nao pode ser gravado: as versoes esperam
-        // aqui e a porta dos termos grava na primeira pagina ja logada. Antes o
-        // tique se perdia e a pessoa via "Legal update" logo ao chegar.
+        // The terms checked on the form. Without a session (signup waiting for
+        // confirmation) the profile cannot be written yet: the versions wait
+        // here and the terms gate writes them on the first page already signed in. Before, the
+        // checkbox was lost and the person saw "Legal update" right on arrival.
         ...(acceptedTerms
           ? { terms_version: currentTermsVersion, privacy_version: currentPrivacyVersion }
           : {}),
-        // Para onde a confirmacao leva (o curso, o caminho de professor), para
-        // o lembrete de 24 h nao cair no inicio generico. Com teto, como o
-        // first touch: os metadados viajam dentro do token da sessao.
+        // Where the confirmation leads (the course, the teacher path), so the
+        // 24 h reminder does not land on the generic start. Capped, like the
+        // first touch: the metadata travels inside the session token.
         ...(confirmNext !== "/welcome" && confirmNext.length <= 300
           ? { signup_next: confirmNext }
           : {}),
@@ -469,10 +469,10 @@ export async function sendSkillsetEmailVerification(
   }
 }
 
-// Versoes dos termos marcadas no cadastro (ver signUpWithEmail). Lidas so
-// quando o perfil ainda nao tem nenhuma gravada. acceptedAt e a hora em que a
-// conta foi criada, pelo relogio do servidor: a hora do tique, nao a da
-// primeira pagina logada (que pode ser dias depois).
+// Terms versions checked at signup (see signUpWithEmail). Read only
+// when the profile has none stored yet. acceptedAt is the time the
+// account was created, by the server clock: the time of the checkbox, not that of the
+// first signed-in page (which can be days later).
 export async function getSignupLegalVersions(): Promise<{ terms?: string; privacy?: string; acceptedAt?: string }> {
   const { data } = await getSupabaseBrowserClient().auth.getUser();
   const metadata = data.user?.user_metadata ?? {};
@@ -611,8 +611,8 @@ export function isEmailRateLimitError(error: unknown): boolean {
   return matches("rate_limit") || matches("rate limit");
 }
 
-// Falhas que acontecem antes de procurar a conta (a checagem de seguranca, a
-// conexao). Mostrar estas nao diz a ninguem se um e-mail tem cadastro.
+// Failures that happen before looking up the account (the security check, the
+// connection). Showing these tells nobody whether an email has a signup.
 export function isAccountNeutralAuthError(error: unknown): boolean {
   const { matches } = authErrorMatcher(error);
   return matches("captcha") || matches("network") || matches("fetch");
@@ -766,11 +766,11 @@ export function isMultiFactorRequiredError(
 }
 
 /**
- * Sessão aal1 numa conta que tem fator verificado: o Supabase responde
- * `nextLevel: "aal2"` com `currentLevel: "aal1"`. Leitura local — decodifica o
- * JWT guardado e olha os fatores do usuário guardado — sem ida ao servidor.
- * Quem decide de verdade é o portão do servidor (src/lib/supabase/server.ts);
- * este é o que impede a interface de abrir.
+ * An aal1 session on an account that has a verified factor: Supabase answers
+ * `nextLevel: "aal2"` with `currentLevel: "aal1"`. Local read — it decodes the
+ * stored JWT and looks at the stored user's factors — with no trip to the server.
+ * What really decides is the server gate (src/lib/supabase/server.ts);
+ * this one is what keeps the interface from opening.
  */
 async function isSecondFactorPending(
   supabase: SupabaseClient<Database>,
@@ -792,12 +792,12 @@ async function isSecondFactorPending(
     return true;
   }
 
-  // O Auth do Supabase não manda `user.factors` para a sessão aal1, e então
-  // `nextLevel` sai "aal1" mesmo numa conta com TOTP. O banco sabe
-  // (session_is_strong lê auth.mfa_factors). "Fraca" só vira "deve o código"
-  // se a conta está liberada; conta bloqueada é outro caminho.
-  // Chamadores legados mantem o fallback; listener e snapshot exigem prova
-  // positiva e fecham a interface se esta verificacao falhar.
+  // Supabase Auth does not send `user.factors` for the aal1 session, and so
+  // `nextLevel` comes out "aal1" even on an account with TOTP. The database knows
+  // (session_is_strong reads auth.mfa_factors). "Weak" only becomes "owes the code"
+  // if the account is released; a blocked account is another path.
+  // Legacy callers keep the fallback; listener and snapshot require positive
+  // proof and close the interface if this check fails.
   try {
     const { data: strong, error: strongError } =
       await supabase.rpc("session_is_strong");
@@ -831,9 +831,9 @@ type MyFactor = {
 };
 
 /**
- * Os fatores da própria conta pela rota do servidor (API de administração),
- * porque a lista do cliente (`mfa.listFactors`) sai vazia na sessão aal1.
- * null = rota indisponível; quem chama cai na lista do cliente.
+ * The account's own factors through the server route (admin API),
+ * because the client list (`mfa.listFactors`) comes out empty on the aal1 session.
+ * null = route unavailable; the caller falls back to the client list.
  */
 async function fetchMyFactors(): Promise<MyFactor[] | null> {
   try {
@@ -877,8 +877,8 @@ async function findPendingSecondFactor(
 
   const factorId = await findVerifiedTotpId(supabase);
   if (!factorId) {
-    // Deve o código, mas o fator não veio (rota fora do ar): nunca seguir como
-    // logado. Cai na mensagem de rede do login, e tentar de novo resolve.
+    // Owes the code, but the factor did not come (route down): never go on as
+    // signed in. Falls to the login network message, and trying again fixes it.
     throw new Error("Could not load your two-factor setup (network). Please try again.");
   }
   return new MfaRequiredError(factorId);
@@ -895,9 +895,9 @@ async function requireSecondFactorIfNeeded(
 }
 
 /**
- * A sessão aal1 que ficou no cookie de quem fechou a tela do código. A tela de
- * login chama isto ao montar para retomar o desafio em vez de pedir a senha de
- * novo — é a saída do estado `mfa_required`. Null quando não há nada pendente.
+ * The aal1 session left in the cookie of someone who closed the code screen. The
+ * login screen calls this on mount to resume the challenge instead of asking for the password
+ * again — it is the way out of the `mfa_required` state. Null when nothing is pending.
  */
 export async function getPendingSecondFactor(): Promise<MfaRequiredError | null> {
   return findPendingSecondFactor(getSupabaseBrowserClient());
@@ -984,9 +984,9 @@ export async function startTotpEnrollment(): Promise<{
 }
 
 /**
- * O Supabase devolve o QR como SVG num data URI. Ele só é desenhado via
- * `<img src>`, onde um SVG não executa script; ainda assim só um data URI de
- * SVG passa — qualquer outra coisa vira null e a tela fica com a chave manual.
+ * Supabase returns the QR as an SVG in a data URI. It is only drawn through
+ * `<img src>`, where an SVG does not run script; even so, only an SVG
+ * data URI passes — anything else becomes null and the screen keeps the manual key.
  */
 export function safeQrDataUri(value: unknown): string | null {
   return typeof value === "string" && value.startsWith("data:image/svg+xml")
@@ -1057,18 +1057,18 @@ export async function unenrollTotpFactor(factorUid: string): Promise<void> {
   }
 }
 
-// "E-mail nao confirmado" ao entrar: a pessoa criou a conta e nao clicou no
-// link (ou ele nao chegou). Antes isso virava uma frase de erro generica; agora
-// a tela de login mostra a mesma porta do cadastro, com "reenviar".
+// "Email not confirmed" on sign-in: the person created the account and did not click the
+// link (or it did not arrive). Before, this became a generic error sentence; now
+// the login screen shows the same gate as signup, with "resend".
 export function isEmailNotConfirmedError(error: unknown): boolean {
   const { matches } = authErrorMatcher(error);
   return matches("email_not_confirmed") || matches("email not confirmed");
 }
 
-// Reenvia o link de confirmacao do cadastro. A tela "confirme seu e-mail" era
-// um beco sem saida: se o e-mail nao chegava, a unica opcao era "ir para o
-// login" — que devolvia "e-mail nao confirmado". 5 contas reais ficaram
-// paradas assim desde 26/08.
+// Resends the signup confirmation link. The "confirm your email" screen was
+// a dead end: if the email did not arrive, the only option was "go to
+// login" — which returned "email not confirmed". 5 real accounts were
+// stuck like that since Aug 26.
 export async function resendSignupConfirmation(
   email: string,
   confirmNext: string = "/welcome",

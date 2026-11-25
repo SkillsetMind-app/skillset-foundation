@@ -59,12 +59,12 @@ export type Course = {
   outcomes: string[];
   modules: CourseModule[];
   communityEnabled: boolean;
-  // O que o produto entrega (courses.product_format). Sem o campo (catalogo
-  // da plataforma), curso.
+  // What the product delivers (courses.product_format). Without the field (platform
+  // catalog), course.
   productFormat?: TeacherCourseProductFormat;
-  // Quem publicou o curso (users.uid). So os cursos de professor tem; o
-  // catalogo da plataforma nao. A comunidade usa para marcar as respostas do
-  // professor e nomear o filtro "From <nome>".
+  // Who published the course (users.uid). Only teacher courses have it; the
+  // platform catalog does not. The community uses it to mark the teacher's
+  // answers and to name the "From <name>" filter.
   instructorId?: string | null;
   // Per-course members-area hero customization (enrolled-student surface).
   // null theme → the hero defaults to "dark" (the members-area design default).

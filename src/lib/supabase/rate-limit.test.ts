@@ -25,9 +25,9 @@ describe("rateLimitKeyFromIp", () => {
     vi.unstubAllEnvs();
   });
 
-  // O bug (A-28): um sha256 puro de IPv4 é uma tabela de consulta de 4 bilhões
-  // de linhas — o balde "anonimizado" continuava sendo o endereço, disfarçado.
-  it("com pepper, o balde não é o sha256 puro do endereço", () => {
+  // The bug (A-28): a plain sha256 of an IPv4 is a lookup table of 4 billion
+  // rows — the "anonymized" bucket was still the address, in disguise.
+  it("with a pepper, the bucket is not the plain sha256 of the address", () => {
     vi.stubEnv("RATE_LIMIT_PEPPER", "unit-test-pepper");
 
     const bucket = rateLimitKeyFromIp(requestFrom(IP), "csp");
@@ -37,7 +37,7 @@ describe("rateLimitKeyFromIp", () => {
     expect(bucket).not.toContain(IP);
   });
 
-  it("é estável para o mesmo visitante e distinto entre visitantes", () => {
+  it("is stable for the same visitor and distinct between visitors", () => {
     vi.stubEnv("RATE_LIMIT_PEPPER", "unit-test-pepper");
 
     expect(rateLimitKeyFromIp(requestFrom(IP), "csp")).toBe(
@@ -48,7 +48,7 @@ describe("rateLimitKeyFromIp", () => {
     );
   });
 
-  it("outro pepper, outro balde — o hash depende do segredo do servidor", () => {
+  it("a different pepper gives a different bucket — the hash depends on the server secret", () => {
     vi.stubEnv("RATE_LIMIT_PEPPER", "pepper-a");
     const primeiro = rateLimitKeyFromIp(requestFrom(IP), "csp");
 
@@ -56,12 +56,12 @@ describe("rateLimitKeyFromIp", () => {
     expect(rateLimitKeyFromIp(requestFrom(IP), "csp")).not.toBe(primeiro);
   });
 
-  // Segunda metade do A-28: o fallback NÃO pode ser a service role. Aquela chave
-  // existe para ignorar RLS; costurar uma leitura pública nela faz a rotação de
-  // uma resetar silenciosamente a outra, e qualquer valor derivado que vaze vira
-  // material para testar a chave real. Sem pepper dedicado o balde continua não
-  // sendo o sha256 puro — e não se mexe quando a service role muda.
-  it("sem pepper dedicado, o balde não é o sha256 puro nem depende da service role", () => {
+  // Second half of A-28: the fallback must NOT be the service role. That key
+  // exists to bypass RLS; tying a public read to it makes rotating one silently
+  // reset the other, and any derived value that leaks becomes material for
+  // testing the real key. Without a dedicated pepper the bucket still is not
+  // the plain sha256 — and it does not change when the service role changes.
+  it("without a dedicated pepper, the bucket is not the plain sha256 and does not depend on the service role", () => {
     vi.stubEnv("RATE_LIMIT_PEPPER", "");
 
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service-role-a");
@@ -73,15 +73,15 @@ describe("rateLimitKeyFromIp", () => {
     expect(comA).toBe(comB);
   });
 
-  // O bug que o próprio conserto do pepper criou: rateLimitKeyFromIp era
-  // avaliada como ARGUMENTO de allowByKey, então qualquer throw ali subia antes
-  // do try/catch e derrubava a rota pública inteira (csp-report, pwned-check,
-  // ofertas, preview de vídeo) em vez de apenas pular o limitador.
-  it("allowByIp falha ABERTO quando a montagem da chave quebra", async () => {
+  // The bug the pepper fix itself created: rateLimitKeyFromIp was evaluated as
+  // an ARGUMENT of allowByKey, so any throw there rose before the try/catch and
+  // took down the whole public route (csp-report, pwned-check, offers, video
+  // preview) instead of just skipping the limiter.
+  it("allowByIp fails OPEN when building the key breaks", async () => {
     const requestQuebrada = {
       headers: {
         get() {
-          throw new Error("header store indisponível");
+          throw new Error("header store unavailable");
         },
       },
     } as unknown as Request;
@@ -89,7 +89,7 @@ describe("rateLimitKeyFromIp", () => {
     await expect(allowByIp(requestQuebrada, "csp", 60, 60_000)).resolves.toBe(true);
   });
 
-  it("ignora o primeiro x-forwarded-for controlável quando x-real-ip existe", () => {
+  it("ignores the first, client-controllable x-forwarded-for when x-real-ip exists", () => {
     vi.stubEnv("RATE_LIMIT_PEPPER", "unit-test-pepper");
     const trusted = rateLimitKeyFromIp(requestFrom(IP), "csp");
     const forged = new Request("http://localhost/api/x", {

@@ -11,16 +11,16 @@ vi.mock("next/headers", () => ({
   }),
 }));
 
-describe("buildPageMetadata — host canônico", () => {
-  // Produção serve `www`: o apex responde 301 para cá. Enquanto SITE_URL
-  // apontava para o apex, toda página se declarava canônica num endereço que
-  // redireciona, e o sitemap inteiro listava URLs redirecionadas — buscador
-  // trata redirecionamento como sinal enfraquecido.
-  it("usa www, não o apex que redireciona", () => {
+describe("buildPageMetadata — canonical host", () => {
+  // Production serves `www`: the apex answers 301 to it. While SITE_URL
+  // pointed to the apex, every page declared itself canonical at an address that
+  // redirects, and the whole sitemap listed redirected URLs — a search engine
+  // treats a redirect as a weakened signal.
+  it("uses www, not the apex that redirects", () => {
     expect(SITE_URL).toBe("https://www.skillsetmind.com");
   });
 
-  it("monta canonical e og:url no host canônico", () => {
+  it("builds canonical and og:url on the canonical host", () => {
     const meta = buildPageMetadata({
       title: "Curso",
       description: "Descrição",
@@ -34,10 +34,10 @@ describe("buildPageMetadata — host canônico", () => {
   });
 });
 
-describe("buildPageMetadata — imagem do card", () => {
-  // Antes o og:image era SEMPRE o logo da marca: todo curso do catálogo
-  // produzia um card de compartilhamento visualmente idêntico.
-  it("usa a capa do curso quando ela é uma URL absoluta", () => {
+describe("buildPageMetadata — card image", () => {
+  // Before, og:image was ALWAYS the brand logo: every course in the catalog
+  // produced a visually identical share card.
+  it("uses the course cover when it is an absolute URL", () => {
     const capa = "https://cdn.example.com/capa.jpg";
     const meta = buildPageMetadata({
       title: "Curso",
@@ -50,7 +50,7 @@ describe("buildPageMetadata — imagem do card", () => {
     expect(meta.twitter?.images).toEqual([capa]);
   });
 
-  it("resolve caminho local contra o host canônico", () => {
+  it("resolves a local path against the canonical host", () => {
     const meta = buildPageMetadata({
       title: "Curso",
       description: "Descrição",
@@ -63,9 +63,9 @@ describe("buildPageMetadata — imagem do card", () => {
     ]);
   });
 
-  // O padrão era o logo 1600×320 num card grande: WhatsApp e LinkedIn cortavam
-  // o logo ao meio. O padrão agora é o card 1200×630 de src/app/opengraph-image.
-  it("cai no card de compartilhamento 1200×630 quando a página não tem imagem própria", () => {
+  // The default was the 1600×320 logo on a large card: WhatsApp and LinkedIn cut
+  // the logo in half. The default is now the 1200×630 card from src/app/opengraph-image.
+  it("falls back to the 1200×630 share card when the page has no image of its own", () => {
     const semImagem = buildPageMetadata({
       title: "Sobre",
       description: "Descrição",
@@ -85,16 +85,16 @@ describe("buildPageMetadata — imagem do card", () => {
   });
 });
 
-describe("privatePageMetadata — cabeçalho de página logada", () => {
-  // As páginas atrás de login (/account, /learn, /teach) não têm título
-  // próprio: a aba do navegador cai no título genérico do layout raiz. O
-  // helper reusa o MESMO rótulo que a página já mostra via
-  // `PlatformShell title={t(chave)}`, no idioma do cookie, com o sufixo da
-  // marca — nada de canonical/Open Graph, a página exige login.
+describe("privatePageMetadata — header of a logged-in page", () => {
+  // Pages behind login (/account, /learn, /teach) have no title
+  // of their own: the browser tab falls back to the root layout's generic title. The
+  // helper reuses the SAME label the page already shows via
+  // `PlatformShell title={t(key)}`, in the cookie's language, with the brand
+  // suffix — no canonical/Open Graph, the page requires login.
   it.each([
     ["en", "Settings | SkillsetMind"],
     ["es", "Configuración | SkillsetMind"],
-  ])("traduz o rótulo e acrescenta o sufixo da marca (%s)", async (locale, title) => {
+  ])("translates the label and adds the brand suffix (%s)", async (locale, title) => {
     state.locale = locale as "en" | "es";
     expect(await privatePageMetadata("accountSettings.label")).toEqual({
       title,
@@ -102,13 +102,13 @@ describe("privatePageMetadata — cabeçalho de página logada", () => {
     });
   });
 
-  // Um título que termina em ponto ("Build, ship, get paid."): na aba, o ponto
-  // antes do separador parece erro de digitação. (Os cabeçalhos das telas do
-  // professor perderam o ponto; este rótulo ainda o tem.)
+  // A title that ends in a period ("Build, ship, get paid."): in the tab, the period
+  // before the separator looks like a typo. (The headers of the teacher
+  // screens lost the period; this label still has it.)
   it.each([
     ["en", "Build, ship, get paid | SkillsetMind"],
     ["es", "Crea, publica, cobra | SkillsetMind"],
-  ])("tira o ponto final do cabeçalho no título da aba (%s)", async (locale, title) => {
+  ])("drops the header's final period from the tab title (%s)", async (locale, title) => {
     state.locale = locale as "en" | "es";
     expect((await privatePageMetadata("teach.page.title")).title).toBe(title);
   });

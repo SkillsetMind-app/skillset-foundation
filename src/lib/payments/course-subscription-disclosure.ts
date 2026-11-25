@@ -3,14 +3,14 @@ type Translate = (key: string) => string;
 export type CourseSubscriptionInterval = "month" | "year";
 
 /**
- * O aviso de renovação automática de um curso por assinatura (US ROSCA,
- * 15 U.S.C. 8403), dito ANTES de o cartão ser pedido: no cartão de compra, ao
- * lado do botão, e na página do Stripe como `custom_text.submit.message`.
- * Uma função só, para os dois dizerem o mesmo preço e o mesmo intervalo.
+ * The automatic-renewal notice for a subscription course (US ROSCA,
+ * 15 U.S.C. 8403), stated BEFORE the card is asked for: on the purchase card, next to
+ * the button, and on the Stripe page as `custom_text.submit.message`.
+ * A single function, so both say the same price and the same interval.
  *
- * `amountMinor` é o preço de tabela na convenção da casa (valor x 100 em toda
- * moeda): é o que cada renovação cobra. Um cupom só vale na primeira fatura,
- * por isso a frase diz "Charged today, then {price}" em vez de repetir o valor.
+ * `amountMinor` is the list price in the house convention (value x 100 in every
+ * currency): it is what each renewal charges. A coupon only applies to the first invoice,
+ * which is why the sentence says "Charged today, then {price}" instead of repeating the amount.
  */
 export function courseSubscriptionDisclosure({
   t,

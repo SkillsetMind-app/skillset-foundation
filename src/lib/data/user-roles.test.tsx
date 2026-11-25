@@ -10,8 +10,8 @@ vi.mock("@/lib/supabase/client", () => ({
 
 import { updateUserRoles } from "@/lib/data/user-profiles";
 
-// Constrói um cliente Supabase falso que registra o payload do update e devolve
-// os papéis atuais na leitura.
+// Builds a fake Supabase client that records the update payload and returns
+// the current roles on the read.
 function buildClient(existingRoles: unknown) {
   const captured: { roles?: unknown } = {};
 
@@ -32,15 +32,15 @@ function buildClient(existingRoles: unknown) {
   return { client, captured };
 }
 
-describe("updateUserRoles — o onboarding soma papéis, nunca remove", () => {
+describe("updateUserRoles — onboarding adds roles, never removes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  // O caso real: a plataforma manda o usuário "atualizar o onboarding" quando
-  // ele topa com uma tela sem permissão. Um professor aceitava o padrão nos três
-  // passos e voltava sem o Teacher Studio, sem aviso nenhum.
-  it("mantém teacher quando o onboarding envia apenas student", async () => {
+  // The real case: the platform tells the user to "update the onboarding" when
+  // they hit a screen without permission. A teacher accepted the default in the three
+  // steps and came back without the Teacher Studio, with no notice at all.
+  it("keeps teacher when onboarding sends only student", async () => {
     const { client, captured } = buildClient(["student", "teacher"]);
     supabaseMocks.getSupabaseBrowserClient.mockReturnValue(client);
 
@@ -49,7 +49,7 @@ describe("updateUserRoles — o onboarding soma papéis, nunca remove", () => {
     expect(captured.roles).toEqual(expect.arrayContaining(["student", "teacher"]));
   });
 
-  it("adiciona teacher a quem só era student", async () => {
+  it("adds teacher to someone who was only student", async () => {
     const { client, captured } = buildClient(["student"]);
     supabaseMocks.getSupabaseBrowserClient.mockReturnValue(client);
 
@@ -58,7 +58,7 @@ describe("updateUserRoles — o onboarding soma papéis, nunca remove", () => {
     expect(captured.roles).toEqual(expect.arrayContaining(["student", "teacher"]));
   });
 
-  it("não duplica papel já presente", async () => {
+  it("does not duplicate a role already present", async () => {
     const { client, captured } = buildClient(["student", "teacher"]);
     supabaseMocks.getSupabaseBrowserClient.mockReturnValue(client);
 
@@ -68,10 +68,10 @@ describe("updateUserRoles — o onboarding soma papéis, nunca remove", () => {
     expect(new Set(roles).size).toBe(roles.length);
   });
 
-  // Papéis privilegiados não são auto-atribuíveis: o trigger users_field_guard
-  // recusa qualquer valor fora de {student, teacher}. Enviá-los no payload faria
-  // a escrita inteira falhar e o usuário perderia também a mudança legítima.
-  it("descarta papéis privilegiados que estejam na linha", async () => {
+  // Privileged roles are not self-assignable: the users_field_guard trigger
+  // refuses any value outside {student, teacher}. Sending them in the payload would make
+  // the whole write fail and the user would also lose the legitimate change.
+  it("discards privileged roles that are on the row", async () => {
     const { client, captured } = buildClient(["student", "admin", "ops"]);
     supabaseMocks.getSupabaseBrowserClient.mockReturnValue(client);
 
@@ -82,7 +82,7 @@ describe("updateUserRoles — o onboarding soma papéis, nunca remove", () => {
     expect(captured.roles).toEqual(expect.arrayContaining(["student", "teacher"]));
   });
 
-  it("tolera roles ausente ou malformado sem apagar o que foi pedido", async () => {
+  it("tolerates missing or malformed roles without erasing what was requested", async () => {
     const { client, captured } = buildClient(null);
     supabaseMocks.getSupabaseBrowserClient.mockReturnValue(client);
 

@@ -6,38 +6,38 @@ import {
   isClassroomTab,
 } from "@/domain/classroom-tabs";
 
-// Reanalise item 9: cada aba da sala e um endereco, e a aula atual vai junto.
+// Reanalysis item 9: each classroom tab is an address, and the current lesson goes along.
 
-describe("abas da sala de aula: endereco proprio", () => {
-  it("a aba e a propria base; as outras ganham um segmento — e a aula vai junto", () => {
+describe("classroom tabs: each has its own address", () => {
+  it("the tab is its own base; the others get a segment, and the lesson goes along", () => {
     const base = "/learn/courses/lideranca";
 
     expect(classroomTabHref(base, "lesson", "aula-5")).toBe("/learn/courses/lideranca?lesson=aula-5");
     expect(classroomTabHref(base, "community", "aula-5")).toBe(
       "/learn/courses/lideranca/community?lesson=aula-5",
     );
-    // Sem aula escolhida ainda (primeira visita), sem parametro.
+    // No lesson chosen yet (first visit), no parameter.
     expect(classroomTabHref(base, "about", null)).toBe("/learn/courses/lideranca/about");
   });
 
-  it("o id da aula vai escapado no endereco", () => {
+  it("the lesson id is escaped in the address", () => {
     expect(classroomTabHref("/learn/courses/x", "materials", "a b&c")).toBe(
       "/learn/courses/x/materials?lesson=a%20b%26c",
     );
   });
 
-  it("a base tira o segmento da aba que esta aberta — e so ele", () => {
+  it("the base strips the segment of the open tab, and only that", () => {
     expect(classroomBasePath("/learn/courses/lideranca/community", "community")).toBe(
       "/learn/courses/lideranca",
     );
     expect(classroomBasePath("/learn/courses/lideranca", "lesson")).toBe(
       "/learn/courses/lideranca",
     );
-    // Um curso cujo slug termina igual ao nome de uma aba nao perde o slug.
+    // A course whose slug ends the same as a tab name does not lose its slug.
     expect(classroomBasePath("/learn/courses/community", "lesson")).toBe(
       "/learn/courses/community",
     );
-    // A gaveta da pergunta mora DENTRO da aba: o que vem depois dela tambem sai.
+    // The question drawer lives INSIDE the tab: whatever comes after it is removed too.
     expect(classroomBasePath("/learn/courses/lideranca/community/q/post-1", "community")).toBe(
       "/learn/courses/lideranca",
     );
@@ -46,7 +46,7 @@ describe("abas da sala de aula: endereco proprio", () => {
     );
   });
 
-  it("so os nomes conhecidos sao abas", () => {
+  it("only the known names are tabs", () => {
     expect(isClassroomTab("community")).toBe(true);
     expect(isClassroomTab("banana")).toBe(false);
     expect(isClassroomTab("")).toBe(false);

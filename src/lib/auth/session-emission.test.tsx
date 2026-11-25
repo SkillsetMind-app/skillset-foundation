@@ -23,20 +23,20 @@ vi.mock("@/lib/data/user-profiles", () => ({
 
 import { listenToAuthState } from "@/lib/auth/supabase-auth";
 
-// POR QUE ESTE ARQUIVO EXISTE
+// WHY THIS FILE EXISTS
 //
-// `onAuthStateChange` dispara em eventos que nao mudam nada para o app:
-// `TOKEN_REFRESHED` (a cada ~1h) e `SIGNED_IN` quando a aba recupera o foco.
-// Antes do conserto, cada disparo produzia um OBJETO `user` NOVO com o mesmo
-// conteudo — e 41 efeitos deste app declaram `[user]` como dependencia.
+// `onAuthStateChange` fires on events that change nothing for the app:
+// `TOKEN_REFRESHED` (about every hour) and `SIGNED_IN` when the tab regains focus.
+// Before the fix, each firing produced a NEW `user` OBJECT with the same
+// content — and 41 effects in this app declare `[user]` as a dependency.
 //
-// Cinco desses efeitos semeiam campos EDITAVEIS a partir do servidor. Em
-// `storefront-settings-panel.tsx` o efeito com dependencia `[user]` roda
-// `setTagline(showcase?.tagline ?? "")`: o professor escrevia a tagline, a
-// sessao era renovada no meio, o efeito rodava de novo e o que ele digitou era
-// substituido pelo ultimo valor salvo — sem uma palavra na tela.
+// Five of those effects seed EDITABLE fields from the server. In
+// `storefront-settings-panel.tsx` the effect with dependency `[user]` runs
+// `setTagline(showcase?.tagline ?? "")`: the teacher was writing the tagline, the
+// session was renewed in the middle, the effect ran again and what they typed was
+// replaced by the last saved value — without a word on the screen.
 //
-// O contrato provado aqui: emitir apenas quando o CONTEUDO muda.
+// The contract proven here: emit only when the CONTENT changes.
 
 type StateHandler = (event: string, session: unknown) => void;
 
@@ -49,8 +49,8 @@ function buildClient() {
     auth: {
       getUser: vi.fn().mockResolvedValue({ data: { user: supabaseUser }, error: null }),
       mfa: {
-        // Conta sem segundo fator: o Supabase responde aal1/aal1 e o listener
-        // segue para o perfil. O portão em si é provado em
+        // Account without a second factor: Supabase answers aal1/aal1 and the listener
+        // goes on to the profile. The gate itself is proven in
         // second-factor-gate.test.tsx.
         getAuthenticatorAssuranceLevel: vi.fn().mockResolvedValue({
           data: { currentLevel: "aal1", nextLevel: "aal1" },
@@ -96,16 +96,16 @@ function profile(displayName: string) {
   };
 }
 
-// A leitura de perfil e adiada com `window.setTimeout(..., 0)` de proposito (o
-// Supabase segura o proprio lock enquanto notifica os inscritos), e depois
-// aguarda promessas. Alternar entre macrotask e microtask drena as duas filas.
+// The profile read is deferred with `window.setTimeout(..., 0)` on purpose (the
+// Supabase holds its own lock while it notifies subscribers), and then
+// awaits promises. Alternating between macrotask and microtask drains both queues.
 async function flush() {
   for (let i = 0; i < 5; i += 1) {
     await new Promise((resolve) => setTimeout(resolve, 0));
   }
 }
 
-describe("listenToAuthState — renovar a sessao nao pode apagar o que a pessoa digitou", () => {
+describe("listenToAuthState — renewing the session must not erase what the person typed", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     supabaseMocks.fetch.mockRejectedValue(new Error("Network forbidden"));
@@ -172,8 +172,8 @@ describe("listenToAuthState — renovar a sessao nao pode apagar o que a pessoa 
     profileMocks.getUserProfile.mockResolvedValue(profile("Teacher"));
     const seen: AuthSession[] = [];
     const unsubscribe = listenToAuthState((session) => seen.push(session));
-    // Sem sessao previa no unsubscribe: o catch teria motivo para emitir se
-    // esquecesse a guarda de atividade, mesmo depois da tela desmontada.
+    // No prior session on unsubscribe: the catch would have a reason to emit if
+    // it forgot the activity guard, even after the screen was unmounted.
     if (next !== "unsubscribe") {
       harness.fire("SIGNED_IN", { user: supabaseUser });
       await flush();
@@ -260,7 +260,7 @@ describe("listenToAuthState — renovar a sessao nao pode apagar o que a pessoa 
     expect(harness.wasUnsubscribed()).toBe(true);
   });
 
-  it("nao reemite quando o conteudo da sessao e identico", async () => {
+  it("does not re-emit when the session content is identical", async () => {
     const harness = buildClient();
     supabaseMocks.getSupabaseBrowserClient.mockReturnValue(harness.client);
     profileMocks.getUserProfile.mockResolvedValue(profile("Teacher"));
@@ -283,7 +283,7 @@ describe("listenToAuthState — renovar a sessao nao pode apagar o que a pessoa 
     expect(emitidas[0]?.user?.displayName).toBe("Teacher");
   });
 
-  it("emite de novo quando o conteudo muda de verdade", async () => {
+  it("emits again when the content really changes", async () => {
     const harness = buildClient();
     supabaseMocks.getSupabaseBrowserClient.mockReturnValue(harness.client);
     profileMocks.getUserProfile
@@ -305,7 +305,7 @@ describe("listenToAuthState — renovar a sessao nao pode apagar o que a pessoa 
     expect(nomes).toEqual(["Teacher", "Teacher Renamed"]);
   });
 
-  it("nao repete a saida: dois SIGNED_OUT seguidos emitem uma vez so", async () => {
+  it("does not repeat the sign-out: two SIGNED_OUT in a row emit only once", async () => {
     const harness = buildClient();
     supabaseMocks.getSupabaseBrowserClient.mockReturnValue(harness.client);
 
@@ -321,7 +321,7 @@ describe("listenToAuthState — renovar a sessao nao pode apagar o que a pessoa 
     ).toHaveLength(1);
   });
 
-  it("volta a emitir a mesma pessoa depois de um logout no meio", async () => {
+  it("emits the same person again after a logout in between", async () => {
     const harness = buildClient();
     supabaseMocks.getSupabaseBrowserClient.mockReturnValue(harness.client);
     profileMocks.getUserProfile.mockResolvedValue(profile("Teacher"));
@@ -343,7 +343,7 @@ describe("listenToAuthState — renovar a sessao nao pode apagar o que a pessoa 
     ).toEqual(["authenticated", "unauthenticated", "authenticated"]);
   });
 
-  it("continua devolvendo o cancelamento da inscricao", () => {
+  it("still returns the subscription cancellation", () => {
     const harness = buildClient();
     supabaseMocks.getSupabaseBrowserClient.mockReturnValue(harness.client);
 

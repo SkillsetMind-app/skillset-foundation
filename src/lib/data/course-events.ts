@@ -85,9 +85,9 @@ export async function createCourseEvent(input: CreateCourseEventInput) {
 export type LiveEventSession = { startsAt: string; timeZone: string | null };
 
 /**
- * A sessao que a pagina de venda de um evento ao vivo mostra: so a data e o
- * fuso de quem ensina (get_live_event_session), nunca o link. course_events so
- * abre para dono e matriculado; a funcao abre essa parte ao visitante.
+ * The session that the sales page of a live event shows: only the date and the
+ * time zone of the person teaching (get_live_event_session), never the link. course_events only
+ * opens to the owner and the enrolled; the function opens this part to the visitor.
  */
 export async function getLiveEventSession(courseId: string): Promise<LiveEventSession | null> {
   const supabase = getSupabaseBrowserClient();
@@ -167,8 +167,8 @@ export function subscribeToTeacherCourseEvents(
   onError: (error: Error) => void,
 ): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
-  // So a leitura mais nova entrega: um "Try again" que volta depois de uma
-  // releitura do canal traria a agenda velha.
+  // Only the newest read delivers: a "Try again" that comes back after a
+  // re-read of the channel would bring the old agenda.
   let active = true;
   let latestLoad = 0;
 
@@ -212,7 +212,7 @@ export function subscribeToTeacherCourseEvents(
     )
     .subscribe();
 
-  // `reload()` le de novo SEM mexer no canal (o "Try again" de Eventos).
+  // `reload()` reads again WITHOUT touching the channel (the "Try again" of Events).
   return Object.assign(
     () => {
       active = false;
@@ -362,9 +362,9 @@ export function subscribeToCourseEventRsvps(
   };
 }
 
-// `includeCancelled`: a agenda /learn/events e a aba da sala mostram a sessao
-// cancelada marcada como tal (a tela decide por quantos dias). A consulta e a
-// mesma; so o filtro do navegador muda. Sem a opcao, como sempre: so as marcadas.
+// `includeCancelled`: the /learn/events agenda and the room tab show the cancelled
+// session marked as such (the screen decides for how many days). The query is the
+// same; only the browser filter changes. Without the option, as always: only the marked ones.
 export function subscribeToCourseEvents(
   courseSlug: string,
   callback: (events: CourseEvent[]) => void,
@@ -372,10 +372,10 @@ export function subscribeToCourseEvents(
   { includeCancelled = false }: { includeCancelled?: boolean } = {},
 ): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
-  // `reload()` (o "Try again") repete esta leitura sem mexer no canal. As de
-  // sempre (a inicial e as do canal) entregam como antes, so cedem a um reload
-  // mais novo; o que o reload comecou nao entrega depois de desligar nem por
-  // cima de uma leitura mais nova (traria a agenda sem a sessao nova).
+  // `reload()` (the "Try again") repeats this read without touching the channel. The usual
+  // ones (the initial one and the channel's) deliver as before, only yielding to a newer
+  // reload; what the reload started does not deliver after shutting down or on
+  // top of a newer read (it would bring the agenda without the new session).
   let active = true;
   let latestLoad = 0;
   let latestReload = 0;
@@ -422,7 +422,7 @@ export function subscribeToCourseEvents(
     )
     .subscribe();
 
-  // `reload()` le de novo SEM mexer no canal (o "Try again" de Eventos).
+  // `reload()` reads again WITHOUT touching the channel (the "Try again" of Events).
   return Object.assign(
     () => {
       active = false;

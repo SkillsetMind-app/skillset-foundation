@@ -1,5 +1,5 @@
-// Dinheiro na tela, uma moeda de cada vez. Nasceu no painel de Ganhos (#580) e
-// mora aqui para que Inicio, Relatorios e Ganhos escrevam valor do mesmo jeito.
+// Money on screen, one currency at a time. Born in the Earnings panel (#580) and
+// lives here so that Home, Reports and Earnings write amounts the same way.
 
 type MoneyOptions = Pick<
   Intl.NumberFormatOptions,
@@ -7,9 +7,9 @@ type MoneyOptions = Pick<
 >;
 
 /**
- * Um valor em UMA moeda, no idioma pedido. Codigo que o Intl recusa
- * ("UNSPECIFIED" das linhas antigas sem moeda, ou vazio) cai em
- * "CODIGO 12.34": um RangeError aqui derrubaria a pagina inteira.
+ * A value in ONE currency, in the requested language. A code that Intl refuses
+ * ("UNSPECIFIED" from old rows without a currency, or empty) falls back to
+ * "CODE 12.34": a RangeError here would take down the whole page.
  */
 export function formatMoney(
   amountMinor: number,
@@ -29,9 +29,9 @@ export function formatMoney(
 }
 
 /**
- * Varias moedas lado a lado, cada uma no proprio valor ("R$100.00 · $20.00"),
- * na ordem recebida: nada converte, nada soma moedas diferentes. Sem valor
- * nenhum: zero na unica moeda conhecida, ou "0" puro (sem inventar moeda).
+ * Several currencies side by side, each in its own amount ("R$100.00 · $20.00"),
+ * in the order received: nothing converts, nothing adds up different currencies. With no
+ * amount at all: zero in the only known currency, or a plain "0" (without inventing a currency).
  */
 export function formatMoneyBreakdown(
   values: ReadonlyArray<{ currency: string; amountMinor: number }>,

@@ -1,8 +1,8 @@
 /**
- * O banco recusa escrita em excesso com RAISE 'RATE_LIMIT' (enforce_rate_limit,
- * inclusive nos triggers de INSERT da comunidade e do suporte). O supabase-js
- * entrega isso como um erro com message "RATE_LIMIT"; a tela troca a mensagem
- * genérica, que manda tentar de novo na hora, por "espere um pouco".
+ * The database refuses excess writes with RAISE 'RATE_LIMIT' (enforce_rate_limit,
+ * including on the community and support INSERT triggers). supabase-js
+ * delivers that as an error with message "RATE_LIMIT"; the screen swaps the
+ * generic message, which says to try again right away, for "wait a moment".
  */
 export function isRateLimitError(error: unknown): boolean {
   const message = error && typeof error === "object" && "message" in error ? error.message : null;

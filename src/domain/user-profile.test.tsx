@@ -3,19 +3,19 @@ import { describe, expect, it } from "vitest";
 import { instructorPagePath, isReservedHandle, isStorefrontHexColor, readableTextOnAccent } from "@/domain/user-profile";
 
 describe("instructorPagePath", () => {
-  it("usa /@usuario quando há @, senão /instructors/{uid}", () => {
+  it("uses /@username when there is an @, otherwise /instructors/{uid}", () => {
     expect(instructorPagePath("u-1", "ana.souza")).toBe("/@ana.souza");
     expect(instructorPagePath("u-1", null)).toBe("/instructors/u-1");
   });
 
-  // Um @ reservado responde 404 em /@...: o link cai no uid, que funciona.
-  it("@ reservado cai no endereço pelo uid", () => {
+  // A reserved @ answers 404 at /@...: the link falls back to the uid, which works.
+  it("a reserved @ falls back to the address by uid", () => {
     expect(instructorPagePath("u-1", "support")).toBe("/instructors/u-1");
   });
 });
 
 describe("isReservedHandle", () => {
-  it("cobre os nomes que imitam a plataforma, sem diferenciar maiúsculas", () => {
+  it("covers the names that imitate the platform, case-insensitive", () => {
     for (const handle of ["skillsetmind", "support", "admin", "help", "ops", "api", "team", "official", "staff", "security", "billing", "Support"]) {
       expect(isReservedHandle(handle), handle).toBe(true);
     }
@@ -59,9 +59,9 @@ describe("isStorefrontHexColor", () => {
   });
 });
 
-// O acento do professor vira FUNDO de botao com texto por cima. Branco fixo
-// em cima de um amarelo (#f5c518) dava 1,6:1. O texto sai do contraste WCAG
-// do proprio acento: branco ou tinta escura, o que ler melhor.
+// The teacher's accent becomes a button BACKGROUND with text on top. Fixed white
+// on top of a yellow (#f5c518) gave 1.6:1. The text color comes from the WCAG contrast
+// of the accent itself: white or dark ink, whichever reads better.
 describe("readableTextOnAccent", () => {
   it("keeps white on the platform red and on black", () => {
     expect(readableTextOnAccent("#b22234")).toBe("#ffffff");

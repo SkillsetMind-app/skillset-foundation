@@ -4,13 +4,13 @@ import { isRole, type Role } from "@/lib/permissions";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 /**
- * A pessoa inteira para o Ops, sempre pelo servidor.
+ * The whole person for Ops, always through the server.
  *
- * As duas funções do banco exigem admin ativo com 2FA e só leem. A lista
- * substitui o `select *` da tabela users que a aba Usuários fazia do
- * navegador; o dossiê junta num JSON o que estava espalhado em quatro abas,
- * mais as respostas do cadastro e o comportamento da pessoa. Sem rota de API
- * na frente, pelo motivo de platform-roles.ts: o portão mora ao lado do dado.
+ * The two database functions require an active admin with 2FA and only read. The
+ * list replaces the `select *` of the users table that the Users tab did from the
+ * browser; the dossier gathers in one JSON what was scattered across four tabs,
+ * plus the signup answers and the person's behavior. No API route
+ * in front, for the reason in platform-roles.ts: the gate lives next to the data.
  */
 
 export const OPS_USERS_PAGE_SIZE = 50;
@@ -48,13 +48,13 @@ type SearchRow = {
   total_count: number | null;
 };
 
-// users.roles é jsonb: descarta o que o módulo de permissões não conhece.
+// users.roles is jsonb: discards what the permissions module does not know.
 function toRoles(value: unknown): readonly Role[] {
   if (!Array.isArray(value)) return [];
   return value.filter((entry): entry is Role => typeof entry === "string" && isRole(entry));
 }
 
-// Banido implica suspenso (constraint de account_controls); o mais forte vence.
+// Banned implies suspended (account_controls constraint); the stronger one wins.
 function toStatus(row: SearchRow): OpsUserStatus {
   if (row.blocked) return "blocked";
   if (row.suspended) return "suspended";
@@ -68,7 +68,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 export async function searchOpsUsers(filters: OpsUserFilters = {}): Promise<OpsUserPage> {
   const page = Math.max(0, Math.floor(filters.page ?? 0));
   const { data, error } = await getSupabaseBrowserClient().rpc("admin_search_users", {
-    // Omitido em vez de null: o default do SQL já quer dizer "sem filtro".
+    // Omitted instead of null: the SQL default already means "no filter".
     p_search: filters.search?.trim() || undefined,
     p_status: filters.status ?? undefined,
     p_role: filters.role ?? undefined,
@@ -92,7 +92,7 @@ export async function searchOpsUsers(filters: OpsUserFilters = {}): Promise<OpsU
       lastSignInAt: row.last_sign_in_at,
       status: toStatus(row),
     })),
-    // ponytail: página além do fim devolve total 0; a tela nunca pede essa página.
+    // ponytail: a page past the end returns total 0; the screen never asks for that page.
     total: Number(rows[0]?.total_count ?? 0),
   };
 }
@@ -118,7 +118,7 @@ export type DossierTimelineKind =
   | "message"
   | "ticket";
 
-/** Espelha o JSON de admin_get_user_dossier, com as chaves do SQL. */
+/** Mirrors the JSON of admin_get_user_dossier, with the SQL keys. */
 export type OpsUserDossier = {
   identity: {
     uid: string;
@@ -135,7 +135,7 @@ export type OpsUserDossier = {
     path: string | null;
     completed: boolean | null;
     completed_at: string | null;
-    /** OnboardingAnswers gravado pelo formulário de entrada; valores como a pessoa escolheu. */
+    /** OnboardingAnswers saved by the entry form; values as the person chose them. */
     answers: Record<string, unknown>;
     goals: unknown;
     credentials: unknown;
@@ -289,9 +289,9 @@ export async function getOpsUserDossier(uid: string): Promise<OpsUserDossier> {
   return parseDossier(data);
 }
 
-// O SQL monta todo bloco com coalesce; isto só recusa uma resposta que
-// quebraria a página (função errada, resposta truncada) e acerta os dois
-// campos que vêm de jsonb livre: as respostas do cadastro e a linha do tempo.
+// The SQL builds every block with coalesce; this only refuses a response that
+// would break the page (wrong function, truncated response) and fixes the two
+// fields that come from free-form jsonb: the signup answers and the timeline.
 export function parseDossier(value: unknown): OpsUserDossier {
   const dossier = value as OpsUserDossier | null;
   if (!dossier || typeof dossier !== "object" || typeof dossier.identity?.uid !== "string") {
