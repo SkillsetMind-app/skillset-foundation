@@ -89,12 +89,14 @@ describe("learner routes read the real locale cookie", () => {
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   });
 
-  // Abrir um curso passava por ate quatro telas de espera diferentes — a da
-  // rota pintada de escuro (os cursos nascem claros), a do Suspense, um cartao
-  // branco e o esqueleto da sala. A da rota e a do Suspense agora sao a MESMA.
-  // F-03: a area de membros busca a marca no servidor antes de responder; sem
-  // loading.tsx o clique deixava a tela anterior parada ate a resposta. A
-  // espera e o esqueleto da propria area, o mesmo que ela mostra enquanto le.
+  // Opening a course went through up to four different waiting screens — the
+  // route one painted dark (courses start out light), the Suspense one, a white
+  // card and the classroom skeleton. The route one and the Suspense one are now
+  // the SAME.
+  // F-03: the members area fetches the brand on the server before responding;
+  // without loading.tsx a click left the previous screen frozen until the
+  // response. The wait is the area's own skeleton, the same one it shows while
+  // reading.
   it("the members-area routes answer at once with the area's own skeleton", async () => {
     const view = render(await LoadingMemberArea());
     expect(screen.getByRole("status")).toHaveTextContent("Cargando el área de miembros...");

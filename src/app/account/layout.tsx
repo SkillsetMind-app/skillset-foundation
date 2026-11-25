@@ -1,2 +1,2 @@
-// A barra lateral abre como a pessoa deixou (cookie lido no servidor).
+// The sidebar opens the way the person left it (cookie read on the server).
 export { default } from "@/components/platform/sidebar-preference-layout";

@@ -5,13 +5,13 @@ import tailwindcss from "@tailwindcss/postcss";
 import postcss, { type Root } from "postcss";
 import { beforeAll, describe, expect, it } from "vitest";
 
-// jsdom não resolve cascata de folhas de estilo (muito menos @layer), então o
-// que este arquivo faz é: compilar o globals.css REAL pelo mesmo pipeline do
-// build (PostCSS + @tailwindcss/postcss) e resolver a cascata dos botões de
-// prova à mão, seguindo a spec — camada, !important, especificidade, ordem.
-// Foi exatamente assim que a auditoria mediu o defeito (P-16): a regra base
-// dos botões fora de camada vencia toda utility de tamanho, e 287 botões que
-// pediam text-xs/text-sm/py-2/py-2.5 saíam idênticos.
+// jsdom does not resolve the stylesheet cascade (much less @layer), so what
+// this file does is: compile the REAL globals.css through the same pipeline as the
+// build (PostCSS + @tailwindcss/postcss) and resolve the cascade of the proof
+// buttons by hand, following the spec — layer, !important, specificity, order.
+// That is exactly how the audit measured the defect (P-16): the base rule
+// for buttons outside any layer beat every size utility, and 287 buttons that
+// asked for text-xs/text-sm/py-2/py-2.5 came out identical.
 
 const root = process.cwd();
 const globalsPath = join(root, "src/app/globals.css");
@@ -20,8 +20,8 @@ const PROBE_CLASSES =
   "button-solid button-outline button-danger button-solid-light button-outline-light text-xs text-sm font-semibold font-normal py-2 py-2.5 px-3.5 text-[var(--color-accent-fg)] focus-visible:outline-[var(--focus-ring)] focus-visible:ring-[var(--focus-ring)] disabled:opacity-40 field-input min-h-[88px] transition-colors text-[var(--color-primary)]!";
 
 async function compileGlobals(): Promise<Root> {
-  // Só troca a varredura de arquivos por uma lista fixa de classes: o resto
-  // do globals.css entra inteiro, como no build.
+  // Only swaps the file scan for a fixed list of classes: the rest
+  // of globals.css goes in whole, as in the build.
   const source = readFileSync(globalsPath, "utf8").replace(
     '@import "tailwindcss";',
     `@import "tailwindcss" source(none);\n@source inline("${PROBE_CLASSES}");`,
@@ -38,10 +38,10 @@ type Candidate = {
   order: number;
 };
 
-// Aproximação suficiente para os seletores de botão: ids, classes/atributos/
-// pseudo-classes, elementos. `:is()`/`:not()` valem o argumento mais pesado e
-// `:where()` vale zero, como na spec: contar `:is(.a, .b):is(:disabled, [x])`
-// como cinco classes fazia a regra de desligado vencer onde não vence.
+// Approximation sufficient for the button selectors: ids, classes/attributes/
+// pseudo-classes, elements. `:is()`/`:not()` count as their heaviest argument and
+// `:where()` counts as zero, as in the spec: counting `:is(.a, .b):is(:disabled, [x])`
+// as five classes made the disabled rule win where it does not.
 function specificity(selector: string): number {
   let nested = 0;
   const flat = selector.replace(/:(is|not|where)\(([^()]*)\)/g, (_match, fn: string, args: string) => {
@@ -64,9 +64,9 @@ function readLayerOrder(css: Root): string[] {
   return order;
 }
 
-// O `:is()` com lista não é confiável no motor de seletores do jsdom: abre a
-// lista em seletores simples (`:is(.a, .b):is(:x, [y])` vira quatro) e casa
-// qualquer um. A especificidade segue sendo a do seletor original.
+// `:is()` with a list is not reliable in the jsdom selector engine: it opens the
+// list into simple selectors (`:is(.a, .b):is(:x, [y])` becomes four) and matches
+// any of them. The specificity stays that of the original selector.
 function expandIs(selector: string): string[] {
   const match = /:is\(([^()]*)\)/.exec(selector);
   if (!match) return [selector];
@@ -75,8 +75,8 @@ function expandIs(selector: string): string[] {
   return match[1].split(",").flatMap((arg) => expandIs(`${before}${arg.trim()}${after}`));
 }
 
-// `hover`: trata o elemento como se o mouse estivesse em cima (o seletor casa
-// sem o `:hover`, mas a especificidade conta o `:hover`).
+// `hover`: treats the element as if the mouse were over it (the selector matches
+// without the `:hover`, but the specificity counts the `:hover`).
 function collect(css: Root, element: Element, props: Set<string>, hover = false): Candidate[] {
   const matchesAs = (selector: string) =>
     expandIs(hover ? selector.replace(/:hover/g, "") : selector).some((simple) => element.matches(simple));
@@ -94,7 +94,7 @@ function collect(css: Root, element: Element, props: Set<string>, hover = false)
       if (name === "layer") {
         layer = layerOrder.indexOf((parent as postcss.AtRule).params.trim());
       } else {
-        // @media, @supports, @container: fora do que o botão de prova vive.
+        // @media, @supports, @container: outside what the proof button lives in.
         skip = true;
       }
     }
@@ -135,9 +135,9 @@ function collect(css: Root, element: Element, props: Set<string>, hover = false)
   return candidates;
 }
 
-// CSS Cascade 5: !important vence normal; entre normais, sem-camada vence e
-// depois a camada mais TARDIA; entre importantes a ordem inverte (camada mais
-// cedo vence, sem-camada perde de todas); então especificidade, então ordem.
+// CSS Cascade 5: !important beats normal; among normals, unlayered wins and
+// then the LATEST layer; among important ones the order inverts (earliest layer
+// wins, unlayered loses to all); then specificity, then order.
 function resolve(css: Root, element: Element, ...props: string[]): string | undefined {
   return pick(css, collect(css, element, new Set(props)));
 }
@@ -182,8 +182,8 @@ function mount(className: string, tag = "button"): Element {
   return element;
 }
 
-describe("tamanho dos botões (P-16)", () => {
-  it("dois botões que pedem tamanhos diferentes saem diferentes", () => {
+describe("button sizes (P-16)", () => {
+  it("two buttons that ask for different sizes come out different", () => {
     const small = mount("button-solid px-3.5 py-2 text-xs");
     const large = mount("button-solid px-3.5 py-2.5 text-sm");
 
@@ -191,7 +191,7 @@ describe("tamanho dos botões (P-16)", () => {
     const largeFont = resolve(css, large, "font-size");
     expect(smallFont).toBeDefined();
     expect(smallFont).not.toBe(largeFont);
-    // O valor único que a regra base impunha a todos os 287 botões.
+    // The single value that the base rule imposed on all 287 buttons.
     expect(smallFont).not.toBe("0.84375rem");
     expect(largeFont).not.toBe("0.84375rem");
 
@@ -201,16 +201,16 @@ describe("tamanho dos botões (P-16)", () => {
     expect(smallPadding).not.toBe("0.75rem 1.25rem");
   });
 
-  it("o alvo mínimo de 44px continua valendo quando ninguém pede outra altura", () => {
+  it("the 44px minimum target still holds when nobody asks for another height", () => {
     const button = mount("button-outline px-3.5 py-2 text-xs");
     expect(resolve(css, button, "min-height")).toBe("44px");
   });
 
-  // A ação principal da criação de produto (Continuar, Criar, Publicar). O
-  // 48px, 15px e peso 600 (decisão do fundador: primária sólida, mais alta,
-  // 600). Antes um `button { font: inherit }` sem camada vencia a camada
-  // `components` e o .button-lg precisava morar fora dela com 800.
-  it("o par grande sai com 48px e 15px/600 num <button>", () => {
+  // The main action of product creation (Continue, Create, Publish). The
+  // 48px, 15px and weight 600 (the owner's decision: solid primary, taller,
+  // 600). Before, a layer-less `button { font: inherit }` beat the `components`
+  // layer and .button-lg had to live outside it with 800.
+  it("the large pair comes out with 48px and 15px/600 on a <button>", () => {
     const primary = mount("button-solid button-lg");
     const secondary = mount("button-outline button-lg");
 
@@ -222,17 +222,17 @@ describe("tamanho dos botões (P-16)", () => {
     expect(resolve(css, secondary, "border-color")).toBe("var(--color-primary)");
   });
 
-  // A regra `button, input, textarea, select { font: inherit }` fora de camada
-  // fazia TODO <button> sair 16px/400 e todo campo ignorar text-sm/font-normal.
-  // O `font: inherit` agora vem só do preflight (camada base).
-  it("um <button> .button-solid sai 14px/600, não a letra herdada", () => {
+  // The rule `button, input, textarea, select { font: inherit }` outside any layer
+  // made EVERY <button> come out 16px/400 and every field ignore text-sm/font-normal.
+  // The `font: inherit` now comes only from the preflight (base layer).
+  it("a <button> .button-solid comes out 14px/600, not the inherited letter size", () => {
     const button = mount("button-solid");
 
     expect(resolve(css, button, "font-size", "font")).toBe("0.875rem");
     expect(resolve(css, button, "font-weight", "font")).toBe("600");
   });
 
-  it("utilities de letra valem em <button> e em campo", () => {
+  it("font-size utilities hold on <button> and on a field", () => {
     const button = mount("text-sm font-semibold");
     const input = mount("text-sm font-normal", "input");
 
@@ -242,14 +242,14 @@ describe("tamanho dos botões (P-16)", () => {
     expect(resolve(css, input, "font-weight", "font")).toContain("--font-weight-normal");
   });
 
-  // As variantes claras do hero viviam num bloco próprio, sem min-height:
-  // padding 10 + linha 20 + borda 2 = 42px no celular e no tablet (QA 07/09).
+  // The light hero variants lived in their own block, without min-height:
+  // padding 10 + line 20 + border 2 = 42px on phone and tablet (QA 07/09).
   it("as variantes claras (hero) guardam os mesmos 44px", () => {
     expect(resolve(css, mount("button-solid-light"), "min-height")).toBe("44px");
     expect(resolve(css, mount("button-outline-light"), "min-height")).toBe("44px");
   });
 
-  it("nenhuma variante de botão rebaixa o alvo de 44px para 36px ou 40px", () => {
+  it("no button variant lowers the 44px target to 36px or 40px", () => {
     const dir = join(root, "src");
     const files = readdirSync(dir, { recursive: true, withFileTypes: true })
       .filter(
@@ -272,9 +272,9 @@ describe("tamanho dos botões (P-16)", () => {
     expect(violations).toEqual([]);
   });
 
-  // F18: sobraram 12 alvos (abas, selects, botoes de texto) em min-h-9/min-h-10
-  // fora das variantes button-*. A regra e a mesma para qualquer alvo de toque.
-  it("nenhum alvo em src/components pede min-h-9 ou min-h-10 (36/40px)", () => {
+  // F18: 12 targets were left over (tabs, selects, text buttons) at min-h-9/min-h-10
+  // outside the button-* variants. The rule is the same for any touch target.
+  it("no target in src/components asks for min-h-9 or min-h-10 (36/40px)", () => {
     const dir = join(root, "src/components");
     const files = readdirSync(dir, { recursive: true, withFileTypes: true })
       .filter(
@@ -296,11 +296,11 @@ describe("tamanho dos botões (P-16)", () => {
   });
 });
 
-// C-11: a opacidade de desligado vinha de cada chamada, em cinco valores. A
-// regra central fica fora de camada e vence a utility, então a chamada que
-// ainda pede 40% sai com os mesmos 60% de todo botão desligado.
-describe("botão desligado (C-11)", () => {
-  it("sai com 60% e o fundo de repouso, mesmo pedindo outra opacidade", () => {
+// C-11: the disabled opacity came from each call, in five values. The
+// central rule stays outside any layer and beats the utility, so a call that
+// still asks for 40% comes out with the same 60% as every disabled button.
+describe("disabled button (C-11)", () => {
+  it("comes out at 60% and the rest background, even when asking for another opacity", () => {
     const button = mount("button-solid disabled:opacity-40");
     button.setAttribute("disabled", "");
     expect(resolve(css, button, "opacity")).toBe("0.6");
@@ -319,27 +319,27 @@ describe("botão desligado (C-11)", () => {
     return button;
   }
 
-  // Cada caso: o botão desligado tem, em repouso e com o mouse em cima, o
-  // mesmo desenho do botão ligado em repouso (no mesmo tema e escopo).
+  // Each case: the disabled button has, at rest and with the mouse over it, the
+  // same look as the enabled button at rest (in the same theme and scope).
   const member = { class: "member-classroom", "data-members-theme": "light" };
   it.each([
     ["button-solid", undefined, "background"],
     ["button-outline", undefined, "background"],
-    // O par grande: o :hover dele (dois seletores de classe) vencia a regra
-    // de desligado e o "Back" apagado ia de cinza a navy.
+    // The large pair: its :hover (two class selectors) beat the disabled
+    // rule and the faded "Back" went from gray to navy.
     ["button-outline button-lg", undefined, "border-color"],
-    // No escuro, a borda de repouso do tema escuro, não a do claro.
+    // In the dark, the rest border of the dark theme, not the light one.
     ["button-danger", { "data-theme": "dark" }, "border-color"],
     ["button-outline", { "data-theme": "dark" }, "border-color"],
-    // O rótulo do contorno: o :hover troca para o navy escuro com !important.
+    // The outline label: the :hover switches to the dark navy with !important.
     ["button-outline", undefined, "color"],
     ["button-outline", { "data-theme": "dark" }, "color"],
     ["button-danger button-danger-solid", undefined, "background"],
-    // Área de membros: as regras do escopo pesam mais que a central.
+    // Members area: the scope rules weigh more than the central one.
     ["button-solid", member, "background"],
     ["button-outline", member, "border-color"],
     ["button-icon", undefined, "color"],
-  ] as const)("%s desligado (%o): %s de repouso, também no hover", (className, wrapper, prop) => {
+  ] as const)("%s disabled (%o): %s at rest, also on hover", (className, wrapper, prop) => {
     const props = prop === "background" ? ["background", "background-color"] : [prop];
     const resting = resolve(css, disabled(className, wrapper, false), ...props);
     expect(resting).toBeTruthy();
@@ -348,69 +348,69 @@ describe("botão desligado (C-11)", () => {
     expect(resolveHover(css, button, ...props)).toBe(resting);
   });
 
-  // Prova de que o hover forçado funciona: o botão LIGADO muda.
-  it("ligado, o hover forçado escurece o fundo", () => {
+  // Proof that the forced hover works: the ENABLED button changes.
+  it("enabled, the forced hover darkens the background", () => {
     const button = disabled("button-solid", undefined, false);
     expect(resolveHover(css, button, "background")).toBe("var(--color-primary-dark)");
   });
 
-  it("na área de membros o desligado não ganha sombra nem sobe no hover", () => {
+  it("in the members area the disabled one gets no shadow and does not rise on hover", () => {
     const button = disabled("button-solid", { class: "member-classroom", "data-members-theme": "light" });
     expect(resolveHover(css, button, "box-shadow")).toBe("none");
     expect(resolveHover(css, button, "transform")).toBe("none");
   });
 
-  it("o botão só de ícone desligado tem o cursor de bloqueado e os 60%", () => {
+  it("the icon-only disabled button has the blocked cursor and the 60%", () => {
     const button = disabled("button-icon");
     expect(resolve(css, button, "cursor")).toBe("not-allowed");
     expect(resolve(css, button, "opacity")).toBe("0.6");
   });
 });
 
-// C-05: 44px em todo campo, a altura do botão ao lado; mas um min-h-* do JSX
-// (as caixas de texto de 88px da comunidade) continua valendo.
-describe("altura dos campos (C-05)", () => {
-  it("um campo .field-input tem no mínimo 44px", () => {
+// C-05: 44px on every field, the height of the button next to it; but a JSX min-h-*
+// (the 88px text boxes of the community) still holds.
+describe("field height (C-05)", () => {
+  it("a .field-input field is at least 44px", () => {
     expect(resolve(css, mount("field-input", "input"), "min-height")).toBe("44px");
   });
 
-  it("a caixa de texto que pede 88px continua com 88px", () => {
+  it("the text box that asks for 88px stays at 88px", () => {
     expect(resolve(css, mount("field-input min-h-[88px]", "textarea"), "min-height")).toBe("88px");
   });
 });
 
-// C-09: 118 transições escritas à mão (`transition-colors` sem duração)
-// rodavam nos 150ms e na curva do Tailwind, ao lado de botões a 180ms.
-describe("tempo das transições (C-09)", () => {
-  it("uma utility transition-* sem duração usa os tokens de movimento", () => {
+// C-09: 118 hand-written transitions (`transition-colors` without a duration)
+// ran at 150ms and the Tailwind curve, next to buttons at 180ms.
+describe("transition timing (C-09)", () => {
+  it("a transition-* utility without a duration uses the motion tokens", () => {
     const element = mount("transition-colors");
     expect(resolve(css, element, "transition-duration")).toContain("var(--default-transition-duration)");
     expect(resolve(css, element, "transition-timing-function")).toContain(
       "var(--default-transition-timing-function)",
     );
     expect(resolve(css, document.documentElement, "--default-transition-duration")).toBe("var(--duration-base)");
-    // A curva fica a do Tailwind (movimento do site público aprovado assim).
+    // The curve stays Tailwind's (public site motion approved that way).
     expect(resolve(css, document.documentElement, "--default-transition-timing-function")).toBe(
       "cubic-bezier(0.4, 0, 0.2, 1)",
     );
   });
 });
 
-// A regra de link do globals.css já teve `color: inherit` FORA de camada: ela
-// vencia toda utility do Tailwind, e um link que pedia a cor de destaque saía
-// com a do pai (o texto apagado em volta). Só o `!` passava por cima. Hoje a
-// herança vem só do preflight (camada base) e a utility do link vale.
-describe("cor de link", () => {
-  it("num <a>, a utility de cor vale sem `!` (e com `!` também)", () => {
+// The globals.css link rule once had `color: inherit` OUTSIDE any layer: it
+// beat every Tailwind utility, and a link that asked for the accent color came out
+// with the parent's (the text faded around it). Only the `!` got past it. Today the
+// inheritance comes only from the preflight (base layer) and the link's utility holds.
+describe("link color", () => {
+  it("on an <a>, the color utility holds without `!` (and with `!` too)", () => {
     expect(resolve(css, mount("text-[var(--color-accent-fg)]", "a"), "color")).toBe("var(--color-accent-fg)");
     expect(resolve(css, mount("text-[var(--color-primary)]!", "a"), "color")).toBe("var(--color-primary)");
   });
 
-  it("sem utility, o <a> herda a cor do pai pelo preflight", () => {
+  it("without a utility, the <a> inherits the parent's color through the preflight", () => {
     expect(resolve(css, mount("font-semibold", "a"), "color")).toBe("inherit");
   });
 
-  it("um link vestido de botão guarda a cor do .button-*, com utility de cor ou sem", () => {
+  it("a link dressed as a button keeps the .button-* color, with a color utility or without", () => {
     expect(resolve(css, mount("button-outline text-[var(--color-accent-fg)]", "a"), "color")).toBe(
       "var(--color-primary)",
     );
@@ -420,14 +420,14 @@ describe("cor de link", () => {
     );
   });
 
-  it("o globals.css não traz de volta uma cor fora de camada na regra do <a>", () => {
-    // Lido do fonte, sem compilar: uma regra sem @layer em volta que pegue
-    // QUALQUER link (o alvo é um <a> sem classe nem id, em qualquer forma) e
-    // declare `color` reabre o defeito em todo link. Regra presa a uma classe
-    // (`.lesson-modal__trail a`) é desenho de um lugar e fica de fora.
+  it("globals.css does not bring back an unlayered color on the <a> rule", () => {
+    // Read from the source, without compiling: a rule with no @layer around it that catches
+    // ANY link (the target is an <a> with no class or id, in any form) and
+    // declares `color` reopens the defect on every link. A rule tied to a class
+    // (`.lesson-modal__trail a`) is the design of one place and stays out.
     const bareAnchor = (selector: string) => {
-      // Argumentos de :not()/:is() e conteúdo de [atributo] não contam:
-      // `a:not(.x)` ainda pega quase todo link.
+      // Arguments of :not()/:is() and the content of [attribute] do not count:
+      // `a:not(.x)` still catches almost every link.
       let flat = selector.trim().replace(/\[[^\]]*\]/g, "[]");
       while (/\([^()]*\)/.test(flat)) flat = flat.replace(/\(([^()]*)\)/g, "%");
       if (/[.#]/.test(flat) || flat.includes("::")) return false;
@@ -458,30 +458,30 @@ describe("cor de link", () => {
 });
 
 describe("anel de foco (F19)", () => {
-  // `outline-[var(--x)]` é ambíguo para o Tailwind (largura ou cor?). A prova é
-  // o CSS compilado: o token tem de virar cor, nas duas utilities.
-  it("`focus-visible:outline-[var(--focus-ring)]` e `ring-[...]` compilam como cor", () => {
+  // `outline-[var(--x)]` is ambiguous for Tailwind (width or color?). The proof is
+  // the compiled CSS: the token has to become a color, in both utilities.
+  it("`focus-visible:outline-[var(--focus-ring)]` and `ring-[...]` compile as a color", () => {
     const compiled = css.toString();
     expect(compiled).toContain("outline-color: var(--focus-ring)");
     expect(compiled).toContain("--tw-ring-color: var(--focus-ring)");
   });
 });
 
-describe("botão de perigo (P-08)", () => {
-  it("`.button-danger` pinta o texto com a tinta de perigo", () => {
+describe("danger button (P-08)", () => {
+  it("`.button-danger` paints the text with the danger ink", () => {
     const button = mount("button-danger px-3.5 py-2 text-xs");
     expect(resolve(css, button, "color")).toBe("var(--color-danger-fg)");
   });
 
-  // A causa: o padrão antigo (outline + utility de cor) nunca chegou à tela.
-  it("uma utility de cor sobre `.button-outline` continua morta — por isso a variante existe", () => {
+  // The cause: the old pattern (outline + color utility) never reached the screen.
+  it("a color utility on `.button-outline` stays dead — that is why the variant exists", () => {
     const button = mount("button-outline px-3.5 py-2 text-xs text-[var(--color-accent-fg)]");
     expect(resolve(css, button, "color")).toBe("var(--color-primary)");
   });
 
-  it("nenhum botão outline tenta pintar perigo com utility", () => {
+  it("no outline button tries to paint danger with a utility", () => {
     const dir = join(root, "src");
-    // Testes (este inclusive) citam o padrão morto de propósito.
+    // Tests (this one included) quote the dead pattern on purpose.
     const files = readdirSync(dir, { recursive: true, withFileTypes: true })
       .filter(
         (entry) =>

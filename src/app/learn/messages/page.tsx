@@ -10,9 +10,10 @@ export async function generateMetadata() {
   return privatePageMetadata("learnWave2.messagesPage.title");
 }
 
-// A caixa de entrada do aluno: uma conversa por curso, no molde da que o
-// professor ja tem em /teach/messages. Antes o aluno so respondia ao professor
-// no fim da pagina de cada aula — tres cursos, tres lugares, nenhuma lista.
+// The learner's inbox: one conversation per course, modeled on the one the
+// teacher already has in /teach/messages. Before, the learner could only reply
+// to the teacher at the bottom of each lesson page — three courses, three
+// places, no list.
 export default async function LearnMessagesPage() {
   const { t } = await getServerTranslation();
   return (
@@ -22,10 +23,10 @@ export default async function LearnMessagesPage() {
         title={t("learnWave2.messagesPage.title")}
         description={t("learnWave2.messagesPage.description")}
       >
-        {/* useSearchParams (a conversa aberta vive em ?course=) exige Suspense
-            na rota. A espera é a mesma da caixa (lista de conversas em
-            esqueleto, no mesmo tom, para nada trocar de cor na passagem), não
-            uma área em branco. */}
+        {/* useSearchParams (the open conversation lives in ?course=) requires
+            Suspense on the route. The wait is the same as the inbox's (list of
+            conversations as a skeleton, in the same tone, so nothing changes
+            color on the handoff), not a blank area. */}
         <Suspense
           fallback={
             <div aria-busy="true" className="grid gap-5 lg:grid-cols-[minmax(240px,320px)_1fr]">

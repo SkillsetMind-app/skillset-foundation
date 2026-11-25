@@ -35,8 +35,8 @@ export async function GET(
 
     const response = NextResponse.json({
       offers: await loadCourseProductOffers(courseId),
-      // UE, EEE e Reino Unido: o cartão de compra mostra a caixa do acesso
-      // imediato. A resposta já é por pedido (no-store), então pode levar isto.
+      // EU, EEA and United Kingdom: the purchase card shows the immediate-access
+      // box. The response is already per request (no-store), so it can carry this.
       withdrawalConsentRequired: requiresWithdrawalConsent(buyerCountryFromRequest(request)),
     });
     response.headers.set("Cache-Control", "private, no-store");

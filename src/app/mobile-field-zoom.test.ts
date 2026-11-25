@@ -4,17 +4,18 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 /**
- * O Safari do iPhone dá zoom ao focar um campo com fonte menor que 16px, e o
- * zoom NÃO volta sozinho: a pessoa fica com a tela deslocada no meio do login,
- * que é a primeira tela do produto. Não existe jsdom que pegue isso — é
- * comportamento do navegador real —, então a folha de estilo é lida como texto.
+ * Safari on iPhone zooms in when a field with a font smaller than 16px gets
+ * focus, and the zoom does NOT go back on its own: the person is left with the
+ * screen shifted in the middle of the login, which is the first screen of the
+ * product. No jsdom can catch this — it is real browser behavior —, so the
+ * stylesheet is read as text.
  *
- * Este teste afirma o REQUISITO, não a implementação. A versão anterior dele
- * vivia na pasta de auditoria e exigia literalmente `!important` dentro de uma
- * media query de `max-width` entre 600 e 769px: passou a falhar quando a regra
- * melhorou (o `!important` era desnecessário, e a faixa de largura deixava o
- * iPhone deitado de fora). Um teste que trava a solução de ontem cobra o preço
- * da correção de hoje.
+ * This test asserts the REQUIREMENT, not the implementation. The earlier
+ * version of it lived in the audit folder and literally required `!important`
+ * inside a `max-width` media query between 600 and 769px: it started failing
+ * when the rule got better (the `!important` was unnecessary, and the width
+ * range left the iPhone in landscape out). A test that locks in yesterday's
+ * solution charges the price of today's fix.
  */
 const css = readFileSync(
   join(process.cwd(), "src/app/globals.css"),
@@ -43,17 +44,17 @@ function blocosDeMedia(): string[] {
   return blocos;
 }
 
-describe("piso de 16px em campos de formulário no celular", () => {
+describe("16px floor on form fields on the phone", () => {
   const pisos = blocosDeMedia().filter(
     (bloco) =>
       /(^|[\s,>])(input|textarea|select)\b/i.test(bloco)
       && /font-size:\s*16px/i.test(bloco),
   );
 
-  it("existe um piso de 16px para input, textarea e select", () => {
+  it("there is a 16px floor for input, textarea and select", () => {
     expect(
       pisos.length,
-      "nenhuma media query impõe 16px em campos — o Safari do iOS vai dar zoom no foco",
+      "no media query enforces 16px on fields — Safari on iOS will zoom on focus",
     ).toBeGreaterThan(0);
 
     const cobreOsTres = pisos.some(
@@ -65,50 +66,52 @@ describe("piso de 16px em campos de formulário no celular", () => {
 
     expect(
       cobreOsTres,
-      "o piso existe mas não cobre os três tipos de campo que dão zoom",
+      "the floor exists but does not cover the three field types that trigger zoom",
     ).toBe(true);
   });
 
-  it("vale por tipo de aparelho, não por largura de tela", () => {
-    // O zoom nasce do tamanho da fonte do campo e dispara igual com o iPhone
-    // deitado, onde a viewport passa de 900px. Um piso preso a `max-width`
-    // deixa a tela de login quebrada em paisagem, que foi como o bug voltou.
+  it("applies by device type, not by screen width", () => {
+    // The zoom comes from the field's font size and fires the same with the
+    // iPhone in landscape, where the viewport is over 900px. A floor tied to
+    // `max-width` leaves the login screen broken in landscape, which is how the
+    // bug came back.
     const porAparelho = pisos.some(
       (bloco) => /pointer:\s*coarse/i.test(bloco) || /hover:\s*none/i.test(bloco),
     );
 
     expect(
       porAparelho,
-      "o piso está preso a max-width; o iPhone em paisagem (>900px) fica de fora e ainda dá zoom",
+      "the floor is tied to max-width; the iPhone in landscape (>900px) is left out and still zooms",
     ).toBe(true);
   });
 
-  it("a pele .field-input (14px) não derruba o piso em textarea e select", () => {
-    // `.field-input` é (0,1,0) e vence `textarea`/`select` (0,0,1); o input
-    // passa porque o `:not()` do piso dá (0,2,1). Sem o reforço com a classe,
-    // Bio e Fuso do perfil ficavam em 14px e o iPhone dava zoom.
+  it("the .field-input skin (14px) does not break the floor on textarea and select", () => {
+    // `.field-input` is (0,1,0) and beats `textarea`/`select` (0,0,1); the input
+    // gets through because the floor's `:not()` gives (0,2,1). Without the
+    // class reinforcement, the profile's Bio and Time zone stayed at 14px and
+    // the iPhone zoomed.
     const cobre = pisos.some(
       (bloco) => /textarea\.field-input/.test(bloco) && /select\.field-input/.test(bloco),
     );
 
     expect(
       cobre,
-      "o piso de 16px não alcança textarea/select com .field-input — o Safari do iOS vai dar zoom",
+      "the 16px floor does not reach textarea/select with .field-input — Safari on iOS will zoom",
     ).toBe(true);
   });
 
-  it("não precisa de !important para vencer as regras de classe", () => {
-    // `input:not([type="checkbox"]):not([type="radio"])` é (0,2,1) e já vence
-    // `.platform-sidebar-search input`, que é (0,1,1). Um !important de folha de
-    // estilo atropelaria todo `style={{ fontSize }}` inline da aplicação e
-    // obrigaria o próximo override legítimo a nascer com outro.
+  it("does not need !important to beat the class rules", () => {
+    // `input:not([type="checkbox"]):not([type="radio"])` is (0,2,1) and already
+    // beats `.platform-sidebar-search input`, which is (0,1,1). A stylesheet
+    // !important would trample every inline `style={{ fontSize }}` in the app
+    // and would force the next legitimate override to be born with another.
     const comImportant = pisos.filter((bloco) =>
       /font-size:\s*16px\s*!important/i.test(bloco),
     );
 
     expect(
       comImportant,
-      "o piso usa !important sem precisar — ele também sobrepõe estilos inline legítimos",
+      "the floor uses !important without needing it — it also overrides legitimate inline styles",
     ).toHaveLength(0);
   });
 });

@@ -9,17 +9,17 @@ export default async function OpsUserDossierPage({ params }: { params: Promise<{
   const { t } = await getServerTranslation();
 
   return (
-    // A tela pede users.manage (só admin); quem decide de verdade é a RPC, com admin e aal2.
+    // The screen asks for users.manage (admin only); the real decision is made by the RPC, with admin and aal2.
     <ProtectedSurface permissions={["users.manage"]}>
-      {/* O h1 é o nome da pessoa (I-03), que só chega no navegador: a ficha
-          desenha o próprio cabeçalho, com "Person record" em cima. */}
+      {/* The h1 is the person's name (I-03), which only reaches the browser: the
+          record draws its own header, with "Person record" on top. */}
       <PlatformShell
         title={t("platform.ops.userDossier.pageTitle")}
         compact
         hideHeader
         currentNavigationHref={getOpsNavItem("users").href}
       >
-        {/* UID é UUID: sem "%" próprio, então decodificar é seguro com ou sem decodificação prévia do Next. */}
+        {/* A UID is a UUID: it has no "%" of its own, so decoding is safe with or without Next's prior decoding. */}
         <OpsUserDossierPanel uid={decodeURIComponent(uid)} />
       </PlatformShell>
     </ProtectedSurface>

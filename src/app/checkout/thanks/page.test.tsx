@@ -76,8 +76,8 @@ describe("guest checkout thank-you page", () => {
     );
   });
 
-  // A-24: o mesmo cartão das outras telas de depois do pagamento, com as
-  // mesmas frases e links; sem casca de plataforma, a frase do cartão é o h1.
+  // A-24: the same card as the other after-payment screens, with the
+  // same sentences and links; without a platform shell, the card sentence is the h1.
   it.each([true, false])("lives in the shared payment-return card (checkout cookie: %s)", async (hasCookie) => {
     if (!hasCookie) state.cookie = undefined;
     render(await Page({ searchParams: Promise.resolve({ course: "course-1" }) }));

@@ -9,9 +9,9 @@ const state = vi.hoisted(() => ({ hasCourses: true, locale: "en" }));
 vi.mock("next/headers", () => ({
   cookies: async () => ({ get: (name: string) => (name === LOCALE_COOKIE ? { value: state.locale } : undefined) }),
 }));
-// Há curso real publicado (sem os internos de teste)? Contrato de hasRealPublishedCourse.
+// Is there a published real course (without the internal test ones)? Contract of hasRealPublishedCourse.
 vi.mock("@/lib/data/server/public-course", () => ({ hasRealPublishedCourse: async () => state.hasCourses, isMarketplaceOpen: async () => false }));
-// Barra e rodapé têm testes próprios; a loja é cliente e busca no navegador.
+// The bar and the footer have their own tests; the store is a client and fetches in the browser.
 vi.mock("@/components/site/site-nav", () => ({ SiteNav: () => null }));
 vi.mock("@/components/site/site-footer", () => ({ SiteFooter: () => null }));
 vi.mock("@/components/courses/course-marketplace", () => ({ CourseMarketplace: () => <div data-testid="marketplace" /> }));
@@ -23,16 +23,16 @@ afterEach(() => {
 });
 
 describe("/courses", () => {
-  it("fica fora do índice enquanto não há curso real, mas os links seguem", async () => {
+  it("stays out of the index while there is no real course, but the links are still followed", async () => {
     state.hasCourses = false;
     expect((await generateMetadata()).robots).toEqual({ index: false, follow: true });
   });
 
-  it("é indexável assim que existe um curso real", async () => {
+  it("is indexable as soon as a real course exists", async () => {
     expect((await generateMetadata()).robots).toEqual({ index: true, follow: true });
   });
 
-  it("vazia, diz que os cursos estão a caminho e aponta para criadores, sem vitrine", async () => {
+  it("empty, says the courses are on the way and points to creators, with no storefront", async () => {
     state.hasCourses = false;
     render(await CoursesPage());
 
@@ -42,7 +42,7 @@ describe("/courses", () => {
     expect(screen.queryByText("Find the right course.")).not.toBeInTheDocument();
   });
 
-  it("vazia, em espanhol", async () => {
+  it("empty, in Spanish", async () => {
     state.hasCourses = false;
     state.locale = "es";
     render(await CoursesPage());
@@ -51,7 +51,7 @@ describe("/courses", () => {
     expect(screen.getByRole("link", { name: "Información para creadores" })).toHaveAttribute("href", "/for-creators");
   });
 
-  it("com curso real, segue a loja de sempre", async () => {
+  it("with a real course, keeps the usual store", async () => {
     render(await CoursesPage());
 
     expect(screen.getByRole("heading", { level: 1, name: "Find the right course." })).toBeInTheDocument();

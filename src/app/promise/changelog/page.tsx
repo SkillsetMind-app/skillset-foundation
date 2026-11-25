@@ -42,10 +42,10 @@ export default async function PromiseChangelogPage() {
         {entries.map((entry) => {
           const effectiveAt = dateFormat.format(new Date(`${entry.date}T00:00:00Z`));
           return (
-            // Uma linha por mudança, separadas por um filete: era um cartão
-            // com borda dentro do cartão da página.
+            // One row per change, separated by a thin rule: it used to be a card
+            // with a border inside the page card.
             <div key={entry.title} className="mt-8 border-t border-[var(--color-line)] pt-6">
-              {/* S-25: a data por extenso, como no cabeçalho, e não a ISO crua. */}
+              {/* S-25: the date written out, as in the header, and not the raw ISO. */}
               <p className="text-sm font-bold text-[var(--color-ink)]">
                 {effectiveAt} — {t(`${copy}.${entry.title}`)}
               </p>

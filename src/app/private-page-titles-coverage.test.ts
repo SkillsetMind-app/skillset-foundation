@@ -3,14 +3,14 @@ import { describe, expect, it } from "vitest";
 
 import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 
-// O que a pessoa sofria: as páginas atrás de login (/account, /learn, /teach)
-// não têm título próprio — a aba do navegador mostra o título genérico do
-// site. Cada página passou a exportar `generateMetadata` chamando
-// `privatePageMetadata(chave)` com a MESMA chave que ela já usa em
-// `PlatformShell title={t(chave)}`. Este teste é estático (lê o texto-fonte,
-// não renderiza nem chama generateMetadata): confere que a lista de páginas
-// cobertas é exatamente a que existe no disco, que a chave do helper bate com
-// a do cabeçalho, e que a chave existe nos dois dicionários.
+// What the person suffered: the pages behind login (/account, /learn, /teach)
+// had no title of their own — the browser tab showed the site's generic title.
+// Each page now exports `generateMetadata` calling `privatePageMetadata(key)`
+// with the SAME key it already uses in `PlatformShell title={t(key)}`. This
+// test is static (it reads the source text, it does not render or call
+// generateMetadata): it checks that the list of covered pages is exactly the
+// one that exists on disk, that the helper's key matches the header's, and that
+// the key exists in both dictionaries.
 const PAGINAS_COM_TITULO_PROPRIO = [
   "account/billing/page.tsx",
   "account/billing/return/page.tsx",
@@ -50,7 +50,7 @@ function readPage(relPath: string): string {
   return readFileSync(`src/app/${relPath}`, "utf8");
 }
 
-/** Todo page.tsx sob account/, learn/, teach/ cujo texto-fonte chama privatePageMetadata(...). */
+/** Every page.tsx under account/, learn/, teach/ whose source text calls privatePageMetadata(...). */
 function pagesWithPrivateMetadataOnDisk(): string[] {
   const sections = ["account", "learn", "teach"];
   const relPaths = sections.flatMap((section) =>
@@ -61,33 +61,33 @@ function pagesWithPrivateMetadataOnDisk(): string[] {
   return relPaths.filter((relPath) => readPage(relPath).includes("privatePageMetadata("));
 }
 
-describe("título da aba das páginas logadas", () => {
-  it("a lista de páginas cobertas é exatamente a que existe no disco (não encolhe sem querer)", () => {
+describe("tab title of the signed-in pages", () => {
+  it("the list of covered pages is exactly the one on disk (it does not shrink by accident)", () => {
     expect(pagesWithPrivateMetadataOnDisk().sort()).toEqual(
       [...PAGINAS_COM_TITULO_PROPRIO].sort(),
     );
   });
 
   it.each(PAGINAS_COM_TITULO_PROPRIO)(
-    "%s: a chave do helper é a mesma do cabeçalho e existe em en/es",
+    "%s: the helper key is the same as the header key and exists in en/es",
     (relPath) => {
       const source = readPage(relPath);
 
       const helperMatch = source.match(/privatePageMetadata\(\s*"([^"]+)"\s*\)/);
-      expect(helperMatch, `generateMetadata via privatePageMetadata() ausente em ${relPath}`).not.toBeNull();
+      expect(helperMatch, `generateMetadata via privatePageMetadata() missing in ${relPath}`).not.toBeNull();
       const helperKey = helperMatch![1];
 
       const shellMatch = source.match(/PlatformShell[\s\S]*?\btitle=\{t\("([^"]+)"\)\}/);
-      expect(shellMatch, `PlatformShell title={t(...)} ausente em ${relPath}`).not.toBeNull();
+      expect(shellMatch, `PlatformShell title={t(...)} missing in ${relPath}`).not.toBeNull();
       const shellKey = shellMatch![1];
 
-      expect(helperKey, `chave do helper diverge do cabeçalho em ${relPath}`).toBe(shellKey);
+      expect(helperKey, `helper key differs from the header key in ${relPath}`).toBe(shellKey);
 
-      // translate() cai para en e, se também faltar lá, devolve a própria
-      // chave — então "!== chave" prova que ao menos o en.json tem a entrada.
-      // A paridade en/es em si é responsabilidade de dictionary-parity.test.ts.
-      expect(translate(getDictionary("en"), helperKey), `chave ausente: ${helperKey}`).not.toBe(helperKey);
-      expect(translate(getDictionary("es"), helperKey), `chave ausente: ${helperKey}`).not.toBe(helperKey);
+      // translate() falls back to en and, if it is missing there too, returns
+      // the key itself — so "!== key" proves that at least en.json has the
+      // entry. The en/es parity itself is the job of dictionary-parity.test.ts.
+      expect(translate(getDictionary("en"), helperKey), `missing key: ${helperKey}`).not.toBe(helperKey);
+      expect(translate(getDictionary("es"), helperKey), `missing key: ${helperKey}`).not.toBe(helperKey);
     },
   );
 });

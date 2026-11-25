@@ -11,7 +11,7 @@ import { getAppUrl } from "@/lib/payments/server/app-url";
 import { getUserRow, resolvePortalConfigurationId } from "@/lib/payments/server/stripe-helpers";
 import { getServerLocale } from "@/lib/i18n/server";
 
-// Customer existente permite historico/cartao mesmo sem assinatura ativa.
+// An existing Customer allows history/card access even without an active subscription.
 export async function POST() {
   try {
     const uid = await requireUserId();

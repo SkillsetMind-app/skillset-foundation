@@ -79,8 +79,8 @@ export default async function ForCreatorsPage() {
       </section>
 
       <section className="mt-6 grid gap-5 lg:grid-cols-[1fr_0.8fr]">
-        {/* Uma lista num cartão só, com o check dos cartões de preço: eram
-            seis caixas com sombra, cada uma com uma frase. */}
+        {/* One list in a single card, with the check of the price cards: there were
+            six boxes with a shadow, each with one sentence. */}
         <ul className="grid content-start gap-3 rounded-lg border fine-rule bg-white p-6 text-sm leading-7 text-[var(--color-ink)] shadow-[var(--shadow-soft)]">
           {creatorTools.map((tool) => (
             <li key={tool} className="flex items-start gap-3">

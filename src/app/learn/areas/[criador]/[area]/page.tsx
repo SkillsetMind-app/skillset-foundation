@@ -4,9 +4,9 @@ import { brand as siteBrand } from "@/data/brand";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { getCreatorBrand } from "@/lib/learn/server/member-area";
 
-// Uma área extra do criador (Pro: até 2 além da principal):
-// /learn/areas/@usuario/slug. O banco decide quem vê: o dono e quem comprou
-// produto DESTA área; o resto vai para a vitrine pública.
+// An extra area of the creator (Pro: up to 2 beyond the main one):
+// /learn/areas/@usuario/slug. The database decides who sees it: the owner and whoever bought
+// a product of THIS area; everyone else goes to the public storefront.
 export async function generateMetadata() {
   const { t } = await getServerTranslation();
   return {
@@ -19,7 +19,7 @@ const decode = (value: string) => {
   try {
     return decodeURIComponent(value);
   } catch {
-    // Codificação quebrada: segue com o texto cru, e o banco responde null.
+    // Broken encoding: continues with the raw text, and the database answers null.
     return value;
   }
 };

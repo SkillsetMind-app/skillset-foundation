@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
   notFound: vi.fn(() => {
     throw new Error("NEXT_NOT_FOUND");
   }),
-  // true: o componente cliente "suspende", e o Suspense mostra o fallback.
+  // true: the client component "suspends", and the Suspense shows the fallback.
   suspendClient: false,
   pending: new Promise(() => {}),
 }));
@@ -29,15 +29,15 @@ vi.mock("next/navigation", () => ({ notFound: mocks.notFound }));
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // clearAllMocks não desfaz o mockResolvedValue do teste anterior: sem estes
-  // padrões, um curso publicado de outro teste respondia pelo slug da amostra.
+  // clearAllMocks does not undo the mockResolvedValue of the previous test: without these
+  // defaults, a published course from another test answered for the sample's slug.
   mocks.getPublicCourseByRef.mockResolvedValue(null);
   mocks.getCourseRefAccess.mockResolvedValue("missing");
 });
 
-// O componente cliente de verdade abre assinatura no Supabase; aqui só
-// interessa o contrato: a página avisa quando o cabeçalho já saiu do servidor e
-// entrega o cabeçalho (`lead`) para o topo da coluna da esquerda.
+// The real client component opens a subscription on Supabase; here only the
+// contract matters: the page signals when the header already came out of the server and
+// hands over the header (`lead`) for the top of the left column.
 vi.mock("@/components/courses/creator-course-detail", () => ({
   CreatorCourseDetail: ({ hideHeader, lead }: { hideHeader?: boolean; lead?: ReactNode }) => {
     if (mocks.suspendClient) throw mocks.pending;
@@ -54,12 +54,12 @@ vi.mock("@/components/site/site-nav", () => ({
   SiteNav: () => null,
 }));
 
-// Server component assíncrono com teste próprio; aqui só importa que ele está na página.
+// Async server component with its own test; here all that matters is that it is on the page.
 vi.mock("@/components/site/site-footer", () => ({
   SiteFooter: () => <footer data-testid="site-footer" />,
 }));
 
-// O botão de inscrição da amostra lê a sessão; aqui só importa a volta.
+// The sample's enroll button reads the session; here only the return matters.
 vi.mock("@/components/courses/course-enrollment-cta", () => ({
   CourseEnrollmentCta: () => null,
 }));
@@ -80,44 +80,44 @@ const published: PublicCourseSummary = {
   updatedAt: null,
 };
 
-// Slug que NÃO existe no catálogo estático: cai no ramo do curso de criador.
+// Slug that does NOT exist in the static catalog: falls into the creator course branch.
 async function renderPage(slug = "deep-focus-systems") {
   render(await CourseDetailPage({ params: Promise.resolve({ slug }) }));
 }
 
-describe("página do curso de criador", () => {
-  it("renderiza título, capa e resumo uma vez, no servidor, e cala o cabeçalho do cliente", async () => {
+describe("creator course page", () => {
+  it("renders title, cover and summary once, on the server, and silences the client header", async () => {
     mocks.getPublicCourseByRef.mockResolvedValue(published);
 
     await renderPage();
 
-    // Antes: o servidor punha o título e o cliente desenhava um cartão navy
-    // com o MESMO título e resumo logo abaixo.
+    // Before: the server put the title and the client drew a navy card
+    // with the SAME title and summary right below.
     const title = screen.getByRole("heading", { level: 1, name: "Deep Focus Systems" });
     expect(title).toHaveClass("page-title");
     expect(title.className).not.toMatch(/text-(4|5|6)xl/);
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.getByText("client header hidden")).toBeInTheDocument();
-    // O cabeçalho vai para dentro da página do cliente (topo da coluna da
-    // esquerda, ao lado do cartão de compra), e não mais sozinho acima dela.
+    // The header goes inside the client page (top of the left
+    // column, next to the purchase card), and no longer alone above it.
     expect(screen.getByTestId("client-detail")).toContainElement(title);
     expect(screen.getByText("12 lecciones")).toBeInTheDocument();
 
-    // A capa que o cartão do marketplace já mostrava.
+    // The cover that the marketplace card already showed.
     expect(screen.getByRole("img", { name: "Deep Focus Systems" })).toHaveAttribute(
       "src",
       expect.stringContaining(encodeURIComponent(COVER)),
     );
-    // Curso publicado renderiza sem a consulta extra e sem 404.
+    // A published course renders without the extra query and without a 404.
     expect(mocks.getCourseRefAccess).not.toHaveBeenCalled();
     expect(mocks.notFound).not.toHaveBeenCalled();
-    // Termos e política de reembolso ao alcance de quem vai pagar.
+    // Terms and refund policy within reach of whoever is about to pay.
     expect(screen.getByTestId("site-footer")).toBeInTheDocument();
   });
 
-  // Se a parte do cliente não resolve no servidor, o HTML leva o fallback: ele
-  // também traz o cabeçalho, então título, capa e resumo nunca somem do HTML.
-  it("enquanto o cliente não chega, o esqueleto já traz o h1, a capa e o resumo", async () => {
+  // If the client part does not resolve on the server, the HTML carries the fallback: it
+  // also brings the header, so title, cover and summary never disappear from the HTML.
+  it("until the client arrives, the skeleton already carries the h1, the cover and the summary", async () => {
     mocks.getPublicCourseByRef.mockResolvedValue(published);
     mocks.suspendClient = true;
     try {
@@ -133,9 +133,9 @@ describe("página do curso de criador", () => {
     }
   });
 
-  // Link para curso nao publicado, removido ou slug invalido respondia 200 com
-  // pagina vazia: ruim para anuncio e para o buscador.
-  it("curso que nao existe para quem pede responde 404 antes de desenhar a pagina", async () => {
+  // A link to an unpublished or removed course or an invalid slug answered 200 with
+  // an empty page: bad for ads and for the search engine.
+  it("a course that does not exist for whoever asks answers 404 before drawing the page", async () => {
     mocks.getPublicCourseByRef.mockResolvedValue(null);
     mocks.getCourseRefAccess.mockResolvedValue("missing");
 
@@ -144,7 +144,7 @@ describe("página do curso de criador", () => {
     expect(mocks.notFound).toHaveBeenCalledOnce();
   });
 
-  it("rascunho visivel para o dono segue com a pagina do cliente, que desenha o proprio cabecalho", async () => {
+  it("a draft visible to the owner keeps the client page, which draws its own header", async () => {
     mocks.getPublicCourseByRef.mockResolvedValue(null);
     mocks.getCourseRefAccess.mockResolvedValue("visible");
 
@@ -155,7 +155,7 @@ describe("página do curso de criador", () => {
     expect(screen.getByText("client header shown")).toBeInTheDocument();
   });
 
-  it("falha de leitura nao vira 404", async () => {
+  it("a read failure does not become a 404", async () => {
     mocks.getPublicCourseByRef.mockResolvedValue(null);
     mocks.getCourseRefAccess.mockResolvedValue("unknown");
 
@@ -165,9 +165,9 @@ describe("página do curso de criador", () => {
     expect(screen.getByText("client header shown")).toBeInTheDocument();
   });
 
-  it("sem resumo, a descrição do <meta> usa o título — e um título com $& aparece literal", async () => {
-    // Num replace sem callback, "$&" vira o trecho casado ("{title}"). O título é
-    // texto do professor, não nosso.
+  it("without a summary, the <meta> description uses the title — and a title with $& appears literally", async () => {
+    // In a replace without a callback, "$&" becomes the matched piece ("{title}"). The title is
+    // the teacher's text, not ours.
     mocks.getPublicCourseByRef.mockResolvedValue({ ...published, title: "Deep $& Focus", summary: null });
 
     const metadata = await generateMetadata({ params: Promise.resolve({ slug: "deep-focus-systems" }) });
@@ -176,13 +176,13 @@ describe("página do curso de criador", () => {
   });
 });
 
-// Amostra do catálogo de demonstração: a volta só leva à loja quando ela tem
-// curso real; vazia, leva ao início.
-describe("volta da página de amostra", () => {
+// Sample from the demo catalog: the back link only leads to the store when it has a
+// real course; empty, it leads to the start.
+describe("back link of the sample page", () => {
   it.each([
     [true, "Volver a todos los cursos", "/courses"],
     [false, "Ir al inicio", "/"],
-  ])("loja com curso real: %s", async (value, name, href) => {
+  ])("store with a real course: %s", async (value, name, href) => {
     mocks.isMarketplaceOpen.mockResolvedValue(value);
     render(await CourseDetailPage({ params: Promise.resolve({ slug: "leadership-development" }) }));
 
@@ -191,12 +191,12 @@ describe("volta da página de amostra", () => {
   });
 });
 
-// A amostra ficou para trás do curso real: o preço vinha rotulado "Access"
-// em 10px, no cartão e na barra do celular. Agora "Price" em 12px, nos dois.
-describe("rótulo do preço da página de amostra", () => {
+// The sample fell behind the real course: the price came labeled "Access"
+// in 10px, on the card and on the phone bar. Now "Price" in 12px, on both.
+describe("price label of the sample page", () => {
   const es = (key: string) => translate(getDictionary("es"), key);
 
-  it("diz Price no cartão e na barra, e não mais Access", async () => {
+  it("says Price on the card and on the bar, and no longer Access", async () => {
     const { container } = render(await CourseDetailPage({ params: Promise.resolve({ slug: "leadership-development" }) }));
 
     const eyebrows = screen.getAllByText(es("publicCourses.priceEyebrow"));
@@ -211,12 +211,12 @@ describe("rótulo do preço da página de amostra", () => {
   });
 });
 
-// A amostra tinha linhas de 32px em caixa alta com hífens ("PREVIEW - VIDEO -
-// 8 MIN") e tudo aberto: agora o mesmo currículo da página de um curso real.
-describe("currículo da página de amostra", () => {
+// The sample had 32px uppercase rows with hyphens ("PREVIEW - VIDEO -
+// 8 MIN") and everything open: now the same curriculum as the page of a real course.
+describe("curriculum of the sample page", () => {
   const es = (key: string) => translate(getDictionary("es"), key);
 
-  it("um módulo por sanfona, o primeiro aberto, aulas e duração na linha do módulo", async () => {
+  it("one module per accordion, the first one open, lessons and duration on the module row", async () => {
     const { container } = render(await CourseDetailPage({ params: Promise.resolve({ slug: "leadership-development" }) }));
 
     const toggles = Array.from(container.querySelectorAll<HTMLButtonElement>("#curriculum h3 > button[aria-expanded]"));
@@ -232,32 +232,32 @@ describe("currículo da página de amostra", () => {
   });
 });
 
-describe("indexação da página de curso", () => {
+describe("course page indexing", () => {
   const metadataFor = (slug: string) => generateMetadata({ params: Promise.resolve({ slug }) });
 
-  it("curso real publicado é indexável", async () => {
+  it("a real published course is indexable", async () => {
     mocks.getPublicCourseByRef.mockResolvedValue(published);
     expect((await metadataFor("deep-focus-systems")).robots).toMatchObject({ index: true });
   });
 
-  // Amostra do catálogo de demonstração: ninguém compra, mas a página mostra
-  // preço e "Inscrever-se". Fica no ar (decisão do dono), fora do índice.
-  it("amostra do catálogo de demonstração não é indexada", async () => {
+  // Sample from the demo catalog: nobody buys it, but the page shows
+  // price and "Inscrever-se". It stays online (the owner's decision), outside the index.
+  it("a sample from the demo catalog is not indexed", async () => {
     expect((await metadataFor("leadership-development")).robots).toMatchObject({ index: false });
   });
 
-  // Curso interno de teste: segue abrindo pelo link direto, como a loja já
-  // previa, mas não pode continuar no índice depois de sair do sitemap.
-  it("curso interno de teste não é indexado", async () => {
+  // Internal test course: it still opens by direct link, as the store
+  // already did, but it cannot stay in the index after leaving the sitemap.
+  it("an internal test course is not indexed", async () => {
     mocks.getPublicCourseByRef.mockResolvedValue({ ...published, title: "[QA] Curso de teste interno" });
     expect((await metadataFor("qa-curso-de-teste-interno")).robots).toMatchObject({ index: false });
   });
 });
 
-// O endereço de um curso real é o título virado slug: um professor que chama o
-// curso de "Effective Communication" ganha /courses/effective-communication, o
-// mesmo endereço de uma das amostras. O curso real tem de vencer.
-describe("curso real no endereço de uma amostra", () => {
+// The address of a real course is the title turned into a slug: a teacher who calls the
+// course "Effective Communication" gets /courses/effective-communication, the
+// same address as one of the samples. The real course has to win.
+describe("real course at a sample's address", () => {
   const SAMPLE_SLUG = "effective-communication";
   const SAMPLE_SUMMARY = "A practical communication pathway for professionals who want stronger confidence and clearer influence.";
   const real: PublicCourseSummary = {
@@ -270,7 +270,7 @@ describe("curso real no endereço de uma amostra", () => {
   const renderAt = async () => render(await CourseDetailPage({ params: Promise.resolve({ slug: SAMPLE_SLUG }) }));
   const metadataAt = () => generateMetadata({ params: Promise.resolve({ slug: SAMPLE_SLUG }) });
 
-  it("curso publicado: a página e o metadata são do curso, não da amostra", async () => {
+  it("published course: the page and the metadata are the course's, not the sample's", async () => {
     mocks.getPublicCourseByRef.mockResolvedValue(real);
 
     const { container } = await renderAt();
@@ -279,7 +279,7 @@ describe("curso real no endereço de uma amostra", () => {
     expect(screen.getByTestId("client-detail")).toContainElement(title);
     expect(screen.getByText("The teacher's own course on difficult conversations.")).toBeInTheDocument();
     expect(screen.queryByText(SAMPLE_SUMMARY)).toBeNull();
-    // Nada da amostra: nem o cartão de preço dela, nem o currículo estático.
+    // Nothing from the sample: neither its price card nor the static curriculum.
     expect(container.querySelector("#enroll-card")).toBeNull();
     expect(container.querySelector("#curriculum")).toBeNull();
     expect(mocks.getPublicCourseByRef).toHaveBeenCalledWith(SAMPLE_SLUG);
@@ -291,7 +291,7 @@ describe("curso real no endereço de uma amostra", () => {
     expect(metadata.alternates?.canonical).toContain(`/courses/${SAMPLE_SLUG}`);
   });
 
-  it("sem curso real: a amostra de sempre, fora do índice", async () => {
+  it("no real course: the usual sample, outside the index", async () => {
     const { container } = await renderAt();
 
     expect(screen.getByRole("heading", { level: 1, name: "Effective Communication" })).not.toHaveClass("page-title");
@@ -306,7 +306,7 @@ describe("curso real no endereço de uma amostra", () => {
     expect(metadata.robots).toMatchObject({ index: false });
   });
 
-  it("rascunho do dono nesse endereço: o dono vê o rascunho, como em qualquer outro endereço", async () => {
+  it("owner's draft at this address: the owner sees the draft, as at any other address", async () => {
     mocks.getCourseRefAccess.mockResolvedValue("visible");
 
     await renderAt();
@@ -319,7 +319,7 @@ describe("curso real no endereço de uma amostra", () => {
     expect(metadata.description).not.toBe(SAMPLE_SUMMARY);
   });
 
-  it("falha de leitura: a amostra continua no ar, sem 404", async () => {
+  it("read failure: the sample stays online, without a 404", async () => {
     mocks.getCourseRefAccess.mockResolvedValue("unknown");
 
     await renderAt();
@@ -330,7 +330,7 @@ describe("curso real no endereço de uma amostra", () => {
     expect((await metadataAt()).robots).toMatchObject({ index: false });
   });
 
-  it("endereço que não é amostra nem curso continua 404, e o metadata não consulta o acesso", async () => {
+  it("an address that is neither a sample nor a course is still 404, and the metadata does not query access", async () => {
     await expect(renderPage("nem-amostra-nem-curso")).rejects.toThrow("NEXT_NOT_FOUND");
 
     mocks.getCourseRefAccess.mockClear();

@@ -29,10 +29,10 @@ export async function generateMetadata() {
 const sampleSaleUsd = 100;
 const sampleStripeFeeUsd = sampleSaleUsd * 0.029 + 0.3;
 
-// Itens que esta página já diz em outro lugar do cartão: a taxa (linha logo
-// abaixo do preço) e a economia anual (o seletor mensal/anual). Os mesmos
-// itens seguem nos cartões do app, que leem o mesmo plans.ts; por isso o
-// filtro mora aqui e os dados não mudam.
+// Items this page already states elsewhere on the card: the fee (the line right
+// below the price) and the yearly saving (the monthly/yearly selector). The
+// same items stay on the app cards, which read the same plans.ts; that is why
+// the filter lives here and the data does not change.
 const statedElsewhereOnPricing = /per sale$|^0% commission|^Annual billing/;
 
 export default async function PricingPage() {
@@ -81,8 +81,8 @@ export default async function PricingPage() {
           </div>
         </fieldset>
 
-        {/* Três colunas desde md: de 640 a 1023px cada cartão ocupava a
-            largura toda, quase vazio, e era preciso rolar para comparar. */}
+        {/* Three columns from md: from 640 to 1023px each card took the full
+            width, almost empty, and you had to scroll to compare. */}
         <section
           className="grid gap-4 md:grid-cols-3"
           aria-label={t("publicPages.pricing.plan_comparison")}
@@ -129,9 +129,9 @@ export default async function PricingPage() {
                     {t("publicPages.pricing.mo")}
                   </span>
                 </p>
-                {/* O total anual tem lugar nos dois ciclos (invisível no
-                    mensal): trocar o seletor não muda a altura dos cartões
-                    nem empurra o resto da página. */}
+                {/* The yearly total has room in both cycles (invisible on
+                    monthly): switching the selector does not change the height
+                    of the cards or push the rest of the page. */}
                 <p className="invisible mt-0.5 text-xs text-[var(--color-ink-soft)] group-has-[#billing-yearly:checked]:visible">
                   {formatUsdWhole(plan.yearlyUsd)} {t("publicPages.pricing.yearly_2")}
                 </p>
@@ -145,8 +145,9 @@ export default async function PricingPage() {
                       : t("publicPages.pricing.per_sale_with_fixed").replace("{fixed}", () => formatUsd(PER_SALE_FIXED_FEE_USD))}
                   </span>
                 </p>
-                {/* Uma frase por cartão. A do plano de 0% repete a linha da
-                    taxa logo acima, então nele vale a frase do público. */}
+                {/* One sentence per card. The 0% plan's one repeats the fee
+                    line right above it, so there the audience sentence is the
+                    one that counts. */}
                 <p className="mt-4 text-sm leading-6 text-[var(--color-ink)]">
                   {t(`publicPages.plans.${plan.id}.${plan.commissionPercent === 0 ? "audience" : "tagline"}`)}
                 </p>
@@ -183,8 +184,8 @@ export default async function PricingPage() {
                       href={`/auth?mode=signup&path=teacher&plan=${plan.id}&cycle=${cycle}`}
                       className={[
                         isHighlight ? "button-solid" : "button-outline",
-                        // Em três colunas estreitas (md) o rótulo pode quebrar
-                        // em duas ou três linhas: centradas e sem encostar.
+                        // In three narrow columns (md) the label may wrap onto
+                        // two or three lines: centered and not touching.
                         "w-full justify-center whitespace-normal px-4 py-2.5 text-center text-sm leading-snug",
                         cycle === "monthly"
                           ? "group-has-[#billing-yearly:checked]:hidden"
@@ -201,9 +202,9 @@ export default async function PricingPage() {
             );
           })}
         </section>
-        {/* O teste grátis é dito uma vez fora dos cartões, logo abaixo dos
-            botões (traz o "um por conta", que o aviso do cartão não diz); a
-            faixa do fim da página não repete. */}
+        {/* The free trial is stated once outside the cards, right below the
+            buttons (it brings the "one per account", which the card notice does
+            not say); the band at the end of the page does not repeat it. */}
         <p className="mt-4 text-xs leading-5 text-[var(--color-ink-muted)]">
           {t("planTrial.publicNote")}
         </p>
@@ -262,10 +263,10 @@ export default async function PricingPage() {
                     </Tooltip>
                   </span>
                 </th>
-                {/* "You receive" é a resposta da tabela: fica presa à direita
-                    enquanto o resto rola dentro da caixa. Num celular de 360px
-                    ela ficava toda fora da tela, atrás de uma barra de rolagem
-                    fina. */}
+                {/* "You receive" is the answer of the table: it stays pinned to
+                    the right while the rest scrolls inside the box. On a 360px
+                    phone it used to sit entirely off the screen, behind a thin
+                    scrollbar. */}
                 <th
                   scope="col"
                   className="sticky right-0 bg-[var(--color-surface-soft)] px-4 py-3 text-right font-bold text-[var(--color-primary)] shadow-[-10px_0_12px_-10px_rgba(15,39,68,0.3)] sm:shadow-none"

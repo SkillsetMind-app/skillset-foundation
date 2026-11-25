@@ -505,8 +505,8 @@ describe("course checkout subscription exclusivity", () => {
       expect.objectContaining({ locale, mode }),
       expect.objectContaining({ stripeAccount: "acct_teacher" }),
     );
-    // Assinatura: o aviso de renovação vai para a página do Stripe, acima do
-    // botão de pagar, na língua do pedido. Pagamento único não leva o aviso.
+    // Subscription: the renewal notice goes to the Stripe page, above the pay
+    // button, in the language of the order. A one-time payment carries no notice.
     const [params] = mocks.createSession.mock.calls.at(-1) as [{ custom_text?: { submit?: { message?: string } } }];
     if (mode === "subscription") {
       expect(params.custom_text?.submit?.message).toBe(
@@ -519,8 +519,9 @@ describe("course checkout subscription exclusivity", () => {
     }
   });
 
-  // UE, EEE e Reino Unido: sem a caixa do acesso imediato a compra não abre;
-  // com ela, o aceite viaja com o pagamento. Fora dali nada muda.
+  // EU, EEA and United Kingdom: without the immediate-access box the purchase
+  // does not open; with it, the consent travels with the payment. Outside those
+  // regions nothing changes.
   describe("immediate-access consent for EU, EEA and UK buyers", () => {
     const from = (country: string | null, body: Record<string, unknown>) =>
       new Request("http://localhost/api/payments/checkout", {
@@ -702,13 +703,13 @@ describe("course checkout subscription exclusivity", () => {
     expect(admin.orderInserts).toHaveLength(1);
   });
 
-  // O construtor so mostra o interruptor com a flag ligada. Com a flag
-  // desligada depois que o criador ligou o parcelamento, a Stripe parcelava um
-  // ajuste que ninguem conseguia ver nem desligar. O valor salvo nao e apagado.
+  // The builder only shows the switch with the flag on. With the flag turned
+  // off after the creator turned on installments, Stripe was splitting a
+  // setting that nobody could see or turn off. The saved value is not erased.
   describe("card installments follow the builder's flag", () => {
     afterEach(() => {
       vi.unstubAllEnvs();
-      // Flag desligada nao consome o "MX" de uma vez so; nao vaza para o proximo teste.
+      // A turned-off flag does not consume the "MX" one-time value; it does not leak into the next test.
       vi.mocked(getStripeAccountCountry).mockReset();
     });
 

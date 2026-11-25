@@ -24,7 +24,7 @@ vi.mock("@/lib/payments/server/stripe", async (original) => ({
 
 import { POST } from "./route";
 
-// Auth, MFA, conta ativa e limite reais; so as fronteiras externas sao simuladas.
+// Real auth, MFA, active account and limit; only the external boundaries are mocked.
 const handler: (request: Request) => Promise<Response> = POST;
 const teacher = { roles: ["teacher"], stripe_connected_account_id: "acct_own" };
 const loginUrl = "https://connect.stripe.com/express/acct_own/fixture";
@@ -33,8 +33,9 @@ function request(body: unknown = {}) {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
   });
 }
-// Quem decide e o banco: session_is_strong (ja inclui conta ativa) e, quando a
-// sessao e fraca, account_session_allowed separa "deve o codigo" de "bloqueada".
+// The database decides: session_is_strong (which already includes an active
+// account) and, when the session is weak, account_session_allowed separates
+// "owes the code" from "blocked".
 function sessionGate(strong: boolean, allowed: boolean) {
   mocks.rpc.mockImplementation(async (name: string) => ({
     data: name === "session_is_strong" ? strong : name === "account_session_allowed" ? allowed : null,

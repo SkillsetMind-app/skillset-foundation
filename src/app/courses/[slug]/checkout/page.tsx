@@ -32,13 +32,13 @@ export default async function CourseCheckoutPage({ params }: PageProps) {
   const { t } = await getServerTranslation();
   const { slug } = await params;
   const course = await getPublicCourseByRef(slug);
-  // Comunidade, e-book e evento ao vivo não são aulas: o número só vale para curso.
+  // Community, e-book and live event are not lessons: the number only applies to a course.
   const lessonCount = (course?.productFormat ?? "course") === "course" ? course?.lessonCount ?? 0 : 0;
   return (
     <div className="page-shell">
       <CheckoutHeader secureLabel={t("publicCourses.checkoutSecure")} skipLabel={t("nav.skipToContent")} />
-      {/* No celular cada pixel conta para o botão de comprar caber na
-          primeira tela (375×812): margens menores e o resumo sem o link. */}
+      {/* On the phone every pixel counts for the buy button to fit on the
+          first screen (375×812): smaller margins and the summary without the link. */}
       <main id="conteudo" className="mx-auto w-full max-w-5xl px-4 py-4 sm:px-8 sm:py-10">
         <div className="grid gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-10">
           {course ? (
@@ -50,7 +50,7 @@ export default async function CourseCheckoutPage({ params }: PageProps) {
                 {t("publicCourses.checkoutYourOrder")}
               </p>
               <div className="mt-3 flex items-start gap-4 lg:block">
-                {/* Sem capa, nada: não se inventa arte. */}
+                {/* No cover, nothing: art is not invented. */}
                 {course.coverImageUrl ? (
                   <div className="relative aspect-[16/9] w-28 shrink-0 overflow-hidden rounded-md sm:w-36 lg:w-full">
                     <Image

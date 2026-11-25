@@ -17,16 +17,16 @@ export async function generateMetadata() {
     t("publicCourses.browseDescription"),
   path: "/courses",
   });
-  // Loja vazia fora do índice, mas os links dela seguem valendo. Volta a ser
-  // indexável sozinha quando o primeiro curso real é publicado.
+  // Empty store outside the index, but its links stay valid. It becomes
+  // indexable on its own when the first real course is published.
   return hasRealCourses ? metadata : { ...metadata, robots: { index: false, follow: true } };
 }
 
 export default async function CoursesPage() {
   const [{ t }, hasRealCourses] = await Promise.all([getServerTranslation(), hasRealPublishedCourse()]);
 
-  // Sem curso real publicado, nada de vitrine com filtro, busca e esqueleto de
-  // cartões: a página diz o que é verdade e aponta para quem vai publicar.
+  // Without a published real course, no storefront with filter, search and card
+  // skeleton: the page says what is true and points to who is going to publish.
   if (!hasRealCourses) {
     return (
       <div className="page-shell">
@@ -73,16 +73,16 @@ export default async function CoursesPage() {
 // SSR-visible fallback that mirrors the client-side loading state in
 // CourseMarketplace. Without this, search engines and no-JS visitors see
 // t("publicCourses.loadingCourses") and bounce — the real page has filters + a card grid.
-// Desenha o painel de filtro de verdade (fileira de categorias sobre a linha de
-// busca e ordem), e não a coluna lateral que a loja não tem, e os mesmos
-// cartões do carregamento do cliente: nada muda de lugar entre os dois.
+// Draws the real filter panel (row of categories over the search
+// and sort line), and not the side column the store does not have, and the same
+// cards as the client loading: nothing changes place between the two.
 function MarketplaceSkeleton({ label }: { label: string }) {
   return (
     <section className="marketplace-section">
       <p role="status" className="sr-only">{label}</p>
       <div className="marketplace-filter-panel" aria-hidden="true">
-        {/* No celular o painel real abre fechado, atrás do botão "Filters":
-            a espera desenha o mesmo botão, para nada pular quando ele chega. */}
+        {/* On the phone the real panel opens closed, behind the "Filters" button:
+            the wait draws the same button, so nothing jumps when it arrives. */}
         <div className="marketplace-filters-toggle">
           <div className="h-4 w-20 animate-pulse rounded bg-[var(--color-surface-strong)]" />
         </div>

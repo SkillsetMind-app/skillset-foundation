@@ -30,8 +30,8 @@ describe("builder route loading language", () => {
     expect(mocks.permissions).toEqual(["teacherStudio.manageCourses"]);
   });
 
-  // Sem curso e a lista: o esqueleto do editor (etapas, formulario) aparecia
-  // antes e trocava pelo da lista, dois pulos ate a tabela.
+  // With no course, the list: the editor skeleton (steps, form) used to appear
+  // first and swap to the list one, two jumps before the table.
   it("draws the list skeleton for the product list and the editor skeleton for a course", async () => {
     mocks.locale = "en";
     const { unmount } = render(await TeacherBuilderPage({ searchParams: Promise.resolve({}) }));

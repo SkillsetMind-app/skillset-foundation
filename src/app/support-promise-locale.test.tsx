@@ -86,7 +86,7 @@ describe("support and Promise server pages use the cookie and real dictionaries"
       expect(t(key)).not.toBe(`promiseChangelog.${key}`);
       expect(screen.getByText(t(key))).toBeInTheDocument();
     }
-    // S-25: cada mudança abre com a data por extenso do idioma, não a ISO crua.
+    // S-25: each change opens with the long-form date in the language, not the raw ISO.
     const entryTitle = (date: string) =>
       screen.getByText((_text, element) => element?.tagName === "P" && element.textContent?.startsWith(`${date} — `) === true);
     expect(screen.queryByText((_text, element) => element?.tagName === "P" && /^\d{4}-\d{2}-\d{2}/.test(element.textContent ?? ""))).toBeNull();

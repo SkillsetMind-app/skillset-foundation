@@ -26,9 +26,9 @@ export default async function CourseManagePage({
   return (
     <ProtectedSurface permissions={["teacherStudio.manageCourses"]}>
       <PlatformShell title={t("creatorPanel.hub.header.eyebrow")} hideHeader>
-        {/* O mesmo esqueleto que o hub mostra enquanto lê o curso: antes eram
-            dois cartões seguidos, cada um com uma frase ("Loading course
-            management..." e depois "Loading course..."). */}
+        {/* The same skeleton the hub shows while it reads the course: before there were
+            two cards in a row, each with a sentence ("Loading course
+            management..." and then "Loading course..."). */}
         <Suspense
           fallback={<BuilderSkeleton label={t("teacherRouteResidual.manageLoading")} />}
         >

@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({ redirect: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 
 describe("/platform", () => {
-  it("manda para o catalogo em vez de abrir a vitrine interna sem saida (F15)", () => {
+  it("redirects to the catalog instead of opening the internal storefront with no way out (F15)", () => {
     PlatformPage();
 
     expect(mocks.redirect).toHaveBeenCalledWith("/courses");

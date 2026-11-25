@@ -1,9 +1,9 @@
 import { LearnCoursePage } from "@/components/learn/learn-course-page";
 
-// Uma pergunta (ou qualquer post) da comunidade, com endereco proprio:
-// /learn/courses/<curso>/community/q/<post>. Abre como gaveta POR CIMA do
-// feed — nao troca de pagina; voltar fecha a gaveta. Compartilhar este link
-// abre a mesma pergunta para quem receber.
+// A question (or any post) in the community, with its own address:
+// /learn/courses/<course>/community/q/<post>. It opens as a drawer OVER the
+// feed — it does not change page; going back closes the drawer. Sharing this
+// link opens the same question for whoever receives it.
 export default async function LearnCommunityPostRoute({
   params,
 }: {

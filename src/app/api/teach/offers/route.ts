@@ -66,11 +66,12 @@ export async function POST(request: Request) {
     ) {
       throw new PaymentError("Invalid paymentType.");
     }
-    // A moeda era o único campo desta rota que entrava sem validação: qualquer
-    // sigla de 3 letras passava. Downstream, normalizeSkillsetCurrency() troca o
-    // que não reconhece por USD EM SILÊNCIO — então "SEK 990" vira "USD 990", um
-    // preço quase 10x errado que ninguém vê acontecer. Recusar na entrada, como
-    // a rota já faz com paymentType, em vez de deixar a normalização decidir.
+    // Currency was the only field on this route that came in unvalidated: any
+    // 3-letter code passed. Downstream, normalizeSkillsetCurrency() replaces
+    // whatever it does not recognize with USD SILENTLY, so "SEK 990" becomes
+    // "USD 990", a price almost 10x wrong that nobody sees happen. Reject it at
+    // the door, as the route already does with paymentType, instead of letting
+    // the normalization decide.
     if (!isSupportedStripeCurrency(currency)) {
       throw new PaymentError(
         `Unsupported currency "${currency}". Supported: ${supportedStripeCurrencies.join(", ")}.`,

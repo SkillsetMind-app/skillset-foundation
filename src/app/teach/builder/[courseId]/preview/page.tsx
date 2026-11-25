@@ -34,8 +34,8 @@ export default async function TeacherBuilderPreviewPage({
           surface a student gets — dark members theme, their own mark, no
           platform sidebar or page heading wrapped around it. */}
       <MemberAreaShell brand={brand} theme={theme}>
-        {/* A mesma espera da prévia e da sala (ClassroomLoading): uma forma
-            só do clique até a sala aparecer. */}
+        {/* The same wait as the preview and the classroom (ClassroomLoading): one single shape
+            from the click until the classroom appears. */}
         <Suspense fallback={<ClassroomLoading label={t("learnWave2.courseLoading.title")} />}>
           <CoursePreviewShell courseId={courseId} tab={tab ?? "lesson"} whitelabel={Boolean(brand)} />
         </Suspense>

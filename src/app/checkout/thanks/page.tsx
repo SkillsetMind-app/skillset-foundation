@@ -44,13 +44,13 @@ export default async function CheckoutThanksPage({ searchParams }: PageProps) {
 
   return (
     <div className="page-shell">
-      {/* O mesmo cabeçalho da página de compra: quem acabou de pagar continua
-          no mesmo lugar, e o próximo passo é o e-mail, não o menu do site. */}
+      {/* The same header as the purchase page: whoever just paid stays
+          in the same place, and the next step is the email, not the site menu. */}
       <CheckoutHeader secureLabel={t("publicCourses.checkoutSecure")} skipLabel={t("nav.skipToContent")} />
       <main id="conteudo" className="mx-auto w-full max-w-xl px-6 py-10 sm:px-8 sm:py-14">
-        {/* O mesmo cartão das outras telas de depois do pagamento (plano e
-            taxa de ativação), com as mesmas frases e links de antes. Aqui não
-            há casca com título de página: a frase do cartão é o h1. */}
+        {/* The same card as the other after-payment screens (plan and
+            activation fee), with the same sentences and links as before. Here there
+            is no shell with a page title: the card sentence is the h1. */}
         <PaymentReturnCard
           headingLevel={1}
           icon={<Mail aria-hidden="true" size={20} />}

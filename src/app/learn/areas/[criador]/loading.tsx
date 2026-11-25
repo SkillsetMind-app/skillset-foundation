@@ -3,16 +3,17 @@ import { MemberAreaHomeSkeleton } from "@/components/learn/member-area-home";
 import { getServerTranslation } from "@/lib/i18n/server";
 
 /**
- * As rotas da área de membros (/learn/areas/<criador>, /<area> e as duas
- * comunidades) buscam a marca do criador no servidor antes de responder. Sem
- * este arquivo o clique deixava a tela anterior parada até a resposta.
+ * The members area routes (/learn/areas/<criador>, /<area> and the two
+ * communities) fetch the creator's brand on the server before responding.
+ * Without this file, a click left the previous screen frozen until the
+ * response arrived.
  *
- * Sem a casca da área de propósito, como no loading da sala: a casca desenha a
- * marca, e a marca só se sabe depois da busca. O esqueleto é o da própria área
- * (o mesmo que ela mostra enquanto lê), na mesma caixa: as classes do <main>
- * da casca e a margem que a área põe em volta dele. Assim a espera é uma só,
- * sem trocar de forma. Com a guarda, a primeira carga mostra o mesmo giro que
- * a página mostraria.
+ * No area shell on purpose, as in the classroom loading: the shell draws the
+ * brand, and the brand is only known after the fetch. The skeleton is the
+ * area's own (the same one it shows while reading), in the same box: the shell
+ * <main> classes and the margin the area puts around it. That way the wait is
+ * a single one, with no change of shape. With the guard, the first load shows
+ * the same spinner the page would show.
  */
 export default async function LoadingMemberArea() {
   const { t } = await getServerTranslation();

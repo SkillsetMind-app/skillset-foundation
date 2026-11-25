@@ -65,15 +65,15 @@ export async function POST(
 
   const result = await refreshDomainStatus(domain.hostname, config);
 
-  // Gravacao pelo service_role, nao pela sessao do usuario. O status de
-  // verificacao e um fato do SERVIDOR — quem o conhece e esta rota, que acabou
-  // de falar com a API da Vercel. Enquanto era escrito com o JWT do usuario, a
-  // funcao precisava ser EXECUTE para `authenticated`, e entao qualquer criador
-  // podia chama-la direto pelo PostgREST passando status='active': dominio
-  // "verificado" sem nunca ter passado pela Vercel, e entrando em
-  // public_domains, que e o que o proxy le para decidir de quem e a vitrine
-  // servida naquele host. O dono vai explicito e continua sendo conferido no
-  // banco.
+  // Written through service_role, not through the user's session. The
+  // verification status is a fact of the SERVER: this route is the one that
+  // knows it, having just talked to the Vercel API. While it was written with
+  // the user's JWT, the function had to be EXECUTE for `authenticated`, and so
+  // any creator could call it directly through PostgREST passing
+  // status='active': a "verified" domain that never went through Vercel, and
+  // that ended up in public_domains, which is what the proxy reads to decide
+  // whose storefront is served on that host. The owner is passed explicitly and
+  // is still checked in the database.
   await getSupabaseAdminClient().rpc("sync_custom_domain_status", {
     p_id: id,
     p_owner_uid: auth.user.id,

@@ -18,7 +18,7 @@ vi.mock("@/lib/ops/alert", () => ({ notifyOps: mocks.notifyOps }));
 
 import { POST } from "@/app/api/webhooks/stripe/route";
 
-// Valores sinteticos; a verificacao criptografica do SDK e local, sem API.
+// Synthetic values; the SDK's cryptographic verification is local, with no API call.
 const platformSecret = "unit-test-platform-signing-secret";
 const connectSecret = "unit-test-connect-signing-secret";
 const sdkTransport = vi.fn(async () => {

@@ -1,4 +1,4 @@
-// Somente CI efemero: duas conexoes reais, sobreposicao observada pelo Postgres.
+// Ephemeral CI only: two real connections, overlap observed by Postgres.
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
@@ -33,7 +33,7 @@ function isolatedDatabase(env, platform) {
   return db;
 }
 
-// Exportado apenas para o teste unitario das guardas, sem banco ou subprocessos.
+// Exported only for the unit test of the guards, with no database or subprocesses.
 export function selfTest() {
   const env = { CI: 'true', GITHUB_ACTIONS: 'true',
     DATABASE_URL: 'postgresql://postgres@127.0.0.1:54322/postgres' };
@@ -56,7 +56,7 @@ export function selfTest() {
 async function run() {
   const db = isolatedDatabase(process.env, process.platform);
   const withoutLock = process.env.WITHOUT_CERTIFICATE_ENROLLMENT_LOCK === '1';
-  // Nao herda PGHOST/PGSERVICE/PGOPTIONS nem outros destinos do ambiente.
+  // Does not inherit PGHOST/PGSERVICE/PGOPTIONS or any other target from the environment.
   const env = { PATH: process.env.PATH, HOME: '/tmp', LANG: 'C.UTF-8',
     PGHOST: '127.0.0.1', PGPORT: db.port, PGDATABASE: 'postgres', PGUSER: 'postgres',
     PGPASSWORD: decodeURIComponent(db.password), PGPASSFILE: '/dev/null',
@@ -223,7 +223,7 @@ async function run() {
   if (failures.length) process.exitCode = 1;
 }
 
-// Importar pelo Vitest nao deve criar conexoes.
+// Importing from Vitest must not open connections.
 if (process.argv[1]?.replaceAll('\\', '/').endsWith('/check-certificate-concurrency.mjs')) {
   try {
     selfTest();

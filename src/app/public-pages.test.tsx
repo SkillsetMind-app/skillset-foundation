@@ -21,8 +21,8 @@ vi.mock("@/components/auth/auth-provider", () => ({
   }),
 }));
 
-// Server component assíncrono (lê o idioma via next/headers); não é o que
-// estes testes olham.
+// Async server component (reads the language via next/headers); it is not what
+// these tests look at.
 vi.mock("@/components/site/site-footer", () => ({
   SiteFooter: () => <footer data-testid="site-footer" />,
 }));
@@ -37,8 +37,8 @@ vi.mock("@/components/help/help-center", () => ({
 
 afterEach(cleanup);
 
-describe("títulos do site público", () => {
-  it("define .page-title como um clamp único no globals.css", () => {
+describe("public site titles", () => {
+  it("defines .page-title as a single clamp in globals.css", () => {
     const css = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
 
     expect(css).toMatch(
@@ -51,20 +51,20 @@ describe("títulos do site público", () => {
     ["Contact", ContactPage],
     ["Help", HelpPage],
     ["404", NotFound],
-  ])("%s: o h1 usa .page-title em vez de text-6xl fixo", async (_name, Page) => {
+  ])("%s: the h1 uses .page-title instead of a fixed text-6xl", async (_name, Page) => {
     render(await Page());
 
-    // 60px fixos estouravam a largura de um celular de 360px.
+    // A fixed 60px overflowed the width of a 360px phone.
     const title = screen.getByRole("heading", { level: 1 });
     expect(title).toHaveClass("page-title");
     expect(title.className).not.toMatch(/text-(5|6)xl/);
   });
 });
 
-// S-25: eram seis caixas com sombra, cada uma com uma frase; viraram uma
-// lista com check num cartão só, como os itens dos cartões de preço.
+// S-25: they were six boxes with a shadow, each with one sentence; they became
+// a checklist in a single card, like the items on the pricing cards.
 describe("/for-creators", () => {
-  it("as ferramentas são uma lista só, com os seis itens", async () => {
+  it("the tools are a single list, with the six items", async () => {
     render(await CreatorsPage());
 
     const item = screen.getByText("Course builder with modules, lessons, previews, pricing, and drip release.");
@@ -73,17 +73,17 @@ describe("/for-creators", () => {
   });
 });
 
-describe("página 404", () => {
-  // A loja ainda pode estar vazia: o 404 manda para a home, nunca para um
-  // catálogo sem curso nem para a vitrine interna /platform.
-  it("manda para a home, não para um catálogo vazio nem para /platform", async () => {
+describe("404 page", () => {
+  // The store may still be empty: the 404 sends people to the home, never to a
+  // catalog with no course or to the internal /platform showcase.
+  it("sends people to the home, not to an empty catalog or to /platform", async () => {
     render(await NotFound());
 
     expect(within(screen.getByRole("main")).getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual(["/"]);
   });
 
-  // Era um cartão solto: sem menu e sem rodapé, "Go home" era a única saída.
-  it("tem a barra do site e o rodapé, como as outras páginas públicas", async () => {
+  // It was a loose card: with no menu and no footer, "Go home" was the only way out.
+  it("has the site bar and the footer, like the other public pages", async () => {
     render(await NotFound());
 
     expect(screen.getByRole("navigation", { name: "Primary navigation" })).toBeInTheDocument();
@@ -92,11 +92,11 @@ describe("página 404", () => {
   });
 });
 
-describe("caminho de suporte sem login", () => {
-  // /support exige conta: para um visitante, "Contact support" era uma tela
-  // de login sem aviso. O e-mail vira o caminho principal e o ticket é
-  // anunciado como o que é.
-  it("Help: e-mail como botão principal, ticket só para quem tem conta", async () => {
+describe("support path without login", () => {
+  // /support requires an account: for a visitor, "Contact support" was a login
+  // screen with no warning. Email becomes the main path and the ticket is
+  // presented for what it is.
+  it("Help: email as the main button, ticket only for people with an account", async () => {
     render(await HelpPage());
 
     expect(screen.getByRole("link", { name: "Email support" })).toHaveAttribute(
@@ -111,7 +111,7 @@ describe("caminho de suporte sem login", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("Contact: o cartão de suporte manda e-mail; o ticket fica dito para quem tem conta", async () => {
+  it("Contact: the support card sends an email; the ticket is stated for people with an account", async () => {
     render(await ContactPage());
 
     expect(screen.getByRole("link", { name: /Email support/ })).toHaveAttribute(
@@ -126,7 +126,7 @@ describe("caminho de suporte sem login", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("Contact: o link Enterprise de /pricing chega com o assunto preenchido", async () => {
+  it("Contact: the Enterprise link from /pricing arrives with the subject filled in", async () => {
     render(await ContactPage({ searchParams: Promise.resolve({ subject: "enterprise" }) }));
     expect(screen.getByRole("link", { name: /Email the team/ })).toHaveAttribute(
       "href",
