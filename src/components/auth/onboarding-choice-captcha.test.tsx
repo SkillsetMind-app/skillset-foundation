@@ -68,7 +68,7 @@ async function signInUnverified() {
     for (const listener of mocks.listeners) {
       listener({
         status: "authenticated",
-        user: { uid: "teacher-1", displayName: "Patrick", emailVerified: false },
+        user: { uid: "teacher-1", displayName: "Preston", emailVerified: false },
       });
     }
   });

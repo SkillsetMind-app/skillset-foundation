@@ -62,7 +62,7 @@ describe("LoginForm: email never confirmed", () => {
     render(<LoginForm />);
 
     fireEvent.change(screen.getByLabelText("auth.email"), {
-      target: { value: "patrick@example.com" },
+      target: { value: "preston@example.com" },
     });
     fireEvent.change(screen.getByPlaceholderText("auth.passwordPlaceholder"), {
       target: { value: "Skillset2026!" },
@@ -75,7 +75,7 @@ describe("LoginForm: email never confirmed", () => {
     fireEvent.click(screen.getByRole("button", { name: "auth.signup.confirmResend" }));
     await waitFor(() =>
       expect(mocks.resendSignupConfirmation).toHaveBeenCalledWith(
-        "patrick@example.com",
+        "preston@example.com",
         "/loading?next=welcome",
         undefined,
       ),
@@ -86,7 +86,7 @@ describe("LoginForm: email never confirmed", () => {
     render(<LoginForm />);
 
     fireEvent.change(screen.getByLabelText("auth.email"), {
-      target: { value: "patrick@example.com" },
+      target: { value: "preston@example.com" },
     });
     fireEvent.change(screen.getByPlaceholderText("auth.passwordPlaceholder"), {
       target: { value: "Skillset2026!" },

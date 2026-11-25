@@ -168,10 +168,10 @@ describe("SignupForm presents only the available paths", () => {
 // Walks both wizard steps and presses "Create account".
 function submitSignup() {
   fireEvent.change(screen.getByLabelText("auth.signup.fullName"), {
-    target: { value: "Patrick Simon" },
+    target: { value: "Preston Sloan" },
   });
   fireEvent.change(screen.getByLabelText("auth.email"), {
-    target: { value: "patrick@example.com" },
+    target: { value: "preston@example.com" },
   });
   fireEvent.click(screen.getByRole("checkbox"));
   fireEvent.click(screen.getByRole("button", { name: "auth.signup.continue" }));
@@ -257,11 +257,11 @@ describe("SignupForm once the account exists", () => {
       expect(mocks.router.push).toHaveBeenCalledWith("/welcome?path=student"),
     );
     expect(mocks.acceptUserTerms).toHaveBeenCalledWith("u-1", false);
-    // A compound name used to come out as "patrick simon" — a handle the
+    // A compound name used to come out as "preston sloan" — a handle the
     // profile validator itself refuses.
     expect(mocks.updateUserIdentity).toHaveBeenCalledWith("u-1", {
-      displayName: "Patrick Simon",
-      username: "patrick-simon",
+      displayName: "Preston Sloan",
+      username: "preston-sloan",
     });
   });
 });

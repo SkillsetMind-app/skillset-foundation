@@ -45,23 +45,23 @@ describe("MemberAreaLinks", () => {
   describe("shortcuts from the last visit", () => {
     const CACHE = "skillset:learn-member-area-links.v1";
     const remember = (key: string, links: unknown) => window.localStorage.setItem(CACHE, JSON.stringify({ key, links }));
-    const etonLink = ["u-1/", { href: "/learn/areas/@eton", name: "Eton Simon" }];
+    const evanLink = ["u-1/", { href: "/learn/areas/@evan", name: "Evan Stone" }];
     const reserved = () => document.querySelector('[data-reserved="member-area-link"]');
     const saved = () => JSON.parse(window.localStorage.getItem(CACHE) ?? "null");
 
     it("same enrollments: holds the place before the course list, without navigating", () => {
-      remember("c-a", [etonLink]);
+      remember("c-a", [evanLink]);
       // The course list has not arrived yet: only the enrollments.
       render(withLocale(<MemberAreaLinks courses={[]} coursesSettled={false} enrollments={[enrollment("c-a", "active")]} />));
 
-      expect(reserved()?.textContent).toBe("Open Eton Simon's members area");
+      expect(reserved()?.textContent).toBe("Open Evan Stone's members area");
       expect(reserved()).toHaveAttribute("aria-hidden", "true");
       expect(screen.queryByRole("link")).toBeNull();
     });
 
     it.each([
-      ["outras matriculas", "c-z", [etonLink]],
-      ["endereco fora da area de membros", "c-a", [["u-1/", { href: "https://evil.example", name: "Eton Simon" }]]],
+      ["outras matriculas", "c-z", [evanLink]],
+      ["endereco fora da area de membros", "c-a", [["u-1/", { href: "https://evil.example", name: "Evan Stone" }]]],
     ])("%s: nothing stored shows up", (_label, key, links) => {
       remember(key, links);
       render(withLocale(<MemberAreaLinks courses={[]} coursesSettled={false} enrollments={[enrollment("c-a", "active")]} />));
@@ -70,28 +70,28 @@ describe("MemberAreaLinks", () => {
     });
 
     it("the reads arrive: the real button takes its place and the memory is rewritten", async () => {
-      remember("c-a", [["u-1/", { href: "/learn/areas/@old", name: "Eton Simon" }]]);
-      mocks.getPublicProfilesByIds.mockResolvedValue([profile("u-1", "Eton Simon", "eton")]);
+      remember("c-a", [["u-1/", { href: "/learn/areas/@old", name: "Evan Stone" }]]);
+      mocks.getPublicProfilesByIds.mockResolvedValue([profile("u-1", "Evan Stone", "evan")]);
       render(withLocale(<MemberAreaLinks courses={[course("c-a", "u-1")]} enrollments={[enrollment("c-a", "active")]} />));
 
-      const link = await screen.findByRole("link", { name: "Open Eton Simon's members area" });
-      expect(link.getAttribute("href")).toBe("/learn/areas/@eton");
+      const link = await screen.findByRole("link", { name: "Open Evan Stone's members area" });
+      expect(link.getAttribute("href")).toBe("/learn/areas/@evan");
       expect(reserved()).toBeNull();
-      await waitFor(() => expect(saved()).toEqual({ key: "c-a", links: [etonLink] }));
+      await waitFor(() => expect(saved()).toEqual({ key: "c-a", links: [evanLink] }));
     });
 
     it("the areas read failed: shows the main one, but does not become memory", async () => {
-      remember("c-b", [["u-1/vip", { href: "/learn/areas/@eton/vip", name: "VIP Room" }]]);
-      mocks.getPublicProfilesByIds.mockResolvedValue([profile("u-1", "Eton Simon", "eton")]);
+      remember("c-b", [["u-1/vip", { href: "/learn/areas/@evan/vip", name: "VIP Room" }]]);
+      mocks.getPublicProfilesByIds.mockResolvedValue([profile("u-1", "Evan Stone", "evan")]);
       mocks.getMemberAreaSlugs.mockRejectedValue(new Error("offline"));
       render(withLocale(<MemberAreaLinks courses={[course("c-b", "u-1")]} enrollments={[enrollment("c-b", "active")]} />));
 
-      await screen.findByRole("link", { name: "Open Eton Simon's members area" });
-      expect(saved()).toEqual({ key: "c-b", links: [["u-1/vip", { href: "/learn/areas/@eton/vip", name: "VIP Room" }]] });
+      await screen.findByRole("link", { name: "Open Evan Stone's members area" });
+      expect(saved()).toEqual({ key: "c-b", links: [["u-1/vip", { href: "/learn/areas/@evan/vip", name: "VIP Room" }]] });
     });
 
     it("the courses read came back without the course: the stored place is dropped", () => {
-      remember("c-a", [etonLink]);
+      remember("c-a", [evanLink]);
       render(withLocale(<MemberAreaLinks courses={[]} coursesSettled enrollments={[enrollment("c-a", "active")]} />));
 
       expect(reserved()).toBeNull();
@@ -99,7 +99,7 @@ describe("MemberAreaLinks", () => {
     });
 
     it("the creator left: the shortcut goes away and the memory becomes 'none'", async () => {
-      remember("c-a", [etonLink]);
+      remember("c-a", [evanLink]);
       mocks.getPublicProfilesByIds.mockResolvedValue([]);
       render(withLocale(<MemberAreaLinks courses={[course("c-a", "u-1")]} enrollments={[enrollment("c-a", "active")]} />));
 
@@ -110,20 +110,20 @@ describe("MemberAreaLinks", () => {
   });
 
   it("one shortcut per creator the person is a learner of; a refund does not count", async () => {
-    mocks.getPublicProfilesByIds.mockResolvedValue([profile("u-1", "Eton Simon", "eton")]);
+    mocks.getPublicProfilesByIds.mockResolvedValue([profile("u-1", "Evan Stone", "evan")]);
     render(withLocale(
       <MemberAreaLinks
         courses={[course("c-a", "u-1"), course("c-b", "u-1"), course("c-x", "u-2")]}
         enrollments={[enrollment("c-a", "active"), enrollment("c-b", "completed"), enrollment("c-x", "refunded")]}
       />,
     ));
-    const link = await screen.findByRole("link", { name: "Open Eton Simon's members area" });
-    expect(link.getAttribute("href")).toBe("/learn/areas/@eton");
+    const link = await screen.findByRole("link", { name: "Open Evan Stone's members area" });
+    expect(link.getAttribute("href")).toBe("/learn/areas/@evan");
     expect(mocks.getPublicProfilesByIds).toHaveBeenCalledWith(["u-1"]);
   });
 
   it("a product in an extra area gets its own shortcut, with its own name", async () => {
-    mocks.getPublicProfilesByIds.mockResolvedValue([profile("u-1", "Eton Simon", "eton")]);
+    mocks.getPublicProfilesByIds.mockResolvedValue([profile("u-1", "Evan Stone", "evan")]);
     mocks.getMemberAreaSlugs.mockResolvedValue(new Map([["c-b", { slug: "vip", name: "VIP Room" }]]));
     render(withLocale(
       <MemberAreaLinks
@@ -132,13 +132,13 @@ describe("MemberAreaLinks", () => {
       />,
     ));
     const vip = await screen.findByRole("link", { name: "Open VIP Room's members area" });
-    expect(vip.getAttribute("href")).toBe("/learn/areas/@eton/vip");
-    expect(screen.getByRole("link", { name: "Open Eton Simon's members area" }).getAttribute("href")).toBe("/learn/areas/@eton");
+    expect(vip.getAttribute("href")).toBe("/learn/areas/@evan/vip");
+    expect(screen.getByRole("link", { name: "Open Evan Stone's members area" }).getAttribute("href")).toBe("/learn/areas/@evan");
     expect(mocks.getMemberAreaSlugs).toHaveBeenCalledWith(["c-a", "c-b"]);
   });
 
   it("while the area is unknown, it does not show a wrong shortcut", async () => {
-    mocks.getPublicProfilesByIds.mockResolvedValue([profile("u-1", "Eton Simon", "eton")]);
+    mocks.getPublicProfilesByIds.mockResolvedValue([profile("u-1", "Evan Stone", "evan")]);
     mocks.getMemberAreaSlugs.mockReturnValue(new Promise(() => undefined));
     render(withLocale(<MemberAreaLinks courses={[course("c-b", "u-1")]} enrollments={[enrollment("c-b", "active")]} />));
     await waitFor(() => expect(mocks.getPublicProfilesByIds).toHaveBeenCalled());
@@ -162,21 +162,21 @@ describe("useCreatorAreaLink", () => {
 
   it("gives the address of the creator's area, by uid when there is no @", async () => {
     mocks.subscribeToPublicProfile.mockImplementation((uid: string, next: (value: unknown) => void) => {
-      next(profile(uid, "Eton Simon", null));
+      next(profile(uid, "Evan Stone", null));
       return () => undefined;
     });
     render(withLocale(<AreaProbe ownerId="u-1" />));
-    expect(await screen.findByText("Eton Simon -> /learn/areas/u-1")).toBeTruthy();
+    expect(await screen.findByText("Evan Stone -> /learn/areas/u-1")).toBeTruthy();
   });
 
   it("from the room of a product in an extra area, it goes back to that area", async () => {
     mocks.subscribeToPublicProfile.mockImplementation((uid: string, next: (value: unknown) => void) => {
-      next(profile(uid, "Eton Simon", "eton"));
+      next(profile(uid, "Evan Stone", "evan"));
       return () => undefined;
     });
     mocks.getMemberAreaSlugs.mockResolvedValue(new Map([["c-b", { slug: "vip", name: "VIP Room" }]]));
     render(withLocale(<AreaProbe ownerId="u-1" courseId="c-b" />));
-    expect(await screen.findByText("VIP Room -> /learn/areas/@eton/vip")).toBeTruthy();
+    expect(await screen.findByText("VIP Room -> /learn/areas/@evan/vip")).toBeTruthy();
   });
 
   it("without a public profile: null, and the room goes back to /learn", async () => {

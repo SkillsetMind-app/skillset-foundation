@@ -64,7 +64,7 @@ const titles = () => within(screen.getByRole("list")).getAllByRole("listitem").m
 describe("MemberAreaSettingsPanel", () => {
   beforeEach(() => {
     for (const mock of Object.values(mocks)) if (typeof mock === "function") mock.mockReset();
-    mocks.getUserProfile.mockResolvedValue({ displayName: "Eton Simon", username: "eton" });
+    mocks.getUserProfile.mockResolvedValue({ displayName: "Evan Stone", username: "evan" });
     mocks.getMyMemberAreas.mockResolvedValue(editorOf([virtualMain]));
     mocks.setMyMemberAreaCommunity.mockResolvedValue(undefined);
     mocks.subscribeToTeacherCourses.mockImplementation((_uid: string, callback: (value: unknown) => void) => {
@@ -84,14 +84,14 @@ describe("MemberAreaSettingsPanel", () => {
     expect(titles()[0]).toContain("Not published");
     expect(titles()[1]).toContain("New course");
     expect(titles()[2]).toContain("Old course");
-    expect(screen.getByPlaceholderText("Eton Simon")).toBeTruthy();
-    expect(screen.getByRole("link", { name: /View as student/ }).getAttribute("href")).toBe("/learn/areas/@eton");
+    expect(screen.getByPlaceholderText("Evan Stone")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /View as student/ }).getAttribute("href")).toBe("/learn/areas/@evan");
   });
 
   it("saves name, theme, welcome, the arranged order and what stayed hidden", async () => {
     renderPanel();
     await screen.findByRole("list");
-    fireEvent.change(screen.getByLabelText("Area name"), { target: { value: "Eton Academy" } });
+    fireEvent.change(screen.getByLabelText("Area name"), { target: { value: "Evan Academy" } });
     fireEvent.click(screen.getByLabelText("Dark"));
     fireEvent.change(screen.getByLabelText("Welcome text"), { target: { value: "Welcome!" } });
     fireEvent.click(screen.getByRole("button", { name: "Move Old course up" }));
@@ -100,7 +100,7 @@ describe("MemberAreaSettingsPanel", () => {
 
     await waitFor(() => expect(mocks.saveMyMemberAreaProducts).toHaveBeenCalled());
     expect(mocks.saveMyMemberArea).toHaveBeenCalledWith({
-      name: "Eton Academy", theme: "dark", coverPath: null, welcomeText: "Welcome!",
+      name: "Evan Academy", theme: "dark", coverPath: null, welcomeText: "Welcome!",
     }, null);
     expect(mocks.saveMyMemberAreaProducts).toHaveBeenCalledWith([
       { courseId: "draft", visible: false },
@@ -119,7 +119,7 @@ describe("MemberAreaSettingsPanel", () => {
     mocks.getMyMemberAreas.mockResolvedValue(editorOf([{
       id: "area-main",
       slug: null,
-      settings: { name: "Eton Academy", theme: "dark", coverPath: "users/teacher-1/member-area/cover-1", welcomeText: "Hi" },
+      settings: { name: "Evan Academy", theme: "dark", coverPath: "users/teacher-1/member-area/cover-1", welcomeText: "Hi" },
       communityCourseId: null,
     }], [["old", { areaId: "area-main", position: 0, visible: true }], ["new", { areaId: "area-main", position: 1, visible: false }]]));
     mocks.uploadMemberAreaCover.mockResolvedValue("users/teacher-1/member-area/cover-2");
@@ -249,7 +249,7 @@ describe("MemberAreaSettingsPanel", () => {
   });
 
   it("Starter: only the main one, with no new area button", async () => {
-    mocks.getUserProfile.mockResolvedValue({ displayName: "Eton Simon", username: "eton", currentPlanId: "starter" });
+    mocks.getUserProfile.mockResolvedValue({ displayName: "Evan Stone", username: "evan", currentPlanId: "starter" });
     renderPanel();
     expect(await screen.findByText(/Your plan includes 1 area\. Pro includes up to 3/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "New area" })).toBeNull();
@@ -257,7 +257,7 @@ describe("MemberAreaSettingsPanel", () => {
   });
 
   it("Pro: creates an extra area and opens it", async () => {
-    mocks.getUserProfile.mockResolvedValue({ displayName: "Eton Simon", username: "eton", currentPlanId: "pro" });
+    mocks.getUserProfile.mockResolvedValue({ displayName: "Evan Stone", username: "evan", currentPlanId: "pro" });
     mocks.createMyMemberArea.mockResolvedValue("area-2");
     mocks.getMyMemberAreas
       .mockResolvedValueOnce(editorOf([virtualMain]))
@@ -268,17 +268,17 @@ describe("MemberAreaSettingsPanel", () => {
     fireEvent.click(await screen.findByRole("button", { name: "New area" }));
     fireEvent.change(screen.getByLabelText("Name of the new area"), { target: { value: "VIP" } });
     fireEvent.change(screen.getByLabelText("Address"), { target: { value: "VIP Room" } });
-    expect(screen.getByText(/\/learn\/areas\/@eton\/vip-room/)).toBeTruthy();
+    expect(screen.getByText(/\/learn\/areas\/@evan\/vip-room/)).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Address"), { target: { value: "vip" } });
     fireEvent.click(screen.getByRole("button", { name: "Create area" }));
     await waitFor(() => expect(mocks.createMyMemberArea).toHaveBeenCalledWith("VIP", "vip"));
     expect(await screen.findByRole("tab", { name: "VIP", selected: true })).toBeTruthy();
     expect(screen.getByText(/No products in this area yet/)).toBeTruthy();
-    expect(screen.getByRole("link", { name: /View as student/ }).getAttribute("href")).toBe("/learn/areas/@eton/vip");
+    expect(screen.getByRole("link", { name: /View as student/ }).getAttribute("href")).toBe("/learn/areas/@evan/vip");
   });
 
   it("an invalid address never reaches the database", async () => {
-    mocks.getUserProfile.mockResolvedValue({ displayName: "Eton Simon", username: "eton", currentPlanId: "pro" });
+    mocks.getUserProfile.mockResolvedValue({ displayName: "Evan Stone", username: "evan", currentPlanId: "pro" });
     renderPanel();
     fireEvent.click(await screen.findByRole("button", { name: "New area" }));
     fireEvent.change(screen.getByLabelText("Address"), { target: { value: "community" } });
@@ -288,7 +288,7 @@ describe("MemberAreaSettingsPanel", () => {
   });
 
   it("extra: lists only its own products, brings one from the main one and returns another", async () => {
-    mocks.getUserProfile.mockResolvedValue({ displayName: "Eton Simon", username: "eton", currentPlanId: "pro" });
+    mocks.getUserProfile.mockResolvedValue({ displayName: "Evan Stone", username: "evan", currentPlanId: "pro" });
     mocks.getMyMemberAreas.mockResolvedValue(editorOf([virtualMain, {
       id: "area-2", slug: "vip", settings: { name: "VIP", theme: "light", coverPath: null, welcomeText: null }, communityCourseId: null,
     }], [["old", { areaId: "area-2", position: 0, visible: true }]]));
@@ -307,7 +307,7 @@ describe("MemberAreaSettingsPanel", () => {
   });
 
   it("plan dropped: the extra is locked, it can only be deleted", async () => {
-    mocks.getUserProfile.mockResolvedValue({ displayName: "Eton Simon", username: "eton", currentPlanId: "starter" });
+    mocks.getUserProfile.mockResolvedValue({ displayName: "Evan Stone", username: "evan", currentPlanId: "starter" });
     mocks.getMyMemberAreas.mockResolvedValue(editorOf([virtualMain, {
       id: "area-2", slug: "vip", settings: { name: "VIP", theme: "light", coverPath: null, welcomeText: null }, communityCourseId: null,
     }]));
@@ -324,7 +324,7 @@ describe("MemberAreaSettingsPanel", () => {
   it("deleting the extra asks in the dialog, with the area name, and only deletes on confirm", async () => {
     const restoreDialogs = stubDialogs();
     try {
-      mocks.getUserProfile.mockResolvedValue({ displayName: "Eton Simon", username: "eton", currentPlanId: "starter" });
+      mocks.getUserProfile.mockResolvedValue({ displayName: "Evan Stone", username: "evan", currentPlanId: "starter" });
       mocks.getMyMemberAreas.mockResolvedValue(editorOf([virtualMain, {
         id: "area-2", slug: "vip", settings: { name: "VIP", theme: "light", coverPath: null, welcomeText: null }, communityCourseId: null,
       }]));
@@ -373,7 +373,7 @@ describe("MemberAreaSettingsPanel", () => {
 
   it("in an area locked by the plan, the list's \"Try again\" stays clickable", async () => {
     // Free plan: the extra goes over the limit and its form is locked.
-    mocks.getUserProfile.mockResolvedValue({ displayName: "Eton Simon", username: "eton", currentPlanId: "free" });
+    mocks.getUserProfile.mockResolvedValue({ displayName: "Evan Stone", username: "evan", currentPlanId: "free" });
     mocks.getMyMemberAreas.mockResolvedValue(editorOf([virtualMain, {
       id: "area-2", slug: "vip", settings: { name: "VIP", theme: "light", coverPath: null, welcomeText: null }, communityCourseId: null,
     }]));

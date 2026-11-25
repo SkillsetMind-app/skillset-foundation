@@ -48,10 +48,10 @@ vi.mock("@/lib/data/user-profiles", () => ({
   updateOnboardingAnswers: mocks.updateOnboardingAnswers,
 }));
 
-const authedUser = { uid: "learner-1", displayName: "Patrick", emailVerified: true };
+const authedUser = { uid: "learner-1", displayName: "Preston", emailVerified: true };
 const plan = "/account/billing/upgrade?plan=starter&cycle=yearly";
 const learnerProfile = {
-  displayName: "Patrick Simon", username: "patrick", bio: "Coach", timezone: "America/Sao_Paulo",
+  displayName: "Preston Sloan", username: "preston", bio: "Coach", timezone: "America/Sao_Paulo",
   goals: ["career_growth"], roles: ["student"], onboardingCompleted: true,
   onboardingAnswers: { profileConfirmed: true },
 };
@@ -151,7 +151,7 @@ describe("OnboardingChoice: the normal load (characterization)", () => {
     expect(screen.queryByLabelText("connectOnboarding.countryLabel")).toBeNull();
     expect(screen.queryByRole("alert")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
-    expect(screen.getByLabelText("onboarding.publicName")).toHaveValue("Patrick");
+    expect(screen.getByLabelText("onboarding.publicName")).toHaveValue("Preston");
     expect(screen.getByPlaceholderText("onboarding.usernamePlaceholder")).toHaveValue("");
     expect(screen.getByLabelText("onboarding.timezone")).toHaveValue(
       Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -224,13 +224,13 @@ describe("OnboardingChoice: the normal load (characterization)", () => {
   // row just created by the signup trigger) concludes as always: same
   // calls, same content, same destination.
   const freshRow = {
-    uid: "learner-1", email: "patrick@example.com", displayName: null, username: null, bio: null,
+    uid: "learner-1", email: "preston@example.com", displayName: null, username: null, bio: null,
     timezone: null, roles: ["student"], onboardingCompleted: false,
   };
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   async function fillWizardAndFinish(goalKey: string) {
     fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
-    fireEvent.change(screen.getByPlaceholderText("onboarding.usernamePlaceholder"), { target: { value: "patrick" } });
+    fireEvent.change(screen.getByPlaceholderText("onboarding.usernamePlaceholder"), { target: { value: "preston" } });
     fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
     fireEvent.click(screen.getByText(goalKey));
     await act(async () => {
@@ -250,7 +250,7 @@ describe("OnboardingChoice: the normal load (characterization)", () => {
     expect(mocks.updateOnboardingAnswers).not.toHaveBeenCalled();
     expect(mocks.completeUserOnboarding).toHaveBeenCalledExactlyOnceWith({
       uid: "learner-1", roles: ["student"], acceptTeacherTerms: false,
-      identity: { displayName: "Patrick", username: "patrick", bio: "", timezone, goals: ["career_growth"] },
+      identity: { displayName: "Preston", username: "preston", bio: "", timezone, goals: ["career_growth"] },
     });
     expect(mocks.refreshUser).toHaveBeenCalledTimes(1);
     expect(mocks.router.push).toHaveBeenCalledExactlyOnceWith("/learn");
@@ -274,7 +274,7 @@ describe("OnboardingChoice: the normal load (characterization)", () => {
     });
     expect(mocks.completeUserOnboarding).toHaveBeenCalledExactlyOnceWith({
       uid: "learner-1", roles: ["teacher"], acceptTeacherTerms: true,
-      identity: { displayName: "Patrick", username: "patrick", bio: "", timezone, goals: ["teach_online"] },
+      identity: { displayName: "Preston", username: "preston", bio: "", timezone, goals: ["teach_online"] },
     });
     expect(mocks.updateOnboardingAnswers.mock.invocationCallOrder[0])
       .toBeLessThan(mocks.completeUserOnboarding.mock.invocationCallOrder[0]);
@@ -382,7 +382,7 @@ describe("OnboardingChoice: \"Try again\" for the profile read", () => {
     fireEvent.change(screen.getByLabelText("connectOnboarding.countryLabel"), { target: { value: "US" } });
     fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
-    fireEvent.change(screen.getByPlaceholderText("onboarding.usernamePlaceholder"), { target: { value: "patrick" } });
+    fireEvent.change(screen.getByPlaceholderText("onboarding.usernamePlaceholder"), { target: { value: "preston" } });
     fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
     fireEvent.click(screen.getByText("onboarding.goalTeachLabel"));
     await act(async () => {
@@ -685,7 +685,7 @@ describe("OnboardingChoice: account switched in another tab", () => {
     expectOnlyTheRead(1);
     expect(screen.getByPlaceholderText("onboarding.bioPlaceholder")).toBe(bio);
     expect(bio).toHaveValue("Bio digitada agora");
-    expect(screen.getByLabelText("onboarding.publicName")).toHaveValue("Patrick Simon");
+    expect(screen.getByLabelText("onboarding.publicName")).toHaveValue("Preston Sloan");
     expect(mocks.router.push).not.toHaveBeenCalled();
   });
 

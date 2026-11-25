@@ -74,11 +74,11 @@ describe("validateUsername", () => {
 
 describe("deriveUsername", () => {
   // The bug: signup derived the handle with normalizeUsername, which only
-  // lowercases and strips the "@", so "Patrick Simon" became "patrick simon" —
+  // lowercases and strips the "@", so "Preston Sloan" became "preston sloan" —
   // a space — and validateUsername refuses that. Everyone with a compound name
   // got an invalid handle written on day one.
   it.each([
-    ["Patrick Simon", "patrick-simon"],
+    ["Preston Sloan", "preston-sloan"],
     ["  Ana   Souza  ", "ana-souza"],
     ["José da Silva", "jose-da-silva"],
     ["Zoë 🚀 Müller", "zoe-muller"],
@@ -108,7 +108,7 @@ describe("deriveUsername", () => {
 
   it("never hands back something validateUsername would refuse", () => {
     const inputs: [string, string][] = [
-      ["Patrick Simon", "p@x.y"],
+      ["Preston Sloan", "p@x.y"],
       ["  --weird--  ", "weird@x.y"],
       ["a".repeat(50), "z@x.y"],
       ["Ünïcödé Nämé", "u@x.y"],

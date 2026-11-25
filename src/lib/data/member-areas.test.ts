@@ -43,8 +43,8 @@ function table(result: { data: unknown; error: unknown }) {
 
 const home = {
   area: {
-    owner_id: "u-1", username: "eton", creator_name: "Eton Simon", creator_photo_url: null,
-    name: "Eton Academy", theme: "dark", cover_path: "users/u-1/member-area/capa.jpg",
+    owner_id: "u-1", username: "evan", creator_name: "Evan Stone", creator_photo_url: null,
+    name: "Evan Academy", theme: "dark", cover_path: "users/u-1/member-area/capa.jpg",
     welcome_text: "Bem-vindo", configured: true, is_owner_preview: false,
   },
   continue: {
@@ -66,9 +66,9 @@ const home = {
 describe("getMemberAreaHome", () => {
   it("asks for the area by its @ and returns the three sections in camelCase", async () => {
     rpc.mockResolvedValue({ data: home, error: null });
-    const result = await getMemberAreaHome("@eton");
-    expect(rpc).toHaveBeenCalledWith("get_member_area_home", { p_area_ref: "@eton" });
-    expect(result?.area).toMatchObject({ ownerId: "u-1", name: "Eton Academy", theme: "dark", configured: true });
+    const result = await getMemberAreaHome("@evan");
+    expect(rpc).toHaveBeenCalledWith("get_member_area_home", { p_area_ref: "@evan" });
+    expect(result?.area).toMatchObject({ ownerId: "u-1", name: "Evan Academy", theme: "dark", configured: true });
     expect(result?.continueWatching).toEqual({
       courseId: "c-a", courseTitle: "EI Mastery", lessonId: "l-2", lessonTitle: "Aula 2",
       positionSeconds: 42, lastSeenAt: "2026-10-15T10:00:00Z",
@@ -84,12 +84,12 @@ describe("getMemberAreaHome", () => {
 
   it("null from the database (not a learner nor the owner) becomes null", async () => {
     rpc.mockResolvedValue({ data: null, error: null });
-    await expect(getMemberAreaHome("@eton")).resolves.toBeNull();
+    await expect(getMemberAreaHome("@evan")).resolves.toBeNull();
   });
 
   it("passes the database refusal through without translating it", async () => {
     rpc.mockResolvedValue({ data: null, error: { message: "permission denied" } });
-    await expect(getMemberAreaHome("@eton")).rejects.toMatchObject({ message: "permission denied" });
+    await expect(getMemberAreaHome("@evan")).rejects.toMatchObject({ message: "permission denied" });
   });
 });
 
@@ -103,7 +103,7 @@ describe("parseMemberAreaHome", () => {
 
 describe("memberAreaPath", () => {
   it("uses the @ when it exists and the uid when it does not", () => {
-    expect(memberAreaPath({ username: "eton", ownerId: "u-1" })).toBe("/learn/areas/@eton");
+    expect(memberAreaPath({ username: "evan", ownerId: "u-1" })).toBe("/learn/areas/@evan");
     expect(memberAreaPath({ username: null, ownerId: "u-1" })).toBe("/learn/areas/u-1");
   });
 });
@@ -111,9 +111,9 @@ describe("memberAreaPath", () => {
 describe("saveMyMemberArea", () => {
   it("sends empty for what goes back to the default", async () => {
     rpc.mockResolvedValue({ data: null, error: null });
-    await saveMyMemberArea({ name: "Eton Academy", theme: "light", coverPath: null, welcomeText: null });
+    await saveMyMemberArea({ name: "Evan Academy", theme: "light", coverPath: null, welcomeText: null });
     expect(rpc).toHaveBeenCalledWith("save_my_member_area", {
-      p_name: "Eton Academy", p_theme: "light", p_cover_path: "", p_welcome_text: "",
+      p_name: "Evan Academy", p_theme: "light", p_cover_path: "", p_welcome_text: "",
     });
   });
 
@@ -168,13 +168,13 @@ describe("getMyMemberAreas", () => {
     from
       .mockReturnValueOnce(table({ data: [
         { id: "area-2", slug: "vip", name: "VIP", theme: "light", cover_path: null, welcome_text: null, community_course_id: null },
-        { id: "area-1", slug: null, name: "Eton Academy", theme: "dark", cover_path: null, welcome_text: "Oi", community_course_id: "c-com" },
+        { id: "area-1", slug: null, name: "Evan Academy", theme: "dark", cover_path: null, welcome_text: "Oi", community_course_id: "c-com" },
       ], error: null }))
       .mockReturnValueOnce(table({ data: [{ area_id: "area-2", course_id: "c-a", position: 0, visible: false }], error: null }));
     const editor = await getMyMemberAreas("u-1");
     expect(from).toHaveBeenNthCalledWith(2, "member_area_products");
     expect(editor.areas.map((area) => area.slug)).toEqual([null, "vip"]);
-    expect(editor.areas[0].settings).toEqual({ name: "Eton Academy", theme: "dark", coverPath: null, welcomeText: "Oi" });
+    expect(editor.areas[0].settings).toEqual({ name: "Evan Academy", theme: "dark", coverPath: null, welcomeText: "Oi" });
     expect(editor.areas[0].communityCourseId).toBe("c-com");
     expect(editor.placement.get("c-a")).toEqual({ areaId: "area-2", position: 0, visible: false });
   });
@@ -205,7 +205,7 @@ describe("memberAreaProductsOf", () => {
 
 describe("extra areas", () => {
   it("extra address and slug rule", () => {
-    expect(memberAreaPath({ username: "eton", ownerId: "u-1", slug: "vip" })).toBe("/learn/areas/@eton/vip");
+    expect(memberAreaPath({ username: "evan", ownerId: "u-1", slug: "vip" })).toBe("/learn/areas/@evan/vip");
     expect(isValidMemberAreaSlug("turma-2")).toBe(true);
     for (const bad of ["community", "-x", "x-", "Turma", "a b", "", "a".repeat(41)]) {
       expect(isValidMemberAreaSlug(bad), bad).toBe(false);
@@ -214,10 +214,10 @@ describe("extra areas", () => {
 
   it("asks for the extra by its slug; the main one does not even send the parameter", async () => {
     rpc.mockResolvedValue({ data: null, error: null });
-    await getMemberAreaHome("@eton", "vip");
-    expect(rpc).toHaveBeenLastCalledWith("get_member_area_home", { p_area_ref: "@eton", p_slug: "vip" });
-    await getMemberAreaHome("@eton");
-    expect(rpc).toHaveBeenLastCalledWith("get_member_area_home", { p_area_ref: "@eton" });
+    await getMemberAreaHome("@evan", "vip");
+    expect(rpc).toHaveBeenLastCalledWith("get_member_area_home", { p_area_ref: "@evan", p_slug: "vip" });
+    await getMemberAreaHome("@evan");
+    expect(rpc).toHaveBeenLastCalledWith("get_member_area_home", { p_area_ref: "@evan" });
   });
 
   it("create: translates limit, address in use and invalid", async () => {

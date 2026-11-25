@@ -57,10 +57,10 @@ const secretField = "password";
 
 function fillStepOne() {
   fireEvent.change(screen.getByLabelText("auth.signup.fullName"), {
-    target: { value: "Patrick Simon" },
+    target: { value: "Preston Sloan" },
   });
   fireEvent.change(screen.getByLabelText("auth.email"), {
-    target: { value: "patrick@example.com" },
+    target: { value: "preston@example.com" },
   });
   fireEvent.click(screen.getByRole("checkbox"));
   fireEvent.click(screen.getByRole("button", { name: "auth.signup.continue" }));
@@ -185,13 +185,13 @@ describe("SignupForm: the little eye and the confirmation gate", () => {
     fillStepTwoAndSubmit();
 
     expect(await screen.findByText("auth.signup.confirmWaiting")).toBeInTheDocument();
-    expect(screen.getByText("patrick@example.com")).toBeInTheDocument();
+    expect(screen.getByText("preston@example.com")).toBeInTheDocument();
     expect(mocks.router.push).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: "auth.signup.confirmResend" }));
     await waitFor(() =>
       expect(mocks.resendSignupConfirmation).toHaveBeenCalledWith(
-        "patrick@example.com",
+        "preston@example.com",
         "/loading?next=welcome&path=student",
         undefined,
       ),
@@ -211,8 +211,8 @@ describe("SignupForm: the little eye and the confirmation gate", () => {
       await screen.findByRole("button", { name: "auth.signup.confirmChangeEmail" }),
     );
 
-    expect(screen.getByLabelText("auth.email")).toHaveValue("patrick@example.com");
-    expect(screen.getByLabelText("auth.signup.fullName")).toHaveValue("Patrick Simon");
+    expect(screen.getByLabelText("auth.email")).toHaveValue("preston@example.com");
+    expect(screen.getByLabelText("auth.signup.fullName")).toHaveValue("Preston Sloan");
   });
 
   it("keeps intent and the checkout offer when leaving the confirmation gate for sign-in", async () => {

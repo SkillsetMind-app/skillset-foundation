@@ -25,7 +25,7 @@ import type { AppNotification } from "@/domain/notification";
 const { mockUser, fixtures, fuse } = vi.hoisted(() => {
   const mockUser = {
     uid: "student-1",
-    displayName: "Patrick Simon",
+    displayName: "Preston Sloan",
     roles: ["student"],
   };
 
@@ -313,7 +313,7 @@ describe("LearnDashboard", () => {
 
     const headings = await screen.findAllByRole("heading", { level: 1 });
     expect(headings).toHaveLength(1);
-    expect(headings[0]).toHaveTextContent("Hi, Patrick");
+    expect(headings[0]).toHaveTextContent("Hi, Preston");
     expect(screen.queryByText(/welcome back/i)).not.toBeInTheDocument();
     // The three metrics became one line of text.
     expect(
@@ -706,7 +706,7 @@ describe("LearnDashboard", () => {
   it("a name with $& in the greeting shows up literally, without becoming '{name}'", async () => {
     // In a replace without a callback, "$&" becomes the matched text ("{name}") and "$'" the
     // rest of the sentence. The name comes from the sign-up: it is the person's text, not ours.
-    mockUser.displayName = "Mc$&Donald Simon";
+    mockUser.displayName = "Mc$&Donald Stone";
     try {
       render(<LearnDashboard />);
 
@@ -714,7 +714,7 @@ describe("LearnDashboard", () => {
         "Hi, Mc$&Donald",
       );
     } finally {
-      mockUser.displayName = "Patrick Simon";
+      mockUser.displayName = "Preston Sloan";
     }
   });
 });
