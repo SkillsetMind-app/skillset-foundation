@@ -26,22 +26,24 @@ export async function generateMetadata() {
   });
 }
 
-// O curso real que a home mostra enquanto a vitrine está fechada: o do
-// fundador. ponytail: id fixo; se esse curso sair do ar, trocar aqui (ou ler
-// o curso publicado mais recente, se a troca virar rotina).
+// The real course the home shows while the storefront is closed: the owner's.
+// ponytail: fixed id; if that course goes offline, change it here (or read
+// the most recently published course, if the swap becomes routine).
 const SHOWCASE_COURSE_ID = "1a280dc6-acce-4f1f-9e95-56df095131ae";
 const SHOWCASE_COURSE_PATH = `/courses/${SHOWCASE_COURSE_ID}`;
 
 export default async function Home() {
-  // Vitrine fechada (menos de 12 cursos de 5 professores): a faixa "The
-  // marketplace" dá lugar a um cartão que leva a UM curso real. O menu é o
-  // mesmo das outras páginas e esconde "Courses" pela mesma regra (layout).
+  // Storefront closed (fewer than 12 courses from 5 teachers): the "The
+  // marketplace" band gives way to a card that leads to ONE real course. The
+  // menu is the same as on the other pages and hides "Courses" by the same
+  // rule (layout).
   const marketplaceOpen = await isMarketplaceOpen();
   const { t } = await getServerTranslation();
-  // A capa de verdade do curso, a mesma da página dele: a home quase não tinha
-  // imagem. Leitura anônima em cache de 5 min e prazo de 1,5 s (a mesma da
-  // checagem da vitrine). Leitura que falha ou passa do prazo, curso fora do
-  // ar ou sem capa: o cartão de texto de sempre, sem quadro vazio no lugar.
+  // The course's real cover, the same as on its own page: the home had almost
+  // no imagery. Anonymous read cached for 5 min with a 1.5 s timeout (the same
+  // as the storefront check). A read that fails or times out, a course that is
+  // offline or has no cover: the usual text-only card, with no empty frame in
+  // its place.
   const showcase = marketplaceOpen ? null : await getShowcaseCourseCover(SHOWCASE_COURSE_ID);
   const cover = showcase?.coverImageUrl ? { src: showcase.coverImageUrl, alt: showcase.title } : null;
 
@@ -67,15 +69,16 @@ export default async function Home() {
 
   return (
     <div className="page-shell home-scroll">
-      {/* .home-scroll liga a coreografia de rolagem (globals.css, "Home:
-          coreografia de rolagem"); o fio abaixo é a barra de leitura. */}
+      {/* .home-scroll turns on the scroll choreography (globals.css, "Home:
+          scroll choreography"); the line below is the reading bar. */}
       <div aria-hidden="true" className="home-scroll-progress" />
       <SiteNav />
-      {/* Um <main> por página, alvo do "Skip to content" da barra. */}
+      {/* One <main> per page, the target of the bar's "Skip to content". */}
       <main id="conteudo">
         <MarketingHero />
-        {/* Fatos que já são verdade (moedas, tarifa fixa, compromissos e o
-            teste), logo abaixo do topo. Sem âncora: não é destino de menu. */}
+        {/* Facts that are already true (currencies, flat fee, commitments and
+            the trial), right below the top. No anchor: it is not a menu
+            destination. */}
         <HomeFactsBand />
         <section id="how-it-works" className="home-how scroll-mt-28">
           <HowItWorksStrip />
@@ -87,14 +90,14 @@ export default async function Home() {
         ) : (
           <section id="real-course" className="home-feature mx-auto w-full max-w-7xl px-5 sm:px-8">
             {cover ? (
-              // Celular e tablet: capa em cima (16:9, largura toda) e o texto
-              // embaixo. As duas colunas só começam no lg: entre 768 e 1023 o
-              // texto ficava bem mais alto que a capa. Do lg para cima a capa
-              // fica à esquerda (45%), com margem e cantos próprios, e capa e
-              // texto ficam centrados na altura: a capa é sempre 16:9, nunca
-              // estica nem corta para acompanhar o texto. O zoom lento no
-              // mouse é o da foto da vitrine (.marketplace-card__media img:
-              // 500ms, mesma curva, 1.045).
+              // Phone and tablet: cover on top (16:9, full width) and the text
+              // below. The two columns only start at lg: between 768 and 1023
+              // the text was much taller than the cover. From lg up the cover
+              // sits on the left (45%), with its own margin and corners, and
+              // cover and text are centered in height: the cover is always
+              // 16:9, and never stretches or crops to follow the text. The
+              // slow zoom on the mouse is the storefront photo's
+              // (.marketplace-card__media img: 500ms, same curve, 1.045).
               <Link
                 href={SHOWCASE_COURSE_PATH}
                 className="group flex flex-col overflow-hidden rounded-lg border fine-rule bg-white shadow-[var(--shadow-soft)] transition hover:border-[var(--color-primary)] lg:flex-row lg:items-center"
@@ -127,13 +130,14 @@ export default async function Home() {
         <section id="capabilities" className="scroll-mt-28">
           <CapabilitiesGrid />
         </section>
-        {/* Para quem é: o público que o site já nomeia, com três retratos.
-            Sem âncora, como a faixa de fatos: não é destino de menu. */}
+        {/* Who it is for: the audience the site already names, with three
+            portraits. No anchor, like the facts band: it is not a menu
+            destination. */}
         <HomeWhoFor />
         <section id="promise" className="scroll-mt-28">
           <PromisePreviewBand />
         </section>
-        {/* Perguntas frequentes, com as respostas da central de ajuda. */}
+        {/* Frequently asked questions, with the answers from the help center. */}
         <section id="faq" className="scroll-mt-28">
           <HomeFaq />
         </section>

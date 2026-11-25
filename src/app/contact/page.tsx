@@ -17,10 +17,10 @@ export async function generateMetadata() {
   });
 }
 
-// Todo caminho daqui funciona sem login. /support é uma tela protegida: para
-// um visitante, "Open a support ticket" virava um formulário de login sem
-// aviso. O ticket continua existindo, mas anunciado como o que é (só para
-// quem tem conta), no parágrafo de abertura.
+// Every path here works without a login. /support is a protected screen: for
+// a visitor, "Open a support ticket" became a login form with no
+// notice. The ticket still exists, but announced as what it is (only for
+// people with an account), in the opening paragraph.
 
 
 export default async function ContactPage({
@@ -79,8 +79,8 @@ export default async function ContactPage({
       title={t("publicPages.contact.reach_the_right_team_for_support")}
       description={
         <>
-          {/* Os dois links seguem a cor do parágrafo, como a página foi
-              aprovada: o navy que pediam nunca chegou à tela. */}
+          {/* The two links follow the paragraph color, as the page was
+              approved: the navy they asked for never reached the screen. */}
           {t("publicPages.contact.prefer_email_write_to")}{" "}
           <a
             href={`mailto:${SUPPORT_EMAIL}`}

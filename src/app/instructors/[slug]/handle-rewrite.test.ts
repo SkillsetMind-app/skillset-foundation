@@ -5,9 +5,9 @@ import { describe, expect, it } from "vitest";
 
 import nextConfig from "../../../../next.config";
 
-// `/@usuario` não pode ser pasta (no App Router, @ é slot de rota paralela):
-// é um rewrite do next.config para a página de perfil. Mesmo matcher e mesmo
-// montador de destino que o Next usa.
+// `/@usuario` cannot be a folder (in the App Router, @ is a parallel route slot):
+// it is a next.config rewrite to the profile page. Same matcher and same
+// destination builder that Next uses.
 async function rewriteOf(pathname: string): Promise<string | null> {
   const rewrites = await nextConfig.rewrites!();
   const list = Array.isArray(rewrites)
@@ -23,12 +23,12 @@ async function rewriteOf(pathname: string): Promise<string | null> {
 }
 
 describe("/@usuario", () => {
-  it("serve a página de perfil sem mudar a URL", async () => {
+  it("serves the profile page without changing the URL", async () => {
     expect(await rewriteOf("/@ana.souza")).toBe("/instructors/@ana.souza");
     expect(await rewriteOf("/@ana_souza-2")).toBe("/instructors/@ana_souza-2");
   });
 
-  it("não engole outras rotas nem subcaminhos", async () => {
+  it("does not swallow other routes or subpaths", async () => {
     for (const path of ["/courses", "/instructors/abc", "/ana", "/@ana/extra", "/@"]) {
       expect(await rewriteOf(path), path).toBeNull();
     }

@@ -6,52 +6,55 @@ import { sendOpsAlert } from "@/lib/ops/alert";
 import type { Database, Json } from "@/lib/supabase/database.types";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
-// GET /api/cron/course-cleanup — apaga os arquivos (Storage) e os videos
-// (Bunny) de produto apagado. A fila (course_deletions) so ganha linha quando
-// o DELETE do curso fez commit (gatilho em courses, migration 20261008030000);
-// esta rota so le a fila.
+// GET /api/cron/course-cleanup — deletes the files (Storage) and videos
+// (Bunny) of a deleted product. The queue (course_deletions) only gets a row
+// once the course's DELETE has committed (trigger on courses, migration
+// 20261008030000); this route only reads the queue.
 //
-// ENSAIO por padrao: sem COURSE_CLEANUP_LIVE=1 nada e apagado e nada muda no
-// banco; a resposta e o log dizem quantos arquivos e videos SERIAM apagados,
-// com `due` (ja passou um dia). O ensaio olha do mais novo para o mais antigo:
-// o produto de teste que acabou de ser apagado aparece mesmo com fila cheia.
-// A mesma variavel e a chave de desligar.
+// DRY RUN by default: without COURSE_CLEANUP_LIVE=1 nothing is deleted and
+// nothing changes in the database; the response and the log say how many files
+// and videos WOULD be deleted, with `due` (a day has already passed). The dry
+// run looks from newest to oldest: the test product that was just deleted
+// shows up even with a full queue. The same variable is the off switch.
 //
-// Travas, nesta ordem:
-//   - so pedidos `pending` com mais de um dia (Bunny nao tem backup; o dia da
-//     margem para a equipe cancelar um "apaguei o produto errado");
-//   - arquivos: o banco lista so `courses/<id>/` (barra final inclusa) dos
-//     dois baldes, so o que nasceu enquanto o curso existia, recusa id
-//     perigoso ou reaproveitado, e marca `in_use` o que outra linha viva cita
-//     (esses ficam); aqui a conta da pasta e refeita antes de cada remove;
-//   - video: so com recibo valido deste curso e deste dono (HMAC de
-//     src/lib/bunny/server.ts), e o banco confirma LOGO ANTES de cada DELETE
-//     que a fila segue pending, que o id nao voltou e que ninguem cita o video;
-//   - tempo: cerca de 40 s por volta. Estourou no meio de um produto: o que ja
-//     saiu fica salvo (video apagado sai da fila) e a proxima hora continua,
-//     sem gastar tentativa. Tres voltas seguidas sem apagar nada = 1 tentativa;
-//   - falhou: conta tentativa e tenta de novo na proxima hora; na 5a vira
-//     `failed` e sai um alerta para a equipe (src/lib/ops/alert.ts). Alerta que
-//     nao chegou = 500, e o GitHub Actions fica vermelho.
-// Log e resposta levam contagens e ids de curso, nunca chave nem nome de arquivo.
+// Safeguards, in this order:
+//   - only `pending` requests older than one day (Bunny has no backup; the day
+//     is the margin for the staff to cancel an "I deleted the wrong product");
+//   - files: the database lists only `courses/<id>/` (trailing slash included)
+//     from the two buckets, only what was created while the course existed,
+//     rejects a dangerous or reused id, and marks `in_use` whatever another
+//     live row cites (those stay); here the folder tally is redone before each
+//     remove;
+//   - video: only with a valid receipt for this course and this owner (HMAC in
+//     src/lib/bunny/server.ts), and the database confirms RIGHT BEFORE each
+//     DELETE that the queue is still pending, that the id did not come back and
+//     that nobody cites the video;
+//   - time: about 40 s per run. If it runs out in the middle of a product, what
+//     was already deleted stays saved (a deleted video leaves the queue) and
+//     the next hour continues, without spending an attempt. Three runs in a row
+//     that delete nothing = 1 attempt;
+//   - failure: counts an attempt and tries again next hour; on the 5th it
+//     becomes `failed` and an alert goes to the staff (src/lib/ops/alert.ts). An
+//     alert that did not arrive = 500, and GitHub Actions turns red.
+// The log and the response carry counts and course ids, never a key or a file name.
 //
-// Chamado de hora em hora por .github/workflows/stripe-attention.yml (o plano
-// da Vercel so agenda uma vez por dia).
+// Called every hour by .github/workflows/stripe-attention.yml (the Vercel plan
+// only schedules once a day).
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const GRACE_MS = 24 * 60 * 60 * 1000; // ponytail: janela fixa; env so se a equipe pedir
+const GRACE_MS = 24 * 60 * 60 * 1000; // ponytail: fixed window; env only if the staff asks
 const MAX_JOBS = 5;
 const MAX_ATTEMPTS = 5;
 const STALLED_RUNS_PER_ATTEMPT = 3;
-// Abaixo dos 60 s da Vercel com folga para a ultima chamada (8 s na Bunny).
+// Below Vercel's 60 s with room for the last call (8 s at Bunny).
 const BUDGET_MS = 40_000;
 const CHUNK = 100;
 const BUCKETS = ["public-media", "course-content"] as const;
-// Cada RPC tem freio proprio: o de 40 s so e conferido ENTRE chamadas, e uma
-// consulta lenta passaria dos 60 s da Vercel sem contar tentativa nem alertar.
+// Each RPC has its own timeout: the 40 s budget is only checked BETWEEN calls,
+// and a slow query would run past Vercel's 60 s without counting an attempt or alerting.
 const RPC_TIMEOUT_MS = 15_000;
 
 type Admin = ReturnType<typeof getSupabaseAdminClient>;
@@ -101,7 +104,7 @@ export async function GET(request: Request) {
   if (live) {
     query = query.lt("requested_at", cutoff);
   }
-  // Ao vivo, o mais antigo primeiro; no ensaio, o mais novo (ver o topo).
+  // Live, the oldest first; in the dry run, the newest (see the top).
   const { data: jobs, error } = await query.order("requested_at", { ascending: live }).limit(MAX_JOBS);
   if (error) {
     console.error("Course cleanup could not read the queue", error.message);
@@ -132,8 +135,8 @@ export async function GET(request: Request) {
   );
 }
 
-// Toda escrita exige a linha ainda pending: um `cancelled` da equipe no meio
-// da volta nunca e desfeito por aqui.
+// Every write requires the row to still be pending: a `cancelled` set by the
+// staff in the middle of a run is never undone here.
 async function saveRow(admin: Admin, courseId: string, patch: QueuePatch) {
   const { error } = await admin
     .from("course_deletions")
@@ -143,8 +146,8 @@ async function saveRow(admin: Admin, courseId: string, patch: QueuePatch) {
   return error;
 }
 
-// Uma tentativa a mais. Na 5a: `failed` e um alerta. Devolve true se o alerta
-// nao chegou a ninguem.
+// One more attempt. On the 5th: `failed` and an alert. Returns true if the
+// alert did not reach anyone.
 async function countAttempt(admin: Admin, job: Job, message: string): Promise<boolean> {
   const attempts = job.attempts + 1;
   const gaveUp = attempts >= MAX_ATTEMPTS;
@@ -167,8 +170,9 @@ async function countAttempt(admin: Admin, job: Job, message: string): Promise<bo
   return !delivered;
 }
 
-// O tempo acabou no meio do produto: nao e falha. Com progresso, so a hora;
-// sem progresso, conta a volta parada, e 3 seguidas viram uma tentativa.
+// Time ran out in the middle of the product: that is not a failure. With
+// progress, only the hour passes; without progress, it counts the stalled run,
+// and 3 in a row become one attempt.
 async function recordPause(admin: Admin, job: Job, progressed: boolean): Promise<boolean> {
   const stalled = progressed ? 0 : job.stalled_runs + 1;
   if (stalled >= STALLED_RUNS_PER_ATTEMPT) {
@@ -183,9 +187,9 @@ async function recordPause(admin: Admin, job: Job, progressed: boolean): Promise
   return false;
 }
 
-// Lista os arquivos da pasta do curso pelo banco, e refaz a conta da pasta
-// aqui: uma linha fora de `courses/<id>/` ou de outro balde nunca chega ao
-// remove. Arquivo que outra linha viva cita (`in_use`) fica.
+// Lists the files in the course folder through the database, and redoes the
+// folder tally here: a row outside `courses/<id>/` or from another bucket never
+// reaches remove. A file that another live row cites (`in_use`) stays.
 async function listObjects(admin: Admin, courseId: string) {
   const { data, error } = await admin
     .rpc("course_storage_objects_for_cleanup", { p_course_id: courseId })
@@ -213,8 +217,9 @@ function fileKeys(byBucket: Map<string, string[]>) {
 }
 
 async function cleanJob(admin: Admin, job: Job, live: boolean, outOfTime: () => boolean) {
-  // Videos: so com recibo deste curso e deste dono. Sem recibo nunca sai, e
-  // fica listado no resultado da linha (nao some calado num `done`).
+  // Videos: only with a receipt for this course and this owner. Without a
+  // receipt it is never deleted, and it stays listed in the row's result (it
+  // does not silently vanish into a `done`).
   const assets = Array.isArray(job.bunny_assets) ? job.bunny_assets : [];
   const proven: string[] = [];
   const noReceipt: string[] = [];
@@ -256,12 +261,12 @@ async function cleanJob(admin: Admin, job: Job, live: boolean, outOfTime: () => 
         progressed = true;
       }
     }
-    // O PostgREST devolve no maximo ~1000 linhas por chamada: pasta grande sai
-    // em varias voltas. Falha e so o arquivo que foi mandado apagar e continua
-    // listado. Sobrou arquivo que nao estava no lote = progresso salvo, e a
-    // proxima hora continua.
-    // ponytail: se as ~1000 primeiras linhas forem todas in_use, a pasta vira
-    // done com arquivos depois delas. Teto conhecido; paginar a RPC se aparecer.
+    // PostgREST returns at most ~1000 rows per call: a large folder goes out in
+    // several runs. A failure is only a file that was sent to be deleted and is
+    // still listed. A file left over that was not in the batch = progress
+    // saved, and the next hour continues.
+    // ponytail: if the first ~1000 rows are all in_use, the folder becomes done
+    // with files after them. Known ceiling; paginate the RPC if it shows up.
     const removed = new Set(fileKeys(files.byBucket));
     const left = await listObjects(admin, job.course_id);
     const stuck = fileKeys(left.byBucket).filter((key) => removed.has(key)).length;
@@ -273,8 +278,8 @@ async function cleanJob(admin: Admin, job: Job, live: boolean, outOfTime: () => 
   let remaining = assets;
   for (const videoId of proven) {
     if (outOfTime()) return paused();
-    // Logo antes de CADA DELETE, nao uma vez no comeco: o id pode ter voltado,
-    // a equipe pode ter cancelado, outra aula pode ter passado a usar o video.
+    // Right before EACH DELETE, not once at the start: the id may have come
+    // back, the staff may have cancelled, another lesson may have started using the video.
     const { data: deletable, error } = await admin
       .rpc("course_cleanup_video_deletable", { p_course_id: job.course_id, p_video_id: videoId })
       .abortSignal(AbortSignal.timeout(RPC_TIMEOUT_MS));
@@ -289,7 +294,7 @@ async function cleanJob(admin: Admin, job: Job, live: boolean, outOfTime: () => 
 
     await deleteBunnyVideo(videoId);
     progressed = true;
-    // Progresso salvo: o video sai da fila e a proxima volta nao o chama de novo.
+    // Progress saved: the video leaves the queue and the next run does not call it again.
     remaining = remaining.filter((asset) => (asset as { videoId?: unknown } | null)?.videoId !== videoId);
     const saveError = await saveRow(admin, job.course_id, {
       bunny_assets: remaining,
@@ -299,7 +304,7 @@ async function cleanJob(admin: Admin, job: Job, live: boolean, outOfTime: () => 
   }
   if (!live) return { counts, done: false, progressed };
 
-  // Fica so id e contagens: o nome do produto sai da linha.
+  // Only the id and counts remain: the product name is removed from the row.
   const error = await saveRow(admin, job.course_id, {
     status: "done",
     finished_at: new Date().toISOString(),

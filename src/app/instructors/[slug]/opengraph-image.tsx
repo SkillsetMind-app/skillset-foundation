@@ -9,24 +9,24 @@ import { getPublicProfileByRef, listCreatorCourses } from "@/lib/data/server/pub
 import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 import { getSupabaseClientConfig } from "@/lib/supabase/config";
 
-// Cartão de compartilhamento do professor (1200×630): foto, nome, @ e número
-// de cursos. Antes todo perfil colado no WhatsApp/Instagram saía com o mesmo
-// cartão genérico da plataforma. Em inglês, como o cartão padrão: quem busca a
-// imagem é o robô da rede, sem cookie de idioma.
+// Teacher sharing card (1200×630): photo, name, @ and number
+// of courses. Before, every profile pasted into WhatsApp/Instagram came out with the same
+// generic platform card. In English, like the default card: whoever fetches the
+// image is the network's robot, with no language cookie.
 export const alt = brand.name;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 const MAX_PHOTO_BYTES = 2_000_000;
-// Um PNG de 12000×12000 cabe em ~400 KB e custa ~1,3 GB para desenhar: o
-// tamanho em pixels vem do cabeçalho, antes de qualquer decodificação.
+// A 12000×12000 PNG fits in ~400 KB and costs ~1.3 GB to draw: the
+// size in pixels comes from the header, before any decoding.
 const MAX_PHOTO_SIDE = 2048;
 
 /**
- * O servidor só busca foto nos hosts que a plataforma já aceita para avatar
- * (os mesmos do remotePatterns do next.config): o Storage do nosso Supabase e
- * as fotos da conta Google. Sem esta trava, quem controla a URL da foto faria
- * o servidor buscar o endereço que quisesse (SSRF).
+ * The server only fetches photos from the hosts the platform already accepts for avatars
+ * (the same ones as next.config's remotePatterns): our Supabase Storage and
+ * the Google account photos. Without this lock, whoever controls the photo URL would make
+ * the server fetch whatever address they wanted (SSRF).
  */
 function isAllowedPhotoUrl(url: string | null): url is string {
   if (!url) return false;
@@ -42,7 +42,7 @@ function isAllowedPhotoUrl(url: string | null): url is string {
   }
 }
 
-/** Largura e altura lidas do cabeçalho PNG (IHDR) ou JPEG (SOFn); null se não der. */
+/** Width and height read from the PNG (IHDR) or JPEG (SOFn) header; null if not possible. */
 function pixelSize(bytes: Buffer, type: string): { width: number; height: number } | null {
   if (type === "image/png") {
     const png = bytes.length >= 24 && bytes.readUInt32BE(0) === 0x89504e47 && bytes.toString("ascii", 12, 16) === "IHDR";
@@ -52,19 +52,19 @@ function pixelSize(bytes: Buffer, type: string): { width: number; height: number
   let i = 2;
   while (i + 9 <= bytes.length && bytes[i] === 0xff) {
     const marker = bytes[i + 1];
-    // SOF0..SOF15, menos DHT (C4), JPG (C8) e DAC (CC).
+    // SOF0..SOF15, except DHT (C4), JPG (C8) and DAC (CC).
     if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
       return { height: bytes.readUInt16BE(i + 5), width: bytes.readUInt16BE(i + 7) };
     }
-    if (marker === 0xda) return null; // começou a imagem sem SOF
+    if (marker === 0xda) return null; // the image started without an SOF
     i += 2 + bytes.readUInt16BE(i + 2);
   }
   return null;
 }
 
-// O renderizador só desenha PNG e JPEG com segurança. Foto em outro formato,
-// grande, fora do ar ou lenta: o cartão sai com a inicial, nunca quebra.
-// Sem seguir redirect: ele poderia levar para fora da lista acima.
+// The renderer only draws PNG and JPEG safely. A photo in another format,
+// large, offline or slow: the card comes out with the initial, it never breaks.
+// Without following redirects: it could lead outside the list above.
 async function photoDataUri(url: string | null): Promise<string | null> {
   if (!isAllowedPhotoUrl(url)) return null;
   try {
@@ -103,7 +103,7 @@ export default async function ProfileOpengraphImage({ params }: { params: Promis
     ? translate(en, count === 1 ? "publicPages.profile.og_courses_one" : "publicPages.profile.og_courses_many")
       .replace("{count}", String(count))
     : null;
-  // Plano que tira a marca da plataforma: o cartão também sai sem o nosso logo.
+  // A plan that removes the platform brand: the card also comes out without our logo.
   const hideBrand = profile.storefront?.branding?.hidePlatformBrand === true;
 
   return new ImageResponse(
@@ -159,8 +159,8 @@ export default async function ProfileOpengraphImage({ params }: { params: Promis
     ),
     {
       ...size,
-      // A URL leva ?v=<updatedAt> (page.tsx): perfil novo, URL nova; o CDN
-      // pode guardar cada versão.
+      // The URL carries ?v=<updatedAt> (page.tsx): new profile, new URL; the CDN
+      // can keep each version.
       headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" },
     },
   );

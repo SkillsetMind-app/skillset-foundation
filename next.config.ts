@@ -8,9 +8,10 @@ const nextConfig: NextConfig = {
   // fingerprinting with no functional value and, on a public repo, points
   // scanners straight at the framework version. (Security audit 2026-06-18.)
   poweredByHeader: false,
-  // Legenda com IA: a rota chama o binário do ffmpeg (src/lib/ai/audio.ts). O
-  // pacote só exporta o CAMINHO do binário, então o rastreio de arquivos não o
-  // vê sozinho: fica fora do bundle e entra à mão na função dessa rota.
+  // AI captions: the route calls the ffmpeg binary (src/lib/ai/audio.ts). The
+  // package only exports the PATH to the binary, so file tracing does not see
+  // it on its own: it stays out of the bundle and is added by hand to this
+  // route's function.
   serverExternalPackages: ["ffmpeg-static"],
   outputFileTracingIncludes: {
     "/api/teach/ai": ["./node_modules/ffmpeg-static/ffmpeg"],
@@ -40,13 +41,14 @@ const nextConfig: NextConfig = {
   // strict-dynamic): it is built in src/lib/security/csp.ts and set by
   // src/proxy.ts as Content-Security-Policy, with violations sent to
   // /api/csp-report.
-  // /lp e o atalho curto para a landing de Founding Creator, que vive em seu
-  // proprio dominio (lp.skillsetmind.com, projeto Vercel skillsetmind-landing).
-  // E redirect, nao rewrite: a landing e HTML estatico que chama support.js e
-  // uploads/ por caminho RELATIVO, entao servi-la sob /lp resolveria os assets
-  // em /support.js e quebraria tudo. Forcar barra no fim brigaria com o
-  // trailingSlash:false do Next. O fragmento (#pricing, #start...) e preservado
-  // pelo navegador no redirect. ponytail: uma linha em vez de um proxy.
+  // /lp is the short shortcut to the Founding Creator landing, which lives on
+  // its own domain (lp.skillsetmind.com, Vercel project skillsetmind-landing).
+  // It is a redirect, not a rewrite: the landing is static HTML that calls
+  // support.js and uploads/ by RELATIVE path, so serving it under /lp would
+  // resolve the assets at /support.js and break everything. Forcing a trailing
+  // slash would fight Next's trailingSlash:false. The fragment (#pricing,
+  // #start...) is preserved by the browser on the redirect. ponytail: one line
+  // instead of a proxy.
   async redirects() {
     return [
       // Redirects run before proxy.ts. Let entry aliases reach its method gate
@@ -65,23 +67,24 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  // `/@usuario` e o link da bio do professor. No App Router uma pasta que
-  // comeca com @ e slot de rota paralela, entao o endereco mora aqui: rewrite
-  // (a URL do visitante nao muda) para a pagina de perfil, que le o @ do
-  // parametro. Nada precisa ser reservado: nenhuma rota do site comeca com @.
+  // `/@username` is the teacher's bio link. In the App Router a folder that
+  // starts with @ is a parallel route slot, so the address lives here: a
+  // rewrite (the visitor's URL does not change) to the profile page, which
+  // reads the @ from the parameter. Nothing needs to be reserved: no route on
+  // the site starts with @.
   async rewrites() {
     return [{ source: "/@:username", destination: "/instructors/@:username" }];
   },
   async headers() {
     return [
       {
-        // HSTS abrangente (2 anos, subdomínios, preload) SÓ no host da própria
-        // plataforma. Desde que servimos domínios de professor (PR #105), a
-        // regra antiga em `/:path*` sem condição de host mandava o navegador
-        // forçar HTTPS por 2 anos em TODOS os subdomínios de um domínio que não
-        // é nosso, e inscrevia o nome dele na lista de preload — um efeito
-        // sobre propriedade de terceiro que o dono não pediu e não consegue
-        // desfazer rápido (sair da preload leva meses).
+        // Broad HSTS (2 years, subdomains, preload) ONLY on the platform's own
+        // host. Since we started serving teacher domains (PR #105), the old
+        // rule on `/:path*` with no host condition told the browser to force
+        // HTTPS for 2 years on ALL subdomains of a domain that is not ours, and
+        // enrolled its name in the preload list. That is an effect on a third
+        // party's property that the domain owner did not ask for and cannot
+        // undo quickly (leaving the preload list takes months).
         source: "/:path*",
         has: [{ type: "host", value: "(www\\.)?skillsetmind\\.com" }],
         headers: [
@@ -92,8 +95,8 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        // Demais hosts (domínio do professor): ainda força HTTPS, mas fala só
-        // pelo host exato — sem falar pelos subdomínios dele e sem preload.
+        // All other hosts (the teacher's domain): still forces HTTPS, but only
+        // for the exact host, with no say over its subdomains and no preload.
         source: "/:path*",
         missing: [{ type: "host", value: "(www\\.)?skillsetmind\\.com" }],
         headers: [

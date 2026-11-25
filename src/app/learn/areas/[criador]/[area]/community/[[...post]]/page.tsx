@@ -4,9 +4,9 @@ import { brand as siteBrand } from "@/data/brand";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { getCreatorBrand } from "@/lib/learn/server/member-area";
 
-// A comunidade de uma área extra: /learn/areas/@usuario/slug/community (e
-// .../community/q/<post>). O banco decide quem entra: o dono e quem tem
-// matrícula paga em produto desta área.
+// The community of an extra area: /learn/areas/@usuario/slug/community (and
+// .../community/q/<post>). The database decides who gets in: the owner and whoever has a
+// paid enrollment in a product of this area.
 export async function generateMetadata() {
   const { t } = await getServerTranslation();
   return {
@@ -19,7 +19,7 @@ const decode = (value: string) => {
   try {
     return decodeURIComponent(value);
   } catch {
-    // Codificação quebrada: segue com o texto cru, e o banco responde null.
+    // Broken encoding: continues with the raw text, and the database answers null.
     return value;
   }
 };

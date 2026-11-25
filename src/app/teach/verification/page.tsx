@@ -18,9 +18,9 @@ export default async function CreatorVerificationPage() {
       <PlatformShell title={t("professionalBadge.title")} hideHeader>
         <Suspense
           fallback={
-            // A forma da tela (titulo e cartao), na mesma coluna do painel:
-            // antes era um cartao com uma frase, trocado por outro cartao.
-            // Alinhada a esquerda, como o painel desde o T-01 (sem mx-auto).
+            // The shape of the screen (title and card), in the same column as the dashboard:
+            // before it was a card with one sentence, swapped for another card.
+            // Left-aligned, like the dashboard since T-01 (no mx-auto).
             <div className="w-full max-w-3xl">
               <CardPageSkeleton label={t("professionalBadge.loading")} />
             </div>

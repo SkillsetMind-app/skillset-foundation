@@ -169,14 +169,14 @@ async function markStripeEventDone(admin: Admin, eventId: string): Promise<void>
   if (error) throw new Error(error.message);
 }
 
-// Uma falha aqui é o caminho do dinheiro quebrando: entre orders.status='paid'
-// e a inserção da matrícula há uma janela em que o comprador pagou e não tem
-// acesso. Antes, o único registro era um console.error, e a linha ficava em
-// 'processing' para sempre — indistinguível de um evento morto por deploy.
-// Havia um preso há 16 dias em produção sem que nada apontasse para ele.
+// A failure here is the money path breaking: between orders.status='paid'
+// and the enrollment insert there is a window in which the buyer has paid and has no
+// access. Before, the only record was a console.error, and the row stayed in
+// 'processing' forever — indistinguishable from an event killed by a deploy.
+// There was one stuck for 16 days in production and nothing pointed to it.
 //
-// Isto não impede a falha; torna-a consultável (view
-// stripe_events_needing_attention) e, por isso, alertável.
+// This does not prevent the failure; it makes it queryable (view
+// stripe_events_needing_attention) and, because of that, alertable.
 async function markStripeEventFailed(
   admin: Admin,
   eventId: string,
@@ -201,8 +201,8 @@ async function markStripeEventFailed(
       })
       .eq("stripe_event_id", eventId);
   } catch {
-    // Registrar a falha nunca pode mascarar a falha original: o webhook precisa
-    // devolver 500 para o Stripe reentregar, aconteça o que acontecer aqui.
+    // Recording the failure must never mask the original failure: the webhook has to
+    // return 500 so Stripe redelivers, no matter what happens here.
   }
 }
 
@@ -230,9 +230,9 @@ type AccessEmailSale = {
   locale: Locale;
   /** The sale came through guest checkout (metadata.checkout_origin). */
   fromGuestCheckout?: boolean;
-  /** Assinatura: preço e intervalo de cada renovação, para o e-mail confirmar. */
+  /** Subscription: price and interval of each renewal, so the email can confirm them. */
   renewal?: PurchaseRenewalTerms;
-  /** A caixa do acesso imediato foi marcada na compra (metadata do Stripe). */
+  /** The immediate-access checkbox was ticked at purchase (Stripe metadata). */
   withdrawalConsent?: boolean;
 };
 
@@ -263,20 +263,20 @@ function afterResponse(task: () => Promise<void>): void {
   }
 }
 
-// O preço de tabela e o intervalo do item da assinatura: é o que cada
-// renovação cobra (um cupom só vale na primeira fatura). Sem preço recorrente
-// legível o e-mail sai sem o parágrafo, em vez de afirmar um valor errado.
+// The list price and the interval of the subscription item: this is what each
+// renewal charges (a coupon only applies to the first invoice). Without a readable
+// recurring price the email is sent without the paragraph, instead of stating a wrong amount.
 function subscriptionRenewalTerms(
   item: Stripe.SubscriptionItem | undefined,
   currency: string,
 ): PurchaseRenewalTerms | undefined {
   const unitAmount = item?.price?.unit_amount;
-  // O tipo do Stripe aceita qualquer texto aqui: só mês e ano viram frase.
+  // The Stripe type accepts any text here: only month and year become a phrase.
   const rawInterval = item?.price?.recurring?.interval;
   const interval = rawInterval === "month" ? "month" : rawInterval === "year" ? "year" : null;
   if (typeof unitAmount !== "number" || unitAmount <= 0) return undefined;
   if (!interval) return undefined;
-  // "A cada 3 meses" não cabe na frase "every month": sem ela, o e-mail não erra.
+  // "Every 3 months" does not fit the phrase "every month": without it, the email is not wrong.
   if ((item?.price?.recurring?.interval_count ?? 1) !== 1) return undefined;
   return { amountMinor: fromStripeAmount(unitAmount, currency), currency, interval };
 }
@@ -354,10 +354,10 @@ function queueCreatorSaleEmail(admin: Admin, sale: CreatorSale): void {
 }
 
 // --- one-time checkout fulfilment -------------------------------------------
-// Resgata o cupom e marca o pedido paid numa transacao so, com o pedido
-// travado. O retorno e o status fresco: 'settled' acabou de virar paid; 'paid'
-// ja era paid com este pagamento; 'refunded' ja devolveu o dinheiro; 'closed'
-// foi fechado (expired/failed) antes de o pagamento chegar.
+// Redeems the coupon and marks the order paid in a single transaction, with the order
+// locked. The return value is the fresh status: 'settled' just became paid; 'paid'
+// was already paid with this payment; 'refunded' already gave the money back; 'closed'
+// was closed (expired/failed) before the payment arrived.
 type PaidOrderOutcome = "settled" | "paid" | "refunded" | "closed";
 
 async function settlePaidCourseOrder(
@@ -436,9 +436,9 @@ async function releaseAbandonedSubscriptionCoupon(
   await releaseCourseCouponReservation(admin, reservationId);
 }
 
-// Com chaves proprias o professor escreve o metadata: a reserva so e tocada se
-// for deste curso e deste comprador (e o curso da conta do evento). Reserva que
-// nao existe sai calada; divergencia nao mexe nela e avisa ops.
+// With their own keys the teacher writes the metadata: the reservation is only touched if
+// it belongs to this course and this buyer (and the course is on the event's account). A reservation that
+// does not exist is skipped silently; a mismatch leaves it alone and alerts ops.
 async function couponReservationBelongsToSale(
   admin: Admin,
   reservationId: string,
@@ -453,7 +453,7 @@ async function couponReservationBelongsToSale(
     .eq("order_id", reservationId)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  // Sem reserva (cupom apagado) a RPC nao teria o que fazer.
+  // Without a reservation (deleted coupon) the RPC would have nothing to do.
   if (!reservation) return false;
   const { data: coupon, error: couponError } = await admin
     .from("course_coupons")
@@ -560,8 +560,8 @@ async function handleCheckoutCompleted(
     : { data: null, error: null };
   if (orderError) throw new Error("Could not verify the saved checkout order.");
   let order = metadataOrder;
-  // Na conta conectada o professor pode editar o metadata da sessao. A sessao
-  // gravada no pedido manda: achou por ela, processa esse pedido e avisa ops.
+  // On the connected account the teacher can edit the session metadata. The session
+  // recorded on the order rules: if found through it, process that order and alert ops.
   let metadataTampered = false;
   if (connectedAccountId && order?.checkout_session_id !== session.id) {
     const { data: sessionOrder, error: sessionOrderError } = await admin
@@ -582,9 +582,9 @@ async function handleCheckoutCompleted(
       });
     }
   }
-  // Com chaves proprias o professor tambem vende fora da plataforma (link ou
-  // checkout dele). O pedido nasce antes da sessao, entao sem pedido nosso o
-  // evento nao e nosso: 2xx, nada gravado. Plataforma sem pedido segue falhando.
+  // With their own keys the teacher also sells outside the platform (their own link or
+  // checkout). The order is created before the session, so without an order of ours the
+  // event is not ours: 2xx, nothing written. A platform event without an order keeps failing.
   if (!order && connectedAccountId) {
     console.info(`[stripe webhook] Checkout ${session.id} has no SkillsetMind order; ignored.`);
     return;
@@ -596,8 +596,8 @@ async function handleCheckoutCompleted(
   const orderId = order.id;
   const courseId = order.course_id;
   const userId = order.user_id;
-  // Antes a igualdade com o metadata garantia os dois; pela sessao gravada, o
-  // proprio pedido tem que trazer curso e comprador.
+  // Before, equality with the metadata guaranteed both; through the recorded session, the
+  // order itself has to carry the course and the buyer.
   if (typeof courseId !== "string" || !courseId || typeof userId !== "string" || !userId) {
     throw new Error("Saved checkout order is missing its course or buyer.");
   }
@@ -664,8 +664,8 @@ async function handleCheckoutCompleted(
     }
   }
 
-  // Cupom e status paid mudam juntos, sobre a linha fresca, antes de qualquer
-  // escrita de pagamento ou matricula.
+  // The coupon and the paid status change together, on the fresh row, before any
+  // payment or enrollment write.
   const outcome = await settlePaidCourseOrder(admin, {
     orderId,
     sessionId: session.id,
@@ -674,9 +674,9 @@ async function handleCheckoutCompleted(
     receiptUrl,
   });
   if (outcome === "closed") {
-    // Contencao, nao recuperacao: o cupom deste pedido ja foi solto e o lock
-    // pode ser de outra tentativa. Nada e concedido; o evento falha ate alguem
-    // reconciliar o pagamento a mao.
+    // Containment, not recovery: the coupon of this order has already been released and the lock
+    // may belong to another attempt. Nothing is granted; the event fails until someone
+    // reconcile the payment by hand.
     notifyOps({
       event: "stripe.webhook.paid_after_close",
       severity: "critical",
@@ -703,7 +703,7 @@ async function handleCheckoutCompleted(
     );
     return;
   }
-  // Reembolsado: o dinheiro ja voltou. Nada de acesso nem registro novo.
+  // Refunded: the money has already come back. No access and no new record.
   if (outcome === "refunded") return;
 
   const { data: course } = await admin
@@ -1245,9 +1245,9 @@ async function resolveCourseSubscriptionSale(
     if (meta.purpose !== "course_subscription") return null;
     if (eventAccountId && createdByOtherApplication(application)) {
       console.info(`[stripe webhook] Course subscription ${subscriptionId} was not created by SkillsetMind; ignored.`);
-      // null = as chaves do proprio professor (esperado). Outro id de aplicacao
-      // pode ser STRIPE_CONNECT_APPLICATION_ID errado (ex.: o de teste em
-      // producao): todo aluno novo pagaria sem acesso. Isso precisa de alarme.
+      // null = the teacher's own keys (expected). Another application id
+      // may be a wrong STRIPE_CONNECT_APPLICATION_ID (e.g. the test one in
+      // production): every new learner would pay without access. This needs an alarm.
       const applicationId = typeof application === "string" ? application : application?.id ?? null;
       if (applicationId) {
         notifyOps({
@@ -1374,13 +1374,13 @@ async function handleCourseSubscriptionLifecycle(
   if (!enrollment) return true; // invoice.paid creates it; lifecycle never creates
 
   const enrollmentStatus = String(enrollment.status ?? "");
-  // 'completed' revoga igual a 'active'. Enquanto a condição era só
-  // `=== "active"`, cancelar a assinatura de um curso já concluído não tirava
-  // nada — e 'completed' é escrito pelo PRÓPRIO ALUNO: `record_lesson_progress`
-  // faz `case when v_progress >= 100 then 'completed'` e é concedida a
-  // `authenticated`. Como a policy `course_lesson_content_select` aceita
-  // 'completed' exatamente como 'active', o caminho era: assinar um mês, marcar
-  // todas as aulas como vistas, cancelar — e ficar com o curso para sempre.
+  // 'completed' revokes the same as 'active'. While the condition was only
+  // `=== "active"`, canceling the subscription of an already completed course took
+  // nothing away — and 'completed' is written by the LEARNER THEMSELVES: `record_lesson_progress`
+  // does `case when v_progress >= 100 then 'completed'` and is granted to
+  // `authenticated`. Since the policy `course_lesson_content_select` accepts
+  // 'completed' exactly like 'active', the path was: subscribe for a month, mark
+  // all lessons as seen, cancel — and keep the course forever.
   const holdsAccess =
     enrollmentStatus === "active" || enrollmentStatus === "completed";
 
@@ -1395,8 +1395,8 @@ async function handleCourseSubscriptionLifecycle(
       "Revoke course subscription enrollment",
     );
   } else if (entitled && enrollmentStatus === "revoked") {
-    // Volta para 'completed' quando o aluno já tinha terminado, em vez de
-    // rebaixar para 'active': quem reassina não deve perder a conclusão.
+    // Goes back to 'completed' when the learner had already finished, instead of
+    // downgrading to 'active': someone who resubscribes should not lose the completion.
     const restoredStatus =
       Number(enrollment.progress_percent ?? 0) >= 100 ? "completed" : "active";
 
@@ -1539,20 +1539,20 @@ async function handleChargeRefunded(
     if (ledgersError) throw new Error(ledgersError.message);
     const ledger = (ledgers ?? []).find((l) => l.kind === "course_subscription");
 
-    // Uma compra AVULSA também cai aqui enquanto a linha de `payments` ainda não
-    // foi escrita — e ela nunca tem `kind === "course_subscription"`, então o
-    // `return` silencioso abaixo era o caminho dela: 200 para o Stripe, nada
-    // gravado em orders/enrollments/payout_ledger, nenhuma retentativa, e a
-    // fulfilment (que segue correndo) entregava o curso a quem acabou de ser
-    // reembolsado.
+    // A ONE-TIME purchase also lands here while the `payments` row has not yet
+    // been written — and it never has `kind === "course_subscription"`, so the
+    // silent `return` below was its path: 200 to Stripe, nothing
+    // written to orders/enrollments/payout_ledger, no retry, and the
+    // fulfilment (which keeps running) delivered the course to someone who had just been
+    // refunded.
     //
-    // O Stripe copia o metadata do PaymentIntent para a Charge (é do que o ramo
-    // da taxa de ativação, acima, já depende), então `orderId` presente
-    // identifica com precisão a compra de curso. Aqui vale o MESMO raciocínio
-    // que a linha ~1041 já aplica no ramo de baixo: lançar para o Stripe
-    // reenviar depois que a fulfilment terminar, em vez de perder o reembolso.
-    // Numa conta conectada o "orderId" pode ser do proprio professor: so conta
-    // se o pedido existe aqui.
+    // Stripe copies the PaymentIntent metadata to the Charge (it is what the activation
+    // fee branch, above, already depends on), so a present `orderId`
+    // precisely identifies the course purchase. Here the SAME reasoning applies
+    // that line ~1041 already applies in the branch below: throw so Stripe
+    // resends after the fulfilment finishes, instead of losing the refund.
+    // On a connected account the "orderId" may be the teacher's own: it only counts
+    // if the order exists here.
     if (
       !ledger
       && typeof charge.metadata?.orderId === "string"
@@ -1736,9 +1736,9 @@ async function handleChargeRefunded(
   }
 }
 
-// O trigger da matricula retira o certificado na mesma transacao do status
-// refunded. Falhas chegam a requireSupabaseWrite e mantem o evento reenviavel;
-// nao ha uma segunda escrita best-effort que possa deixar o certificado valido.
+// The enrollment trigger removes the certificate in the same transaction as the
+// refunded status. Failures reach requireSupabaseWrite and keep the event redeliverable;
+// there is no second best-effort write that could leave the certificate valid.
 
 // --- card disputes (chargebacks) --------------------------------------------
 // Under direct charges a dispute debits the TEACHER's own Stripe balance —
@@ -1944,10 +1944,10 @@ async function markOrderStatus(
     throw new Error("Terminal checkout event does not match its saved order.");
   }
 
-  // A leitura acima so falha cedo. Quem decide e a RPC, com o pedido travado:
-  // pago/reembolsado nunca desce [B2], pedido com cupom ja resgatado esta
-  // liquidando e fica como esta, e cupom reservado, lock DESTE pedido [B3] e
-  // status mudam juntos ou nao mudam.
+  // The read above only fails early. The RPC decides, with the order locked:
+  // paid/refunded never goes down [B2], an order with an already redeemed coupon is
+  // settling and stays as it is, and a reserved coupon, the lock of THIS order [B3] and the
+  // status change together or not at all.
   await requireSupabaseWrite(
     admin.rpc("close_unpaid_course_order", {
       p_order_id: orderId,
@@ -2430,16 +2430,16 @@ async function handleConnectedAccountUpdated(
         updated_at: ts,
       })
       .eq("stripe_connected_account_id", account.id)
-      // Um account.updated atrasado nao desfaz a desconexao. Reconectar cria
-      // conta nova (status "created") ou passa pelo refresh, que le o Stripe.
+      // A late account.updated does not undo the disconnection. Reconnecting creates a
+      // new account (status "created") or goes through the refresh, which reads Stripe.
       .or("stripe_connect_status.is.null,stripe_connect_status.neq.disconnected"),
     "Sync connected account readiness",
   );
 }
 
-// O professor desconectou a plataforma no proprio painel do Stripe: nada mais
-// cobra nem repassa por aqui. O id da conta fica (reembolso e historico usam).
-// Idempotente; conta desconhecida casa zero linhas e o evento segue 2xx.
+// The teacher disconnected the platform in their own Stripe dashboard: nothing more
+// is charged or paid out through here. The account id stays (refunds and history use it).
+// Idempotent; an unknown account matches zero rows and the event still returns 2xx.
 async function handleConnectedAccountDeauthorized(
   admin: Admin,
   accountId: string | null,
@@ -2458,7 +2458,7 @@ async function handleConnectedAccountDeauthorized(
     .eq("stripe_connected_account_id", accountId)
     .select("uid");
   if (error) throw new Error(`Mark connected account deauthorized: ${error.message}`);
-  // Assinaturas de alunos nessa conta seguem no Stripe dele: alguem precisa olhar.
+  // Learner subscriptions on that account remain on their Stripe: someone needs to look.
   for (const teacher of teachers ?? []) {
     notifyOps({
       event: "stripe.connect.deauthorized",
@@ -2664,8 +2664,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: true });
   } catch (error) {
     console.error("Stripe webhook handling failed", error);
-    // Deixa rastro consultável antes de devolver 500. O Stripe reentrega por
-    // ~3 dias; passado isso o evento existe apenas aqui.
+    // Leaves a queryable trace before returning 500. Stripe redelivers for
+    // ~3 days; after that the event exists only here.
     await markStripeEventFailed(admin, event.id, error);
     return NextResponse.json({ error: "Webhook handling failed." }, { status: 500 });
   }

@@ -160,11 +160,11 @@ describe("atomic product offer creation", () => {
     expect(offerCalls(rpc)).toHaveLength(0);
   });
 
-  // A moeda passava direto: String(body.currency ?? "USD").toUpperCase(), sem
-  // nenhuma lista. Qualquer sigla de tres letras virava o codigo enviado ao
-  // Stripe, e a correcao (isSupportedStripeCurrency) so tinha um teste que
-  // procurava a chamada no texto do arquivo — grep passa verde com a validacao
-  // presente e inerte. Este exercita a rota. (Auditoria de 2026-08-30, A-17.)
+  // The currency passed straight through: String(body.currency ?? "USD").toUpperCase(),
+  // with no list at all. Any three-letter code became the code sent to Stripe,
+  // and the fix (isSupportedStripeCurrency) only had a test that looked for the
+  // call in the file's text — grep passes green with the validation present and
+  // inert. This one exercises the route. (Audit of 2026-08-30, A-17.)
   it("refuses a currency Stripe does not support before touching the database", async () => {
     const rpc = vi.fn(async () => ({ data: null, error: null }));
     const admin = { from: vi.fn(() => courseQuery()), rpc };

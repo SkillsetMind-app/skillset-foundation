@@ -4,9 +4,9 @@ import { brand as siteBrand } from "@/data/brand";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { getCreatorBrand } from "@/lib/learn/server/member-area";
 
-// A comunidade da área inteira: /learn/areas/@usuario/community (e
-// .../community/q/<post> com um post aberto). O banco decide quem entra:
-// o dono e quem tem matrícula em qualquer produto dele.
+// The community for the whole area: /learn/areas/@usuario/community (and
+// .../community/q/<post> with a post open). The database decides who gets in:
+// the owner and anyone enrolled in any of their products.
 export async function generateMetadata() {
   const { t } = await getServerTranslation();
   return {
@@ -25,7 +25,7 @@ export default async function LearnMemberAreaCommunityRoute({
   try {
     ref = decodeURIComponent(criador);
   } catch {
-    // Codificação quebrada: segue com o texto cru, e o banco responde null.
+    // Broken encoding: carry on with the raw text, and the database answers null.
   }
   const openPostId = post?.[0] === "q" && post[1] ? post[1] : null;
   const brand = await getCreatorBrand(ref);

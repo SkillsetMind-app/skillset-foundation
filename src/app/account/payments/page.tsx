@@ -13,14 +13,14 @@ export default async function AccountPaymentsPage() {
 
   return (
     <ProtectedSurface permissions={["teacherStudio.access"]}>
-      {/* Sem `description`: as quatro frases que ficavam aqui empurravam o
-          primeiro numero para baixo de tres paragrafos. O texto vive agora no
-          "Learn more" recolhido do painel, em EN/ES.
-          `hideHeader`: o painel ja abre com o cabecalho das telas irmas ("Your
-          earnings, your payout setup") — o titulo da casca repetia isso,
-          e em ingles fixo mesmo com a sessao em espanhol (QA visual em
-          producao, 08/09). Quem carrega o <h1> da pagina agora e o painel; a
-          casca ainda exige `title`, entao ele vem do dicionario. */}
+      {/* No `description`: the four sentences that used to be here pushed the
+          first number below three paragraphs. The text now lives in the
+          panel's collapsed "Learn more", in EN/ES.
+          `hideHeader`: the panel already opens with the header of its sibling
+          screens ("Your earnings, your payout setup"). The shell title repeated
+          that, and in fixed English even with a Spanish session (visual QA in
+          production, 09/08). The panel now carries the page's <h1>; the shell
+          still requires `title`, so it comes from the dictionary. */}
       <PlatformShell title={t("platform.nav.earnings")} compact hideHeader>
         <TeacherWalletPanel />
       </PlatformShell>

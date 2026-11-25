@@ -39,8 +39,8 @@ vi.mock("@/lib/i18n/server", () => ({
 }));
 vi.mock("@/components/auth/auth-provider", () => ({ useAuth: () => mocks.auth }));
 vi.mock("@/lib/learn/server/member-area", () => ({ getMemberArea: mocks.getMemberArea }));
-// A casca da sala agora tem sino e menu da conta tambem com a marca do
-// professor; aqui o assunto sao as abas da previa, nao esses dois.
+// The classroom shell now also has the bell and the account menu with the
+// teacher's brand; here the subject is the preview tabs, not those two.
 vi.mock("@/components/platform/notification-bell", () => ({ NotificationBell: () => null }));
 vi.mock("@/components/site/account-menu", () => ({ AccountMenu: () => null }));
 vi.mock("@/lib/supabase/config", () => ({
@@ -135,7 +135,7 @@ beforeEach(() => {
   );
 });
 
-describe("abas da prévia do professor", () => {
+describe("teacher preview tabs", () => {
   it("keeps preview routes, read-only gates and course subscription while switching EN/ES", async () => {
     await renderPreview();
     expect(screen.getByRole("button", { name: "Preview only" })).toBeDisabled();
@@ -163,12 +163,12 @@ describe("abas da prévia do professor", () => {
     const page = await PreviewPage({ params: Promise.resolve({ courseId: course.id }) });
     const suspense = page.props.children.props.children;
     render(suspense.props.fallback);
-    // A espera da sala (ClassroomLoading), a mesma da prévia já montada (F-03).
+    // The classroom wait (ClassroomLoading), the same as the already mounted preview (F-03).
     expect(screen.getByRole("status")).toHaveTextContent("Cargando curso...");
     expect(screen.getByRole("status").closest("section")).toHaveAttribute("aria-busy", "true");
   });
 
-  it("mantém a aula na rota-base e os links das abas dentro da prévia", async () => {
+  it("keeps the lesson on the base route and the tab links inside the preview", async () => {
     await renderPreview();
     const tabs = screen.getByRole("navigation", { name: "Course sections" });
     expect(within(tabs).getByRole("link", { name: "Lesson" })).toHaveAttribute("aria-current", "page");
@@ -182,7 +182,7 @@ describe("abas da prévia do professor", () => {
   });
 
   it.each([["materials", "Materials"], ["review", "Review"], ["about", "About"]])(
-    "a rota %s chega ao workspace na aba pedida, com a mesma aula e marca",
+    "the %s route reaches the workspace on the requested tab, with the same lesson and brand",
     async (tab, label) => {
       await renderPreview(tab);
       const tabs = screen.getByRole("navigation", { name: "Course sections" });
@@ -211,14 +211,14 @@ describe("abas da prévia do professor", () => {
     },
   );
 
-  it.each(["unknown", "lesson"])("recusa /%s antes de consultar o curso", async (tab) => {
+  it.each(["unknown", "lesson"])("refuses /%s before querying the course", async (tab) => {
     await expect(PreviewPage({
       params: Promise.resolve({ courseId: course.id, tab }),
     })).rejects.toThrow("NOT_FOUND");
     expect(mocks.getMemberArea).not.toHaveBeenCalled();
   });
 
-  it("mantém a permissão do estúdio nas rotas de abas", async () => {
+  it("keeps the studio permission on the tab routes", async () => {
     mocks.auth.user.roles = ["student"];
     await renderPreview("materials");
     expect(screen.queryByRole("navigation", { name: "Course sections" })).not.toBeInTheDocument();

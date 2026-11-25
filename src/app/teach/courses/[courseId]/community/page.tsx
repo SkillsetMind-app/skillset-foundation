@@ -17,8 +17,8 @@ type CourseCommunityPageProps = {
   }>;
 };
 
-// Para o professor a comunidade e uma caixa de entrada: o que espera resposta
-// no topo, respondido ali mesmo; o resto em cartoes curtos (mockup 5, 11d).
+// For the teacher the community is an inbox: what awaits an answer
+// on top, answered right there; the rest in short cards (mockup 5, 11d).
 export default async function CourseCommunityPage({
   params,
 }: CourseCommunityPageProps) {
@@ -28,8 +28,8 @@ export default async function CourseCommunityPage({
   return (
     <ProtectedSurface permissions={["teacherStudio.manageCourses"]}>
       <PlatformShell title={t("teacherCommunity.title")} hideHeader>
-        {/* O mesmo esqueleto da caixa de entrada enquanto ela lê o curso: antes
-            a frase saía de um cartão e reaparecia solta, sem cartão. */}
+        {/* The same skeleton as the inbox while it reads the course: before,
+            the sentence came out of a card and reappeared loose, with no card. */}
         <Suspense
           fallback={<BuilderSkeleton label={t("teacherCommunity.loading")} />}
         >

@@ -3,10 +3,10 @@ import type { MetadataRoute } from "next";
 import { hasRealPublishedCourse, listPublishedCourses } from "@/lib/data/server/public-course";
 import { SITE_URL } from "@/lib/seo/page-metadata";
 
-// Era `force-static`, e por isso o sitemap não conseguia enumerar curso nenhum:
-// a leitura precisa acontecer em tempo de requisição. Revalida de hora em hora —
-// catálogo de curso não muda de minuto a minuto, e um sitemap que consulta o
-// banco a cada acesso de crawler é desperdício.
+// It was `force-static`, and so the sitemap could not list any course:
+// the read has to happen at request time. It revalidates hourly —
+// a course catalog does not change minute by minute, and a sitemap that queries the
+// database on every crawler hit is a waste.
 export const revalidate = 3600;
 
 // Public, indexable surfaces only. Authenticated app routes
@@ -18,7 +18,7 @@ const publicRoutes: Array<{
   priority: number;
 }> = [
   { path: "/", changeFrequency: "weekly", priority: 1 },
-  // /courses entra só com curso real publicado (ver abaixo).
+  // /courses only gets in with a real published course (see below).
   { path: "/for-creators", changeFrequency: "weekly", priority: 0.9 },
   { path: "/how-it-works", changeFrequency: "monthly", priority: 0.8 },
   { path: "/pricing", changeFrequency: "monthly", priority: 0.8 },
@@ -51,26 +51,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: route.priority,
   }));
 
-  // Cursos de criador PUBLICADOS, um por URL. Isto era impossível antes por dois
-  // motivos que caíram hoje: o sitemap era `force-static` (não podia consultar o
-  // banco) e a leitura anônima abortava com 42501.
+  // PUBLISHED creator courses, one per URL. This was impossible before for two
+  // reasons that were fixed today: the sitemap was `force-static` (it could not query the
+  // database) and the anonymous read aborted with 42501.
   //
-  // Os 6 cursos do catálogo de demonstração seguem FORA de propósito: ninguém
-  // pode comprá-los, e listá-los fazia buscador indexar seis páginas de produto
-  // fantasma. Aqui entram só cursos com linha em `courses` e status `published`
-  // — os que existem para ser vendidos — menos os internos de teste.
+  // The 6 courses of the demo catalog stay OUT on purpose: nobody
+  // can buy them, and listing them made search engines index six ghost product
+  // pages. Only courses with a row in `courses` and status `published` get in here
+  // — the ones that exist to be sold — minus the internal test ones.
   //
-  // Falha de leitura devolve lista vazia (ver public-course.ts): o sitemap perde
-  // os cursos naquela revalidação em vez de derrubar a rota inteira.
+  // A read failure returns an empty list (see public-course.ts): the sitemap loses
+  // the courses in that revalidation instead of taking down the whole route.
   const [courses, hasRealCourses] = await Promise.all([
     listPublishedCourses(),
     hasRealPublishedCourse(),
   ]);
 
-  // Loja sem curso real não é página que valha indexar. Mesma checagem da
-  // home (anônima, em cache), não o tamanho da lista acima.
-  // O diretório de instrutores segue a loja (#471): sem curso real, ele só
-  // listaria perfis sem nada à venda.
+  // A store without a real course is not a page worth indexing. Same check as the
+  // home (anonymous, cached), not the size of the list above.
+  // The instructor directory follows the store (#471): without a real course, it would only
+  // list profiles with nothing for sale.
   const storeEntry = hasRealCourses
     ? [
         { url: `${SITE_URL}/courses`, lastModified, changeFrequency: "daily" as const, priority: 0.9 },

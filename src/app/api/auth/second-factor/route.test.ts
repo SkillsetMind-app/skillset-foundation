@@ -23,7 +23,7 @@ import { GET } from "@/app/api/auth/second-factor/route";
 
 const session = (token: string | null) => ({ data: { session: token ? { access_token: token } : null }, error: null });
 
-describe("GET /api/auth/second-factor — os fatores da propria conta", () => {
+describe("GET /api/auth/second-factor — the account's own factors", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.allow.mockResolvedValue(true);
@@ -39,21 +39,21 @@ describe("GET /api/auth/second-factor — os fatores da propria conta", () => {
     });
   });
 
-  it("sem sessao: 401 e nada consultado", async () => {
+  it("no session: 401 and nothing queried", async () => {
     mocks.getSession.mockResolvedValue(session(null));
     const response = await GET(new Request("https://www.skillsetmind.com/api/auth/second-factor"));
     expect(response.status).toBe(401);
     expect(mocks.listFactors).not.toHaveBeenCalled();
   });
 
-  it("token que o GoTrue nao confirma: 401", async () => {
+  it("token that GoTrue does not confirm: 401", async () => {
     mocks.getUser.mockResolvedValue({ data: { user: null }, error: { message: "invalid JWT" } });
     const response = await GET(new Request("https://www.skillsetmind.com/api/auth/second-factor"));
     expect(response.status).toBe(401);
     expect(mocks.listFactors).not.toHaveBeenCalled();
   });
 
-  it("lista so os fatores do dono do token, sem campo alem do necessario e sem cache", async () => {
+  it("lists only the token owner's factors, with no field beyond what is needed and no cache", async () => {
     const response = await GET(new Request("https://www.skillsetmind.com/api/auth/second-factor"));
     expect(mocks.getUser).toHaveBeenCalledWith("token-aal1");
     expect(mocks.listFactors).toHaveBeenCalledWith({ userId: "user-1" });
@@ -69,14 +69,14 @@ describe("GET /api/auth/second-factor — os fatores da propria conta", () => {
     expect(JSON.stringify(body)).not.toContain("nunca");
   });
 
-  it("lista indisponivel: 503, sem detalhe do provedor", async () => {
+  it("list unavailable: 503, with no provider detail", async () => {
     mocks.listFactors.mockResolvedValue({ data: null, error: { message: "private detail" } });
     const response = await GET(new Request("https://www.skillsetmind.com/api/auth/second-factor"));
     expect(response.status).toBe(503);
     expect(JSON.stringify(await response.json())).not.toContain("private");
   });
 
-  it("limite por IP: 429 antes de qualquer consulta", async () => {
+  it("per-IP limit: 429 before any query", async () => {
     mocks.allow.mockResolvedValue(false);
     const response = await GET(new Request("https://www.skillsetmind.com/api/auth/second-factor"));
     expect(response.status).toBe(429);

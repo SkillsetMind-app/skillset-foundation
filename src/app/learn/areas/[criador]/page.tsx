@@ -4,11 +4,11 @@ import { brand as siteBrand } from "@/data/brand";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { getCreatorBrand } from "@/lib/learn/server/member-area";
 
-// A área de membros de um criador: /learn/areas/@usuario (ou o uid). O banco
-// decide quem vê: aluno do criador e o próprio criador; o resto vai para a
-// vitrine pública.
-// Título da aba e nada de índice, como as outras páginas logadas
-// (privatePageMetadata pressupõe o cabeçalho da PlatformShell, que a área não usa).
+// A creator's members area: /learn/areas/@usuario (or the uid). The database
+// decides who sees it: the creator's learners and the creator; everyone else
+// goes to the public storefront.
+// Tab title and no index, like the other signed-in pages
+// (privatePageMetadata assumes the PlatformShell header, which the area does not use).
 export async function generateMetadata() {
   const { t } = await getServerTranslation();
   return {
@@ -27,10 +27,10 @@ export default async function LearnMemberAreaRoute({
   try {
     ref = decodeURIComponent(criador);
   } catch {
-    // Codificação quebrada: segue com o texto cru, e o banco responde null.
+    // Broken encoding: carry on with the raw text, and the database answers null.
   }
 
-  // A marca no primeiro desenho, como na sala: sem piscar o logo nosso.
+  // The brand on the first paint, as in the classroom: no flash of our own logo.
   const brand = await getCreatorBrand(ref);
 
   return (

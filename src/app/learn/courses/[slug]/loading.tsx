@@ -19,16 +19,17 @@ import { getServerTranslation } from "@/lib/i18n/server";
 export default async function LoadingCourse() {
   const { t } = await getServerTranslation();
   return (
-    // Margem lateral igual à da casca (md:px-6 lg:px-8); no celular quem dá o
-    // respiro é a própria ClassroomLoading, como dentro da casca.
+    // Side margin equal to the shell's (md:px-6 lg:px-8); on the phone the
+    // breathing room comes from ClassroomLoading itself, as inside the shell.
     <div className="mx-auto w-full max-w-[1280px] py-6 md:px-6 lg:px-8">
-      {/* Este arquivo não lê o endereço (loading.tsx não recebe os
-          parâmetros), então não sabe se a aula abre na capa ou no cabeçalho
-          curto. Fica o curto, a forma que menos pula: é o caminho mais comum
-          ("Continue" do painel, com ?lesson=), em que a espera fica com UMA
-          forma até o cabeçalho chegar; na primeira visita a capa cresce uma
-          vez para baixo, em vez de um bloco de ~400px encolher para 52px a
-          cada aula retomada. */}
+      {/* This file does not read the address (loading.tsx does not receive
+          the params), so it does not know whether the lesson opens on the
+          cover or on the short header. It keeps the short one, the shape that
+          jumps the least: it is the most common path ("Continue" on the
+          dashboard, with ?lesson=), where the wait keeps ONE shape until the
+          header arrives; on the first visit the cover grows once downward,
+          instead of a ~400px block shrinking to 52px on every resumed
+          lesson. */}
       <ClassroomLoading label={t("learnWave2.courseLoading.title")} short />
     </div>
   );

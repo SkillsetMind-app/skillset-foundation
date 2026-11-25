@@ -21,8 +21,9 @@ export default async function ResetPasswordPage() {
   const cookieStore = await cookies();
   const recoveryVerified = cookieStore.has(PASSWORD_RECOVERY_COOKIE);
 
-  // A moldura do AuthShell, mas o titulo vem do formulario: so ele sabe se o
-  // link venceu, se a senha esta sendo escolhida ou se ja foi trocada.
+  // The AuthShell frame, but the title comes from the form: only the form knows
+  // whether the link expired, whether the password is being chosen or whether it
+  // has already been changed.
   return (
     <AuthFrame homeLabel={t("auth.page.backToHome")}>
       <UpdatePasswordForm recoveryVerified={recoveryVerified} />

@@ -73,11 +73,11 @@ describe("GET /api/certificates/verify", () => {
     mocks.rpc.mockResolvedValue({ data: { valid: false }, error: null });
   });
 
-  // O bug (A-28): a rota mandava o IP cru do visitante como p_rate_key. Todas
-  // as outras rotas públicas passam pelo helper que hasheia; esta era a única
-  // que escapava — e é a de maior exposição (CORS "*", embutida em sites de
-  // terceiros, visitantes que nunca pisaram na plataforma).
-  it("nunca entrega o endereço do visitante ao banco, só a chave hasheada", async () => {
+  // The bug (A-28): the route sent the visitor's raw IP as p_rate_key. Every
+  // other public route goes through the helper that hashes it; this was the
+  // only one that slipped past, and it is the most exposed one (CORS "*",
+  // embedded in third-party sites, visitors who never set foot on the platform).
+  it("never hands the visitor's address to the database, only the hashed key", async () => {
     await verify();
 
     const [fn, args] = mocks.rpc.mock.calls[0] as [string, RpcArgs];
@@ -87,7 +87,7 @@ describe("GET /api/certificates/verify", () => {
     expect(args.p_rate_key).toMatch(/^cert_[0-9a-f]{24}$/);
   });
 
-  it("usa a mesma chave que o resto das rotas públicas dá a este visitante", async () => {
+  it("uses the same key the rest of the public routes give this visitor", async () => {
     await verify();
 
     const [, args] = mocks.rpc.mock.calls[0] as [string, RpcArgs];
@@ -98,7 +98,7 @@ describe("GET /api/certificates/verify", () => {
     expect(args.p_rate_key).toBe(esperada);
   });
 
-  it("traduz RATE_LIMIT em 429 com o CORS aberto de sempre", async () => {
+  it("translates RATE_LIMIT into 429 with the usual open CORS", async () => {
     mocks.rpc.mockResolvedValue({ data: null, error: { message: "RATE_LIMIT" } });
 
     const response = await verify();
@@ -109,9 +109,9 @@ describe("GET /api/certificates/verify", () => {
     expect(mocks.lookups).toBe(0);
   });
 
-  // O RPC so atesta os emitidos. Certificado revogado pela operacao ('revoked')
-  // ou por reembolso integral/chargeback perdido ('refund_revoked'): a rota diz
-  // "revogado" em vez de "nao existe".
+  // The RPC only vouches for issued certificates. For a certificate revoked by
+  // operations ('revoked') or by a full refund/lost chargeback
+  // ('refund_revoked'), the route says "revoked" instead of "does not exist".
   it.each(["revoked", "refund_revoked"])("says revoked, not not-found, for a %s certificate", async (status) => {
     mocks.storedStatus = status;
 

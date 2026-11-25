@@ -3,15 +3,15 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-// A coreografia de rolagem da home so existe no CSS (animation-timeline):
-// jsdom nao rola nem anima, entao o que se prova aqui sao as tres redes de
-// seguranca da regra. Mesmo desenho de onda-d-motion.test.ts.
+// The home scroll choreography only exists in the CSS (animation-timeline):
+// jsdom does not scroll or animate, so what is proven here are the three safety
+// nets of the rule. Same design as onda-d-motion.test.ts.
 const css = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
 
-/** Trecho [inicio, fim) do bloco que comeca em `opener`, contando chaves. */
+/** Slice [start, end) of the block that begins at `opener`, counting braces. */
 function blockRange(opener: string, from = 0): [number, number] {
   const start = css.indexOf(opener, from);
-  expect(start, `${opener} nao encontrado`).toBeGreaterThan(-1);
+  expect(start, `${opener} not found`).toBeGreaterThan(-1);
   let depth = 0;
   let end = start + opener.length - 1;
   for (; end < css.length; end += 1) {
@@ -32,7 +32,7 @@ const [supportsStart, supportsEnd] = blockRange(
 );
 
 describe("home: coreografia de rolagem", () => {
-  it("toda linha do tempo de rolagem mora dentro de no-preference E do @supports", () => {
+  it("every scroll timeline lives inside no-preference AND the @supports", () => {
     expect(sectionStart).toBeGreaterThan(-1);
     expect(supportsStart).toBeGreaterThan(mediaStart);
     expect(supportsEnd).toBeLessThan(mediaEnd);
@@ -45,40 +45,40 @@ describe("home: coreografia de rolagem", () => {
     }
   });
 
-  it("so a home entra na coreografia: toda regra e escopada em .home-scroll", () => {
-    // Sem os comentarios: uma regra logo abaixo de um comentario era lida
-    // como "/* ... */ seletor" e escapava da conferencia.
+  it("only the home enters the choreography: every rule is scoped to .home-scroll", () => {
+    // Without the comments: a rule right below a comment was read
+    // as "/* ... */ selector" and escaped the check.
     const body = css.slice(supportsStart, supportsEnd).replace(/\/\*[\s\S]*?\*\//g, "");
     const selectors = [...body.matchAll(/(?:^|\n)\s*([^@{}\n][^{}]*?)\s*\{/g)]
       .map((match) => match[1].trim())
-      // Sobram so seletores de regra: @media e @supports aninhados e
-      // comentarios nao contam.
+      // Only rule selectors are left: nested @media and @supports and
+      // comments do not count.
       .filter((selector) => !selector.startsWith("@"));
     expect(selectors.length).toBeGreaterThan(35);
     for (const selector of selectors) {
       for (const part of selector.split(",")) {
-        expect(part, `regra fora da home: ${part.trim()}`).toMatch(/\.home-scroll/);
+        expect(part, `rule outside the home: ${part.trim()}`).toMatch(/\.home-scroll/);
       }
     }
   });
 
-  it("sem suporte ou com movimento reduzido a barra de leitura nao aparece", () => {
+  it("without support or with reduced motion the reading bar does not show", () => {
     const base = css.indexOf(".home-scroll-progress {", sectionStart);
     expect(base).toBeGreaterThan(-1);
     expect(base).toBeLessThan(mediaStart);
     expect(css.slice(base, css.indexOf("}", base))).toContain("display: none;");
   });
 
-  it("nada some de vez: a entrada antiga so e desligada dentro do @supports", () => {
+  it("nothing disappears for good: the old entrance is only turned off inside the @supports", () => {
     const off = css.indexOf("html.js .home-scroll .reveal-on-view:not(.reveal-on-view--in) {");
     expect(off).toBeGreaterThan(supportsStart);
     expect(off).toBeLessThan(supportsEnd);
   });
 
-  // Os estados de partida (opacidade 0, deslocamento) so existem nos quadros
-  // motion-scroll-*. Quem os usa fora do @supports esconde conteudo em
-  // navegador sem a rolagem animada.
-  it("nenhuma regra usa os quadros da coreografia fora do @supports", () => {
+  // The starting states (opacity 0, offset) only exist in the keyframes
+  // motion-scroll-*. Anyone who uses them outside the @supports hides content in a
+  // browser without animated scrolling.
+  it("no rule uses the choreography frames outside the @supports", () => {
     const uses = [...css.matchAll(/animation(?:-name)?:\s*motion-scroll-/g)];
     expect(uses.length).toBeGreaterThan(10);
     for (const use of uses) {
@@ -87,7 +87,7 @@ describe("home: coreografia de rolagem", () => {
     }
   });
 
-  it("com o foco do teclado dentro, o texto do topo nao some", () => {
+  it("with keyboard focus inside, the top text does not disappear", () => {
     const rule = css.indexOf(".home-scroll .home-hero__copy:has(:focus-visible) {");
     expect(rule).toBeGreaterThan(supportsStart);
     expect(rule).toBeLessThan(supportsEnd);
@@ -95,9 +95,9 @@ describe("home: coreografia de rolagem", () => {
   });
 });
 
-// As tres cenas do computador: o passo a passo preso, a cortina da promessa e
-// a profundidade dos cartoes. Alem das tres redes acima, um @media de tamanho:
-// fora dele (celular, tela baixa) a pagina tem o layout e a altura de antes.
+// The three computer scenes: the pinned step by step, the promise curtain and
+// the depth of the cards. Besides the three nets above, a size @media:
+// outside it (phone, short screen) the page has the layout and height as before.
 const scenesOpener =
   "@media (min-width: 1280px) and (min-height: 640px), (min-width: 1024px) and (min-height: 720px) {";
 const [scenesStart, scenesEnd] = blockRange(scenesOpener, supportsStart);
@@ -106,17 +106,17 @@ function insideScenes(index: number): boolean {
   return index > scenesStart && index < scenesEnd;
 }
 
-/** Corpo da regra `selector {` que mora no bloco das cenas. */
+/** Body of the rule `selector {` that lives in the scenes block. */
 function sceneRule(selector: string): string {
   const at = css.indexOf(`${selector} {`, scenesStart);
-  expect(at, `${selector} nao encontrado nas cenas`).toBeGreaterThan(-1);
-  expect(insideScenes(at), `${selector} fora das cenas`).toBe(true);
+  expect(at, `${selector} not found in the scenes`).toBeGreaterThan(-1);
+  expect(insideScenes(at), `${selector} outside the scenes`).toBe(true);
   return css.slice(at, css.indexOf("}", at));
 }
 
 function keyframesBody(name: string): string {
   const at = css.indexOf(`@keyframes ${name} {`);
-  expect(at, `@keyframes ${name} nao encontrado`).toBeGreaterThan(-1);
+  expect(at, `@keyframes ${name} not found`).toBeGreaterThan(-1);
   return css.slice(at, css.indexOf("\n}", at));
 }
 
@@ -135,7 +135,7 @@ function easeStandard(x: number): number {
   return bezier((lo + hi) / 2, 0.6, 1);
 }
 
-/** A cortina lida do CSS: geometria da elipse, escala por trecho e regua. */
+/** The curtain read from the CSS: ellipse geometry, scale per stretch and ruler. */
 function curtainModel() {
   const rule = sceneRule(".home-scroll .home-promise::before");
   const percent = (property: string) =>
@@ -163,7 +163,7 @@ function curtainModel() {
     left: percent("left"),
     stretch,
     scaleAt,
-    /** y (px abaixo do topo da faixa) da borda do arco em dx, com o topo da faixa subido `o` telas. */
+    /** y (px below the top of the strip) of the arc's edge at dx, with the top of the strip raised `o` screens. */
     edgeAt(dx: number, o: number, bandWidth: number, bandHeight: number) {
       const s = scaleAt(o / stretch);
       const a = (width / 2) * bandWidth * s;
@@ -174,10 +174,10 @@ function curtainModel() {
 }
 
 describe("home: cenas do computador", () => {
-  it("o bloco de tamanho mora dentro do @supports, depois do bloco de 1024", () => {
+  it("the size block lives inside the @supports, after the 1024 block", () => {
     expect(scenesStart).toBeGreaterThan(css.indexOf("@media (min-width: 1024px) {", supportsStart));
     expect(scenesEnd).toBeLessThan(supportsEnd);
-    // O painel preso so existe a partir de 1024 de largura e 640 de altura.
+    // The pinned panel only exists from 1024 of width and 640 of height.
     for (const query of scenesOpener.slice("@media ".length, -2).split(", ")) {
       const [, width] = query.match(/min-width: (\d+)px/)!;
       const [, height] = query.match(/min-height: (\d+)px/)!;
@@ -186,7 +186,7 @@ describe("home: cenas do computador", () => {
     }
   });
 
-  it("faixa alta, tela presa e cortina so existem dentro do bloco de tamanho", () => {
+  it("tall strip, pinned screen and curtain only exist inside the size block", () => {
     const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     for (const needle of [
       ".home-how {",
@@ -200,19 +200,19 @@ describe("home: cenas do computador", () => {
       const hits = [...css.matchAll(new RegExp(escape(needle), "g"))];
       expect(hits.length, needle).toBeGreaterThan(0);
       for (const hit of hits) {
-        expect(insideScenes(hit.index!), `fora das cenas: ${needle}`).toBe(true);
+        expect(insideScenes(hit.index!), `outside the scenes: ${needle}`).toBe(true);
       }
     }
-    // Nenhum outro lugar da home gruda abaixo da barra.
+    // No other place on the home sticks below the bar.
     const pinned = [...css.matchAll(/position: sticky;\s+top: var\(--site-header-height\);/g)];
     expect(pinned).toHaveLength(1);
     expect(insideScenes(pinned[0].index!)).toBe(true);
   });
 
-  it("cena 1: a faixa tem 100% de tela + 3 x 40% e o painel gruda abaixo da barra", () => {
+  it("scene 1: the strip is 100% of the screen + 3 x 40% and the panel sticks below the bar", () => {
     const track = sceneRule(".home-scroll .home-how");
     expect(track).toContain("height: calc(220svh - var(--site-header-height));");
-    // A ancora pousa no instante em que a tela trava: titulo e passo 1 a vista.
+    // The anchor lands the instant the screen locks: title and step 1 in view.
     expect(track).toContain("scroll-margin-top: var(--site-header-height);");
     expect(track).toContain("view-timeline-inset: var(--site-header-height) 0px;");
 
@@ -221,15 +221,15 @@ describe("home: cenas do computador", () => {
     expect(panel).toContain("top: var(--site-header-height);");
     expect(panel).toContain("min-height: calc(100svh - var(--site-header-height));");
 
-    // Rolagem a mais do pino = faixa - painel (a barra se desconta dos dois):
-    // no maximo 2,2 telas.
+    // Extra scroll of the pin = strip - panel (the bar is discounted from both):
+    // at most 2.2 screens.
     const trackScreens = Number(track.match(/height: calc\((\d+)svh/)![1]);
     const panelScreens = Number(panel.match(/min-height: calc\((\d+)svh/)![1]);
     expect(trackScreens - panelScreens).toBeLessThanOrEqual(220);
     expect(trackScreens - panelScreens).toBeGreaterThanOrEqual(100);
   });
 
-  it("cena 1: cada passo tem um dono por propriedade e acende em ordem", () => {
+  it("scene 1: each step has one owner per property and lights up in order", () => {
     const names = ["first", "second", "third"];
     names.forEach((name, index) => {
       const step = sceneRule(`.home-scroll .home-step:nth-child(${index + 1})`);
@@ -239,7 +239,7 @@ describe("home: cenas do computador", () => {
       expect(keyframesBody(`motion-scroll-mark-${name}`)).not.toContain("opacity");
     });
 
-    // Calmo nunca abaixo de 0.5; no fim (100%) os tres estao inteiros.
+    // Calm never below 0.5; at the end (100%) all three are whole.
     for (const name of names) {
       const body = keyframesBody(`motion-scroll-step-${name}`);
       for (const [, value] of body.matchAll(/opacity: ([\d.]+);/g)) {
@@ -250,7 +250,7 @@ describe("home: cenas do computador", () => {
     }
   });
 
-  it("cena 2: a cortina e decorativa, da cor de tokens e cortada pela faixa", () => {
+  it("scene 2: the curtain is decorative, token-colored and clipped by the strip", () => {
     const band = sceneRule(".home-scroll .home-promise");
     expect(band).toContain("overflow: clip;");
     expect(band).toContain("--home-curtain: var(--color-primary);");
@@ -263,31 +263,31 @@ describe("home: cenas do computador", () => {
     expect(curtain).toContain("background: var(--home-curtain);");
   });
 
-  it("cena 2: o arco nasce no meio da borda de baixo, cobre os cantos em 1 e nao corta reto antes de 85%", () => {
+  it("scene 2: the arc is born at the middle of the bottom edge, covers the corners at 1 and does not cut straight before 85%", () => {
     const arc = curtainModel();
-    // Centro da elipse no meio da borda de baixo da faixa.
+    // Ellipse center at the middle of the strip's bottom edge.
     expect(arc.left + arc.kh).toBeCloseTo(0.5, 5);
     expect(arc.top + arc.kv).toBeCloseTo(1, 5);
-    // Em escala 1 o arco passa dos cantos de cima (a 50% da largura).
+    // At scale 1 the arc goes past the top corners (at 50% of the width).
     expect(arc.kv * Math.sqrt(1 - (0.5 / arc.kh) ** 2)).toBeGreaterThan(1);
-    // Trecho: do topo da faixa no fundo da tela ao topo a 45% da tela.
+    // Stretch: from the top of the strip at the bottom of the screen to the top at 45% of the screen.
     expect(arc.stretch).toBe(0.55);
     expect(arc.scaleAt(0)).toBeLessThanOrEqual(0.15);
     expect(arc.scaleAt(1)).toBe(1);
     for (let u = 0; u < 0.84; u += 0.01) {
-      expect(arc.kv * arc.scaleAt(u), `topo cortado reto em ${u.toFixed(2)}`).toBeLessThan(1);
+      expect(arc.kv * arc.scaleAt(u), `top cut straight at ${u.toFixed(2)}`).toBeLessThan(1);
     }
   });
 
-  it("cena 2: cada bloco de texto so aparece coberto, em ordem, e fica inteiro antes de 75% da tela", () => {
+  it("scene 2: each text block only appears covered, in order, and is whole before 75% of the screen", () => {
     const arc = curtainModel();
     const range = (selector: string) => {
       const [, from, to] = sceneRule(selector).match(/animation-range: cover (\d+)svh cover (\d+)svh;/)!;
       return [Number(from) / 100, Number(to) / 100] as const;
     };
-    // Recuos medidos a partir do topo da faixa (estimados no layout de 1024
-    // e de 1280+): sobretitulo, titulo, paragrafo e botao; a carta a 96px,
-    // com o primeiro texto dela a 124px.
+    // Offsets measured from the top of the strip (estimated on the layout of 1024
+    // and 1280+): overline, title, paragraph and button; the letter at 96px,
+    // with its first text at 124px.
     const blocks = [
       { selector: ".home-scroll .home-promise__text > *", offset: 0 },
       { selector: ".home-scroll .home-promise__text > h2", offset: 28 },
@@ -310,20 +310,20 @@ describe("home: cenas do computador", () => {
           for (const block of blocks) {
             const y = eyebrow + block.offset;
             const [from, to] = block.range;
-            // Texto claro so com a cortina por tras (canto esquerdo da coluna).
-            expect(arc.edgeAt(-half, from, width, bandHeight), `${block.selector} sem cortina, ${where}`)
+            // Light text only with the curtain behind it (left corner of the column).
+            expect(arc.edgeAt(-half, from, width, bandHeight), `${block.selector} without a curtain, ${where}`)
               .toBeLessThanOrEqual(y);
-            // Inteiro quando o topo dele chega a 75% da tela.
+            // Whole when its top reaches 75% of the screen.
             const deadline = 0.25 + y / vh;
             expect(easeStandard((deadline - from) / (to - from)), `${block.selector} apagado, ${where}`)
               .toBeGreaterThanOrEqual(0.95);
           }
-          // A carta so entra com a borda de cima dela (canto direito) coberta.
+          // The letter only enters with its top edge (right corner) covered.
           expect(arc.edgeAt(half, charter[0], width, bandHeight), `carta boiando, ${where}`).toBeLessThanOrEqual(96);
           const deadline = 0.25 + 124 / vh;
           expect(easeStandard((deadline - charter[0]) / (charter[1] - charter[0])), `carta apagada, ${where}`)
             .toBeGreaterThanOrEqual(0.95);
-          // A primeira clausula (285px) comeca depois da carta.
+          // The first clause (285px) starts after the letter.
           const [clauseFrom] = range(".home-scroll .home-promise__clause:nth-child(n)");
           expect(clauseFrom + 285 / vh).toBeGreaterThan(charter[0]);
         }
@@ -333,21 +333,21 @@ describe("home: cenas do computador", () => {
     expect(
       sceneRule(".home-scroll .home-promise:has(:focus-visible) .home-promise__text > *"),
     ).toContain("animation: none;");
-    // O botao larga o transform no fim da entrada: o :hover dele volta a valer.
+    // The button drops the transform at the end of the entrance: its :hover works again.
     expect(sceneRule(".home-scroll .home-promise__text > a")).toContain(
       "animation: motion-scroll-rise 1ms var(--ease-standard) backwards;",
     );
   });
 
-  it("cena 3: a foto do curso anima sem prender o transform do hover", () => {
+  it("scene 3: the course photo animates without pinning the hover's transform", () => {
     const photo = sceneRule(".home-scroll .marketplace-course-grid > li .marketplace-card__media > img");
     expect(photo).toContain("animation: motion-scroll-settle 1ms var(--ease-standard) backwards;");
     expect(photo).not.toMatch(/\b(?:both|forwards)\b/);
-    // O hover aprovado (500ms) continua o primeiro `.marketplace-card__media img {`.
+    // The approved hover (500ms) is still the first `.marketplace-card__media img {`.
     expect(css.indexOf(".marketplace-card__media img {")).toBeGreaterThan(supportsEnd);
   });
 
-  it("os quadros novos so mexem em transform e opacity", () => {
+  it("the new frames only touch transform and opacity", () => {
     for (const name of [
       "motion-scroll-step-first",
       "motion-scroll-step-second",
@@ -368,27 +368,27 @@ describe("home: cenas do computador", () => {
     }
   });
 
-  it("o topo nao entra nas cenas", () => {
+  it("the top does not enter the scenes", () => {
     const body = css.slice(scenesStart, scenesEnd);
     expect(body).not.toMatch(/home-hero|hero-portrait|hero-copy/);
   });
 
-  it("os ganchos das cenas continuam no JSX", () => {
+  it("the scene hooks are still in the JSX", () => {
     const read = (path: string) => readFileSync(join(process.cwd(), path), "utf8");
     expect(read("src/app/page.tsx")).toMatch(/id="how-it-works" className="home-how /);
     expect(read("src/components/site/how-it-works-strip.tsx")).toContain('className="home-how__panel ');
     expect(read("src/components/site/promise-preview-band.tsx")).toContain('className="home-promise ');
   });
 
-  // M6: a faixa de fatos entra nos dois tamanhos (fora do bloco das cenas),
-  // um número depois do outro, só com opacidade e 12px. Fora das travas não
-  // existe regra nenhuma para ela: parada e inteira.
-  it("faixa de fatos: escada leve atrás das travas, inteira antes de 75% da tela", () => {
+  // M6: the facts strip enters at both sizes (outside the scenes block),
+  // one number after the other, with only opacity and 12px. Outside the locks there
+  // is no rule at all for it: still and whole.
+  it("facts strip: light staircase behind the locks, whole before 75% of the screen", () => {
     const hits = [...css.matchAll(/\.home-facts/g)];
     expect(hits.length).toBe(4);
     for (const hit of hits) {
-      expect(hit.index! > supportsStart && hit.index! < supportsEnd, "fato fora do @supports").toBe(true);
-      expect(insideScenes(hit.index!), "fato preso ao bloco das cenas").toBe(false);
+      expect(hit.index! > supportsStart && hit.index! < supportsEnd, "fact outside the @supports").toBe(true);
+      expect(insideScenes(hit.index!), "fact pinned to the scenes block").toBe(false);
     }
 
     const rule = (selector: string) => {
@@ -400,8 +400,8 @@ describe("home: cenas do computador", () => {
     expect(base).toContain("animation: motion-scroll-fact 1ms var(--ease-standard) both;");
     expect(base).toContain("animation-timeline: view();");
 
-    // Trechos em svh a partir do topo do fato entrando pela borda de baixo:
-    // começos em ordem e cada fim antes de o topo chegar a 75% da tela.
+    // Stretches in svh from the top of the fact entering through the bottom edge:
+    // starts in order and each end before the top reaches 75% of the screen.
     const ranges = [1, 2, 3, 4].map((n) => {
       const body = n === 1 ? base : rule(`.home-scroll .home-facts__item:nth-child(${n})`);
       const [, from, to] = body.match(/animation-range: cover (\d+)(?:%|svh) cover (\d+)svh;/)!;
@@ -420,16 +420,16 @@ describe("home: cenas do computador", () => {
     expect(frames).toContain("transform: translateY(12px);");
   });
 
-  it("nenhum ancestral da home corta a rolagem (o sticky precisa disso)", () => {
+  it("no ancestor of the home clips scrolling (the sticky needs it)", () => {
     const shell = css.slice(css.indexOf(".page-shell {"), css.indexOf("}", css.indexOf(".page-shell {")));
     expect(shell).toContain("overflow-x: clip;");
     expect(shell).not.toMatch(/overflow(?:-[xy])?: (?:hidden|auto|scroll)/);
   });
 
-  // Fotos da home: a faixa "para quem é" e a foto da faixa final só se mexem
-  // no computador, num bloco de 1024px depois de todas as outras regras. No
-  // celular e no tablet nada delas anda.
-  it("fotos da home: movimento só no computador, e a foto final assenta antes do título", () => {
+  // Home photos: the "who it's for" strip and the photo of the final strip only move
+  // on the computer, in a 1024px block after all the other rules. On the
+  // phone and the tablet none of them moves.
+  it("home photos: motion only on the computer, and the final photo settles before the title", () => {
     const [start, end] = blockRange("@media (min-width: 1024px) {", css.indexOf("12. Home photos"));
     expect(start).toBeGreaterThan(scenesEnd);
     expect(end).toBeLessThan(supportsEnd);
@@ -437,7 +437,7 @@ describe("home: cenas do computador", () => {
       const hits = [...css.matchAll(needle)];
       expect(hits.length, String(needle)).toBeGreaterThan(0);
       for (const hit of hits) {
-        expect(hit.index! > start && hit.index! < end, `${needle} fora do bloco do computador`).toBe(true);
+        expect(hit.index! > start && hit.index! < end, `${needle} outside the computer block`).toBe(true);
       }
     }
 
@@ -450,8 +450,8 @@ describe("home: cenas do computador", () => {
     const range = (body: string) =>
       body.match(/animation-range: cover (\d+)(?:%|svh) cover (\d+)svh;/)!.slice(1).map(Number);
 
-    // A faixa de ponta a ponta não cresce; a foto recua até assentar, e o
-    // título só começa com a foto 3/4 do caminho andado.
+    // The full-width strip does not grow; the photo recedes until it settles, and the
+    // title only starts with the photo 3/4 of the way done.
     expect(rule(".home-scroll .home-creators")).toContain("animation: none;");
     const photo = rule(".home-scroll .home-creators__photo img");
     expect(photo).toContain("animation: motion-scroll-settle 1ms var(--ease-standard) both;");
@@ -461,8 +461,8 @@ describe("home: cenas do computador", () => {
     expect(leadFrom / photoEnd).toBeGreaterThanOrEqual(0.75);
     expect(leadTo).toBeGreaterThan(photoEnd);
 
-    // Os três retratos: em escada, só opacidade e 12px, inteiros antes de o
-    // topo passar de 75% da tela.
+    // The three portraits: in a staircase, only opacity and 12px, whole before the
+    // top goes past 75% of the screen.
     expect(rule(".home-scroll .home-who__photo")).toContain("animation: motion-scroll-fact 1ms var(--ease-standard) both;");
     const portraits = [
       rule(".home-scroll .home-who__photo"),

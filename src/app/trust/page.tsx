@@ -75,8 +75,8 @@ export default async function TrustPage() {
         {trustLayers.map((layer) => {
           const { Icon } = layer;
           return (
-            // Cartão parado: não é link, e subir e trocar a cor do ícone no
-            // hover prometia um clique que não fazia nada.
+            // A still card: it is not a link, and moving up and changing the icon color on
+            // hover promised a click that did nothing.
             <article
               key={layer.title}
               className="rounded-lg border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]"

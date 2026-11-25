@@ -72,20 +72,20 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Link de confirmacao do cadastro (ou o lembrete) vencido ou ja usado. Antes
-  // caia no login com texto de "troca de senha" e sem como pedir outro.
-  // Troca de senha e troca de e-mail nao entram aqui: tem tipo proprio. O link
-  // de acesso a curso (type=email tambem) vai para /loading, e o lembrete
-  // sempre para /welcome: so o /welcome conta como cadastro, senao o aluno com
-  // conta confirmada caia num "reenviar confirmacao" que nunca chega. Convite
-  // (/invitations/...) tambem fica de fora, mesmo vindo de um cadastro.
+  // Expired or already used signup confirmation link (or reminder). Before, it
+  // landed on the login with "password change" text and no way to ask for another.
+  // Password change and email change do not come in here: they have their own type. The course
+  // access link (type=email too) goes to /loading, and the reminder
+  // always to /welcome: only /welcome counts as a signup, otherwise a learner with a
+  // confirmed account would land on a "resend confirmation" that never arrives. An invitation
+  // (/invitations/...) is also left out, even coming from a signup.
   const entry = new URL(safeNext, origin);
   const confirmsSignup = (type === "signup" && ["/welcome", "/loading"].includes(entry.pathname))
     || (type === "email" && entry.pathname === "/welcome");
   if (confirmsSignup) {
-    // Clicou duas vezes ou ja confirmou neste navegador: a sessao esta aqui,
-    // entao entra direto — no curso, quando o link trazia um. /loading decide
-    // entre o onboarding e o destino, como o link que deu certo.
+    // Clicked twice or already confirmed in this browser: the session is here,
+    // so go straight in — to the course, when the link carried one. /loading decides
+    // between onboarding and the destination, like the link that worked.
     const { data } = await supabase.auth.getUser();
     if (data.user?.email_confirmed_at) {
       return NextResponse.redirect(`${origin}${getLoadingRoute(
@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // confirm_expired abre no login a tela "este link venceu" com reenviar.
+  // confirm_expired opens the "this link expired" screen on the login with resend.
   const reason = confirmsSignup ? "confirm_expired" : providerError ?? "confirm";
   return NextResponse.redirect(
     `${origin}${getAuthErrorRoute(reason, next)}`,

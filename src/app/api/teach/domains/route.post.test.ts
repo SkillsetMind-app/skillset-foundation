@@ -31,8 +31,8 @@ beforeEach(() => {
   });
 });
 
-describe("POST /api/teach/domains — o banco recusa quem não tem ativação (P2-5)", () => {
-  it("responde 402 com a frase de ativação e não chega na Vercel", async () => {
+describe("POST /api/teach/domains — the database refuses anyone without activation (P2-5)", () => {
+  it("responds 402 with the activation phrase and does not reach Vercel", async () => {
     mocks.rpc.mockResolvedValue({
       data: null,
       error: { code: "P0001", message: "Pay the one-time activation fee before connecting a custom domain." },

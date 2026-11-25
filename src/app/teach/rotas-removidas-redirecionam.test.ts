@@ -8,10 +8,10 @@ import TeacherIntegrationsPage from "@/app/teach/integrations/page";
 import TeacherTeamPage from "@/app/teach/team/page";
 import { platformNav } from "@/data/site";
 
-// "Collaborators" e "Integrations" eram placas de "em breve" no menu, e
-// "Coupons" uma placa dizendo que os cupons ficam em cada produto. Os tres
-// sairam do menu; as rotas seguem vivas e levam para a pagina que faz sentido,
-// para nenhum link antigo dar 404.
+// "Collaborators" and "Integrations" were "coming soon" signs in the menu, and
+// "Coupons" a sign saying that coupons live in each product. All three
+// left the menu; the routes stay alive and lead to the page that makes sense,
+// so that no old link gets a 404.
 
 const mocks = vi.hoisted(() => ({
   redirect: vi.fn((to: string) => {
@@ -21,7 +21,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 
-describe("itens mortos do menu do professor", () => {
+describe("dead items of the teacher menu", () => {
   it.each([
     ["/teach/team", TeacherTeamPage, "/teach"],
     ["/teach/integrations", TeacherIntegrationsPage, "/account/payments"],
@@ -30,7 +30,7 @@ describe("itens mortos do menu do professor", () => {
     expect(() => Page()).toThrow(`REDIRECT:${destination}`);
   });
 
-  it("nenhum deles aparece mais na barra", () => {
+  it("none of them shows up in the bar anymore", () => {
     const hrefs = platformNav.filter((item) => item.contexts.length > 0).map((item) => item.href);
 
     expect(hrefs).not.toContain("/teach/team");
@@ -38,10 +38,10 @@ describe("itens mortos do menu do professor", () => {
     expect(hrefs).not.toContain("/teach/coupons");
   });
 
-  // Um cartao que aponta para um endereco que so redireciona engana: "Coupons"
-  // na pagina de produtos recarregava a propria pagina, e "Integrations" caia
-  // em Ganhos. Nenhuma tela (fora os testes e as proprias rotas) linka para eles.
-  it("nenhum cartao ou link das telas aponta para os enderecos que so redirecionam", () => {
+  // A card that points to an address that only redirects misleads: "Coupons"
+  // on the products page reloaded the page itself, and "Integrations" landed
+  // in Earnings. No screen (besides the tests and the routes themselves) links to them.
+  it("no card or link on the screens points to the addresses that only redirect", () => {
     const files = ["components", "data"].flatMap((dir) =>
       readdirSync(join(process.cwd(), "src", dir), { recursive: true, encoding: "utf8" })
         .filter((file) => /\.tsx?$/.test(file) && !/\.test\.tsx?$/.test(file))

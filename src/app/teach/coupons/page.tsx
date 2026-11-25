@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 
-// Os cupons vivem dentro de cada produto (painel do produto > Coupons). Esta
-// rota era so uma placa dizendo isso; agora leva direto para a lista de
-// produtos.
+// Coupons live inside each product (product panel > Coupons). This
+// route used to be just a sign saying so; now it goes straight to the product
+// list.
 export default function TeacherCouponsPage() {
   redirect("/teach/builder");
 }

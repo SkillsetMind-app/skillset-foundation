@@ -31,7 +31,7 @@ afterEach(cleanup);
 
 describe("residual teacher routes with real server translation and I18nProvider", () => {
   it("requires all residual strings in both real dictionaries without fragment injection", () => {
-    // A placa de cupons virou um redirecionamento (rotas-removidas-redirecionam.test.ts).
+    // The coupons sign became a redirect (rotas-removidas-redirecionam.test.ts).
     for (const key of ["manageLoading"]) {
       const path = `teacherRouteResidual.${key}`;
       const english = translate(getDictionary("en"), path);
@@ -64,7 +64,7 @@ describe("residual teacher routes with real server translation and I18nProvider"
     mocks.locale = locale;
     mocks.suspended = true;
     render(<I18nProvider initialLocale={locale}>{await CourseManagePage({ params: Promise.resolve({ courseId: "course-$&" }) })}</I18nProvider>);
-    // F-03: esqueleto no formato da p\u00e1gina (o mesmo do hub carregando), n\u00e3o um cart\u00e3o com uma linha.
+    // F-03: skeleton in the shape of the page (the same as the hub loading), not a card with one line.
     expect(screen.getByRole("status")).toHaveTextContent(locale === "es" ? "Cargando la gesti\u00f3n del curso..." : "Loading course management...");
     expect(screen.getByRole("status").querySelector(".animate-pulse")).not.toBeNull();
     expect(screen.queryByTestId("manage-hub")).toBeNull();

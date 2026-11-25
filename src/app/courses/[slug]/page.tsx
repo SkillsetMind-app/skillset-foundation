@@ -20,20 +20,20 @@ import { getCourseRefAccess, getPublicCourseByRef, isMarketplaceOpen } from "@/l
 import { buildCourseJsonLd } from "@/lib/seo/course-jsonld";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
-// Não congela as amostras: o layout lê o cabeçalho (nonce) e a página lê o
-// cookie do idioma, então o build marca a rota como dinâmica (ƒ) e cada pedido
-// decide na hora se o endereço é de um curso real ou da amostra.
+// Does not freeze the samples: the layout reads the header (nonce) and the page reads the
+// language cookie, so the build marks the route as dynamic (ƒ) and each request
+// decides on the spot whether the address is a real course or the sample.
 export function generateStaticParams() {
   return getCourseSlugs().map((slug) => ({ slug }));
 }
 
-// O curso REAL vence a amostra. O endereço de um curso é o title_key (o título
-// virado slug), então um curso chamado "Effective Communication" mora em
-// /courses/effective-communication, o mesmo endereço de uma das seis amostras.
-// A amostra só aparece quando nenhum curso real responde por ele para quem
-// pede (publicado, ou rascunho que a sessão enxerga); falha de leitura
-// ("unknown") mantém a amostra. A consulta extra só acontece nos seis slugs
-// de amostra: os demais já consultavam o banco.
+// The REAL course beats the sample. A course's address is the title_key (the title
+// turned into a slug), so a course called "Effective Communication" lives at
+// /courses/effective-communication, the same address as one of the six samples.
+// The sample only shows up when no real course answers for it to whoever
+// asks (published, or a draft the session can see); a read failure
+// ("unknown") keeps the sample. The extra query only happens on the six sample slugs:
+// the others already queried the database.
 export async function generateMetadata({
   params,
 }: {
@@ -46,8 +46,8 @@ export async function generateMetadata({
   const course = sample && (await getCourseRefAccess(slug)) !== "visible" ? sample : undefined;
 
   if (course) {
-    // Amostra de demonstração: fica no ar (decisão do dono), mas mostra preço e
-    // "Inscrever-se" de um curso que ninguém compra — fora do índice.
+    // Demo sample: stays online (the owner's decision), but shows the price and
+    // "Inscrever-se" of a course nobody buys — outside the index.
     return buildPageMetadata({
       title: course.title,
       description: course.summary,
@@ -57,10 +57,10 @@ export async function generateMetadata({
     });
   }
 
-  // Curso de criador: resolvido no SERVIDOR desde que a leitura anônima voltou
-  // a funcionar (migration 20260901120000). Antes disto, todo curso real caía no
-  // literal "Course" com a mesma descrição e o mesmo logo — colar o link de
-  // qualquer curso no WhatsApp produzia um card idêntico e sem identidade.
+  // Creator course: resolved on the SERVER since anonymous reads came back
+  // to work (migration 20260901120000). Before this, every real course fell into the
+  // literal "Course" with the same description and the same logo — pasting the link of
+  // any course into WhatsApp produced an identical card with no identity.
   if (published) {
     return buildPageMetadata({
       title: published.title,
@@ -69,13 +69,13 @@ export async function generateMetadata({
         ?? t("publicCourses.courseMetaTitle").replace("{title}", () => published.title),
       path: `/courses/${published.urlSlug}`,
       image: published.coverImageUrl,
-      // Curso interno de teste abre pelo link, mas não entra no índice.
+      // Internal test course opens by the link, but does not enter the index.
       noindex: isInternalSmokeCourse(published),
     });
   }
 
-  // Rascunho, curso removido ou slug inválido: fallback com escopo de curso, em
-  // vez de herdar o título genérico do site.
+  // Draft, removed course or invalid slug: fallback scoped to the course, instead
+  // of inheriting the site's generic title.
   return buildPageMetadata({
     title: t("publicCourses.course"),
     description:
@@ -91,40 +91,40 @@ export default async function CourseDetailPage({
 }) {
   const { t, locale } = await getServerTranslation();
   const { slug } = await params;
-  // Mesma ordem do generateMetadata: o curso real primeiro, a amostra depois.
+  // Same order as generateMetadata: the real course first, the sample after.
   const published = await getPublicCourseByRef(slug);
   const access = published ? "visible" : await getCourseRefAccess(slug);
   const course = access === "visible" ? undefined : getCourseBySlug(slug);
 
   if (!course) {
-    // Curso não publicado, removido ou slug inválido respondia 200 com uma
-    // página vazia: ruim para a qualidade da página de anúncio e para o
-    // buscador. Aqui, ANTES de qualquer Suspense, vira 404 de verdade. O dono
-    // (e o admin) continuam vendo o rascunho: a leitura usa a sessão do pedido
-    // e a RLS decide. Falha de leitura ("unknown") não vira 404: um soluço do
-    // banco não pode derrubar a página de um curso publicado.
+    // An unpublished or removed course, or an invalid slug, answered 200 with an
+    // empty page: bad for the quality of the ad page and for the
+    // search engine. Here, BEFORE any Suspense, it becomes a real 404. The owner
+    // (and the admin) keep seeing the draft: the read uses the request's session
+    // and the RLS decides. A read failure ("unknown") does not become a 404: a database
+    // hiccup must not take down the page of a published course.
     if (access === "missing") {
       notFound();
     }
 
-    // Título e resumo saem daqui, do SERVER COMPONENT. Motivo concreto:
-    // CreatorCourseDetail chama useSearchParams(), então numa rota
-    // prerenderizada o Next entrega apenas o FALLBACK do Suspense no HTML e joga
-    // a subárvore inteira para o cliente. Passar os DADOS como prop para o
-    // client component não colocaria uma palavra no HTML. É por isso que
-    // buscador e scraper de link viam "Loading course..." e o card saía vazio.
+    // Title and summary come from here, from the SERVER COMPONENT. Concrete reason:
+    // CreatorCourseDetail calls useSearchParams(), so on a
+    // prerendered route Next delivers only the Suspense FALLBACK in the HTML and throws
+    // the whole subtree to the client. Passing the DATA as a prop to the
+    // client component would not put a single word in the HTML. That is why
+    // search engines and link scrapers saw "Loading course..." and the card came out empty.
     //
-    // O que vai como prop é o ELEMENTO já desenhado aqui (`lead`), e ele entra
-    // também no fallback: com ou sem o Suspense resolvido no servidor, o HTML
-    // traz o h1, a capa e o resumo. Ele vira o topo da coluna da esquerda, e o
-    // cartão de compra começa no alto da página, ao lado da capa; antes a capa
-    // vinha sozinha acima das colunas e empurrava preço e botão para baixo da
-    // primeira tela. No celular a ordem segue: capa, título, resumo, conteúdo,
-    // cartão.
+    // What goes as a prop is the ELEMENT already drawn here (`lead`), and it also goes
+    // into the fallback: with or without the Suspense resolved on the server, the HTML
+    // carries the h1, the cover and the summary. It becomes the top of the left column, and the
+    // purchase card starts at the top of the page, next to the cover; before, the cover
+    // came alone above the columns and pushed the price and button below the
+    // first screen. On the phone the order stays: cover, title, summary, content,
+    // card.
     const lead = published ? (
       <header id="overview" className="mb-8 scroll-mt-24">
-        {/* A capa que o cartão do marketplace já mostra. Sem capa, nada:
-            não se inventa arte. */}
+        {/* The cover that the marketplace card already shows. Without a cover, nothing:
+            art is not invented. */}
         {published.coverImageUrl ? (
           <div className="relative mb-8 aspect-[16/9] overflow-hidden rounded-lg shadow-[var(--shadow-soft)] lg:max-w-3xl">
             <Image
@@ -160,12 +160,12 @@ export default async function CourseDetailPage({
       <div className="page-shell">
         <SiteNav />
         <main id="conteudo" className="mx-auto w-full max-w-7xl px-5 py-10 sm:px-8 sm:py-14">
-          {/* O mesmo esqueleto que o cliente mostra enquanto carrega: do HTML do
-              servidor até o curso chegar, a página não troca de forma. */}
+          {/* The same skeleton that the client shows while loading: from the server
+              HTML until the course arrives, the page does not change shape. */}
           <Suspense fallback={<CourseDetailSkeleton label={t("publicCourses.loadingCourse")} lead={lead} />}>
-            {/* hideHeader: o `lead` já tem título e resumo; sem isto o
-                componente cliente desenhava um segundo h1 com o mesmo texto
-                logo abaixo. */}
+            {/* hideHeader: the `lead` already has the title and summary; without this the
+                client component drew a second h1 with the same text
+                right below. */}
             <CreatorCourseDetail
               courseIdOverride={slug}
               hideHeader={Boolean(published)}
@@ -173,10 +173,10 @@ export default async function CourseDetailPage({
             />
           </Suspense>
         </main>
-        {/* A página com preço é a que mais precisa do rodapé: termos, política
-            de reembolso e contato. Antes ela acabava no currículo. O pb-24
-            deixa o fim dele acima da barra de compra fixa (no celular, no pé
-            da tela; no desktop, o cartão do canto quando o da coluna sai). */}
+        {/* The page with a price is the one that most needs the footer: terms, refund
+            policy and contact. Before, it ended at the curriculum. The pb-24
+            keeps its end above the fixed purchase bar (on the phone, at the bottom
+            of the screen; on desktop, the corner card when the column's one leaves). */}
         <div className="pb-24">
           <SiteFooter />
         </div>
@@ -317,9 +317,9 @@ export default async function CourseDetailPage({
 
             <section id="curriculum" className="mt-8 scroll-mt-24">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.structure")}</p>
-              {/* O mesmo currículo da página de um curso de verdade: um módulo
-                  por sanfona (o primeiro aberto), aulas e duração na linha do
-                  módulo, linhas de 44px e dados em caixa normal com " · ". */}
+              {/* The same curriculum as the page of a real course: one module
+                  per accordion (the first one open), lessons and duration on the
+                  module row, 44px rows and data in normal case with " · ". */}
               <div className="mt-5 grid gap-3">
                 {course.modules.map((module, moduleIndex) => (
                   <CourseModuleDisclosure
@@ -328,7 +328,7 @@ export default async function CourseDetailPage({
                     meta={[
                       t(module.lessons.length === 1 ? "publicCourses.lessonOne" : "publicCourses.lessonMany")
                         .replace("{count}", String(module.lessons.length)),
-                      // A amostra guarda a duração como texto ("12 min").
+                      // The sample stores the duration as text ("12 min").
                       formatTotalMinutes(module.lessons.map((lesson) => Number(/^(\d+) min$/.exec(lesson.duration)?.[1]))),
                     ].filter(Boolean).join(" · ")}
                     defaultOpen={moduleIndex === 0}
@@ -366,8 +366,8 @@ export default async function CourseDetailPage({
                 six-row <dl> alongside Category and Level — buyers had to
                 scan past four neutral rows to find what it costs. Now it
                 anchors the sidebar so the cost is the first thing you see. */}
-            {/* "Price" em 12px, como no cartão do curso real: "Access" em 10px
-                não dizia que o número embaixo é o preço. */}
+            {/* "Price" in 12px, as on the real course card: "Access" in 10px
+                did not say that the number below is the price. */}
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">{t("publicCourses.priceEyebrow")}</p>
             <p className="display-title mt-1 text-4xl leading-none text-[var(--color-primary)]">
               {priceLabel}
@@ -397,7 +397,7 @@ export default async function CourseDetailPage({
             </dl>
             <CourseEnrollmentCta course={course} />
             <Link href="#free-preview" className="button-outline mt-3 w-full px-4 py-2.5 text-sm">{t("publicCourses.seePreview")}</Link>
-            {/* Loja vazia não é destino: a volta leva ao início. */}
+            {/* An empty store is not a destination: the back link leads to the start. */}
             <Link
               href={hasRealCourses ? "/courses" : "/"}
               className="mt-4 inline-flex w-full justify-center text-sm font-semibold text-[var(--color-primary)]"
@@ -405,7 +405,7 @@ export default async function CourseDetailPage({
           </aside>
         </div>
       </main>
-      {/* pb-24: o rodapé termina acima da barra fixa de inscrição do celular. */}
+      {/* pb-24: the footer ends above the phone's fixed enrollment bar. */}
       <div className="pb-24 lg:pb-0">
         <SiteFooter />
       </div>

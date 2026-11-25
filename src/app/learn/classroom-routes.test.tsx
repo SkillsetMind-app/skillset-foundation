@@ -3,12 +3,12 @@ import { describe, expect, it, vi } from "vitest";
 import { platformNav } from "@/data/site";
 
 /**
- * Reanalise item 9 — as rotas das abas e a regra "ir e voltar":
- *   - /learn/courses/<curso>/<aba> so aceita nomes de aba conhecidos;
- *   - /learn/community/<curso> e /learn/community/creator?courseId= eram a
- *     segunda cara da comunidade (hub separado, sem volta): agora encaminham
- *     para a aba da sala;
- *   - nada do proprio app abre em nova aba (so link externo).
+ * Reanalysis item 9 — the tab routes and the "go and come back" rule:
+ *   - /learn/courses/<course>/<tab> only accepts known tab names;
+ *   - /learn/community/<course> and /learn/community/creator?courseId= were the
+ *     second face of the community (a separate hub, with no way back): now they
+ *     redirect to the classroom tab;
+ *   - nothing in the app itself opens in a new tab (external links only).
  */
 
 const mocks = vi.hoisted(() => ({
@@ -36,8 +36,8 @@ import PostRoute from "@/app/learn/courses/[slug]/community/q/[postId]/page";
 import CommunityRedirect from "@/app/learn/community/[slug]/page";
 import CreatorCommunityRedirect from "@/app/learn/community/creator/page";
 
-describe("rota da aba: /learn/courses/<curso>/<aba>", () => {
-  it("abre a pagina da sala na aba pedida", async () => {
+describe("tab route: /learn/courses/<course>/<tab>", () => {
+  it("opens the classroom page on the requested tab", async () => {
     const element = await TabRoute({
       params: Promise.resolve({ slug: "lideranca", tab: "community" }),
     });
@@ -45,7 +45,7 @@ describe("rota da aba: /learn/courses/<curso>/<aba>", () => {
     expect(element.props).toMatchObject({ slug: "lideranca", tab: "community" });
   });
 
-  it("a gaveta da pergunta tem endereco proprio dentro da aba Community", async () => {
+  it("the question drawer has its own address inside the Community tab", async () => {
     const element = await PostRoute({
       params: Promise.resolve({ slug: "lideranca", postId: "post-1" }),
     });
@@ -53,7 +53,7 @@ describe("rota da aba: /learn/courses/<curso>/<aba>", () => {
     expect(element.props).toMatchObject({ slug: "lideranca", tab: "community", openPostId: "post-1" });
   });
 
-  it("nome desconhecido e 404 — e '/lesson' tambem, porque a aula e a rota-mae", async () => {
+  it("an unknown name is a 404, and so is '/lesson', because the lesson is the parent route", async () => {
     await expect(
       TabRoute({ params: Promise.resolve({ slug: "lideranca", tab: "banana" }) }),
     ).rejects.toThrow("NOT_FOUND");
@@ -63,8 +63,8 @@ describe("rota da aba: /learn/courses/<curso>/<aba>", () => {
   });
 });
 
-describe("a comunidade tem uma cara so: os enderecos antigos encaminham para a aba", () => {
-  it("/learn/community/<curso> -> /learn/courses/<curso>/community", async () => {
+describe("the community has a single face: the old addresses redirect to the tab", () => {
+  it("/learn/community/<course> -> /learn/courses/<course>/community", async () => {
     await expect(
       CommunityRedirect({ params: Promise.resolve({ slug: "lideranca" }) }),
     ).rejects.toThrow("REDIRECT:/learn/courses/lideranca/community");
@@ -76,17 +76,17 @@ describe("a comunidade tem uma cara so: os enderecos antigos encaminham para a a
     ).rejects.toThrow("REDIRECT:/learn/courses/course-1/community");
   });
 
-  it("sem courseId nao ha para onde ir: volta a lista de comunidades", async () => {
+  it("with no courseId there is nowhere to go: back to the list of communities", async () => {
     await expect(
       CreatorCommunityRedirect({ searchParams: Promise.resolve({}) }),
     ).rejects.toThrow("REDIRECT:/learn/community");
   });
 });
 
-describe("nada do proprio app abre em nova aba", () => {
-  // A opcao `newTab` saiu da navegacao: a troca entre aluno e professor e o
-  // botao do topo, na mesma aba (platform-header).
-  it("nenhum item da navegacao abre em nova aba", () => {
+describe("nothing in the app itself opens in a new tab", () => {
+  // The `newTab` option is gone from the navigation: switching between learner
+  // and teacher is the button at the top, in the same tab (platform-header).
+  it("no navigation item opens in a new tab", () => {
     for (const item of platformNav) {
       expect(item, `${item.labelKey}`).not.toHaveProperty("newTab");
     }

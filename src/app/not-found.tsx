@@ -4,10 +4,11 @@ import { SiteFooter } from "@/components/site/site-footer";
 import { SiteNav } from "@/components/site/site-nav";
 import { getServerTranslation } from "@/lib/i18n/server";
 
-// Componente de servidor para poder montar o rodapé (que é servidor) junto com
-// a barra: antes o 404 era um cartão solto, sem menu e sem rodapé, e o único
-// caminho era "Go home". O layout raiz já lê o idioma do cookie, então isto
-// não muda como a página é gerada.
+// A server component so it can mount the footer (which is a server component)
+// along with the bar: before, the 404 was a loose card, with no menu and no
+// footer, and the only way out was "Go home". The root layout already reads
+// the language from the cookie, so this does not change how the page is
+// generated.
 export default async function NotFound() {
   const { t } = await getServerTranslation();
   return (
@@ -15,8 +16,8 @@ export default async function NotFound() {
       <SiteNav />
       <main id="conteudo" className="flex min-h-[60svh] items-center justify-center px-6 py-16">
         <div className="surface-card max-w-2xl rounded-lg p-8 text-center sm:p-10">
-          {/* O mesmo olho navy da página de erro (app/error.tsx): as duas
-              telas de "algo deu errado" com uma cara só. */}
+          {/* The same navy eyebrow as the error page (app/error.tsx): the two
+              "something went wrong" screens with a single look. */}
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--color-primary)]">
             {t("publicPages.notFound.eyebrow")}
           </p>
@@ -33,9 +34,9 @@ export default async function NotFound() {
             >
               {t("publicPages.notFound.home")}
             </Link>
-            {/* Havia um segundo botão para /courses (antes, /platform). Com a
-                loja ainda vazia ele levava a um catálogo sem curso; a home é o
-                único caminho até haver o que mostrar. */}
+            {/* There was a second button to /courses (before, /platform). With
+                the store still empty it led to a catalog with no course; the
+                home is the only way until there is something to show. */}
           </div>
         </div>
       </main>

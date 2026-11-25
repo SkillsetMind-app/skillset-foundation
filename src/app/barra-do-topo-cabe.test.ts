@@ -8,16 +8,16 @@ import en from "@/data/i18n/en.json";
 import es from "@/data/i18n/es.json";
 
 /**
- * A barra do topo da plataforma tem `overflow: hidden` na coluna e um grupo de
- * acoes que nao encolhe. Se o que esta nela passa da largura, o que fica de
- * fora e justamente o fim do grupo: o idioma e o menu da conta (Sair,
- * Configuracoes). Foi o que a troca de lado com o texto inteiro ("Ir al área
- * del profesor") e uma segunda Ajuda fizeram de 768 a ~1180px.
+ * The platform top bar has `overflow: hidden` on the column and a group of
+ * actions that does not shrink. If what is in it goes past the width, what is left
+ * out is precisely the end of the group: the language and the account menu (Sign out,
+ * Settings). That is what the side switch with the full text ("Ir al área
+ * del profesor") and a second Help did from 768 to ~1180px.
  *
- * O jsdom nao mede layout, entao a folha de estilo e lida como texto e a conta
- * e feita aqui, com as larguras que a propria folha declara. O que nao esta na
- * folha (avatar, campo de busca no minimo, largura media de uma letra) vai como
- * constante com nome, puxada para o lado pior.
+ * jsdom does not measure layout, so the stylesheet is read as text and the math
+ * is done here, with the widths the sheet itself declares. What is not in the
+ * sheet (avatar, search field at its minimum, average width of a letter) goes in as a
+ * named constant, pushed to the worse side.
  */
 const css = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8").replace(/\r\n/g, "\n");
 
@@ -38,17 +38,17 @@ function mediaBlocks(condition: string): string[] {
   return blocks;
 }
 
-/** Corpo da primeira regra com exatamente este seletor em `source`. */
+/** Body of the first rule with exactly this selector in `source`. */
 function rule(source: string, selector: string): string {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const found = source.match(new RegExp(`(?:^|[\\n}])\\s*${escaped}\\s*\\{([^}]*)\\}`));
-  expect(found, `regra ${selector} nao encontrada`).not.toBeNull();
+  expect(found, `rule ${selector} not found`).not.toBeNull();
   return found![1];
 }
 
 function prop(body: string, name: string): string {
   const found = body.match(new RegExp(`(?:^|[;\\s])${name}\\s*:\\s*([^;]+);`));
-  expect(found, `${name} nao declarado`).not.toBeNull();
+  expect(found, `${name} not declared`).not.toBeNull();
   return found![1].replace(/\s*!important/, "").trim();
 }
 
@@ -59,9 +59,9 @@ function px(value: string, fontPx = 16): number {
   throw new Error(`unidade inesperada: ${value}`);
 }
 
-// Fora da folha (lado pior): avatar size-8, logo size-10, o campo de busca
-// encolhido ate o minimo (lupa + dica do atalho + respiros), e a largura media
-// de uma letra maiuscula em negrito.
+// Outside the sheet (worse side): avatar size-8, logo size-10, the search field
+// shrunk to its minimum (magnifier + shortcut hint + gaps), and the average width
+// of a bold uppercase letter.
 const AVATAR = 32;
 const LOGO = 40;
 const SEARCH_MIN = 110;
@@ -70,7 +70,7 @@ const TEXT_EM = 0.62;
 
 const inner = rule(css, ".platform-topbar__inner");
 const actions = rule(css, ".platform-topbar__actions");
-// Os botoes de icone do grupo (tema, Advisor, sino, busca, idioma): 44px.
+// The icon buttons of the group (theme, Advisor, bell, search, language): 44px.
 const iconButton = px(prop(
   css.match(/\.platform-topbar__actions > button:not\(\.locale-switcher-compact\):not\(\.account-menu-trigger\):not\(\.help-menu-trigger\)\s*\{([^}]*)\}/)![1],
   "width",
@@ -80,20 +80,20 @@ const innerPadding = px(prop(inner, "padding").split(/\s+/)[1]);
 const actionsGap = px(prop(actions, "gap"));
 const sidebar = px(css.match(/--sidebar-width:\s*([^;]+);/)![1]);
 const rail = px(prop(rule(css, ".platform-grid--collapsed"), "--platform-sidebar-width"));
-// Onda E: sem escolha salva, de 768 a 1179px a coluna e o rail ja no CSS.
+// Wave E: with no saved choice, from 768 to 1179px the column and the rail are already in the CSS.
 const mediumRail = px(prop(
   rule(mediaBlocks("(min-width: 768px) and (width < 1180px)").join("\n"), ".platform-grid--auto"),
   "--platform-sidebar-width",
 ));
 
-/** O menu da conta com nome: avatar, nome no maximo, seta e respiros. */
+/** The account menu with a name: avatar, name at most, arrow and gaps. */
 function accountTrigger(): number {
   const name = px(prop(rule(css, ".account-menu-trigger__name"), "max-width"));
   const gap = px(prop(rule(css, ".account-menu-trigger"), "gap"));
   return 6 + AVATAR + gap + name + gap + 12 + 14 + 2;
 }
 
-/** Troca de lado com o texto inteiro, no idioma em que ela e maior. */
+/** Side switch with the full text, in the language where it is longer. */
 function switchWithText(): number {
   const longest = Math.max(
     ...[en, es].flatMap((dict) => [dict.platform.side.goStudent, dict.platform.side.goTeacher].map((label) => label.length)),
@@ -101,22 +101,22 @@ function switchWithText(): number {
   return 14 + 16 + 6 + longest * 13 * TEXT_EM + 14 + 2;
 }
 
-/** Troca de lado + tema + Advisor + sino + conta + idioma: o grupo inteiro. */
+/** Side switch + theme + Advisor + bell + account + language: the whole group. */
 function actionsWidth(switchWidth: number): number {
   const items = [switchWidth, iconButton, iconButton, iconButton, accountTrigger(), iconButton];
   return items.reduce((sum, width) => sum + width, 0) + actionsGap * (items.length - 1);
 }
 
-/** O que sobra para o grupo depois da barra lateral, dos respiros, do caminho
- *  (que encolhe ate zero) e da busca no minimo. */
+/** What is left for the group after the sidebar, the gaps, the path
+ *  (which shrinks to zero) and the search at its minimum. */
 function roomForActions(viewport: number, sidebarWidth: number): number {
   return viewport - sidebarWidth - innerPadding * 2 - innerGap * 2 - SEARCH_MIN;
 }
 
-describe("a barra do topo cabe de 768px para cima", () => {
+describe("the top bar fits from 768px up", () => {
   const below1280 = mediaBlocks("(max-width: 1279.98px)").join("\n");
 
-  it("abaixo de 1280px a troca de lado fica so com o icone e o nome escondido para leitor de tela", () => {
+  it("below 1280px the side switch keeps only the icon and the name hidden for the screen reader", () => {
     const button = rule(below1280, ".platform-topbar__switch");
     expect(px(prop(button, "width"))).toBe(iconButton);
     expect(prop(button, "padding")).toBe("0");
@@ -127,7 +127,7 @@ describe("a barra do topo cabe de 768px para cima", () => {
     expect(prop(label, "clip")).toBe("rect(0 0 0 0)");
   });
 
-  it("a Ajuda nao mora mais no topo da plataforma", () => {
+  it("Help no longer lives at the top of the platform", () => {
     expect(css).not.toMatch(/\.platform-topbar__help\b/);
   });
 
@@ -140,26 +140,26 @@ describe("a barra do topo cabe de 768px para cima", () => {
     [1179, "barra aberta por escolha", sidebar],
     [1180, "barra aberta, o padrao", sidebar],
     [1279, "barra aberta, o padrao", sidebar],
-  ])("em %spx (%s), o grupo de acoes com a troca so de icone cabe", (viewport, _label, sidebarWidth) => {
+  ])("at %spx (%s), the action group with the icon-only switch fits", (viewport, _label, sidebarWidth) => {
     expect(actionsWidth(iconButton)).toBeLessThanOrEqual(roomForActions(viewport, sidebarWidth));
   });
 
-  it("a conta prova por que 768-1023px e sempre trilho: com a barra aberta, o grupo nao caberia", () => {
+  it("the math proves why 768-1023px is always a rail: with the bar open, the group would not fit", () => {
     expect(actionsWidth(iconButton)).toBeGreaterThan(roomForActions(768, sidebar));
     const tablet = mediaBlocks("(min-width: 768px) and (width < 1024px)").join("\n");
     expect(px(prop(rule(tablet, ".platform-grid"), "--platform-sidebar-width"))).toBe(rail);
   });
 
-  it("de 1280px para cima, cabe com o texto inteiro da troca, em ingles e em espanhol", () => {
+  it("from 1280px up, it fits with the full switch text, in English and Spanish", () => {
     expect(actionsWidth(switchWithText())).toBeLessThanOrEqual(roomForActions(1280, sidebar));
   });
 
-  it("a conta prova algo: com o texto inteiro em 768px, nao caberia", () => {
+  it("the math proves something: with the full text at 768px, it would not fit", () => {
     expect(actionsWidth(switchWithText())).toBeGreaterThan(roomForActions(768, rail));
   });
 });
 
-describe("no celular, o nome do lado cabe em 360px", () => {
+describe("on the phone, the side name fits at 360px", () => {
   const phone = mediaBlocks("(max-width: 767.98px)").join("\n");
   const narrow = mediaBlocks("(max-width: 680px)").join("\n");
   const side = rule(phone, ".platform-topbar__side");
@@ -167,22 +167,22 @@ describe("no celular, o nome do lado cabe em 360px", () => {
   const letterSpacing = px(prop(side, "letter-spacing"), fontPx);
   const gap = px(prop(rule(phone, ".platform-topbar__inner"), "gap"));
   const padding = px(prop(rule(narrow, ".platform-topbar__inner"), "padding-inline"));
-  // Busca, sino, conta (so o avatar abaixo de 640px) e idioma.
+  // Search, bell, account (only the avatar below 640px) and language.
   const phoneActions = iconButton * 4 + actionsGap * 3;
   const room = 360 - padding * 2 - LOGO - gap * 2 - phoneActions;
 
   it.each([
     ["en", en.platform.side],
     ["es", es.platform.side],
-  ])("%s: uma palavra so, que cabe", (_locale, labels) => {
+  ])("%s: a single word, which fits", (_locale, labels) => {
     for (const label of [labels.student, labels.teacher, labels.ops]) {
-      expect(label, `"${label}" tem mais de uma palavra`).toMatch(/^\S+$/);
+      expect(label, `"${label}" has more than one word`).toMatch(/^\S+$/);
       const width = label.length * fontPx * CAPS_EM + label.length * letterSpacing;
-      expect(width, `"${label}" mede ~${Math.round(width)}px e sobram ${room}px`).toBeLessThanOrEqual(room);
+      expect(width, `"${label}" measures ~${Math.round(width)}px and ${room}px are left`).toBeLessThanOrEqual(room);
     }
   });
 
-  it("aluno e professor nao comecam igual (o corte nao pode dizer o mesmo para os dois)", () => {
+  it("learner and teacher do not start the same (the cut cannot say the same for both)", () => {
     for (const labels of [en.platform.side, es.platform.side]) {
       expect(labels.student.slice(0, 4)).not.toBe(labels.teacher.slice(0, 4));
     }
@@ -190,12 +190,12 @@ describe("no celular, o nome do lado cabe em 360px", () => {
 });
 
 /**
- * Telas medias (onda E): o conteudo encolhia ~196px de 1024 a 1179px com a
- * barra aberta por padrao. A conta abaixo usa as larguras da folha (barra,
- * rail, respiro do conteudo) e os minimos escritos nas grades que nao podem
- * encolher. Barra de rolagem classica de 17px, do lado pior.
+ * Medium screens (wave E): the content shrank ~196px from 1024 to 1179px with the
+ * bar open by default. The math below uses the widths of the sheet (bar,
+ * rail, content gap) and the minimums written in the grids that cannot
+ * shrink. Classic 17px scrollbar, on the worse side.
  */
-describe("telas medias: nada estoura de 600 a 1179px", () => {
+describe("medium screens: nothing overflows from 600 to 1179px", () => {
   const SCROLLBAR = 17;
   const phone = mediaBlocks("(max-width: 767.98px)").join("\n");
   const contentPadding = prop(rule(css, ".platform-content"), "padding");
@@ -212,55 +212,55 @@ describe("telas medias: nada estoura de 600 a 1179px", () => {
     return viewport - sidebarWidth - padding * 2 - SCROLLBAR;
   }
 
-  // Busca + dois filtros dos produtos, lado a lado a partir de md (768px).
+  // Search + two product filters, side by side from md (768px).
   const filters = read("src/components/teacher/teacher-course-studio.tsx")
     .match(/md:grid-cols-\[minmax\((\d+)px,1fr\)_minmax\((\d+)px,auto\)_minmax\((\d+)px,auto\)\]/)!;
   const filtersMin = Number(filters[1]) + Number(filters[2]) + Number(filters[3]) + 2 * 12;
 
-  it("abaixo de 768px: barra de baixo e gaveta, sem barra lateral; a faixa de 'Publicado' sobe acima dela", () => {
+  it("below 768px: bottom bar and drawer, no sidebar; the 'Published' strip goes up above it", () => {
     expect(phone).toMatch(/\.platform-sidebar \{\s*display: none;/);
     expect(phone).toMatch(/\.platform-mobile-nav \{\s*display: flex;/);
     expect(phone).toContain("body:has(.platform-mobile-nav) .created-strip");
     expect(defaultSidebar(600)).toBe(0);
   });
 
-  it.each([600, 768, 1024, 1179])("em %ipx os filtros dos produtos cabem na largura do conteudo", (viewport) => {
+  it.each([600, 768, 1024, 1179])("at %ipx the product filters fit in the content width", (viewport) => {
     const room = contentWidth(viewport);
-    // Em 600px os filtros ficam um embaixo do outro (md comeca em 768).
+    // At 600px the filters stack one under the other (md starts at 768).
     const needed = viewport >= 768 ? filtersMin : 0;
-    expect(needed, `precisa ${needed}px, sobram ${Math.round(room)}px`).toBeLessThanOrEqual(room);
+    expect(needed, `needs ${needed}px, ${Math.round(room)}px are left`).toBeLessThanOrEqual(room);
   });
 
-  it.each([768, 1024, 1179])("em %ipx o rail devolve ao conteudo o que a barra aberta comia", (viewport) => {
+  it.each([768, 1024, 1179])("at %ipx the rail gives back to the content what the open bar used to eat", (viewport) => {
     expect(contentWidth(viewport) - contentWidth(viewport, sidebar)).toBeCloseTo(sidebar - mediumRail);
   });
 
-  it("os formatos da Home do estudio so vao a 4 colunas no xl; em lg, com a barra aberta, cada um teria < 180px", () => {
+  it("the studio Home formats only go to 4 columns at xl; at lg, with the bar open, each one would have < 180px", () => {
     const home = read("src/components/teacher/teacher-studio-dashboard.tsx");
     expect(home).toContain("bg-[var(--color-line)] sm:grid-cols-2 xl:grid-cols-4");
     expect(home).not.toContain("lg:grid-cols-4");
     expect((contentWidth(1024, sidebar) - 3) / 4).toBeLessThan(180);
     for (const viewport of [1024, 1179]) {
-      // Duas colunas no padrao (rail) e com a barra aberta por escolha.
+      // Two columns by default (rail) and with the bar open by choice.
       expect((contentWidth(viewport) - 1) / 2).toBeGreaterThan(400);
       expect((contentWidth(viewport, sidebar) - 1) / 2).toBeGreaterThan(330);
     }
   });
 
-  it("a tabela de alunos tem largura minima, mas rola dentro da propria caixa, nunca a pagina", () => {
+  it("the learners table has a minimum width, but scrolls inside its own box, never the page", () => {
     const students = read("src/components/teacher/teacher-students-list.tsx");
     expect(students).toMatch(/<div className="mt-4 overflow-x-auto">\s*<table className="w-full min-w-\[720px\]/);
   });
 });
 
 /**
- * Barra do site publico (SiteNav). A auditoria pediu os links a partir de
- * 1024px (iPad deitado). A conta abaixo, com as larguras da folha e as letras
- * puxadas para o lado pior, mostra que ali eles nao cabem com a conta aberta
- * nem em espanhol: por isso o menu continua ate 1279px. A margem lateral, essa
- * sim, passa a ser a das paginas em toda largura.
+ * Public site bar (SiteNav). The audit asked for the links from
+ * 1024px (iPad landscape). The math below, with the widths of the sheet and the letters
+ * pushed to the worse side, shows that there they do not fit with the account open
+ * even in Spanish: that is why the menu stays until 1279px. The side margin, that one
+ * yes, becomes the pages' margin at every width.
  */
-describe("barra do site publico: links de 1280px para cima, margem igual a das paginas", () => {
+describe("public site bar: links from 1280px up, margin equal to the pages'", () => {
   const SCROLLBAR = 17;
   const FONT = 14;
   const CHEVRON = 14;
@@ -279,7 +279,7 @@ describe("barra do site publico: links de 1280px para cima, margem igual a das p
   const signin = rule(css, ".btn-signin");
   const signinBelow1280 = below1280.match(/\.btn-signin,\s*\.btn-cta-hero\s*\{([^}]*)\}/)![1];
   const trigger = rule(css, ".account-menu-trigger");
-  // Logo inteiro da barra: h-8 (32px) na proporcao do arquivo.
+  // Full bar logo: h-8 (32px) at the file's proportion.
   const logo = 32 * (brand.logoFullLightSize.width / brand.logoFullLightSize.height);
   const text = (label: string) => label.length * FONT * TEXT_EM;
 
@@ -303,7 +303,7 @@ describe("barra do site publico: links de 1280px para cima, margem igual a das p
     return dashboard + px(prop(rule(css, ".site-header__actions"), "gap")) + account;
   }
 
-  /** Logo, links e o grupo de acoes (sem o botao de menu: o lado melhor). */
+  /** Logo, links and the action group (without the menu button: the better side). */
   function headerWidth(labels: string[], actions: number): number {
     const actionsGap = px(prop(rule(css, ".site-header__actions"), "gap"));
     return logo + innerGap * 2 + px(prop(links, "margin-left")) + linksWidth(labels) + actions + actionsGap + LOCALE;
@@ -319,7 +319,7 @@ describe("barra do site publico: links de 1280px para cima, margem igual a das p
       (label): label is string => label !== null,
     );
 
-  it("os numeros vem do site-nav: botoes px-3 abaixo de xl, px-4 no xl, e o menu some no xl", () => {
+  it("the numbers come from site-nav: px-3 buttons below xl, px-4 at xl, and the menu disappears at xl", () => {
     expect(nav).toContain('className="button-solid gap-2 px-3 xl:px-4"');
     expect(nav).toContain('className="button-solid px-3 xl:px-4"');
     expect(nav).toMatch(/aria-controls="site-mobile-menu"[\s\S]*xl:hidden/);
@@ -329,13 +329,13 @@ describe("barra do site publico: links de 1280px para cima, margem igual a das p
   it.each([
     ["en", en],
     ["es", es],
-  ] as const)("%s: de 1280px para cima cabe tudo, com a loja aberta, logado ou nao", (_locale, dict) => {
+  ] as const)("%s: from 1280px up everything fits, with the store open, logged in or not", (_locale, dict) => {
     for (const actions of [signedOut(dict, true), signedIn(dict, true)]) {
       expect(headerWidth(labels(dict, true), actions)).toBeLessThanOrEqual(room(1280));
     }
   });
 
-  it("a conta prova por que os links esperam 1280px: em 1024px nao cabem logado, nem em espanhol deslogado", () => {
+  it("the math proves why the links wait for 1280px: at 1024px they do not fit logged in, nor in Spanish logged out", () => {
     for (const dict of [en, es]) {
       expect(headerWidth(labels(dict, false), signedIn(dict, false))).toBeGreaterThan(room(1024));
     }
@@ -343,13 +343,13 @@ describe("barra do site publico: links de 1280px para cima, margem igual a das p
     expect(headerWidth(labels(en, true), signedOut(en, false))).toBeGreaterThan(room(1024));
   });
 
-  it("a margem da barra e a das paginas: 20px no celular e 32px a partir de 40rem (o sm), em toda largura", () => {
+  it("the bar margin is the pages' one: 20px on the phone and 32px from 40rem (sm), at every width", () => {
     expect(prop(inner, "padding")).toBe("8px var(--container-pad-mobile)");
     expect(root("container-pad-mobile")).toBe(20);
     const tablet = rule(mediaBlocks("(width >= 40rem)").join("\n"), ".site-header__inner");
     expect(prop(tablet, "padding-inline")).toBe("var(--container-pad-desktop)");
     expect(root("container-pad-desktop")).toBe(32);
-    // Nada abaixo de 1280px volta a apertar a barra.
+    // Nothing below 1280px squeezes the bar again.
     expect(below1280).not.toMatch(/\.site-header__inner\s*\{/);
     const page = readFileSync(join(process.cwd(), "src/components/site/public-page.tsx"), "utf8");
     expect(page).toContain("px-5 py-12 sm:px-8");

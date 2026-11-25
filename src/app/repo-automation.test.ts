@@ -4,30 +4,30 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 /**
- * Guardas sobre a automação do próprio repositório: portões que passam verdes
- * sem inspecionar nada são piores que portões ausentes, porque compram
- * confiança sem entregar cobertura.
+ * Guards on the repository's own automation: gates that pass green without
+ * inspecting anything are worse than missing gates, because they buy
+ * confidence without delivering coverage.
  *
- * Vieram da auditoria de 2026-08-30 (A-03, A-18, A-10), onde viviam numa suíte
- * fora de `src/` que nenhuma automação executava — a mesma doença que elas
- * diagnosticam.
+ * They came from the 2026-08-30 audit (A-03, A-18, A-10), where they lived in a
+ * suite outside `src/` that no automation ran — the same disease they
+ * diagnose.
  */
 const RAIZ = process.cwd();
 const leia = (rel: string) => readFileSync(join(RAIZ, rel), "utf8");
 
-describe("os smoke tests de RLS precisam ser executados por alguma automação", () => {
-  // O bug (A-03): existem 4 arquivos de smoke test de RLS em supabase/tests/.
-  // Um deles prova que ninguém consegue setar o próprio activation_fee_paid_at,
-  // ou seja, que ninguém vira criador ativado sem pagar. Nenhum comando do
-  // repositório os executava: o vitest coleta só src/, e o CI rodava lint, tsc,
-  // vitest e build. Uma regressão de policy passava por todos os portões verdes.
+describe("the RLS smoke tests must be run by some automation", () => {
+  // The bug (A-03): there are 4 RLS smoke test files in supabase/tests/. One of
+  // them proves that nobody can set their own activation_fee_paid_at, that is,
+  // that nobody becomes an activated creator without paying. No command in the
+  // repository ran them: vitest collects only src/, and CI ran lint, tsc,
+  // vitest and build. A policy regression got through every green gate.
   const packageJson = leia("package.json");
   const ci = leia(".github/workflows/ci.yml");
   const vitestConfig = leia("vitest.config.ts");
 
-  it("alguma automação do repositório executa os testes de supabase/tests/", () => {
-    // Três caminhos aceitáveis; basta UM. O requisito é que exista automação,
-    // não que exista um mecanismo específico.
+  it("some automation in the repository runs the tests in supabase/tests/", () => {
+    // Three acceptable paths; ONE is enough. The requirement is that automation
+    // exists, not that a specific mechanism exists.
     const roda = /supabase\s+test|pgtap|pg_prove|supabase\/tests/;
     const scripts = JSON.parse(packageJson).scripts as Record<string, string>;
 
@@ -37,76 +37,78 @@ describe("os smoke tests de RLS precisam ser executados por alguma automação",
 
     expect(
       porScript || porCi || porVitest,
-      `nenhum caminho executa os testes de RLS. scripts: ${Object.keys(scripts).join(", ")}`,
+      `no path runs the RLS tests. scripts: ${Object.keys(scripts).join(", ")}`,
     ).toBe(true);
   });
 
-  it("o CI torna a lacuna visível quando os testes de banco não podem rodar", () => {
-    // Sem banco de staging configurado eles não rodam — e isso precisa APARECER
-    // em cada execução, em vez de o pipeline ficar verde fingindo cobertura.
+  it("CI makes the gap visible when the database tests cannot run", () => {
+    // Without a configured staging database they do not run — and that has to
+    // SHOW UP in every run, instead of the pipeline staying green and faking
+    // coverage.
     const avisa = /::warning/.test(ci) && /RLS|supabase\/tests/.test(ci);
 
-    expect(avisa, "o CI passa calado quando os testes de RLS não rodam").toBe(true);
+    expect(avisa, "CI stays silent when the RLS tests do not run").toBe(true);
   });
 });
 
-describe("o scan de segredos precisa varrer alguma coisa", () => {
-  // O bug (A-18): o TruffleHog recebia `base: <default_branch>` e nenhum `head`.
-  // Num push para main, base e head são o mesmo commit: o intervalo é vazio,
-  // zero commits são inspecionados, e o job termina verde. O mesmo valia para o
-  // cron de domingo, que o arquivo chama de "weekly full history secret scan".
+describe("the secrets scan must scan something", () => {
+  // The bug (A-18): TruffleHog received `base: <default_branch>` and no `head`.
+  // On a push to main, base and head are the same commit: the range is empty,
+  // zero commits are inspected, and the job ends green. The same held for the
+  // Sunday cron, which the file calls "weekly full history secret scan".
   const wf = leia(".github/workflows/security.yml");
 
-  it("não faz uma varredura de intervalo vazio no push para main e no cron", () => {
+  it("does not scan an empty range on the push to main and on the cron", () => {
     const temBase = /^\s*base:/m.test(wf);
     const temHead = /^\s*head:/m.test(wf);
 
-    // Duas saídas corretas: ou o base some (varredura completa), ou vem
-    // acompanhado de um head que o torna um intervalo real.
+    // Two correct outcomes: either the base goes away (full scan), or it comes
+    // with a head that makes it a real range.
     expect(
       !temBase || temHead,
-      "há `base:` sem `head:` — em push/cron o intervalo é main..main, ou seja, nada",
+      "there is a `base:` without a `head:` — on push/cron the range is main..main, that is, nothing",
     ).toBe(true);
   });
 
-  it("a varredura semanal cobre o histórico, como o arquivo promete", () => {
+  it("the weekly scan covers the history, as the file promises", () => {
     const prometeHistorico = /full history/i.test(wf);
     expect(
       prometeHistorico,
-      "premissa do teste: o arquivo promete varrer o histórico",
+      "test premise: the file promises to scan the history",
     ).toBe(true);
 
     const baseFixo =
       /base:\s*\$\{\{\s*github\.event\.repository\.default_branch\s*\}\}/.test(wf);
     expect(
       baseFixo,
-      "o base fixo no branch padrão anula a varredura de histórico",
+      "a fixed base on the default branch cancels the history scan",
     ).toBe(false);
   });
 });
 
-describe("HSTS com preload não pode vazar para o domínio do professor", () => {
-  // O bug (A-10): o header saía em `source: "/:path*"`, sem condição de host.
-  // Como a plataforma serve domínios de terceiros (#105), ela instruía o
-  // navegador a forçar HTTPS por 2 anos em TODOS os subdomínios do professor e a
-  // submeter o nome dele à lista de preload — um efeito sobre um domínio que não
-  // é nosso, que o dono não pediu, e que ele não consegue desfazer rápido.
+describe("HSTS with preload must not leak to the teacher's domain", () => {
+  // The bug (A-10): the header was sent on `source: "/:path*"`, with no host
+  // condition. Since the platform serves third-party domains (#105), it told
+  // the browser to force HTTPS for 2 years on ALL of the teacher's subdomains
+  // and to submit their name to the preload list — an effect on a domain that
+  // is not ours, that the owner did not ask for, and that they cannot undo
+  // quickly.
   const cfg = leia("next.config.ts");
 
-  it("o HSTS abrangente só é enviado no host da própria plataforma", () => {
+  it("the broad HSTS is only sent on the platform's own host", () => {
     const indice = cfg.indexOf("Strict-Transport-Security");
-    expect(indice, "next.config.ts não define Strict-Transport-Security").toBeGreaterThan(-1);
+    expect(indice, "next.config.ts does not define Strict-Transport-Security").toBeGreaterThan(-1);
 
     const bloco = cfg.slice(Math.max(0, indice - 900), indice + 300);
 
-    expect(/preload/.test(bloco), "premissa do teste: o header inclui preload").toBe(true);
+    expect(/preload/.test(bloco), "test premise: the header includes preload").toBe(true);
 
-    // Next permite condicionar header por host com `has: [{ type: "host" }]`.
+    // Next lets a header be conditioned on the host with `has: [{ type: "host" }]`.
     const condicionadoPorHost = /has:\s*\[/.test(bloco) && /type:\s*"host"/.test(bloco);
 
     expect(
       condicionadoPorHost,
-      "o header sai sem nenhuma condição de host: o preload vaza para o domínio do professor",
+      "the header is sent with no host condition: the preload leaks to the teacher's domain",
     ).toBe(true);
   });
 });

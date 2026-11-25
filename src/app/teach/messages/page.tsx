@@ -9,10 +9,10 @@ export async function generateMetadata() {
   return privatePageMetadata("platform.nav.inbox");
 }
 
-// A Caixa de entrada do professor: as perguntas que esperam por ele nas
-// comunidades e as conversas privadas com os alunos, numa tela so. O endereco
-// continua /teach/messages: os avisos do sino e os links antigos ja apontam
-// para ca.
+// The teacher's Inbox: the questions waiting for them in the
+// communities and the private conversations with learners, on one screen. The address
+// stays /teach/messages: the bell notices and the old links already point
+// here.
 export default async function TeacherInboxPage() {
   const { t } = await getServerTranslation();
 

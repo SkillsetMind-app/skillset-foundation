@@ -46,8 +46,8 @@ export default async function BillingUpgradePage({
         {planId ? (
             <Suspense
               fallback={
-                // O mesmo lugar guardado do painel (e de /teach/activate): o
-                // formulario da Stripe entra sem empurrar a pagina.
+                // The same reserved space as the panel (and /teach/activate): the
+                // Stripe form loads in without pushing the page.
                 <div className="overflow-hidden rounded-lg border fine-rule bg-white shadow-[var(--shadow-soft)]">
                   <StripeFrameSkeleton label={t("activationCheckout.preparing")} />
                 </div>

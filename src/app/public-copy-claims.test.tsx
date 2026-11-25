@@ -52,9 +52,9 @@ const activationFee =
 
 const dictionaries = [["en", en], ["es", es]] as const;
 
-// O unico "free" que a casa aceita: o nome do teste de 14 dias, EN e ES. Na
-// /for-creators o numero vem num paragrafo e o rotulo no seguinte ("14" +
-// "Day free trial, card required"), por isso o rotulo entra inteiro.
+// The only "free" the house accepts: the name of the 14-day trial, EN and ES.
+// On /for-creators the number comes in one paragraph and the label in the next
+// ("14" + "Day free trial, card required"), so the label goes in whole.
 const freeTrialWording =
   /(\d+|\{days\})-day free trial|Day free trial, card required|prueba gratis de (\d+|\{days\}) días|Días de prueba gratis, con tarjeta/gi;
 
@@ -218,10 +218,10 @@ describe("public copy guard: home, /pricing, /fees-and-payouts, /for-creators, /
       "a free start",
       /\bstart(ing)? (teaching )?free\b|get started free|teach(ing)? free|free to start|free, takes minutes|empieza (a enseñar )?gratis|enseñar gratis|gratis para empezar|es gratis y toma/i,
     ],
-    // House rule since 2026-11-13: SkillsetMind never calls itself free. Desde
-    // 2026-11-21 ha uma unica excecao, decidida pelo dono: o teste de 14 dias se
-    // chama sempre "14-day free trial" (freeTrialWording, tirado do texto antes
-    // desta conferencia). Qualquer outro "free" continua barrado.
+    // House rule since 2026-11-13: SkillsetMind never calls itself free. Since
+    // 2026-11-21 there is a single exception, decided by the owner: the 14-day
+    // trial is always called "14-day free trial" (freeTrialWording, taken out of
+    // the text before this check). Any other "free" is still barred.
     [
       "calling the platform free",
       /free trial|\d+ days free|days of free|account is free|free preview slot|prueba gratis|días gratis|cuenta es gratis/i,
@@ -235,8 +235,9 @@ describe("public copy guard: home, /pricing, /fees-and-payouts, /for-creators, /
     }
   }
 
-  // Regra do dono (2026-11-21): toda mencao aos 14 dias leva a palavra "free".
-  // O webinar promete "14-day free trial"; a tela nao pode dizer so "trial".
+  // The owner's rule (2026-11-21): every mention of the 14 days carries the word
+  // "free". The webinar promises a "14-day free trial"; the screen cannot say
+  // just "trial".
   it.each(dictionaries)("the %s dictionary never names the trial without the word free", (_locale, dict) => {
     expect(JSON.stringify(dict)).not.toMatch(
       /(\d+|\{days\})-day trial|prueba de (\d+|\{days\}) días|"Day trial|"Días de prueba,|"Trial — ends|"Prueba — termina/i,
@@ -309,7 +310,7 @@ describe("public copy guard: home, /pricing, /fees-and-payouts, /for-creators, /
   const dormant = new Set([
     // Ops-only invite manager and role manager (admin, AAL2): the waiver switch
     // for the dormant fee. The invitee's screen no longer shows any of them.
-    // waiveTitle/requireTitle: títulos da janela que pergunta antes da isenção.
+    // waiveTitle/requireTitle: titles of the dialog that asks before the waiver.
     ...["waive", "require", "waived", "notWaived", "waiveConfirm", "requireConfirm", "waiveTitle", "requireTitle", "waiverSaved", "requireSaved", "waiverError"].map((key) => `platformInvites.${key}`),
     // The 402 claim_custom_domain raises only while the gate holds a creator back.
     "teach.customDomains.errors.activation",
@@ -368,23 +369,23 @@ describe("creator path order and conditions", () => {
     expect(at(dict, "creatorEditor.builder.publish.help")).not.toMatch(/approved creator|creador aprobado/i);
   });
 
-  // Decisão de 2026-10-06: todo professor com o cadastro completo tem perfil
-  // público e só o selo diz quem foi verificado. Nenhuma frase pública chama
-  // os instrutores de verificados, revisados ou avaliados em bloco — no
-  // singular ou no plural, nas duas ordens, em EN e ES. Ficam de fora o nome
-  // do selo entre aspas e a frase com a ressalva "where required".
+  // Decision of 2026-10-06: every teacher with a complete signup has a public
+  // profile and only the badge says who was verified. No public sentence calls
+  // the instructors verified, reviewed or evaluated as a group — singular or
+  // plural, in both orders, in EN and ES. Left out are the badge name in quotes
+  // and the sentence with the "where required" qualifier.
   describe("no group verification claim", () => {
     const enNoun = String.raw`(?:instructor|teacher|creator|professional|educator|expert)s?`;
     const enAdj = String.raw`(?:verified|vetted|reviewed)`;
     const esNoun = String.raw`(?:instructor(?:a|es|as)?|profesor(?:a|es|as)?|creador(?:a|es|as)?|educador(?:a|es|as)?|profesional(?:es)?|expert[oa]s?|docentes?)`;
     const esAdj = String.raw`(?:verificad|evaluad|revisad)[oa]s?`;
     const groupClaim = new RegExp([
-      // "verified experts", "reviewed creator profiles" (não "reviewed professional evidence")
+      // "verified experts", "reviewed creator profiles" (not "reviewed professional evidence")
       String.raw`\b${enAdj}\s+${enNoun}\b(?![-\s]+(?:evidence|badge|license|credentials?)\b)`,
       // "instructors are vetted", "every teacher is verified"
       String.raw`\b${enNoun}\s+(?:(?:are|is|were|was|get|gets|been|being|all)\s+)*${enAdj}\b`,
       String.raw`\b${esAdj}\s+${esNoun}\b`,
-      // "expertos evaluados", "creadores son revisados" (não "evidencia profesional revisada")
+      // "expertos evaluados", "creadores son revisados" (not "evidencia profesional revisada")
       String.raw`(?<!(?:evidencia|licencia)\s)\b${esNoun}\s+(?:(?:son|es|fueron|fue|están|está)\s+)?${esAdj}\b`,
     ].join("|"), "i");
     const badgeName = /["“«]\s*(?:verified professional|profesional verificad[oa])\s*["”»]/gi;
@@ -433,7 +434,7 @@ describe("creator path order and conditions", () => {
       expect(offenders).toEqual([]);
     });
 
-    // O diretório não promete identidade conferida: "real" saiu das frases.
+    // The directory does not promise a checked identity: "real" is gone from the sentences.
     it.each(dictionaries)("the %s /instructors copy makes no identity claim", (_locale, dict) => {
       const { instructors, directory } = dict.publicPages;
       for (const text of [

@@ -9,7 +9,7 @@ import type { CreatorCourse } from "@/lib/data/server/public-profile";
 const mocks = vi.hoisted(() => ({
   getPublicProfileByRef: vi.fn<(ref: string) => Promise<PublicProfile | null>>(),
   listCreatorCourses: vi.fn<(uid: string) => Promise<CreatorCourse[] | null>>(),
-  // Como o Next: notFound() interrompe a renderização lançando.
+  // Like Next: notFound() interrupts rendering by throwing.
   notFound: vi.fn(() => {
     throw new Error("NEXT_NOT_FOUND");
   }),
@@ -70,20 +70,20 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("metadata do perfil", () => {
-  it("título, descrição, canônico e cartão são do professor", async () => {
+  it("title, description, canonical and card are the teacher's", async () => {
     const metadata = await generateMetadata(params("@ana.souza"));
 
     expect(metadata.title).toBe("Ana Souza (@ana.souza) · Career coach for first-time managers | SkillsetMind");
     expect(metadata.description).toBe("Career coach for first-time managers");
     expect(metadata.alternates?.canonical).toBe("https://www.skillsetmind.com/@ana.souza");
     expect(metadata.openGraph?.images).toEqual([
-      // ?v= muda quando o perfil muda: WhatsApp e Facebook guardam o cartão
-      // pela URL, e sem isso a foto nova nunca aparecia.
+      // ?v= changes when the profile changes: WhatsApp and Facebook keep the card
+      // by URL, and without it the new photo never showed up.
       { url: `https://www.skillsetmind.com/instructors/${ana.uid}/opengraph-image?v=2026-10-05T12%3A00%3A00.000Z` },
     ]);
   });
 
-  it("plano que tira a marca: o título não termina com '| SkillsetMind'", async () => {
+  it("a plan that removes the brand: the title does not end with '| SkillsetMind'", async () => {
     mocks.getPublicProfileByRef.mockResolvedValue({
       ...ana,
       storefront: { ...ana.storefront, branding: { hidePlatformBrand: true } },
@@ -92,7 +92,7 @@ describe("metadata do perfil", () => {
     expect(metadata.title).toBe("Ana Souza (@ana.souza) · Career coach for first-time managers");
   });
 
-  it("sem tagline, a descrição são os primeiros ~155 caracteres da bio", async () => {
+  it("without a tagline, the description is the first ~155 characters of the bio", async () => {
     mocks.getPublicProfileByRef.mockResolvedValue({ ...ana, storefront: null });
     const metadata = await generateMetadata(params("@ana.souza"));
 
@@ -102,63 +102,63 @@ describe("metadata do perfil", () => {
     expect(metadata.description).toMatch(/…$/);
   });
 
-  it("o mesmo perfil por /instructors/{uid} declara /@usuario como canônico", async () => {
+  it("the same profile through /instructors/{uid} declares /@usuario as canonical", async () => {
     const metadata = await generateMetadata(params(ana.uid));
     expect(metadata.alternates?.canonical).toBe("https://www.skillsetmind.com/@ana.souza");
   });
 
-  it("sem @, o canônico continua sendo /instructors/{uid}", async () => {
+  it("without @, the canonical is still /instructors/{uid}", async () => {
     mocks.getPublicProfileByRef.mockResolvedValue({ ...ana, username: null });
     const metadata = await generateMetadata(params(ana.uid));
     expect(metadata.alternates?.canonical).toBe(`https://www.skillsetmind.com/instructors/${ana.uid}`);
   });
 
-  it("o @ codificado (%40) acha o mesmo perfil", async () => {
+  it("the encoded @ (%40) finds the same profile", async () => {
     await generateMetadata(params("%40ana.souza"));
     expect(mocks.getPublicProfileByRef).toHaveBeenCalledWith("@ana.souza");
   });
 
-  // Perfil sem curso publicado é página fina: fica fora do índice até o
-  // primeiro curso, mas os links dela continuam seguidos.
-  it("sem curso publicado: noindex, follow (por @ e por uid)", async () => {
+  // A profile with no published course is a thin page: it stays out of the index until the
+  // first course, but its links are still followed.
+  it("without a published course: noindex, follow (by @ and by uid)", async () => {
     mocks.listCreatorCourses.mockResolvedValue([]);
     expect((await generateMetadata(params("@ana.souza"))).robots).toEqual({ index: false, follow: true });
     expect((await generateMetadata(params(ana.uid))).robots).toEqual({ index: false, follow: true });
   });
 
-  it("com curso publicado: indexável", async () => {
+  it("with a published course: indexable", async () => {
     expect((await generateMetadata(params("@ana.souza"))).robots).toEqual({ index: true, follow: true });
   });
 
-  // Falha de leitura não é perfil vazio: tirar do índice um perfil com curso
-  // por um tropeço do banco custaria semanas de busca.
-  it("leitura dos cursos falhou: continua indexável", async () => {
+  // A read failure is not an empty profile: taking a profile with a course out of the index
+  // over a database stumble would cost weeks of search.
+  it("reading the courses failed: still indexable", async () => {
     mocks.listCreatorCourses.mockResolvedValue(null);
     expect((await generateMetadata(params("@ana.souza"))).robots).toEqual({ index: true, follow: true });
   });
 
-  it("leitura que falhou não inventa professor: metadata genérica e fora do índice", async () => {
-    mocks.getPublicProfileByRef.mockRejectedValue(new Error("banco fora"));
+  it("a read that failed does not invent a teacher: generic metadata and outside the index", async () => {
+    mocks.getPublicProfileByRef.mockRejectedValue(new Error("database down"));
     const metadata = await generateMetadata(params("@ana.souza"));
     expect(metadata.title).toBe("Instructor | SkillsetMind");
     expect(metadata.robots).toEqual({ index: false, follow: false });
   });
 });
 
-describe("página do perfil", () => {
-  it("@ ou uid inexistente é 404 de verdade", async () => {
+describe("profile page", () => {
+  it("a nonexistent @ or uid is a real 404", async () => {
     await expect(InstructorDetailPage(params("@ninguem"))).rejects.toThrow("NEXT_NOT_FOUND");
     await expect(InstructorDetailPage(params("uid-inventado"))).rejects.toThrow("NEXT_NOT_FOUND");
     expect(mocks.listCreatorCourses).not.toHaveBeenCalled();
   });
 
-  it("leitura que falhou vira erro, nunca 404", async () => {
-    mocks.getPublicProfileByRef.mockRejectedValue(new Error("banco fora"));
-    await expect(InstructorDetailPage(params("@ana.souza"))).rejects.toThrow("banco fora");
+  it("a read that failed becomes an error, never a 404", async () => {
+    mocks.getPublicProfileByRef.mockRejectedValue(new Error("database down"));
+    await expect(InstructorDetailPage(params("@ana.souza"))).rejects.toThrow("database down");
     expect(mocks.notFound).not.toHaveBeenCalled();
   });
 
-  it("segue a ordem do link da bio, do cabeçalho ao rodapé", async () => {
+  it("follows the order of the bio link, from the header to the footer", async () => {
     const { container } = await renderPage("@ana.souza");
 
     const order = [...container.querySelectorAll("[data-section]")].map((node) => node.getAttribute("data-section"));
@@ -166,22 +166,22 @@ describe("página do perfil", () => {
 
     expect(screen.getByRole("heading", { level: 1, name: "Ana Souza" })).toBeInTheDocument();
     expect(screen.getByText("@ana.souza")).toBeInTheDocument();
-    // Botão principal = curso em destaque (Bravo), não o primeiro da lista.
+    // Main button = featured course (Bravo), not the first on the list.
     expect(container.querySelector('[data-section="primary"]')).toHaveAttribute("href", "/courses/c-2");
     expect(container.querySelector('[data-section="primary"]')).toHaveTextContent("Bravo");
-    // Linhas: destaque primeiro; preço ou "Free"; nota.
+    // Rows: featured first; price or "Free"; rating.
     const rows = screen.getAllByRole("listitem").filter((item) => item.querySelector(".marketplace-card--row"));
     expect(rows.map((row) => row.querySelector("h3")?.textContent)).toEqual(["Bravo", "Alpha"]);
     expect(rows[1]).toHaveTextContent("Free");
     expect(rows[0]).toHaveTextContent("$49.00");
-    // Prova: só a nota. Inscrições saíram (enrollment_count não é mantido).
+    // Proof: only the rating. Enrollments are gone (enrollment_count is not maintained).
     expect(container.querySelector('[data-section="proof"]')).toHaveTextContent("4.5(4 ratings)");
     expect(container.textContent).not.toMatch(/enrollment|student/i);
-    // Rodapé leva a quem quer criar, não à loja.
+    // The footer leads to those who want to create, not to the store.
     expect(screen.getByRole("link", { name: "Made with SkillsetMind" })).toHaveAttribute("href", "/for-creators");
   });
 
-  it("professor verificado: o selo com as palavras logo depois do nome", async () => {
+  it("verified teacher: the badge with the words right after the name", async () => {
     mocks.getPublicProfileByRef.mockResolvedValue({
       ...ana,
       verification: { kind: "evidence", verifiedAt: "2026-09-01T12:00:00.000Z" },
@@ -194,12 +194,12 @@ describe("página do perfil", () => {
     expect(badge.closest("header")).toHaveAttribute("data-section", "header");
   });
 
-  it("sem verificação, sem selo", async () => {
+  it("without verification, no badge", async () => {
     await renderPage("@ana.souza");
     expect(screen.queryByRole("button", { name: "Verified professional" })).toBeNull();
   });
 
-  it("sem curso, sem botão principal e sem faixa de prova", async () => {
+  it("no course, no main button and no proof strip", async () => {
     mocks.listCreatorCourses.mockResolvedValue([]);
     const { container } = await renderPage("@ana.souza");
 
@@ -208,38 +208,38 @@ describe("página do perfil", () => {
     expect(screen.getByText("No public courses yet")).toBeInTheDocument();
   });
 
-  it("prova zerada não aparece", async () => {
+  it("zeroed proof does not appear", async () => {
     mocks.listCreatorCourses.mockResolvedValue([course("c-1", "Alpha")]);
     const { container } = await renderPage("@ana.souza");
     expect(container.querySelector('[data-section="proof"]')).toBeNull();
   });
 
-  // Item de layout: com `truncate`, o título longo do botão principal dava ao
-  // grid a largura do texto (448px numa área de 343px a 375px) e o
-  // .page-shell cortava o resto. A coluna tem de poder encolher.
-  it("a coluna encolhe para caber no celular, mesmo com título longo no botão", async () => {
+  // Layout item: with `truncate`, the long title of the main button gave the
+  // grid the width of the text (448px in a 343px area at 375px) and the
+  // .page-shell cut off the rest. The column has to be able to shrink.
+  it("the column shrinks to fit the phone, even with a long title on the button", async () => {
     mocks.listCreatorCourses.mockResolvedValue([course("c-2", "How to Lead Your First Team Without Burning Out Again")]);
     const { container } = await renderPage("@ana.souza");
     expect(container.querySelector("article")).toHaveClass("grid-cols-[minmax(0,1fr)]");
     expect(container.querySelector('[data-section="primary"]')).toHaveClass("min-w-0");
   });
 
-  it("bio curta aparece inteira, sem 'Read more'", async () => {
+  it("a short bio appears whole, without 'Read more'", async () => {
     mocks.getPublicProfileByRef.mockResolvedValue({ ...ana, bio: "Coach for first-time managers." });
     const { container } = await renderPage("@ana.souza");
     expect(container.querySelector("details")).toBeNull();
     expect(screen.getByText("Coach for first-time managers.")).not.toHaveClass("line-clamp-3");
   });
 
-  it("bio longa recolhida, com um botão de nome curto", async () => {
+  it("a long bio collapsed, with a short-named button", async () => {
     const { container } = await renderPage("@ana.souza");
     const summary = container.querySelector("details > summary");
-    // O nome acessível é "Read more", não a bio inteira.
+    // The accessible name is "Read more", not the whole bio.
     expect(summary?.textContent).toBe("Read more");
     expect(screen.getByText(ana.bio!)).toHaveClass("line-clamp-3");
   });
 
-  it("plano com vitrine: logo do professor, botão na cor da marca e tema no cabeçalho", async () => {
+  it("a plan with a storefront: the teacher's logo, button in the brand color and theme in the header", async () => {
     mocks.getPublicProfileByRef.mockResolvedValue({
       ...ana,
       storefront: {
@@ -249,10 +249,10 @@ describe("página do perfil", () => {
     });
     const { container } = await renderPage("@ana.souza");
 
-    // Starter também mostra o logo; a nossa marca segue no rodapé.
+    // Starter also shows the logo; our brand stays in the footer.
     expect(screen.getByRole("img", { name: "Ana Souza" })).toHaveAttribute("src", "https://cdn.example/ana-logo.png");
     expect(screen.getByRole("link", { name: "Made with SkillsetMind" })).toBeInTheDocument();
-    // Amarelo: o texto do botão é escuro (readableTextOnAccent).
+    // Yellow: the button text is dark (readableTextOnAccent).
     const primary = container.querySelector<HTMLElement>('[data-section="primary"]')!;
     expect(primary).toHaveAttribute("data-accent");
     expect(primary.style.getPropertyValue("--storefront-accent")).toBe("#f5c518");
@@ -260,7 +260,7 @@ describe("página do perfil", () => {
     expect(container.querySelector('[data-section="header"]')).toHaveAttribute("data-storefront-theme", "warm");
   });
 
-  it("nada do perfil leva ao marketplace, nem o menu do site", async () => {
+  it("nothing on the profile leads to the marketplace, not even the site menu", async () => {
     const { container } = await renderPage("@ana.souza");
 
     const hrefs = [...container.querySelectorAll("a")].map((link) => link.getAttribute("href"));
@@ -269,34 +269,34 @@ describe("página do perfil", () => {
     expect(container.textContent).not.toMatch(/marketplace|Instructor storefront|Lessons|Categories/i);
   });
 
-  // Regra da loja (#471): sem curso real publicado, nenhum link para /courses.
-  // O perfil não linka a loja nem quando ela tem curso: o visitante veio do
-  // Instagram do professor e só sai daqui para um curso dele.
-  it.each([true, false])("com a loja %s, nenhum link para /courses", async (hasRealCourses) => {
+  // Store rule (#471): without a published real course, no link to /courses.
+  // The profile does not link to the store even when it has a course: the visitor came from the
+  // teacher's Instagram and only leaves here for a course of theirs.
+  it.each([true, false])("with the store %s, no link to /courses", async (hasRealCourses) => {
     const { container } = await renderPage("@ana.souza", hasRealCourses);
     expect(container.querySelectorAll('a[href="/courses"]')).toHaveLength(0);
     expect(container.querySelectorAll('a[href^="/courses/"]').length).toBeGreaterThan(0);
   });
 
-  it("plano sem a marca da plataforma: sem logo nosso e sem 'Made with'", async () => {
+  it("a plan without the platform brand: no logo of ours and no 'Made with'", async () => {
     mocks.getPublicProfileByRef.mockResolvedValue({
       ...ana,
       storefront: { ...ana.storefront, branding: { hidePlatformBrand: true, logoUrl: "https://cdn.example/ana-logo.png" } },
     });
     const { container } = await renderPage("@ana.souza");
     expect(container.querySelector('a[href="/"]')).toBeNull();
-    // No lugar do nosso, o logo do professor.
+    // In place of ours, the teacher's logo.
     expect(screen.getByRole("img", { name: "Ana Souza" })).toHaveAttribute("src", "https://cdn.example/ana-logo.png");
     expect(container.querySelector('[data-section="footer"]')).toBeNull();
   });
 
-  it("cursos que não carregaram: o perfil fica no ar com o aviso", async () => {
+  it("courses that did not load: the profile stays online with the notice", async () => {
     mocks.listCreatorCourses.mockResolvedValue(null);
     await renderPage("@ana.souza");
     expect(screen.getByText("Instructor courses could not load right now.")).toBeInTheDocument();
   });
 
-  it("em espanhol", async () => {
+  it("in Spanish", async () => {
     mocks.locale = "es";
     await renderPage("@ana.souza");
     expect(screen.getByRole("link", { name: "Hecho con SkillsetMind" })).toBeInTheDocument();
