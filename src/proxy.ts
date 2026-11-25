@@ -66,7 +66,7 @@ function refusedForCrossSiteMutation(request: NextRequest): NextResponse | null 
   return new NextResponse(null, { status: 403 });
 }
 
-// Off unless someone turns it on. Patrick decided the platform should not
+// Off unless someone turns it on. The owner decided the platform should not
 // be limited by country, so the filter ships dormant rather than being
 // deleted: the code, the tests and the escape hatch stay, and switching it
 // on later is one environment variable instead of a new pull request.
