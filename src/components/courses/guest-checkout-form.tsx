@@ -15,7 +15,7 @@ import { signInWithGoogle } from "@/lib/auth/supabase-auth";
 import { startGuestCourseCheckout } from "@/lib/payments/checkout";
 import { PaymentRequestError } from "@/lib/payments/client-fetch";
 
-// O servidor recusa nome ou e-mail com uma frase só, sem dizer qual dos dois.
+// The server rejects a name or email with a single sentence, without saying which of the two.
 const identityErrorKey = "guestCheckout.form.invalid";
 
 const noSubscription = () => () => {};
@@ -41,7 +41,7 @@ type GuestCheckoutFormProps = {
   returnTo: string;
   submitLabel: string;
   disabled: boolean;
-  /** UE, EEE e Reino Unido: mostra e exige a caixa do acesso imediato. */
+  /** EU, EEA and United Kingdom: shows and requires the immediate-access box. */
   withdrawalConsentRequired?: boolean;
   /** The course page's mapping of checkout API errors to copy. */
   errorKeyFor: (error: unknown) => string;
@@ -76,8 +76,8 @@ export function GuestCheckoutForm({
   const fieldId = useId();
   const nameId = `${fieldId}-name`;
   const emailId = `${fieldId}-email`;
-  // Erro de nome ou e-mail fica no par de campos, embaixo do e-mail, e os dois
-  // campos apontam para ele; antes ele só aparecia no fim, depois do botão.
+  // A name or email error stays on the pair of fields, under the email, and both
+  // fields point to it; before, it only appeared at the end, after the button.
   const identityError = errorKey === identityErrorKey ? t(errorKey) : undefined;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -146,8 +146,8 @@ export function GuestCheckoutForm({
   return (
     <div className="mt-6 grid gap-3">
       <form className="grid gap-3" onSubmit={handleSubmit}>
-        {/* O campo da casa (o do cadastro): rótulo em frase, borda que se vê
-            no branco e erro marcado no próprio campo. */}
+        {/* The house field (the sign-up one): sentence-case label, a border that shows
+            on white and the error marked on the field itself. */}
         <Field id={nameId} label={t("guestCheckout.form.name")} required>
           {(a11y) => (
             <input
@@ -182,7 +182,7 @@ export function GuestCheckoutForm({
             type="checkbox"
             checked={accepted}
             onChange={(event) => setAccepted(event.target.checked)}
-            // 13 px no celular era pequeno demais para o dedo.
+            // 13 px on a phone was too small for a finger.
             className="mt-0.5 size-5 shrink-0 accent-[var(--color-primary)]"
             required
           />
@@ -198,8 +198,8 @@ export function GuestCheckoutForm({
             {t("auth.signup.agreeSuffix")}
           </span>
         </label>
-        {/* UE, EEE e Reino Unido: pedido de acesso imediato e ciência da perda
-            do direito de desistência. Nunca vem marcada. */}
+        {/* EU, EEA and United Kingdom: request for immediate access and acknowledgment of losing
+            the right of withdrawal. It never comes ticked. */}
         {withdrawalConsentRequired ? (
           <label className="flex items-start gap-2.5 text-xs leading-5 text-[var(--color-ink-soft)]">
             <input
@@ -231,7 +231,7 @@ export function GuestCheckoutForm({
       </form>
 
       {linkSent ? <p role="status" className="info-notice">{t("guestCheckout.form.linkSent")}</p> : null}
-      {/* O aviso da casa: ícone e fundo que seguem o tema (o 6% literal sumia no escuro). */}
+      {/* The house notice: icon and background that follow the theme (the literal 6% vanished in the dark). */}
       {errorKey && !identityError ? <InlineAlert tone="error">{t(errorKey)}</InlineAlert> : null}
 
       {isGoogleAuthEnabled ? (

@@ -5,8 +5,8 @@ import { HeroCtas } from "@/components/site/hero-ctas";
 import { RealCoursesProvider } from "@/components/site/real-courses";
 import type { SkillsetUser } from "@/domain/auth";
 
-// Visitante logado: o hero troca as chamadas de conversão por "ir ao painel" e
-// "explorar cursos". O segundo só existe enquanto a loja tem curso real.
+// Signed-in visitor: the hero swaps the conversion calls for "go to the dashboard" and
+// "explore courses". The second only exists while the storefront has a real course.
 vi.mock("@/components/auth/auth-provider", () => ({
   useAuth: () => ({
     status: "authenticated",
@@ -17,13 +17,13 @@ vi.mock("@/components/auth/auth-provider", () => ({
 afterEach(cleanup);
 
 describe("HeroCtas (logado)", () => {
-  it("leva à loja quando há curso real publicado", () => {
+  it("links to the storefront when a real course is published", () => {
     render(<RealCoursesProvider value><HeroCtas /></RealCoursesProvider>);
 
     expect(screen.getByRole("link", { name: "Browse courses" })).toHaveAttribute("href", "/courses");
   });
 
-  it("não leva à loja vazia: sobra só o painel", () => {
+  it("does not link to an empty storefront: only the dashboard is left", () => {
     render(<RealCoursesProvider value={false}><HeroCtas /></RealCoursesProvider>);
 
     expect(screen.queryByRole("link", { name: "Browse courses" })).not.toBeInTheDocument();

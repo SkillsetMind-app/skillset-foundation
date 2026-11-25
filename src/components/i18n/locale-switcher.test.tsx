@@ -7,7 +7,7 @@ import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 import { LocaleSwitcher } from "./locale-switcher";
 
-// setLocale do provider chama router.refresh(); fora do App Router não há router.
+// The provider's setLocale calls router.refresh(); outside the App Router there is no router.
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 afterEach(() => {
@@ -16,9 +16,9 @@ afterEach(() => {
   document.documentElement.lang = "";
 });
 
-// Um texto do dicionário ao lado do seletor: prova que a escolha passa pelo
-// I18nProvider de verdade (o mesmo caminho que a página inteira usa), e não
-// por um mock do provider.
+// A dictionary text next to the selector: proves the choice goes through the
+// real I18nProvider (the same path the whole page uses), and not
+// through a provider mock.
 function Probe() {
   const { t } = useTranslation();
   return <p>{t("nav.signIn")}</p>;
@@ -41,7 +41,7 @@ function openMenu(trigger: HTMLElement) {
 }
 
 describe("LocaleSwitcher", () => {
-  it("é um botão de 44px com menu próprio: nenhum <select> no DOM", () => {
+  it("it is a 44px button with its own menu: no <select> in the DOM", () => {
     const trigger = renderSwitcher();
     expect(trigger).toHaveClass("min-h-11", "min-w-11");
     expect(trigger).toHaveAttribute("aria-haspopup", "listbox");
@@ -52,7 +52,7 @@ describe("LocaleSwitcher", () => {
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
   });
 
-  it("compacto: sigla discreta sem moldura, alvo de toque de 44px e mesmo menu", () => {
+  it("compact: a discreet abbreviation with no frame, 44px touch target and the same menu", () => {
     const trigger = renderSwitcher({ variant: "compact" });
     expect(trigger).toHaveClass("locale-switcher-compact", "size-11", "bg-transparent", "text-[11px]");
     expect(trigger).not.toHaveClass("border", "bg-[var(--color-surface-soft)]");
@@ -72,14 +72,14 @@ describe("LocaleSwitcher", () => {
     ]);
   });
 
-  it("a regra forcada do cabecalho exclui a variante compacta inclusive em hover e dark", () => {
+  it("the header's forced rule excludes the compact variant, including on hover and in dark", () => {
     const css = readFileSync(resolve(process.cwd(), "src/app/globals.css"), "utf8");
     const selectors = css.split("\n").filter(line => /^\s*(?:\[data-theme="dark"\] )?\.platform-topbar__actions > (?:div > )?button/.test(line));
     expect(selectors).toHaveLength(6);
     selectors.forEach(selector => expect(selector).toContain("button:not(.locale-switcher-compact)"));
   });
 
-  it("abre com clique, lista as duas opções e marca a atual", () => {
+  it("opens on click, lists both options and marks the current one", () => {
     const trigger = renderSwitcher();
     const menu = openMenu(trigger);
     expect(trigger).toHaveAttribute("aria-expanded", "true");
@@ -93,7 +93,7 @@ describe("LocaleSwitcher", () => {
     expect(document.querySelector("select")).toBeNull();
   });
 
-  it.each(["ArrowDown", "ArrowUp"])("abre pelo teclado com %s no botão", (key) => {
+  it.each(["ArrowDown", "ArrowUp"])("opens by keyboard with %s on the button", (key) => {
     const trigger = renderSwitcher();
     trigger.focus();
     fireEvent.keyDown(trigger, { key });
@@ -101,7 +101,7 @@ describe("LocaleSwitcher", () => {
     expect(screen.getByRole("option", { name: "English" })).toHaveFocus();
   });
 
-  it("setas e Home/End andam pela lista, com volta nas pontas", () => {
+  it("arrows and Home/End move through the list, wrapping at the ends", () => {
     const menu = openMenu(renderSwitcher());
     const [english, spanish] = within(menu).getAllByRole("option");
     fireEvent.keyDown(english, { key: "ArrowDown" });
@@ -116,11 +116,11 @@ describe("LocaleSwitcher", () => {
     expect(spanish).toHaveFocus();
   });
 
-  it("escolher Español troca o app pelo I18nProvider, persiste, e volta para English", () => {
+  it("choosing Español switches the app through the I18nProvider, persists, and goes back to English", () => {
     const trigger = renderSwitcher();
     expect(screen.getByText("Sign in")).toBeInTheDocument();
 
-    // Enter/Espaço numa opção é o clique nativo do <button>: a mesma rota.
+    // Enter/Space on an option is the native <button> click: the same route.
     fireEvent.click(within(openMenu(trigger)).getByRole("option", { name: "Español" }));
 
     expect(screen.getByText("Iniciar sesión")).toBeInTheDocument();
@@ -143,7 +143,7 @@ describe("LocaleSwitcher", () => {
     expect(document.documentElement.lang).toBe("en");
   });
 
-  it("Escape fecha e devolve o foco ao botão, sem trocar o idioma", () => {
+  it("Escape closes and returns focus to the button, without changing the language", () => {
     const trigger = renderSwitcher();
     openMenu(trigger);
     fireEvent.keyDown(document.activeElement!, { key: "Escape" });
@@ -153,7 +153,7 @@ describe("LocaleSwitcher", () => {
     expect(screen.getByText("Sign in")).toBeInTheDocument();
   });
 
-  it("clique fora fecha, sem trocar o idioma", () => {
+  it("clicking outside closes, without changing the language", () => {
     const trigger = renderSwitcher();
     openMenu(trigger);
     fireEvent.mouseDown(screen.getByText("fora"));
@@ -162,7 +162,7 @@ describe("LocaleSwitcher", () => {
     expect(screen.getByText("Sign in")).toBeInTheDocument();
   });
 
-  it("alinha à direita; no rodapé (dropUp) abre para cima", () => {
+  it("aligns right; in the footer (dropUp) it opens upward", () => {
     const header = openMenu(renderSwitcher());
     expect(header).toHaveClass("right-0", "top-full");
     expect(header).not.toHaveClass("bottom-full");
@@ -172,7 +172,7 @@ describe("LocaleSwitcher", () => {
     expect(footer).not.toHaveClass("top-full");
   });
 
-  it("tem o rótulo do botão nos dois dicionários, no mesmo caminho", () => {
+  it("has the button label in both dictionaries, on the same path", () => {
     expect(translate(getDictionary("en"), "footer.languageCurrent")).toBe("Language: {language}");
     expect(translate(getDictionary("es"), "footer.languageCurrent")).toBe("Idioma: {language}");
   });

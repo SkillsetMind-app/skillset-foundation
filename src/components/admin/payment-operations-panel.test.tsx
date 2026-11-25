@@ -35,13 +35,13 @@ describe("payments presentation and export contract", () => {
     expect(screen.getByText("Importe bruto (últimos 12 pedidos)")).toBeInTheDocument();
     expect(screen.getByText("Importe bruto (últimos 12 pedidos)").nextElementSibling?.textContent).toBe(`${money(2500, "EUR", "es")} · ${money(10000, "USD", "es")}`);
     expect(screen.getByText("Comisión estimada (los mismos 12)").nextElementSibling?.textContent).toBe(`${money(125, "EUR", "es")} · ${money(1000, "USD", "es")}`);
-    // A tabela (cartão largo) e os blocos (cartão estreito) mostram os mesmos
-    // pedidos; o CSS mostra um dos dois. A contagem é por desenho.
+    // The table (wide card) and the blocks (narrow card) show the same
+    // orders; CSS shows one of the two. The count is by design.
     const table = screen.getByRole("table", { name: "Pedidos recientes de Stripe" });
     expect(within(table).getAllByText("Pagado")).toHaveLength(2);
     expect(within(table).getByText("Pendiente")).toBeInTheDocument();
-    // I-06: partes com rótulo; comprador curto (inteiro no title e na ficha),
-    // pedido inteiro e selecionável.
+    // I-06: labeled parts; short buyer (full in the title and in the record),
+    // full order, selectable.
     const first = screen.getAllByRole("article")[0];
     const part = (label: string) => within(first).getByText(label, { selector: "dt" }).nextElementSibling;
     expect(part("Pedido")).toHaveTextContent(order.id);
@@ -63,16 +63,16 @@ describe("payments presentation and export contract", () => {
       { ...order, id: "pending", status: "pending", paidAt: null, createdAt: "2026-11-03T18:15:00.000Z" },
     ]);
     const format = (iso: string, locale: string) => new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
-    // O rótulo diz qual data é: a do pagamento ou a da criação do pedido.
+    // The label says which date it is: the payment date or the order creation date.
     const dates = () => screen.getAllByText(/^(Paid on|Created on|Pagado el|Creado el)$/, { selector: "dt" }).map((term) => [term.textContent, term.nextElementSibling?.textContent]);
     expect(dates()).toEqual([["Paid on", format("2026-11-18T14:41:00.000Z", "en")], ["Created on", format("2026-11-03T18:15:00.000Z", "en")]]);
     language();
     expect(dates()).toEqual([["Pagado el", format("2026-11-18T14:41:00.000Z", "es")], ["Creado el", format("2026-11-03T18:15:00.000Z", "es")]]);
   });
 
-  // I-06: no cartão largo os pedidos são uma tabela de verdade, com data,
-  // comprador, curso, status e o valor alinhado à direita. Nada some do
-  // bloco: provedor e código inteiro do pedido continuam na linha.
+  // I-06: on the wide card the orders are a real table, with date,
+  // buyer, course, status and the amount aligned right. Nothing disappears from the
+  // block: provider and the full order code stay on the line.
   it("lists orders as a real table with the amount in its own right-aligned column", () => {
     render(panel());
     deliver([{ ...order, paidAt: "2026-11-18T14:41:00.000Z" }, { ...order, id: "order-eur", currency: "EUR", amountMinor: 2500, status: "pending" as const, createdAt: "2026-11-03T18:15:00.000Z" }]);
@@ -82,8 +82,8 @@ describe("payments presentation and export contract", () => {
     expect(within(table).getAllByRole("columnheader").map((head) => head.textContent)).toEqual(["Date", "User", "Course", "Provider", "Status", "Amount"]);
     const [first, second] = within(table).getAllByRole("row").slice(1);
     const format = (iso: string) => new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
-    // textContent exato: a hora em inglês leva um espaço estreito que o
-    // toHaveTextContent troca por espaço comum.
+    // exact textContent: the English time carries a narrow space that
+    // toHaveTextContent swaps for a regular space.
     const dateParts = (row: HTMLElement) => [...within(row).getAllByRole("cell")[0].querySelectorAll("span")].map((part) => part.textContent);
     expect(dateParts(first)).toEqual(["Paid on", format("2026-11-18T14:41:00.000Z")]);
     expect(dateParts(second)).toEqual(["Created on", format("2026-11-03T18:15:00.000Z")]);

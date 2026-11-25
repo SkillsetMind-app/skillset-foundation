@@ -1,29 +1,29 @@
 import { cn } from "@/lib/cn";
 
 /**
- * Eram 15 barras feitas à mão, em 3 alturas e 8 cores de trilho; seis trilhos
- * (navy a 12%) sumiam no tema escuro e 0% parecia "sem barra". Uma só aqui:
- * 6px, cantos redondos, trilho --color-line (aparece nos dois temas, mas é
- * claro: no tema claro fica ~1.8:1 contra o branco) e preenchimento no latão
- * de texto, --color-accent-fg. O latão de fundo (#c99a46) dava 1.44:1 contra o
- * trilho; o de texto dá ~3.7:1 no claro e ~3.3:1 no escuro, o mínimo de 3:1
- * para o que a barra mostra (theme-tokens.test.tsx confere).
+ * There were 15 hand-made bars, in 3 heights and 8 track colors; six tracks
+ * (navy at 12%) vanished in the dark theme and 0% looked like "no bar". A single one here:
+ * 6px, rounded corners, track --color-line (shows in both themes, but is
+ * light: in the light theme it is ~1.8:1 against white) and fill in the text
+ * brass, --color-accent-fg. The background brass (#c99a46) gave 1.44:1 against the
+ * track; the text one gives ~3.7:1 in light and ~3.3:1 in dark, the 3:1 minimum
+ * for what the bar shows (theme-tokens.test.tsx checks it).
  *
- * O número continua com quem chama (cada tela tem o seu formato); a barra só
- * desenha e diz o valor ao leitor de tela.
+ * The number stays with the caller (each screen has its own format); the bar only
+ * draws and tells the value to the screen reader.
  */
 export type ProgressBarProps = {
-  /** Porcentagem, de 0 a 100. Fora disso é cortada nas pontas. */
+  /** Percentage, from 0 to 100. Outside that it is clamped at the ends. */
   value: number;
-  /** Nome acessível da barra ("Progress", "40% complete"). */
+  /** Accessible name of the bar ("Progress", "40% complete"). */
   label: string;
-  /** Trilho: margem, largura ou a cor sobre foto e sobre o tema de um curso. */
+  /** Track: margin, width or the color over a photo and over a course's theme. */
   className?: string;
-  /** Preenchimento: só para a cor de destaque de uma área de membros. */
+  /** Fill: only for the accent color of a members area. */
   fillClassName?: string;
   /**
-   * Passos ("Step 1 of 2", "Question 3 of 8"): o leitor de tela segue ouvindo
-   * o passo, de 1 ao total, e a frase do `label`; o `value` só desenha.
+   * Steps ("Step 1 of 2", "Question 3 of 8"): the screen reader keeps hearing
+   * the step, from 1 to the total, and the `label` phrase; `value` only draws.
    */
   step?: { current: number; total: number };
 };
@@ -41,8 +41,8 @@ export function ProgressBar({ value, label, className, fillClassName, step }: Pr
       aria-valuetext={step ? label : undefined}
       className={cn("h-1.5 overflow-hidden rounded-full bg-[var(--color-line)]", className)}
     >
-      {/* Desliza com transform, não com width: o contrato de movimento só anima
-          transform e opacity, e só para quem não pediu menos movimento. */}
+      {/* Slides with transform, not with width: the motion contract only animates
+          transform and opacity, and only for people who did not ask for less motion. */}
       <div
         className={cn(
           "h-full w-full rounded-full bg-[var(--color-accent-fg)] motion-safe:transition-transform motion-safe:duration-[var(--duration-slow)] motion-safe:ease-[var(--ease-standard)]",

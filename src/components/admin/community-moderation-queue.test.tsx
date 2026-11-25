@@ -15,7 +15,7 @@ function ChangeLanguage() {
   return <button onClick={() => setLocale(locale === "en" ? "es" : "en")}>Change language</button>;
 }
 function panel() { return <I18nProvider initialLocale="en"><ChangeLanguage /><CommunityModerationQueue /></I18nProvider>; }
-// O texto à vista do botão: a face escondida do BusyLabel (aria-hidden) fica de fora.
+// The visible text of the button: the hidden face of BusyLabel (aria-hidden) is left out.
 function shown(element: Element) {
   const copy = element.cloneNode(true) as Element;
   copy.querySelectorAll('[aria-hidden="true"]').forEach((node) => node.remove());
@@ -64,9 +64,9 @@ describe("community report presentation", () => {
     fireEvent.click(screen.getByRole("button", { name: label }));
     expect(mocks.update).toHaveBeenCalledWith(report, status);
     expect(screen.getByText("Abierto")).toBeInTheDocument();
-    // Só o botão apertado gira; os três travam e mantêm o nome (I-08).
+    // Only the pressed button spins; the three lock and keep their name (I-08).
     expect(screen.getByRole("button", { name: label })).toHaveAttribute("aria-busy", "true");
-    // O mesmo nome nas duas faces; a do anel já guardava o lugar em repouso.
+    // The same name on both faces; the ring one already held the place at rest.
     expect(screen.getByRole("button", { name: label }).querySelectorAll('[class*="grid-area"]')).toHaveLength(2);
     for (const name of ["Revisado", "Resuelto", "Descartado"]) expect(screen.getByRole("button", { name })).toBeDisabled();
     expect(screen.getAllByRole("button").filter((button) => button.getAttribute("aria-busy") === "true")).toHaveLength(1);
@@ -91,7 +91,7 @@ describe("community report presentation", () => {
     expect(moves(screen.getAllByRole("article")[0])).toEqual(["Reviewed", "Resolved", "Dismissed"]);
     fireEvent.click(screen.getByRole("button", { name: "Show 2 more" }));
     expect(reporters()).toEqual([...open, ...closed].map((entry) => entry.reporterName));
-    // Os mesmos três lugares; o do status atual só trava.
+    // The same three places; the current status one only locks.
     expect(moves(screen.getAllByRole("article")[13])).toEqual(["Reviewed", "Resolved", "Dismissed"]);
     expect(within(screen.getAllByRole("article")[13]).getByRole("button", { name: "Reviewed" })).toBeDisabled();
     expect(screen.queryByRole("button", { name: /Show \d+ more/ })).toBeNull();
@@ -110,12 +110,12 @@ describe("community report presentation", () => {
     fireEvent.click(within(screen.getAllByRole("article")[0]).getByRole("button", { name: "Dismissed" }));
     await act(async () => {});
     expect(mocks.update).toHaveBeenCalledWith(a, "dismissed");
-    // A releitura ao vivo traz a A dispensada: ela não desce e a B não sobe para o lugar dela.
+    // The live re-read brings A dismissed: it does not go down and B does not move up into its place.
     deliver([{ ...a, status: "dismissed" }, b]);
     expect(reporters()).toEqual(["Aberta A", "Aberta B"]);
     expect(slots(0)).toEqual([["Reviewed", false], ["Resolved", false], ["Dismissed", true]]);
     expect(slots(1)).toEqual([["Reviewed", false], ["Resolved", false], ["Dismissed", false]]);
-    // Uma denúncia nova ainda entra no grupo das abertas, como antes.
+    // A new report still enters the open group, as before.
     deliver([{ ...report, id: "report-c", reporterName: "Aberta C" }, { ...a, status: "dismissed" }, b]);
     expect(screen.getAllByRole("article").map((card) => within(card).getByText(/^Aberta [ABC]$/).textContent)).toEqual(["Aberta C", "Aberta A", "Aberta B"]);
     expect(mocks.update).toHaveBeenCalledTimes(1);

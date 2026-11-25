@@ -46,11 +46,11 @@ export function PlansPanel() {
   const formatPrice = (amount: number) => formatUsdWhole(amount, locale);
   const { user } = useAuth();
   const [cycle, setCycle] = useState<PlanBillingCycle>("monthly");
-  // null = ainda não sabemos. Assumir "free" antes de carregar fazia um
-  // assinante Pro ver "Current plan: Free" com o cartão Free marcado como
-  // "Your plan" e nenhum botão Manage — piscando a cada carga, e permanente se
-  // o perfil falhasse. Como Manage é o único caminho de cancelamento, o
-  // palpite otimista escondia justamente o controle que o assinante procurava.
+  // null = we do not know yet. Assuming "free" before loading made a
+  // Pro subscriber see "Current plan: Free" with the Free card marked as
+  // "Your plan" and no Manage button — flickering on every load, and permanent if
+  // the profile failed. Since Manage is the only cancellation path, the
+  // optimistic guess hid exactly the control the subscriber was looking for.
   const [currentPlanId, setCurrentPlanId] = useState<PlanId | null>(null);
   const [planLoadFailed, setPlanLoadFailed] = useState(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
@@ -64,8 +64,8 @@ export function PlansPanel() {
   // Keyed on the uid, not the user object: a re-fetch on every new object
   // would overwrite the state "Cancel plan" just wrote.
   const uid = user?.uid ?? null;
-  // A assinatura do perfil, para o "Try again" ler o plano de novo sem sair do
-  // canal do tempo real; a seção fica nos dois desfechos e recebe o foco.
+  // The profile subscription, so "Try again" can read the plan again without leaving the
+  // realtime channel; the section stays in both outcomes and receives the focus.
   const profileRead = useRef<{ reload: () => Promise<void> } | null>(null);
   const sectionRef = useRef<HTMLElement>(null);
 
@@ -91,9 +91,9 @@ export function PlansPanel() {
         setCurrentPlanId(profile?.currentPlanId ?? "free");
       },
       () => {
-        // Falha em carregar o perfil não é evidência de plano gratuito. Marca
-        // como desconhecido para a UI não afirmar "Free" a um assinante nem
-        // esconder o Manage; os botões de upgrade seguem funcionando.
+        // Failing to load the profile is not evidence of a free plan. Marks it
+        // as unknown so the UI does not state "Free" to a subscriber nor
+        // hide Manage; the upgrade buttons keep working.
         setPlanLoadFailed(true);
       },
     );
@@ -104,7 +104,7 @@ export function PlansPanel() {
     };
   }, [user]);
 
-  // Volta ao "Loading..." do plano até a leitura nova responder.
+  // Goes back to the plan's "Loading..." until the new read responds.
   function retryPlanRead() {
     setPlanLoadFailed(false);
     return profileRead.current?.reload();
@@ -146,8 +146,8 @@ export function PlansPanel() {
         ? t("planTrial.cancelConfirmTrial").replace("{date}", () => formatDate(subscription.trialEnd))
         : t("planTrial.cancelConfirm").replace("{date}", () => formatDate(subscription.currentPeriodEnd));
 
-  // Roda só pelo botão de confirmar do ConfirmDialog, que antes era o OK do
-  // window.confirm. O pedido em si não mudou.
+  // Runs only from the ConfirmDialog confirm button, which used to be the OK of
+  // window.confirm. The request itself did not change.
   async function handleCancel() {
     if (!subscription) return;
     setError(null);
@@ -159,9 +159,9 @@ export function PlansPanel() {
       setError("planTrial.cancelError");
     } finally {
       setBusyAction(null);
-      // past_due/unpaid voltam `subscription: null`, o que desmonta a janela
-      // sem passar pelo onClose: sem isto a pergunta reabriria sozinha se uma
-      // assinatura voltasse a aparecer.
+      // past_due/unpaid return `subscription: null`, which unmounts the dialog
+      // without going through onClose: without this the question would reopen by itself if a
+      // subscription showed up again.
       setConfirmingCancel(false);
     }
   }
@@ -187,8 +187,8 @@ export function PlansPanel() {
 
   return (
     <section ref={sectionRef} tabIndex={-1} className="grid gap-5 outline-none">
-      {/* Pendente = as cores de aviso da plataforma (as da faixa de status da
-          conta), no lugar da caixa rosa tracejada com titulo dourado. */}
+      {/* Pending = the platform's warning colors (those of the account status
+          strip), instead of the dashed pink box with a gold title. */}
       {!checkoutReady ? (
         <InlineAlert
           tone="warning"
@@ -200,11 +200,11 @@ export function PlansPanel() {
         </InlineAlert>
       ) : null}
 
-      {/* A assinatura num bloco próprio. Antes plano, preço, próxima cobrança,
-          fim do teste, "Manage" e "Cancel plan" eram uma frase só de 13px
-          separada por pontos, e o cancelar era um link dourado igual aos
-          outros. Agora cada dado é uma linha e as duas ações são botões de
-          44px, o de cancelar no vermelho de perigo (o latão nunca apaga). */}
+      {/* The subscription in its own block. Before, plan, price, next charge,
+          trial end, "Manage" and "Cancel plan" were a single 13px sentence
+          separated by dots, and cancel was a gold link just like the
+          others. Now each datum is a row and the two actions are
+          44px buttons, the cancel one in the danger red (brass never deletes). */}
       <section className="rounded-lg border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]">
         <p className="text-sm text-[var(--color-ink-soft)]">
           <span>
@@ -258,9 +258,9 @@ export function PlansPanel() {
               </Button>
             ) : null}
             {subscription && !subscription.cancelAtPeriodEnd ? (
-              // Cancelamento online em dois passos: este botão abre a
-              // pergunta; só o "Cancel plan" de dentro dela envia o pedido
-              // (fim do período, o que no teste quer dizer cobrança zero).
+              // Online cancellation in two steps: this button opens the
+              // question; only the "Cancel plan" inside it sends the request
+              // (end of period, which in the trial means zero charge).
               <Button
                 variant="danger"
                 aria-haspopup="dialog"
@@ -274,10 +274,10 @@ export function PlansPanel() {
         ) : null}
       </section>
 
-      {/* O desconto do anual aparece no próprio botão, como em /pricing: no
-          `title` ele só existia para quem parava o mouse em cima.
-          O seletor segmentado da casa (aria-pressed): o ciclo muda os preços
-          mostrados, é um filtro, não abas. */}
+      {/* The annual discount shows on the button itself, as in /pricing: in
+          the `title` it only existed for those who hovered the mouse over it.
+          The app's segmented selector (aria-pressed): the cycle changes the prices
+          shown, it is a filter, not tabs. */}
       <div className="w-fit max-w-full">
         <PeriodTabs
           options={billingCycles}
@@ -322,12 +322,12 @@ export function PlansPanel() {
           const monthlyFigure = isYearly ? plan.yearlyUsd / 12 : plan.monthlyUsd;
 
           return (
-            // Cartão em coluna flex com o botão em margin-top:auto: o Free
-            // lista seis itens e os pagos três, então as alturas divergiam e
-            // os "Upgrade" não se alinhavam. Mesma hierarquia de /pricing:
-            // preço grande em serifa, comissão numa linha secundária. O plano
-            // atual ganha o anel por fora (ring), não borda de 2px, para o
-            // conteúdo não andar 1px quando vira o seu.
+            // Card as a flex column with the button at margin-top:auto: the Free
+            // lists six items and the paid ones three, so the heights diverged and
+            // the "Upgrade" buttons did not line up. Same hierarchy as /pricing:
+            // big serif price, commission on a secondary line. The current
+            // plan gets the ring on the outside (ring), not a 2px border, so the
+            // content does not shift 1px when it becomes yours.
             <article
               key={plan.id}
               className={
@@ -383,8 +383,8 @@ export function PlansPanel() {
 
               <div className="mt-auto pt-5">
                 {isCurrent ? (
-                  // O chip "Current" no topo do cartão já marca o plano; um
-                  // botão desabilitado dizendo "Your plan" era a terceira vez.
+                  // The "Current" chip at the top of the card already marks the plan; a
+                  // disabled button saying "Your plan" was the third time.
                   <p className="text-center text-xs font-semibold text-[var(--color-ink-soft)]">
                     {t("planTrial.currentOffer")}
                   </p>
@@ -425,8 +425,8 @@ export function PlansPanel() {
                           ? t("planTrial.cta")
                           : t("accountPlans.upgrade").replace("{plan}", () => plan.name)}
                     </button>
-                    {/* O motivo do botão desligado ficava só no `title`, que
-                        não aparece no toque nem no teclado. */}
+                    {/* The reason for the disabled button was only in the `title`, which
+                        does not show on touch or keyboard. */}
                     {!canPurchase ? (
                       <p className="mt-2 text-center text-xs leading-5 text-[var(--color-ink-soft)]">
                         {t("accountPlans.unavailableHint")}
@@ -451,7 +451,7 @@ export function PlansPanel() {
         onClose={closeUpgrade}
       />
 
-      {/* A frase é a mesma do antigo window.confirm; o que muda é a caixa. */}
+      {/* The sentence is the same as the old window.confirm; what changes is the box. */}
       {confirmingCancel && subscription ? (
         <ConfirmDialog
           title={t("planTrial.cancel")}

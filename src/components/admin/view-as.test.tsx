@@ -91,8 +91,8 @@ afterEach(() => {
 });
 
 describe("view-as preview", () => {
-  // Escolher a prévia é um modo, não um painel: o seletor segmentado único
-  // (PeriodTabs), com o nível atual pressionado (I-18).
+  // Choosing the preview is a mode, not a panel: the single segmented selector
+  // (PeriodTabs), with the current level pressed (I-18).
   it("marks the previewed level in the shared segmented control and keeps the reminder on-primary", () => {
     window.sessionStorage.setItem("skillsetmind.viewAs", "student");
     renderWith(["admin", "teacher"]);
@@ -131,7 +131,7 @@ describe("view-as preview", () => {
     // adding to it, so no admin-only control can survive into the preview.
     expect(screen.getByTestId("roles")).toHaveTextContent("student");
     expect(screen.getByTestId("realAdmin")).toHaveTextContent("true");
-    // A faixa reserva o próprio espaço no topo em vez de tampar a barra (I-15).
+    // The banner reserves its own space at the top instead of covering the bar (I-15).
     expect(document.documentElement).toHaveAttribute("data-view-as");
     expect(document.documentElement.style.getPropertyValue("--view-as-offset")).toMatch(/^\d+px$/);
 

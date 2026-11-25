@@ -6,9 +6,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PlatformNav } from "@/components/platform/platform-nav";
 import { SidebarToggle } from "@/components/platform/sidebar-toggle";
 
-// Barra lateral recolhida: os icones perdiam o nome (so os grupos tinham dica),
-// "Operations" era um grupo com um unico item de mesmo nome, e o botao de
-// expandir ficava solto na borda, em cima da linha entre barra e conteudo.
+// Collapsed sidebar: the icons lost their name (only the groups had a tooltip),
+// "Operations" was a group with a single item of the same name, and the expand
+// button sat loose on the edge, on top of the line between bar and content.
 
 const mocks = vi.hoisted(() => ({
   pathname: "/ops",
@@ -35,7 +35,7 @@ vi.mock("@/components/auth/auth-provider", () => ({
 
 vi.mock("@/components/i18n/i18n-provider", () => ({
   useTranslation: () => ({
-    // Chave -> ultimo segmento, o bastante para o teste ler os rotulos.
+    // Key -> last segment, enough for the test to read the labels.
     t: (key: string) => key.split(".").at(-1) ?? key,
   }),
 }));
@@ -46,10 +46,10 @@ describe("barra lateral recolhida", () => {
     mocks.roles = ["admin"];
   });
 
-  // Onda E: o nome do icone recolhido e o proprio rotulo, que o CSS mostra de
-  // dica no hover e no foco. O title nativo (so mouse, depois de 1s) saiu: com
-  // os dois, a dica aparecia dobrada.
-  it("da nome a cada icone recolhido (o rotulo no DOM) e nenhum title, recolhida ou nao", () => {
+  // Wave E: the collapsed icon's name is the label itself, which the CSS shows as a
+  // tooltip on hover and focus. The native title (mouse only, after 1s) is gone: with
+  // both, the tooltip showed up doubled.
+  it("names every collapsed icon (the label in the DOM) and has no title, collapsed or not", () => {
     const { unmount } = render(<PlatformNav collapsed />);
 
     const collapsedLinks = screen.getAllByRole("link");
@@ -67,7 +67,7 @@ describe("barra lateral recolhida", () => {
     }
   });
 
-  it("as filas de Operations sao itens diretos, sem grupo ou link redundante", () => {
+  it("the Operations queues are direct items, with no group or redundant link", () => {
     render(<PlatformNav />);
 
     expect(screen.getByRole("link", { name: "verification" })).toHaveAttribute(
@@ -80,7 +80,7 @@ describe("barra lateral recolhida", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("Students usa Users no rail e expandida, sem trocar Image da biblioteca de midia", () => {
+  it("Students uses Users in the rail and expanded, without swapping the media library's Image", () => {
     mocks.roles = ["teacher"];
     mocks.pathname = "/teach/students";
     const { rerender } = render(<PlatformNav collapsed initialSection="promote" />);
@@ -101,13 +101,13 @@ describe("barra lateral recolhida", () => {
   });
 });
 
-// Itens extra da onda 3 (capturas do Patrick, 02/09): no rail, o gatilho de
-// grupo (Sales, Products...) acendia em DUAS camadas no hover — o fundo do
-// item, largo como o rail e cortado nas laterais, mais o chip do icone por
-// dentro — enquanto o link direto (Earnings) acendia numa so. Agora os dois
-// sao o mesmo quadrado de 44px, centrado nos 64px, sem chip.
-describe("rail recolhido: um quadrado por item, sem chip e sem corte", () => {
-  it("gatilho de grupo e link direto tem a mesma estrutura: o icone direto, sem chip", () => {
+// Extra items from wave 3 (the owner's screenshots, 02/09): in the rail, the group
+// trigger (Sales, Products...) lit up in TWO layers on hover — the item's
+// background, as wide as the rail and clipped at the sides, plus the icon chip
+// inside — while the direct link (Earnings) lit up in just one. Now both
+// are the same 44px square, centered in the 64px, with no chip.
+describe("collapsed rail: one square per item, no chip and no clipping", () => {
+  it("group trigger and direct link have the same structure: the icon directly, no chip", () => {
     mocks.roles = ["teacher"];
     mocks.pathname = "/teach/builder";
     const { container, unmount } = render(<PlatformNav collapsed />);
@@ -120,13 +120,13 @@ describe("rail recolhido: um quadrado por item, sem chip e sem corte", () => {
       expect(item.firstElementChild?.tagName.toLowerCase(), item.className).toBe("svg");
     }
 
-    // Expandida, o chip continua (alinha icone e rotulo).
+    // Expanded, the chip stays (it aligns icon and label).
     unmount();
     render(<PlatformNav />);
     expect(document.querySelectorAll(".platform-nav-icon-chip").length).toBeGreaterThan(3);
   });
 
-  it("no CSS, o item do rail e um quadrado de 44px centrado, e a regra vem depois da do gatilho", () => {
+  it("in the CSS, the rail item is a centered 44px square, and the rule comes after the trigger's", () => {
     const css = readFileSync(path.join(process.cwd(), "src/app/globals.css"), "utf8");
     const rail = ".platform-sidebar.sidebar-collapsed .platform-nav-link {";
     const start = css.indexOf(rail);
@@ -141,23 +141,23 @@ describe("rail recolhido: um quadrado por item, sem chip e sem corte", () => {
     // the 63px inner rail. One gutter leaves room for the 44px target and focus.
     expect(css.includes("scrollbar-gutter: stable both-edges")).toBe(false);
     expect(css).toMatch(/\.platform-grid--collapsed \.platform-sidebar-panel\s*\{\s*padding-inline: 0;/);
-    // Foco latão sobre o navy do rail (decisão do fundador): 5.62:1 no pior tom.
+    // Brass focus on the rail's navy (the owner's decision): 5.62:1 on the worst shade.
     expect(css).toMatch(/\.platform-sidebar-panel\s*\{[^}]*--focus-ring: var\(--color-accent\);/);
     expect(css).toMatch(/\.platform-sidebar\.sidebar-collapsed \.platform-nav-link:focus-visible\s*\{\s*outline-offset: 2px;/);
     expect(css).toMatch(/\.platform-sidebar\.sidebar-collapsed \.platform-nav-link\.platform-nav-active svg\s*\{\s*color: #102a43 !important;/);
 
-    // Hover do gatilho e hover do rail empatam em especificidade (0,4,0):
-    // o do rail so ganha por vir DEPOIS. Antes disso era a segunda camada.
+    // The trigger's hover and the rail's hover tie in specificity (0,4,0):
+    // the rail's only wins by coming AFTER. Before that it was the second layer.
     const triggerHover = css.indexOf(".platform-sidebar .platform-nav-link.platform-nav-section-trigger:hover");
     const railHover = css.indexOf(".platform-sidebar.sidebar-collapsed .platform-nav-link:hover {");
     expect(triggerHover).toBeGreaterThan(-1);
     expect(railHover).toBeGreaterThan(triggerHover);
 
-    // O destaque nao mora mais no chip.
+    // The highlight no longer lives on the chip.
     expect(css).not.toMatch(/\.sidebar-collapsed[^{]*\.platform-nav-icon-chip[^{]*\{[^}]*background: (?!transparent)/);
   });
 
-  it("no CSS, secoes e rodape do rail herdam o mesmo gap do nav sem perder grid ou separador", () => {
+  it("in the CSS, rail sections and footer inherit the same nav gap without losing the grid or separator", () => {
     const css = readFileSync(path.join(process.cwd(), "src/app/globals.css"), "utf8");
     expect(css).toMatch(/\.platform-sidebar-nav\s*\{\s*gap: 0\.35rem;/);
     expect(css).toMatch(/\.platform-nav-section\s*\{\s*display: grid;\s*gap: 0\.25rem;/);
@@ -169,10 +169,10 @@ describe("rail recolhido: um quadrado por item, sem chip e sem corte", () => {
     );
   });
 
-  // A marca no topo do rail ficava encostada a esquerda (flex sem justify,
-  // 4px de padding) enquanto os icones abaixo eram quadrados centrados:
-  // parecia deslocada. No rail ela centra no mesmo eixo.
-  it("no CSS, a marca do rail recolhido centra no mesmo eixo dos icones", () => {
+  // The brand at the top of the rail sat pushed to the left (flex without justify,
+  // 4px of padding) while the icons below were centered squares:
+  // it looked displaced. In the rail it centers on the same axis.
+  it("in the CSS, the collapsed rail's brand centers on the same axis as the icons", () => {
     const css = readFileSync(path.join(process.cwd(), "src/app/globals.css"), "utf8");
     expect(css).toMatch(
       /\.platform-sidebar\.sidebar-collapsed \.platform-sidebar-brand\s*\{[^}]*justify-content: center;[^}]*padding-inline: 0;/,
@@ -180,8 +180,8 @@ describe("rail recolhido: um quadrado por item, sem chip e sem corte", () => {
   });
 });
 
-describe("o botao de recolher/expandir", () => {
-  it("e um item da barra (mesma classe dos links, alvo de 44px), nao um circulo na borda", () => {
+describe("the collapse/expand button", () => {
+  it("is a bar item (same class as the links, 44px target), not a circle on the edge", () => {
     render(
       <SidebarToggle collapsed controls="nav" onToggle={() => {}} />,
     );
@@ -192,7 +192,7 @@ describe("o botao de recolher/expandir", () => {
     expect(button.className).toMatch(/\bsize-11\b/);
   });
 
-  it("fica no topo da barra, antes da lista (onda E: o ☰ da Hotmart), e o CSS nao o pendura na borda", () => {
+  it("sits at the top of the bar, before the list (wave E: Hotmart's ☰), and the CSS does not hang it on the edge", () => {
     const shell = readFileSync(
       path.join(process.cwd(), "src/components/platform/platform-shell.tsx"),
       "utf8",
@@ -202,12 +202,12 @@ describe("o botao de recolher/expandir", () => {
       "utf8",
     );
 
-    // Na ordem do JSX: o ☰ vem antes da lista.
+    // In JSX order: the ☰ comes before the list.
     expect(shell.indexOf("<SidebarToggle")).toBeLessThan(
       shell.indexOf("<PlatformNav"),
     );
-    // As regras antigas selecionavam o botao pelo aria-label e o pregavam na
-    // borda (position: absolute; right: -1.1rem). Sumiram.
+    // The old rules selected the button by aria-label and pinned it to the
+    // edge (position: absolute; right: -1.1rem). They are gone.
     expect(css).not.toMatch(/button\[aria-label="(Expand|Collapse) sidebar"\]/);
     expect(css).toContain(".platform-sidebar .platform-sidebar-toggle");
   });

@@ -23,9 +23,9 @@ function deliver(courses = [course]) { act(() => mocks.subscribe.mock.calls[0][0
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // Só o Date é falso: o confirmar ignora cliques nos primeiros CONFIRM_GUARD_MS.
+  // Only Date is fake: confirm ignores clicks in the first CONFIRM_GUARD_MS.
   vi.useFakeTimers({ toFake: ["Date"] });
-  // jsdom não tem showModal/close; o mesmo arranjo do teste da janela de conta.
+  // jsdom has no showModal/close; the same setup as the account dialog test.
   HTMLDialogElement.prototype.showModal = function showModal() { this.setAttribute("open", ""); };
   HTMLDialogElement.prototype.close = function close() { this.removeAttribute("open"); this.dispatchEvent(new Event("close")); };
   mocks.subscribe.mockImplementation(() => vi.fn());
@@ -70,7 +70,7 @@ describe("catalog presentation and language", () => {
     mocks.remove.mockReturnValue(new Promise<void>(resolve => { finish = resolve; }));
     render(panel());
     deliver();
-    // Apagar abre a mesma janela do Unpublish: vermelho cheio, Cancelar focado.
+    // Delete opens the same dialog as Unpublish: solid red, Cancel focused.
     const trigger = screen.getByRole("button", { name: "Delete" });
     fireEvent.click(trigger);
     const dialog = screen.getByRole("dialog", { name: `Delete ${course.title}?` });
@@ -91,7 +91,7 @@ describe("catalog presentation and language", () => {
     expect(mocks.remove).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("status")).toBeNull();
     expect(confirm).toHaveAttribute("aria-busy", "true");
-    // O cartão trava o próprio "Eliminar" enquanto apaga, como os vizinhos.
+    // The card locks its own "Eliminar" while deleting, like its neighbors.
     expect(within(screen.getByRole("article")).getByRole("button", { name: "Eliminar" })).toBeDisabled();
     language();
     await act(async () => finish());
@@ -110,7 +110,7 @@ describe("catalog presentation and language", () => {
     deliver([{ ...course, status }]);
     language();
     fireEvent.click(screen.getByRole("button", { name: button }));
-    // Retirar do ar pergunta antes; publicar de novo segue direto.
+    // Taking offline asks first; publishing again goes straight through.
     if (status === "published") {
       vi.advanceTimersByTime(CONFIRM_GUARD_MS);
       fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: button }));
@@ -127,8 +127,8 @@ describe("catalog presentation and language", () => {
     deliver();
     const unpublish = screen.getByRole("button", { name: "Unpublish" });
     expect(unpublish).toHaveClass("button-danger");
-    // Os botões do cartão guardam as duas faces (repouso e espera com o anel)
-    // na mesma célula: o que gira não empurra os vizinhos.
+    // The card buttons keep both faces (rest and wait with the ring)
+    // in the same cell: the one that spins does not push its neighbors.
     for (const button of within(screen.getByRole("article")).getAllByRole("button")) {
       expect(button.querySelectorAll('[class*="grid-area"]')).toHaveLength(2);
     }
@@ -141,13 +141,13 @@ describe("catalog presentation and language", () => {
     fireEvent.click(unpublish);
     const confirm = within(screen.getByRole("dialog")).getByRole("button", { name: "Unpublish" });
     vi.advanceTimersByTime(CONFIRM_GUARD_MS);
-    // Duplo clique: grava uma vez e a janela segue aberta, sem soltar o 2º clique no "Feature" de baixo.
+    // Double click: saves once and the dialog stays open, without letting the 2nd click fall on the "Feature" below.
     fireEvent.click(confirm);
     fireEvent.click(confirm);
     expect(mocks.review).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(confirm).toHaveAttribute("aria-busy", "true");
-    // Só o botão apertado gira; os vizinhos travam com o próprio nome.
+    // Only the pressed button spins; the neighbors lock with their own name.
     const card = screen.getByRole("article");
     expect(within(card).getByRole("button", { name: "Unpublish" })).toHaveAttribute("aria-busy", "true");
     expect(within(card).getByRole("button", { name: "Unpublish" })).toBe(unpublish);

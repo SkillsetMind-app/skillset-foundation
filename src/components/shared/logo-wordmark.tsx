@@ -11,7 +11,7 @@ type LogoWordmarkProps = {
   tone?: "auto" | "light" | "dark";
   compact?: boolean;
   nav?: boolean;
-  /** false: sem pré-carga (lazy). Para a marca que o CSS esconde em algumas telas. */
+  /** false: no preload (lazy). For the brand that the CSS hides on some screens. */
   priority?: boolean;
   className?: string;
 };
@@ -93,7 +93,7 @@ export function LogoWordmark({
       </span>
     );
 
-  // Alvo de toque de 44px: a marca no topo mede 40 (mark) ou 32 (wordmark).
+  // 44px touch target: the brand at the top measures 40 (mark) or 32 (wordmark).
   return (
     <Link
       href={href}

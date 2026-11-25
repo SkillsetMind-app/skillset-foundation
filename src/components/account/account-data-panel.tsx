@@ -67,9 +67,9 @@ export function AccountDataPanel() {
         >
           <BusyLabel busy={isExporting} idle={t("accountData.export")} busyText={t("accountData.requesting")} />
         </Button>
-        {/* Antes o próprio botão virava "Confirm delete request" no mesmo
-            lugar, e um clique duplo já pedia a exclusão. A pergunta agora é
-            uma janela, e só o botão de dentro dela envia o pedido. */}
+        {/* Before, the button itself turned into "Confirm delete request" in the same
+            place, and a double click already requested the deletion. The question is now
+            a dialog, and only the button inside it sends the request. */}
         <Button
           variant="danger"
           aria-haspopup="dialog"

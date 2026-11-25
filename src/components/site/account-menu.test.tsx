@@ -162,8 +162,8 @@ describe("workspace switcher in the account menu", () => {
     expect(screen.getByRole("link", { name: /student area/i })).toBeInTheDocument();
   });
 
-  // Na plataforma o botao do topo ja troca de lado: o menu nao repete o mesmo
-  // destino, mas guarda o que o topo nao tem (Operacoes, "View as").
+  // On the platform the top button already switches sides: the menu does not repeat the same
+  // destination, but keeps what the top does not have (Operations, "View as").
   it("does not repeat the destination of the top-bar switch", () => {
     mocks.pathname = "/teach";
     render(
@@ -195,8 +195,8 @@ describe("workspace switcher in the account menu", () => {
     expect(screen.queryByRole("link", { name: /student area/i })).toBeNull();
   });
 
-  // O admin procurava "ver como" no menu do avatar (reanalise Ops 5). E um
-  // atalho para a fila de acessos, onde o "ver como" de verdade mora.
+  // The admin looked for "view as" in the avatar menu (Ops reanalysis 5). It is a
+  // shortcut to the access queue, where the real "view as" lives.
   it("gives an admin a 'View as' shortcut to the access queue, and nobody else", () => {
     openMenu(["admin"], "/ops");
     expect(screen.getByRole("link", { name: /view as/i })).toHaveAttribute(
@@ -210,8 +210,8 @@ describe("workspace switcher in the account menu", () => {
   });
 });
 
-// O aluno via "Subscription · Free" (o plano de quem vende) e "Billing" para o
-// que ele mesmo comprou.
+// The learner saw "Subscription · Free" (the plan of someone who sells) and "Billing" for
+// what they themselves bought.
 describe("account menu for a learner", () => {
   it("shows My purchases and no creator plan", () => {
     openMenu(["student"], "/learn");
@@ -232,7 +232,7 @@ describe("account menu for a learner", () => {
     openMenu(["student", "teacher"], "/learn");
 
     expect(screen.getByRole("link", { name: /creator plan/i })).toHaveAttribute("href", "/account/plans");
-    // Um nome so para a pagina do dinheiro, o mesmo da barra lateral.
+    // One name for the money page, the same as the sidebar's.
     expect(screen.getByRole("link", { name: "Earnings" })).toHaveAttribute("href", "/account/payments");
     expect(screen.queryByRole("link", { name: /payouts & tax/i })).toBeNull();
     expect(screen.queryByRole("link", { name: "My purchases" })).toBeNull();
@@ -257,8 +257,8 @@ describe("account menu: tools, help and same-tab switching", () => {
     expect(screen.queryByRole("link", { name: "Verification" })).toBeNull();
   });
 
-  // Uma Ajuda por tela: ela mora na barra lateral (ou no topo da sala de
-  // aula). Repetida aqui, eram duas ou tres iguais na mesma tela.
+  // One Help per screen: it lives in the sidebar (or at the top of the
+  // classroom). Repeated here, there were two or three identical ones on the same screen.
   it.each([
     ["/teach", ["teacher"]],
     ["/learn", ["student"]],

@@ -30,18 +30,18 @@ beforeEach(() => mocks.search.mockResolvedValue({ total: 1, users: [ana] }));
 afterEach(() => { cleanup(); vi.resetAllMocks(); });
 
 describe("OpsUserTable", () => {
-  it("mostra a pessoa com status e o nome leva ao dossiê", async () => {
+  it("shows the person with status and the name leads to the dossier", async () => {
     render(table());
     const link = await screen.findByRole("link", { name: "Ana" });
     expect(link).toHaveAttribute("href", "/ops/users/u%201");
-    // "Blocked" também é opção do filtro de status: o selo é o que não é <option>.
+    // "Blocked" is also an option of the status filter: the badge is the one that is not an <option>.
     const chip = screen.getAllByText("Blocked").find((node) => node.tagName !== "OPTION");
-    // Bloqueada pede atenção: vermelho, não o cinza de rascunho (I-05).
+    // Blocked asks for attention: red, not the draft gray (I-05).
     expect(chip).toHaveClass("status-chip--danger");
     expect(screen.getByText(/Never signed in/)).toBeInTheDocument();
   });
 
-  it("lista as pessoas numa tabela com colunas, não em cartões", async () => {
+  it("lists people in a table with columns, not in cards", async () => {
     render(table());
     await screen.findByRole("link", { name: "Ana" });
     const grid = screen.getByRole("table");
@@ -56,7 +56,7 @@ describe("OpsUserTable", () => {
     expect(cells[4]).toHaveTextContent("Never signed in");
   });
 
-  it("paginação e filtro vão para o banco, e filtro volta para a primeira página", async () => {
+  it("pagination and filter go to the database, and a filter returns to the first page", async () => {
     mocks.search.mockResolvedValue({ total: 120, users: [ana] });
     render(table());
     await screen.findByRole("link", { name: "Ana" });
@@ -66,14 +66,14 @@ describe("OpsUserTable", () => {
     await waitFor(() => expect(mocks.search).toHaveBeenLastCalledWith({ search: "", status: "suspended", role: null, page: 0 }));
   });
 
-  it("busca nova deixa a lista antiga no lugar, apagada e ocupada, até a resposta (I-12)", async () => {
+  it("a new search keeps the old list in place, dimmed and busy, until the response (I-12)", async () => {
     render(table());
     await screen.findByRole("link", { name: "Ana" });
     expect(screen.getByRole("region")).not.toHaveAttribute("aria-busy");
     let finish!: (page: unknown) => void;
     mocks.search.mockReturnValueOnce(new Promise((resolve) => { finish = resolve; }));
     fireEvent.change(screen.getByRole("searchbox", { name: "Find someone" }), { target: { value: "ana" } });
-    // Desde a primeira tecla, antes do atraso de 300ms.
+    // From the first keystroke, before the 300ms delay.
     expect(screen.getByRole("link", { name: "Ana" })).toBeInTheDocument();
     expect(screen.getByRole("region")).toHaveAttribute("aria-busy", "true");
     expect(screen.getByRole("region")).toHaveClass("opacity-60");
@@ -84,13 +84,13 @@ describe("OpsUserTable", () => {
     expect(document.querySelector("[data-searching]")).toBeNull();
   });
 
-  it("sem 2FA mostra o caminho para ativar, não um erro genérico", async () => {
+  it("without 2FA shows the way to turn it on, not a generic error", async () => {
     mocks.search.mockRejectedValue({ message: "OPS_ADMIN_MFA_REQUIRED" });
     render(table());
     expect(await screen.findByRole("link", { name: "Set up two-factor authentication" })).toHaveAttribute("href", "/account/security");
   });
 
-  it("fechar o controle de conta recarrega a lista", async () => {
+  it("closing the account control reloads the list", async () => {
     render(table());
     await screen.findByRole("link", { name: "Ana" });
     fireEvent.click(screen.getByRole("button", { name: "Account access" }));
@@ -98,7 +98,7 @@ describe("OpsUserTable", () => {
     await waitFor(() => expect(mocks.search).toHaveBeenCalledTimes(2));
   });
 
-  it("fala espanhol", async () => {
+  it("speaks Spanish", async () => {
     render(table("es"));
     await screen.findByRole("link", { name: "Ana" });
     expect(screen.getAllByText("Bloqueada").some((node) => node.tagName !== "OPTION")).toBe(true);

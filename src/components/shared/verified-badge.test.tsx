@@ -10,14 +10,14 @@ import type { ProfessionalVerification } from "@/domain/user-profile";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 afterEach(cleanup);
 
-// Toque/mouse: pointerdown, foco e clique, na ordem do navegador.
+// Touch/mouse: pointerdown, focus and click, in the browser's order.
 function tap(element: HTMLElement) {
   fireEvent.pointerDown(element);
   act(() => element.focus());
   fireEvent.click(element);
 }
 
-// Teclado: o foco chega sem ponteiro.
+// Keyboard: focus arrives without a pointer.
 function keyboardFocus(element: HTMLElement) {
   act(() => element.focus());
 }
@@ -35,8 +35,8 @@ function renderBadge(verification: ProfessionalVerification, { locale = "en", co
   );
 }
 
-describe("o selo", () => {
-  it("usa o BadgeCheck recortado do Lucide com cores da marca e nome acessivel", () => {
+describe("the badge", () => {
+  it("uses Lucide's cut-out BadgeCheck with brand colors and an accessible name", () => {
     const { container } = render(<VerifiedSeal label="Verified professional" />);
     const svg = container.querySelector("svg")!;
 
@@ -47,17 +47,17 @@ describe("o selo", () => {
     expect(svg).toHaveAttribute("fill", "var(--seal-ground)");
     expect(svg).toHaveAttribute("stroke", "var(--seal-mark)");
     expect(svg).toHaveAttribute("focusable", "false");
-    // Na cor da marca (marinho/latão via .verified-seal), nunca um azul fixo.
+    // In the brand color (navy/brass via .verified-seal), never a fixed blue.
     expect(container.innerHTML).not.toMatch(/#[0-9a-f]{6}|rgb\(/i);
     expect(screen.getByRole("img", { name: "Verified professional" })).toBe(svg);
   });
 
-  it("sem rótulo é decorativo", () => {
+  it("without a label it is decorative", () => {
     const { container } = render(<VerifiedSeal />);
     expect(container.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
   });
 
-  it("preserva tamanho explicito e classe do caller sem alterar a geometria", () => {
+  it("keeps the explicit size and the caller's class without changing the geometry", () => {
     const { container } = render(<VerifiedSeal size={24} className="custom-seal" />);
     const svg = container.querySelector("svg")!;
     expect(svg).toHaveAttribute("width", "24");
@@ -71,14 +71,14 @@ describe("rótulo", () => {
   it.each([
     ["en", "Verified professional"],
     ["es", "Profesional verificado"],
-  ])("no perfil, as palavras ficam ao lado do nome (%s)", (locale, label) => {
+  ])("on the profile, the words sit next to the name (%s)", (locale, label) => {
     renderBadge(coach, { locale });
     const button = screen.getByRole("button", { name: label });
     expect(button).toHaveTextContent(label);
     expect(button).toHaveAttribute("aria-expanded", "false");
   });
 
-  it("compacto mostra só o selo, com nome acessível", () => {
+  it("compact shows only the badge, with an accessible name", () => {
     renderBadge(coach, { compact: true });
     const button = screen.getByRole("button", { name: "Verified professional" });
     expect(button).toHaveTextContent("");
@@ -87,7 +87,7 @@ describe("rótulo", () => {
 });
 
 describe("popover", () => {
-  it("abre e fecha no clique (toque)", () => {
+  it("opens and closes on click (touch)", () => {
     renderBadge(coach);
     const button = screen.getByRole("button", { name: "Verified professional" });
 
@@ -100,18 +100,18 @@ describe("popover", () => {
     expect(screen.queryByText(/reviewed this person's professional evidence/)).toBeNull();
   });
 
-  it("abre no foco do teclado, Enter não fecha, Esc fecha e devolve o foco", () => {
+  it("opens on keyboard focus, Enter does not close, Esc closes and returns focus", () => {
     renderBadge(coach);
     const button = screen.getByRole("button", { name: "Verified professional" });
 
     keyboardFocus(button);
     expect(button).toHaveAttribute("aria-expanded", "true");
 
-    // Enter/Espaço viram clique sem ponteiro: quem abriu pelo foco não fecha.
+    // Enter/Space become a click without a pointer: whoever opened it by focus does not close it.
     fireEvent.click(button);
     expect(button).toHaveAttribute("aria-expanded", "true");
 
-    // O link do popover é alcançável pelo teclado sem fechar.
+    // The popover link is reachable by keyboard without closing.
     const trust = screen.getByRole("link", { name: "How verification works" });
     fireEvent.focusOut(button, { relatedTarget: trust });
     keyboardFocus(trust);
@@ -122,7 +122,7 @@ describe("popover", () => {
     expect(button).toHaveFocus();
   });
 
-  it("fecha quando o foco sai e no clique fora", () => {
+  it("closes when focus leaves and on a click outside", () => {
     renderBadge(coach);
     const button = screen.getByRole("button", { name: "Verified professional" });
 
@@ -137,7 +137,7 @@ describe("popover", () => {
     expect(button).toHaveAttribute("aria-expanded", "false");
   });
 
-  it("aponta para /trust e sempre avisa que resultados de curso não são verificados", () => {
+  it("points to /trust and always warns that course results are not verified", () => {
     renderBadge(coach);
     tap(screen.getByRole("button", { name: "Verified professional" }));
 
@@ -146,26 +146,26 @@ describe("popover", () => {
   });
 });
 
-describe("o texto diz o que foi conferido e quando", () => {
+describe("the text says what was checked and when", () => {
   function statement(verification: ProfessionalVerification, locale = "en") {
     renderBadge(verification, { locale });
     tap(screen.getByRole("button"));
     return document.querySelector("[data-verified-popover]")!.textContent!;
   }
 
-  it("license: a licença, com a data em inglês", () => {
+  it("license: the license, with the date in English", () => {
     expect(statement(license)).toContain(
       "SkillsetMind checked this professional license on September 1, 2026.",
     );
   });
 
-  it("evidence: a evidência profissional, sem prometer identidade", () => {
+  it("evidence: the professional evidence, without promising identity", () => {
     const text = statement(coach);
     expect(text).toContain("SkillsetMind reviewed this person's professional evidence on September 1, 2026.");
     expect(text).not.toMatch(/identity/i);
   });
 
-  it("em espanhol, a data no formato de lá", () => {
+  it("in Spanish, the date in the local format", () => {
     expect(statement(license, "es")).toContain(
       "SkillsetMind comprobó esta licencia profesional el 1 de septiembre de 2026.",
     );
@@ -176,26 +176,26 @@ describe("o texto diz o que foi conferido e quando", () => {
     expect(document.body.textContent).not.toMatch(/identidad/i);
   });
 
-  it("caso aprovado sem data de revisão: a frase sem data, nunca uma data inventada", () => {
+  it("approved case without a review date: the sentence without a date, never an invented date", () => {
     const text = statement({ kind: "evidence", verifiedAt: null });
     expect(text).toContain("SkillsetMind reviewed this person's professional evidence.");
     expect(text).not.toMatch(/\bon\b\s*\./);
   });
 });
 
-// Restrição legal (EUA): o selo não certifica, não endossa, não credencia.
+// Legal restriction (US): the badge does not certify, does not endorse, does not accredit.
 it.each([
   ["en", en.verifiedBadge, /certif|endors|accredit|licensed by|more students|rank/i],
   ["es", es.verifiedBadge, /certific|avalad|acreditad|licenciad[oa] por|más alumnos|más estudiantes/i],
-] as const)("a copy do selo em %s não promete o que não foi feito", (_locale, copy, forbidden) => {
+] as const)("the badge copy in %s does not promise what was not done", (_locale, copy, forbidden) => {
   expect(JSON.stringify(copy)).not.toMatch(forbidden);
 });
 
-// /trust e as faixas do login não dizem que todo mundo é verificado.
+// /trust and the login strips do not say that everybody is verified.
 it.each([
   ["en", en, "Professional verification", /Verified professional/],
   ["es", es, "Verificación profesional", /Profesional verificado/],
-] as const)("%s: /trust explica o selo opcional e os títulos não prometem verificação geral", (_locale, dict, title, badge) => {
+] as const)("%s: /trust explains the optional badge and the titles do not promise general verification", (_locale, dict, title, badge) => {
   expect(dict.publicPages.trust.verified_professionals).toBe(title);
   const detail = dict.publicPages.trust.skillsetmind_verifies_professional_eligibility_before_publication;
   expect(detail).toMatch(badge);

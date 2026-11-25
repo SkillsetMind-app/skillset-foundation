@@ -8,19 +8,19 @@ import { InlineAlert } from "@/components/ui/inline-alert";
 import { cn } from "@/lib/cn";
 
 /**
- * Por quanto tempo, depois de abrir, o botão de confirmar ignora cliques. No
- * celular os botões empilham e o de confirmar ocupa a largura toda logo abaixo
- * do centro da tela: num toque duplo, o 1º toque abre a janela e o 2º cairia
- * nele. O botão continua com cara de habilitado; o clique só é descartado.
+ * For how long, after opening, the confirm button ignores clicks. On
+ * phones the buttons stack and the confirm button takes the full width right below
+ * the center of the screen: on a double tap, the 1st tap opens the dialog and the 2nd would land
+ * on it. The button still looks enabled; the click is only discarded.
  */
 export const CONFIRM_GUARD_MS = 500;
 
 /**
- * Confirmação de uma ação que não volta (cancelar plano, pedir exclusão).
- * Substitui o `window.confirm`: a caixa cinza do navegador trava a aba, não
- * tem nada da marca e "OK / Cancel" não diz o que acontece.
+ * Confirmation of an action that cannot be undone (cancel a plan, request deletion).
+ * Replaces `window.confirm`: the browser's gray box freezes the tab, has
+ * nothing of the brand and "OK / Cancel" does not say what happens.
  *
- * Uso — monte só enquanto a pergunta está aberta:
+ * Usage — mount it only while the question is open:
  *
  *   {asking ? (
  *     <ConfirmDialog
@@ -29,54 +29,54 @@ export const CONFIRM_GUARD_MS = 500;
  *       pendingLabel={t("planTrial.cancelling")}
  *       cancelLabel={t("planTrial.keepPlan")}
  *       danger
- *       onConfirm={cancelPlan}          // pode ser async
+ *       onConfirm={cancelPlan}          // can be async
  *       onClose={() => setAsking(false)}
  *     >
- *       {frase que já existia no window.confirm}
+ *       {sentence that already existed in window.confirm}
  *     </ConfirmDialog>
  *   ) : null}
  *
- * O que ele garante, para quem chama não precisar lembrar:
- * - `<dialog>` nativo aberto com showModal(): a página de trás fica inerte e
- *   o foco não sai da janela;
- * - o foco começa em "cancelar" (o lado seguro) e volta ao botão que abriu;
- * - Esc fecha, exceto enquanto a confirmação está em andamento;
- * - nos primeiros CONFIRM_GUARD_MS o confirmar não responde (toque duplo);
- * - durante o `onConfirm` o botão trava e mostra `pendingLabel`: dois cliques
- *   seguidos disparam a ação uma vez só;
- * - cabe na tela (.modal-panel, AGENTS.md) e tem 16px de margem no celular;
- *   a entrada e o fundo (--color-scrim) vêm da mesma classe, iguais às outras
- *   janelas.
+ * What it guarantees, so callers do not have to remember:
+ * - native `<dialog>` opened with showModal(): the page behind becomes inert and
+ *   focus does not leave the dialog;
+ * - focus starts on "cancel" (the safe side) and returns to the button that opened it;
+ * - Esc closes, except while the confirmation is in progress;
+ * - during the first CONFIRM_GUARD_MS the confirm button does not respond (double tap);
+ * - during `onConfirm` the button locks and shows `pendingLabel`: two clicks
+ *   in a row fire the action only once;
+ * - fits on the screen (.modal-panel, AGENTS.md) and has a 16px margin on phones;
+ *   the entrance and the backdrop (--color-scrim) come from the same class, identical to the other
+ *   dialogs.
  *
- * Erros — escolha um dos dois caminhos:
- * - o `onConfirm` trata o próprio erro e termina normalmente: a janela fecha e
- *   quem chamou mostra o resultado na tela (é o que planos e privacidade fazem);
- * - o `onConfirm` rejeita: a janela FICA aberta, destrava os botões e mostra
- *   `errorLabel` (ou uma frase genérica) para tentar de novo ou desistir.
+ * Errors — pick one of the two paths:
+ * - `onConfirm` handles its own error and finishes normally: the dialog closes and
+ *   the caller shows the result on the screen (this is what plans and privacy do);
+ * - `onConfirm` rejects: the dialog STAYS open, unlocks the buttons and shows
+ *   `errorLabel` (or a generic sentence) to try again or give up.
  *
- * Aviso sem escolha (`acknowledge`): um botão só, o `confirmLabel`, sem
- * vermelho e sem a trava do toque duplo, porque dar ciência não desfaz nada.
- * Dois botões que fazem a mesma coisa (o "Close" ao lado de "Stay") eram lidos
- * como "sair mesmo assim", e o toque rápido caía na trava. Sem `cancelLabel`.
+ * Notice with no choice (`acknowledge`): a single button, the `confirmLabel`, with no
+ * red and no double-tap guard, because acknowledging undoes nothing.
+ * Two buttons that do the same thing (the "Close" next to "Stay") were read
+ * as "leave anyway", and a quick tap fell into the guard. No `cancelLabel`.
  */
 export type ConfirmDialogProps = ConfirmDialogBaseProps &
   ({ acknowledge?: false; cancelLabel: string } | { acknowledge: true; cancelLabel?: never });
 
 type ConfirmDialogBaseProps = {
   title: string;
-  /** Rótulo pequeno acima do título. Opcional. */
+  /** Small label above the title. Optional. */
   eyebrow?: string;
-  /** O corpo: a frase que explica a consequência. */
+  /** The body: the sentence that explains the consequence. */
   children: ReactNode;
   confirmLabel: string;
-  /** Texto do botão enquanto o `onConfirm` roda. Sem ele, fica o confirmLabel. */
+  /** Button text while `onConfirm` runs. Without it, confirmLabel stays. */
   pendingLabel?: string;
-  /** Vermelho cheio no botão de confirmar (apagar, cancelar o que é pago). */
+  /** Solid red on the confirm button (delete, cancel something that is paid). */
   danger?: boolean;
   onConfirm: () => unknown;
-  /** Frase mostrada dentro da janela se o `onConfirm` rejeitar. */
+  /** Sentence shown inside the dialog if `onConfirm` rejects. */
   errorLabel?: string;
-  /** Chamado quando a janela fecha, por qualquer caminho. Desmonte aqui. */
+  /** Called when the dialog closes, by any path. Unmount here. */
   onClose: () => void;
 };
 
@@ -95,7 +95,7 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   const { t } = useTranslation();
   const dialogRef = useRef<HTMLDialogElement>(null);
-  // O estado re-renderiza; a ref barra o segundo clique que chega antes disso.
+  // State re-renders; the ref blocks the second click that arrives before that.
   const pendingRef = useRef(false);
   const openedAt = useRef(Number.POSITIVE_INFINITY);
   const [pending, setPending] = useState(false);
@@ -111,8 +111,8 @@ export function ConfirmDialog({
     openedAt.current = Date.now();
     dialog?.querySelector<HTMLElement>("[data-confirm-cancel]")?.focus();
     return () => {
-      // Quando a ação some com a tela (o "Cancel plan" deixa de existir depois
-      // de cancelar), não há para onde devolver o foco.
+      // When the action disappears with the screen (the "Cancel plan" stops existing after
+      // cancelling), there is nowhere to return focus to.
       if (trigger?.isConnected) trigger.focus();
     };
   }, []);
@@ -125,8 +125,8 @@ export function ConfirmDialog({
     try {
       await onConfirm();
     } catch {
-      // Quem chamou deixou o erro subir: a janela fica aberta e avisa, em vez
-      // de sumir calada com uma rejeição sem dono.
+      // The caller let the error bubble up: the dialog stays open and warns, instead
+      // of vanishing silently with an unowned rejection.
       pendingRef.current = false;
       setPending(false);
       setFailed(true);
@@ -143,7 +143,7 @@ export function ConfirmDialog({
       aria-labelledby={titleId}
       aria-describedby={bodyId}
       onCancel={(event) => {
-        // Esc: fechamos nós mesmos para respeitar o "em andamento".
+        // Esc: we close it ourselves to respect the "in progress" state.
         event.preventDefault();
         if (!pendingRef.current) dialogRef.current?.close();
       }}
@@ -173,9 +173,9 @@ export function ConfirmDialog({
           </InlineAlert>
         ) : null}
       </div>
-      {/* O rodapé da casa: abaixo do sm os botões empilham com o de confirmar
-          em cima e o Cancelar embaixo; do sm em diante ficam à direita, o
-          seguro primeiro. */}
+      {/* The standard footer: below sm the buttons stack with the confirm button
+          on top and Cancel below; from sm up they sit on the right, the
+          safe one first. */}
       <div className="dialog-footer">
         {acknowledge ? null : (
           <Button
@@ -187,14 +187,14 @@ export function ConfirmDialog({
             {cancelLabel}
           </Button>
         )}
-        {/* No aviso sem escolha, o foco inicial vem para o botão único. */}
+        {/* In the notice with no choice, initial focus goes to the single button. */}
         <Button
           variant={danger && !acknowledge ? "danger" : "solid"}
           className={danger && !acknowledge ? "button-danger-solid" : undefined}
           data-confirm-cancel={acknowledge ? "" : undefined}
           loading={pending}
-          // Os dois rótulos na mesma célula (busyLabel): o botão não cresce
-          // quando "Delete" vira "Deleting...". Sem pendingLabel, como era.
+          // Both labels in the same cell (busyLabel): the button does not grow
+          // when "Delete" becomes "Deleting...". Without pendingLabel, as it was.
           busyLabel={pendingLabel || undefined}
           onClick={() => void confirm()}
         >

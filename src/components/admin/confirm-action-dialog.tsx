@@ -4,18 +4,18 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 /**
- * Pergunta antes das ações do /ops que tiram algo do ar ou recusam alguém
- * (I-04): eram um clique só, no mesmo contorno de "Request changes".
+ * Asks before /ops actions that take something offline or reject someone
+ * (I-04): they were a single click, in the same outline as "Request changes".
  *
- * Casca fina sobre a janela única da plataforma (`ui/confirm-dialog`), para o
- * admin ter uma implementação só: <dialog> nativo com showModal(), foco que
- * começa no lado seguro e volta a quem abriu, Esc, a trava do toque duplo e a
- * trava enquanto grava (os dois botões param e o Esc não fecha; um duplo
- * clique grava uma vez e não cai no botão de baixo).
+ * Thin shell over the platform's single dialog (`ui/confirm-dialog`), so the
+ * admin has only one implementation: native <dialog> with showModal(), focus that
+ * starts on the safe side and returns to whoever opened it, Esc, the double-tap lock and the
+ * lock while saving (both buttons stop and Esc does not close; a double
+ * click saves once and does not land on the button below).
  *
- * O contrato de quem chama continua o daqui: o painel já mostra o erro no
- * próprio lugar (a promessa não rejeita), então a janela fecha também quando a
- * gravação falha, em vez de abrir um segundo aviso dentro dela.
+ * The caller's contract stays as it was here: the panel already shows the error in
+ * its own place (the promise does not reject), so the dialog also closes when the
+ * write fails, instead of opening a second notice inside it.
  */
 export function ConfirmActionDialog({ title, body, confirmLabel, onConfirm, onClose }: {
   title: string;
@@ -35,7 +35,7 @@ export function ConfirmActionDialog({ title, body, confirmLabel, onConfirm, onCl
         try {
           await onConfirm();
         } catch {
-          // Quem chamou já avisa no painel; aqui só fecha, como antes.
+          // The caller already warns in the panel; here it only closes, as before.
         }
       }}
       onClose={onClose}

@@ -23,15 +23,15 @@ export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  // Para qual uid a lista chegou, e para qual a primeira leitura falhou. Antes
-  // o sino dizia "You're all caught up" enquanto a lista nao chegava e, se a
-  // leitura falhava, para sempre. Agora: formato de aviso ate a resposta, erro
-  // com "Try again" na falha, e "caught up" so quando o banco respondeu vazio.
-  // Guardar o uid (e nao zerar dentro do efeito) evita o setState em cascata.
+  // Which uid the list arrived for, and which one the first read failed for. Before,
+  // the bell said "You're all caught up" while the list had not arrived and, if the
+  // read failed, forever. Now: a notification-shaped placeholder until the answer, an error
+  // with "Try again" on failure, and "caught up" only when the database answered empty.
+  // Storing the uid (rather than resetting inside the effect) avoids the cascading setState.
   const [loadedUid, setLoadedUid] = useState<string | null>(null);
   const [failedUid, setFailedUid] = useState<string | null>(null);
-  // "Mark all read" que falhou: antes calava (o catch so engolia) e a pessoa
-  // achava que tinha marcado. Os avisos seguem como nao lidos; o painel diz.
+  // A "Mark all read" that failed: before, it stayed silent (the catch only swallowed it) and the person
+  // thought they had marked them. The notifications stay unread; the panel says so.
   const [markAllFailed, setMarkAllFailed] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -55,8 +55,8 @@ export function NotificationBell() {
         setLoadedUid(uid);
         setFailedUid(null);
       },
-      // Uma releitura que falha com a lista ja na tela mantem a lista: antes
-      // ela esvaziava e o painel passava a dizer "You're all caught up".
+      // A re-read that fails with the list already on screen keeps the list: before,
+      // it emptied and the panel started saying "You're all caught up".
       () => setFailedUid(uid),
     );
     subscription.current = current;
@@ -66,8 +66,8 @@ export function NotificationBell() {
     };
   }, [uid]);
 
-  // Ao abrir, o foco entra no painel (no titulo): quem usa teclado ou leitor
-  // de tela cai dentro dele, e nao fica parado no sino.
+  // On opening, focus enters the panel (on the title): someone using a keyboard or screen
+  // reader lands inside it, and does not stay parked on the bell.
   useEffect(() => {
     if (open) {
       titleRef.current?.focus();
@@ -103,7 +103,7 @@ export function NotificationBell() {
 
   const loaded = uid !== null && loadedUid === uid;
   const loadFailed = !loaded && uid !== null && failedUid === uid;
-  // So a lista que chegou para ESTE uid conta; ate la, nada de outra conta.
+  // Only the list that arrived for THIS uid counts; until then, nothing from another account.
   const items = useMemo(() => (loaded ? notifications : []), [loaded, notifications]);
   const unreadCount = useMemo(
     () => items.filter((item) => !item.read).length,
@@ -145,16 +145,16 @@ export function NotificationBell() {
     }
   }
 
-  // "Try again" le de novo pelo mesmo canal (ver subscribeToNotifications).
-  // O botao some (volta o esqueleto): o foco vai para o titulo do painel, em
-  // vez de cair na pagina.
+  // "Try again" reads again through the same channel (see subscribeToNotifications).
+  // The button disappears (the skeleton returns): focus goes to the panel title, instead
+  // of falling onto the page.
   function retryLoad() {
     titleRef.current?.focus();
     setFailedUid(null);
     void subscription.current?.reload();
   }
 
-  // Fechar pelo X ou pelo Esc devolve o foco ao sino, de onde a pessoa veio.
+  // Closing with the X or Esc returns focus to the bell, where the person came from.
   function closeToTrigger() {
     setOpen(false);
     triggerRef.current?.focus();
@@ -169,15 +169,15 @@ export function NotificationBell() {
   const preview = filtered.slice(0, 6);
 
   return (
-    // Abaixo de 768px o painel se prende a barra do topo (como a busca), nao ao
-    // sino: a conta e o idioma ficam a direita do sino, e alinhado a ele o
-    // painel de 343px comecava fora da tela (x = -88 em 375px).
+    // Below 768px the panel attaches to the top bar (like the search), not to the
+    // bell: the account and the language sit to the right of the bell, and aligned to it the
+    // 343px panel started off screen (x = -88 at 375px).
     <div
       ref={wrapperRef}
       className="relative max-md:static"
       onBlur={(event) => {
-        // Tab para fora do painel fecha, como a Ajuda ao lado. Foco para
-        // "lugar nenhum" (clique num texto do painel) nao fecha.
+        // Tab out of the panel closes it, like Help beside it. Focus going to
+        // "nowhere" (a click on text in the panel) does not close it.
         const next = event.relatedTarget;
         if (open && next instanceof Node && !event.currentTarget.contains(next)) {
           setOpen(false);
@@ -188,8 +188,8 @@ export function NotificationBell() {
         ref={triggerRef}
         type="button"
         onClick={() => {
-          // Abrir de novo começa limpo: a falha de antes não volta nem é lida
-          // outra vez. (Fechado, o painel não existe; só se reabre por aqui.)
+          // Opening again starts clean: the earlier failure does not come back nor is it read
+          // out again. (When closed, the panel does not exist; it only reopens through here.)
           if (!open) setMarkAllFailed(false);
           setOpen((current) => !current);
         }}
@@ -208,7 +208,7 @@ export function NotificationBell() {
       >
         <Bell aria-hidden="true" size={18} strokeWidth={1.8} />
         {unreadCount > 0 ? (
-          // Branco no latão dava 2.56:1; o navy de --color-on-accent dá 6.67:1.
+          // White on brass gave 2.56:1; the navy of --color-on-accent gives 6.67:1.
           <span className="absolute -right-0.5 -top-0.5 grid min-w-[18px] place-items-center rounded-full bg-[var(--color-accent)] px-1 text-[10px] font-bold leading-[18px] text-[var(--color-on-accent)]">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
@@ -216,10 +216,10 @@ export function NotificationBell() {
       </button>
 
       {open ? (
-        // Popover, nao janela centrada: fica preso ao sino (como a Ajuda) e
-        // nunca passa da altura da tela; a lista rola por dentro. No celular,
-        // 16px da borda direita da barra e no maximo a tela menos 32px: de
-        // 320 a 767px sobra pelo menos 16px dos dois lados.
+        // A popover, not a centered dialog: it stays attached to the bell (like Help) and
+        // never goes past the screen height; the list scrolls inside. On a phone,
+        // 16px from the right edge of the bar and at most the screen minus 32px: from
+        // 320 to 767px at least 16px is left on both sides.
         <div
           id={panelId}
           role="dialog"
@@ -227,8 +227,8 @@ export function NotificationBell() {
           aria-busy={!loaded && !loadFailed}
           className="motion-drop-in absolute right-0 top-[calc(100%+8px)] z-50 flex max-h-[calc(100svh-96px)] w-[min(380px,calc(100vw-32px))] flex-col max-md:right-4 overflow-hidden rounded-lg border border-[var(--color-line)] bg-white shadow-[0_24px_48px_rgba(15,39,68,0.16)]"
         >
-          {/* Alvos de 44px (sino, X, "Mark all read", filtros, "View all"): antes
-              eram 32px e uns 24px de altura, dificeis de acertar no celular. */}
+          {/* 44px targets (bell, X, "Mark all read", filters, "View all"): before they
+              were 32px and about 24px tall, hard to hit on a phone. */}
           <div className="flex shrink-0 items-center justify-between border-b border-[var(--color-line)] py-1.5 pl-5 pr-2">
             <h4
               id={titleId}
@@ -258,12 +258,12 @@ export function NotificationBell() {
               </button>
             </div>
           </div>
-          {/* Na falha nao ha o que filtrar: o erro e o "Try again" ficam sozinhos.
-              All/Unread filtram a lista, nao trocam de painel: grupo com
-              aria-pressed (o padrao dos filtros). Fica o desenho daqui porque
-              o seletor segmentado da casa tem 36px e o painel garante 44px. O
-              hover so escurece o texto: antes pintava o mesmo fundo da
-              escolhida, e nao se sabia qual estava ligada. */}
+          {/* On failure there is nothing to filter: the error and "Try again" stand alone.
+              All/Unread filter the list, they do not switch panels: a group with
+              aria-pressed (the standard for filters). The design here stays because
+              the house segmented selector is 36px and the panel guarantees 44px. The
+              hover only darkens the text: before, it painted the same background as the
+              chosen one, and you could not tell which was on. */}
           <div
             role="group"
             hidden={loadFailed}
@@ -288,8 +288,8 @@ export function NotificationBell() {
               </button>
             ))}
           </div>
-          {/* Só enquanto sobra aviso não lido: lido por outra aba, a falha
-              não vale mais. */}
+          {/* Only while unread notifications remain: read from another tab, the failure
+              no longer applies. */}
           {markAllFailed && unreadCount > 0 ? (
             <InlineAlert tone="error" className="mx-4 mt-3 shrink-0">
               {t("platform.notifications.markAllError")}
@@ -303,7 +303,7 @@ export function NotificationBell() {
               </button>
             </div>
           ) : !loaded ? (
-            // O formato de um aviso (icone e tres linhas) ate a lista chegar.
+            // The shape of a notification (icon and three lines) until the list arrives.
             <div className="min-h-0 overflow-y-auto">
               <p className="sr-only" role="status">
                 {t("platform.notifications.loading")}

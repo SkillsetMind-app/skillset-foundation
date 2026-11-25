@@ -7,8 +7,8 @@ import type { PublicProfile } from "@/domain/user-profile";
 import { InstructorProfileView } from "./instructor-profile-view";
 import { InstructorsDirectory } from "./instructors-directory";
 
-// Perfil público sem selo: as credenciais são o que o próprio professor
-// digitou, e ninguém conferiu. A tela diz isso ao lado delas; com o selo, não.
+// A public profile without a verified badge: the credentials are what the teacher
+// typed themselves, and nobody checked. The screen says so beside them; with the badge, it does not.
 const state = vi.hoisted(() => ({ profiles: [] as unknown[] }));
 vi.mock("@/lib/data/user-profiles", () => ({ listPublicProfiles: async () => state.profiles }));
 vi.mock("@/components/shared/user-avatar", () => ({ UserAvatar: () => null }));
@@ -31,30 +31,30 @@ const credentialRow = () => screen.getByText("ICF Associate Certified Coach").pa
 
 afterEach(cleanup);
 
-describe("credencial sem selo", () => {
+describe("a credential without a verified badge", () => {
   it.each([
     ["en", "Self-reported"],
     ["es", "Declarado por el creador"],
-  ] as const)("perfil público (%s): marcada ao lado da credencial", (locale, label) => {
+  ] as const)("public profile (%s): marked beside the credential", (locale, label) => {
     show(<InstructorProfileView profile={unverified} courses={[]} />, locale);
     expect(within(credentialRow()).getByText(label)).toBeInTheDocument();
   });
 
-  it("cartão do diretório: marcada ao lado da credencial", async () => {
+  it("directory card: marked beside the credential", async () => {
     state.profiles = [unverified];
     show(<InstructorsDirectory />);
     await screen.findByText("ICF Associate Certified Coach");
     expect(within(credentialRow()).getByText("Self-reported")).toBeInTheDocument();
   });
 
-  it("cartão do instrutor na página do curso: marcada ao lado da credencial", () => {
+  it("instructor card on the course page: marked beside the credential", () => {
     show(<CourseInstructorCard teacherId="t-1" profile={unverified} />);
     expect(within(credentialRow()).getByText("Self-reported")).toBeInTheDocument();
   });
 });
 
-describe("credencial com selo", () => {
-  it("não leva a marca em lugar nenhum", async () => {
+describe("a credential with a verified badge", () => {
+  it("carries the mark nowhere", async () => {
     state.profiles = [verified];
     show(
       <>

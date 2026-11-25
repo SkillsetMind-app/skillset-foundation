@@ -13,10 +13,10 @@ const blocks: CourseLandingBlock[] = [
   { kind: "cta", heading: "Ready to start?", body: "", buttonLabel: "Enrol now" },
 ];
 
-// O bloco de abertura era um segundo h1 de até 60px, maior que o título da
-// página; o botão era feito à mão e a pergunta usava o triângulo do navegador.
-describe("CourseLandingBlocks: as peças do site, abaixo do título da página", () => {
-  it.each(["classic", "bold"] as const)("no modelo %s, nenhum bloco abre um segundo h1 nem usa a serifa de destaque", (template) => {
+// The opening block was a second h1 of up to 60px, bigger than the page
+// title; the button was made by hand and the question used the browser triangle.
+describe("CourseLandingBlocks: the site pieces, below the page title", () => {
+  it.each(["classic", "bold"] as const)("in template %s, no block opens a second h1 or uses the display serif", (template) => {
     const { container } = render(<CourseLandingBlocks blocks={blocks} template={template} />);
 
     expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
@@ -29,19 +29,19 @@ describe("CourseLandingBlocks: as peças do site, abaixo do título da página",
     expect(container.querySelector("h2.display-title")).toBeNull();
   });
 
-  it("o botão do bloco final é o botão da casa e segue levando à compra", () => {
+  it("the final block's button is the house button and still leads to the purchase", () => {
     const onEnrol = vi.fn();
     render(<CourseLandingBlocks blocks={blocks} template="classic" onEnrol={onEnrol} />);
 
     const button = screen.getByRole("button", { name: "Enrol now" });
     expect(button).toHaveClass("button-solid", "button-lg");
-    // O rótulo do professor (até 200 caracteres) quebra em linhas que não se encostam.
+    // The teacher's label (up to 200 characters) wraps into lines that do not touch.
     expect(button).toHaveClass("whitespace-normal", "text-center", "leading-snug");
     fireEvent.click(button);
     expect(onEnrol).toHaveBeenCalledTimes(1);
   });
 
-  it("a pergunta abre e fecha como as de /pricing, com a seta no lugar do triângulo", () => {
+  it("the question opens and closes like the ones on /pricing, with the arrow in place of the triangle", () => {
     const { container } = render(<CourseLandingBlocks blocks={blocks} template="bold" />);
 
     const summary = screen.getByText("How long does it take?").closest("summary")!;

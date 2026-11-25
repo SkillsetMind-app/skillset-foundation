@@ -22,7 +22,7 @@ const table = "platform.ops.userTable";
 const STATUSES: readonly OpsUserStatus[] = ["active", "suspended", "blocked"];
 const COLUMNS = ["person", "level", "status", "joined", "lastSignIn"] as const;
 const ROLES: readonly Role[] = ["student", "teacher", "admin", "support", "moderator", "ops"];
-// A ficha da pessoa usa os mesmos nomes de nível na faixa de resumo.
+// The person's record uses the same level names in the summary strip.
 export const roleLabelKeys = {
   guest: "platform.ops.usersPanel.roles.guest",
   student: "roles.learner",
@@ -35,7 +35,7 @@ export const roleLabelKeys = {
 
 type LoadError = "mfaRequired" | "loadError";
 
-// Que busca a tela pediu: comparar com a última que voltou diz se há uma em curso.
+// Which search the screen asked for: comparing with the last one that came back says whether one is in flight.
 function requestKey(...parts: unknown[]): string {
   return JSON.stringify(parts);
 }
@@ -46,7 +46,7 @@ function formatDate(value: string | null, locale: string): string | null {
   return Number.isNaN(date.getTime()) ? null : new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(date);
 }
 
-// Só a recusa conhecida vira texto; diagnóstico do provedor nunca vai para a tela.
+// Only the known refusal becomes text; the provider's diagnostic never goes to the screen.
 function errorKey(caught: unknown): LoadError {
   const message = typeof caught === "object" && caught !== null && "message" in caught ? caught.message : null;
   return message === "OPS_ADMIN_MFA_REQUIRED" ? "mfaRequired" : "loadError";
@@ -63,14 +63,14 @@ export function OpsUserTable() {
   const [reload, setReload] = useState(0);
   const [target, setTarget] = useState<OpsUserRow | null>(null);
   const [answeredKey, setAnsweredKey] = useState<string | null>(null);
-  // Durante o atraso de 300ms e a consulta, a lista antiga fica no lugar, apagada
-  // e marcada como ocupada, em vez de parada sem sinal nenhum (I-12).
+  // During the 300ms delay and the query, the old list stays in place, dimmed
+  // and marked as busy, instead of sitting there with no signal at all (I-12).
   const searching = result !== null && answeredKey !== requestKey(search, status, role, page, reload);
 
   useEffect(() => {
     let current = true;
     const key = requestKey(search, status, role, page, reload);
-    // Debounce: digitar um nome não dispara uma consulta por tecla.
+    // Debounce: typing a name does not fire a query per keystroke.
     const timer = window.setTimeout(() => {
       setError(null);
       searchOpsUsers({ search, status: status || null, role: role || null, page })
@@ -98,9 +98,9 @@ export function OpsUserTable() {
           {(a11y) => <div className="relative">
             <input {...a11y} type="search" value={search} placeholder={t(`${table}.searchPlaceholder`)}
               onChange={(event) => { setSearch(event.target.value); setPage(0); }}
-              // A pele padrão dos campos (I-14). O `!` é preciso: o padding do
-              // .field-input é regra solta e venceria o pr-10, e o giro da busca
-              // cairia em cima do texto.
+              // The default skin of the fields (I-14). The `!` is needed: the padding of
+              // .field-input is a loose rule and would beat pr-10, and the search spinner
+              // would land on top of the text.
               className="field-input min-h-11 pr-10!" />
             {searching ? <Loader2 size={16} aria-hidden="true" data-searching=""
               className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-ink-muted)] motion-safe:animate-spin" /> : null}
@@ -143,8 +143,8 @@ export function OpsUserTable() {
       {result && result.users.length === 0 ? <p className="mt-6 text-sm text-[var(--color-ink-soft)]">{t(`${copy}.empty`)}</p> : null}
 
       {result && result.users.length > 0 ? (
-        // Tabela no lugar de 50 cartões altos (~9.400px): datas em coluna, dez
-        // linhas por tela. Rola de lado dentro do próprio quadro no celular (I-01).
+        // A table in place of 50 tall cards (~9,400px): dates in a column, ten
+        // rows per screen. Scrolls sideways inside its own frame on the phone (I-01).
         <div role="region" aria-label={t(`${copy}.title`)} tabIndex={0} aria-busy={searching || undefined}
           className={`mt-5 min-w-0 overflow-x-auto ${searching ? "opacity-60" : ""}`}>
           <table className="w-full min-w-[720px] border-collapse text-left text-sm">

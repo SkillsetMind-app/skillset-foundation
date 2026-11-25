@@ -1,5 +1,5 @@
-// A tela depois do cartao: confirma o teste gratis pela assinatura que o
-// servidor devolve (nunca pela URL) e leva de volta ao estudio.
+// The screen after the card: confirms the free trial from the subscription the
+// server returns (never from the URL) and leads back to the studio.
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -30,7 +30,7 @@ const show = (locale: "en" | "es" = "en") =>
     </I18nProvider>,
   );
 
-// O relogio falso anda dentro de act: sem isso o React nao redesenha no teste.
+// The fake clock advances inside act: without it React does not redraw in the test.
 const tick = (ms: number) =>
   act(async () => {
     await vi.advanceTimersByTimeAsync(ms);
@@ -43,7 +43,7 @@ afterEach(() => {
 });
 
 describe("billing return status", () => {
-  it("confirma o teste gratis com a data e o botao de volta ao estudio", async () => {
+  it("confirms the free trial with the date and the button back to the studio", async () => {
     mocks.billing.mockResolvedValue(trialing);
     show();
 
@@ -53,13 +53,13 @@ describe("billing return status", () => {
     expect(screen.getByRole("link", { name: "Back to billing" })).toHaveAttribute("href", "/account/billing?tab=overview");
   });
 
-  it("em espanhol diz prueba gratis", async () => {
+  it("in Spanish it says prueba gratis", async () => {
     mocks.billing.mockResolvedValue(trialing);
     show("es");
     expect(await screen.findByRole("heading", { name: "Tu prueba gratis de 14 días ha empezado." })).toBeInTheDocument();
   });
 
-  it("plano pago sem teste: confirma o plano, sem falar em teste", async () => {
+  it("paid plan without a trial: confirms the plan, without mentioning a trial", async () => {
     mocks.billing.mockResolvedValue({
       trialEligible: false,
       subscription: { ...trialing.subscription!, status: "active", trialEnd: null },
@@ -69,26 +69,26 @@ describe("billing return status", () => {
     expect(screen.queryByText(/free trial/i)).not.toBeInTheDocument();
   });
 
-  it("enquanto a assinatura nao aparece, espera; se nao vier, cai no texto de conferir em Billing", async () => {
+  it("while the subscription does not show up, it waits; if it never comes, it falls back to the text to check in Billing", async () => {
     vi.useFakeTimers();
     mocks.billing.mockResolvedValue({ trialEligible: true, subscription: null });
     show();
 
     await tick(0);
     expect(screen.getByRole("heading", { name: "Confirming your plan..." })).toBeInTheDocument();
-    // Nada confirma sem assinatura: nem titulo de sucesso, nem botao do estudio.
+    // Nothing confirms without a subscription: no success title, no studio button.
     expect(screen.queryByRole("link", { name: "Open Teacher Studio" })).not.toBeInTheDocument();
 
     await tick(3000 * 15);
     expect(screen.getByRole("heading", { name: "Review your subscription status." })).toBeInTheDocument();
     expect(mocks.billing).toHaveBeenCalledTimes(15);
-    // Mesmo cartao das outras telas de retorno: a acao principal e a unica
-    // cheia, e o suporte aparece quando a confirmacao nao veio.
+    // Same card as the other return screens: the main action is the only
+    // filled one, and support appears when the confirmation did not arrive.
     expect(screen.getByRole("link", { name: "Back to billing" })).toHaveClass("button-solid");
     expect(screen.getByRole("link", { name: "Contact support" })).toHaveAttribute("href", "/support");
   });
 
-  it("a assinatura que chega na segunda leitura confirma o teste", async () => {
+  it("the subscription that arrives on the second read confirms the trial", async () => {
     vi.useFakeTimers();
     mocks.billing
       .mockResolvedValueOnce({ trialEligible: true, subscription: null })

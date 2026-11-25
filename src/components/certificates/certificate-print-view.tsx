@@ -23,12 +23,12 @@ export function CertificatePrintView({
   const [certificate, setCertificate] = useState<Certificate | null>(null);
   const [state, setState] = useState<LoadState>("loading");
   const [copyResult, setCopyResult] = useState<"copied" | "failed" | null>(null);
-  // "Try again" da leitura: a mesma do efeito, de novo. O lugar do documento
-  // fica na tela nos dois desfechos e recebe o foco.
+  // "Try again" for the read: the same one as the effect, again. The document
+  // placeholder stays on screen in both outcomes and receives focus.
   const [loadAttempt, setLoadAttempt] = useState(0);
   const frameRef = useRef<HTMLDivElement>(null);
 
-  // "Link copied" some sozinho; a falha fica, para a pessoa saber que não foi.
+  // "Link copied" goes away by itself; the failure stays, so the person knows it did not work.
   useEffect(() => {
     if (copyResult !== "copied") return;
     const timer = setTimeout(() => setCopyResult(null), 2000);
@@ -78,7 +78,7 @@ export function CertificatePrintView({
     };
   }, [certificateId, user, loadAttempt]);
 
-  // Volta à espera de sempre (o papel do certificado) até a leitura responder.
+  // Back to the usual wait (the certificate paper) until the read answers.
   function retryLoad() {
     setState("loading");
     setLoadAttempt((attempt) => attempt + 1);
@@ -95,8 +95,8 @@ export function CertificatePrintView({
         </Link>
         {state === "ready" && certificate ? (
           <div className="flex flex-wrap items-center gap-3">
-            {/* O link público de verificação, o mesmo que vai para o LinkedIn:
-                antes só dava para compartilhar pelo LinkedIn. */}
+            {/* The public verification link, the same one that goes to LinkedIn:
+                before, it could only be shared through LinkedIn. */}
             <button
               type="button"
               onClick={() => void copyVerificationLink(certificate)}
@@ -112,8 +112,8 @@ export function CertificatePrintView({
             >
               {t("learnWave2.print.linkedIn")}
             </a>
-            {/* Abre a janela de imprimir do navegador (onde fica "Salvar como
-                PDF"): o rótulo diz isso, não "Download PDF". */}
+            {/* Opens the browser print dialog (where "Save as
+                PDF" lives): the label says so, not "Download PDF". */}
             <button
               type="button"
               onClick={() => window.print()}
@@ -123,8 +123,8 @@ export function CertificatePrintView({
             </button>
           </div>
         ) : null}
-        {/* A linha do "Link copied" existe sempre, vazia (altura reservada,
-            também no carregamento): nada se mexe quando o aviso aparece. */}
+        {/* The "Link copied" line always exists, empty (reserved height,
+            also while loading): nothing moves when the notice appears. */}
         <p
           role="status"
           aria-live="polite"
@@ -132,8 +132,8 @@ export function CertificatePrintView({
         >
           {copyResult === "copied" ? t("learnWave2.print.copied") : ""}
         </p>
-        {/* Sem acesso à área de transferência: o link num campo para copiar
-            à mão (tocar seleciona tudo). */}
+        {/* No access to the clipboard: the link in a field to copy
+            by hand (tapping selects everything). */}
         {state === "ready" && certificate && copyResult === "failed" ? (
           <div className="w-full">
             <p role="alert" className="text-xs font-semibold text-[var(--color-danger-fg)]">
@@ -151,9 +151,9 @@ export function CertificatePrintView({
       </div>
 
       <div ref={frameRef} tabIndex={-1} className="mt-6 outline-none print:mt-0">
-        {/* Enquanto carrega, o papel do certificado já ocupa o lugar dele
-            (mesmas classes do documento): antes um cartão pequeno virava um
-            documento de ~850px e a página inteira pulava. */}
+        {/* While loading, the certificate paper already takes its place
+            (same classes as the document): before, a small card turned into a
+            ~850px document and the whole page jumped. */}
         {state === "loading" ? (
           <div aria-busy="true">
             <p role="status" className="sr-only">{t("learnWave2.print.loading")}</p>
@@ -178,7 +178,7 @@ export function CertificatePrintView({
           />
         ) : null}
 
-        {/* A frase antiga mandava atualizar a página; agora o botão lê de novo. */}
+        {/* The old sentence told people to refresh the page; now the button reads again. */}
         {state === "error" ? (
           <CertificateNotice title={t("learnWave2.print.error")}>
             <LoadErrorAlert className="mt-4 text-left" onRetry={retryLoad} focusRef={frameRef}>

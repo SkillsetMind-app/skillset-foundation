@@ -43,7 +43,7 @@ describe("AccountControlDialog", () => {
     mount(locale);
     await screen.findByText(t("active"));
     expect(screen.getByRole("dialog", { name: t("title") })).toHaveClass("modal-panel", "modal-panel-scroll");
-    // Nada vem marcado: o botão pede a escolha e fica travado mesmo com motivo.
+    // Nothing comes selected: the button asks for a choice and stays locked even with a reason.
     for (const radio of screen.getAllByRole("radio")) expect(radio).not.toBeChecked();
     fireEvent.change(screen.getByRole("textbox", { name: t("reason") }), { target: { value: "Documented operational reason" } });
     expect(screen.getByRole("button", { name: t("chooseAction") })).toBeDisabled();
@@ -59,7 +59,7 @@ describe("AccountControlDialog", () => {
     await waitFor(() => expect(mocks.set).toHaveBeenCalledTimes(1));
     expect(mocks.set).toHaveBeenCalledWith("user-2", "block", "Documented operational reason");
     expect(await screen.findByText(t("saved"))).toBeVisible();
-    // Depois do bloqueio a etiqueta diz "blocked" em vermelho, como na tabela e na ficha.
+    // After the block the label says "blocked" in red, as in the table and the record.
     expect(screen.getByText(t("blocked"))).toHaveClass("status-chip--danger");
   });
 

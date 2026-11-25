@@ -23,8 +23,8 @@ type PlanSelectorCardsProps<TValue extends string> = {
 };
 
 /**
- * Três opções numa linha só: em duas colunas a terceira ficava sozinha, com
- * metade da largura. O esqueleto da aba de preço usa a mesma regra.
+ * Three options in a single row: in two columns the third one sat alone, with
+ * half the width. The price tab's skeleton uses the same rule.
  */
 export function planGridColumns(count: number) {
   return count === 3 ? "md:grid-cols-3" : "md:grid-cols-2";
@@ -60,8 +60,8 @@ export function PlanSelectorCards<TValue extends string>({
                 "group grid gap-4 rounded-lg border-2 bg-white p-5 text-left transition duration-[180ms] ease-out",
                 "hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]",
                 "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-[var(--focus-ring)]",
-                // Escolhido na cor principal, sem o rosa do vermelho antigo; o
-                // hover so reforca a borda de quem nao esta escolhido.
+                // Chosen in the primary color, without the pink of the old red; the
+                // hover only reinforces the border of the one that is not chosen.
                 isSelected
                   ? "border-[var(--color-primary)] bg-[var(--color-surface-soft)]"
                   : "border-[var(--color-line)] hover:border-[var(--color-line-strong)]",
@@ -71,8 +71,8 @@ export function PlanSelectorCards<TValue extends string>({
             >
               <span className="flex items-start justify-between gap-3">
                 <span>
-                  {/* Título de cartão do construtor (16px, o mesmo do PanelCard):
-                      a letra de destaque fica só no título da tela. */}
+                  {/* Builder card title (16px, the same as PanelCard):
+                      the featured letter stays only in the screen title. */}
                   <span className="plan-card-title block text-base font-semibold leading-tight text-[var(--color-primary)]">
                     {option.title}
                   </span>
@@ -83,8 +83,8 @@ export function PlanSelectorCards<TValue extends string>({
                 <span
                   className={cn(
                     "grid size-10 shrink-0 place-items-center rounded-md bg-[var(--color-surface-soft)] text-[var(--color-primary)]",
-                    // motion-select: o selo da escolha cresce de 0,6 para 1
-                    // (catálogo de movimento, item 2).
+                    // motion-select: the choice badge grows from 0.6 to 1
+                    // (motion catalog, item 2).
                     isSelected &&
                       "motion-select bg-[var(--color-primary)] text-[var(--color-on-primary)]",
                   )}

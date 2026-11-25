@@ -33,8 +33,8 @@ export function SupportTicketCenter() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<"" | "validationError" | "createError" | "rateLimit">("");
   const [success, setSuccess] = useState<"" | "created">("");
-  // A falha da LEITURA mora na lista, com "Try again" (que assina de novo), e
-  // não no formulário: lá ela sumia no próximo envio e a lista dizia "nenhum".
+  // The READ failure lives in the list, with "Try again" (which subscribes again), and
+  // not in the form: there it vanished on the next submit and the list said "none".
   const [loadFailed, setLoadFailed] = useState(false);
   const [ticketsAttempt, setTicketsAttempt] = useState(0);
   const ticketsRef = useRef<HTMLElement>(null);
@@ -150,8 +150,8 @@ export function SupportTicketCenter() {
               {t(`${copy}.${success}`)}
             </p>
           ) : null}
-          {/* No celular o botão ocupa a linha; do tablet para cima fica do
-              tamanho do texto, em vez de esticar de ponta a ponta do cartão. */}
+          {/* On phones the button takes the full row; from tablet up it is the
+              size of its text, instead of stretching edge to edge across the card. */}
           <button
             type="submit"
             disabled={isSubmitting}

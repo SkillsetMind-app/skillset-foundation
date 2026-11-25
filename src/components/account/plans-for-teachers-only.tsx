@@ -7,9 +7,9 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { hasPermission } from "@/lib/permissions";
 
 /**
- * Os planos sao o que o PROFESSOR paga para vender (mesma regra do /teach).
- * O aluno nao ve "Plans & fees" no menu; se abrir /account/plans pelo
- * endereco, vai para "My purchases", que e o dinheiro dele.
+ * Plans are what the TEACHER pays to sell (same rule as /teach).
+ * The learner does not see "Plans & fees" in the menu; if they open /account/plans by
+ * address, they go to "My purchases", which is their own money.
  */
 export function PlansForTeachersOnly({ children }: { children: ReactNode }) {
   const { user } = useAuth();

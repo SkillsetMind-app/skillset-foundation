@@ -49,8 +49,8 @@ export function InstructorsDirectory() {
     };
   }, []);
 
-  // "Try again" chama a mesma leitura; o aviso só sai quando ela dá certo. Um
-  // segundo clique enquanto ela corre devolve a mesma leitura, não abre outra.
+  // "Try again" calls the same read; the notice only clears when it succeeds. A
+  // second click while it runs returns the same read, it does not open another.
   const retryInFlight = useRef<Promise<void> | null>(null);
   function retryLoad() {
     if (!retryInFlight.current) {
@@ -60,7 +60,7 @@ export function InstructorsDirectory() {
           setHasError(false);
         })
         .catch(() => {
-          // O aviso fica, com o botão de novo.
+          // The notice stays, with the button again.
         })
         .finally(() => {
           retryInFlight.current = null;
@@ -69,8 +69,8 @@ export function InstructorsDirectory() {
     return retryInFlight.current;
   }
 
-  // Uma moldura em volta dos estados: o botão some quando a leitura dá certo
-  // e o foco fica nela, em vez de cair no <body>.
+  // A frame around the states: the button disappears when the read succeeds
+  // and focus stays on it, instead of falling onto <body>.
   const frameRef = useRef<HTMLDivElement>(null);
   const frame = (content: ReactNode) => (
     <div ref={frameRef} tabIndex={-1}>
@@ -91,7 +91,7 @@ export function InstructorsDirectory() {
         {[0, 1, 2].map((item) => (
           <div
             key={item}
-            // Mesma altura mínima do cartão de verdade (min-h-64): sem pulo quando chega.
+            // Same minimum height as the real card (min-h-64): no jump when it arrives.
             className="h-64 animate-pulse rounded-lg bg-[var(--color-surface-strong)]"
           />
         ))}
@@ -101,8 +101,8 @@ export function InstructorsDirectory() {
 
   if (hasError) {
     return frame(
-      // Anunciado ao leitor de tela, com o ícone do erro e "Try again". A frase
-      // de apoio fica no cinza de sempre, abaixo da do erro.
+      // Announced to the screen reader, with the error icon and "Try again". The
+      // supporting sentence stays in the usual gray, below the error's.
       <LoadErrorAlert className="mt-12" alertClassName="p-6" focusRef={frameRef} onRetry={retryLoad}>
         <p>{t("publicPages.directory.instructor_profiles_could_not_load_right")}</p>
         <p className="mt-2 font-normal text-[var(--color-ink-soft)]">
@@ -114,8 +114,8 @@ export function InstructorsDirectory() {
 
   if (profiles.length === 0) {
     return frame(
-      // O vazio da plataforma (EmptyState): o título em sans, sem disputar com
-      // o h1 serifado da página.
+      // The platform's empty state (EmptyState): the title in sans, not competing with
+      // the page's serif h1.
       <EmptyState
         as="h2"
         className="mt-12"
@@ -184,9 +184,9 @@ function InstructorCard({ profile }: { profile: PublicProfile }) {
   const credentials = profile.credentials.slice(0, 2);
 
   return (
-    // O cartão inteiro leva ao perfil: o nome é o único link e o ::after do
-    // .marketplace-card__link cobre o cartão (o desenho do cartão de curso).
-    // Antes só o "View profile" pequeno era clicável e o cartão não reagia.
+    // The whole card leads to the profile: the name is the only link and the ::after of
+    // .marketplace-card__link covers the card (the course card's design).
+    // Before, only the small "View profile" was clickable and the card did not react.
     <article className="motion-hover-lift relative flex min-h-64 flex-col rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)] focus-within:border-[var(--color-line-strong)] hover:border-[var(--color-line-strong)] hover:shadow-[var(--shadow-strong)] motion-safe:transition-transform">
       <div className="flex items-center gap-3">
         <UserAvatar name={name} photoURL={profile.photoURL} size="lg" />
@@ -197,7 +197,7 @@ function InstructorCard({ profile }: { profile: PublicProfile }) {
                 {name}
               </Link>
             </h3>
-            {/* Acima da camada do link: o selo abre a própria explicação. */}
+            {/* Above the link layer: the badge opens its own explanation. */}
             {profile.verification ? <VerifiedBadge compact verification={profile.verification} className="z-[2]" /> : null}
           </div>
           {profile.username ? (
@@ -232,8 +232,8 @@ function InstructorCard({ profile }: { profile: PublicProfile }) {
         </ul>
       ) : null}
 
-      {/* Continua escrito, agora como parte do cartão clicável (o link é o
-          nome); escondido do leitor de tela para não repetir o destino. */}
+      {/* Still written, now as part of the clickable card (the link is the
+          name); hidden from the screen reader so the destination is not repeated. */}
       <span
         aria-hidden="true"
         className="mt-auto inline-flex items-center gap-2 pt-5 text-sm font-bold text-[var(--color-primary)]"

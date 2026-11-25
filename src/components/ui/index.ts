@@ -1,17 +1,17 @@
 /**
- * Primitivos de UI. Todos leem as variáveis de design existentes
- * (--color-*, --radius-*, --shadow-*); nenhum inventa valor novo.
+ * UI primitives. All of them read the existing design variables
+ * (--color-*, --radius-*, --shadow-*); none invents a new value.
  *
- * AVISO SOBRE className
- * ---------------------
- * `cn()` usa tailwind-merge, que resolve conflito entre UTILITÁRIOS
- * (rounded-[10px] contra rounded-[14px] — o último vence). Ele não sabe nada
- * sobre as classes globais do globals.css. Como .button-solid, .button-outline
- * e .button-danger definem `color` com !important (globals.css:1008, 1062,
- * 1087), passar className="text-red-500" para um Button NÃO troca a cor do
- * texto: o !important vence qualquer utilitário. Se uma tela precisar de outra
- * cor de texto no botão, isso pede uma variante nova no CSS global, não uma
- * prop aqui.
+ * WARNING ABOUT className
+ * -----------------------
+ * `cn()` uses tailwind-merge, which resolves conflicts between UTILITIES
+ * (rounded-[10px] against rounded-[14px] — the last one wins). It knows nothing
+ * about the global classes in globals.css. Since .button-solid, .button-outline
+ * and .button-danger define `color` with !important (globals.css:1008, 1062,
+ * 1087), passing className="text-red-500" to a Button does NOT change the
+ * text color: the !important beats any utility. If a screen needs another
+ * text color on the button, that calls for a new variant in the global CSS, not a
+ * prop here.
  */
 export { Button, buttonClasses } from "@/components/ui/button";
 export type { ButtonProps, ButtonSize, ButtonVariant } from "@/components/ui/button";
@@ -19,8 +19,8 @@ export { BusyLabel } from "@/components/ui/busy-label";
 export type { BusyLabelProps } from "@/components/ui/busy-label";
 export { Card } from "@/components/ui/card";
 export type { CardProps } from "@/components/ui/card";
-// Componente de cliente ("use client" no arquivo): pode ser importado daqui
-// por outro componente de cliente; numa página de servidor, só como filho.
+// Client component ("use client" in the file): can be imported from here
+// by another client component; in a server page, only as a child.
 export { ConfirmDialog } from "@/components/ui/confirm-dialog";
 export type { ConfirmDialogProps } from "@/components/ui/confirm-dialog";
 export { EmptyState } from "@/components/ui/empty-state";

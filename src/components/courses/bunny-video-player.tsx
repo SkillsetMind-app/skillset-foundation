@@ -13,7 +13,7 @@ import {
   type LessonPositionRef,
 } from "@/lib/learn/lesson-position";
 
-/** Igual ao player nativo: uma gravação a cada ~10 s de reprodução. */
+/** Same as the native player: one save every ~10 s of playback. */
 const SAVE_EVERY_SECONDS = 10;
 
 type BunnyVideoPlayerProps = {
@@ -30,15 +30,15 @@ type BunnyVideoPlayerProps = {
    * "Mark complete & next" button still advances the student.
    */
   onEnded?: () => void;
-  /** A aula abriu pelo cartão "Próxima aula": o embed começa a tocar sozinho
-   *  (permitido porque o aluno já interagiu com a página). */
+  /** The lesson opened from the "Next lesson" card: the embed starts playing on its own
+   *  (allowed because the learner has already interacted with the page). */
   autoplay?: boolean;
   /**
-   * "Esta pessoa, nesta aula" (lessonPositionRef). Vai pelo MESMO aperto de
-   * mão player.js que já traz o "ended": pedimos `timeupdate` e devolvemos
-   * `setCurrentTime`. Player que não fala o protocolo nunca responde, nada é
-   * guardado e nada é buscado — o vídeo começa do zero, como antes. Não
-   * verificado contra a documentação da Bunny a partir deste repo.
+   * "This person, in this lesson" (lessonPositionRef). It goes through the SAME player.js
+   * handshake that already brings the "ended": we ask for `timeupdate` and send back
+   * `setCurrentTime`. A player that does not speak the protocol never answers, nothing is
+   * saved and nothing is fetched — the video starts from zero, as before. Not
+   * verified against Bunny's documentation from this repo.
    */
   resume?: LessonPositionRef | null;
 } & (
@@ -91,9 +91,9 @@ export function BunnyVideoPlayer(props: BunnyVideoPlayerProps) {
   const resume = props.resume ?? null;
   const embedUrl = currentPlayback.embedUrl;
   const lastSavedRef = useRef(0);
-  // Buscar a posição UMA vez, e só depois que o player provou estar vivo (o
-  // primeiro `timeupdate`). Mandar `setCurrentTime` no `onLoad` chega antes de
-  // o vídeo existir e se perde no caminho.
+  // Fetch the position ONCE, and only after the player has proven to be alive (the
+  // first `timeupdate`). Sending `setCurrentTime` in `onLoad` arrives before
+  // the video exists and is lost on the way.
   const resumedRef = useRef(false);
 
   useEffect(() => {
@@ -109,10 +109,10 @@ export function BunnyVideoPlayer(props: BunnyVideoPlayerProps) {
       return;
     }
 
-    // A posição agora vem do banco, então chega DEPOIS do primeiro
-    // `timeupdate`. Enquanto ela não chega nada é gravado: o vídeo ainda está
-    // no segundo zero, e gravar zero apagaria justamente o ponto que estamos
-    // buscando. `cancelado` cobre a troca de aula com a resposta em voo.
+    // The position now comes from the database, so it arrives AFTER the first
+    // `timeupdate`. Until it arrives nothing is saved: the video is still
+    // at second zero, and saving zero would erase exactly the point we are
+    // fetching. `cancelado` covers a lesson switch with the response in flight.
     let cancelado = false;
     let esperandoPosicao = false;
 
@@ -123,7 +123,7 @@ export function BunnyVideoPlayer(props: BunnyVideoPlayerProps) {
           embedOrigin,
         );
       } catch {
-        // idem: player que não fala player.js nunca responde.
+        // same: a player that does not speak player.js never answers.
       }
     }
 
@@ -163,7 +163,7 @@ export function BunnyVideoPlayer(props: BunnyVideoPlayerProps) {
         return;
       }
 
-      // player.js manda o payload em `value`; algumas builds usam `data`.
+      // player.js sends the payload in `value`; some builds use `data`.
       const detail = (message?.value ?? message?.data) as
         | { seconds?: unknown; duration?: unknown }
         | null;
@@ -186,7 +186,7 @@ export function BunnyVideoPlayer(props: BunnyVideoPlayerProps) {
           }
 
           if (saved > 0 && (!Number.isFinite(duration) || saved < duration)) {
-            // Não regravar o que acabou de ser lido na próxima batida.
+            // Do not save again on the next beat what was just read.
             lastSavedRef.current = saved;
             post({ method: "setCurrentTime", value: saved });
           }
@@ -218,8 +218,8 @@ export function BunnyVideoPlayer(props: BunnyVideoPlayerProps) {
   useEffect(() => {
     resumedRef.current = false;
     lastSavedRef.current = 0;
-    // Abrir a aula já é o evento do funil: quem desiste no meio não deixava
-    // rastro nenhum, porque `lesson_progress` só nasce na conclusão.
+    // Opening the lesson is already the funnel event: whoever gives up halfway left
+    // no trace at all, because `lesson_progress` is only born on completion.
     markLessonOpened(resume);
   }, [embedUrl, resume]);
 
@@ -314,9 +314,9 @@ export function BunnyVideoPlayer(props: BunnyVideoPlayerProps) {
   }
 
   if (!currentPlayback.embedUrl) {
-    // A mesma espera da caixa da aula: 16:9 (o iframe abaixo é aspect-video,
-    // então nada pula quando ele chega) e só o anel. O ícone de play com
-    // frase parecia "sem vídeo"; o texto fica para o leitor de tela.
+    // The same wait as the lesson box: 16:9 (the iframe below is aspect-video,
+    // so nothing jumps when it arrives) and only the ring. The play icon with a
+    // sentence looked like "no video"; the text is left for the screen reader.
     return (
       <div className="member-video-empty member-video-empty--loading" role="status">
         <Loader2 size={32} aria-hidden className="motion-safe:animate-spin" />

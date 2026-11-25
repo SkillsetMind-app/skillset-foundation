@@ -142,8 +142,8 @@ describe("PhoneInput locale", () => {
     expect(screen.getByRole("button", { name: "C\u00f3digo de pa\u00eds: BR +55 (Brasil)" })).toBeInTheDocument();
   });
 
-  // A lista não dizia qual país estava escolhido e só andava no Tab.
-  it("marca o país escolhido, anda nas setas e o Esc devolve o foco ao gatilho", () => {
+  // The list did not say which country was chosen and only moved with Tab.
+  it("marks the chosen country, moves with the arrows and Esc returns focus to the trigger", () => {
     render(<PhoneInput value="+5511987654321" onChange={mocks.onChange} />);
     const toggle = screen.getByRole("button", { name: "Country code: BR +55 (Brazil)" });
     expect(toggle).toHaveAttribute("aria-haspopup", "listbox");
@@ -166,9 +166,9 @@ describe("PhoneInput locale", () => {
     expect(mocks.onChange).not.toHaveBeenCalled();
   });
 
-  // O foco começa na lista: um Tab dali caía no campo de baixo com a lista
-  // ainda aberta por cima dele.
-  it("fecha a lista quando o foco sai da caixa do telefone, não quando anda dentro dela", () => {
+  // Focus starts on the list: a Tab from there fell into the field below with the list
+  // still open on top of it.
+  it("closes the list when focus leaves the phone box, not when it moves inside it", () => {
     render(
       <>
         <PhoneInput value="+15551234567" onChange={mocks.onChange} />

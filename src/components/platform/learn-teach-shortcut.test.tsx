@@ -6,11 +6,11 @@ import { MobileSidebarDrawer } from "@/components/platform/mobile-sidebar-drawer
 import { PlatformHeader } from "@/components/platform/platform-header";
 import { PlatformNav } from "@/components/platform/platform-nav";
 
-// Trocar de lado (aluno <-> professor). Antes: um link no rodape da barra,
-// "Switch view" escondido no menu do avatar, e o atalho do site publico abria
-// ABA NOVA — para quem tem pouca familiaridade com a internet, aba nova e "o
-// site sumiu". Agora: UM botao a vista no topo, na mesma aba; no celular, o
-// nome do lado no topo e o atalho para o outro lado na barra de baixo.
+// Switching sides (learner <-> teacher). Before: a link at the bottom of the sidebar,
+// "Switch view" hidden in the avatar menu, and the public site shortcut opened a
+// NEW TAB — for someone with little familiarity with the internet, a new tab means "the
+// site vanished". Now: ONE visible button at the top, in the same tab; on a phone, the
+// side's name at the top and the shortcut to the other side on the bottom bar.
 
 const mocks = vi.hoisted(() => ({
   pathname: "/teach",
@@ -47,33 +47,33 @@ afterEach(() => {
   mocks.roles = ["teacher"];
 });
 
-describe("botao de troca de lado no topo", () => {
+describe("side-switch button at the top", () => {
   it.each([
     ["/teach", "Go to student area", "/learn", "Teacher"],
     ["/teach/sales", "Go to student area", "/learn", "Teacher"],
     ["/account/payments", "Go to student area", "/learn", "Teacher"],
     ["/learn", "Go to teacher area", "/teach", "Student"],
     ["/learn/messages", "Go to teacher area", "/teach", "Student"],
-  ])("em %s: '%s' leva para %s na mesma aba", (pathname, label, href, side) => {
+  ])("in %s: '%s' leads to %s in the same tab", (pathname, label, href, side) => {
     mocks.pathname = pathname;
     const { container } = render(<PlatformHeader />);
 
     const link = screen.getByRole("link", { name: label });
     expect(link).toHaveAttribute("href", href);
     expect(link).not.toHaveAttribute("target");
-    // Abaixo de 1280px so o icone aparece: o nome inteiro fica no aria-label
-    // (leitor de tela), no title (dica do mouse) e no texto escondido.
+    // Below 1280px only the icon appears: the full name stays in the aria-label
+    // (screen reader), in the title (mouse hint) and in the hidden text.
     expect(link).toHaveAttribute("aria-label", label);
     expect(link).toHaveAttribute("title", label);
     expect(link.querySelector(".platform-topbar__switch-label")).toHaveTextContent(label);
-    // O celular mostra em que lado a pessoa esta, numa palavra so.
+    // The phone shows which side the person is on, in a single word.
     expect(container.querySelector(".platform-topbar__side")).toHaveTextContent(new RegExp(`^${side}$`));
   });
 
   it.each([
     ["/teach", "Ir al área del alumno", "/learn", "Profesor"],
     ["/learn", "Ir al área del profesor", "/teach", "Alumno"],
-  ])("em espanhol, em %s: '%s' e o lado '%s'", (pathname, label, href, side) => {
+  ])("in Spanish, in %s: '%s' is the side '%s'", (pathname, label, href, side) => {
     mocks.pathname = pathname;
     const { container } = render(
       <I18nProvider initialLocale="es">
@@ -82,17 +82,17 @@ describe("botao de troca de lado no topo", () => {
     );
 
     expect(screen.getByRole("link", { name: label })).toHaveAttribute("href", href);
-    // "Área del alumno" e "Área del profesor" cortavam os dois em "ÁREA D…".
+    // "Área del alumno" and "Área del profesor" both got cut to "ÁREA D…".
     expect(container.querySelector(".platform-topbar__side")).toHaveTextContent(new RegExp(`^${side}$`));
   });
 
-  // O menu da conta listava "Switch area -> Student area", o mesmo destino do
-  // botao ao lado. Na plataforma o topo fica com a troca; o site publico, que
-  // nao tem o botao, segue com ela no menu (account-menu.test).
+  // The account menu listed "Switch area -> Student area", the same destination as the
+  // button beside it. On the platform the top keeps the switch; the public site, which
+  // has no button, keeps it in the menu (account-menu.test).
   it.each([
     ["/teach", "Student area"],
     ["/learn", "Teacher area"],
-  ])("em %s o menu da conta nao repete o destino do botao do topo (%s)", (pathname, duplicate) => {
+  ])("in %s the account menu does not repeat the destination of the top button (%s)", (pathname, duplicate) => {
     mocks.pathname = pathname;
     render(<PlatformHeader />);
     fireEvent.click(screen.getByRole("button", { name: "Open account menu" }));
@@ -102,7 +102,7 @@ describe("botao de troca de lado no topo", () => {
     expect(screen.queryByText("Switch area")).toBeNull();
   });
 
-  it("quem so estuda nao ve botao de troca, mas ve em que lado esta", () => {
+  it("someone who only studies sees no switch button, but sees which side they are on", () => {
     mocks.roles = ["student"];
     mocks.pathname = "/learn";
     const { container } = render(<PlatformHeader />);
@@ -111,7 +111,7 @@ describe("botao de troca de lado no topo", () => {
     expect(container.querySelector(".platform-topbar__side")).toHaveTextContent("Student");
   });
 
-  it("a barra lateral nao repete a troca: nem 'Teach' no rodape do aluno, nem 'My courses' no do professor", () => {
+  it("the sidebar does not repeat the switch: no 'Teach' at the bottom of the learner one, no 'My courses' at the bottom of the teacher one", () => {
     mocks.pathname = "/learn";
     const { unmount } = render(<PlatformNav />);
     expect(document.querySelector('.platform-sidebar-nav a[href="/teach"]')).toBeNull();
@@ -123,10 +123,10 @@ describe("botao de troca de lado no topo", () => {
   });
 });
 
-// A Ajuda saiu do topo do estudio e da area do aluno: ela mora na barra
-// lateral (no celular, na gaveta). Uma por tela — ver uma-ajuda-por-tela.test.
-describe("o topo nao tem Ajuda", () => {
-  it.each(["/teach/sales", "/learn", "/ops"])("em %s", (pathname) => {
+// Help left the studio top and the learner area: it lives in the sidebar
+// (on a phone, in the drawer). One per screen — see uma-ajuda-por-tela.test.
+describe("the top has no Help", () => {
+  it.each(["/teach/sales", "/learn", "/ops"])("in %s", (pathname) => {
     mocks.pathname = pathname;
     mocks.roles = pathname === "/ops" ? ["admin"] : ["teacher"];
     render(<PlatformHeader />);
@@ -135,16 +135,16 @@ describe("o topo nao tem Ajuda", () => {
   });
 });
 
-// No celular a troca de lado mora na barra de baixo, e o menu da conta nao a
-// repete mais. Topo e barra calculam o destino cada um por si: este teste
-// trava os dois juntos, para uma edicao num lado nao tirar a unica troca do
-// celular sem ninguem ver.
-describe("barra de baixo e topo levam ao mesmo outro lado", () => {
+// On a phone the side switch lives on the bottom bar, and the account menu no longer
+// repeats it. The top and the bar each calculate the destination on their own: this test
+// locks the two together, so an edit on one side does not remove the only switch on the
+// phone with nobody noticing.
+describe("bottom bar and top lead to the same other side", () => {
   it.each(
     [["student"], ["teacher"], ["admin", "teacher"]].flatMap((roles) =>
       ["/teach", "/learn", "/ops"].map((pathname) => [roles.join("+"), pathname, roles] as const),
     ),
-  )("%s em %s", (_label, pathname, roles) => {
+  )("%s in %s", (_label, pathname, roles) => {
     mocks.pathname = pathname;
     mocks.roles = [...roles];
     const { container } = render(
@@ -160,19 +160,19 @@ describe("barra de baixo e topo levam ao mesmo outro lado", () => {
     if (headerTarget) {
       expect(barTargets).toContain(headerTarget);
     } else {
-      // Quem so estuda nao tem troca no topo, nem atalho do estudio na barra
-      // (o Home segue o endereco, por isso o nome e nao o href).
+      // Someone who only studies has no switch at the top, nor a studio shortcut on the bar
+      // (Home follows the address, which is why the name and not the href).
       expect(roles).toEqual(["student"]);
       expect(within(bar).queryByRole("link", { name: "Teach" })).toBeNull();
     }
   });
 });
 
-describe("barra de baixo do celular: o atalho e sempre o OUTRO lado", () => {
+describe("phone bottom bar: the shortcut is always the OTHER side", () => {
   it.each([
     ["/teach", "Learn", "/learn"],
     ["/learn", "Teach", "/teach"],
-  ])("em %s mostra '%s'", (pathname, label, href) => {
+  ])("in %s shows '%s'", (pathname, label, href) => {
     mocks.pathname = pathname;
     render(<MobileSidebarDrawer open={false} onOpen={vi.fn()} onClose={vi.fn()} />);
 

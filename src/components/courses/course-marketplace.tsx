@@ -64,14 +64,14 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
   const [sortKey, setSortKey] = useState<CourseSortKey>("featured");
   // Layout preference only (not URL-synced): grid is the long-standing default.
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  // So no celular (CSS abaixo de 640px): os filtros fechados atras de um botao.
-  // Abertos, eram uns 800px de cabecalho e filtros antes do primeiro curso.
+  // Only on the phone (CSS below 640px): the filters closed behind a button.
+  // Open, they were about 800px of header and filters before the first course.
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [activeEnrollments, setActiveEnrollments] = useState<Enrollment[]>([]);
   const [publishedCourses, setPublishedCourses] = useState<TeacherCourse[]>([]);
   const [publishedCoursesError, setPublishedCoursesError] = useState("");
-  // A falha de LER os favoritos (com "Try again") e a de salvar um favorito
-  // (só o aviso) ficam à parte: salvar outro não apaga a primeira.
+  // The failure to READ favorites (with "Try again") and the one to save a favorite
+  // (just the notice) are kept apart: saving another does not erase the first.
   const [wishlistLoadFailed, setWishlistLoadFailed] = useState(false);
   const [wishlistError, setWishlistError] = useState("");
   const [wishlistCourseIds, setWishlistCourseIds] = useState<Set<string>>(
@@ -83,8 +83,8 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
   const [isLoadingPublishedCourses, setIsLoadingPublishedCourses] = useState(
     Boolean(getSupabaseClientConfig()),
   );
-  // "Try again" lê de novo pela mesma inscrição (sem religar); o foco vai para
-  // a seção, que fica na tela quando o aviso some.
+  // "Try again" reads again through the same subscription (without reconnecting); focus goes to
+  // the section, which stays on screen when the notice goes away.
   const coursesSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
   const wishlistSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
   const sectionRef = useRef<HTMLElement>(null);
@@ -248,8 +248,8 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
   const hasAnyCourses = marketplaceCourses.length > 0;
   const isFiltering =
     activeCategory !== allCategoriesLabel || deferredQuery.length > 0;
-  // Quantos filtros estao valendo (categoria e busca), no botao "Filters" do
-  // celular: com o painel fechado, a pessoa ainda ve que a lista esta filtrada.
+  // How many filters are in effect (category and search), on the phone's "Filters"
+  // button: with the panel closed, the person still sees that the list is filtered.
   const activeFilterCount =
     (activeCategory !== allCategoriesLabel ? 1 : 0) + (query.trim() ? 1 : 0);
 
@@ -314,7 +314,7 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
                   }`}
                 >
                   <span>{filter === allCategoriesLabel ? t("publicCourses.all") : getCourseCategoryLabel(filter, t)}</span>
-                  {/* Sem número até a lista chegar: "All courses 0" lia como loja vazia. */}
+                  {/* No number until the list arrives: "All courses 0" read as an empty store. */}
                   {isLoadingPublishedCourses ? null : (
                     <span className="marketplace-filter-button__count">
                       {categoryCount(filter)}
@@ -422,8 +422,8 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
                       label={t("publicCourses.complete").replace("{count}", String(progress))}
                       className="mt-2"
                     />
-                    {/* A barra já diz "40% complete" ao leitor de tela: a linha
-                        visível fica calada para o número não ser lido duas vezes. */}
+                    {/* The bar already says "40% complete" to the screen reader: the
+                        visible line stays silent so the number is not read twice. */}
                     <p aria-hidden="true" className="mt-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
                       {t("publicCourses.complete").replace("{count}", String(progress))}
                     </p>
@@ -441,8 +441,8 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
         </div>
       ) : null}
 
-      {/* Erro de leitura com "Try again"; o aviso só sai quando a leitura
-          volta. A falha ao salvar um favorito segue sendo só o aviso. */}
+      {/* Read error with "Try again"; the notice only clears when the read
+          comes back. The failure to save a favorite is still just the notice. */}
       {publishedCoursesError ? (
         <LoadErrorAlert
           className="mb-5"
@@ -473,10 +473,10 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
           <CourseGridSkeleton />
         </>
       ) : visibleCourses.length === 0 ? (
-        // Com a leitura em erro, o vazio mentiria ("Marketplace opening soon").
+        // With the read in error, the empty state would lie ("Marketplace opening soon").
         publishedCoursesError ? null : hasAnyCourses && isFiltering ? (
-          // O vazio da plataforma (EmptyState): o h1 serifado da página continua
-          // sendo a única manchete; antes este h2 era outra serifa de 30px.
+          // The platform's empty state (EmptyState): the page's serif h1 stays
+          // the only headline; before, this h2 was another 30px serif.
           <EmptyState
             as="h2"
             eyebrow={t("publicCourses.noMatches")}

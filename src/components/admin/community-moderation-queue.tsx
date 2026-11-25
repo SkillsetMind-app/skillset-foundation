@@ -27,15 +27,15 @@ export function CommunityModerationQueue() {
   const [reports, setReports] = useState<CommunityReport[]>([]);
   const [ready, setReady] = useState(!hasBackendConfig);
   const [activeReportId, setActiveReportId] = useState<string | null>(null);
-  // Qual status foi apertado: só ele gira; os outros só travam (I-08).
+  // Which status was pressed: only it spins; the others only lock (I-08).
   const [activeStatus, setActiveStatus] = useState<CommunityReportStatus | null>(null);
   const [error, setError] = useState(false);
   const [loadError, setLoadError] = useState(false);
-  // Abertas primeiro, mas o grupo de cada denúncia é decidido UMA vez, quando
-  // ela aparece pela primeira vez. Reordenar a cada leitura movia os cartões
-  // sob o ponteiro: dispensada a A, a B subia para o lugar dela e o 2º clique
-  // "para garantir" dispensava a B (I-09). Assim só uma denúncia nova mexe na
-  // ordem, como já era antes.
+  // Open first, but each report's group is decided ONCE, when
+  // it first appears. Reordering on every read moved the cards
+  // under the pointer: with A dismissed, B moved up into its place and the 2nd click
+  // "just to be sure" dismissed B (I-09). That way only a new report changes the
+  // order, as it already did before.
   const [groups, setGroups] = useState<Record<string, 0 | 1>>({});
   const [shown, setShown] = useState(PAGE);
 
@@ -81,8 +81,8 @@ export function CommunityModerationQueue() {
   }
 
   const openReports = reports.filter((report) => report.status === "open");
-  // De 12 em 12: antes a lista parava na 12ª sem aviso, enquanto o selo
-  // contava todas as abertas. O sort é estável: dentro do grupo, a ordem de chegada.
+  // In steps of 12: before the list stopped at the 12th with no notice, while the badge
+  // counted all the open ones. The sort is stable: within the group, arrival order.
   const ordered = [...reports].sort((a, b) => (groups[a.id] ?? 1) - (groups[b.id] ?? 1));
   const hidden = ordered.length - shown;
 
@@ -146,9 +146,9 @@ export function CommunityModerationQueue() {
                 </p>
                 {report.detail ? <p>{t(`${copy}.context`)} {report.detail}</p> : null}
               </div>
-              {/* Cada botão fica sempre no mesmo lugar, com o mesmo sentido; o do
-                  status atual só trava. Trocar o botão de lugar depois de uma
-                  ação fazia o 2º clique cair em outra decisão (I-09). */}
+              {/* Each button always stays in the same place, with the same meaning; the current
+                  status one only locks. Moving the button after an
+                  action made the 2nd click land on another decision (I-09). */}
               <div role="group" aria-labelledby={`report-move-${report.id}`} className="mt-4 flex flex-wrap items-center gap-2">
                 <span id={`report-move-${report.id}`} className="text-xs font-semibold text-[var(--color-ink-soft)]">
                   {t(`${copy}.moveTo`)}

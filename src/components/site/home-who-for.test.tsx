@@ -8,7 +8,7 @@ import { HomeWhoFor } from "@/components/site/home-who-for";
 import en from "@/data/i18n/en.json";
 import es from "@/data/i18n/es.json";
 
-// Server component: o idioma vem do cookie.
+// Server component: the language comes from the cookie.
 const state = vi.hoisted(() => ({ locale: "en" }));
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => ({ value: state.locale }) }) }));
 
@@ -24,10 +24,10 @@ async function renderStrip(locale: string) {
   return render(await HomeWhoFor());
 }
 
-describe("faixa 'para quem é' da home", () => {
-  // Nenhuma frase nova: o título é o público da faixa final. Fora isso, só
-  // fotos (a linha sobre psicólogos que ensinam fica só no topo da home).
-  it.each(dictionaries)("em %s mostra só frases que o site já publica", async (locale, dict) => {
+describe("home 'who it is for' band", () => {
+  // No new sentence: the title is the audience of the final band. Apart from that, only
+  // photos (the line about psychologists who teach stays only at the top of the home).
+  it.each(dictionaries)("in %s shows only sentences the site already publishes", async (locale, dict) => {
     const { container } = await renderStrip(locale);
 
     const section = container.querySelector("section")!;
@@ -37,9 +37,9 @@ describe("faixa 'para quem é' da home", () => {
     expect(container.textContent).toBe(dict.home.creators.eyebrow);
   });
 
-  // As pessoas das fotos não existem (IA): nada de nome, citação, legenda ou
-  // link que as apresente como clientes. O texto alternativo descreve a cena.
-  it.each(dictionaries)("em %s os três retratos descrevem a cena, sem apresentar ninguém", async (locale, dict) => {
+  // The people in the photos do not exist (AI): no name, quote, caption or
+  // link that presents them as customers. The alt text describes the scene.
+  it.each(dictionaries)("in %s the three portraits describe the scene, without introducing anyone", async (locale, dict) => {
     const { container } = await renderStrip(locale);
 
     expect(container.querySelector("a, blockquote, q, figcaption, cite")).toBeNull();
@@ -55,9 +55,9 @@ describe("faixa 'para quem é' da home", () => {
     }
   });
 
-  // Bem abaixo do topo: carregam preguiçosas, com tamanho declarado, e o
-  // arquivo existe em public/.
-  it("os retratos carregam preguiçosos, com tamanho declarado", async () => {
+  // Well below the top: they load lazily, with a declared size, and the
+  // file exists in public/.
+  it("the portraits load lazily, with a declared size", async () => {
     const { container } = await renderStrip("en");
 
     const images = [...container.querySelectorAll("img")];
@@ -71,9 +71,9 @@ describe("faixa 'para quem é' da home", () => {
     });
   });
 
-  // Título na escala das outras seções (o clamp é conferido contra o do topo
-  // em site-frame.test.tsx) e componente de servidor.
-  it("é componente de servidor e usa o título das seções vizinhas", () => {
+  // Title at the scale of the other sections (the clamp is checked against the top's
+  // in site-frame.test.tsx) and a server component.
+  it("is a server component and uses the title of the neighboring sections", () => {
     const source = readFileSync(join(process.cwd(), "src/components/site/home-who-for.tsx"), "utf8");
     expect(source).not.toContain('"use client"');
     expect(source).toContain('<h2 className="display-title text-[clamp(2.25rem,4.2vw,3.25rem)]');

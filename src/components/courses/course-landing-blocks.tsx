@@ -36,10 +36,10 @@ type TemplateStyle = {
  * choosing a "model" actually wants — without doubling the surface that can
  * break.
  *
- * Os títulos dos blocos ficam ABAIXO do título da página (o h1 do curso, de 30
- * a 56px): o bloco de abertura era um segundo h1 de até 60px, maior que o
- * título, e cada bloco usava a serifa de destaque. Agora são h2 em Manrope,
- * 20px no clássico e 24px no forte; a serifa fica para o h1 e para o preço.
+ * The block titles stay BELOW the page title (the course h1, 30
+ * to 56px): the opening block was a second h1 of up to 60px, bigger than the
+ * title, and every block used the display serif. Now they are h2 in Manrope,
+ * 20px in classic and 24px in bold; the serif is kept for the h1 and the price.
  */
 const templates: Record<CourseLandingTemplate, TemplateStyle> = {
   classic: {
@@ -236,8 +236,8 @@ export function CourseLandingBlocks({
             return (
               <section key={key} className={style.section}>
                 {block.heading ? <h2 className={style.heading}>{block.heading}</h2> : null}
-                {/* A mesma pergunta que abre e fecha das perguntas de /pricing: seta
-                    que gira, sem o triângulo padrão do navegador. */}
+                {/* The same open-and-close question as the /pricing questions: an arrow
+                    that rotates, without the browser's default triangle. */}
                 <div className="mt-5 grid gap-3">
                   {block.items.map((item, itemIndex) => (
                     <details
@@ -280,10 +280,10 @@ export function CourseLandingBlocks({
                       type="button"
                       onClick={onEnrol}
                       disabled={enrolDisabled}
-                      // O botão da casa (o mesmo do cartão de compra), e não um
-                      // feito à mão que não reagia ao passar o mouse. O rótulo do
-                      // professor pode ter até 200 caracteres: quebra em linhas
-                      // centradas que não se encostam (o botão traz line-height 1).
+                      // The house button (the same as on the purchase card), not one
+                      // made by hand that did not react on hover. The teacher's
+                      // label can be up to 200 characters: it wraps into centered
+                      // lines that do not touch (the button carries line-height 1).
                       className="button-solid button-lg mt-5 whitespace-normal text-center leading-snug"
                     >
                       {block.buttonLabel}

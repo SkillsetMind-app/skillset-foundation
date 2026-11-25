@@ -29,11 +29,11 @@ import {
   sendSkillsetEmailVerification,
 } from "@/lib/auth/supabase-auth";
 
-// Onde cada resposta aparece: logo abaixo do botão que a pediu. Antes havia um
-// par message/error só, desenhado depois da grade inteira E do cartão de dois
-// fatores — abaixo do `lg`, uma tela inteira longe do botão — e a tela rolava
-// até ele. "Email me a reset link" era o pior caso: o e-mail saía e nada
-// parecia acontecer.
+// Where each response appears: right below the button that asked for it. Before there was
+// a single message/error pair, drawn after the whole grid AND the two-factor
+// card — below `lg`, a whole screen away from the button — and the screen scrolled
+// to it. "Email me a reset link" was the worst case: the email was sent and nothing
+// seemed to happen.
 type FeedbackSlot = "verification" | "email" | "password" | "reset";
 type SecurityAction = "verificationSend" | "verificationRefresh" | "email" | "password" | "reset";
 type Feedback =
@@ -49,9 +49,9 @@ export function SecuritySettingsPanel() {
   const [nextPassword, setNextPassword] = useState("");
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNextPassword, setShowNextPassword] = useState(false);
-  // Qual ação está em andamento, para só o botão apertado trocar o texto.
-  // Todos continuam travados juntos: o token do CAPTCHA abaixo é de uso único
-  // e é dividido entre as três ações que vão ao GoTrue.
+  // Which action is in progress, so only the pressed button changes its text.
+  // All of them stay locked together: the CAPTCHA token below is single-use
+  // and is shared among the three actions that go to GoTrue.
   const [busy, setBusy] = useState<SecurityAction | null>(null);
   const isBusy = busy !== null;
   const [feedback, setFeedback] = useState<Feedback | null>(null);
@@ -65,9 +65,9 @@ export function SecuritySettingsPanel() {
   const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
   const captchaPending = isCaptchaEnabled && !captchaToken;
   const passwordReady = isStrongPassword(nextPassword);
-  // Por que os dois botões estão apagados, quando falta algo que a pessoa
-  // resolve (a trava é a mesma; só passa a ser dita). Ocupado não entra: o
-  // botão já diz "Sending..."; a verificação de segurança mostra o próprio estado.
+  // Why the two buttons are grayed out, when something is missing that the person
+  // can fix (the lock is the same; it is just now stated). Busy is not included: the
+  // button already says "Sending..."; the security check shows its own state.
   const emailBlockedReason = newEmail.trim() ? "" : t("accountSecurity.email.typeFirst");
   const passwordBlockedReason = !currentPassword
     ? t("accountSecurity.password.currentFirst")
@@ -229,8 +229,8 @@ export function SecuritySettingsPanel() {
                 {t("accountSecurity.verification.description")}
               </p>
             </div>
-            {/* "Required" e aviso, nao erro: as cores de aviso da plataforma,
-                no lugar do rosa do vermelho antigo com texto dourado. */}
+            {/* "Required" is a warning, not an error: the platform's warning colors,
+                instead of the old red pink with gold text. */}
             <span
               className={`rounded-chip px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
                 emailVerified
@@ -243,8 +243,8 @@ export function SecuritySettingsPanel() {
                 : "accountSecurity.verification.required")}
             </span>
           </div>
-          {/* Já verificado, não há o que enviar nem conferir. Antes o botão
-              mais forte da aba era "Refresh status", mesmo com o e-mail ok. */}
+          {/* Already verified, there is nothing to send or check. Before, the strongest
+              button on the tab was "Refresh status", even with the email OK. */}
           {!emailVerified ? (
             <div className="mt-4 flex flex-wrap gap-2">
               <Button
@@ -347,8 +347,8 @@ export function SecuritySettingsPanel() {
                 <span className="relative block">
                   <input
                     {...a11y}
-                    // As regras abaixo sao a descricao do campo (o Field nao
-                    // tem dica aqui, entao nao ha outra a perder).
+                    // The rules below are the field's description (Field has no
+                    // hint here, so there is no other to lose).
                     aria-describedby="security-password-rules"
                     type={showNextPassword ? "text" : "password"}
                     value={nextPassword}
@@ -363,8 +363,8 @@ export function SecuritySettingsPanel() {
                 </span>
               )}
             </Field>
-            {/* Visiveis desde o inicio (as que faltam, apagadas): antes so
-                surgiam na 1a letra e empurravam o botao para baixo. */}
+            {/* Visible from the start (the missing ones, grayed out): before they only
+                showed up at the 1st letter and pushed the button down. */}
             <div id="security-password-rules">
               <PasswordStrengthChecklist password={nextPassword} />
             </div>
@@ -398,9 +398,9 @@ export function SecuritySettingsPanel() {
                 disabled={isBusy || captchaPending}
                 className="group/reset mt-1 min-h-11 text-sm font-bold text-[var(--color-primary)] underline-offset-2 disabled:opacity-60"
               >
-                {/* O sublinhado do hover não atravessa o inline-grid do
-                    BusyLabel (caixa atômica): ele mesmo se sublinha quando o
-                    botão está sob o ponteiro. */}
+                {/* The hover underline does not cross the inline-grid of
+                    BusyLabel (atomic box): it underlines itself when the
+                    button is under the pointer. */}
                 <BusyLabel
                   busy={busy === "reset"}
                   idle={t("accountSecurity.password.sendReset")}

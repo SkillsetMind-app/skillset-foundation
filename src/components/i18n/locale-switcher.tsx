@@ -6,18 +6,18 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboard
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { LOCALES, LOCALE_LABELS, LOCALE_SHORT_LABELS, type Locale } from "@/lib/i18n/config";
 
-// Menu próprio em vez de <select>: o popup nativo é desenhado pelo navegador e
-// não aceita CSS ("parece uma listinha crua", 07/09). Abre e fecha como os
-// outros menus do site (public-entry-menu, kebab do studio): clique fora fecha,
-// Escape fecha e devolve o foco ao gatilho. Cada opção é um <button> nativo,
-// então Enter/Espaço escolhem sozinhos e o anel de foco global já cobre;
-// ↑/↓/Home/End andam pela lista. `dropUp` é para o rodapé, onde abrir para
-// baixo cairia fora da página. Sem fechar no blur de propósito: no Safari o
-// clique não foca o botão, e o blur fecharia o menu antes do click da opção.
+// A custom menu instead of <select>: the native popup is drawn by the browser and
+// does not accept CSS ("looks like a raw little list", 07/09). It opens and closes like the
+// site's other menus (public-entry-menu, studio kebab): clicking outside closes it,
+// Escape closes it and returns focus to the trigger. Each option is a native <button>,
+// so Enter/Space choose on their own and the global focus ring already covers it;
+// ↑/↓/Home/End move through the list. `dropUp` is for the footer, where opening
+// downward would fall off the page. No close on blur, on purpose: in Safari the
+// click does not focus the button, and the blur would close the menu before the option's click.
 //
-// `variant="compact"` é para dentro de uma barra de ícones (topo da plataforma,
-// barra do site): sigla sem moldura permanente; alvo de toque permanece 44px.
-// O menu, o teclado e o rótulo continuam idênticos nas duas variantes.
+// `variant="compact"` is for use inside an icon bar (platform top,
+// site bar): an abbreviation with no permanent frame; the touch target stays 44px.
+// The menu, the keyboard and the label stay identical in both variants.
 export function LocaleSwitcher({
   dropUp = false,
   variant = "default",

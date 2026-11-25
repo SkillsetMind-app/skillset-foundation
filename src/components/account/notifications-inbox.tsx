@@ -103,9 +103,9 @@ export function NotificationsInbox() {
 
   return (
     <div className="space-y-5">
-      {/* A contagem de nao lidas mora so na aba "Unread (N)": a frase "N
-          unread" aqui em cima repetia o mesmo numero. Os dois botoes sao os
-          da plataforma, com 44px de alvo. */}
+      {/* The unread count lives only on the "Unread (N)" tab: the phrase "N
+          unread" up here repeated the same number. The two buttons are the
+          platform's, with 44px targets. */}
       <div className="flex flex-wrap items-center justify-end gap-3">
         <Link href="/account?tab=notifications" className={buttonClasses({ variant: "outline" })}>
           {t("accountNotifications.preferences")}
@@ -135,8 +135,8 @@ export function NotificationsInbox() {
             ))}
           </div>
         ) : visible.length === 0 ? (
-          // A caixa vazia da casa, com os mesmos textos; h2 logo abaixo do h1
-          // da página (antes eram dois parágrafos soltos sob um ícone).
+          // The standard empty inbox, with the same texts; h2 right below the page's
+          // h1 (before, they were two loose paragraphs under an icon).
           <EmptyState
             as="h2"
             title={t(filter === "unread" && items.length > 0 ? "accountNotifications.caughtUp" : "accountNotifications.empty")}

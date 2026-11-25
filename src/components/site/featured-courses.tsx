@@ -29,9 +29,9 @@ const FEATURED_LIMIT = 6;
 export function FeaturedCourses() {
   const { t } = useTranslation();
   const [featuredCourses, setFeaturedCourses] = useState<CourseCard[]>([]);
-  // Até a primeira resposta do catálogo: os cartões chegavam de uma vez e
-  // empurravam a página 2 a 3 telas para baixo. Sem Supabase configurado a
-  // lista nunca chega, então nem começa carregando.
+  // Until the catalog's first response: the cards arrived all at once and
+  // pushed the page down 2 to 3 screens. Without Supabase configured the
+  // list never arrives, so it does not even start out loading.
   const [loading, setLoading] = useState(() => getSupabaseClientConfig() !== null);
   const instructors = useInstructorNames(
     featuredCourses.map((course) => course.ownerId),
@@ -91,12 +91,12 @@ export function FeaturedCourses() {
           </Link>
         </div>
 
-        {/* O mesmo molde de cartão do catálogo, na mesma grade (2 colunas a
-            partir de 640px, 3 a partir de 1024px): o curso nasce no lugar do
-            esqueleto. Só uma fileira (1, 2 ou 3 cartões conforme a largura):
-            com menos cursos que esqueletos a faixa encolheria para cima ao
-            chegar; assim ela só cresce para baixo. O !important vence o
-            display do .marketplace-card, que fica fora de camada. */}
+        {/* The same card mold as the catalog, in the same grid (2 columns from
+            640px, 3 from 1024px): the course is born in place of the
+            skeleton. Only one row (1, 2 or 3 cards depending on the width):
+            with fewer courses than skeletons the strip would shrink upward on
+            arrival; this way it only grows downward. The !important beats the
+            display of .marketplace-card, which sits outside a layer. */}
         {loading ? (
           <div className="mt-10 max-sm:[&_.marketplace-card:nth-child(n+2)]:hidden! max-lg:[&_.marketplace-card:nth-child(n+3)]:hidden!">
             <CourseGridSkeleton count={3} />
