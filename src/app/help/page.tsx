@@ -45,9 +45,9 @@ export default async function HelpPage() {
         <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-[var(--color-ink-soft)]">
           {t("publicPages.help.payment_payout_or_course_review_questions")}
         </p>
-        {/* O botão principal ia para /support, que exige login: para um
-            visitante era uma tela de login sem aviso. E-mail é o caminho sem
-            conta; o ticket fica como segunda opção, dito para quem é. */}
+        {/* The main button went to /support, which requires a login: for a
+            visitor it was a login screen with no warning. Email is the path without an
+            account; the ticket stays as a second option, said for whom it is. */}
         <div className="mt-6 flex flex-wrap justify-center gap-3">
           <a
             href={`mailto:${SUPPORT_EMAIL}?subject=Support`}

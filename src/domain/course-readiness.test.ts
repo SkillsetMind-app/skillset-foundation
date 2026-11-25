@@ -67,16 +67,16 @@ describe("getCourseReadiness", () => {
     }
   });
 
-  // O professor via tres listas de "o que falta" com tres numeros diferentes
-  // para o mesmo curso. A prova de que agora ha uma regra: a mesma entrada
-  // devolve exatamente a mesma lista, sempre.
-  it("devolve a mesma lista para a mesma entrada", () => {
+  // The teacher saw three lists of "what is missing" with three different numbers
+  // for the same course. The proof that there is now one rule: the same input
+  // returns exactly the same list, always.
+  it("returns the same list for the same input", () => {
     const first = getCourseReadiness(complete);
     const second = getCourseReadiness({ ...complete });
     expect(second).toEqual(first);
   });
 
-  it("um curso sem preco e sem aula lista as duas pendencias, nessa ordem", () => {
+  it("a course with no price and no lesson lists the two pending items, in that order", () => {
     const readiness = getCourseReadiness({
       ...complete,
       modules: [{ id: "m1", title: "Start here", lessons: [] }],
@@ -86,13 +86,13 @@ describe("getCourseReadiness", () => {
     expect(readiness.pending.map((item) => item.id)).toEqual(["lesson", "pricing"]);
     expect(readiness.next?.hint).toBe("Add at least one lesson.");
     expect(readiness.ready).toBe(false);
-    // 4 de 6 obrigatorios: titulo, resumo, categoria e modulo.
+    // 4 of 6 required: title, summary, category and module.
     expect(readiness.doneCount).toBe(4);
     expect(readiness.total).toBe(6);
     expect(readiness.percent).toBe(67);
   });
 
-  it("um curso completo devolve lista vazia e 100%", () => {
+  it("a complete course returns an empty list and 100%", () => {
     const readiness = getCourseReadiness(complete);
 
     expect(readiness.pending).toEqual([]);
@@ -101,15 +101,15 @@ describe("getCourseReadiness", () => {
     expect(readiness.ready).toBe(true);
   });
 
-  // Regra mais exigente entre as telas: o construtor aceitava titulo de 1
-  // letra; o formulario de criacao e o Manage pediam 3. Curso que uma tela
-  // dizia incompleto nao pode aparecer 100% em outra.
-  it("exige titulo com 3+ caracteres, como o Manage ja exigia", () => {
+  // Stricter rule across the screens: the builder accepted a 1-letter
+  // title; the creation form and Manage asked for 3. A course that one screen
+  // called incomplete cannot show up as 100% on another.
+  it("requires a title with 3+ characters, as Manage already did", () => {
     const readiness = getCourseReadiness({ ...complete, title: "AB" });
     expect(readiness.pending.map((item) => item.id)).toEqual(["title"]);
   });
 
-  it("gratuito dispensa preco; pago exige valor acima de zero", () => {
+  it("free needs no price; paid requires a value above zero", () => {
     expect(
       getCourseReadiness({ ...complete, paymentType: "free", priceAmountMinor: 0 }).ready,
     ).toBe(true);
@@ -118,12 +118,12 @@ describe("getCourseReadiness", () => {
     ).toEqual(["pricing"]);
   });
 
-  // Promise, Summary e Description eram o mesmo texto com tres nomes. O
-  // checklist usa o nome da tela de criacao e do construtor.
+  // Promise, Summary and Description were the same text with three names. The
+  // checklist uses the name from the creation screen and the builder.
   it.each([
     ["en", "Description", "Write a description with at least 20 characters."],
     ["es", "Descripción", "Escribe una descripción de al menos 20 caracteres."],
-  ] as const)("o item do resumo se chama Descricao (%s)", (locale, label, hint) => {
+  ] as const)("the summary item is called Description (%s)", (locale, label, hint) => {
     const readiness = getCourseReadiness(
       { ...complete, summary: "short" },
       undefined,
@@ -133,12 +133,12 @@ describe("getCourseReadiness", () => {
     expect(readiness.pending[0]).toMatchObject({ id: "summary", label, hint });
   });
 
-  // A lista de quem escolheu Gratis nao fala de preco em lugar nenhum, nem
-  // como item feito: curso antigo sem paymentType e preco 0 conta como gratis.
+  // The list for whoever chose Free does not mention price anywhere, not even
+  // as a done item: an old course with no paymentType and price 0 counts as free.
   it.each([
     ["free", 0],
     [undefined, 0],
-  ] as const)("produto gratis (paymentType %s) nao tem item de preco no checklist", (paymentType, priceAmountMinor) => {
+  ] as const)("a free product (paymentType %s) has no price item in the checklist", (paymentType, priceAmountMinor) => {
     const account = { payoutsReady: false, verificationRequired: false, verificationApproved: false };
     const readiness = getCourseReadiness(
       { ...complete, paymentType, priceAmountMinor },
@@ -151,9 +151,9 @@ describe("getCourseReadiness", () => {
     expect(readiness.ready).toBe(true);
   });
 
-  // Parcelamento so conta quando existe: listar "Payment model is ready" num
-  // curso gratuito era um item feito de graca que inflava a porcentagem.
-  it("so cobra limite de parcelas na venda avulsa com parcelamento ligado", () => {
+  // Installments only count when they exist: listing "Payment model is ready" on a
+  // free course was a free "done" item that inflated the percentage.
+  it("only requires an installment limit on a one-time sale with installments turned on", () => {
     const withoutLimit = getCourseReadiness({
       ...complete,
       installmentsEnabled: true,
@@ -170,9 +170,9 @@ describe("getCourseReadiness", () => {
     expect(free.items.some((item) => item.id === "installments")).toBe(false);
   });
 
-  // Capa e resultados de aprendizagem ajudam a vender mas nao travam a
-  // publicacao: aparecem na lista, marcados como opcionais, fora da conta.
-  it("lista capa e resultados como opcionais, fora da porcentagem", () => {
+  // Cover and learning outcomes help to sell but do not block
+  // publishing: they appear in the list, marked as optional, outside the count.
+  it("lists cover and outcomes as optional, outside the percentage", () => {
     const readiness = getCourseReadiness(complete);
     const optional = readiness.items.filter((item) => item.optional).map((i) => i.id);
 
@@ -180,11 +180,11 @@ describe("getCourseReadiness", () => {
     expect(readiness.percent).toBe(100);
   });
 
-  // O Manage exigia payouts do Stripe para curso pago e a verificacao
-  // profissional quando obrigatoria; o construtor nao sabia disso e deixava
-  // clicar em Publish para descobrir pelo erro. Com o perfil na mao, a
-  // mesma funcao cobra as duas travas.
-  it("com dados da conta, cobra payouts no curso pago e verificacao quando exigida", () => {
+  // Manage required Stripe payouts for a paid course and the professional
+  // verification when mandatory; the builder did not know that and let
+  // the person click Publish to find out through the error. With the profile at hand, the
+  // same function enforces both locks.
+  it("with account data, requires payouts on a paid course and verification when mandatory", () => {
     const readiness = getCourseReadiness(complete, {
       payoutsReady: false,
       verificationRequired: true,
@@ -195,7 +195,7 @@ describe("getCourseReadiness", () => {
     expect(readiness.percent).toBe(75);
   });
 
-  it("curso gratuito nao pede payouts; verificacao nao exigida vira opcional", () => {
+  it("a free course does not ask for payouts; verification that is not mandatory becomes optional", () => {
     const readiness = getCourseReadiness(
       { ...complete, paymentType: "free", priceAmountMinor: 0 },
       { payoutsReady: false, verificationRequired: false, verificationApproved: false },
@@ -206,12 +206,12 @@ describe("getCourseReadiness", () => {
     expect(readiness.ready).toBe(true);
   });
 
-  // A taxa unica so aparecia como erro do banco depois do Publish. Quem ainda
-  // deve a taxa ve o item antes, com o valor da constante de planos.
+  // The one-time fee only showed up as a database error after Publish. Whoever still
+  // owes the fee sees the item beforehand, with the value of the plans constant.
   it.each([
     ["en", "Activation — US$25, one time"],
     ["es", "Activación — US$25, pago único"],
-  ] as const)("lista a ativacao pendente para quem ainda deve a taxa (%s)", (locale, label) => {
+  ] as const)("lists the pending activation for whoever still owes the fee (%s)", (locale, label) => {
     const dictionary = getDictionary(locale);
     const account = { payoutsReady: true, verificationRequired: false, verificationApproved: false };
     const blocked = getCourseReadiness(
@@ -226,7 +226,7 @@ describe("getCourseReadiness", () => {
     expect(getCourseReadiness(complete, account).items.some((item) => item.id === "activation")).toBe(false);
   });
 
-  it("sem tradutor, o rotulo da ativacao ja sai com o valor", () => {
+  it("without a translator, the activation label already comes out with the value", () => {
     const readiness = getCourseReadiness(complete, {
       payoutsReady: true,
       verificationRequired: false,
@@ -238,9 +238,9 @@ describe("getCourseReadiness", () => {
   });
 });
 
-// Auditoria (content-publish-without-media): um curso podia ser publicado e
-// vendido com aulas sem video, sem texto e sem arquivo.
-describe("lessonMedia: toda aula precisa de conteudo", () => {
+// Audit (content-publish-without-media): a course could be published and
+// sold with lessons without video, without text and without a file.
+describe("lessonMedia: every lesson needs content", () => {
   const withVideo: TeacherLesson = { id: "l1", title: "Welcome", type: "video", description: "" };
   const empty: TeacherLesson = { id: "l2", title: "Empty lesson", type: "video", description: "" };
   const courseWith = (...lessons: TeacherLesson[]): CourseReadinessInput => ({
@@ -257,7 +257,7 @@ describe("lessonMedia: toda aula precisa de conteudo", () => {
     lessonIdsWithMedia: getLessonIdsWithMedia(course.modules, assets),
   }, undefined, t);
 
-  it("2 aulas, uma com video e uma vazia: nao esta pronto e a dica cita a vazia", () => {
+  it("2 lessons, one with video and one empty: not ready and the hint names the empty one", () => {
     const readiness = readinessOf(courseWith(withVideo, empty), [asset("lesson_video", "l1")]);
 
     expect(readiness.ready).toBe(false);
@@ -266,7 +266,7 @@ describe("lessonMedia: toda aula precisa de conteudo", () => {
     expect(readiness.items.find((item) => item.id === "lessonMedia")?.group).toBe("content");
   });
 
-  it("texto na aula vazia deixa pronto", () => {
+  it("text in the empty lesson makes it ready", () => {
     const readiness = readinessOf(
       courseWith(withVideo, { ...empty, contentText: "Read this before the next lesson." }),
       [asset("lesson_video", "l1")],
@@ -279,17 +279,17 @@ describe("lessonMedia: toda aula precisa de conteudo", () => {
     });
   });
 
-  it("uma aula so com PDF conta; so espacos no texto nao", () => {
+  it("a lesson with only a PDF counts; only spaces in the text does not", () => {
     expect(readinessOf(courseWith(withVideo, empty), [
       asset("lesson_video", "l1"), asset("lesson_material", "l2"),
     ]).ready).toBe(true);
     expect(readinessOf(courseWith({ ...empty, contentText: "   " })).ready).toBe(false);
   });
 
-  // O aluno recebe "Open resource" num link antigo (Drive etc.), e o campo de
-  // link do estudio recusa esse link: sem contar aqui, o professor nunca mais
-  // republicava sem reenviar o conteudo.
-  it("link do YouTube/Vimeo ou link antigo (Drive) conta; link invalido ou capa da aula nao", () => {
+  // The learner gets "Open resource" on an old link (Drive etc.), and the studio's link
+  // field rejects that link: without counting it here, the teacher could never
+  // republish without uploading the content again.
+  it("a YouTube/Vimeo link or an old link (Drive) counts; an invalid link or the lesson cover does not", () => {
     expect(readinessOf(courseWith({ ...empty, externalUrl: "https://vimeo.com/123456" })).ready).toBe(true);
     expect(readinessOf(courseWith({ ...empty, externalUrl: "https://drive.example.test/file/d/x/view" })).ready)
       .toBe(true);
@@ -297,16 +297,16 @@ describe("lessonMedia: toda aula precisa de conteudo", () => {
     expect(readinessOf(courseWith(empty), [asset("lesson_thumbnail", "l2")]).ready).toBe(false);
   });
 
-  // Aula de texto antiga: o corpo mora na descricao publica, que o aluno ve e o
-  // selo Done do estudio conta. Sem contar aqui, o Publish travava enquanto o
-  // painel dizia que as aulas estavam bem.
-  it("aula de texto antiga, so com a descricao, conta; descricao so com espacos nao", () => {
+  // Old text lesson: the body lives in the public description, which the learner sees and the
+  // studio's Done badge counts. Without counting it here, Publish was blocked while the
+  // panel said the lessons were fine.
+  it("an old text lesson, with only the description, counts; a description with only spaces does not", () => {
     expect(readinessOf(courseWith({ ...empty, type: "text", description: "Read chapter 2 before the call." })).ready)
       .toBe(true);
     expect(readinessOf(courseWith({ ...empty, description: "   " })).ready).toBe(false);
   });
 
-  it("o painel (aulas sem conteudo) e a prontidao do Publish apontam a mesma aula", () => {
+  it("the panel (lessons without content) and the Publish readiness point at the same lesson", () => {
     const lessons: TeacherLesson[] = [
       { id: "video", title: "Video lesson", type: "video", description: "" },
       { id: "pdf", title: "PDF only", type: "video", description: "" },
@@ -330,7 +330,7 @@ describe("lessonMedia: toda aula precisa de conteudo", () => {
     expect(readiness.next?.hint).toBe("Add a video, text or file to every lesson. Missing: Empty lesson.");
   });
 
-  it("sem a lista (Manage) o item nao aparece e a porcentagem nao muda", () => {
+  it("without the list (Manage) the item does not appear and the percentage does not change", () => {
     const readiness = getCourseReadiness(courseWith(withVideo, empty));
 
     expect(readiness.items.some((item) => item.id === "lessonMedia")).toBe(false);
@@ -338,14 +338,14 @@ describe("lessonMedia: toda aula precisa de conteudo", () => {
     expect(readiness.percent).toBe(100);
   });
 
-  it("sem aula nenhuma o item nao aparece: o item lesson ja cobra", () => {
+  it("with no lesson at all the item does not appear: the lesson item already covers it", () => {
     const readiness = readinessOf(courseWith());
 
     expect(readiness.items.some((item) => item.id === "lessonMedia")).toBe(false);
     expect(readiness.pending.map((item) => item.id)).toEqual(["lesson"]);
   });
 
-  it("a dica cita so as tres primeiras aulas vazias, e traduz sem mexer nos titulos", () => {
+  it("the hint names only the first three empty lessons, and translates without touching the titles", () => {
     const lessons = ["Aula $& um", "Two", "", "Four"].map((title, index) => ({
       ...empty, id: `e${index}`, title,
     }));
@@ -359,10 +359,10 @@ describe("lessonMedia: toda aula precisa de conteudo", () => {
   });
 });
 
-// A barra "N de M" somava titulo, capa e repasse do Stripe como se fossem a
-// mesma coisa; a pessoa nao sabia se estava travada no conteudo, na pagina ou
-// no dinheiro. O recorte em tres grupos e so leitura: mesmos ids, mesmo
-// total, mesmo `ready`.
+// The "N of M" bar added up title, cover and Stripe payout as if they were the
+// same thing; the person did not know whether they were stuck on the content, on the page or
+// on the money. The split into three groups is read-only: same ids, same
+// total, same `ready`.
 describe("groupCourseReadiness", () => {
   const partial: CourseReadinessInput = {
     ...complete,
@@ -371,7 +371,7 @@ describe("groupCourseReadiness", () => {
   };
   const account = { payoutsReady: false, verificationRequired: true, verificationApproved: false };
 
-  it("separa conteudo, pagina e venda, nessa ordem, com contagem so dos obrigatorios", () => {
+  it("separates content, page and sale, in that order, counting only the required ones", () => {
     const readiness = getCourseReadiness(partial, account);
     const groups = groupCourseReadiness(readiness);
 
@@ -381,7 +381,7 @@ describe("groupCourseReadiness", () => {
       ["summary", "category", "cover", "outcomes"],
       ["pricing", "verification"],
     ]);
-    // Capa e resultados sao opcionais: aparecem na pagina, ficam fora do 2 de 2.
+    // Cover and outcomes are optional: they appear on the page, and stay out of the 2 of 2.
     expect(groups.map((group) => [group.doneCount, group.total, group.ready])).toEqual([
       [2, 3, false],
       [2, 2, true],
@@ -389,7 +389,7 @@ describe("groupCourseReadiness", () => {
     ]);
   });
 
-  it("a soma dos grupos bate com o geral e nada do contrato antigo muda", () => {
+  it("the sum of the groups matches the overall one and nothing in the old contract changes", () => {
     const readiness = getCourseReadiness(partial, account);
     const groups = groupCourseReadiness(readiness);
 
@@ -401,7 +401,7 @@ describe("groupCourseReadiness", () => {
     expect(readiness.ready).toBe(false);
   });
 
-  it("parcelas e repasses do curso pago caem em venda; verificacao opcional nao conta", () => {
+  it("installments and payouts of the paid course fall under sale; optional verification does not count", () => {
     const readiness = getCourseReadiness(
       { ...complete, installmentsEnabled: true, installmentsMax: 6 },
       { payoutsReady: true, verificationRequired: false, verificationApproved: false },
@@ -415,7 +415,7 @@ describe("groupCourseReadiness", () => {
     expect(readiness.ready).toBe(true);
   });
 
-  it("todo item carrega o grupo e a traducao nao o altera", () => {
+  it("every item carries its group and the translation does not change it", () => {
     const en = getCourseReadiness(partial, account);
     const es = getCourseReadiness(partial, account, (key) => translate(getDictionary("es"), key));
 
@@ -426,11 +426,11 @@ describe("groupCourseReadiness", () => {
     );
   });
 
-  // Produto gratis nao tem preco para definir: a linha "Pricing" (com a dica
-  // "Set a paid price greater than $0") era um "feito" de graca que so
-  // confundia quem escolheu Gratis. Sem conta, a venda fica vazia e pronta
-  // (total 0: a tela esconde a contagem em vez de dizer "0 of 0").
-  it("sem conta e curso gratis, venda nao lista preco e ja nasce pronta", () => {
+  // A free product has no price to set: the "Pricing" line (with the hint
+  // "Set a paid price greater than $0") was a free "done" item that only
+  // confused whoever chose Free. With no count, the sale group stays empty and ready
+  // (total 0: the screen hides the count instead of saying "0 of 0").
+  it("with no account and a free course, sale does not list price and starts out ready", () => {
     const readiness = getCourseReadiness({ ...complete, paymentType: "free", priceAmountMinor: 0 });
     const sale = groupCourseReadiness(readiness)[2];
 
@@ -439,27 +439,27 @@ describe("groupCourseReadiness", () => {
   });
 });
 
-// O tipo gravado na criacao (courses.product_format) decide o que publicar
-// cobra. Mesma regra de publish_teacher_course (20261007010000).
-describe("o que cada tipo precisa entregar", () => {
+// The type stored at creation (courses.product_format) decides what publishing
+// requires. Same rule as publish_teacher_course (20261007010000).
+describe("what each type needs to deliver", () => {
   const ids = (input: CourseReadinessInput) =>
     getCourseReadiness(input).items.filter((item) => !item.optional).map((item) => item.id);
   const empty = { ...complete, modules: [], paymentType: "free" as const, priceAmountMinor: 0 };
 
-  it("curso: modulo e aula, como antes (e sem tipo gravado, curso)", () => {
+  it("course: module and lesson, as before (and with no stored type, course)", () => {
     expect(ids({ ...empty, productFormat: "course" })).toEqual(["title", "summary", "category", "module", "lesson"]);
     expect(getCourseReadiness({ ...empty, productFormat: "course" }).ready).toBe(false);
     expect(ids(empty)).toEqual(ids({ ...empty, productFormat: "course" }));
   });
 
-  it("comunidade: aula opcional, publica sem nenhuma", () => {
+  it("community: lesson optional, publishes with none", () => {
     const readiness = getCourseReadiness({ ...empty, productFormat: "community", communityEnabled: true });
     expect(readiness.items.map((item) => item.id)).not.toContain("module");
     expect(readiness.items.map((item) => item.id)).not.toContain("lesson");
     expect(readiness.ready).toBe(true);
   });
 
-  it("comunidade: aula que existe continua precisando de conteudo", () => {
+  it("community: a lesson that exists still needs content", () => {
     const readiness = getCourseReadiness({
       ...complete,
       productFormat: "community",
@@ -470,21 +470,21 @@ describe("o que cada tipo precisa entregar", () => {
     expect(readiness.pending.map((item) => item.id)).toEqual(["lessonMedia"]);
   });
 
-  // Sem aula exigida, a comunidade desligada deixaria publicar um produto vazio.
-  it("comunidade: a comunidade precisa estar ligada", () => {
+  // Without a required lesson, a disabled community would let an empty product be published.
+  it("community: the community must be turned on", () => {
     const readiness = getCourseReadiness({ ...empty, productFormat: "community", communityEnabled: false });
     expect(readiness.pending.map((item) => item.id)).toEqual(["community"]);
   });
 
-  it("evento ao vivo: a sessao agendada no lugar da aula", () => {
+  it("live event: the scheduled session in place of the lesson", () => {
     const base = { ...empty, productFormat: "live_event" as const };
     expect(getCourseReadiness({ ...base, scheduledSessionCount: 0 }).pending.map((item) => item.id)).toEqual(["session"]);
     expect(getCourseReadiness({ ...base, scheduledSessionCount: 1 }).ready).toBe(true);
-    // Sem a lista de sessoes (Manage), o item some, como lessonMedia.
+    // Without the session list (Manage), the item disappears, like lessonMedia.
     expect(ids(base)).not.toContain("session");
   });
 
-  it("e-book: ao menos um arquivo, sem cobrar modulo, aula nem conteudo de aula", () => {
+  it("e-book: at least one file, without requiring a module, a lesson or lesson content", () => {
     const base = {
       ...complete,
       paymentType: "free" as const,
@@ -496,7 +496,7 @@ describe("o que cada tipo precisa entregar", () => {
     expect(getCourseReadiness({ ...base, lessonFileCount: 1 }).ready).toBe(true);
   });
 
-  it("so conta arquivo preso a uma aula do produto", () => {
+  it("only counts a file attached to a lesson of the product", () => {
     const modules = [{ id: "m1", title: "Download", lessons: [lesson] }];
     const assets: Pick<CourseAsset, "kind" | "lessonId">[] = [
       { kind: "lesson_material", lessonId: "l1" },
@@ -507,7 +507,7 @@ describe("o que cada tipo precisa entregar", () => {
     expect(countLessonFiles(modules, assets)).toBe(1);
   });
 
-  it("traduz os itens novos", () => {
+  it("translates the new items", () => {
     const es = (key: string) => translate(getDictionary("es"), key);
     const session = getCourseReadiness({ ...empty, productFormat: "live_event", scheduledSessionCount: 0 }, undefined, es)
       .items.find((item) => item.id === "session");
@@ -520,11 +520,11 @@ describe("o que cada tipo precisa entregar", () => {
   });
 });
 
-// Cada tipo aceita so as suas formas de pagar (paymentTypeFitsFormat, o
-// espelho de course_payment_type_fits_format). Produto criado antes da regra
-// mostra o item de preco aberto, com o motivo, em vez de publicar e o banco
-// recusar.
-describe("forma de pagar que o tipo nao aceita", () => {
+// Each type accepts only its own ways to pay (paymentTypeFitsFormat, the
+// mirror of course_payment_type_fits_format). A product created before the rule
+// shows the price item open, with the reason, instead of publishing and the database
+// rejecting it.
+describe("a way to pay that the type does not accept", () => {
   const pricing = (input: CourseReadinessInput, t?: (key: string) => string) =>
     getCourseReadiness(input, undefined, t).items.find((item) => item.id === "pricing");
 
@@ -532,7 +532,7 @@ describe("forma de pagar que o tipo nao aceita", () => {
     ["community", "one_time"],
     ["live_event", "subscription_monthly"],
     ["ebook", "subscription_yearly"],
-  ] as const)("%s cobrando %s: o preco fica pendente", (productFormat, paymentType) => {
+  ] as const)("%s charging %s: the price stays pending", (productFormat, paymentType) => {
     const item = pricing({ ...complete, productFormat, paymentType, communityEnabled: true });
     expect(item?.done).toBe(false);
     expect(item?.hint).toBe("This way of paying does not fit this type of product. Pick another one in Pricing.");
@@ -547,12 +547,12 @@ describe("forma de pagar que o tipo nao aceita", () => {
     ["community", "subscription_yearly"],
     ["live_event", "one_time"],
     ["ebook", "one_time"],
-  ] as const)("%s cobrando %s: o preco conta como feito", (productFormat, paymentType) => {
+  ] as const)("%s charging %s: the price counts as done", (productFormat, paymentType) => {
     expect(pricing({ ...complete, productFormat, paymentType, communityEnabled: true })?.done).toBe(true);
   });
 
-  // "$0" fixo dizia dolar para quem vende em real.
-  it("o zero da dica vem na moeda escolhida", () => {
+  // A hard-coded "$0" said dollars to whoever sells in reais.
+  it("the zero in the hint comes in the chosen currency", () => {
     const empty = { ...complete, priceAmountMinor: null, currency: "BRL" };
     expect(pricing(empty)?.hint).toBe("Set a price above R$0, or choose Free.");
     expect(pricing(empty, (key) => translate(getDictionary("es"), key))?.hint).toBe(

@@ -1,15 +1,15 @@
-// As abas da sala de aula, cada uma com endereco proprio.
+// The classroom tabs, each with its own address.
 //
 // POR QUE ISTO EXISTE
 //
-// Materiais, comunidade, mensagens e avaliacao moravam na mesma rolagem da
-// aula, depois do curriculo, sem endereco: nao dava para mandar o link da
-// comunidade do curso nem voltar para ela pelo historico. E os botoes "Aula
-// atual / Materiais / Discussao" so rolavam a pagina — pareciam navegacao e
-// nao levavam a lugar nenhum. Agora cada aba e um caminho
-// (/learn/courses/<curso>/community?lesson=<aula>): clicar abre, o voltar do
-// navegador devolve a aula, o link e compartilhavel. A aula atual segue no
-// endereco em toda aba, entao "voltar para a aula" e sempre a mesma aula.
+// Materials, community, messages and review lived in the same scroll as the
+// lesson, after the curriculum, with no address: you could not send the link to the
+// course community or go back to it through history. And the "Current
+// lesson / Materials / Discussion" buttons only scrolled the page: they looked like navigation and
+// led nowhere. Now each tab is a path
+// (/learn/courses/<course>/community?lesson=<lesson>): clicking opens it, the browser's back
+// button returns the lesson, the link is shareable. The current lesson stays in the
+// address on every tab, so "back to the lesson" is always the same lesson.
 
 export const CLASSROOM_TABS = [
   "lesson",
@@ -27,21 +27,21 @@ export function isClassroomTab(value: string): value is ClassroomTab {
   return (CLASSROOM_TABS as readonly string[]).includes(value);
 }
 
-/** O caminho da sala sem a aba: "/learn/courses/<curso>". Em aula, e o
- *  proprio pathname; numa aba, tira o "/<aba>" do fim — e o que vier depois
- *  dela (a gaveta: "/community/q/<post>"). */
+/** The classroom path without the tab: "/learn/courses/<course>". On a lesson, it is
+ *  the pathname itself; on a tab, it removes the "/<tab>" at the end, and whatever comes after
+ *  it (the drawer: "/community/q/<post>"). */
 export function classroomBasePath(pathname: string, tab: ClassroomTab): string {
   if (tab === "lesson") {
     return pathname;
   }
-  // So a gaveta (/q/<post>) pode vir depois da aba. Um "/.*" generico aqui
-  // engolia desde o PRIMEIRO "/community" — um curso de slug "community"
-  // perdia o slug junto com a aba.
+  // Only the drawer (/q/<post>) may come after the tab. A generic "/.*" here
+  // swallowed everything from the FIRST "/community" on: a course with the slug "community"
+  // lost its slug along with the tab.
   return pathname.replace(new RegExp(`/${tab}(?:/q/[^/]+)?$`), "");
 }
 
-/** O endereco de uma aba, levando a aula atual junto (?lesson=). A aba
- *  "lesson" e a propria base — sem segmento. */
+/** The address of a tab, carrying the current lesson along (?lesson=). The
+ *  "lesson" tab is the base itself, with no segment. */
 export function classroomTabHref(
   basePath: string,
   tab: ClassroomTab,

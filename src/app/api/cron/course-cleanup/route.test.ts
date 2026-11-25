@@ -6,10 +6,10 @@ const mocks = vi.hoisted(() => ({ getAdmin: vi.fn(), fetch: vi.fn() }));
 
 vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdminClient: mocks.getAdmin }));
 
-// O apagador de verdade roda: so o banco (um falso em memoria) e a rede (fetch)
-// sao trocados, entao estes casos provam o que chegou ao Storage, a Bunny e ao
-// alerta, nao o que um mock disse que mandou. O relogio e falso: o tempo so
-// anda quando um caso manda.
+// The real deleter runs: only the database (an in-memory fake) and the network
+// (fetch) are swapped, so these cases prove what reached Storage, Bunny and the
+// alert, not what a mock said it sent. The clock is fake: time only moves when
+// a case moves it.
 import { GET } from "@/app/api/cron/course-cleanup/route";
 
 const CRON_TOKEN = "test-cron-token";
@@ -48,7 +48,7 @@ let onList: () => void;
 let onBunnyDelete: (videoId: string) => void;
 const removed: { bucket: string; names: string[] }[] = [];
 const rpcSignals: unknown[] = [];
-// max-rows do PostgREST: vale tambem para RPC, entao a lista vem cortada.
+// PostgREST max-rows: it applies to RPC too, so the list comes back truncated.
 const MAX_ROWS = 1000;
 const timeline: string[] = [];
 
@@ -71,7 +71,7 @@ const video = (courseId: string, videoId: string, ownerId = "owner-1") => ({
   receipt: signBunnyAssetPath(courseId, ownerId, videoId),
 });
 
-// Filtros como o PostgREST: todos valem, em qualquer ordem, antes do limit.
+// Filters like PostgREST: all of them apply, in any order, before the limit.
 function filtered<T extends object>(rows: T[]) {
   const filters: ((row: T) => boolean)[] = [];
   return {
@@ -155,7 +155,7 @@ function fakeAdmin() {
           }));
         return Promise.resolve({ data: [...own, ...foreignListing].slice(0, MAX_ROWS), error: null });
       };
-      // Toda RPC da rotina sai com freio proprio (abortSignal).
+      // Every RPC in the routine is sent with its own timeout (abortSignal).
       return {
         abortSignal: (signal: unknown) => {
           rpcSignals.push(signal);
@@ -278,8 +278,8 @@ describe("course cleanup cron", () => {
       expect(JSON.stringify(queue)).toBe(before);
     });
 
-    // Com 5 produtos antigos na fila, o ensaio mostrava sempre os mesmos 5 e o
-    // produto [QA] recem-apagado nunca aparecia no log.
+    // With 5 old products in the queue, the dry run always showed the same 5 and the
+    // freshly deleted [QA] product never appeared in the log.
     it("a product deleted just now shows up even when older ones fill the batch", async () => {
       queue = [30, 40, 50, 60, 70, 80].map((hours, index) => job(`old-${index}`, hours));
       queue.push(job("qa-just-deleted", 0.1));
@@ -342,8 +342,8 @@ describe("course cleanup cron", () => {
       expect(row("c1").finished_at).toBe(new Date(NOW).toISOString());
     });
 
-    // Arquivo "emprestado": a pagina de venda de outro produto vivo usa a
-    // imagem que mora na pasta do produto apagado.
+    // "Borrowed" file: the sales page of another live product uses the
+    // image that lives in the deleted product's folder.
     it("keeps a file another live row still uses, and says how many it kept", async () => {
       queue = [job("c1", 30)];
       referencedFiles = ["courses/c1/landing/hero.webp"];
@@ -415,8 +415,9 @@ describe("course cleanup cron", () => {
       expect(row("c1").result).toMatchObject({ inUseVideos: ["vid-shared"] });
     });
 
-    // O id pode voltar (ou outra aula passar a usar o video) entre um DELETE e
-    // outro: a pergunta ao banco vem logo antes de cada um, nao uma vez so.
+    // The id may come back (or another lesson may start using the video) between
+    // one DELETE and the next: the question to the database comes right before
+    // each one, not just once.
     it("asks the database right before each Bunny delete", async () => {
       queue = [job("c1", 30, { bunny_assets: [video("c1", "vid-a"), video("c1", "vid-b")] })];
       onBunnyDelete = (videoId) => {
@@ -472,7 +473,7 @@ describe("course cleanup cron", () => {
       let calls = 0;
       onList = () => {
         calls += 1;
-        // A segunda listagem (a conferencia) acha um arquivo novo.
+        // The second listing (the verification) finds a new file.
         if (calls === 2) storage.push({ bucket: "public-media", name: "courses/c1/landing/late.webp" });
       };
 
@@ -495,8 +496,8 @@ describe("course cleanup cron", () => {
       expect(row("c1").last_error).toContain("still in storage");
     });
 
-    // Revisao focada do #507 (A3): a lista do banco para em ~1000 linhas. A
-    // conferencia so conta como falha o arquivo mandado apagar que ficou.
+    // Focused review of #507 (A3): the database list stops at ~1000 rows. The
+    // verification only counts as a failure a file that was sent to be deleted and remained.
     it("a folder with more than 2000 files goes out over several runs, with no failure counted", async () => {
       queue = [job("c1", 30)];
       for (let index = 0; index < 2_500; index += 1) {
@@ -526,7 +527,7 @@ describe("course cleanup cron", () => {
 
       await authed();
 
-      // 2 listagens (antes e depois do remove) + 1 conferencia do video.
+      // 2 listings (before and after the remove) + 1 verification of the video.
       expect(rpcSignals).toHaveLength(3);
       expect(rpcSignals.every((signal) => signal instanceof AbortSignal && !signal.aborted)).toBe(true);
     });
@@ -610,7 +611,7 @@ describe("course cleanup cron", () => {
       it("three runs in a row with no progress count as one attempt", async () => {
         queue = [job("c1", 30, { bunny_assets: [video("c1", "v1")] })];
         storage = [];
-        // A listagem demora: o tempo acaba antes do primeiro video.
+        // The listing is slow: time runs out before the first video.
         onList = () => advance(41_000);
 
         await authed();

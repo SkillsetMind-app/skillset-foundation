@@ -13,10 +13,11 @@ vi.mock("@/components/auth/auth-provider", () => ({
   }),
 }));
 
-// Vitrine aberta (12 cursos reais de 5 professores)? É o contrato de
-// isMarketplaceOpen. Começa fechada: é o estado de hoje. Título e capa do
-// cartão "See a real course" vêm de getShowcaseCourseCover (null = leitura
-// falhou ou passou do prazo; o prazo em si é testado em public-course.test).
+// Storefront open (12 real courses from 5 teachers)? That is the contract of
+// isMarketplaceOpen. It starts closed: that is today's state. The title and
+// cover of the "See a real course" card come from getShowcaseCourseCover (null
+// = the read failed or timed out; the timeout itself is tested in
+// public-course.test).
 type ShowcaseCover = { title: string; coverImageUrl: string | null };
 const state = vi.hoisted(() => ({ open: false, course: null as ShowcaseCover | null }));
 const readCourse = vi.hoisted(() =>
@@ -28,23 +29,24 @@ vi.mock("@/lib/data/server/public-course", () => ({
 }));
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined }) }));
 
-// O rodapé e as cinco seções de marketing são server components assíncronos:
-// resolvem o idioma via next/headers e não renderizam neste teste síncrono de
-// jsdom. O conteúdo delas é conferido em site-frame.test.tsx, montando cada
-// seção direto com `render(await Secao())`. Aqui sobra o que este arquivo
-// sempre olhou de verdade: o cabeçalho, que continua sendo cliente.
+// The footer and the five marketing sections are async server components: they
+// resolve the language via next/headers and do not render in this synchronous
+// jsdom test. Their content is checked in site-frame.test.tsx, mounting each
+// section directly with `render(await Section())`. What is left here is what
+// this file has always really looked at: the header, which is still a client
+// component.
 vi.mock("@/components/site/site-footer", () => ({ SiteFooter: () => null }));
 vi.mock("@/components/site/marketing-hero", () => ({ MarketingHero: () => null }));
 vi.mock("@/components/site/how-it-works-strip", () => ({ HowItWorksStrip: () => null }));
 vi.mock("@/components/site/capabilities-grid", () => ({ CapabilitiesGrid: () => null }));
 vi.mock("@/components/site/promise-preview-band", () => ({ PromisePreviewBand: () => null }));
 vi.mock("@/components/site/for-creators-band", () => ({ ForCreatorsBand: () => null }));
-// A faixa de fatos também é servidor; o conteúdo dela é conferido em
-// home-facts-band.test.tsx. Aqui ela só marca o lugar, para a ordem.
+// The facts band is also a server component; its content is checked in
+// home-facts-band.test.tsx. Here it only marks the spot, for the order.
 vi.mock("@/components/site/home-facts-band", () => ({ HomeFactsBand: () => <div data-testid="facts-band" /> }));
-// As perguntas frequentes idem (home-faq.test.tsx); o lugar delas é o #faq.
+// Same for the FAQ (home-faq.test.tsx); its spot is #faq.
 vi.mock("@/components/site/home-faq", () => ({ HomeFaq: () => null }));
-// A faixa "para quem é" idem (home-who-for.test.tsx): sem âncora, marca o lugar.
+// Same for the "who it is for" band (home-who-for.test.tsx): no anchor, it marks the spot.
 vi.mock("@/components/site/home-who-for", () => ({ HomeWhoFor: () => <div data-testid="who-for" /> }));
 vi.mock("@/components/site/featured-courses", () => ({ FeaturedCourses: () => <div data-testid="marketplace" /> }));
 
@@ -58,7 +60,7 @@ const COVER = "https://example.supabase.co/storage/v1/object/public/covers/ei-ma
 const showcase: ShowcaseCover = { title: "Emotional Intelligence Mastery", coverImageUrl: COVER };
 afterEach(cleanup);
 
-// O layout raiz passa a mesma resposta ao cabeçalho pelo provedor.
+// The root layout passes the same answer to the header through the provider.
 async function renderHome() {
   return render(<RealCoursesProvider value={state.open}>{await Home()}</RealCoursesProvider>);
 }
@@ -69,7 +71,7 @@ const headerLinks = () =>
     .map((link) => [link.textContent?.trim(), link.getAttribute("href")]);
 
 describe("marketing home", () => {
-  // O menu da home é o mesmo das outras páginas: links, nada de âncora, e Help.
+  // The home menu is the same as on the other pages: links, no anchor, and Help.
   it("uses the same header as every other page while the marketplace is closed", async () => {
     await renderHome();
 
@@ -81,8 +83,8 @@ describe("marketing home", () => {
     ]);
   });
 
-  // Vitrine fechada: sem a faixa "The marketplace"; no lugar, um cartão que
-  // leva a um curso real (o do fundador).
+  // Storefront closed: no "The marketplace" band; in its place, a card that
+  // leads to a real course (the owner's).
   it("swaps the marketplace band for one real course while fewer than 12 courses from 5 teachers are live", async () => {
     const { container } = await renderHome();
 
@@ -102,12 +104,12 @@ describe("marketing home", () => {
     expect(screen.getByTestId("marketplace")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /See a real course/ })).not.toBeInTheDocument();
     expect(headerLinks()[0]).toEqual(["Courses", "/courses"]);
-    // Vitrine aberta: o cartão do curso real não existe, a leitura não acontece.
+    // Storefront open: the real course card does not exist, the read does not happen.
     expect(readCourse).not.toHaveBeenCalled();
   });
 
-  // A capa de verdade do curso dentro do mesmo link, com o título do curso
-  // como texto alternativo (não é frase nova do dicionário).
+  // The course's real cover inside the same link, with the course title as
+  // alt text (it is not a new phrase in the dictionary).
   it("shows the real course cover inside the card link, with the course title as alt", async () => {
     state.course = showcase;
     await renderHome();
@@ -117,13 +119,13 @@ describe("marketing home", () => {
     expect(card).toHaveAttribute("href", "/courses/1a280dc6-acce-4f1f-9e95-56df095131ae");
     const cover = within(card).getByRole("img", { name: "Emotional Intelligence Mastery" });
     expect(cover).toHaveAttribute("src", expect.stringContaining(encodeURIComponent(COVER)));
-    // Abaixo da dobra: carrega preguiçoso, sem prioridade sobre o topo.
+    // Below the fold: lazy-loaded, with no priority over the top.
     expect(cover).toHaveAttribute("loading", "lazy");
     expect(within(card).getByText("Open the course")).toBeInTheDocument();
   });
 
-  // Sem capa, ou leitura que falhou ou passou do prazo (null): o cartão de
-  // texto de antes, sem quadro de imagem vazio.
+  // No cover, or a read that failed or timed out (null): the text-only card
+  // from before, with no empty image frame.
   it.each([
     ["the course has no cover", { ...showcase, coverImageUrl: null }],
     ["the read fails or times out", null],
@@ -145,10 +147,10 @@ describe("marketing home", () => {
     }
   });
 
-  // A ordem dos blocos dentro do <main> (o topo está simulado e não aparece):
-  // a faixa de fatos vem logo depois do topo e antes do "How it works"; as
-  // perguntas frequentes, entre a Promessa e a faixa final; a faixa "para quem
-  // é", entre os recursos e a Promessa.
+  // The order of the blocks inside <main> (the top is mocked and does not
+  // appear): the facts band comes right after the top and before "How it
+  // works"; the FAQ, between the Promise and the final band; the "who it is
+  // for" band, between the features and the Promise.
   it("keeps the home blocks in order: facts band after the hero, who-for before the Promise, FAQ after it", async () => {
     const { container } = await renderHome();
 
@@ -156,13 +158,13 @@ describe("marketing home", () => {
       (block) => block.id || block.getAttribute("data-testid"),
     );
     expect(blocks).toEqual(["facts-band", "how-it-works", "real-course", "capabilities", "who-for", "promise", "faq", "for-creators"]);
-    // A âncora pousa abaixo da barra fixa, como as outras seções.
+    // The anchor lands below the fixed bar, like the other sections.
     expect(container.querySelector("#faq")).toHaveClass("scroll-mt-28");
   });
 
-  // Acessibilidade basica: um landmark <main> por pagina, alvo do "Skip to
-  // content" que abre a barra.
-  it("tem exatamente um <main id=\"conteudo\">, alvo do pular para o conteudo", async () => {
+  // Basic accessibility: one <main> landmark per page, the target of the "Skip
+  // to content" that opens the bar.
+  it("has exactly one <main id=\"conteudo\">, the target of skip to content", async () => {
     const { container } = await renderHome();
 
     const mains = container.querySelectorAll("main");

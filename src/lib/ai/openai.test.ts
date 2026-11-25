@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { askJson, OpenAIConfigError, OpenAIError, transcribeToVtt } from "./openai";
 
-// Valor falso, sem o formato de chave real: só precisa ser reconhecível no erro.
+// Fake value, without the real key format: it only needs to be recognizable in the error.
 const KEY = "fake-key-for-tests";
 
 describe("openai client", () => {

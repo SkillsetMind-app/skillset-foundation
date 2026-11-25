@@ -1,20 +1,20 @@
 import type { DripStrategy } from "@/domain/drip-policy";
 
 /**
- * Tabela única de casos da liberação da aula (drip), usada dos dois lados:
+ * Single table of lesson release (drip) cases, used on both sides:
  *
- *   - src/domain/drip-policy-parity.test.ts roda cada caso na regra do JS
- *     (getLessonUnlockState, do mesmo jeito que a rota do vídeo chama);
- *   - supabase/tests/20260915020000_liberacao_da_aula_no_banco_smoke.sql roda o
- *     mesmo caso em public.lesson_is_released, no banco.
+ *   - src/domain/drip-policy-parity.test.ts runs each case on the JS rule
+ *     (getLessonUnlockState, the same way the video route calls it);
+ *   - supabase/tests/20260915020000_liberacao_da_aula_no_banco_smoke.sql runs the
+ *     same case in public.lesson_is_released, in the database.
  *
- * O teste do vitest confere que o bloco `drip-parity-cases` do smoke é
- * exatamente esta lista (toSqlTuple). Mudou um lado sem o outro, fica vermelho.
+ * The vitest test checks that the `drip-parity-cases` block of the smoke is
+ * exactly this list (toSqlTuple). If one side changes without the other, it goes red.
  */
 
-// O mesmo currículo nos seis cursos do smoke (lá os ids ganham o prefixo do
-// curso, porque lesson_id é único em course_lesson_content).
-// Posição global: a=0, b=1, p=2, c=3. Módulo: a, b, p no 0; c no 1.
+// The same curriculum in the six courses of the smoke (there the ids get the course
+// prefix, because lesson_id is unique in course_lesson_content).
+// Global position: a=0, b=1, p=2, c=3. Module: a, b, p in 0; c in 1.
 export const dripParityModules = [
   {
     lessons: [
@@ -26,7 +26,7 @@ export const dripParityModules = [
   { lessons: [{ id: "c", dripDelayDays: 1 }] },
 ];
 
-// courses.free_preview_lesson_id de todos os cursos do smoke.
+// courses.free_preview_lesson_id of all the courses in the smoke.
 export const dripParityPreviewLessonId = "p";
 
 export const dripParityCourses = {
@@ -44,7 +44,7 @@ export type DripParityCase = {
   name: string;
   course: DripParityCourse;
   lessonId: string;
-  // null = aluno sem matrícula (sem data de entrada).
+  // null = learner without enrollment (no entry date).
   enrolledDaysAgo: number | null;
   completedLessonIds: string[];
   released: boolean;
@@ -74,7 +74,7 @@ export const dripParityCases: DripParityCase[] = [
   { name: "no enrollment date starts the clock now", course: "lesson", lessonId: "b", enrolledDaysAgo: null, completedLessonIds: [], released: false },
 ];
 
-// A linha exata que o caso ocupa no bloco `drip-parity-cases` do smoke SQL.
+// The exact line the case occupies in the `drip-parity-cases` block of the SQL smoke.
 export function toSqlTuple(item: DripParityCase): string {
   return `('${item.name}', '${item.course}', '${item.lessonId}', ${item.enrolledDaysAgo ?? "null"}, '{${item.completedLessonIds.join(",")}}', ${item.released})`;
 }

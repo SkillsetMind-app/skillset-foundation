@@ -23,7 +23,7 @@ it("shows the order summary next to the form, with a way to the full course page
   expect(within(summary).getByText("Tu pedido")).toBeInTheDocument();
   expect(within(summary).getByText("17 lecciones")).toBeInTheDocument();
   expect(within(summary).getByRole("link", { name: "Ver todos los detalles del curso" })).toHaveAttribute("href", "/courses/focus");
-  // Sem capa, sem imagem: não se inventa arte.
+  // No cover, no image: art is not invented.
   expect(summary.querySelector("img")).toBeNull();
 });
 it.each(["community", "ebook", "live_event"])("a %s product does not talk about lessons in the summary", async (productFormat) => {
@@ -66,9 +66,9 @@ it("uses public course metadata and the permanent checkout canonical", async () 
   expect(metadata.description).toBe("Build focus");
   expect(metadata.alternates?.canonical).toBe("https://www.skillsetmind.com/courses/focus/checkout");
 });
-it("um título com $& no <title> do checkout aparece literal, sem virar '{title}'", async () => {
-  // Num replace sem callback, "$&" vira o trecho casado ("{title}"). O título é
-  // texto do professor, não nosso.
+it("a title with $& in the checkout <title> appears literally, without becoming '{title}'", async () => {
+  // In a replace without a callback, "$&" becomes the matched piece ("{title}"). The title is
+  // the teacher's text, not ours.
   state.course = { ...focus(), title: "Focus $&" };
   try {
     const metadata = await generateMetadata({ params: Promise.resolve({ slug: "focus" }) });

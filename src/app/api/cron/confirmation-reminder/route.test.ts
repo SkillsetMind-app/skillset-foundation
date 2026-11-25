@@ -204,8 +204,9 @@ describe("confirmation reminder cron", () => {
     }
   });
 
-  // Onda F: o lembrete mandava o link sem o curso e a pessoa caia no inicio
-  // generico. O cadastro guarda o destino; o lembrete o leva no link.
+  // Wave F: the reminder sent the link without the course and the person landed
+  // on the generic home page. Signup stores the destination; the reminder
+  // carries it in the link.
   it("carries the course the person signed up from in the link", async () => {
     const next = "/welcome?path=student&returnTo=%2Fcourses%2Ffocus%3Foffer%3Dannual";
     const buyer = user(30, { user_metadata: { signup_next: next } });
@@ -238,8 +239,8 @@ describe("confirmation reminder cron", () => {
     expect(body.text).not.toContain("next=");
   });
 
-  // O teto de 300 do cadastro vale tambem aqui: a pessoa pode gravar um
-  // signup_next enorme direto na API, e o link iria inteiro para o e-mail.
+  // The signup cap of 300 applies here too: a person can write a huge
+  // signup_next straight to the API, and the whole link would go into the email.
   it("drops a destination longer than the signup cap and sends the plain link", async () => {
     const huge = `/welcome?returnTo=${encodeURIComponent(`/${"b".repeat(5_000)}`)}`;
     const person = user(30, { user_metadata: { signup_next: huge } });

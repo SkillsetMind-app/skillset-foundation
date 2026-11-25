@@ -71,8 +71,8 @@ describe("installments", () => {
   });
 });
 
-// "Deixar pagar em parcelas" so aparece onde funciona: a mesma regra do
-// checkout (flag payments.cardInstallments + MXN + conta Stripe do Mexico).
+// "Let people pay in installments" only shows where it works: the same rule as the
+// checkout (flag payments.cardInstallments + MXN + Stripe account in Mexico).
 describe("canSplitPayments", () => {
   it.each([
     [true, "MXN", "MX", true],
@@ -86,7 +86,7 @@ describe("canSplitPayments", () => {
     expect(canSplitPayments({ featureEnabled, currency, stripeAccountCountry })).toBe(expected);
   });
 
-  it("concorda com a elegibilidade que o checkout le do plano", () => {
+  it("agrees with the eligibility the checkout reads from the plan", () => {
     const plan = (currency: string, country: string) =>
       buildInstallmentPlan({ amountMinor: 30000, installmentsEnabled: true, installmentsMax: 3, currency, stripeAccountCountry: country });
     for (const [currency, country] of [["MXN", "MX"], ["USD", "MX"], ["MXN", "US"]]) {
@@ -96,7 +96,7 @@ describe("canSplitPayments", () => {
     }
   });
 
-  it("a previa: 3x de 100 num preco de 300", () => {
+  it("the preview: 3x of 100 on a price of 300", () => {
     expect(buildInstallmentPlan({ amountMinor: 30000, installmentsEnabled: true, installmentsMax: 3, currency: "MXN" }).options.at(-1))
       .toMatchObject({ count: 3, amountMinor: 10000 });
   });

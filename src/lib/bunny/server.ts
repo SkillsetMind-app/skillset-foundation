@@ -121,7 +121,7 @@ export async function getBunnyVideoStatus(videoId: string): Promise<BunnyVideoSt
   };
 }
 
-// Idiomas que ja tem legenda no video, inclusive as enviadas fora do estudio.
+// Languages that already have a caption on the video, including those uploaded outside the studio.
 export async function getBunnyCaptionLanguages(videoId: string): Promise<string[]> {
   const { captions } = await getBunnyVideo(videoId);
   if (!Array.isArray(captions)) return [];
@@ -131,17 +131,17 @@ export async function getBunnyCaptionLanguages(videoId: string): Promise<string[
     .map((language) => language.toLowerCase());
 }
 
-// MP4 de 240p de um vídeo (o "MP4 fallback", ligado na biblioteca desde o
-// envio). É a menor versão com áudio: a transcrição lê só a voz dele. O host da
-// CDN não sai da API da biblioteca com a chave que temos aqui, por isso vem de
-// variável (BUNNY_STREAM_CDN_HOSTNAME, ex.: vz-xxxx.b-cdn.net).
+// 240p MP4 of a video (the "MP4 fallback", turned on in the library since
+// upload). It is the smallest version with audio: the transcription reads only its voice. The CDN
+// host does not come from the library API with the key we have here, so it comes from a
+// variable (BUNNY_STREAM_CDN_HOSTNAME, e.g. vz-xxxx.b-cdn.net).
 //
-// Assinado (token avançado da CDN): com a autenticação por token da CDN ligada
-// na biblioteca, a CDN só serve link assinado, e sem ela o MP4 baixava com um
-// Referer só. Pela documentação da Bunny, a mesma chave do player assina a CDN
-// da biblioteca: "HS256-" + Base64URL(HMAC-SHA256(chave, caminho + expires)).
-// Com a opção desligada, a CDN ignora os parâmetros. A leitura é um pedido só,
-// então a validade curta basta.
+// Signed (CDN advanced token): with the CDN's token authentication turned on
+// in the library, the CDN only serves a signed link, and without it the MP4 used to download with a
+// Referer alone. Per Bunny's documentation, the same player key signs the library's
+// CDN: "HS256-" + Base64URL(HMAC-SHA256(key, path + expires)).
+// With the option off, the CDN ignores the parameters. The read is a single request,
+// so a short validity is enough.
 export function bunnyLowestMp4Url(videoId: string, ttlSeconds = 300): string {
   const path = `/${encodeURIComponent(videoId)}/play_240p.mp4`;
   const url = `https://${requireEnv("BUNNY_STREAM_CDN_HOSTNAME")}${path}`;
@@ -155,8 +155,8 @@ export function bunnyLowestMp4Url(videoId: string, ttlSeconds = 300): string {
   return `${url}?${query.toString()}`;
 }
 
-// Publica (ou substitui) a legenda de um idioma no vídeo (Bunny "Add Caption").
-// O player da Bunny passa a mostrar o botão CC com esse idioma.
+// Publishes (or replaces) the caption of one language on the video (Bunny "Add Caption").
+// The Bunny player then shows the CC button with that language.
 export async function putBunnyCaption(videoId: string, language: string, label: string, vtt: string): Promise<void> {
   const libraryId = getLibraryId();
   const res = await fetch(
@@ -172,7 +172,7 @@ export async function putBunnyCaption(videoId: string, language: string, label: 
   if (!res.ok) throw new Error(`Bunny add caption failed: ${res.status}`);
 }
 
-// Tira a legenda de um idioma do vídeo. 404 = já não estava lá.
+// Removes the caption of one language from the video. 404 = it was already not there.
 export async function deleteBunnyCaption(videoId: string, language: string): Promise<void> {
   const libraryId = getLibraryId();
   const res = await fetch(

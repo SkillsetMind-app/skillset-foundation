@@ -93,8 +93,8 @@ export function subscribeToTeacherPayoutLedger(
     )
     .subscribe();
 
-  // `reload()` le de novo SEM mexer no canal (o "Try again" de Ganhos e das
-  // renovacoes): a versao mais nova e a unica que entrega.
+  // `reload()` reads again WITHOUT touching the channel (the "Try again" of Earnings and
+  // renewals): the newest version is the only one that delivers.
   return Object.assign(
     () => {
       stopped = true;

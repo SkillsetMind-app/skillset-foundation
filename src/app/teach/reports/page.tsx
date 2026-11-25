@@ -11,8 +11,8 @@ export async function generateMetadata() {
 /**
  * Hotmart-parity "Relatórios" entry: sales + recurrence rollup.
  * Reuses CreatorOpsHub metrics (orders, MRR, recorded earnings) until dedicated charts ship.
- * O cabecalho vem do dicionario: fixo em ingles, aparecia em ingles com a
- * interface em espanhol (QA visual em producao, 08/09).
+ * The header comes from the dictionary: fixed in English, it showed in English with the
+ * interface in Spanish (visual QA in production, Sep 8).
  */
 export default async function TeacherReportsPage() {
   const { t } = await getServerTranslation();

@@ -28,7 +28,7 @@ export function normalizeInstallmentsMax(raw: unknown): number {
   return Math.min(24, Math.max(1, n));
 }
 
-/** Venda em MXN numa conta Stripe do Mexico: o unico lugar onde o parcelamento por cartao funciona. */
+/** Sale in MXN on a Mexican Stripe account: the only place where card installments work. */
 export function isStripeCardInstallmentsEligible(
   currency: string,
   stripeAccountCountry?: string | null,
@@ -40,10 +40,10 @@ export function isStripeCardInstallmentsEligible(
 }
 
 /**
- * A mesma regra do checkout (/api/payments/checkout): a flag
- * payments.cardInstallments ligada e a venda elegivel. O construtor so oferece
- * "deixar pagar em parcelas" quando isto e verdade; fora disso a opcao nao
- * existe na tela, em vez de aparecer desligada com explicacao tecnica.
+ * The same rule as the checkout (/api/payments/checkout): the flag
+ * payments.cardInstallments turned on and the sale eligible. The builder only offers
+ * "let people pay in installments" when this is true; otherwise the option does not
+ * exist on the screen, instead of showing up disabled with a technical explanation.
  */
 export function canSplitPayments(input: {
   featureEnabled: boolean;

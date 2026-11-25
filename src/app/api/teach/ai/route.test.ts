@@ -1,8 +1,8 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// Nada sai daqui: Supabase, Bunny e IA são falsos. O que se confere é a ordem
-// dos portões e o que a rota grava, cobra e devolve.
+// Nothing leaves here: Supabase, Bunny and AI are fakes. What is checked is the
+// order of the gates and what the route saves, charges and returns.
 const mocks = vi.hoisted(() => ({
   user: vi.fn(),
   isTeacher: vi.fn(),
@@ -177,7 +177,7 @@ describe("transcribe", () => {
       course_id: "course-1", lesson_id: "l1", language: "es", owner_id: "owner-1", video_id: "vid-1", vtt: VTT,
       translated_from: null,
     });
-    // A chave tem o curso: um id de aula copiado para outro curso não toma esta linha.
+    // The key includes the course: a lesson id copied into another course does not take this row.
     expect(upsertArgs?.[1]).toEqual({ onConflict: "course_id,lesson_id,language" });
     const body = await response.json();
     expect(body.usage).toEqual({ usedSeconds: 126, limitSeconds: 7200 });
@@ -291,10 +291,10 @@ describe("review and publish", () => {
   });
 });
 
-// A Bunny troca a legenda do idioma inteira: uma feita a mao fora da
-// ferramenta nao some sem o professor dizer que pode.
+// Bunny replaces the whole caption for a language: one made by hand outside the
+// tool does not disappear unless the teacher says it can.
 describe("publish over captions already on Bunny", () => {
-  // A legenda existe e nunca foi publicada por nos.
+  // The caption exists and was never published by us.
   beforeEach(() => mocks.adminResult.mockImplementation(() => ({ data: row(), error: null })));
 
   it("asks first when the video already has this language, and publishes nothing", async () => {

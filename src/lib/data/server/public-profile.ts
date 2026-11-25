@@ -8,29 +8,29 @@ import { isReservedHandle, type PublicProfile } from "@/domain/user-profile";
 import { anonymousReadClient } from "@/lib/data/server/public-course";
 import { rowToPublicProfile } from "@/lib/supabase/user-mappers";
 
-// Server-only (segmento `/server/`). O perfil público do professor é montado
-// no SERVIDOR: antes ele carregava no navegador, e o navegador do Instagram
-// mostrava o esqueleto, um título igual para todo professor e uma prévia
-// genérica. `public_profiles` e cursos publicados já são legíveis por anônimo.
+// Server-only (`/server/` segment). The teacher's public profile is built
+// on the SERVER: before, it loaded in the browser, and Instagram's browser
+// showed the skeleton, a title identical for every teacher and a generic
+// preview. `public_profiles` and published courses are already readable by anonymous.
 
-/** Mesmo formato de users_username_format (migration 20260910040000). */
+/** Same format as users_username_format (migration 20260910040000). */
 const USERNAME = /^[a-z0-9][a-z0-9._-]{2,31}$/;
 
-// Uma tentativa, 3 s e 60 s de cache: o Instagram manda picos para a mesma
-// página, e a edição do perfil aparece em até um minuto.
+// One attempt, 3 s and 60 s of cache: Instagram sends spikes to the same
+// page, and a profile edit shows up within a minute.
 const client = () => anonymousReadClient({ timeoutMs: 3_000, revalidate: 60 });
 
 /**
- * `ref` é o uid (`/instructors/{uid}`) ou `@usuario` (`/@usuario`, que o
- * next.config reescreve para `/instructors/@usuario`). O `@` decide a coluna,
- * então um uid nunca é confundido com um @ e vice-versa.
+ * `ref` is the uid (`/instructors/{uid}`) or `@usuario` (`/@usuario`, which
+ * next.config rewrites to `/instructors/@usuario`). The `@` decides the column,
+ * so a uid is never confused with an @ and vice versa.
  *
- * - null: não existe (ou o @ nem tem o formato válido) → 404 de verdade;
- * - lança: a leitura falhou → a página de erro, nunca um 404 que tiraria do
- *   índice um perfil que existe.
+ * - null: does not exist (or the @ does not even have a valid format) → a real 404;
+ * - throws: the read failed → the error page, never a 404 that would take an
+ *   existing profile out of the index.
  *
- * `cache` do React: metadata e página perguntam no mesmo pedido, o banco
- * responde uma vez.
+ * React `cache`: metadata and page ask in the same request, the database
+ * answers once.
  */
 export const getPublicProfileByRef = cache(async (ref: string): Promise<PublicProfile | null> => {
   const handle = ref.startsWith("@") ? ref.slice(1).toLowerCase() : null;
@@ -38,9 +38,9 @@ export const getPublicProfileByRef = cache(async (ref: string): Promise<PublicPr
 
   const { data, error } = await client()
     .from("public_profiles")
-    // select *: se o deploy chegar antes da migration do selo, as colunas
-    // novas só faltam (sem selo) em vez de derrubar a página. A tabela inteira
-    // já é pública.
+    // select *: if the deploy arrives before the verified badge migration, the new
+    // columns are just missing (no badge) instead of taking the page down. The whole
+    // table is already public.
     .select("*")
     .eq(handle === null ? "uid" : "username", handle ?? ref)
     .maybeSingle();
@@ -48,7 +48,7 @@ export const getPublicProfileByRef = cache(async (ref: string): Promise<PublicPr
   return data ? rowToPublicProfile(data) : null;
 });
 
-/** Só o que a linha de curso do perfil mostra. */
+/** Only what the profile's course row shows. */
 export type CreatorCourse = {
   id: string;
   href: string;
@@ -62,9 +62,9 @@ export type CreatorCourse = {
 };
 
 /**
- * Cursos publicados do professor, sem os internos de teste (mesmos prefixos do
- * predicado da loja). Falha vale null: o perfil continua no ar com o aviso de
- * que os cursos não carregaram.
+ * The teacher's published courses, without the internal test ones (same prefixes as the
+ * store predicate). A failure counts as null: the profile stays up with the notice
+ * that the courses did not load.
  */
 export const listCreatorCourses = cache(async (ownerId: string): Promise<CreatorCourse[] | null> => {
   try {
@@ -81,8 +81,8 @@ export const listCreatorCourses = cache(async (ownerId: string): Promise<Creator
 
     return (data ?? []).map((row) => ({
       id: row.id,
-      // Mesma regra de courseUrlSlug: title_key, senão o id. O `slug` legado
-      // não serve: a página do curso só resolve id e title_key.
+      // Same rule as courseUrlSlug: title_key, otherwise the id. The legacy `slug`
+      // does not work: the course page only resolves id and title_key.
       href: `/courses/${row.title_key || row.id}`,
       title: row.title,
       coverImageUrl: row.cover_image_url,

@@ -51,8 +51,8 @@ const themeInitScript = `
 })();
 `;
 
-// Título padrão de toda página sem título próprio (a sala de aula e o estúdio
-// inteiros): segue o idioma, como o <html lang> logo abaixo.
+// Default title of every page without its own title (the whole classroom and studio):
+// it follows the language, like the <html lang> right below.
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getServerTranslation();
   return {
@@ -72,9 +72,9 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Vitrine aberta (12 cursos de 5 professores)? Lido uma vez aqui (anônimo,
-  // cache de 5 min) para as ilhas cliente que linkam a loja não buscarem nada
-  // no navegador.
+  // Open storefront (12 courses from 5 teachers)? Read once here (anonymous,
+  // 5 min cache) so the client islands that link to the store do not fetch anything
+  // in the browser.
   const [locale, hasRealCourses] = await Promise.all([getServerLocale(), isMarketplaceOpen()]);
   const nonce = (await headers()).get("x-nonce") ?? undefined;
 

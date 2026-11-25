@@ -23,7 +23,7 @@ function firstParam(value: SearchParamValue): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
-// A referencia na URL nao verifica pagamento, assinatura nem titularidade.
+// The reference in the URL does not verify payment, subscription or ownership.
 export default async function BillingReturnPage({
   searchParams,
 }: BillingReturnPageProps) {
@@ -34,9 +34,10 @@ export default async function BillingReturnPage({
   return (
     <ProtectedSurface permissions={["auth.signOut"]}>
       <PlatformShell title={t("billingCheckout.returnTitle")} compact>
-        {/* Com referencia de checkout, a tela confere a assinatura no servidor e
-            confirma o teste gratis (BillingReturnStatus). Sem referencia, nada
-            ha para conferir: segue o aviso de que a visita nao confirma nada. */}
+        {/* With a checkout reference, the screen checks the subscription on the
+            server and confirms the free trial (BillingReturnStatus). Without a
+            reference there is nothing to check: the notice stays that the visit
+            confirms nothing. */}
         {hasCheckoutReference ? (
           <BillingReturnStatus />
         ) : (

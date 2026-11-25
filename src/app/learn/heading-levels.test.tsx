@@ -4,20 +4,21 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 /**
- * Toda página de /learn é montada dentro do `PlatformShell`, e é ELE quem
- * emite o `<h1>`. Logo, o primeiro cabeçalho do componente que a página
- * renderiza é o nível 2 — não o 3.
+ * Every /learn page is mounted inside `PlatformShell`, and the shell is what
+ * emits the `<h1>`. So the first heading of the component the page renders is
+ * level 2 — not 3.
  *
- * Nove componentes de /learn abriam em `h3` e três em `h4`, direto sob o h1:
- * a área do aluno inteira pulava um degrau, e quem navega por cabeçalho
- * (leitor de tela, atalho de navegação) caía do título da página direto numa
- * subseção, sem o nível intermediário que diz "esta é a seção principal".
+ * Nine /learn components opened on `h3` and three on `h4`, directly under the
+ * h1: the whole learner area skipped a level, and anyone navigating by heading
+ * (screen reader, navigation shortcut) dropped from the page title straight
+ * into a subsection, without the middle level that says "this is the main
+ * section".
  *
- * Esta prova é de CÓDIGO-FONTE, de propósito. A tentativa óbvia — renderizar
- * a página e ler a árvore — passa sem enxergar nada: os hubs de /learn são
- * client components atrás de `ProtectedSurface`, e no harness de teste só o
- * h1 do shell chega ao DOM. Um teste assim ficaria verde com o defeito de
- * volta, que é pior que não ter teste.
+ * This proof reads SOURCE CODE, on purpose. The obvious attempt — render the
+ * page and read the tree — passes without seeing anything: the /learn hubs are
+ * client components behind `ProtectedSurface`, and in the test harness only the
+ * shell's h1 reaches the DOM. A test like that would stay green with the defect
+ * back, which is worse than having no test.
  */
 
 const LEARN_PAGES_DIR = join(process.cwd(), "src", "app", "learn");
@@ -33,7 +34,7 @@ function collectPageFiles(dir: string): string[] {
   });
 }
 
-/** Componentes de `@/components/learn/...` importados por uma página. */
+/** `@/components/learn/...` components imported by a page. */
 function importedLearnComponents(pageSource: string): string[] {
   return Array.from(
     pageSource.matchAll(/from\s+"@\/components\/learn\/([\w-]+)"/g),
@@ -45,20 +46,20 @@ function firstHeadingLevel(componentSource: string): number | null {
   return match ? Number(match[1]) : null;
 }
 
-describe("níveis de cabeçalho da área do aluno", () => {
+describe("heading levels of the learner area", () => {
   const pages = collectPageFiles(LEARN_PAGES_DIR);
 
   it("encontra as páginas de /learn", () => {
     expect(pages.length).toBeGreaterThan(5);
   });
 
-  it("nenhum componente de topo de /learn abre abaixo do h2", () => {
+  it("no top-level /learn component opens below h2", () => {
     const offenders: string[] = [];
 
     for (const page of pages) {
       const pageSource = readFileSync(page, "utf8");
 
-      // Só páginas que passam pelo shell: são as que já têm um h1 acima.
+      // Only pages that go through the shell: they are the ones that already have an h1 above.
       if (!pageSource.includes("PlatformShell")) {
         continue;
       }
@@ -86,13 +87,13 @@ describe("níveis de cabeçalho da área do aluno", () => {
   });
 });
 
-describe("níveis de cabeçalho da aula aberta", () => {
-  // O título da aula era h4 logo abaixo do h1 do curso, e comentários, quiz e
-  // os avisos do palco (trancada, carregando, sem mídia) eram h5: dois degraus
-  // pulados para quem navega por cabeçalho.
+describe("heading levels of the open lesson", () => {
+  // The lesson title was h4 right below the course h1, and the comments, quiz
+  // and stage notices (locked, loading, no media) were h5: two levels skipped
+  // for anyone navigating by heading.
   const read = (file: string) => readFileSync(join(LEARN_COMPONENTS_DIR, file), "utf8");
 
-  it("a aula é h2 e as subseções dela são h3", () => {
+  it("the lesson is h2 and its subsections are h3", () => {
     const workspace = read("enrolled-course-workspace.tsx");
     const panel = workspace.slice(workspace.indexOf("function LessonContentPanel"));
     expect(firstHeadingLevel(panel)).toBe(2);
@@ -104,10 +105,10 @@ describe("níveis de cabeçalho da aula aberta", () => {
     }
   });
 
-  // Sob a capa o título da aula (h2) tem 18px (text-lg); o aviso do palco
-  // logo abaixo (h3: trancada, sem mídia) tinha 20px. Um subtítulo não pode
-  // ser maior que o título dele.
-  it("o aviso do palco não é maior que o título da aula sob a capa", () => {
+  // Under the cover the lesson title (h2) is 18px (text-lg); the stage notice
+  // right below it (h3: locked, no media) was 20px. A subtitle cannot be
+  // larger than its title.
+  it("the stage notice is not larger than the lesson title under the cover", () => {
     const workspace = read("enrolled-course-workspace.tsx");
     expect(workspace).toContain('underHero ? "text-lg font-semibold"');
     const css = readFileSync(join(process.cwd(), "src", "app", "globals.css"), "utf8");

@@ -11,25 +11,25 @@ import { assertSupabaseClientConfig } from "@/lib/supabase/config";
 import type { Database } from "@/lib/supabase/database.types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-// Server-only (o segmento `/server/` é o marcador deste repo, como em
-// src/lib/payments/server e src/lib/learn/server).
+// Server-only (the `/server/` segment is this repo's marker, as in
+// src/lib/payments/server and src/lib/learn/server).
 //
-// POR QUE ESTE MÓDULO EXISTE
+// WHY THIS MODULE EXISTS
 //
-// src/lib/data/published-courses.ts começa com "use client", então nada dele
-// pode ser importado de um Server Component — nem o mapper de linha, nem
-// `courseUrlSlug`. Era o motivo de a página de curso não conseguir resolver um
-// curso de criador no servidor e cair no metadata literal "Course", igual para
-// todos: colar o link de qualquer curso no WhatsApp gerava o mesmo card, sem
-// título, sem descrição e sem imagem.
+// src/lib/data/published-courses.ts starts with "use client", so nothing in it
+// can be imported from a Server Component — neither the row mapper nor
+// `courseUrlSlug`. That was why the course page could not resolve a
+// creator's course on the server and fell back to the literal metadata "Course", the same for
+// everyone: pasting the link of any course into WhatsApp produced the same card, with no
+// title, no description and no image.
 //
-// A leitura anônima serve aqui e não precisa de service_role: a policy
-// `courses_select_public` libera `status IN ('published','in_review')` para
-// `{public}`, e o EXECUTE dos predicados foi devolvido ao anon em
-// 20260901120000 — antes disso toda leitura anônima abortava com 42501, que é
-// exatamente por que esta abordagem não era possível até hoje.
+// The anonymous read works here and does not need service_role: the policy
+// `courses_select_public` allows `status IN ('published','in_review')` for
+// `{public}`, and the EXECUTE of the predicates was given back to anon in
+// 20260901120000 — before that every anonymous read aborted with 42501, which is
+// exactly why this approach was not possible until today.
 
-/** Só o que a página pública e o card de compartilhamento precisam. */
+/** Only what the public page and the share card need. */
 export type PublicCourseSummary = {
   id: string;
   urlSlug: string;
@@ -38,7 +38,7 @@ export type PublicCourseSummary = {
   category: string | null;
   coverImageUrl: string | null;
   lessonCount: number | null;
-  /** "course", "community", "ebook" ou "live_event": só curso fala em aulas. */
+  /** "course", "community", "ebook" or "live_event": only a course talks about lessons. */
   productFormat: string | null;
   updatedAt: string | null;
 };
@@ -61,9 +61,9 @@ type CourseRow = {
 };
 
 /**
- * A URL pública de um curso é o `title_key`, com queda para `id` em linhas
- * antigas — espelha `courseUrlSlug` de published-courses.ts. Duplicado de
- * propósito: importar de lá arrastaria o "use client" para o servidor.
+ * A course's public URL is the `title_key`, falling back to `id` on old
+ * rows — mirrors `courseUrlSlug` from published-courses.ts. Duplicated on
+ * purpose: importing from there would drag the "use client" into the server.
  */
 function publicUrlSlug(row: CourseRow): string {
   return row.title_key || row.slug || row.id;
@@ -84,16 +84,16 @@ function toSummary(row: CourseRow): PublicCourseSummary {
 }
 
 /**
- * Resolve um curso publicado por id OU title_key, na mesma ordem que o cliente
- * usa (published-courses.ts:209-228) — se as duas pontas divergirem, o metadata
- * descreve um curso e o corpo mostra outro.
+ * Resolves a published course by id OR title_key, in the same order the client
+ * uses (published-courses.ts:209-228) — if the two ends diverge, the metadata
+ * describes one course and the body shows another.
  *
- * Só `published`: a policy também libera `in_review`, mas curso em revisão não
- * está à venda e não deve ganhar página pública nem entrar no sitemap.
+ * Only `published`: the policy also allows `in_review`, but a course in review
+ * is not for sale and must not get a public page or enter the sitemap.
  *
- * `cache` do React: generateMetadata e a página leem o mesmo ref no mesmo
- * pedido. Sem ele o banco respondia duas vezes, e as duas leituras podiam
- * divergir (o card do link descrevia uma coisa e o corpo mostrava outra).
+ * React `cache`: generateMetadata and the page read the same ref in the same
+ * request. Without it the database answered twice, and the two reads could
+ * diverge (the link card described one thing and the body showed another).
  */
 export const getPublicCourseByRef = cache(async (
   ref: string,
@@ -120,8 +120,8 @@ export const getPublicCourseByRef = cache(async (
     const row = byKey.data?.[0];
     return row ? toSummary(row as CourseRow) : null;
   } catch {
-    // A página tem caminho de fallback (o client component continua buscando),
-    // então uma falha de leitura aqui degrada o metadata — nunca derruba a rota.
+    // The page has a fallback path (the client component keeps fetching),
+    // so a read failure here degrades the metadata — it never takes the route down.
     return null;
   }
 });
@@ -133,32 +133,32 @@ const ACCESS_FIELDS = "id, status, owner_id";
 type AccessRow = { id: string; status: string | null; owner_id: string | null };
 
 /**
- * O que a página /courses/[ref] faz com um ref que não é do catálogo estático
- * nem curso publicado encontrado.
+ * What the /courses/[ref] page does with a ref that is not in the static catalog
+ * and is not a published course found.
  *
- * A leitura usa o cliente da SESSÃO do pedido, então a RLS decide o que existe
- * para quem pede: o dono (courses_select_owner), o admin aal2
- * (courses_select_admin) e o aluno matriculado (courses_select_enrolled) leem
- * rascunho e arquivado; o público só lê publicado e em revisão
- * (courses_select_public). Como "em revisão" é legível por qualquer um, ali
- * exige-se ser o dono ou o admin.
+ * The read uses the client of the request's SESSION, so RLS decides what exists
+ * for the requester: the owner (courses_select_owner), the aal2 admin
+ * (courses_select_admin) and the enrolled learner (courses_select_enrolled) read
+ * drafts and archived courses; the public only reads published and in review
+ * (courses_select_public). Since "in review" is readable by anyone, there
+ * being the owner or the admin is required.
  *
- * - "visible": renderiza (prévia do dono/admin, ou curso publicado).
- * - "missing": 404 de verdade.
- * - "unknown": a leitura falhou; quem chama NÃO deve responder 404 — um
- *   soluço do banco não pode derrubar a página de um curso publicado.
+ * - "visible": renders (preview for the owner/admin, or a published course).
+ * - "missing": a real 404.
+ * - "unknown": the read failed; the caller must NOT answer 404 — a
+ *   database hiccup cannot take down the page of a published course.
  *
- * `cache` do React pelo mesmo motivo de getPublicCourseByRef: metadata e
- * página decidem amostra/404 com UMA resposta por pedido.
+ * React `cache` for the same reason as getPublicCourseByRef: metadata and
+ * page decide sample/404 with ONE answer per request.
  */
 export const getCourseRefAccess = cache(async (ref: string): Promise<CourseRefAccess> => {
   try {
     const supabase = await createSupabaseServerClient();
 
-    // courses.id é TEXT: um title_key não faz esta busca falhar, só não acha
-    // nada. Erro aqui é falha de verdade — e seguir para o title_key, vazio nos
-    // links que levam o id cru (cancel_url do Stripe, "ver página pública",
-    // perfil do professor), daria 404 num curso no ar.
+    // courses.id is TEXT: a title_key does not make this lookup fail, it just finds
+    // nothing. An error here is a real failure — and continuing to the title_key, empty in the
+    // links that carry the raw id (Stripe's cancel_url, "see public page",
+    // teacher profile), would give a 404 on a course that is live.
     const byId = await supabase
       .from("courses")
       .select(ACCESS_FIELDS)
@@ -178,24 +178,24 @@ export const getCourseRefAccess = cache(async (ref: string): Promise<CourseRefAc
     }
 
     if (!row) {
-      // Sessão revogada (conta suspensa e restaurada, convite aceito): o GoTrue
-      // ainda aceita o JWT, mas a policy restritiva account_access_guard esconde
-      // TODA linha dela, curso publicado inclusive. Não achar ali não é "não
-      // existe". Sem sessão no cookie, getUser responde sem ir à rede.
+      // Revoked session (suspended and restored account, accepted invite): GoTrue
+      // still accepts the JWT, but the restrictive policy account_access_guard hides
+      // EVERY row of it, a published course included. Not finding it there is not "it does not
+      // exist". With no session in the cookie, getUser answers without going to the network.
       const { error: userError } = await supabase.auth.getUser();
       return userError?.code === "account_access_denied" ? "unknown" : "missing";
     }
     if (row.status === "published") return "visible";
-    // courses_select_public só expõe published e in_review. Rascunho,
-    // needs_changes ou inactive que voltou é a RLS autorizando ESTE leitor
-    // (dono, admin aal2 ou aluno matriculado) — não depende de getUser, que
-    // pode falhar com o JWT ainda válido.
+    // courses_select_public only exposes published and in_review. A draft,
+    // needs_changes or inactive course that came back is RLS authorizing THIS reader
+    // (owner, aal2 admin or enrolled learner) — it does not depend on getUser, which
+    // can fail with the JWT still valid.
     if (row.status !== "in_review") return "visible";
 
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (!user) {
-      // Sem sessão, ou sessão devendo o segundo fator: visitante anônimo.
-      // Qualquer outra falha do Auth não é resposta e não vira 404.
+      // No session, or a session owing the second factor: anonymous visitor.
+      // Any other Auth failure is not an answer and does not become a 404.
       const anonymous = !userError
         || isAuthSessionMissingError(userError)
         || userError.code === "mfa_required";
@@ -203,9 +203,9 @@ export const getCourseRefAccess = cache(async (ref: string): Promise<CourseRefAc
     }
     if (row.owner_id === user.id) return "visible";
 
-    // Mesmo teste do cliente (creator-course-detail: hasPermission(roles,
-    // "platform.accessAdmin")), com os papéis do perfil da sessão. Papel
-    // operacional só vale em sessão aal2 (20260912010000).
+    // Same test as the client (creator-course-detail: hasPermission(roles,
+    // "platform.accessAdmin")), with the roles of the session profile. An
+    // operational role only counts in an aal2 session (20260912010000).
     const profile = await supabase.from("users").select("roles").eq("uid", user.id).maybeSingle();
     if (profile.error) return "unknown";
     const roles = Array.isArray(profile.data?.roles)
@@ -221,13 +221,13 @@ export const getCourseRefAccess = cache(async (ref: string): Promise<CourseRefAc
 });
 
 /**
- * Cliente ANÔNIMO para leitura pública no servidor: sem cookie (o token
- * vencido de um visitante não vira 401), uma tentativa só e prazo curto.
+ * ANONYMOUS client for public reads on the server: no cookie (a visitor's
+ * expired token does not become a 401), a single attempt and a short deadline.
  *
- * Sem nova tentativa porque o postgrest-js repete GET 3 vezes (1 s, 2 s, 4 s)
- * e só desiste de cara com AbortError — o prazo estoura com TimeoutError,
- * então um banco mudo prendia cada rota ~13 s. A resposta fica `revalidate`
- * segundos no cache de dados do Next.
+ * No retry because postgrest-js repeats GET 3 times (1 s, 2 s, 4 s)
+ * and only gives up right away on AbortError — the deadline blows up with TimeoutError,
+ * so a silent database held each route ~13 s. The response stays `revalidate`
+ * seconds in Next's data cache.
  */
 export function anonymousReadClient({ timeoutMs, revalidate }: { timeoutMs: number; revalidate: number }) {
   const { url, anonKey } = assertSupabaseClientConfig();
@@ -242,21 +242,21 @@ export function anonymousReadClient({ timeoutMs, revalidate }: { timeoutMs: numb
 }
 
 /**
- * Existe ao menos UM curso real publicado? Decide a faixa de cursos da home e
- * o /courses do sitemap.
+ * Is there at least ONE real published course? Decides the home's course strip and
+ * the sitemap's /courses.
  *
- * - Cliente anônimo, sem cookie: o token vencido de um visitante não vira 401
- *   e não some com a seção dele. `courses_select_public` libera publicado.
- * - Os internos de teste saem no SQL, pelos mesmos prefixos do predicado da
- *   loja, e basta uma linha.
- * - A resposta fica 5 min no cache de dados do Next e a leitura desiste em
- *   1,5 s: a home não espera o banco a cada visita.
- * - Sem nova tentativa: o postgrest-js repete GET 3 vezes (1 s, 2 s, 4 s) e só
- *   desiste de cara com AbortError — o prazo estoura com TimeoutError, então
- *   um banco mudo prendia cada rota ~13 s.
- * - `cache` do React: layout, página e rodapé perguntam no mesmo pedido e o
- *   banco responde uma vez (fetch com `signal` não é deduplicado pelo Next).
- * - Falha vale "não" (a seção some, a página não quebra) e vai para o log.
+ * - Anonymous client, no cookie: a visitor's expired token does not become a 401
+ *   and does not make their section disappear. `courses_select_public` allows published.
+ * - Internal test courses are filtered out in the SQL, by the same prefixes as the
+ *   store predicate, and one row is enough.
+ * - The response stays 5 min in Next's data cache and the read gives up at
+ *   1.5 s: the home does not wait for the database on every visit.
+ * - No retry: postgrest-js repeats GET 3 times (1 s, 2 s, 4 s) and only
+ *   gives up right away on AbortError — the deadline blows up with TimeoutError, so
+ *   a silent database held each route ~13 s.
+ * - React `cache`: layout, page and footer ask in the same request and the
+ *   database answers once (fetch with `signal` is not deduplicated by Next).
+ * - A failure counts as "no" (the section disappears, the page does not break) and goes to the log.
  */
 export const hasRealPublishedCourse = cache(async (): Promise<boolean> => {
   try {
@@ -275,9 +275,9 @@ export const hasRealPublishedCourse = cache(async (): Promise<boolean> => {
   }
 });
 
-// Vitrine aberta (decisão do dono, 13/11/2026): a seção "The marketplace" da
-// home e as portas para a loja (menu, rodapé, atalhos) só aparecem com uma
-// vitrine de verdade. Abaixo disso, somem sozinhas; /courses segue no ar.
+// Open storefront (the owner's decision, Nov 13, 2026): the "The marketplace" section of the
+// home and the doors to the store (menu, footer, shortcuts) only show up with a
+// real storefront. Below that, they disappear by themselves; /courses stays up.
 export const MARKETPLACE_MIN_COURSES = 12;
 export const MARKETPLACE_MIN_TEACHERS = 5;
 
@@ -286,9 +286,9 @@ export function marketplaceIsOpen(ownerIds: ReadonlyArray<string | null>): boole
 }
 
 /**
- * A loja tem cursos reais publicados suficientes para virar vitrine? Mesma
- * leitura anônima e em cache de hasRealPublishedCourse; falha conta como
- * fechada — a home nunca quebra por isso.
+ * Does the store have enough real published courses to become a storefront? Same
+ * anonymous, cached read as hasRealPublishedCourse; a failure counts as
+ * closed — the home never breaks because of it.
  */
 export const isMarketplaceOpen = cache(async (): Promise<boolean> => {
   try {
@@ -308,14 +308,14 @@ export const isMarketplaceOpen = cache(async (): Promise<boolean> => {
 });
 
 /**
- * Título e capa de UM curso publicado, para o cartão "See a real course" da
- * home enquanto a vitrine está fechada. Mesma leitura de isMarketplaceOpen:
- * cliente anônimo, uma tentativa só, desiste de verdade em 1,5 s (o fetch é
- * abortado) e a resposta fica 5 min no cache de dados do Next. Assim a home
- * não paga uma ida ao banco por visita, e um banco lento não segura cada
- * visita nem deixa leituras abandonadas repetindo por trás. Só as duas
- * colunas que o cartão usa. Falha ou prazo estourado vale null: a home mostra
- * o cartão de texto.
+ * Title and cover of ONE published course, for the "See a real course" card on the
+ * home while the storefront is closed. Same read as isMarketplaceOpen:
+ * anonymous client, a single attempt, really gives up at 1.5 s (the fetch is
+ * aborted) and the response stays 5 min in Next's data cache. That way the home
+ * does not pay a trip to the database per visit, and a slow database does not hold each
+ * visit nor leave abandoned reads retrying behind the scenes. Only the two
+ * columns the card uses. A failure or a blown deadline counts as null: the home shows
+ * the text card.
  */
 export const getShowcaseCourseCover = cache(async (
   id: string,
@@ -336,8 +336,8 @@ export const getShowcaseCourseCover = cache(async (
 });
 
 /**
- * Cursos reais publicados, um por URL do sitemap. Os internos de teste saem
- * pelo MESMO predicado que a loja usa; a página deles segue no ar.
+ * Real published courses, one per sitemap URL. Internal test courses are filtered out
+ * by the SAME predicate the store uses; their page stays up.
  */
 export async function listPublishedCourses(): Promise<PublicCourseSummary[]> {
   try {

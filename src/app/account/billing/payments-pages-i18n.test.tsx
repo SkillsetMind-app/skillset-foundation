@@ -35,8 +35,8 @@ vi.mock("@/components/platform/platform-shell", () => ({
 vi.mock("@/components/account/embedded-checkout-panel", () => ({
   EmbeddedCheckoutPanel: (props: unknown) => { mocks.checkout(props); return <div>Checkout fixture</div>; },
 }));
-// A tela de retorno pergunta a assinatura ao servidor. Aqui o servidor nunca
-// tem assinatura: so a referencia na URL, que nao pode confirmar nada.
+// The return screen asks the server for the subscription. Here the server never
+// has a subscription: only the reference in the URL, which cannot confirm anything.
 vi.mock("@/lib/payments/billing", () => ({
   fetchPlanBillingState: async () => ({ trialEligible: true, subscription: null }),
 }));
@@ -71,7 +71,7 @@ it.each(["en", "es"] as const)("does not treat an unverified session reference a
   vi.useFakeTimers();
   const page = await BillingReturnPage({ searchParams: Promise.resolve({ session_id: "session-reference-fixture" }) });
   render(<I18nProvider initialLocale={locale} initialDictionary={getDictionary(locale)}>{page}</I18nProvider>);
-  // Enquanto confere e depois de desistir (~45 s sem assinatura), nada confirma.
+  // While it checks, and after it gives up (~45 s with no subscription), nothing is confirmed.
   await act(async () => { await vi.advanceTimersByTimeAsync(0); });
   expect(screen.getByRole("heading", { name: locale === "es" ? "Confirmando tu plan..." : "Confirming your plan..." })).toBeInTheDocument();
   expect(document.querySelector(".lucide-circle-check")).toBeNull();

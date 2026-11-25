@@ -71,9 +71,10 @@ describe("pricing page", () => {
     expect(grid.getByText("Recommended").closest("article")).toHaveTextContent("Starter");
   });
 
-  // Cada fato uma vez: a taxa na linha abaixo do preço, a economia anual no
-  // seletor e o teste grátis numa frase junto dos botões. O Pro dizia "0%
-  // commission" três vezes seguidas e a página citava o teste nove vezes.
+  // Each fact once: the fee on the line below the price, the yearly saving in
+  // the selector and the free trial in one sentence next to the buttons. Pro
+  // said "0% commission" three times in a row and the page mentioned the trial
+  // nine times.
   it("states the fee, the yearly saving and the trial once each", async () => {
     render(await PricingPage());
 
@@ -85,7 +86,7 @@ describe("pricing page", () => {
       expect(count(text, "Card processing by Stripe still applies")).toBeLessThanOrEqual(1);
       expect(text).not.toContain("Annual billing saves");
     }
-    // A lista fica só com o que muda de um plano para o outro.
+    // The list keeps only what changes from one plan to the next.
     const pro = within(region).getByText("Pro").closest("article")!;
     expect(pro).toHaveTextContent("Creators with an established catalog.");
     expect(pro).toHaveTextContent("5 custom domains and 5 marketplace highlights");
@@ -93,7 +94,7 @@ describe("pricing page", () => {
     expect(within(region).getByText("1 custom domain and 1 marketplace highlight")).toBeInTheDocument();
     expect(within(region).getByText("Publish once your course passes the launch checks")).toBeInTheDocument();
     expect(screen.getByLabelText(/Yearly/).closest("label")).toHaveTextContent("~17% off");
-    // Os cartões do app leem o mesmo plans.ts: o filtro é só desta página.
+    // The app cards read the same plans.ts: the filter is only for this page.
     expect(publicPlans.find((plan) => plan.id === "basic")?.highlights).toContain("Annual billing saves ~17%");
     expect(publicPlans.find((plan) => plan.id === "pro")?.highlights[0]).toMatch(/^0% commission/);
 
@@ -102,8 +103,8 @@ describe("pricing page", () => {
     expect(closing).not.toHaveTextContent("14-day free trial");
   });
 
-  // O total anual ("$190 yearly") só existia no anual: trocar o seletor
-  // aumentava os três cartões e empurrava a página.
+  // The yearly total ("$190 yearly") only existed on yearly: switching the
+  // selector made the three cards taller and pushed the page down.
   it("keeps the yearly total line in both cycles, invisible on monthly", async () => {
     render(await PricingPage());
 
@@ -180,7 +181,7 @@ describe("pricing page", () => {
     expect(label?.className).not.toContain("uppercase");
   });
 
-  // Num celular de 360px a coluna da resposta ficava toda fora da caixa.
+  // On a 360px phone the answer column used to sit entirely outside the box.
   it("keeps the fee table's last column, You receive, pinned while the table scrolls", async () => {
     render(await PricingPage());
 

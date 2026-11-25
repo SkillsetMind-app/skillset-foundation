@@ -128,10 +128,10 @@ describe("enrollment helpers", () => {
       },
     ];
 
-    // So os cursos reais com matricula aberta vao ao banco perguntar.
+    // Only the real courses with open enrollment go to the database to ask.
     expect(communityEnrollmentCourseIds(enrollments)).toEqual(["course-1", "course-3"]);
 
-    // course-3 esta com a comunidade desligada: nao entra no conjunto.
+    // course-3 has the community turned off: it does not enter the set.
     const cards = createEnrollmentCommunityCards(enrollments, new Set(["course-1"]));
 
     expect(cards).toEqual([

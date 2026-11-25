@@ -62,8 +62,8 @@ export default async function HowItWorksPage() {
         {steps.map((step, index) => {
           const { Icon } = step;
           return (
-            // Cartão parado: não é link, e subir no hover prometia um clique
-            // que não fazia nada.
+            // Still card: it is not a link, and rising on hover promised a click
+            // that did nothing.
             <article
               key={step.title}
               className="rounded-lg border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]"

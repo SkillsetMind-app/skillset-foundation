@@ -33,8 +33,8 @@ export default async function TeachActivatePage({
       <PlatformShell title={t("activationCheckout.pageTitle")} compact>
         <Suspense
           fallback={
-            // O mesmo lugar guardado do painel: o formulario da Stripe entra
-            // sem empurrar a pagina.
+            // The same reserved space as the dashboard: the Stripe form comes in
+            // without pushing the page.
             <div className="overflow-hidden rounded-lg border fine-rule bg-white shadow-[var(--shadow-soft)]">
               <StripeFrameSkeleton label={t("activationCheckout.preparing")} />
             </div>

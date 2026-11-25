@@ -3,21 +3,21 @@ import { describe, expect, it } from "vitest";
 
 import { linkify } from "@/lib/format/linkify";
 
-// Texto do professor vira link sem dangerouslySetInnerHTML: so http(s), com a
-// pontuacao do fim fora do link.
+// A teacher's text becomes a link without dangerouslySetInnerHTML: only http(s), with the
+// trailing punctuation outside the link.
 function show(text: string) {
   const { container } = render(<p>{linkify(text)}</p>);
   return container.querySelector("p") as HTMLElement;
 }
 
-// Montados por codigo de proposito: nada de caractere invisivel no fonte.
+// Built from code on purpose: no invisible character in the source.
 const RLO = String.fromCodePoint(0x202e);
 const LRI = String.fromCodePoint(0x2066);
 const RLM = String.fromCodePoint(0x200f);
 const bidiControls = new RegExp("[\\u061C\\u200E\\u200F\\u202A-\\u202E\\u2066-\\u2069]", "u");
 
 describe("linkify", () => {
-  it("vira link so o endereco, com o ponto final de fora", () => {
+  it("only the address becomes a link, with the final period left out", () => {
     const p = show("ver https://a.com/x.");
     const links = p.querySelectorAll("a");
 
@@ -30,7 +30,7 @@ describe("linkify", () => {
   });
 
   it.each(["javascript:alert(1)", "www.a.com", "data:text/html,<b>x</b>"])(
-    "deixa %s como texto",
+    "leaves %s as text",
     (text) => {
       const p = show(text);
 
@@ -39,8 +39,8 @@ describe("linkify", () => {
     },
   );
 
-  // Com RLO (U+202E) o texto do link podia "ler" www.google.com enquanto o
-  // href ia para evil.com (verificado num navegador real).
+  // With RLO (U+202E) the link text could "read" www.google.com while the
+  // href went to evil.com (verified in a real browser).
   it.each([
     [
       "antes da URL",
@@ -52,11 +52,11 @@ describe("linkify", () => {
       `veja https://evil.com/${RLO}abc${LRI}d${RLM}`,
       "https://evil.com/abcd",
     ],
-  ])("tira os controles bidi %s e isola o link em ltr", (_where, text, href) => {
+  ])("strips the bidi controls %s and isolates the link in ltr", (_where, text, href) => {
     const p = show(text);
     const link = p.querySelector("a") as HTMLElement;
 
-    // Garante que a entrada tem mesmo o controle (senao o teste nao prova nada).
+    // Makes sure the input really has the control (otherwise the test proves nothing).
     expect(text).toMatch(bidiControls);
     expect(link).toHaveAttribute("href", href);
     expect(link).toHaveAttribute("dir", "ltr");
@@ -65,7 +65,7 @@ describe("linkify", () => {
     expect(p.textContent).not.toMatch(bidiControls);
   });
 
-  it("acha varios links e deixa parentese, virgula e exclamacao de fora", () => {
+  it("finds several links and leaves the parenthesis, comma and exclamation mark out", () => {
     const p = show("(https://a.com/x), e http://b.com/y?q=1!");
 
     expect(Array.from(p.querySelectorAll("a"), (a) => a.getAttribute("href"))).toEqual([

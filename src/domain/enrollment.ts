@@ -70,8 +70,8 @@ export function createEnrollmentSnapshot(course: Course) {
   };
 }
 
-/** Cursos cuja comunidade a lista "Comunidades" pode mostrar: matricula
- *  aberta (e o que a sala aceita) e comunidade ligada. */
+/** Courses whose community the "Communities" list may show: open
+ *  enrollment (it is what the classroom accepts) and community turned on. */
 export function communityEnrollmentCourseIds(enrollments: Enrollment[]): string[] {
   return [
     ...new Set(
@@ -88,9 +88,9 @@ export function createEnrollmentCommunityCards(
 ): EnrollmentCommunityCard[] {
   return enrollments
     .filter((enrollment) => canOpenEnrollment(enrollment.status))
-    // Comunidade desligada: a sala nem mostra a aba, entao o cartao nao
-    // aparece. ponytail: o catalogo de demonstracao (manual_demo) nao mora na
-    // tabela courses e nasce sempre com comunidade (src/data/demo/courses.ts).
+    // Community turned off: the classroom does not even show the tab, so the card does not
+    // appear. ponytail: the demo catalog (manual_demo) does not live in the
+    // courses table and is always born with a community (src/data/demo/courses.ts).
     .filter(
       (enrollment) =>
         enrollment.source === "manual_demo" || communityCourseIds.has(enrollment.courseId),
@@ -101,12 +101,12 @@ export function createEnrollmentCommunityCards(
       courseTitle: enrollment.courseTitle,
       description:
         "A course-linked space for teacher announcements, learner questions, discussion, and shared resources.",
-      // A comunidade e uma ABA da sala de aula, com endereco proprio
-      // (/learn/courses/<curso>/community). Antes havia duas caras para o
-      // mesmo feed: dentro da aula, no tema do curso, e num hub separado com
-      // manchete grande — e nenhuma voltava para a aula. Demo/catalogo
-      // (manual_demo) usa o slug; curso publicado por professor usa o id (a
-      // rota da sala aceita os dois).
+      // The community is a TAB of the classroom, with its own address
+      // (/learn/courses/<course>/community). Before there were two faces for the
+      // same feed: inside the lesson, in the course theme, and in a separate hub with a
+      // big headline, and neither went back to the lesson. Demo/catalog
+      // (manual_demo) uses the slug; a course published by a teacher uses the id (the
+      // classroom route accepts both).
       href: `/learn/courses/${
         enrollment.source === "manual_demo"
           ? enrollment.courseSlug

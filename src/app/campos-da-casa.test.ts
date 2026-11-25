@@ -3,19 +3,19 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-// C-05: os últimos campos com a pele copiada à mão (borda fina de 1px em
-// --color-line, que sumia no cartão branco, e alturas de 38 a 46px) passaram
-// ao campo da casa, o .field-input. Leitura do fonte, como em revisao-pr494:
-// o jsdom não pinta, então o que dá para provar é a classe no lugar e que o
-// campo continua com nome (os testes de cada tela que buscam por rótulo
-// conferem o nome de verdade).
+// C-05: the last fields with a hand-copied skin (thin 1px border in
+// --color-line, which disappeared on the white card, and heights from 38 to 46px) moved
+// to the house field, the .field-input. Source read, as in revisao-pr494:
+// jsdom does not paint, so what can be proven is the class in place and that the
+// field still has a name (the tests of each screen that look up by label
+// check the real name).
 
 const read = (path: string) => readFileSync(join(process.cwd(), "src/components", path), "utf8");
 
-// A tag de abertura que contém `needle`, pulando os `>` de dentro de {...}.
+// The opening tag that contains `needle`, skipping the `>` inside {...}.
 function tagAround(source: string, needle: string) {
   const at = source.indexOf(needle);
-  expect(at, `trecho nao encontrado: ${needle}`).toBeGreaterThan(-1);
+  expect(at, `snippet not found: ${needle}`).toBeGreaterThan(-1);
   expect(source.indexOf(needle, at + 1), `trecho repetido: ${needle}`).toBe(-1);
   return tagAt(source, source.lastIndexOf("<", at));
 }
@@ -32,14 +32,14 @@ function tagAt(source: string, start: number) {
   return { start, tag: source.slice(start, end + 1) };
 }
 
-// A classe do campo, abrindo a constante local quando ela é usada.
+// The field class, opening the local constant when it is used.
 function classOf(source: string, tag: string) {
   const literal = /className="([^"]*)"/.exec(tag)?.[1];
   if (literal !== undefined) return literal;
   const expression = /className=\{`?\$?\{?(\w+)\}?([^}]*)\}/.exec(tag);
   expect(expression, tag).not.toBeNull();
   const constant = new RegExp(`const ${expression![1]} =\\s*"([^"]*)"`).exec(source)?.[1];
-  expect(constant, `${expression![1]} sem valor literal`).toBeDefined();
+  expect(constant, `${expression![1]} has no literal value`).toBeDefined();
   return `${constant} ${expression![2]}`;
 }
 
@@ -85,7 +85,7 @@ const fields: [file: string, needle: string][] = [
   ["learn/student-messages-inbox.tsx", 'id="student-message-draft"'],
   ["learn/lesson-comments.tsx", 'placeholder={t("learn.classroom.lessonComments.prompt")}'],
   ["certificates/certificate-verification-panel.tsx", 'aria-label={t("learnWave2.verification.codeLabel")}'],
-  // O construtor do curso e o começo do curso novo.
+  // The course builder and the start of the new course.
   ["teacher/course-builder-studio.tsx", "chooseFreePreviewLesson(event.target.value)"],
   ["teacher/course-builder-studio.tsx", "updateModuleTitle(module.id, event.target.value)"],
   ["teacher/course-builder-studio.tsx", "updateModuleSummary(module.id, event.target.value)"],
@@ -110,8 +110,8 @@ const fields: [file: string, needle: string][] = [
   ["teacher/create-course-start.tsx", "setSummary(event.target.value)"],
 ];
 
-// Nesses três arquivos, os campos que ficam com pele própria de propósito.
-// Qualquer outro campo com a borda fina à mão derruba o teste de baixo.
+// In these three files, the fields that keep their own skin on purpose.
+// Any other field with the hand-made thin border breaks the test below.
 const ownSkin: [file: string, needle: string, reason: string][] = [
   [
     "teacher/course-builder-studio.tsx",
@@ -132,30 +132,30 @@ const ownSkin: [file: string, needle: string, reason: string][] = [
 
 const lineOf = (source: string, at: number) => source.slice(0, at).split("\n").length;
 
-describe("C-05: campos no .field-input da casa", () => {
-  it.each(fields)("%s: o campo de %s usa a pele da casa e tem nome", (file, needle) => {
+describe("C-05: fields on the house .field-input", () => {
+  it.each(fields)("%s: the %s field uses the house skin and has a name", (file, needle) => {
     const source = read(file);
     const { start, tag } = tagAround(source, needle);
     const classes = classOf(source, tag);
     expect(classes, tag).toMatch(/\bfield-input\b/);
     expect(classes, tag).not.toContain("border-[var(--color-line)]");
     expect(classes, tag).not.toMatch(/\bbg-white\b/);
-    expect(hasName(source, start, tag), `${file}: campo sem nome acessível`).toBe(true);
+    expect(hasName(source, start, tag), `${file}: field without an accessible name`).toBe(true);
   });
 
-  it("o seletor de moeda nasce com a pele da casa", () => {
+  it("the currency selector is born with the house skin", () => {
     const source = read("teacher/currency-select.tsx");
     expect(/currencySelectClassName =\s*"([^"]*)"/.exec(source)?.[1]).toMatch(/^field-input\b/);
   });
 
-  // Data e hora maiores que os outros campos: 48px e 16px, por cima do 14px
-  // do .field-input (que fica fora de camada, daí o `!`).
-  it("data e hora do estúdio de eventos ficam maiores", () => {
+  // Date and time larger than the other fields: 48px and 16px, over the 14px
+  // of the .field-input (which is outside any layer, hence the `!`).
+  it("date and time in the events studio are larger", () => {
     expect(read("teacher/teacher-event-studio.tsx")).toContain('const whenFieldClass = "field-input min-h-12 text-base!";');
   });
 
   it.each(["teacher/course-builder-studio.tsx", "teacher/create-course-start.tsx", "teacher/lesson-content-modal.tsx"])(
-    "%s: nenhum campo com a pele à mão fora das exceções",
+    "%s: no field with a hand-made skin outside the exceptions",
     (file) => {
       const source = read(file);
       const expected = ownSkin
@@ -172,21 +172,21 @@ describe("C-05: campos no .field-input da casa", () => {
     },
   );
 
-  // O campo de dias da liberação é estreito (80px): o `width: 100%` do
-  // .field-input fica fora de camada e venceria o w-20 sem o `!`.
-  it("o campo de dias da liberação continua estreito", () => {
+  // The release days field is narrow (80px): the `width: 100%` of the
+  // .field-input is outside any layer and would beat the w-20 without the `!`.
+  it("the release days field stays narrow", () => {
     expect(read("teacher/course-builder-studio.tsx")).toContain(
       'className="field-input w-20! text-center disabled:cursor-not-allowed disabled:opacity-60"',
     );
   });
 
-  // O .field-input descansa no cinza claro e não tem regra de :disabled: sem o
-  // par da casa (o mesmo do seletor de moeda), um campo travado parece livre.
-  // Por ora vale para o construtor e o começo do curso.
+  // The .field-input rests on light gray and has no :disabled rule: without the
+  // house pair (the same as the currency selector), a locked field looks free.
+  // For now it applies to the builder and the start of the course.
   const builderFields = fields.filter(([file]) =>
     ["teacher/course-builder-studio.tsx", "teacher/create-course-start.tsx"].includes(file),
   );
-  it.each(builderFields)("%s: o campo de %s, se trava, fica apagado", (file, needle) => {
+  it.each(builderFields)("%s: the %s field, when locked, is faded", (file, needle) => {
     const source = read(file);
     const { tag } = tagAround(source, needle);
     if (!/\sdisabled[=\s>]/.test(tag)) return;
@@ -195,10 +195,10 @@ describe("C-05: campos no .field-input da casa", () => {
     expect(classes, tag).toContain("disabled:opacity-60");
   });
 
-  // O rótulo do editor da página de venda era a etiqueta de 12px em caixa
-  // alta; agora é o do <Field> (14px, negrito, em frase).
+  // The label of the sales page editor was the 12px uppercase tag;
+  // now it is the <Field>'s (14px, bold, sentence case).
   it.each(["teacher/course-landing-editor.tsx", "teacher/sales-page-editor.tsx", "teacher/landing-image-field.tsx"])(
-    "%s: rótulos de campo sem caixa alta",
+    "%s: field labels without uppercase",
     (file) => {
       const source = read(file);
       for (const label of source.matchAll(/<label className="([^"]*)"/g)) {

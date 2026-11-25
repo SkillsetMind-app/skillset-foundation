@@ -11,12 +11,12 @@ function mockReducedMotion(matches: boolean) {
 describe("scrollBehavior", () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it("rola suave por padrao", () => {
+  it("scrolls smoothly by default", () => {
     mockReducedMotion(false);
     expect(scrollBehavior()).toBe("smooth");
   });
 
-  it("pula a animacao quando a pessoa pede reduzir movimento", () => {
+  it("skips the animation when the person asks for reduced motion", () => {
     mockReducedMotion(true);
     expect(scrollBehavior()).toBe("auto");
   });

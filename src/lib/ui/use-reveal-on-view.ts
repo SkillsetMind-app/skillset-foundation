@@ -2,13 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 
-// A entrada é um enfeite, nunca uma condição para ver a seção. Sem JavaScript,
-// antes da hidratação, num navegador sem IntersectionObserver ou com movimento
-// reduzido, a seção fica visível. Só depois de montada, e só se ainda estiver
-// abaixo da tela (onde ninguém a vê sumir), ela é "armada": começa transparente
-// e entra quando o topo dela passa dos 90% da altura da tela. O limite era 15%
-// da seção, e uma faixa de ~2900px num celular deixava ~430px de página em
-// branco antes de aparecer.
+// The entrance is decoration, never a condition for seeing the section. Without
+// JavaScript, before hydration, in a browser without IntersectionObserver or
+// with reduced motion, the section stays visible. Only after mounting, and only
+// if it is still below the screen (where nobody sees it vanish), it is "armed":
+// it starts transparent and comes in when its top passes 90% of the screen
+// height. The threshold used to be 15% of the section, and a ~2900px band on a
+// phone left ~430px of blank page before it appeared.
 export function useRevealOnView<T extends HTMLElement>() {
   const ref = useRef<T>(null);
   const [armed, setArmed] = useState(false);
@@ -25,7 +25,7 @@ export function useRevealOnView<T extends HTMLElement>() {
       return;
     }
 
-    // Já na tela, ou acima dela: fica como está, sem piscar.
+    // Already on screen, or above it: it stays as it is, with no flash.
     if (node.getBoundingClientRect().top < window.innerHeight) {
       return;
     }

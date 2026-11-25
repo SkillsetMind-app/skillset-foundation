@@ -37,11 +37,11 @@ export type AppNotification = {
   createdAt?: unknown;
 };
 
-// Para onde uma notificacao leva. Quase sempre e o proprio `link` gravado no
-// servidor. A excecao e a mensagem do professor: o servidor grava
-// "/learn/courses/<curso>" (a sala inteira), mas a resposta mora na caixa de
-// mensagens do aluno — que nao existia quando o link foi desenhado. Reescrever
-// aqui (e nao numa migration) mantem as notificacoes antigas certas tambem.
+// Where a notification leads. Almost always it is the stored `link` itself on the
+// server. The exception is the teacher's message: the server stores
+// "/learn/courses/<course>" (the whole classroom), but the reply lives in the learner's
+// message inbox, which did not exist when the link was designed. Rewriting
+// here (and not in a migration) keeps the old notifications right too.
 export function notificationHref(
   notification: Pick<AppNotification, "type" | "link">,
 ): string | null {
@@ -55,8 +55,8 @@ export function notificationHref(
       return "/learn/messages?course=" + match[1];
     }
   }
-  // Aviso de sessao marcada: o banco grava a sala inteira (a aba das aulas),
-  // mas a sessao mora na aba "Live sessions". So a sala sem aba e reescrita.
+  // Scheduled session notice: the database stores the whole classroom (the lessons tab),
+  // but the session lives in the "Live sessions" tab. Only the classroom without a tab is rewritten.
   if (notification.type === "live_event") {
     const match = /^\/learn\/courses\/([^/?#]+)\/?$/.exec(link);
     if (match) {
@@ -66,15 +66,15 @@ export function notificationHref(
   return link;
 }
 
-// O aviso de sessao marcada (notify_enrolled_on_course_event) grava em ingles
-// e em UTC: "Live session scheduled: X" e "<produto> — Nov 26, 2026 at 00:00
-// UTC". A tela traduz o titulo e reescreve a hora no idioma e no fuso de quem
-// le, com a mesma frase das outras telas. Vale para os avisos antigos tambem.
+// The scheduled session notice (notify_enrolled_on_course_event) is stored in English
+// and in UTC: "Live session scheduled: X" and "<product> — Nov 26, 2026 at 00:00
+// UTC". The screen translates the title and rewrites the time in the language and time zone of whoever
+// reads, with the same phrase as the other screens. It applies to the old notices too.
 const LIVE_TITLE_PREFIX = "Live session scheduled: ";
 const LIVE_BODY = /^([\s\S]*) — ([A-Z][a-z]{2}) (\d{1,2}), (\d{4}) at (\d{2}):(\d{2}) UTC$/;
 const PG_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-// Texto que nao bate com o formato do banco aparece como esta.
+// Text that does not match the database format appears as is.
 export function notificationBody(
   notification: Pick<AppNotification, "type" | "body">,
   locale: string,
@@ -91,18 +91,18 @@ export function notificationBody(
   return `${product} — ${formatEventDateTime(instant.toISOString(), locale, notification.body, timeZone, now)}`;
 }
 
-// Titulos antigos gravados em ingles pelo banco (send_course_message). A
-// mensagem ja existia antes da traducao; mapear o texto aqui traduz as linhas
-// antigas tambem, sem migration.
+// Old titles stored in English by the database (send_course_message). The
+// message already existed before the translation; mapping the text here translates the old
+// rows too, without a migration.
 const legacyTitleKeys: Record<string, string> = {
   "New message from your teacher": "teacherMessage",
   "New student message": "studentMessage",
 };
 
-// O titulo no idioma de quem le. Os avisos de resposta gravam title vazio e os
-// ids em params (20261006041500_avisos_de_resposta.sql): a frase nasce aqui.
-// Titulo gravado aparece como esta (fora os dois ingleses acima e o da sessao
-// marcada, LIVE_TITLE_PREFIX).
+// The title in the language of whoever reads. The reply notices store an empty title and the
+// ids in params (20261006041500_avisos_de_resposta.sql): the phrase is born here.
+// A stored title appears as is (except the two English ones above and the one for the scheduled
+// session, LIVE_TITLE_PREFIX).
 export function notificationTitle(
   notification: Pick<AppNotification, "type" | "title" | "actorName" | "params">,
   t: (key: string) => string,
@@ -118,7 +118,7 @@ export function notificationTitle(
   }
 
   const actor = notification.actorName?.trim() || key("someone");
-  // Funcao no replace: um nome com "$&" nao vira padrao de substituicao.
+  // A function in replace: a name with "$&" does not become a replacement pattern.
   const withName = (id: string) => key(id).replace("{name}", () => actor);
   switch (notification.type) {
     case "community_question":

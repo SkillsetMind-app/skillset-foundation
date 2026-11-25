@@ -5,11 +5,11 @@ import { normalizeCurrency } from "@/domain/creator-ops";
 import { isRevenueOrder, orderRevenueMinor } from "@/domain/order";
 import type { TeacherCourse } from "@/domain/teacher-course";
 
-// O painel do produto respondia "quanto falta para publicar" e mais nada. Quem
-// abre a tela de um produto JA publicado quer outra coisa: quantos alunos,
-// quanto entrou, quantos terminaram, que nota tiraram — e o que esta quebrado
-// agora. Aqui ficam as duas contas puras que a tela usa; nenhuma delas inventa
-// numero, e a que nao tem fonte fica de fora em vez de virar zero.
+// The product panel answered "how much is left to publish" and nothing else. Whoever
+// opens the screen of an ALREADY published product wants something else: how many learners,
+// how much came in, how many finished, what grade they got, and what is broken
+// right now. Here live the two pure calculations the screen uses; neither of them invents a
+// number, and the one that has no source is left out instead of becoming zero.
 
 export type CourseOverviewStudent = {
   courseId: string;
@@ -34,24 +34,24 @@ export type CourseRevenueTotal = {
 export type CourseOverviewStats = {
   studentCount: number;
   completedCount: number;
-  /** null quando ninguem esta matriculado: 0% seria uma medicao falsa. */
+  /** null when nobody is enrolled: 0% would be a false measurement. */
   completionPercent: number | null;
   averageProgressPercent: number | null;
   newThisWeekCount: number;
   paidOrderCount: number;
-  /** Uma linha por moeda; pedidos em moedas diferentes nunca sao somados. */
+  /** One row per currency; orders in different currencies are never added together. */
   revenue: CourseRevenueTotal[];
   ratingAverage: number | null;
   ratingCount: number;
-  /** Falso = produto sem nenhuma venda e nenhum aluno (estado vazio honesto). */
+  /** False = product with no sales and no learners (honest empty state). */
   hasHistory: boolean;
 };
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
- * Terminou o curso. Mesma regra do certificado (`getCredentialCandidate`):
- * a matricula esta marcada como concluida OU o progresso chegou a 100.
+ * Finished the course. Same rule as the certificate (`getCredentialCandidate`):
+ * the enrollment is marked as completed OR the progress reached 100.
  */
 export function isCourseStudentComplete(student: {
   status: string;
@@ -71,9 +71,9 @@ export function getCourseOverviewStats({
   orders: CourseOverviewOrder[];
   now?: Date;
 }): CourseOverviewStats {
-  // Ambas as leituras trazem TODOS os cursos do professor (uma chamada serve
-  // qualquer aba). O recorte por produto e aqui, num lugar so, para nenhuma
-  // tela mostrar a receita da loja inteira como se fosse deste produto.
+  // Both reads bring ALL of the teacher's courses (one call serves
+  // any tab). The cut per product is here, in one place only, so that no
+  // screen shows the revenue of the whole store as if it were this product's.
   const mine = students.filter((student) => student.courseId === course.id);
   const paidOrders = orders.filter(
     (order) => order.courseId === course.id && isRevenueOrder(order),
@@ -88,10 +88,10 @@ export function getCourseOverviewStats({
 
   const byCurrency = new Map<string, number>();
   for (const order of paidOrders) {
-    // A mesma normalizacao da Home e de Ganhos: sem moeda vira "UNSPECIFIED"
-    // (era "USD" aqui e "UNSPECIFIED" la).
+    // The same normalization as Home and Earnings: a missing currency becomes "UNSPECIFIED"
+    // (it was "USD" here and "UNSPECIFIED" there).
     const currency = normalizeCurrency(order.currency);
-    // Reembolso ja devolvido nao e receita (pago ou com reembolso parcial).
+    // A refund already returned is not revenue (paid or with a partial refund).
     const net = orderRevenueMinor(order) ?? 0;
     byCurrency.set(currency, (byCurrency.get(currency) ?? 0) + net);
   }
@@ -127,17 +127,17 @@ export type CourseMaintenanceIssue = {
 };
 
 /**
- * O que esta quebrado NESTE produto agora.
+ * What is broken IN THIS product right now.
  *
- * `assets` e `coupons` chegam como null enquanto a leitura nao voltou — a
- * regra que depende deles fica de fora nesse instante, porque acusar "aula sem
- * conteudo" so porque os assets ainda nao carregaram e pior que nao acusar.
+ * `assets` and `coupons` arrive as null while the read has not come back, so the
+ * rule that depends on them is left out at that moment, because flagging "lesson without
+ * content" just because the assets have not loaded yet is worse than not flagging.
  *
- * O que NAO entra aqui: nada que a lista de prontidao ja diga. O checklist de
- * publicacao mora na MESMA tela, logo acima, e listava capa e resultados de
- * aprendizagem duas vezes — o professor lia "Cover image" no card de atencao e
- * de novo tres centimetros abaixo. Um aviso repetido nao e um aviso a mais,
- * e um aviso a menos: ensina a ignorar o card.
+ * What does NOT go in here: anything the readiness list already says. The publishing
+ * checklist lives on the SAME screen, right above, and listed the cover and the learning
+ * outcomes twice: the teacher read "Cover image" in the attention card and
+ * again three centimeters below. A repeated warning is not one more warning,
+ * it is one less: it teaches people to ignore the card.
  */
 export function getCourseMaintenanceIssues({
   course,
@@ -153,11 +153,11 @@ export function getCourseMaintenanceIssues({
   const issues: CourseMaintenanceIssue[] = [];
 
   if (assets) {
-    // A MESMA regra da prontidao do Publish (getLessonIdsWithMedia): video
-    // enviado, link, texto da aula, descricao ou arquivo de material. Nenhum
-    // deles = a pessoa que comprou abre a aula e nao encontra nada. Uma regra
-    // so, para o painel e o construtor nunca discordarem sobre qual aula esta
-    // vazia.
+    // The SAME rule as the Publish readiness (getLessonIdsWithMedia): uploaded
+    // video, link, lesson text, description or material file. None of
+    // them = the person who bought it opens the lesson and finds nothing. One rule
+    // only, so the panel and the builder never disagree about which lesson is
+    // empty.
     const withContent = getLessonIdsWithMedia(course.modules, assets);
     const emptyLessons = course.modules.flatMap((courseModule) =>
       courseModule.lessons.filter((lesson) => !withContent.has(lesson.id)),

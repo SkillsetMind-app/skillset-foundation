@@ -26,9 +26,9 @@ vi.mock("@/components/auth/protected-surface", () => ({
   },
 }));
 vi.mock("@/components/platform/platform-shell", () => ({
-  // Espelha a casca real: o `title` SO existe dentro do cabecalho. Com
-  // `hideHeader` ele nao vai para lugar nenhum — nada de aria-label inventado,
-  // senao o teste passa a provar algo que o produto nao faz.
+  // Mirrors the real shell: the `title` ONLY exists inside the header. With
+  // `hideHeader` it goes nowhere — no invented aria-label,
+  // otherwise the test starts proving something the product does not do.
   PlatformShell: ({ children, eyebrow, title, description, hideHeader }: {
     children: ReactNode; eyebrow?: string; title: string; description?: string; hideHeader?: boolean;
   }) => createElement("main", null,
@@ -48,9 +48,9 @@ vi.mock("@/components/teacher/custom-domains-panel", () => ({ CustomDomainsPanel
 vi.mock("@/components/teacher/creator-subscription-center", () => ({ CreatorSubscriptionCenter: () => null }));
 vi.mock("@/components/teacher/stripe-connect-notice", () => ({ StripeConnectNotice: () => null }));
 vi.mock("@/components/teacher/teacher-wallet-panel", () => ({
-  // Espelha o que o painel real faz depois desta mudanca: ele carrega o <h1>
-  // da pagina. O mock precisa disso para que a prova do cabecalho unico seja
-  // sobre a arvore real, e nao sobre um marcador inventado.
+  // Mirrors what the real panel does after this change: it carries the <h1>
+  // of the page. The mock needs this so that the proof of the single header is
+  // about the real tree, and not about an invented marker.
   TeacherWalletPanel: () =>
     createElement("section", null, createElement("h1", null, "Tus ganancias, tu configuración de pagos")),
 }));
@@ -61,10 +61,10 @@ import TeacherSaleDetailPage from "./sales/[orderId]/page";
 import TeacherStorefrontPage from "./storefront/page";
 import TeacherSubscriptionsPage from "./subscriptions/page";
 
-// O que a pessoa sofria: com a interface em espanhol, Relatorios abria com
-// "Teacher Studio / Reports." e o paragrafo inteiro em ingles — o cabecalho era
-// texto fixo na pagina, fora do dicionario (QA visual em producao, 08/09).
-// Vendas e Eventos tinham o mesmo cabecalho fixo.
+// What the person suffered: with the interface in Spanish, Reports opened with
+// "Teacher Studio / Reports." and the whole paragraph in English — the header was
+// fixed text on the page, outside the dictionary (visual QA in production, Sep 8).
+// Sales and Events had the same fixed header.
 
 const pages = ["reports", "sales", "events"] as const;
 const en = JSON.parse(readFileSync("src/data/i18n/en.json", "utf8"));
@@ -72,23 +72,23 @@ const es = JSON.parse(readFileSync("src/data/i18n/es.json", "utf8"));
 
 afterEach(cleanup);
 
-describe("cabecalhos das paginas do estudio", () => {
-  it.each(pages)("a pagina %s nao carrega texto fixo no cabecalho", (page) => {
+describe("studio page headers", () => {
+  it.each(pages)("the %s page carries no fixed text in the header", (page) => {
     const source = readFileSync(`src/app/teach/${page}/page.tsx`, "utf8");
 
     expect(source).not.toMatch(/\b(eyebrow|title|description)="/);
     expect(source).toContain("getServerTranslation");
   });
 
-  it.each(pages)("o cabecalho de %s existe nos dois idiomas e muda de idioma", (page) => {
+  it.each(pages)("the %s header exists in both languages and changes language", (page) => {
     const key = `${page}Page`;
 
     for (const field of ["title", "description"]) {
       expect(en.teach[key][field], `en teach.${key}.${field}`).toBeTruthy();
       expect(es.teach[key][field], `es teach.${key}.${field}`).toBeTruthy();
     }
-    // O rotulo generico "Teacher Studio" saiu do cabecalho (nao nomeava a
-    // tela nem um grupo); a chave sem uso saiu junto dos dois dicionarios.
+    // The generic label "Teacher Studio" left the header (it did not name the
+    // screen or a group); the unused key left together with it from both dictionaries.
     if (page !== "events") {
       expect(en.teach[key].eyebrow).toBeUndefined();
       expect(es.teach[key].eyebrow).toBeUndefined();
@@ -98,49 +98,49 @@ describe("cabecalhos das paginas do estudio", () => {
   });
 });
 
-describe("pagamentos não repete o cabeçalho do painel", () => {
-  // O que a pessoa sofria: /account/payments mostrava "Payouts & tax" (fixo em
-  // ingles, mesmo em espanhol) e logo abaixo o painel repetia "PAYOUTS & TAX" +
-  // "Your earnings, your payout setup." — a mesma coisa tres vezes.
-  it("nao carrega texto fixo no cabeçalho", () => {
+describe("payments does not repeat the panel header", () => {
+  // What the person suffered: /account/payments showed "Payouts & tax" (fixed in
+  // English, even in Spanish) and right below it the panel repeated "PAYOUTS & TAX" +
+  // "Your earnings, your payout setup." — the same thing three times.
+  it("carries no fixed text in the header", () => {
     const source = readFileSync("src/app/account/payments/page.tsx", "utf8");
 
     expect(source).not.toMatch(/\b(eyebrow|title|description)="/);
     expect(source).toContain("getServerTranslation");
   });
 
-  it.each(["es", "en"] as const)("em %s a página tem UM cabeçalho, o do painel", async (locale) => {
+  it.each(["es", "en"] as const)("in %s the page has ONE header, the panel's", async (locale) => {
     mocks.locale = locale;
     render(
       <I18nProvider initialLocale={locale}>{await AccountPaymentsPage()}</I18nProvider>,
     );
 
-    // Um h1 so — o do painel. A casca nao acrescenta o dela (era o terceiro
-    // titulo da mesma tela), e a pagina nao fica sem cabecalho de nivel 1.
+    // One h1 only — the panel's. The shell does not add its own (it was the third
+    // title of the same screen), and the page does not end up without a level-1 heading.
     const titulos = screen.getAllByRole("heading", { level: 1 });
     expect(titulos).toHaveLength(1);
     expect(titulos[0]).toHaveTextContent("Tus ganancias, tu configuración de pagos");
-    // Nem o titulo fixo em ingles, nem o nome antigo da pagina.
+    // Neither the fixed English title, nor the old name of the page.
     expect(screen.queryByText("Payouts & tax")).toBeNull();
     expect(screen.queryByText("Pagos e impuestos")).toBeNull();
     expect(mocks.permissions).toEqual(["teacherStudio.access"]);
   });
 });
 
-describe("as demais entradas do criador usam o idioma da sessão", () => {
+describe("the other creator entries use the session language", () => {
   const routes = [
     { name: "sales/[orderId]", page: () => TeacherSaleDetailPage({ params: Promise.resolve({ orderId: "sale-fixture" }) }), key: "saleDetailPage", title: "Detalle de la venta" },
     { name: "storefront", page: TeacherStorefrontPage, key: "storefrontPage", title: "Tu tienda" },
     { name: "subscriptions", page: TeacherSubscriptionsPage, key: "subscriptionsPage", title: "Suscripciones" },
   ];
 
-  it.each(routes)("$name renderiza espanhol sem mudar a permissão nem o destino", async ({ name, page, key, title }) => {
+  it.each(routes)("$name renders Spanish without changing the permission or the destination", async ({ name, page, key, title }) => {
     mocks.locale = "es";
     render(<I18nProvider initialLocale="es">{await page()}</I18nProvider>);
 
     expect(screen.getByRole("heading", { name: title })).toBeInTheDocument();
-    // O rótulo genérico "Estudio del Profesor" saiu do cabeçalho: ele não
-    // nomeava a tela nem um grupo, só repetia o lado em que a pessoa está.
+    // The generic label "Estudio del Profesor" left the header: it did not
+    // name the screen or a group, it only repeated which side the person is on.
     expect(screen.queryByText("Estudio del Profesor")).toBeNull();
     expect(screen.getByText(translate(getDictionary("es"), `teach.${key}.description`))).toBeInTheDocument();
     expect(screen.queryByText(translate(getDictionary("en"), `teach.${key}.description`))).not.toBeInTheDocument();
@@ -148,7 +148,7 @@ describe("as demais entradas do criador usam o idioma da sessão", () => {
     if (name === "sales/[orderId]") expect(screen.getByText("sale-fixture")).toBeInTheDocument();
   });
 
-  it.each(routes)("$name continua renderizando inglês", async ({ name, page, key }) => {
+  it.each(routes)("$name still renders English", async ({ name, page, key }) => {
     mocks.locale = "en";
     render(<I18nProvider initialLocale="en">{await page()}</I18nProvider>);
 
@@ -157,9 +157,9 @@ describe("as demais entradas do criador usam o idioma da sessão", () => {
     expect(screen.getByText(translate(getDictionary("en"), `teach.${key}.description`))).toBeInTheDocument();
   });
 
-  // "Messages", escondido dentro de Marketing, virou a Caixa de entrada:
-  // perguntas das comunidades + conversas, numa tela so.
-  it.each(["es", "en"] as const)("a Caixa de entrada abre com o nome da barra em %s", async (locale) => {
+  // "Messages", hidden inside Marketing, became the Inbox:
+  // community questions + conversations, on one screen.
+  it.each(["es", "en"] as const)("the Inbox opens with the bar name in %s", async (locale) => {
     mocks.locale = locale;
     render(<I18nProvider initialLocale={locale}>{await TeacherMessagesPage()}</I18nProvider>);
 

@@ -146,11 +146,11 @@ describe("the teacher reopens the gated lesson content", () => {
   });
 });
 
-describe("uma acao, dois destinos", () => {
-  // O app deixou de chamar `delete_teacher_course_draft`: ela so aceitava
-  // rascunho, e era por isso que o professor de um curso publicado nao tinha
-  // saida. Quem decide entre apagar e arquivar agora e a RPC nova.
-  it("chama delete_or_archive_own_course com o id e devolve o destino do servidor", async () => {
+describe("one action, two outcomes", () => {
+  // The app stopped calling `delete_teacher_course_draft`: it only accepted a
+  // draft, and that was why the teacher of a published course had no
+  // way out. What decides between deleting and archiving is now the new RPC.
+  it("calls delete_or_archive_own_course with the id and returns the server's outcome", async () => {
     mocks.rpc.mockResolvedValueOnce({
       data: { outcome: "archived", enrollments: 2, orders: 2 },
       error: null,
@@ -167,16 +167,16 @@ describe("uma acao, dois destinos", () => {
     expect(mocks.rpc).not.toHaveBeenCalledWith("delete_teacher_course_draft", expect.anything());
   });
 
-  it("propaga o erro do servidor em vez de fingir que apagou", async () => {
+  it("passes the server error through instead of pretending it deleted", async () => {
     mocks.rpc.mockResolvedValueOnce({ data: null, error: new Error("Course not found.") });
 
     await expect(deleteOrArchiveCourse("course")).rejects.toThrow("Course not found.");
   });
 
-  // O servidor arquiva produto só com assinatura; o modal precisa saber disso
-  // antes do clique. O professor lê as assinaturas pela policy
-  // course_subscriptions_teacher_read, filtrando pelo id do curso.
-  it("a contagem do modal inclui as assinaturas do curso", async () => {
+  // The server archives a product only with a subscription; the modal needs to know that
+  // before the click. The teacher reads subscriptions through the policy
+  // course_subscriptions_teacher_read, filtering by the course id.
+  it("the modal's count includes the course's subscriptions", async () => {
     mocks.rpc.mockResolvedValueOnce({ data: [], error: null });
     mocks.count.mockImplementation((table: string) =>
       Promise.resolve({ count: table === "course_subscriptions" ? 2 : 0, error: null }));
@@ -185,7 +185,7 @@ describe("uma acao, dois destinos", () => {
     expect(mocks.count).toHaveBeenCalledWith("course_subscriptions", "course_id", "course");
   });
 
-  it("sem conseguir ler as assinaturas, o modal não chuta", async () => {
+  it("when the subscriptions cannot be read, the modal does not guess", async () => {
     mocks.rpc.mockResolvedValueOnce({ data: [], error: null });
     mocks.count.mockImplementation((table: string) =>
       Promise.resolve(table === "course_subscriptions"

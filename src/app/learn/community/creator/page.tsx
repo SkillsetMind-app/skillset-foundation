@@ -1,10 +1,11 @@
 import { redirect } from "next/navigation";
 
-// /learn/community/creator?courseId=<id> era o hub de comunidade dos cursos
-// publicados por professor — a segunda cara do mesmo feed que a sala de aula
-// mostra. Agora a comunidade e a aba "Community" da sala; este endereco so
-// encaminha (links antigos do sino e do painel continuam valendo). Sem
-// courseId nao ha para onde ir: volta a lista de comunidades.
+// /learn/community/creator?courseId=<id> was the community hub for the courses
+// published by a teacher — the second face of the same feed the classroom
+// shows. Now the community is the "Community" tab of the classroom; this
+// address only redirects (old links from the bell and the dashboard still
+// work). With no courseId there is nowhere to go: back to the list of
+// communities.
 export default async function LearnCreatorCommunityPage({
   searchParams,
 }: {

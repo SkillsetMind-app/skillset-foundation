@@ -13,10 +13,10 @@ export default async function LearnPage() {
 
   return (
     <ProtectedSurface permissions={["courses.viewLearning"]}>
-      {/* hideHeader: o painel emite a unica saudacao (e o unico h1). O titulo
-          da casca so nomeia a aba do navegador: "My courses", como o menu —
-          nao mais "Your learning, in one place." com o selo de marketing
-          "Student experience". */}
+      {/* hideHeader: the dashboard emits the only greeting (and the only h1).
+          The shell title only names the browser tab: "My courses", like the
+          menu — no longer "Your learning, in one place." with the marketing
+          badge "Student experience". */}
       <PlatformShell title={t("learn.page.title")} hideHeader>
         <LearnDashboard />
       </PlatformShell>

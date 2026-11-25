@@ -3,8 +3,8 @@
 // Terms and Privacy, legalPages.teacherTerms.effectiveDate for the Teacher
 // Terms: the legal page test checks it.
 //
-// A cada versão nova, reescreva também o resumo "What changed" da tela de
-// aceite (legalAcceptance.body, en e es): ele descreve ESTA mudança.
+// With each new version, also rewrite the "What changed" summary on the acceptance
+// screen (legalAcceptance.body, en and es): it describes THIS change.
 export const currentTermsVersion = "2026-11-24";
 export const currentPrivacyVersion = "2026-11-24";
 export const currentTeacherTermsVersion = "2026-11-24";

@@ -2,17 +2,17 @@
 
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
-// Modulo proprio de proposito: dezenas de testes trocam
-// @/lib/data/teacher-courses por uma fabrica fechada, e um export novo la
-// quebraria todos eles.
+// A module of its own on purpose: dozens of tests swap
+// @/lib/data/teacher-courses for a closed factory, and a new export there
+// would break all of them.
 
 export type CourseBeingDeleted = { courseId: string; title: string; requestedAt: string };
 
 /**
- * Produtos do professor apagados cujos arquivos e videos ainda nao sairam
- * (fila pending: a limpeza comeca um dia depois e roda de hora em hora, em
- * lotes). failed e cancelled nao aparecem. A fila e so do service role; a funcao
- * devolve so as linhas do proprio dono, e lista vazia sem o segundo fator.
+ * Teacher's deleted products whose files and videos have not yet gone
+ * (pending queue: the cleanup starts a day later and runs hourly, in
+ * batches). failed and cancelled do not appear. The queue is service role only; the function
+ * returns only the rows of its own owner, and an empty list without the second factor.
  */
 export async function getMyCoursesBeingDeleted(): Promise<CourseBeingDeleted[]> {
   const { data, error } = await getSupabaseBrowserClient().rpc("list_my_courses_being_deleted");

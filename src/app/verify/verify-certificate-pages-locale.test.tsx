@@ -25,8 +25,8 @@ it.each([
   state.locale = locale;
   render(await VerifyPage());
   expect(screen.getByText(text)).toBeInTheDocument();
-  // F-03: a frase e a do leitor de tela; na tela, o cartao em esqueleto, sem
-  // segundo titulo.
+  // F-03: the sentence is the screen reader's; on screen, the skeleton card, with no
+  // second title.
   expect(screen.getByRole("status")).toHaveTextContent(text);
   expect(screen.queryByRole("heading")).toBeNull();
 });

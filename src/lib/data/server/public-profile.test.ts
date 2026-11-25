@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-// Cliente ANÔNIMO: guarda as opções com que foi criado e devolve o cliente
-// falso da vez; sem cliente falso, cria o de verdade (para ver o que o
-// postgrest-js faz com a rede).
+// ANONYMOUS client: keeps the options it was created with and returns the
+// fake client of the moment; without a fake client, it creates the real one (to see what
+// postgrest-js does with the network).
 const anon = vi.hoisted(() => ({ client: null as unknown, options: null as unknown }));
 vi.mock("@supabase/supabase-js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@supabase/supabase-js")>();
@@ -20,7 +20,7 @@ vi.mock("@/lib/supabase/config", () => ({
 
 const { getPublicProfileByRef, listCreatorCourses } = await import("@/lib/data/server/public-profile");
 
-// Cliente falso que anota cada passo da consulta encadeada.
+// Fake client that records each step of the chained query.
 function fakeClient(result: { data: unknown; error: unknown }) {
   const calls: unknown[][] = [];
   const query = {
@@ -52,7 +52,7 @@ afterEach(() => {
 });
 
 describe("getPublicProfileByRef", () => {
-  it("@usuario procura pelo username, em minúsculas", async () => {
+  it("@usuario looks up by username, in lowercase", async () => {
     const calls = fakeClient({ data: row, error: null });
 
     const profile = await getPublicProfileByRef("@Ana.Souza");
@@ -62,9 +62,9 @@ describe("getPublicProfileByRef", () => {
     expect(calls).toContainEqual(["eq", "username", "ana.souza"]);
   });
 
-  // select *: o perfil não quebra se o deploy chegar antes da migration do
-  // selo (colunas ausentes = sem selo).
-  it("lê com select *, e sem as colunas do selo o perfil sai sem selo", async () => {
+  // select *: the profile does not break if the deploy arrives before the
+  // verified badge migration (missing columns = no badge).
+  it("reads with select *, and without the badge columns the profile comes out without a badge", async () => {
     const calls = fakeClient({ data: row, error: null });
 
     const profile = await getPublicProfileByRef("@ana.souza");
@@ -73,7 +73,7 @@ describe("getPublicProfileByRef", () => {
     expect(profile).toMatchObject({ uid: row.uid, verification: null });
   });
 
-  it("traz o selo: só license ou evidence, e a data", async () => {
+  it("brings the verified badge: only license or evidence, and the date", async () => {
     fakeClient({
       data: { ...row, verified_professional: true, verification_kind: "license", verified_at: "2026-09-01T12:00:00+00:00" },
       error: null,
@@ -85,7 +85,7 @@ describe("getPublicProfileByRef", () => {
     expect((await getPublicProfileByRef(row.uid))?.verification).toEqual({ kind: "evidence", verifiedAt: null });
   });
 
-  it("sem selo, verification null; espécie desconhecida vira evidence (a que promete menos)", async () => {
+  it("without a badge, verification null; an unknown kind becomes evidence (the one that promises less)", async () => {
     fakeClient({ data: { ...row, verified_professional: false, verification_kind: null, verified_at: null }, error: null });
     expect((await getPublicProfileByRef("@ana.souza"))?.verification).toBeNull();
 
@@ -93,14 +93,14 @@ describe("getPublicProfileByRef", () => {
     expect((await getPublicProfileByRef(row.uid))?.verification).toEqual({ kind: "evidence", verifiedAt: null });
   });
 
-  it("sem @, procura pelo uid exatamente como veio", async () => {
+  it("without @, looks up by uid exactly as it came", async () => {
     const calls = fakeClient({ data: row, error: null });
     await getPublicProfileByRef(row.uid);
     expect(calls).toContainEqual(["eq", "uid", row.uid]);
   });
 
-  // Ninguém se passa pela plataforma: @support, @admin... são 404.
-  it("@ reservado é 404 sem ir ao banco", async () => {
+  // Nobody impersonates the platform: @support, @admin... are 404.
+  it("a reserved @ is a 404 without going to the database", async () => {
     const calls = fakeClient({ data: row, error: null });
     for (const ref of ["@support", "@Admin", "@skillsetmind", "@billing", "@official"]) {
       expect(await getPublicProfileByRef(ref), ref).toBeNull();
@@ -108,7 +108,7 @@ describe("getPublicProfileByRef", () => {
     expect(calls).toEqual([]);
   });
 
-  it("@ fora do formato de username nem vai ao banco", async () => {
+  it("an @ outside the username format does not even go to the database", async () => {
     const calls = fakeClient({ data: row, error: null });
     for (const ref of ["@a", "@-ana", "@ana souza", "@ana/x", `@${"a".repeat(33)}`]) {
       expect(await getPublicProfileByRef(ref)).toBeNull();
@@ -116,7 +116,7 @@ describe("getPublicProfileByRef", () => {
     expect(calls).toEqual([]);
   });
 
-  it("perfil que não existe é null (404); leitura que falhou lança (página de erro)", async () => {
+  it("a profile that does not exist is null (404); a read that failed throws (error page)", async () => {
     fakeClient({ data: null, error: null });
     expect(await getPublicProfileByRef("@ninguem")).toBeNull();
 
@@ -124,7 +124,7 @@ describe("getPublicProfileByRef", () => {
     await expect(getPublicProfileByRef("@ana.souza")).rejects.toMatchObject({ message: "banco fora" });
   });
 
-  it("usa cliente anônimo, sem nova tentativa, com prazo e cache curtos", async () => {
+  it("uses an anonymous client, with no retry, and a short deadline and cache", async () => {
     fakeClient({ data: row, error: null });
     await getPublicProfileByRef("@ana.souza");
 
@@ -144,9 +144,9 @@ describe("getPublicProfileByRef", () => {
     expect(init.signal).toBeInstanceOf(AbortSignal);
   });
 
-  // Banco mudo: o postgrest-js repetia o GET 3 vezes (1 s, 2 s, 4 s) e o
-  // Instagram esperava ~13 s por uma página de erro. Agora é uma tentativa.
-  it("desiste na primeira vez que o prazo estoura", async () => {
+  // Silent database: postgrest-js used to repeat the GET 3 times (1 s, 2 s, 4 s) and
+  // Instagram waited ~13 s for an error page. Now it is a single attempt.
+  it("gives up the first time the deadline blows", async () => {
     const timedOut = vi.fn<typeof fetch>(async () => {
       throw new DOMException("The operation was aborted due to timeout", "TimeoutError");
     });
@@ -158,7 +158,7 @@ describe("getPublicProfileByRef", () => {
 });
 
 describe("listCreatorCourses", () => {
-  it("só os publicados do professor, sem os internos de teste, com a URL pública", async () => {
+  it("only the teacher's published ones, without the internal test ones, with the public URL", async () => {
     const calls = fakeClient({
       data: [
         { id: "c-1", title: "Deep Focus", title_key: "deep-focus", slug: null, cover_image_url: null, payment_type: "free", price_amount_minor: null, currency: null, rating_average: null, rating_count: null, enrollment_count: null },
@@ -180,12 +180,12 @@ describe("listCreatorCourses", () => {
       expect.objectContaining({ id: "c-1", href: "/courses/deep-focus", free: true, currency: "USD", ratingCount: 0 }),
       expect.objectContaining({ id: "c-2", href: "/courses/c-2", free: false, priceAmountMinor: 4900, ratingAverage: 4.5, ratingCount: 2 }),
     ]);
-    // enrollment_count não é mantido por nada no banco: nem é lido.
+    // enrollment_count is not maintained by anything in the database: it is not even read.
     expect(JSON.stringify(calls)).not.toContain("enrollment_count");
     expect(courses?.[0]).not.toHaveProperty("enrollmentCount");
   });
 
-  it("falha de leitura vale null e fica no log", async () => {
+  it("a read failure counts as null and goes to the log", async () => {
     fakeClient({ data: null, error: { message: "banco fora" } });
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     try {

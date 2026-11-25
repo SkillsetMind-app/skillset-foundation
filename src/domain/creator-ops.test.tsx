@@ -111,7 +111,7 @@ describe("creator-ops rollup", () => {
     });
   });
 
-  // Reembolso parcial: a venda de $100 com $30 devolvidos conta $70.
+  // Partial refund: the $100 sale with $30 returned counts $70.
   it("counts a partially refunded sale for what the teacher kept", () => {
     const orders = [
       { id: "1", status: "partially_refunded", amountMinor: 10_000, refundedAmountMinor: 3_000, currency: "USD" },
@@ -285,8 +285,8 @@ describe("TeacherWalletPanel money integrity", () => {
 
     render(<TeacherWalletPanel />);
 
-    // Cada moeda no proprio valor, formatada na lingua da tela e nunca
-    // convertida nem somada: R$100 do BRL e US$20 do USD, lado a lado.
+    // Each currency in its own value, formatted in the language of the screen and never
+    // converted or added: R$100 in BRL and US$20 in USD, side by side.
     expect(
       await screen.findByText("R$100.00 · $20.00"),
     ).toBeInTheDocument();
@@ -309,9 +309,9 @@ describe("TeacherWalletPanel money integrity", () => {
     expect(screen.queryByText("$0.00")).not.toBeInTheDocument();
   });
 
-  // Linha antiga do ledger sem moeda: o dominio a soma sob "UNSPECIFIED", que o
-  // Intl recusa com RangeError. Sem o recuo, /account/payments inteira caia na
-  // tela de erro. A pagina abre e mostra cada valor.
+  // An old ledger row without a currency: the domain adds it under "UNSPECIFIED", which
+  // Intl rejects with RangeError. Without the fallback, the whole /account/payments fell into the
+  // error screen. The page opens and shows each value.
   it("renders legacy rows with an unknown or empty currency instead of crashing", async () => {
     dataMocks.subscribeToTeacherPayoutLedger.mockImplementation(
       (_teacherId, callback) => {
@@ -343,15 +343,15 @@ describe("TeacherWalletPanel money integrity", () => {
 
     render(<TeacherWalletPanel />);
 
-    // "" e "UNSPECIFIED" caem na mesma soma do dominio (moeda desconhecida).
+    // "" and "UNSPECIFIED" fall into the same domain sum (unknown currency).
     const net = (await screen.findByText("Creator net estimate")).nextElementSibling;
     expect(net).toHaveTextContent(/^UNSPECIFIED 16\.50$/);
-    // Cada linha do extrato com o proprio valor.
+    // Each statement row with its own value.
     expect(screen.getByText("UNSPECIFIED 11.00")).toBeInTheDocument();
     expect(screen.getByText("5.50")).toBeInTheDocument();
   });
 
-  // So reembolso em BRL: o neto vazio dizia "$0.00" ao lado de "R$100.00".
+  // Only a refund in BRL: the empty grandchild said "$0.00" next to "R$100.00".
   it("writes an empty total in the one currency the teacher uses", async () => {
     dataMocks.subscribeToTeacherPayoutLedger.mockImplementation(
       (_teacherId, callback) => {

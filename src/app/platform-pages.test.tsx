@@ -113,12 +113,12 @@ vi.mock("@/components/admin/support-ticket-queue", () => ({
 }));
 
 describe("platform shells", () => {
-  it("entrega a home do aluno ao painel, sem a manchete do shell", async () => {
+  it("hands the learner home to the dashboard, without the shell headline", async () => {
     mockAuthState.roles = ["student"];
     render(await LearnPage());
 
-    // O aluno via duas boas-vindas seguidas: a manchete do shell e o
-    // "Welcome back" do painel. Com hideHeader so o painel sauda.
+    // The learner used to see two welcomes in a row: the shell headline and
+    // the dashboard's "Welcome back". With hideHeader only the dashboard greets.
     expect(screen.getByText("Learn dashboard")).toBeInTheDocument();
     expect(
       screen.queryByText("Your learning, in one place."),
@@ -141,9 +141,9 @@ describe("platform shells", () => {
     mockAuthState.roles = ["admin"];
     render(<OpsPage />);
 
-    // Título compacto: a fila começa logo abaixo, não depois de uma frase de
-    // efeito de 48px, três métricas e dois filtros que nenhuma fila lia.
-    // O título é a fila aberta (Overview por padrão); "Operations" vira o sobretítulo.
+    // Compact title: the queue starts right below, not after a 48px catchphrase,
+    // three metrics and two filters that no queue read.
+    // The title is the open queue (Overview by default); "Operations" becomes the eyebrow.
     expect(
       screen.getByRole("heading", { level: 1, name: "Overview" }),
     ).toBeInTheDocument();
@@ -153,15 +153,15 @@ describe("platform shells", () => {
     expect(screen.queryByText("Period:")).not.toBeInTheDocument();
     expect(screen.queryByText("Status:")).not.toBeInTheDocument();
 
-    // As filas e seus contadores ficam na navegação principal, sem duas barras.
+    // The queues and their counters live in the main navigation, with no second bar.
     const queues = screen.getByRole("navigation", { name: "Workspace" });
-    // Rótulo com a contagem exata (lida pelo leitor de tela e mostrada na dica), depois o selo.
+    // Label with the exact count (read by the screen reader and shown in the tooltip), then the badge.
     expect(queues).toHaveTextContent(/Creator verification, 3 pending\s*3/);
     expect(queues).toHaveTextContent(/Support tickets, 2 pending\s*2/);
     expect(queues).toHaveTextContent(/Community reports, 1 pending\s*1/);
 
-    // "Access levels" deixou de ser um bloco solto no fim da página: é a
-    // oitava fila, com endereço próprio (?tab=access).
+    // "Access levels" is no longer a loose block at the end of the page: it is
+    // the eighth queue, with its own address (?tab=access).
     expect(
       screen.getByRole("link", { name: /^Access$/ }),
     ).toHaveAttribute("href", "/ops?tab=access");

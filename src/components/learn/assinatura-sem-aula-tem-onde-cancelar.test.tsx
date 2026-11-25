@@ -116,5 +116,7 @@ describe("a subscriber always has somewhere to cancel", () => {
 
     expect(screen.getAllByTestId("subscription-card")).toHaveLength(1);
     expect(container.querySelector("[data-subscription-panel]")).toBeNull();
-  });
+    // The whole classroom renders here. On a loaded CI runner it took 7.8 s and 8.7 s,
+    // past the 5 s default, and failed pull requests that had nothing to do with it.
+  }, 20_000);
 });

@@ -31,8 +31,9 @@ function rowToLessonContent(row: LessonContentRow): LessonContent {
  * absent (un-migrated course during transition). Mirrors the
  * subscribeToCourseAssets onSnapshot style.
  *
- * O retorno desliga o canal e traz `reload()`: busca de novo SEM mexer no
- * canal (a sala usa quando uma aula abre pelo calendário, sem escrita no banco).
+ * The return value turns the channel off and brings `reload()`: it fetches again
+ * WITHOUT touching the channel (the room uses it when a lesson opens from the
+ * calendar, with no database write).
  */
 export function subscribeToLessonContent(
   courseId: string,
@@ -50,13 +51,13 @@ export function subscribeToLessonContent(
       .select("*")
       .eq("course_id", courseId);
 
-    // Canal desligado, ou uma carga mais nova já saiu: esta resposta é velha.
+    // Channel turned off, or a newer load already went out: this response is stale.
     if (!active || thisLoad !== latestLoad) {
       return;
     }
 
     if (error) {
-      // A recarga avulsa que falha mantém o conteúdo que já está na tela.
+      // A standalone reload that fails keeps the content already on screen.
       if (quiet) {
         console.warn("Lesson content reload failed; keeping the previous content", error);
         return;

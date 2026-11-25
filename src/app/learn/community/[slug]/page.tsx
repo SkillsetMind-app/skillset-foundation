@@ -1,11 +1,12 @@
 import { redirect } from "next/navigation";
 
-// A comunidade do curso tem UMA cara: a aba "Community" da sala de aula, no
-// tema do curso, com a aula atual no endereco e um caminho de volta. Esta
-// pagina era a segunda cara — o mesmo feed num hub separado, com manchete
-// grande, outra moldura, e sem volta para a aula. Pior: ela lia um espaco com
-// outra chave (community-<slug>), nao o que a sala usa. Links antigos (sino,
-// barra lateral, favoritos) continuam funcionando: caem aqui e seguem.
+// The course community has ONE face: the "Community" tab of the classroom, in
+// the course theme, with the current lesson in the address and a way back. This
+// page was the second face — the same feed in a separate hub, with a big
+// headline, a different frame, and no way back to the lesson. Worse: it read a
+// space under a different key (community-<slug>), not the one the classroom
+// uses. Old links (bell, sidebar, favorites) keep working: they land here and
+// move on.
 export default async function LearnCommunityCoursePage({
   params,
 }: {

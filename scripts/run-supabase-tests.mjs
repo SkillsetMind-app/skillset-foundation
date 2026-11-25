@@ -1,23 +1,23 @@
 #!/usr/bin/env node
 /**
- * Roda os smoke tests de RLS de supabase/tests/ contra um banco real.
+ * Runs the RLS smoke tests in supabase/tests/ against a real database.
  *
- * Eles existiam desde julho e NENHUM comando do repositório os executava: o
- * vitest só coleta `src/`, e o CI roda lint, tsc, vitest e build. O arquivo que
- * prova que ninguém consegue setar o próprio `activation_fee_paid_at` — ou
- * seja, que ninguém vira criador ativado sem pagar — nunca tinha sido executado
- * por automação nenhuma. Uma regressão de policy passava por todos os portões
- * verdes. (Auditoria de 2026-08-30, achado A-03.)
+ * They had existed since July and NO command in the repository ran them: vitest
+ * only collects `src/`, and CI runs lint, tsc, vitest and build. The file that
+ * proves nobody can set their own `activation_fee_paid_at` (that is, nobody
+ * becomes an activated creator without paying) had never been run by any
+ * automation. A policy regression passed every green gate. (Audit of
+ * 2026-08-30, finding A-03.)
  *
- * Por que psql e não vitest: são scripts psql de verdade — usam \set, \gset e
- * ROLE — e, por desenho, precisam de um banco COM DADOS (o primeiro passo é
- * `SELECT uid FROM public.users LIMIT 1`). Cada um roda dentro de uma
- * transação que faz rollback, então são seguros contra um banco vivo.
+ * Why psql and not vitest: they are real psql scripts (they use \set, \gset and
+ * ROLE) and, by design, need a database WITH DATA (the first step is
+ * `SELECT uid FROM public.users LIMIT 1`). Each one runs inside a transaction
+ * that rolls back, so they are safe against a live database.
  *
- * Uso:
+ * Usage:
  *   DATABASE_URL='postgresql://...' npm run test:db
  *
- * Requisitos: `psql` no PATH e um banco alcançável com dados de teste.
+ * Requirements: `psql` on the PATH and a reachable database with test data.
  */
 import { execFileSync } from "node:child_process";
 import { readdirSync } from "node:fs";
@@ -50,8 +50,9 @@ for (const arquivo of arquivos) {
   const caminho = join(PASTA, arquivo);
   process.stdout.write(`  ${arquivo} ... `);
   try {
-    // -v ON_ERROR_STOP=1 é redundante (os arquivos já trazem \set ON_ERROR_STOP
-    // on) e barato: garante saída não-zero mesmo se alguém remover a linha.
+    // -v ON_ERROR_STOP=1 is redundant (the files already carry \set
+    // ON_ERROR_STOP on) and cheap: it guarantees a non-zero exit even if
+    // someone removes that line.
     execFileSync("psql", [url, "-v", "ON_ERROR_STOP=1", "-q", "-f", caminho], {
       stdio: ["ignore", "pipe", "pipe"],
     });

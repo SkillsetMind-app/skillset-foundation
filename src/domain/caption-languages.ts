@@ -1,7 +1,7 @@
-// Idiomas que o professor pode escolher para a legenda (a falada na aula e as
-// traduções). Códigos ISO 639-1: o Whisper e a Bunny usam os mesmos.
-// ponytail: lista curta e fixa dos idiomas mais falados; aumente quando um
-// professor pedir um que falta. O nome sai do Intl, sem chave de tradução.
+// Languages the teacher can choose for the caption (the one spoken in the lesson and the
+// translations). ISO 639-1 codes: Whisper and Bunny use the same ones.
+// ponytail: short, fixed list of the most spoken languages; grow it when a
+// teacher asks for one that is missing. The name comes from Intl, with no translation key.
 export const CAPTION_LANGUAGES = [
   "en", "es", "pt", "fr", "de", "it", "nl", "pl", "ru", "uk",
   "tr", "ar", "hi", "zh", "ja", "ko", "id", "vi", "tl", "sv",
@@ -13,7 +13,7 @@ export function isCaptionLanguage(value: unknown): value is CaptionLanguage {
   return typeof value === "string" && (CAPTION_LANGUAGES as readonly string[]).includes(value);
 }
 
-/** Nome do idioma no idioma da interface ("Spanish" / "español"). */
+/** Name of the language in the interface language ("Spanish" / "español"). */
 export function captionLanguageName(code: string, uiLocale = "en"): string {
   try {
     return new Intl.DisplayNames([uiLocale], { type: "language" }).of(code) ?? code;

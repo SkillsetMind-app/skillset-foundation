@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// Aqui o cliente de servidor e o de verdade (com a trava do segundo fator);
-// so o Supabase por baixo dele e falso. O route.test.tsx troca o cliente
-// inteiro por um falso, entao nao prova a trava.
+// Here the server client is the real one (with the second-factor lock);
+// only the Supabase underneath it is fake. route.test.tsx swaps the whole
+// client for a fake one, so it does not prove the lock.
 const mocks = vi.hoisted(() => ({
   createServerClient: vi.fn(),
   getUser: vi.fn(),
@@ -34,7 +34,7 @@ function token(aal: string) {
   return `header.${Buffer.from(JSON.stringify({ aal })).toString("base64url")}.signature`;
 }
 
-// Conta confirmada, com app autenticador, numa sessao com ou sem o codigo.
+// Confirmed account, with an authenticator app, in a session with or without the code.
 function signedIn(aal: "aal1" | "aal2") {
   mocks.getUser.mockResolvedValue({
     data: {
@@ -47,7 +47,7 @@ function signedIn(aal: "aal1" | "aal2") {
     error: null,
   });
   mocks.getSession.mockResolvedValue({ data: { session: { access_token: token(aal) } }, error: null });
-  // O banco decide (session_is_strong): sem o codigo a sessao e fraca, e a conta esta liberada.
+  // The database decides (session_is_strong): without the code the session is weak, and the account is released.
   mocks.rpc.mockImplementation((name: string) =>
     Promise.resolve({ data: name === "session_is_strong" ? aal === "aal2" : true, error: null }),
   );

@@ -83,13 +83,13 @@ export function getOpsNavItem(tab: string | null, subject?: PermissionSubject | 
     ?? opsNavItems[0];
 }
 
-// Ordem da lista = ordem na barra dentro de cada secao; a ordem das secoes
-// mora em platform-nav.tsx (sectionOrder). `contexts: []` nao aparece na barra,
-// mas segue aqui: platform-header's getPageLabel varre a lista inteira para
-// traduzir o titulo da pagina, e sem a entrada o topo cairia num pedaco de URL.
+// List order = order in the bar within each section; the order of the sections
+// lives in platform-nav.tsx (sectionOrder). `contexts: []` does not show in the bar,
+// but stays here: platform-header's getPageLabel scans the whole list to
+// translate the page title, and without the entry the header would fall back to a piece of the URL.
 export const platformNav: PlatformNavItem[] = [
-  // --- Aluno: quatro itens fixos (+ Ajuda, que e um botao e nao uma rota).
-  // "Classroom" era o nome da LISTA de cursos; a sala de aula e outra tela. ---
+  // --- Learner: four fixed items (+ Help, which is a button and not a route).
+  // "Classroom" used to be the name of the course LIST; the classroom is a different screen. ---
   {
     href: "/learn",
     labelKey: "platform.nav.myCourses",
@@ -99,8 +99,8 @@ export const platformNav: PlatformNavItem[] = [
     permission: "courses.viewLearning",
   },
   {
-    // A caixa de entrada do aluno: uma conversa por curso. Antes morava no
-    // grupo Account, fechado para quem estava em "Learn".
+    // The learner's inbox: one conversation per course. It used to live in the
+    // Account group, which is closed for people in "Learn".
     href: "/learn/messages",
     labelKey: "platform.nav.messages",
     icon: "MessageCircle",
@@ -125,8 +125,8 @@ export const platformNav: PlatformNavItem[] = [
     permission: "certificates.view",
   },
   {
-    // Fora da barra: as proximas lives aparecem em "My courses", com um link
-    // para esta pagina.
+    // Outside the bar: the upcoming lives show up in "My courses", with a link
+    // to this page.
     href: "/learn/events",
     labelKey: "platform.nav.agenda",
     icon: "Calendar",
@@ -135,7 +135,7 @@ export const platformNav: PlatformNavItem[] = [
     permission: "courses.viewLearning",
   },
   {
-    // A lista de desejos mora no menu do avatar.
+    // The wishlist lives in the avatar menu.
     href: "/learn/wishlist",
     labelKey: "platform.nav.wishlist",
     icon: "Bookmark",
@@ -143,10 +143,10 @@ export const platformNav: PlatformNavItem[] = [
     sectionKey: "learn",
     permission: "courses.viewLearning",
   },
-  // --- Professor: oito itens no primeiro nivel. Ferramentas (Verification) e
-  // planos foram para o menu do avatar; "Collaborators", "Integrations" e a
-  // placa de "Coupons" sairam (as rotas redirecionam). A troca para o lado do
-  // aluno e o botao do topo, nao um link no rodape. ---
+  // --- Teacher: eight items on the first level. Tools (Verification) and
+  // plans went to the avatar menu; "Collaborators", "Integrations" and the
+  // "Coupons" plate were removed (the routes redirect). Switching to the learner
+  // side is the button at the top, not a link in the footer. ---
   {
     href: "/teach",
     labelKey: "platform.nav.studio",
@@ -172,8 +172,8 @@ export const platformNav: PlatformNavItem[] = [
     permission: "teacherStudio.manageCourses",
   },
   {
-    // Todos os alunos de todos os produtos. "Members & communities" era uma
-    // lista de PRODUTOS com esse nome; a rota segue viva, fora da barra.
+    // All the learners of all the products. "Members & communities" was a
+    // list of PRODUCTS with that name; the route is still alive, outside the bar.
     href: "/teach/students",
     labelKey: "platform.nav.students",
     icon: "Users",
@@ -190,8 +190,8 @@ export const platformNav: PlatformNavItem[] = [
     permission: "teacherStudio.manageCourses",
   },
   {
-    // Mensagens + perguntas da comunidade. Era "Messages", escondido dentro
-    // do grupo Marketing.
+    // Messages + community questions. It used to be "Messages", hidden inside
+    // the Marketing group.
     href: "/teach/messages",
     labelKey: "platform.nav.inbox",
     icon: "Inbox",
@@ -226,8 +226,8 @@ export const platformNav: PlatformNavItem[] = [
   // No "Reviews & refunds" entry: /teach/refunds is a bare redirect to
   // /account/payments, and /teach/operations redirects to /teach/reports.
   // Earnings — a record of what Stripe already paid into the creator's own
-  // connected account. ONE name everywhere (barra, avatar, titulo, erros):
-  // antes eram quatro ("Payments", "Earnings", "Payouts & tax", "Payouts panel").
+  // connected account. ONE name everywhere (bar, avatar, title, errors):
+  // before, there were four ("Payments", "Earnings", "Payouts & tax", "Payouts panel").
   {
     href: "/account/payments",
     labelKey: "platform.nav.earnings",
@@ -236,8 +236,8 @@ export const platformNav: PlatformNavItem[] = [
     sectionKey: "earnings",
     permission: "teacherStudio.access",
   },
-  // Promote: o que faz o produto ser encontrado. Os cupons vivem dentro de
-  // cada produto; /teach/coupons redireciona para a lista de produtos.
+  // Promote: what makes the product get found. Coupons live inside
+  // each product; /teach/coupons redirects to the product list.
   {
     href: "/teach/marketing",
     labelKey: "platform.nav.marketingOverview",
@@ -264,7 +264,7 @@ export const platformNav: PlatformNavItem[] = [
     permission: "teacherStudio.manageCourses",
   },
   {
-    // Menu do avatar; aqui so como fonte do titulo.
+    // Avatar menu; here only as the source of the title.
     href: "/teach/verification",
     labelKey: "platform.nav.verification",
     icon: "UserCheck",
@@ -292,10 +292,10 @@ export const platformNav: PlatformNavItem[] = [
     contexts: ["learner", "teacher", "ops"],
     sectionKey: "discover",
   },
-  // --- Conta do aluno, abaixo dos itens fixos: compras e configuracoes. ---
-  // Mesma pagina, dois nomes: para o aluno ela so guarda o que ele comprou,
-  // entao se chama "My purchases"; o professor segue vendo "Billing". O do
-  // aluno vem primeiro: e o titulo que getPageLabel acha enquanto o papel carrega.
+  // --- Learner account, below the fixed items: purchases and settings. ---
+  // Same page, two names: for the learner it only holds what they bought,
+  // so it is called "My purchases"; the teacher still sees "Billing". The learner's
+  // comes first: it is the title that getPageLabel finds while the role loads.
   {
     href: "/account/billing",
     labelKey: "platform.nav.myPurchases",
@@ -320,9 +320,9 @@ export const platformNav: PlatformNavItem[] = [
     sectionKey: "account",
   },
   {
-    // Os planos sao de quem VENDE: so o professor chega aqui, pelo "Creator
-    // plan" do menu do avatar. Fora da barra (o aluno lia "Plans & fees" e
-    // achava que precisava pagar assinatura).
+    // The plans belong to whoever SELLS: only the teacher gets here, through the "Creator
+    // plan" item in the avatar menu. Outside the bar (the learner read "Plans & fees" and
+    // thought they had to pay a subscription).
     href: "/account/plans",
     labelKey: "platform.nav.plansFees",
     icon: "Receipt",

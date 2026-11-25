@@ -64,7 +64,7 @@ describe("translateVtt", () => {
     await expect(translateVtt({ vtt: source, from: "en", to: "es", deadline })).rejects.toThrow(
       "translation_line_mismatch",
     );
-    // Uma segunda tentativa antes de desistir.
+    // A second attempt before giving up.
     expect(mocks.askJson).toHaveBeenCalledTimes(2);
   });
 });

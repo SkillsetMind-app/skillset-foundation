@@ -1,13 +1,13 @@
 import { askJson } from "./openai";
 import { breaksTextRules } from "./text-rules";
 
-// Quiz e sugestão de título/descrição a partir da transcrição da aula (o texto
-// da legenda). A IA só organiza o que o professor disse: nada de fato de fora,
-// nada de promessa de resultado ou de saúde. O professor revisa tudo antes.
+// Quiz and title/description suggestion from the lesson transcript (the caption
+// text). The AI only organizes what the teacher said: no outside facts,
+// no promise of results or health. The teacher reviews everything first.
 
 export type QuizQuestion = { question: string; options: string[]; answer: number; explanation: string };
 
-// Transcrição máxima enviada: ~2 h de fala. Corta no fim, não no meio da aula.
+// Maximum transcript sent: ~2 h of speech. Cut at the end, not in the middle of the lesson.
 const MAX_TRANSCRIPT_CHARS = 150_000;
 const QUIZ_LIMITS = { questions: [1, 10], options: [2, 5], question: 300, option: 200, explanation: 500 } as const;
 
@@ -51,8 +51,8 @@ const SUGGEST_SCHEMA = {
 };
 
 /**
- * Quiz válido ou erro "quiz_invalid". Vale para o que a IA devolve e para o que
- * o professor editou: o banco só recebe o que passou por aqui.
+ * Valid quiz or "quiz_invalid" error. Applies to what the AI returns and to what
+ * the teacher edited: the database only receives what passed through here.
  */
 export function cleanQuiz(raw: unknown): QuizQuestion[] {
   if (!Array.isArray(raw)) throw new Error("quiz_invalid");
@@ -85,8 +85,8 @@ export function cleanQuiz(raw: unknown): QuizQuestion[] {
   return questions;
 }
 
-// Embaralha as opções e acompanha a resposta: o modelo tende a pôr a certa
-// sempre na mesma posição, e o aluno aprenderia a posição, não a aula.
+// Shuffles the options and tracks the answer: the model tends to put the right one
+// always in the same position, and the learner would learn the position, not the lesson.
 function shuffleOptions(question: QuizQuestion, random: () => number): QuizQuestion {
   const order = question.options.map((_, index) => index);
   for (let i = order.length - 1; i > 0; i--) {
@@ -118,7 +118,7 @@ export async function generateQuiz(
     schema: QUIZ_SCHEMA,
     signal: deadline,
   });
-  // Pergunta que passa da regra de texto ou vem malformada sai; o resto fica.
+  // A question that breaks the text rule or comes malformed is dropped; the rest stays.
   const kept = (Array.isArray(reply.questions) ? reply.questions : []).flatMap((item) => {
     try {
       const [question] = cleanQuiz([item]);

@@ -17,8 +17,8 @@ import {
 // Fixtures only: no real numbers, ids or people.
 const NOW = new Date("2026-10-05T15:30:00.000Z");
 
-describe("periodo do Overview", () => {
-  it("aceita so os tres periodos e cai em 7 dias para o resto", () => {
+describe("Overview period", () => {
+  it("accepts only the three periods and falls back to 7 days for anything else", () => {
     expect(parseOverviewPeriod("today")).toBe("today");
     expect(parseOverviewPeriod("30d")).toBe("30d");
     for (const value of [null, undefined, "", "90d", "TODAY"]) {
@@ -26,7 +26,7 @@ describe("periodo do Overview", () => {
     }
   });
 
-  it("Today vai da meia-noite UTC ate agora e compara com as mesmas horas de ontem", () => {
+  it("Today runs from midnight UTC until now and compares with the same hours of yesterday", () => {
     const window = resolveOverviewWindow("today", NOW);
     expect(window.days).toBe(1);
     expect(new Date(window.start).toISOString()).toBe("2026-10-05T00:00:00.000Z");
@@ -35,7 +35,7 @@ describe("periodo do Overview", () => {
     expect(new Date(window.previousEnd).toISOString()).toBe("2026-10-04T15:30:00.000Z");
   });
 
-  it("7 e 30 dias incluem hoje e o periodo anterior tem o mesmo tamanho, deslocado N dias", () => {
+  it("7 and 30 days include today and the previous period has the same length, shifted N days", () => {
     const week = resolveOverviewWindow("7d", NOW);
     expect(new Date(week.start).toISOString()).toBe("2026-09-29T00:00:00.000Z");
     expect(new Date(week.previousStart).toISOString()).toBe("2026-09-22T00:00:00.000Z");
@@ -48,35 +48,35 @@ describe("periodo do Overview", () => {
     expect(month.end - month.start).toBe(month.previousEnd - month.previousStart);
   });
 
-  it("corta o dia em UTC, nao no fuso do navegador", () => {
-    // 02:00 UTC ainda e "ontem" em UTC-3; o recorte nao muda por isso.
+  it("cuts the day in UTC, not in the browser time zone", () => {
+    // 02:00 UTC is still "yesterday" in UTC-3; the cut does not change because of it.
     const window = resolveOverviewWindow("today", new Date("2026-10-05T02:00:00.000Z"));
     expect(new Date(window.start).toISOString()).toBe("2026-10-05T00:00:00.000Z");
     const rows = [
-      "2026-10-05T00:00:00.000Z", // primeiro instante de hoje
-      "2026-10-04T23:59:59.999Z", // ontem, depois das 02:00: fora da comparacao
-      "2026-10-04T01:00:00.000Z", // ontem, antes das 02:00
+      "2026-10-05T00:00:00.000Z", // first instant of today
+      "2026-10-04T23:59:59.999Z", // yesterday, after 02:00: outside the comparison
+      "2026-10-04T01:00:00.000Z", // yesterday, before 02:00
     ];
     expect(measure(rows, (row) => row, window)).toMatchObject({ current: 1, previous: 1 });
   });
 });
 
 describe("measure", () => {
-  it("separa atual e anterior, ignora fora da janela e data invalida", () => {
+  it("separates current and previous, ignores anything outside the window and invalid dates", () => {
     const window = resolveOverviewWindow("today", NOW);
     const rows = [
-      "2026-10-05T01:00:00Z", // hoje
-      "2026-10-05T15:30:00Z", // agora exato conta
-      "2026-10-04T10:00:00Z", // ontem, antes da mesma hora
-      "2026-10-04T20:00:00Z", // ontem, depois da mesma hora: fora da comparacao
-      "2026-10-03T10:00:00Z", // anteontem
+      "2026-10-05T01:00:00Z", // today
+      "2026-10-05T15:30:00Z", // exactly now counts
+      "2026-10-04T10:00:00Z", // yesterday, before the same time
+      "2026-10-04T20:00:00Z", // yesterday, after the same time: outside the comparison
+      "2026-10-03T10:00:00Z", // the day before yesterday
       "not-a-date",
       null,
     ];
     expect(measure(rows, (row) => row, window)).toEqual({ current: 2, previous: 1, series: [] });
   });
 
-  it("monta a serie diaria so para 7 e 30 dias, com peso opcional", () => {
+  it("builds the daily series only for 7 and 30 days, with optional weight", () => {
     const window = resolveOverviewWindow("7d", NOW);
     const rows = [
       { at: "2026-09-29T00:00:00Z", n: 2 },
@@ -92,8 +92,8 @@ describe("measure", () => {
   });
 });
 
-describe("cadastros", () => {
-  it("conta cadastros e, entre eles, quem entrou como criador", () => {
+describe("sign-ups", () => {
+  it("counts sign-ups and, among them, who joined as a creator", () => {
     const window = resolveOverviewWindow("7d", NOW);
     const summary = summarizeUsers([
       { created_at: "2026-10-01T10:00:00Z", roles: ["student"] },
@@ -106,10 +106,10 @@ describe("cadastros", () => {
   });
 });
 
-describe("cursos reais", () => {
+describe("real courses", () => {
   const window = resolveOverviewWindow("7d", NOW);
 
-  it("ignora cursos internos de teste (smoke- e [QA]) em criados e em criadores no ar", () => {
+  it("ignores internal test courses (smoke- and [QA]) in created and in live creators", () => {
     const summary = summarizeCourses([
       { id: "course-a", title: "Real course", owner_id: "creator-1", status: "published", created_at: "2026-10-01T00:00:00Z" },
       { id: "course-b", title: "Another", owner_id: "creator-1", status: "published", created_at: "2026-01-01T00:00:00Z" },
@@ -121,7 +121,7 @@ describe("cursos reais", () => {
     expect(summary.liveCreators).toBe(1);
   });
 
-  it("conta cada curso publicado uma vez por periodo e tira os de teste pelo titulo gravado", () => {
+  it("counts each published course once per period and removes the test ones by the stored title", () => {
     const published = summarizePublications([
       { target_id: "course-a", created_at: "2026-10-01T00:00:00Z", metadata: { title: "Real" } },
       { target_id: "course-a", created_at: "2026-10-02T00:00:00Z", metadata: { title: "Real" } },
@@ -134,8 +134,8 @@ describe("cursos reais", () => {
   });
 });
 
-describe("matriculas", () => {
-  it("separa pagas de gratuitas e tira curso de teste", () => {
+describe("enrollments", () => {
+  it("separates paid from free and removes the test course", () => {
     const window = resolveOverviewWindow("7d", NOW);
     const summary = summarizeEnrollments([
       { course_id: "course-a", course_title: "Real", source: "payment", created_at: "2026-10-01T00:00:00Z" },
@@ -151,7 +151,7 @@ describe("matriculas", () => {
   });
 });
 
-describe("dinheiro", () => {
+describe("money", () => {
   const window = resolveOverviewWindow("7d", NOW);
   const order = (overrides: Partial<OverviewOrderRow>): OverviewOrderRow => ({
     course_id: "course-a", course_title: "Real", status: "paid", amount_minor: 10_000,
@@ -159,7 +159,7 @@ describe("dinheiro", () => {
     paid_at: "2026-10-01T00:00:00Z", updated_at: "2026-10-01T00:00:00Z", ...overrides,
   });
 
-  it("soma vendas e taxa da plataforma por moeda, sem misturar moedas e sem pedidos de teste", () => {
+  it("adds up sales and platform fee per currency, without mixing currencies and without test orders", () => {
     const summary = summarizeOrders([
       order({}),
       order({ amount_minor: 5_000, platform_fee_bps: 500 }),
@@ -168,24 +168,24 @@ describe("dinheiro", () => {
       order({ course_id: "smoke-checkout", amount_minor: 99_999 }),
       order({ course_title: "[QA] Matrix", amount_minor: 99_999 }),
       order({ status: "pending", paid_at: null }),
-      // Cupom de 100%: pago, mas nada foi cobrado. Nao e venda.
+      // A 100% coupon: paid, but nothing was charged. It is not a sale.
       order({ amount_minor: 0 }),
     ], window);
     expect(summary.paidOrders).toMatchObject({ current: 3, previous: 1 });
-    // USD (a moeda padrao) primeiro, o resto em ordem alfabetica.
+    // USD (the default currency) first, the rest in alphabetical order.
     expect(summary.gross).toEqual([
       { currency: "USD", current: 15_000, previous: 10_000 },
       { currency: "EUR", current: 2_000, previous: 0 },
     ]);
-    // Mesmo calculo que o webhook grava no ledger: floor(bruto * bps / 10000),
-    // e a taxa padrao quando o pedido nao congelou nenhuma.
+    // Same calculation the webhook writes to the ledger: floor(gross * bps / 10000),
+    // and the default fee when the order did not freeze any.
     expect(summary.platformFees).toEqual([
       { currency: "USD", current: 1_250, previous: 1_000 },
       { currency: "EUR", current: 200, previous: 0 },
     ]);
   });
 
-  it("um pedido pago e depois reembolsado continua na venda bruta e aparece no reembolso", () => {
+  it("an order that was paid and later refunded stays in gross sales and shows up in refunds", () => {
     const summary = summarizeOrders([
       order({ status: "refunded", refunded_amount_minor: 10_000, updated_at: "2026-10-03T00:00:00Z" }),
       order({ status: "partially_refunded", refunded_amount_minor: 2_500, paid_at: "2026-08-01T00:00:00Z", updated_at: "2026-10-04T00:00:00Z" }),
@@ -196,9 +196,9 @@ describe("dinheiro", () => {
     expect(summary.refundedAmount).toEqual([{ currency: "USD", current: 12_500, previous: 0 }]);
   });
 
-  // O reembolso devolve a taxa (refund_application_fee: true); a carteira do
-  // criador ja tira o reembolsado. A receita da plataforma tambem.
-  it("taxa da plataforma sai do valor liquido: US$100 a 10% reembolsado inteiro da US$0", () => {
+  // The refund returns the fee (refund_application_fee: true); the creator's wallet
+  // already removes the refunded amount. So does the platform revenue.
+  it("the platform fee comes from the net amount: US$100 at 10% refunded in full gives US$0", () => {
     const refunded = summarizeOrders([
       order({ status: "refunded", amount_minor: 10_000, platform_fee_bps: 1000, refunded_amount_minor: 10_000 }),
     ], window);
@@ -210,13 +210,13 @@ describe("dinheiro", () => {
     expect(partial.platformFees).toEqual([{ currency: "USD", current: 750, previous: 0 }]);
   });
 
-  // Checkout expirado reescreve "failed" para "cancelled": a contagem seria
-  // sempre ~0. Volta quando o webhook deixar "failed" fixo.
-  it("nao entrega contagem de pagamentos com falha", () => {
+  // An expired checkout rewrites "failed" to "cancelled": the count would be
+  // always ~0. It comes back when the webhook leaves "failed" fixed.
+  it("does not deliver a count of failed payments", () => {
     expect(summarizeOrders([], window)).not.toHaveProperty("failed");
   });
 
-  it("receita da plataforma soma taxa e ativacao moeda a moeda", () => {
+  it("platform revenue adds fee and activation currency by currency", () => {
     expect(addMoney(
       [{ currency: "USD", current: 1_000, previous: 500 }],
       [{ currency: "EUR", current: 300, previous: 0 }, { currency: "USD", current: 2_500, previous: 0 }],
@@ -226,7 +226,7 @@ describe("dinheiro", () => {
     ]);
   });
 
-  it("taxa de ativacao: conta todas e soma so as que gravaram valor, na unidade interna", () => {
+  it("activation fee: counts all of them and adds up only those that stored a value, in the internal unit", () => {
     const summary = summarizeActivations([
       { target_id: "u1", created_at: "2026-10-01T00:00:00Z", metadata: { amountTotal: 2_500, currency: "usd" } },
       { target_id: "u2", created_at: "2026-10-02T00:00:00Z", metadata: {} },
@@ -240,7 +240,7 @@ describe("dinheiro", () => {
     ]);
   });
 
-  it("taxa de ativacao gravada duas vezes para o mesmo pagamento conta uma vez", () => {
+  it("an activation fee stored twice for the same payment counts once", () => {
     const paid = { amountTotal: 2_500, currency: "usd", paymentIntentId: "pi_test_1" };
     const summary = summarizeActivations([
       { target_id: "u1", created_at: "2026-10-01T00:00:00Z", metadata: paid },

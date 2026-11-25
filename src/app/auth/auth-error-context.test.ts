@@ -108,7 +108,7 @@ describe("email confirmation error context", () => {
     const redirect = entry === "loading" ? `${origin}${next}` : `${origin}/auth/confirm?next=${encodeURIComponent(next)}`;
     const params = new URLSearchParams({ token_hash: "email-fixture", type: "signup", redirect_to: redirect });
     const response = await confirm(new NextRequest(`${origin}/auth/confirm?${params}`));
-    // confirm_expired: o login abre "este link venceu", com reenviar.
+    // confirm_expired: the login opens "this link expired", with resend.
     expect(Object.fromEntries(new URL(response.headers.get("location")!).searchParams)).toEqual({ error: "confirm_expired", path: "teacher", returnTo: target });
     expect(mocks.verify).toHaveBeenCalledWith({ token_hash: "email-fixture", type: "signup" });
     expect(mocks.exchange).not.toHaveBeenCalled();

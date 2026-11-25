@@ -7,16 +7,16 @@ import { pipeline } from "node:stream/promises";
 
 import ffmpegPath from "ffmpeg-static";
 
-// Áudio da aula para a transcrição. O Whisper aceita até 25 MB por arquivo; o
-// MP4 de 240p da Bunny tem ~3,4 MB por minuto (medido: 197 s = 11,1 MB), ou
-// seja, só 7 minutos de aula caberiam inteiros. O ffmpeg tira só a voz (mono,
-// 16 kHz, opus 32 kbps: ~0,24 MB por minuto) e corta em pedaços de 10 minutos,
-// que vão em paralelo para a OpenAI e voltam juntos com o deslocamento de cada um.
+// Lesson audio for the transcription. Whisper accepts up to 25 MB per file; the
+// Bunny 240p MP4 takes ~3.4 MB per minute (measured: 197 s = 11.1 MB), which
+// means only 7 minutes of a lesson would fit whole. ffmpeg keeps only the voice (mono,
+// 16 kHz, opus 32 kbps: ~0.24 MB per minute) and cuts it into 10-minute chunks,
+// which go to OpenAI in parallel and come back together with the offset of each one.
 //
-// Quem baixa o MP4 é o Node, não o ffmpeg: o binário estático do ffmpeg-static
-// (glibc estática) não resolve DNS sem nscd, que a Vercel não roda. O MP4 da
-// Bunny é "faststart" (moov antes de mdat, conferido em 13/11), então chega
-// pelo stdin sem precisar de busca. Os pedaços vão para /tmp, apagado no fim.
+// Node downloads the MP4, not ffmpeg: the static ffmpeg-static binary
+// (static glibc) cannot resolve DNS without nscd, which Vercel does not run. The Bunny
+// MP4 is "faststart" (moov before mdat, checked on Nov 13), so it arrives
+// through stdin without needing to seek. The chunks go to /tmp, deleted at the end.
 
 export const CHUNK_SECONDS = 10 * 60;
 
@@ -40,16 +40,16 @@ async function runFfmpeg(binary: string, args: string[], input: Readable, signal
       else reject(new AudioExtractError(`ffmpeg_exit_${code}: ${stderr.trim()}`));
     });
   });
-  // Com -t o ffmpeg para de ler antes do fim do arquivo: o EPIPE que sobra
-  // na entrada não é erro, quem decide é o código de saída.
+  // With -t ffmpeg stops reading before the end of the file: the EPIPE left over
+  // on the input is not an error, the exit code decides.
   const feed = pipeline(input, child.stdin).catch(() => undefined);
   await Promise.all([exit, feed]);
 }
 
 /**
- * Pedaços de áudio de um vídeo, na ordem, cada um com o segundo em que começa.
- * `referer` vai no pedido à CDN: a biblioteca recusa pedido sem Referer (403).
- * `maxSeconds` corta o áudio no tempo que foi cobrado do teto do professor.
+ * Audio chunks of a video, in order, each with the second where it starts.
+ * `referer` goes in the CDN request: the library refuses a request without Referer (403).
+ * `maxSeconds` cuts the audio at the time that was charged against the teacher's cap.
  */
 export async function extractAudioChunks(opts: {
   videoUrl: string;

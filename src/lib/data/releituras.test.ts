@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 
-// O "Try again" das telas do aluno e do site relê pela MESMA inscrição
-// (`reload()`), sem sair e entrar de novo no Realtime. Para cada função:
-//  - a consulta e o canal são os de antes (travados aqui, argumento por argumento);
-//  - sem reload, tudo entrega como antes, inclusive a leitura inicial que volta
-//    depois de desligar (a sala reinscreve a cada 5s depois do checkout);
-//  - com reload: só a leitura mais nova vale entre ele e o canal, nada do
-//    reload chega depois de desligar, e o reload que falha avisa e resolve.
+// The "Try again" of the learner screens and the site re-reads through the SAME subscription
+// (`reload()`), without leaving and rejoining Realtime. For each function:
+//  - the query and the channel are the same as before (locked here, argument by argument);
+//  - without reload, everything delivers as before, including the initial read that comes back
+//    after turning off (the room resubscribes every 5s after checkout);
+//  - with reload: only the newest read counts between it and the channel, nothing from the
+//    reload arrives after turning off, and a reload that fails reports and resolves.
 
 type Answer = { data: unknown; error: Error | null };
 type Read = { query: unknown[][]; answer: (answer: Answer) => void };
@@ -20,8 +20,8 @@ const fake = vi.hoisted(() => ({
 
 vi.mock("@/lib/supabase/client", () => ({
   getSupabaseBrowserClient: () => ({
-    // Consulta encadeável que anota cada chamada; ao ser aguardada vira uma
-    // leitura pendente que o teste responde na ordem que quiser.
+    // Chainable query that records each call; when awaited it becomes a
+    // pending read that the test answers in whatever order it wants.
     from: (table: string) => {
       const query: unknown[][] = [["from", table]];
       const builder: Record<string, unknown> = {};
@@ -35,7 +35,7 @@ vi.mock("@/lib/supabase/client", () => ({
         new Promise<Answer>((answer) => fake.reads.push({ query, answer })).then(resolve, reject);
       return builder;
     },
-    // O canal guarda o filtro e o handler: o teste dispara a mudança.
+    // The channel keeps the filter and the handler: the test fires the change.
     channel: (name: string) => {
       const entry: Channel = { name, kind: "", filter: null, handler: () => undefined };
       fake.channels.push(entry);
@@ -70,7 +70,7 @@ type Case = {
   /** A consulta de main, chamada por chamada. */
   query: unknown[][];
   channel: { name: string; filter: Record<string, string> };
-  /** "reread": o canal relê a consulta; "payload": o canal entrega a linha que mudou. */
+  /** "reread": the channel re-reads the query; "payload": the channel delivers the row that changed. */
   realtime: "reread" | "payload";
   answer: (id: string) => unknown;
   idOf: (value: unknown) => string | null;
@@ -155,7 +155,7 @@ const cases: Case[] = [
     answer: (id) => [{ id, course_slug: "course-1", status: "scheduled", starts_at: "2026-12-01T10:00:00Z", title: id }],
     idOf: firstId,
   },
-  // A opção das canceladas: a MESMA consulta e o mesmo canal, só o filtro muda.
+  // The canceled option: the SAME query and the same channel, only the filter changes.
   {
     name: "subscribeToCourseEvents com includeCancelled",
     subscribe: (callback, onError) =>
@@ -168,7 +168,7 @@ const cases: Case[] = [
   },
 ];
 
-describe("subscribeToCourseEvents: as canceladas", () => {
+describe("subscribeToCourseEvents: the canceled ones", () => {
   const rows = [
     { id: "marcada", course_slug: "course-1", status: "scheduled", starts_at: "2026-12-01T10:00:00Z" },
     { id: "cancelada", course_slug: "course-1", status: "cancelled", starts_at: "2026-12-02T10:00:00Z" },
@@ -195,7 +195,7 @@ const reads = (count: number) => vi.waitFor(() => expect(fake.reads).toHaveLengt
 const reloadCases = cases.filter((item) => item.realtime === "reread");
 const payloadCases = cases.filter((item) => item.realtime === "payload");
 
-// Uma inscrição nova, com a leitura inicial já pendente e o canal aberto.
+// A new subscription, with the initial read already pending and the channel open.
 async function start(item: Case) {
   fake.reads = [];
   fake.channels = [];
@@ -209,8 +209,8 @@ async function start(item: Case) {
   return { callback, onError, subscription, delivered, channel: () => fake.channels[0] };
 }
 
-describe("reload() das inscrições do aluno e do site", () => {
-  it.each(cases)("$name: a consulta e o canal são os de antes, e o reload repete a mesma consulta", async (item) => {
+describe("reload() of the learner and site subscriptions", () => {
+  it.each(cases)("$name: the query and the channel are the same as before, and reload repeats the same query", async (item) => {
     const { subscription } = await start(item);
     expect(fake.reads[0].query).toEqual(item.query);
     expect(fake.channels).toHaveLength(1);
@@ -223,7 +223,7 @@ describe("reload() das inscrições do aluno e do site", () => {
     expect(fake.removeChannel).not.toHaveBeenCalled();
   });
 
-  it.each(cases)("$name: sem reload, a leitura inicial que volta depois de desligar ainda entrega (como antes)", async (item) => {
+  it.each(cases)("$name: without reload, the initial read that comes back after turning off still delivers (as before)", async (item) => {
     const { subscription, delivered } = await start(item);
     subscription();
     fake.reads[0].answer({ data: item.answer("inicial"), error: null });
@@ -232,7 +232,7 @@ describe("reload() das inscrições do aluno e do site", () => {
     expect(fake.removeChannel).toHaveBeenCalledOnce();
   });
 
-  it.each(reloadCases)("$name: sem reload, as releituras do canal entregam na ordem em que voltam (como antes)", async (item) => {
+  it.each(reloadCases)("$name: without reload, the channel's re-reads deliver in the order they come back (as before)", async (item) => {
     const { delivered, channel } = await start(item);
     fake.reads[0].answer({ data: item.answer("inicial"), error: null });
     channel().handler();
@@ -245,7 +245,7 @@ describe("reload() das inscrições do aluno e do site", () => {
     expect(delivered()).toEqual(["inicial", "canal-2", "canal-1"]);
   });
 
-  it.each(payloadCases)("$name: o canal entrega a linha que mudou, sem leitura nova (como antes)", async (item) => {
+  it.each(payloadCases)("$name: the channel delivers the row that changed, with no new read (as before)", async (item) => {
     const { delivered, channel } = await start(item);
     fake.reads[0].answer({ data: item.answer("inicial"), error: null });
     await settle();
@@ -255,7 +255,7 @@ describe("reload() das inscrições do aluno e do site", () => {
     expect(fake.reads).toHaveLength(1);
   });
 
-  it.each(cases)("$name: dois reloads fora de ordem: só o mais novo entrega", async (item) => {
+  it.each(cases)("$name: two reloads out of order: only the newest delivers", async (item) => {
     const { subscription, onError, delivered } = await start(item);
     fake.reads[0].answer({ data: null, error: new Error("offline") });
     await vi.waitFor(() => expect(onError).toHaveBeenCalledOnce());
@@ -271,7 +271,7 @@ describe("reload() das inscrições do aluno e do site", () => {
     expect(onError).toHaveBeenCalledOnce();
   });
 
-  it.each(reloadCases)("$name: o canal relê depois do reload: vale a do canal, a do reload que volta depois cai", async (item) => {
+  it.each(reloadCases)("$name: the channel re-reads after the reload: the channel's counts, the reload's that comes back later is dropped", async (item) => {
     const { subscription, delivered, channel } = await start(item);
     fake.reads[0].answer({ data: item.answer("inicial"), error: null });
     await settle();
@@ -286,7 +286,7 @@ describe("reload() das inscrições do aluno e do site", () => {
     expect(delivered()).toEqual(["inicial", "canal"]);
   });
 
-  it.each(reloadCases)("$name: o reload depois de uma releitura do canal: vale o reload, a do canal mais velha cai", async (item) => {
+  it.each(reloadCases)("$name: the reload after a channel re-read: the reload counts, the older channel read is dropped", async (item) => {
     const { subscription, delivered, channel } = await start(item);
     fake.reads[0].answer({ data: item.answer("inicial"), error: null });
     await settle();
@@ -302,21 +302,21 @@ describe("reload() das inscrições do aluno e do site", () => {
     expect(delivered()).toEqual(["inicial", "reload"]);
   });
 
-  it.each(cases)("$name: o reload que falha avisa por onError e a promessa resolve", async (item) => {
+  it.each(cases)("$name: a reload that fails reports through onError and the promise resolves", async (item) => {
     const { subscription, onError, callback } = await start(item);
     fake.reads[0].answer({ data: null, error: new Error("offline") });
     await vi.waitFor(() => expect(onError).toHaveBeenCalledOnce());
 
     const retry = subscription.reload();
     await reads(2);
-    fake.reads[1].answer({ data: null, error: new Error("ainda offline") });
+    fake.reads[1].answer({ data: null, error: new Error("still offline") });
     await expect(retry).resolves.toBeUndefined();
     expect(onError).toHaveBeenCalledTimes(2);
-    expect(onError.mock.calls[1][0]).toEqual(new Error("ainda offline"));
+    expect(onError.mock.calls[1][0]).toEqual(new Error("still offline"));
     expect(callback).not.toHaveBeenCalled();
   });
 
-  it.each(cases)("$name: o reload que volta depois de desligar não entrega nada", async (item) => {
+  it.each(cases)("$name: a reload that comes back after turning off delivers nothing", async (item) => {
     const { subscription, onError, callback } = await start(item);
     fake.reads[0].answer({ data: null, error: new Error("offline") });
     await vi.waitFor(() => expect(onError).toHaveBeenCalledOnce());
@@ -332,10 +332,10 @@ describe("reload() das inscrições do aluno e do site", () => {
   });
 });
 
-// Ganhos e Assinaturas: as duas leituras do professor ganharam `reload` (o
-// "Try again"). Elas leem em páginas e, ao desligar, já não entregavam nada,
-// nem a leitura inicial; e a releitura do canal só entrega a mais nova. Por
-// isso ficam fora da lista acima, com as provas que valem para elas.
+// Earnings and Subscriptions: the teacher's two reads gained `reload` (the
+// "Try again"). They read in pages and, when turned off, already delivered nothing,
+// not even the initial read; and the channel's re-read only delivers the newest one. For
+// that reason they stay out of the list above, with the proofs that apply to them.
 type TeacherCase = {
   name: string;
   subscribe: (callback: (value: unknown) => void, onError: (error: Error) => void) => Subscription;
@@ -358,7 +358,7 @@ const teacherCases: TeacherCase[] = [
   },
 ];
 
-// A consulta de main, chamada por chamada (a primeira página de 500).
+// The query from main, call by call (the first page of 500).
 const teacherQuery = (table: string) => [
   ["from", table], ["select", "*"], ["eq", "teacher_id", "t-1"],
   ["order", "created_at", { ascending: true }], ["order", "id", { ascending: true }], ["range", 0, 499],
@@ -377,8 +377,8 @@ async function startTeacher(item: TeacherCase) {
   return { callback, onError, subscription };
 }
 
-describe("reload() das leituras do professor (Ganhos e Assinaturas)", () => {
-  it.each(teacherCases)("$name: o reload repete a mesma consulta, no mesmo canal, e entrega uma vez", async (item) => {
+describe("reload() of the teacher's reads (Earnings and Subscriptions)", () => {
+  it.each(teacherCases)("$name: the reload repeats the same query, on the same channel, and delivers once", async (item) => {
     const { callback, onError, subscription } = await startTeacher(item);
     expect(fake.reads[0].query).toEqual(teacherQuery(item.table));
     expect(fake.channels).toHaveLength(1);
@@ -400,7 +400,7 @@ describe("reload() das leituras do professor (Ganhos e Assinaturas)", () => {
     expect(fake.removeChannel).not.toHaveBeenCalled();
   });
 
-  it.each(teacherCases)("$name: o reload depois de desligar não entrega nada", async (item) => {
+  it.each(teacherCases)("$name: the reload after turning off delivers nothing", async (item) => {
     const { callback, onError, subscription } = await startTeacher(item);
     subscription();
     const retry = subscription.reload();

@@ -91,7 +91,7 @@ export function subscribeToAdminUserProfiles(
     )
     .subscribe();
 
-  // `reload()` (o "Try again") le de novo sem mexer no canal.
+  // `reload()` (the "Try again") reads again without touching the channel.
   return Object.assign(
     () => {
       void supabase.removeChannel(channel);

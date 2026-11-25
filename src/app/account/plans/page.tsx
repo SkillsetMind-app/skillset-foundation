@@ -15,10 +15,11 @@ export default async function AccountPlansPage() {
   return (
     <ProtectedSurface permissions={["auth.signOut"]}>
       <PlansForTeachersOnly>
-        {/* O cartão de abertura ("Pricing model / Choose the plan that fits…")
-            era a segunda manchete da página, antes de "Current plan" virar a
-            terceira. A página abre no que importa: o plano atual e os cartões.
-            A frase de que todo plano inclui tudo foi para a descrição do título. */}
+        {/* The opening card ("Pricing model / Choose the plan that fits…") was the
+            page's second headline, before "Current plan" became the third. The
+            page now opens on what matters: the current plan and the cards. The
+            sentence saying every plan includes everything moved to the title's
+            description. */}
         <PlatformShell
           title={t("accountPlansPage.title")}
           description={t("accountPlansPage.description")}

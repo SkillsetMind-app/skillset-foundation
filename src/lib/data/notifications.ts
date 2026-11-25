@@ -32,9 +32,9 @@ export function subscribeToNotifications(
   callback: (notifications: AppNotification[]) => void,
   onError: (error: Error) => void,
 ): (() => void) & { reload: () => Promise<void> } {
-  // `reload()` le de novo SEM mexer no canal (o "Try again" do sino): sem o
-  // intervalo entre sair e entrar de novo no Realtime, em que um aviso novo se
-  // perderia.
+  // `reload()` reads again WITHOUT touching the channel (the bell's "Try again"): without the
+  // gap between leaving and rejoining Realtime, in which a new notice would
+  // be lost.
   //
   // createdAt is server-written on every notification (clients never create
   // them), so there is no pending-write null to corrupt the ordering — sorting
@@ -47,9 +47,9 @@ export function subscribeToNotifications(
   // back a no-op unsubscribe so the inbox simply renders empty.
   try {
     const supabase = getSupabaseBrowserClient();
-    // So a leitura mais nova entrega (como em course-assets): um "Try again"
-    // que volta depois da releitura disparada por um aviso novo traria a
-    // lista velha, sem o aviso, ate o proximo evento.
+    // Only the newest read delivers (as in course-assets): a "Try again"
+    // that comes back after the re-read triggered by a new notice would bring the
+    // old list, without the notice, until the next event.
     let active = true;
     let latestLoad = 0;
 
@@ -104,8 +104,8 @@ export function subscribeToNotifications(
   } catch (error) {
     const failure = error instanceof Error ? error : new Error(String(error));
     onError(failure);
-    // Sem cliente nao ha o que reler: o "Try again" devolve a mesma falha em
-    // vez de deixar o sino carregando para sempre.
+    // Without a client there is nothing to re-read: "Try again" returns the same failure
+    // instead of leaving the bell loading forever.
     return Object.assign(() => {}, {
       reload: async () => onError(failure),
     });

@@ -35,7 +35,7 @@ vi.mock("@/lib/supabase/client", () => ({
 
 function imageFile(size = 1024) {
   const file = new File(["x"], "capa.png", { type: "image/png" });
-  // `size` é getter do Blob; sobrescrever evita alocar dezenas de MB no teste.
+  // `size` is a getter on Blob; overriding it avoids allocating tens of MB in the test.
   Object.defineProperty(file, "size", { value: size });
   return file;
 }
@@ -85,9 +85,9 @@ describe("uploadCourseAsset — progresso honesto", () => {
     }));
   });
 
-  // supabase-js upload() não informa progresso. Emitir 0% e ficar parado ali
-  // o envio inteiro se lia como "travou" — e a reação natural era fechar a aba.
-  it("não inventa porcentagem enquanto o Storage envia: percent é null", async () => {
+  // supabase-js upload() does not report progress. Emitting 0% and sitting there
+  // for the whole upload read as "stuck" — and the natural reaction was to close the tab.
+  it("does not invent a percentage while Storage uploads: percent is null", async () => {
     const events: UploadCourseAssetProgress[] = [];
 
     await uploadCourseAsset(input(imageFile(), (progress) => events.push(progress)));
@@ -99,7 +99,7 @@ describe("uploadCourseAsset — progresso honesto", () => {
     }
   });
 
-  it("só emite 'success' depois de a linha existir no banco", async () => {
+  it("only emits 'success' after the row exists in the database", async () => {
     const events: UploadCourseAssetProgress[] = [];
     mocks.insert.mockResolvedValueOnce({ error: new Error("insert failed") });
 
@@ -107,12 +107,12 @@ describe("uploadCourseAsset — progresso honesto", () => {
       uploadCourseAsset(input(imageFile(), (progress) => events.push(progress))),
     ).rejects.toThrow("insert failed");
 
-    // Antes, o 100% saía entre o upload dos bytes e o insert: a tela mostrava
-    // "Upload complete 100%" em cima da caixa vermelha de falha.
+    // Before, the 100% came out between the byte upload and the insert: the screen showed
+    // "Upload complete 100%" on top of the red failure box.
     expect(events.some((event) => event.state === "success")).toBe(false);
   });
 
-  it("emite 'success' com 100% quando tudo gravou", async () => {
+  it("emits 'success' with 100% when everything was stored", async () => {
     const events: UploadCourseAssetProgress[] = [];
 
     await uploadCourseAsset(input(imageFile(), (progress) => events.push(progress)));
@@ -123,9 +123,9 @@ describe("uploadCourseAsset — progresso honesto", () => {
     expect(mocks.insert).toHaveBeenCalledTimes(1);
   });
 
-  // O teto do plano (50 MB) vence o do bucket (500 MB). Um PNG de 80 MB passava
-  // na validação de tipo e caía num 413 — ou pior, na mensagem genérica.
-  it("recusa acima do teto efetivo com a mensagem do limite, antes de tocar o Storage", async () => {
+  // The plan cap (50 MB) beats the bucket's (500 MB). An 80 MB PNG used to pass
+  // the type validation and fall into a 413 — or worse, into the generic message.
+  it("refuses above the effective cap with the limit message, before touching Storage", async () => {
     await expect(
       uploadCourseAsset(input(imageFile(supabaseUploadLimitBytes + 1))),
     ).rejects.toThrow(/exceeds the current upload limit/);

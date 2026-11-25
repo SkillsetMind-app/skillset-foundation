@@ -31,8 +31,8 @@ export default async function TeachActivateReturnPage() {
   return (
     <ProtectedSurface permissions={["teacherStudio.access"]}>
       <PlatformShell title={t("activationCheckout.returnTitle")} compact>
-        {/* O mesmo cartao do retorno do plano. Sai o "Thanks" e a segunda
-            serifa: a serifa da tela e o titulo da pagina. */}
+        {/* The same card as the plan return. The "Thanks" and the second
+            serif go away: the screen's serif is the page title. */}
         <PaymentReturnCard
           icon={<Info aria-hidden="true" size={20} />}
           heading={t("activationCheckout.confirming")}

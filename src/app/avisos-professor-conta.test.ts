@@ -3,13 +3,13 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-// Leitura do fonte, como em revisao-pr494.test.ts: o jsdom não pinta nada, então
-// o que dá para provar é que a caixa feita à mão não voltou. A caixa de 6% de
-// vermelho literal sumia no tema escuro, muitas não eram anunciadas e nenhuma
-// tinha ícone; o InlineAlert tem as três coisas.
+// Source read, as in revisao-pr494.test.ts: jsdom does not paint anything, so
+// what can be proven is that the hand-made box did not come back. The box with literal 6% red
+// disappeared in the dark theme, many were not announced and none
+// had an icon; the InlineAlert has all three.
 const read = (path: string) => readFileSync(join(process.cwd(), "src/components", path), "utf8");
 
-describe("F-07: professor, conta e formulários de entrada usam o aviso da casa", () => {
+describe("F-07: teacher, account and entry forms use the house notice", () => {
   it.each([
     "teacher/course-asset-uploader.tsx",
     "teacher/create-course-start.tsx",
@@ -25,15 +25,15 @@ describe("F-07: professor, conta e formulários de entrada usam o aviso da casa"
     "auth/login-form.tsx",
     "auth/signup-form.tsx",
     "auth/update-password-form.tsx",
-  ])("%s não desenha a caixa vermelha à mão", (file) => {
+  ])("%s does not draw the red box by hand", (file) => {
     const source = read(file);
     expect(source).not.toContain("bg-[rgba(178,34,52,0.06)]");
     expect(source).toContain('<InlineAlert tone="error"');
   });
 
-  // O construtor e o painel do curso mostram a mesma prontidão com a mesma barra.
+  // The builder and the course panel show the same readiness with the same bar.
   it.each(["teacher/course-builder-studio.tsx", "teacher/course-manage-hub.tsx", "teacher/teacher-studio-dashboard.tsx"])(
-    "%s usa a barra compartilhada, sem trilho navy literal",
+    "%s uses the shared bar, with no literal navy track",
     (file) => {
       const source = read(file);
       expect(source).toContain("<ProgressBar");

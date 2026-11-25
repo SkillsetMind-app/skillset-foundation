@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
-// "Collaborators" era uma placa de "em breve" no menu. Saiu do menu; a rota
-// fica viva para links antigos e leva para o inicio do estudio.
+// "Collaborators" was a "coming soon" sign in the menu. It left the menu; the route
+// stays alive for old links and leads to the studio home.
 export default function TeacherTeamPage() {
   redirect("/teach");
 }

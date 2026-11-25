@@ -4,12 +4,12 @@ import { createContext, createElement, type ReactNode } from "react";
 
 import type { SidebarPref } from "@/lib/ui/sidebar-cookie";
 
-/** A escolha lida no servidor; o hook (sidebar-state.ts) usa no 1º quadro. */
+/** The choice read on the server; the hook (sidebar-state.ts) uses it on the 1st frame. */
 export const SidebarPrefContext = createContext<SidebarPref>(null);
 
 /**
- * Só as áreas logadas montam isto (src/components/platform/sidebar-preference-layout.tsx),
- * nunca o layout raiz: a home e as páginas públicas não levam nada da barra.
+ * Only the logged-in areas mount this (src/components/platform/sidebar-preference-layout.tsx),
+ * never the root layout: the home page and the public pages carry nothing from the sidebar.
  */
 export function SidebarPreferenceProvider({
   value,

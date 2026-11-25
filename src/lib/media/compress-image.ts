@@ -1,7 +1,7 @@
-// Capa do módulo: recorte vertical 2:3 comprimido no navegador, antes do envio.
-// Uma foto de celular de 10 MB vira uns 300 KB em 640x960. Só APIs nativas
-// (createImageBitmap + canvas.toBlob): nenhuma dependência nova. O servidor
-// continua checando tipo, tamanho e dono como antes.
+// Module cover: a vertical 2:3 crop compressed in the browser, before upload.
+// A 10 MB phone photo becomes about 300 KB at 640x960. Only native APIs
+// (createImageBitmap + canvas.toBlob): no new dependency. The server
+// still checks type, size and owner as before.
 
 export const MAX_SOURCE_IMAGE_BYTES = 10 * 1024 * 1024;
 
@@ -18,7 +18,7 @@ export class ImageTooLargeError extends Error {
   }
 }
 
-// A maior caixa centrada com a proporção pedida (ratio = largura / altura).
+// The largest centered box with the requested ratio (ratio = width / height).
 export function cropTo(width: number, height: number, ratio: number): CropBox {
   if (width / height > ratio) {
     const w = Math.round(height * ratio);
@@ -38,16 +38,16 @@ function renamed(name: string, type: string): string {
   return `${base}.${type === "image/webp" ? "webp" : "jpg"}`;
 }
 
-// Formatos que todo navegador mostra: só esses podem subir sem conversão.
+// Formats that every browser shows: only these can be uploaded without conversion.
 const KEEPABLE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 export async function compressImage(file: File): Promise<File> {
-  // Recusa antes de abrir: 10 MB é o teto combinado para a foto de origem.
+  // Refuses before opening: 10 MB is the agreed ceiling for the source photo.
   if (file.size > MAX_SOURCE_IMAGE_BYTES) {
     throw new ImageTooLargeError();
   }
 
-  // GIF pode ser animado; o canvas guardaria só o primeiro quadro.
+  // A GIF may be animated; the canvas would keep only the first frame.
   if (file.type === "image/gif") {
     return file;
   }
@@ -56,15 +56,15 @@ export async function compressImage(file: File): Promise<File> {
   try {
     bitmap = await createImageBitmap(file);
   } catch {
-    // HEIC em alguns navegadores, arquivo que não é imagem ou navegador sem a
-    // API: sobe o original, sem mexer.
+    // HEIC in some browsers, a file that is not an image, or a browser without the
+    // API: uploads the original, untouched.
     return file;
   }
 
   try {
     const ratio = TARGET_WIDTH / TARGET_HEIGHT;
     const box = cropTo(bitmap.width, bitmap.height, ratio);
-    // Não amplia: foto estreita sai com a largura do recorte, ainda 2:3.
+    // Does not enlarge: a narrow photo comes out at the crop's width, still 2:3.
     const width = Math.min(TARGET_WIDTH, box.w);
     const height = Math.round(width / ratio);
     const canvas = document.createElement("canvas");
@@ -81,10 +81,10 @@ export async function compressImage(file: File): Promise<File> {
       context.drawImage(bitmap, box.x, box.y, box.w, box.h, 0, 0, width, height);
     };
     draw();
-    // Navegador sem codificador WebP devolve outro tipo (PNG): aí vai JPEG.
+    // A browser without a WebP encoder returns another type (PNG): then it goes to JPEG.
     let blob = await encode(canvas, "image/webp");
     if (!blob || blob.type !== "image/webp") {
-      // JPEG não tem transparência: sem fundo branco, o transparente sai preto.
+      // JPEG has no transparency: without a white background, the transparent part comes out black.
       context.fillStyle = "#fff";
       context.fillRect(0, 0, width, height);
       draw();
@@ -94,8 +94,8 @@ export async function compressImage(file: File): Promise<File> {
       return file;
     }
 
-    // Já 2:3, num formato que todo navegador mostra, e a conversão não
-    // diminuiu: sobe o original.
+    // Already 2:3, in a format every browser shows, and the conversion did not
+    // shrink it: uploads the original.
     const alreadyCover = Math.abs(bitmap.width / bitmap.height - ratio) < 0.01;
     if (blob.size >= file.size && alreadyCover && KEEPABLE_TYPES.includes(file.type)) {
       return file;

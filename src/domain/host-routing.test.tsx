@@ -50,10 +50,10 @@ describe("platform entry aliases", () => {
   );
 });
 
-// Os links públicos e o proxy leem a MESMA tabela: o host que entryUrl publica
-// tem de ser exatamente o host que decideHostRoute devolve à área certa. Se as
-// duas pontas divergirem um dia, um link copiado passa a apontar para um host
-// que o proxy não conhece — e este bloco é o que acusa.
+// The public links and the proxy read the SAME table: the host that entryUrl publishes
+// has to be exactly the host that decideHostRoute sends to the right area. If the
+// two ends ever diverge, a copied link starts to point to a host
+// that the proxy does not know, and this block is what flags it.
 describe("entryUrl — public links on the short hosts", () => {
   const PRODUCTION = ["skillsetmind.com", "www.skillsetmind.com"];
 
@@ -66,7 +66,7 @@ describe("entryUrl — public links on the short hosts", () => {
       expect(entryUrl(kind, "/courses/course-fixture/checkout", "?offer=launch&priceId=price-fixture", hostname))
         .toBe(`${origin}/courses/course-fixture/checkout?offer=launch&priceId=price-fixture`);
     }
-    // Fecha o círculo com a tabela do proxy: a raiz do host publicado abre a área.
+    // Closes the circle with the proxy table: the root of the published host opens the area.
     expect(decideHostRoute({ hostname: new URL(origin).hostname, pathname: "/", search: "", resolvedUid: null }))
       .toEqual({ kind: "redirect", status: 307, url: `${PLATFORM_ORIGIN}${area}` });
   });
@@ -83,9 +83,9 @@ describe("entryUrl — public links on the short hosts", () => {
     expect(entryUrl("app", "/", "?utm=x", "localhost")).toBe("/teach?utm=x");
   });
 
-  // Um preview da Vercel, o localhost e o próprio servidor (que ainda não sabe
-  // em que host está) nunca podem emitir um host curto: ele só resolve em
-  // produção, e um link absoluto tiraria quem testa do ambiente de teste.
+  // A Vercel preview, localhost and the server itself (which does not yet know
+  // which host it is on) can never emit a short host: it only resolves in
+  // production, and an absolute link would take whoever is testing out of the test environment.
   it.each([
     "skillset-foundation-git-feat-links-skillsetmind.vercel.app",
     "skillset-foundation-qa.vercel.app",
@@ -192,15 +192,15 @@ describe("decideHostRoute — auth never renders on a domain we do not control",
     },
   );
 
-  // Os testes acima usam um host de professor JÁ RESOLVIDO. A janela perigosa é
-  // outra: o host não é o da plataforma e `resolvedUid` é nulo — o domínio foi
-  // anexado ao projeto da Vercel (o que a rota faz de imediato, sem esperar
-  // prova de posse) e ainda não foi verificado; ou já foi desanexado e a chamada
-  // de remoção falhou. Nesse estado a função devolvia `pass`, servindo a
-  // plataforma inteira, /login incluído, sob um nome que não é nosso.
+  // The tests above use a teacher host that is ALREADY RESOLVED. The dangerous window is
+  // another: the host is not the platform's and `resolvedUid` is null: the domain was
+  // attached to the Vercel project (which the route does immediately, without waiting for
+  // proof of ownership) and has not been verified yet; or it was already detached and the removal
+  // call failed. In that state the function returned `pass`, serving the
+  // whole platform, /login included, under a name that is not ours.
   //
-  // O "unknown host" testado acima é o host da PRÓPRIA plataforma sem uid, que é
-  // um caso diferente e tem de continuar passando.
+  // The "unknown host" tested above is the platform's OWN host without a uid, which is
+  // a different case and must keep passing.
   it.each(["/login", "/signup", "/account"])(
     "does not serve %s on a host that is neither the platform nor a resolved teacher",
     (pathname) => {
@@ -216,8 +216,8 @@ describe("decideHostRoute — auth never renders on a domain we do not control",
   );
 
   it("still serves the platform's own host when no teacher resolves", () => {
-    // A função precisa aprender a diferença entre "host desconhecido" e "meu
-    // host" — não simplesmente parar de devolver pass.
+    // The function needs to learn the difference between "unknown host" and "my
+    // host", not simply stop returning pass.
     expect(
       decideHostRoute({
         hostname: "skillsetmind.com",

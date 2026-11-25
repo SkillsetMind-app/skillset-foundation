@@ -164,7 +164,7 @@ describe("/auth/confirm", () => {
     expect(response.headers.get("location")).toBe(`${ORIGIN}/welcome`);
   });
 
-  // Onda F: o link de confirmacao vencido ou ja usado nao pode ser beco.
+  // Wave F: an expired or already used confirmation link must not be a dead end.
   describe("expired or used signup confirmation", () => {
     const course = "/welcome?path=student&returnTo=%2Fcourses%2Ffocus";
     const signupLink = `?token_hash=abc&type=signup&redirect_to=${encodeURIComponent(`${ORIGIN}/auth/confirm?next=${encodeURIComponent(course)}`)}`;
@@ -212,9 +212,9 @@ describe("/auth/confirm", () => {
       expect(response.headers.get("location")).toBe(`${ORIGIN}/loading?next=welcome`);
     });
 
-    // O acesso manual a curso manda um magic link (type=email) para /loading.
-    // Vencido, nao e cadastro: a tela de "reenviar confirmacao" nunca chegaria
-    // a quem ja tem conta confirmada. O link e montado como o do e-mail real.
+    // Manual course access sends a magic link (type=email) to /loading.
+    // Expired, it is not a signup: the "resend confirmation" screen would never reach
+    // someone who already has a confirmed account. The link is built like the real email one.
     it("leaves an expired course-access magic link out of the signup screen", async () => {
       const source = readFileSync("src/app/api/teach/course-access/route.ts", "utf8");
       const emailRedirectTo = source.match(/emailRedirectTo: "([^"]+)"/)?.[1];
@@ -240,7 +240,7 @@ describe("/auth/confirm", () => {
       expect(mocks.getUser).not.toHaveBeenCalled();
     });
 
-    // Troca de senha e troca de e-mail tem tela propria: nada de "entrar direto".
+    // Password change and email change have their own screen: no "sign in directly".
     it.each([
       ["recovery", "?token_hash=abc&type=recovery&next=/reset-password", `${ORIGIN}/login?error=confirm`],
       ["email change", "?token_hash=abc&type=email_change&next=%2Faccount%3Ftab%3Dsecurity", `${ORIGIN}/login?error=confirm&returnTo=%2Faccount%3Ftab%3Dsecurity`],
@@ -252,7 +252,7 @@ describe("/auth/confirm", () => {
     });
   });
 
-  // O lembrete de 24 h leva o curso no link (next); a confirmacao respeita.
+  // The 24 h reminder carries the course in the link (next); the confirmation respects it.
   it("lands the reminder link on the course it carries", async () => {
     const next = "/welcome?path=student&returnTo=%2Fcourses%2Ffocus";
     const response = await get(`?token_hash=abc&type=email&next=${encodeURIComponent(next)}`);

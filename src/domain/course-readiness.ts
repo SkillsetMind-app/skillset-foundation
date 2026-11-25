@@ -10,11 +10,11 @@ import {
   type TeacherCourseModule,
 } from "@/domain/teacher-course";
 
-// O que a pessoa sofria: o construtor tinha DUAS listas de "o que falta para
-// publicar" (aba Publish e rodape) e o Manage uma TERCEIRA, cada uma com regra
-// propria. Para o mesmo curso o chip dizia 71%, a barra do mesmo cabecalho
-// media estagios (40%) e o Manage, que exigia payouts, mostrava 50%. Aqui fica
-// a regra unica, a mais exigente das tres, e toda tela le daqui.
+// What the person suffered: the builder had TWO lists of "what is missing to
+// publish" (Publish tab and footer) and Manage a THIRD, each with its own
+// rule. For the same course the chip said 71%, the bar in the same header
+// measured stages (40%) and Manage, which required payouts, showed 50%. Here lives
+// the single rule, the strictest of the three, and every screen reads from here.
 
 export type CourseReadinessInput = Pick<
   TeacherCourse,
@@ -33,24 +33,24 @@ export type CourseReadinessInput = Pick<
   | "productFormat"
   | "communityEnabled"
 > & {
-  // Aulas com conteudo (ver getLessonIdsWithMedia). Quem nao tem a lista de
-  // arquivos (o Manage) nao passa: o item some e a porcentagem nao muda.
+  // Lessons with content (see getLessonIdsWithMedia). Whoever does not have the list of
+  // files (Manage) does not pass: the item disappears and the percentage does not change.
   lessonIdsWithMedia?: ReadonlySet<string>;
-  // Evento ao vivo: sessoes agendadas e ainda por vir em course_events.
-  // E-book: arquivos numa aula do produto (countLessonFiles). Mesma regra de
-  // quem nao sabe: o item some.
+  // Live event: scheduled sessions that are still to come in course_events.
+  // E-book: files in a lesson of the product (countLessonFiles). Same rule as for
+  // whoever does not know: the item disappears.
   scheduledSessionCount?: number;
   lessonFileCount?: number;
 };
 
-// Aula com conteudo. A MESMA regra do aviso "aulas sem conteudo" do painel
-// (getCourseMaintenanceIssues, que chama esta funcao) e do selo Done do estudio:
-// - video enviado;
-// - link: o do YouTube/Vimeo toca na aula, e um link antigo (Drive etc.) vira o
-//   botao "Open resource" do aluno, entao tambem conta;
-// - texto da aula ou a descricao antiga (aula de texto legada);
-// - ao menos um arquivo de material: uma aula so com PDF e uma aula valida.
-// Sem isso, um curso podia ser publicado e vendido com aulas vazias.
+// Lesson with content. The SAME rule as the "lessons without content" notice in the panel
+// (getCourseMaintenanceIssues, which calls this function) and the studio's Done badge:
+// - uploaded video;
+// - link: the YouTube/Vimeo one plays in the lesson, and an old link (Drive etc.) becomes the
+//   learner's "Open resource" button, so it also counts;
+// - lesson text or the old description (legacy text lesson);
+// - at least one material file: a lesson with only a PDF is a valid lesson.
+// Without this, a course could be published and sold with empty lessons.
 export function getLessonIdsWithMedia(
   modules: Pick<TeacherCourseModule, "lessons">[],
   assets: Pick<CourseAsset, "kind" | "lessonId">[],
@@ -76,8 +76,8 @@ export function getLessonIdsWithMedia(
   return ids;
 }
 
-// Arquivos (lesson_material) presos a uma aula do produto: e la que o comprador
-// baixa. Arquivo de aula apagada nao conta. Mesma regra de publish_teacher_course.
+// Files (lesson_material) attached to a lesson of the product: that is where the buyer
+// downloads them. A file from a deleted lesson does not count. Same rule as publish_teacher_course.
 export function countLessonFiles(
   modules: Pick<TeacherCourseModule, "lessons">[],
   assets: Pick<CourseAsset, "kind" | "lessonId">[],
@@ -88,8 +88,8 @@ export function countLessonFiles(
   ).length;
 }
 
-// Sessoes deste produto ainda de pe e por vir: a que ja passou nao se vende
-// (publish_teacher_course cobra o mesmo). Construtor e Manage leem daqui.
+// Sessions of this product that are still standing and yet to come: one that has passed cannot be sold
+// (publish_teacher_course requires the same). The builder and Manage read from here.
 export function upcomingSessionsOf<T extends { courseId: string; status: string; startsAt: string }>(
   events: T[],
   courseId: string,
@@ -100,15 +100,15 @@ export function upcomingSessionsOf<T extends { courseId: string; status: string;
   );
 }
 
-// Travas que nao sao do curso, sao do professor. So o Manage as conhecia; o
-// construtor deixava a pessoa clicar em Publish e descobrir pelo erro do
-// servidor. Opcional para quem nao tem o perfil carregado (ex.: testes puros).
+// Locks that are not about the course, they are about the teacher. Only Manage knew them; the
+// builder let the person click Publish and find out through the server's
+// error. Optional for whoever does not have the profile loaded (e.g. pure tests).
 export type CourseReadinessAccount = {
   payoutsReady: boolean;
   verificationRequired: boolean;
   verificationApproved: boolean;
-  // A taxa unica so aparecia como erro do banco depois do clique em Publish.
-  // Vem do mesmo predicado do gatilho (creator_activation_blocked).
+  // The one-time fee only showed up as a database error after the click on Publish.
+  // It comes from the same predicate as the trigger (creator_activation_blocked).
   activationBlocked?: boolean;
   planRequired?: boolean;
 };
@@ -132,10 +132,10 @@ export type CourseReadinessItemId =
   | "activation"
   | "plan";
 
-// Os tres estados que a Hotmart separa e a barra "N de M" misturava:
-// conteudo salvo (o que o aluno assiste), pagina preparada (o que o comprador
-// le) e venda disponivel (o que o dinheiro exige). So agrupamento e rotulo;
-// nada aqui segura a publicacao.
+// The three states that Hotmart separates and the "N of M" bar mixed up:
+// saved content (what the learner watches), prepared page (what the buyer
+// reads) and sale available (what the money requires). Only grouping and label;
+// nothing here holds back publishing.
 export type CourseReadinessGroupId = "content" | "page" | "sale";
 
 export type CourseReadinessItem = {
@@ -145,13 +145,13 @@ export type CourseReadinessItem = {
   // Presentation can be localized; callers without a translator keep English.
   hint: string;
   done: boolean;
-  // Opcional nao entra na porcentagem nem trava o publish.
+  // Optional does not enter the percentage nor block publish.
   optional: boolean;
 };
 
 export type CourseReadiness = {
   items: CourseReadinessItem[];
-  // Obrigatorios ainda abertos, na ordem em que a pessoa deve resolver.
+  // Required items still open, in the order in which the person should resolve them.
   pending: CourseReadinessItem[];
   next: CourseReadinessItem | null;
   doneCount: number;
@@ -165,28 +165,28 @@ export function getCourseReadiness(
   account?: CourseReadinessAccount,
   t?: (key: string) => string,
 ): CourseReadiness {
-  // Curso antigo pode nao ter paymentType gravado; o construtor sempre leu
-  // preco 0 como Free e o resto como venda avulsa. Mesma leitura aqui.
+  // An old course may not have paymentType stored; the builder has always read
+  // price 0 as Free and everything else as a one-time sale. Same reading here.
   const paymentType =
     course.paymentType ?? (course.priceAmountMinor === 0 ? "free" : "one_time");
   const priceAmountMinor = course.priceAmountMinor ?? 0;
   const modules = course.modules ?? [];
-  // O que cada tipo precisa entregar. Curso: modulo e aula. Comunidade: a
-  // comunidade ligada (aulas opcionais). Evento ao vivo: a sessao. E-book: um
-  // arquivo.
+  // What each type needs to deliver. Course: module and lesson. Community: the
+  // community turned on (lessons optional). Live event: the session. E-book: one
+  // file.
   const productFormat = course.productFormat ?? "course";
   const paid = paymentType !== "free" && priceAmountMinor > 0;
-  // Produto criado antes da regra pode cobrar de um jeito que o tipo nao
-  // aceita (comunidade por pagamento unico). Publicar recusa (gatilho de
-  // 20261007030000); aqui a pessoa ve antes, no item de preco.
+  // A product created before the rule may charge in a way the type does not
+  // accept (community by one-time payment). Publishing rejects it (trigger of
+  // 20261007030000); here the person sees it beforehand, in the price item.
   const paymentFits = paymentTypeFitsFormat(course.productFormat ?? "course", paymentType);
-  // "$0" fixo dizia dolar para quem vende em real: o zero vem na moeda escolhida.
+  // A hard-coded "$0" said dollars to whoever sells in reais: the zero comes in the chosen currency.
   const zeroPrice = formatZeroPrice(course.currency);
   const lessons = modules.flatMap((courseModule) => courseModule.lessons);
   const withMedia = course.lessonIdsWithMedia;
   const lessonsWithoutMedia = withMedia ? lessons.filter((lesson) => !withMedia.has(lesson.id)) : [];
-  // As tres primeiras aulas vazias, pelo titulo que o professor deu, e quantas
-  // mais faltam ("e N mais", como o aviso do painel; nada de "…" antes do ponto).
+  // The first three empty lessons, by the title the teacher gave, and how many
+  // more are missing ("and N more", like the panel notice; no "…" before the period).
   const missingLessonsText = (untitled: string, one: string, more: string) => {
     const names = lessonsWithoutMedia.slice(0, 3).map((lesson) => lesson.title.trim() || untitled).join(", ");
     const extra = lessonsWithoutMedia.length - 3;
@@ -200,8 +200,8 @@ export function getCourseReadiness(
       id: "title",
       group: "content",
       label: "Course title",
-      // 3 caracteres e o minimo do formulario de criacao e do Manage; o
-      // construtor aceitava qualquer caractere. Vale o mais exigente.
+      // 3 characters is the minimum of the creation form and of Manage; the
+      // builder accepted any character. The strictest one applies.
       hint: "Give the course a title (3+ characters).",
       done: course.title.trim().length >= 3,
       optional: false,
@@ -209,8 +209,8 @@ export function getCourseReadiness(
     {
       id: "summary",
       group: "page",
-      // "Description" em toda tela: criacao, construtor e checklist. A chave
-      // continua `summary`.
+      // "Description" on every screen: creation, builder and checklist. The key
+      // is still `summary`.
       label: "Description",
       hint: "Write a description with at least 20 characters.",
       done: course.summary.trim().length >= 20,
@@ -284,9 +284,9 @@ export function getCourseReadiness(
           optional: false,
         }]
       : []),
-    // So com a lista de aulas com conteudo e ao menos uma aula: sem aula, o
-    // item "lesson" ja cobra, e listar este daria um "feito" de graca. No
-    // e-book a aula nao aparece na tela; o item "file" cobra o mesmo arquivo.
+    // Only with the list of lessons with content and at least one lesson: with no lesson, the
+    // "lesson" item already covers it, and listing this one would give a free "done". In the
+    // e-book the lesson does not show on the screen; the "file" item requires the same file.
     ...(withMedia && lessons.length > 0 && productFormat !== "ebook"
       ? [{
           id: "lessonMedia" as const,
@@ -303,8 +303,8 @@ export function getCourseReadiness(
           optional: false,
         }]
       : []),
-    // Produto gratis nao tem preco a definir: listar "Pricing" como feito so
-    // fazia quem escolheu Gratis ler "Set a paid price" no checklist.
+    // A free product has no price to set: listing "Pricing" as done only
+    // made whoever chose Free read "Set a paid price" in the checklist.
     ...(paymentType === "free"
       ? []
       : [{
@@ -327,9 +327,9 @@ export function getCourseReadiness(
     },
   ];
 
-  // Parcelamento so existe na venda avulsa com a opcao ligada. Listar o item
-  // sempre (como o construtor fazia) dava um "feito" de graca e inflava a
-  // porcentagem de um curso vazio.
+  // Installments only exist on a one-time sale with the option turned on. Listing the item
+  // always (as the builder did) gave a free "done" and inflated the
+  // percentage of an empty course.
   if (paymentType === "one_time" && course.installmentsEnabled) {
     items.push({
       id: "installments",
@@ -441,8 +441,8 @@ export function formatZeroPrice(currency: string | null | undefined): string {
 export type CourseReadinessGroup = {
   id: CourseReadinessGroupId;
   items: CourseReadinessItem[];
-  // Mesma conta de `doneCount`/`total`: so obrigatorios. Opcionais aparecem
-  // na lista do grupo e ficam fora do numero, como ja ficavam do geral.
+  // Same count as `doneCount`/`total`: required items only. Optional ones appear
+  // in the group's list and stay out of the number, as they already did in the overall one.
   doneCount: number;
   total: number;
   ready: boolean;
@@ -454,9 +454,9 @@ export const COURSE_READINESS_GROUP_IDS: readonly CourseReadinessGroupId[] = [
   "sale",
 ];
 
-// Recorte puro sobre a lista ja calculada: nao muda `ready`, `percent` nem
-// ids. Um grupo sem obrigatorio (ex.: venda de curso gratis sem conta) conta
-// como pronto, e a soma dos tres `doneCount`/`total` bate com o geral.
+// Pure cut over the list already computed: it does not change `ready`, `percent` nor the
+// ids. A group with nothing required (e.g. sale of a free course with no account) counts
+// as ready, and the sum of the three `doneCount`/`total` matches the overall one.
 export function groupCourseReadiness(
   readiness: Pick<CourseReadiness, "items">,
 ): CourseReadinessGroup[] {

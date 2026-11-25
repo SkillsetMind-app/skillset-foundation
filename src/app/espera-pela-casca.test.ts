@@ -9,29 +9,29 @@ import {
   opensInPlatformShell,
 } from "@/components/platform/platform-routes";
 
-// F-03, estágio 0: enquanto a sessão resolve, a guarda de login espera com a
-// forma da PlatformShell nas rotas que opensInPlatformShell aceita. Leitura do
-// fonte, como em avisos-esperas-restantes.test.tsx: cada página protegida das
-// cinco áreas tem de abrir na PlatformShell, ou estar na lista de fora
-// (OTHER_SHELL_PREFIXES). Uma página nova com outra casca quebra aqui, em vez
-// de esperar com uma forma que não é a dela.
+// F-03, stage 0: while the session resolves, the login guard waits with the
+// shape of the PlatformShell on the routes that opensInPlatformShell accepts. Source
+// read, as in avisos-esperas-restantes.test.tsx: each protected page of the
+// five areas has to open in the PlatformShell, or be in the outside list
+// (OTHER_SHELL_PREFIXES). A new page with another shell breaks here, instead
+// of waiting with a shape that is not its own.
 
 const app = join(process.cwd(), "src", "app");
 const components = join(process.cwd(), "src", "components");
 
-// Sem comentários: várias páginas citam "PlatformShell" num comentário.
+// Without comments: several pages mention "PlatformShell" in a comment.
 function code(path: string) {
   return readFileSync(path, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 }
 
-// As páginas que passam a guarda ou a casca para um componente. O componente
-// é lido junto com a página. Página nova que delega para outro: entra aqui.
+// The pages that pass the guard or the shell to a component. The component
+// is read together with the page. A new page that delegates to another: goes here.
 const delegates: Record<string, string> = {
-  // O painel interno monta a PlatformShell dele.
+  // The internal panel mounts its own PlatformShell.
   "<OpsDashboard": "admin/ops-dashboard.tsx",
-  // As páginas da sala de aula passam a guarda e a MemberAreaShell para ele.
+  // The classroom pages pass the guard and the MemberAreaShell to it.
   "<LearnCoursePage": "learn/learn-course-page.tsx",
-  // Só deixa passar o professor: devolve os filhos (a PlatformShell da página) ou nada.
+  // Only lets the teacher through: returns the children (the page's PlatformShell) or nothing.
   "<PlansForTeachersOnly": "account/plans-for-teachers-only.tsx",
 };
 
@@ -43,7 +43,7 @@ function sources(dir: string): string[] {
   });
 }
 
-// src/app/teach/sales/[orderId]/page.tsx -> /teach/sales/x (grupo "(x)" sai).
+// src/app/teach/sales/[orderId]/page.tsx -> /teach/sales/x (the "(x)" group goes away).
 function routeOf(file: string) {
   const segments = relative(app, dirname(file))
     .split(sep)
@@ -68,27 +68,27 @@ const pages = PLATFORM_SHELL_AREAS.flatMap((area) => sources(join(app, area.slic
   })
   .filter((page) => page.guarded);
 
-describe("a espera da guarda tem a casca de cada página", () => {
-  // Lista vazia vira zero testes e passa calada.
-  it("acha as páginas protegidas das cinco áreas, com e sem casca", () => {
+describe("the guard wait has the shell of each page", () => {
+  // An empty list becomes zero tests and passes silently.
+  it("finds the protected pages of the five areas, with and without a shell", () => {
     expect(pages.length).toBeGreaterThan(30);
     expect(pages.some((page) => page.shell)).toBe(true);
     expect(pages.some((page) => !page.shell)).toBe(true);
   });
 
   it.each(pages.map((page) => [page.file, page] as const))("%s", (_file, page) => {
-    // Se quebrou: a página tem outra casca (ou delega a PlatformShell para um
-    // componente que ainda não está em `delegates`). Ponha o caminho dela em
-    // OTHER_SHELL_PREFIXES, ou o componente em `delegates`.
-    expect(page.shell, `${page.route} abre na PlatformShell?`).toBe(opensInPlatformShell(page.route));
+    // If it broke: the page has another shell (or delegates the PlatformShell to a
+    // component that is not yet in `delegates`). Put its path in
+    // OTHER_SHELL_PREFIXES, or the component in `delegates`.
+    expect(page.shell, `${page.route} opens in the PlatformShell?`).toBe(opensInPlatformShell(page.route));
   });
 
-  // Uma exceção sem página por trás é lixo na regra: some daqui também.
-  it.each(OTHER_SHELL_PREFIXES)("%s ainda tem página protegida fora da casca", (prefix) => {
+  // An exception with no page behind it is garbage in the rule: it goes away from here too.
+  it.each(OTHER_SHELL_PREFIXES)("%s still has a protected page outside the shell", (prefix) => {
     expect(pages.some((page) => page.route.startsWith(prefix) && !page.shell)).toBe(true);
   });
 
-  it("os componentes delegados fazem o que a lista diz", () => {
+  it("the delegated components do what the list says", () => {
     expect(code(join(components, "admin/ops-dashboard.tsx"))).toContain("<PlatformShell");
     const classroom = code(join(components, "learn/learn-course-page.tsx"));
     expect(classroom).toContain("<ProtectedSurface");

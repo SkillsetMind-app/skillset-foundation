@@ -20,8 +20,8 @@ export default function LoadingPage() {
   );
 }
 
-// Mesma tela e mesma frase do LoadingScreen que entra no lugar dela: a troca
-// do servidor para o cliente não aparece.
+// Same screen and same phrase as the LoadingScreen that takes its place: the
+// switch from server to client is not visible.
 async function LoadingFallback() {
   const { t } = await getServerTranslation();
   return <SkillsetSpinner title={t("authFlow.loading.title")} />;

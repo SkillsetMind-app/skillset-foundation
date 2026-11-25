@@ -114,14 +114,14 @@ export default async function PromisePage() {
               className="rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] sm:p-8"
             >
               <div className="grid gap-5 lg:grid-cols-[120px_1fr]">
-                {/* Numero de enfeite: creme sobre branco dava ~1,2:1 e ainda era
-                    lido pelo leitor de tela antes do titulo da promessa. */}
+                {/* Decorative number: cream on white gave ~1.2:1 and was still
+                    read by the screen reader before the promise title. */}
                 <p aria-hidden="true" className="display-title text-5xl leading-none text-[var(--color-ink-muted)]">
                   {promise.number}
                 </p>
                 <div>
-                  {/* Serifa só no h1: seis títulos de 36px faziam de cada
-                      cartão uma tela inteira no celular. */}
+                  {/* Serif only on the h1: six 36px titles made each card a
+                      whole screen on the phone. */}
                   <h2 className="text-2xl font-bold leading-snug text-[var(--color-primary)]">
                     {promise.title}
                   </h2>

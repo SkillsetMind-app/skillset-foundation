@@ -5,7 +5,7 @@ import { SiteNav } from "@/components/site/site-nav";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
-// Sem isto a aba herdava o título genérico do layout raiz ("Coaching…").
+// Without this the tab inherited the generic title of the root layout ("Coaching…").
 export async function generateMetadata() {
   const { t } = await getServerTranslation();
   return buildPageMetadata({
@@ -18,16 +18,16 @@ export async function generateMetadata() {
 export default async function VerifyPage() {
   const { t } = await getServerTranslation();
   return (
-    // A barra fica fora do <main>: o "Skip to content" pula para o conteúdo, não
-    // para dentro da própria barra.
+    // The bar stays outside <main>: the "Skip to content" jumps to the content, not
+    // into the bar itself.
     <div className="min-h-screen bg-[var(--color-surface)]">
       <div className="print:hidden">
         <SiteNav />
       </div>
       <main id="conteudo" className="px-5 py-12 md:px-8 md:py-16">
-        {/* O mesmo cartão do painel, com o olho, o título, a frase e a
-            fileira do código em esqueleto: o painel nasce no lugar, sem pulo.
-            A frase fica para o leitor de tela. */}
+        {/* The same card as the dashboard, with the eyebrow, the title, the sentence and the
+            code row as a skeleton: the dashboard appears in place, with no jump.
+            The sentence is kept for the screen reader. */}
         <Suspense
           fallback={
             <section

@@ -15,7 +15,7 @@ import {
 } from "@/domain/community-feed";
 import type { CommunityComment, CommunityPost } from "@/domain/community-post";
 
-// Mockup 5, rodada 11: a parte pura da comunidade simplificada.
+// Mockup 5, wave 11: the pure part of the simplified community.
 
 const DAY = 24 * 3_600_000;
 const NOW = Date.parse("2026-09-02T12:00:00.000Z");
@@ -48,22 +48,22 @@ function comment(overrides: Partial<CommunityComment>): CommunityComment {
   };
 }
 
-describe("o que cada post e", () => {
-  it("pergunta, compartilhar ou aviso do instrutor — sobre a categoria que ja existia", () => {
+describe("what each post is", () => {
+  it("question, share or instructor notice, on top of the category that already existed", () => {
     expect(postKind(post({ category: "question" }))).toBe("question");
     expect(postKind(post({ category: "discussion" }))).toBe("share");
     expect(postKind(post({ category: "resource" }))).toBe("share");
     expect(postKind(post({ category: "announcement" }))).toBe("update");
   });
 
-  it("respondida = pergunta com resposta aceita; um compartilhamento nunca e 'respondido'", () => {
+  it("answered = question with an accepted answer; a share is never 'answered'", () => {
     expect(isAnswered(post({ acceptedCommentId: "c1" }))).toBe(true);
     expect(isAnswered(post({ acceptedCommentId: null }))).toBe(false);
     expect(isAnswered(post({ category: "discussion", acceptedCommentId: "c1" }))).toBe(false);
   });
 });
 
-describe("tres filtros", () => {
+describe("three filters", () => {
   const posts = [
     post({ id: "q-open", category: "question", createdAt: new Date(NOW - 3 * DAY).toISOString() }),
     post({ id: "q-done", category: "question", acceptedCommentId: "c1" }),
@@ -72,7 +72,7 @@ describe("tres filtros", () => {
     post({ id: "owner-share", category: "discussion", authorId: "owner-1", authorRole: "student" }),
   ];
 
-  it("All: tudo, fixado no topo mesmo sendo o mais antigo", () => {
+  it("All: everything, pinned at the top even if it is the oldest", () => {
     expect(filterPosts(posts, "all").map((p) => p.id)).toEqual([
       "pinned-update",
       "q-done",
@@ -82,26 +82,26 @@ describe("tres filtros", () => {
     ]);
   });
 
-  it("Questions: so perguntas; o contador diz quantas estao em aberto", () => {
+  it("Questions: only questions; the counter says how many are open", () => {
     expect(filterPosts(posts, "questions").map((p) => p.id)).toEqual(["q-done", "q-open"]);
     expect(countOpenQuestions(posts)).toBe(1);
   });
 
-  it("From <instrutor>: papel de professor OU dono do curso", () => {
+  it("From <instructor>: teacher role OR owner of the course", () => {
     expect(filterPosts(posts, "instructor", ["owner-1"]).map((p) => p.id)).toEqual([
       "pinned-update",
       "owner-share",
     ]);
   });
 
-  it("busca olha titulo e corpo", () => {
+  it("search looks at title and body", () => {
     const withTitle = [post({ id: "t", title: "Deadline as manipulation", body: "x" })];
     expect(filterPosts(withTitle, "all", [], "MANIPULATION")).toHaveLength(1);
     expect(filterPosts(withTitle, "all", [], "banana")).toHaveLength(0);
   });
 });
 
-describe("a resposta dentro do cartao", () => {
+describe("the answer inside the card", () => {
   const comments = [
     comment({ id: "first", createdAt: new Date(NOW - DAY).toISOString() }),
     comment({ id: "teacher", authorId: "teacher-1", authorRole: "teacher", createdAt: new Date(NOW - DAY / 2).toISOString() }),
@@ -109,39 +109,39 @@ describe("a resposta dentro do cartao", () => {
     comment({ id: "other-post", postId: "p2" }),
   ];
 
-  it("a aceita ganha de todas", () => {
+  it("the accepted one beats all the others", () => {
     expect(pickInlineReply(post({ acceptedCommentId: "nested" }), comments)?.id).toBe("nested");
   });
 
-  it("sem aceita: a do instrutor; sem instrutor: a primeira de nivel superior", () => {
+  it("no accepted one: the instructor's; no instructor: the first top-level one", () => {
     expect(pickInlineReply(post({}), comments)?.id).toBe("teacher");
     expect(pickInlineReply(post({}), comments.filter((c) => c.id !== "teacher"))?.id).toBe("first");
     expect(pickInlineReply(post({ id: "p3" }), comments)).toBeNull();
   });
 
-  it("agrupa por post, mais antiga primeiro", () => {
+  it("groups by post, oldest first", () => {
     const grouped = groupCommentsByPost(comments);
     expect(grouped.get("p")?.map((c) => c.id)).toEqual(["first", "teacher", "nested"]);
     expect(grouped.get("p2")).toHaveLength(1);
   });
 });
 
-describe("perguntas parecidas ja respondidas", () => {
+describe("similar questions that are already answered", () => {
   const posts = [
     post({ id: "a", title: "Do I lose progress if I skip a lesson?", body: "", acceptedCommentId: "c" }),
     post({ id: "b", title: "How do you set a real deadline for someone?", body: "", acceptedCommentId: "c" }),
     post({ id: "c-open", title: "Can I skip the reading and keep my progress?", body: "" }),
   ];
 
-  it("so sugere respondidas, e so com duas palavras de 4+ letras em comum", () => {
+  it("only suggests answered ones, and only with two words of 4+ letters in common", () => {
     expect(findSimilarAnswered("Can I skip the reading and come back without losing progress?", posts).map((p) => p.id)).toEqual(["a"]);
     expect(findSimilarAnswered("deadline", posts)).toEqual([]);
     expect(findSimilarAnswered("real deadline someone", posts).map((p) => p.id)).toEqual(["b"]);
   });
 });
 
-describe("a caixa de entrada do professor", () => {
-  it("em aberto = sem aceita E sem resposta do instrutor, mais antiga primeiro", () => {
+describe("the teacher's inbox", () => {
+  it("open = no accepted answer AND no instructor answer, oldest first", () => {
     const posts = [
       post({ id: "new", createdAt: new Date(NOW - DAY / 4).toISOString() }),
       post({ id: "old", createdAt: new Date(NOW - 2 * DAY).toISOString() }),
@@ -157,7 +157,7 @@ describe("a caixa de entrada do professor", () => {
     expect(openQuestions(posts, comments, ["owner-1"]).map((p) => p.id)).toEqual(["old", "new"]);
   });
 
-  it("'waiting' vira vermelho depois de 24 h", () => {
+  it("'waiting' turns red after 24 h", () => {
     expect(waitingFor(post({ createdAt: new Date(NOW - 5 * 3_600_000).toISOString() }), NOW)).toEqual({
       label: "waiting 5 hours",
       overdue: false,
@@ -172,7 +172,7 @@ describe("a caixa de entrada do professor", () => {
     });
   });
 
-  it("'this week' conta posts, perguntas, compartilhamentos e quem participou", () => {
+  it("'this week' counts posts, questions, shares and who took part", () => {
     const posts = [
       post({ id: "1", authorId: "a" }),
       post({ id: "2", category: "discussion", authorId: "b" }),
@@ -189,8 +189,8 @@ describe("a caixa de entrada do professor", () => {
   });
 });
 
-describe("o que acabou de ser apagado", () => {
-  it("some da tela com as respostas dele, como a cascata do banco", () => {
+describe("what was just deleted", () => {
+  it("disappears from the screen with its answers, like the database cascade", () => {
     const replies = [
       { id: "c-1", postId: "p-gone", parentId: null },
       { id: "c-2", postId: "p-kept", parentId: null },
@@ -201,7 +201,7 @@ describe("o que acabou de ser apagado", () => {
     expect(withoutDeleted(replies, new Set(["p-gone", "c-gone"])).map((reply) => reply.id)).toEqual(["c-2"]);
   });
 
-  it("sem nada apagado devolve a mesma lista (os useMemo nao recalculam a toa)", () => {
+  it("with nothing deleted returns the same list (the useMemo calls do not recompute for nothing)", () => {
     const posts = [{ id: "p-1" }];
     expect(withoutDeleted(posts, new Set())).toBe(posts);
   });

@@ -116,8 +116,8 @@ export default function GlobalError({
             <button
               type="button"
               onClick={reset}
-              // Azul da marca, não vermelho: vermelho é para apagar, e
-              // "Try again" não apaga nada. 44px de altura para o toque.
+              // Brand blue, not red: red is for deleting, and
+              // "Try again" deletes nothing. 44px tall for touch.
               style={{
                 minHeight: 44,
                 padding: "10px 18px",

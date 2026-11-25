@@ -77,8 +77,8 @@ export function rowToPublicProfile(row: PublicProfileRow): PublicProfile {
     bio: row.bio,
     credentials: (row.credentials as unknown as string[] | null) ?? [],
     storefront: (row.storefront as unknown as StorefrontConfig | null) ?? null,
-    // Colunas ausentes (deploy antes da migration) = sem selo. Espécie
-    // desconhecida vira "evidence", a frase que promete menos.
+    // Missing columns (deploy before the migration) = no badge. An unknown kind
+    // becomes "evidence", the wording that promises the least.
     verification: row.verified_professional
       ? { kind: row.verification_kind === "license" ? "license" : "evidence", verifiedAt: row.verified_at ?? null }
       : null,

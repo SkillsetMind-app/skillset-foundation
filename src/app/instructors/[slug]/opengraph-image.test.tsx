@@ -31,8 +31,8 @@ const ana = (photoURL: string): PublicProfile => ({
   credentials: [],
 });
 
-// O renderizador também usa fetch (wasm, fonte): só as buscas de foto são
-// falsas, e ficam anotadas.
+// The renderer also uses fetch (wasm, font): only the photo fetches are
+// fake, and they are recorded.
 function stubPhotos(body: Uint8Array | string, type: string) {
   const realFetch = globalThis.fetch;
   const photo = vi.fn<typeof fetch>(async () => new Response(body as BodyInit, { headers: { "content-type": type } }));
@@ -47,8 +47,8 @@ async function render(photoURL: string) {
   return { response, png: Buffer.from(await response.arrayBuffer()) };
 }
 
-// Cartão com a inicial (foto que não pode ser usada): a referência das
-// comparações abaixo.
+// Card with the initial (a photo that cannot be used): the reference for the
+// comparisons below.
 async function initialCard() {
   stubPhotos("", "image/png");
   const { png } = await render("https://evil.example/ana.png");
@@ -56,7 +56,7 @@ async function initialCard() {
   return png;
 }
 
-/** PNG de verdade com a largura e a altura do IHDR trocadas (o CRC fica errado, mas nunca chega a ser decodificado). */
+/** A real PNG with the IHDR width and height swapped (the CRC is wrong, but it is never decoded). */
 function pngClaiming(width: number, height: number) {
   const bytes = Uint8Array.from(readFileSync(join(process.cwd(), "public/brand/favicon-solid.png")));
   const view = new DataView(bytes.buffer);
@@ -65,15 +65,15 @@ function pngClaiming(width: number, height: number) {
   return bytes;
 }
 
-/** Cabeçalho JPEG mínimo: SOI + SOF0 com altura e largura. */
+/** Minimal JPEG header: SOI + SOF0 with height and width. */
 function jpegClaiming(width: number, height: number) {
   return Uint8Array.from([0xff, 0xd8, 0xff, 0xc0, 0x00, 0x11, 0x08, height >> 8, height & 0xff, width >> 8, width & 0xff, 0x03]);
 }
 
 afterEach(() => vi.unstubAllGlobals());
 
-describe("cartão de compartilhamento do professor", () => {
-  it("é um PNG 1200×630 com cache de CDN", async () => {
+describe("teacher sharing card", () => {
+  it("is a 1200×630 PNG with CDN cache", async () => {
     stubPhotos("x", "image/webp");
     const { response, png } = await render(`${AVATAR}.webp`);
 
@@ -81,11 +81,11 @@ describe("cartão de compartilhamento do professor", () => {
     expect(contentType).toBe("image/png");
     expect(png.subarray(1, 4).toString("ascii")).toBe("PNG");
     expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([1200, 630]);
-    // A versão (?v=) muda com o perfil, então o CDN pode guardar o cartão.
+    // The version (?v=) changes with the profile, so the CDN can keep the card.
     expect(response.headers.get("cache-control")).toBe("public, s-maxage=3600, stale-while-revalidate=86400");
   });
 
-  it("desenha a foto PNG de tamanho normal", async () => {
+  it("draws the normal-size PNG photo", async () => {
     const initial = await initialCard();
     const photo = stubPhotos(Uint8Array.from(readFileSync(join(process.cwd(), "public/brand/favicon-solid.png"))), "image/png");
     const { png } = await render(`${AVATAR}.png`);
@@ -95,14 +95,14 @@ describe("cartão de compartilhamento do professor", () => {
     expect(png.equals(initial)).toBe(false);
   });
 
-  // Um PNG de 12000×12000 cabe em ~400 KB e custava ~1,3 GB para desenhar.
+  // A 12000×12000 PNG fits in ~400 KB and cost ~1.3 GB to draw.
   it.each([
     ["PNG 12000×12000", () => pngClaiming(12_000, 12_000), "image/png"],
     ["PNG 4000×600", () => pngClaiming(4_000, 600), "image/png"],
     ["JPEG 12000×12000", () => jpegClaiming(12_000, 12_000), "image/jpeg"],
     ["PNG sem cabeçalho", () => new TextEncoder().encode("not a png"), "image/png"],
     ["WebP", () => new TextEncoder().encode("RIFF"), "image/webp"],
-  ])("foto que não dá para desenhar (%s) vira a inicial", async (_case, body, type) => {
+  ])("a photo that cannot be drawn (%s) becomes the initial", async (_case, body, type) => {
     const initial = await initialCard();
     const photo = stubPhotos(body(), type);
     const { png } = await render(`${AVATAR}.img`);
@@ -111,9 +111,9 @@ describe("cartão de compartilhamento do professor", () => {
     expect(png.equals(initial)).toBe(true);
   });
 
-  // SSRF: a URL da foto vem do perfil; o servidor só busca nos hosts de
-  // avatar que a plataforma já aceita, na porta padrão.
-  it("não busca foto fora do Storage do Supabase e das fotos do Google", async () => {
+  // SSRF: the photo URL comes from the profile; the server only fetches from the avatar
+  // hosts the platform already accepts, on the default port.
+  it("does not fetch a photo outside Supabase Storage and Google photos", async () => {
     const photo = stubPhotos("x", "image/png");
     for (const url of [
       "https://evil.example/ana.png",
@@ -130,7 +130,7 @@ describe("cartão de compartilhamento do professor", () => {
     expect(photo).not.toHaveBeenCalled();
   });
 
-  it("perfil que não existe responde 404", async () => {
+  it("a profile that does not exist answers 404", async () => {
     const response = await ProfileOpengraphImage(params("@ninguem"));
     expect(response.status).toBe(404);
   });

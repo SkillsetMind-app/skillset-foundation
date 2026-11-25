@@ -5,8 +5,8 @@ export function generateStaticParams() {
   return getCourseSlugs().map((slug) => ({ slug }));
 }
 
-// A aula. As demais abas da sala (materials, community, messages...) sao a
-// rota irma [tab]/page.tsx — mesma pagina, endereco proprio.
+// The lesson. The other classroom tabs (materials, community, messages...) are
+// the sibling route [tab]/page.tsx — same page, its own address.
 export default async function LearnCourseLessonRoute({
   params,
 }: {

@@ -182,8 +182,8 @@ export function subscribeToUserEnrollments(
   onError: (error: Error) => void,
 ): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
-  // So a leitura mais nova entrega: um "Try again" que volta depois da
-  // releitura de uma matricula nova traria a lista sem ela.
+  // Only the newest read delivers: a "Try again" that comes back after the
+  // re-read of a new enrollment would bring the list without it.
   let active = true;
   let latestLoad = 0;
 
@@ -226,8 +226,8 @@ export function subscribeToUserEnrollments(
     )
     .subscribe();
 
-  // `reload()` le de novo SEM mexer no canal (o "Try again" do painel e da
-  // comunidade): sem o intervalo entre sair e entrar de novo no Realtime.
+  // `reload()` reads again WITHOUT touching the channel (the "Try again" of the panel and of
+  // the community): without the gap between leaving and rejoining Realtime.
   return Object.assign(
     () => {
       active = false;
@@ -273,7 +273,7 @@ export function subscribeToAdminGrantedEnrollments(
     )
     .subscribe();
 
-  // `reload()` (o "Try again") le de novo sem mexer no canal.
+  // `reload()` (the "Try again") reads again without touching the channel.
   return Object.assign(
     () => {
       void supabase.removeChannel(channel);
@@ -307,10 +307,10 @@ export function subscribeToEnrollment(
 ): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
   const enrollmentId = getEnrollmentId(userId, courseSlug);
-  // `reload()` (o "Try again") repete esta leitura sem mexer no canal. A
-  // inicial sai como antes (a mesma cadeia, no mesmo instante) e entrega como
-  // antes, so cedendo a um reload mais novo; o que o reload comecou nao
-  // entrega depois de desligar nem por cima de uma leitura mais nova.
+  // `reload()` (the "Try again") repeats this read without touching the channel. The
+  // initial one goes out as before (the same chain, at the same instant) and delivers as
+  // before, only yielding to a newer reload; what the reload started does not
+  // deliver after shutting down or on top of a newer read.
   let active = true;
   let latestLoad = 0;
   let latestReload = 0;
@@ -359,8 +359,8 @@ export function subscribeToEnrollment(
     )
     .subscribe();
 
-  // `reload()` le de novo SEM mexer no canal (o "Try again" da sala e da
-  // comunidade).
+  // `reload()` reads again WITHOUT touching the channel (the "Try again" of the room and of
+  // the community).
   return Object.assign(
     () => {
       active = false;
@@ -370,11 +370,11 @@ export function subscribeToEnrollment(
   );
 }
 
-/** Dos cursos informados, os que estao com a comunidade LIGADA. A lista
- *  "Comunidades" do aluno mostrava cartao de curso com a comunidade desligada
- *  (o cartao levava a uma aba que a sala nem mostra). O aluno le os cursos em
- *  que esta matriculado (courses_select_enrolled), a mesma regra de matricula
- *  aberta que a lista usa. */
+/** Of the given courses, the ones with the community turned ON. The learner's
+ *  "Communities" list showed a course card with the community turned off
+ *  (the card led to a tab that the room does not even show). The learner reads the courses they
+ *  are enrolled in (courses_select_enrolled), the same open-enrollment rule
+ *  the list uses. */
 export async function getCommunityCourseIds(courseIds: string[]): Promise<Set<string>> {
   if (!courseIds.length) {
     return new Set();

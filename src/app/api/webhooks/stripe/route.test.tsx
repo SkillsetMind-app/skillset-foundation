@@ -53,12 +53,12 @@ type AdminState = {
   // Opt-in: the plan subscription row does not exist yet, so its UPDATE matches
   // zero rows (a silent success in PostgREST).
   planRowMissing?: boolean;
-  // Linha de `enrollments` que o SELECT do handler enxerga. Antes o fake sempre
-  // devolvia null aqui, e por isso o ciclo de vida de assinatura saía em
-  // `if (!enrollment) return true` sem nunca exercitar a revogação.
+  // A row of `enrollments` that the handler's SELECT sees. Before, the fake always
+  // returned null here, so the subscription lifecycle exited at
+  // `if (!enrollment) return true` without ever exercising the revocation.
   enrollmentRow?: Record<string, unknown> | null;
-  // Opt-in: o reembolso chegou ANTES de a fulfilment escrever a linha de
-  // `payments` — o caso em que o handler caía no ramo de assinatura.
+  // Opt-in: the refund arrived BEFORE the fulfillment wrote the `payments`
+  // row, the case where the handler fell into the subscription branch.
   paymentRowMissing?: boolean;
   // Opt-in: the buyer (not the creator) is a guest checkout account, unconfirmed
   // unless guestBuyerConfirmed.
@@ -82,18 +82,18 @@ type AdminState = {
   planSubscriptions: Array<Record<string, unknown>>;
   orderRow: Record<string, unknown>;
   couponReservation?: "reserved" | "released" | "redeemed";
-  // Curso e comprador gravados na reserva; padrao: esta venda (course_1/user_1).
+  // Course and buyer saved on the reservation; default: this sale (course_1/user_1).
   reservationSale?: { course_id: string; user_id: string };
-  // stripe_connect_status da linha de teacher_1 (acct_teacher).
+  // stripe_connect_status of the teacher_1 row (acct_teacher).
   connectStatus?: string;
-  // A linha de course_subscriptions que o invoice.paid ja gravou (por id).
+  // The course_subscriptions row that invoice.paid already saved (by id).
   savedCourseSubscription?: Record<string, unknown>;
   checkoutLock?: { lock_key: string; order_id: string } | null;
   afterCheckoutLockRead?: () => void;
-  // Outra transacao commita depois da leitura do handler e antes de a RPC
-  // atomica (close_unpaid_course_order/settle_paid_course_order) travar o pedido.
+  // Another transaction commits after the handler's read and before the atomic
+  // RPC (close_unpaid_course_order/settle_paid_course_order) locks the order.
   beforeOrderTransaction?: () => void;
-  // Quantas reservas viraram 'redeemed' (o redeemed_count do cupom).
+  // How many reservations became 'redeemed' (the coupon's redeemed_count).
   couponRedemptions: number;
   saleRows?: Record<string, Array<Record<string, unknown>>>;
   paymentWrites: Array<Record<string, unknown>>;
@@ -332,7 +332,7 @@ function createAdmin(
           }
         }
 
-        // A linha gravada passa a valer para os proximos eventos dessa assinatura.
+        // The saved row now applies to the next events of this subscription.
         if (this.table === "course_subscriptions" && this.operation === "upsert") {
           const previous = state.savedCourseSubscription?.id === this.values.id ? state.savedCourseSubscription : {};
           state.savedCourseSubscription = { ...previous, ...this.values };
@@ -345,7 +345,7 @@ function createAdmin(
         }
 
         if (this.table === "users" && this.operation === "update") {
-          // O guard do account.updated: linha "disconnected" nao casa.
+          // The account.updated guard: a "disconnected" row does not match.
           const blocked = this.orFilters.includes("stripe_connect_status.is.null,stripe_connect_status.neq.disconnected")
             && state.connectStatus === "disconnected";
           if (blocked) return { data: [], error: null };
@@ -355,7 +355,7 @@ function createAdmin(
               "stripe_connected_account_id",
             ),
           });
-          // acct_teacher e a conta de teacher_1; outra conta casa zero linhas.
+          // acct_teacher is teacher_1's account; any other account matches zero rows.
           if (this.filterValue("stripe_connected_account_id") === "acct_teacher") {
             if (typeof this.values.stripe_connect_status === "string") {
               state.connectStatus = this.values.stripe_connect_status;
@@ -401,7 +401,7 @@ function createAdmin(
         };
       }
       if (this.table === "orders") {
-        // Pelo id do metadata ou pela sessao gravada no pedido: todo filtro precisa casar.
+        // By the metadata id or by the session saved on the order: every filter has to match.
         const row = state.orderRow;
         data = this.filters.every(({ column, value }) => row[column] === value) ? { ...row } : null;
       } else if (this.table === "checkout_locks") {
@@ -412,7 +412,7 @@ function createAdmin(
         state.afterCheckoutLockRead = undefined;
         afterRead?.();
       } else if (this.table === "courses") {
-        // So course_1 existe; outro id nao acha curso.
+        // Only course_1 exists; any other id finds no course.
         data = this.filterValue("id") !== "course_1" ? null : {
           id: "course_1",
           owner_id: "teacher_1",
@@ -427,7 +427,7 @@ function createAdmin(
       } else if (this.table === "enrollments") {
         data = state.enrollmentRow ?? null;
       } else if (this.table === "course_coupon_reservations") {
-        // A unica reserva existente e res_1 (chave order_id), no cupom coupon_1.
+        // The only existing reservation is res_1 (key order_id), on coupon coupon_1.
         data = state.couponReservation && this.filterValue("order_id") === "res_1"
           ? { coupon_id: "coupon_1", user_id: state.reservationSale?.user_id ?? "user_1" }
           : null;
@@ -466,14 +466,14 @@ function createAdmin(
 
   type RpcResult = { data: unknown; error: { message: string } | null };
 
-  // O pedido commitado que a RPC trava: a linha persistida quando ha saleRows.
+  // The committed order that the RPC locks: the persisted row when there are saleRows.
   function committedOrder(id: unknown): Record<string, unknown> | null {
     const rows = state.saleRows?.orders;
     if (rows) return rows.find((row) => row.id === id) ?? null;
     return state.orderRow.id === id ? state.orderRow : null;
   }
 
-  // A mesma amarracao que as duas RPCs conferem na linha travada.
+  // The same binding that both RPCs check on the locked row.
   function lockedOrderMatches(row: Record<string, unknown>, args: Record<string, unknown>): boolean {
     const saved = row.teacher_stripe_connected_account_id;
     const accountMatches = row.payout_model === "direct_charge"
@@ -484,8 +484,8 @@ function createAdmin(
       && row.checkout_session_id === args.p_session_id && accountMatches;
   }
 
-  // Cada RPC e uma transacao inteira: decide sobre a linha fresca e grava tudo
-  // ou nada. Falha forcada no meio devolve erro sem nenhum efeito.
+  // Each RPC is a whole transaction: it decides on the fresh row and writes everything
+  // or nothing. A forced failure in the middle returns an error with no effect.
   function closeUnpaidOrder(args: Record<string, unknown>): RpcResult {
     const row = committedOrder(args.p_order_id);
     if (!row) return { data: "missing", error: null };
@@ -1180,7 +1180,7 @@ describe("Stripe webhook financial integrity", () => {
       admin.state.checkoutLock = { ...originalLock };
       const newerLock = { ...originalLock, order_id: "order_newer" };
       const supersede = vi.fn(() => { admin.state.checkoutLock = { ...newerLock }; });
-      // O pago le o lock no app; o fechamento decide dentro da RPC.
+      // The paid one reads the lock in the app; the close decides inside the RPC.
       if (type === "checkout.session.completed") admin.state.afterCheckoutLockRead = supersede;
       else admin.state.beforeOrderTransaction = supersede;
       mocks.getAdmin.mockReturnValue(admin);
@@ -1249,7 +1249,7 @@ describe("Stripe webhook financial integrity", () => {
     });
   });
 
-  describe("pedido avulso fecha ou liquida numa transacao so", () => {
+  describe("a one-time order closes or settles in a single transaction", () => {
     const ownLock = { lock_key: "user_1__course_1", order_id: "order_1" };
 
     function couponCheckout() {
@@ -2058,7 +2058,7 @@ describe("Stripe webhook financial integrity", () => {
     expect(admin.state.ledger.status).toBe("settled");
   });
 
-  describe("acesso pago que sobrevivia ao fim do pagamento", () => {
+  describe("paid access that survived the end of payment", () => {
     function subscriptionEvent(id: string, status: string) {
       return {
         id,
@@ -2082,14 +2082,14 @@ describe("Stripe webhook financial integrity", () => {
       };
     }
 
-    // A revogacao era condicionada a `enrollmentStatus === "active"`, entao toda
-    // matricula em 'completed' escapava. E 'completed' e escrito pelo PROPRIO
-    // ALUNO: `record_lesson_progress` faz `case when v_progress >= 100 then
-    // 'completed'` e e concedida a `authenticated`. Como a policy
-    // `course_lesson_content_select` aceita 'completed' igual a 'active', o
-    // caminho era: assinar um mes, marcar todas as aulas como vistas, cancelar,
-    // e ficar com o curso para sempre.
-    it("revoga o curso de quem cancela a assinatura DEPOIS de concluir", async () => {
+    // The revocation was conditioned on `enrollmentStatus === "active"`, so every
+    // enrollment in 'completed' escaped. And 'completed' is written by the LEARNER
+    // THEMSELVES: `record_lesson_progress` does `case when v_progress >= 100 then
+    // 'completed'` and is granted to `authenticated`. Since the policy
+    // `course_lesson_content_select` accepts 'completed' the same as 'active', the
+    // path was: subscribe for one month, mark every lesson as seen, cancel,
+    // and keep the course forever.
+    it("revokes the course of someone who cancels the subscription AFTER completing it", async () => {
       const admin = createAdmin("refund");
       admin.state.enrollmentRow = { status: "completed", progress_percent: 100, source: "subscription", subscription_id: "sub_1" };
       mocks.getAdmin.mockReturnValue(admin);
@@ -2104,7 +2104,7 @@ describe("Stripe webhook financial integrity", () => {
       );
     });
 
-    it("segue revogando quem cancela sem ter concluido", async () => {
+    it("still revokes someone who cancels without having completed", async () => {
       const admin = createAdmin("refund");
       admin.state.enrollmentRow = { status: "active", progress_percent: 40, source: "subscription", subscription_id: "sub_1" };
       mocks.getAdmin.mockReturnValue(admin);
@@ -2119,8 +2119,8 @@ describe("Stripe webhook financial integrity", () => {
       );
     });
 
-    // Controle: assinatura viva nao pode revogar nada.
-    it("nao mexe na matricula enquanto a assinatura esta ativa", async () => {
+    // Control: a live subscription must not revoke anything.
+    it("does not touch the enrollment while the subscription is active", async () => {
       const admin = createAdmin("refund");
       admin.state.enrollmentRow = { status: "completed", progress_percent: 100, source: "subscription", subscription_id: "sub_1" };
       mocks.getAdmin.mockReturnValue(admin);
@@ -2133,8 +2133,8 @@ describe("Stripe webhook financial integrity", () => {
       expect(admin.state.enrollmentUpdates).toEqual([]);
     });
 
-    // Quem reassina nao deve perder a conclusao que ja tinha.
-    it("restaura como 'completed' quem ja tinha terminado", async () => {
+    // Someone who resubscribes must not lose the completion they already had.
+    it("restores as 'completed' someone who had already finished", async () => {
       const admin = createAdmin("refund");
       admin.state.enrollmentRow = { status: "revoked", progress_percent: 100, source: "subscription", subscription_id: "sub_1" };
       mocks.getAdmin.mockReturnValue(admin);
@@ -2236,11 +2236,11 @@ describe("Stripe webhook financial integrity", () => {
       expect(admin.state.enrollmentInserts).toEqual([]);
     });
 
-    // Uma compra AVULSA cai no ramo de assinatura enquanto a linha de `payments`
-    // ainda nao existe, e nunca tem kind 'course_subscription': o `return`
-    // silencioso devolvia 200, o Stripe nunca reenviava, nada era gravado, e a
-    // fulfilment seguia entregando o curso a quem acabou de ser reembolsado.
-    it("nao engole o reembolso que chega antes da linha de pagamento", async () => {
+    // A ONE-TIME purchase falls into the subscription branch while the `payments` row
+    // does not exist yet, and never has kind 'course_subscription': the silent `return`
+    // returned 200, Stripe never resent, nothing was saved, and the
+    // fulfillment went on delivering the course to someone who had just been refunded.
+    it("does not swallow a refund that arrives before the payment row", async () => {
       const admin = createAdmin("refund");
       admin.state.paymentRowMissing = true;
       admin.state.ledger.kind = "course_one_time";
@@ -2256,8 +2256,8 @@ describe("Stripe webhook financial integrity", () => {
         event as unknown as Record<string, unknown>,
       );
 
-      // Nao-200: o Stripe reenvia depois que a fulfilment terminar, em vez de o
-      // reembolso ser perdido para sempre.
+      // Non-200: Stripe resends after the fulfillment finishes, instead of the
+      // refund being lost forever.
       expect(response.status).not.toBe(200);
     });
   });
@@ -2446,8 +2446,8 @@ describe("Stripe webhook financial integrity", () => {
     });
   });
 
-  // Quem fechava a aba depois de pagar ficava so com o recibo do Stripe: sem
-  // link do curso, sem saber como entrar. O webhook agora manda UM email.
+  // Anyone who closed the tab after paying was left with only the Stripe receipt: no
+  // course link, no idea how to get in. The webhook now sends ONE email.
   describe("access email after a paid sale", () => {
     const courseUrl = "https://www.skillsetmind.com/learn/courses/course_1";
     const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -2995,8 +2995,8 @@ describe("Stripe webhook financial integrity", () => {
     });
   });
 
-  // Um reembolso integral ou um chargeback perdido tira o curso; o certificado
-  // que ele rendeu sai junto, e a pagina publica para de atestar.
+  // A full refund or a lost chargeback takes the course away; the certificate
+  // it earned goes with it, and the public page stops vouching for it.
   describe("certificate withdrawn with the purchase", () => {
     function fullRefundEvent(id: string) {
       const event = refundEvent(id, 10000);
@@ -3119,8 +3119,8 @@ describe("Stripe webhook financial integrity", () => {
     });
   });
 
-  // Contas com o painel completo do Stripe: o professor tem chaves proprias,
-  // desconecta a plataforma, vende por fora e escreve metadata.
+  // Accounts with the full Stripe dashboard: the teacher has their own keys,
+  // disconnects the platform, sells outside it and writes metadata.
   describe("full-Dashboard connected accounts", () => {
     function deauthorizedEvent(id: string, account?: string) {
       return {
@@ -3131,7 +3131,7 @@ describe("Stripe webhook financial integrity", () => {
       };
     }
 
-    // Os valores gravados em `users`, antes do fake anotar o filtro.
+    // The values saved in `users`, before the fake records the filter.
     function userWriteValues(admin: ReturnType<typeof createAdmin>) {
       return admin.from.mock.results
         .map((result) => result.value as unknown as { table: string; operation: string; values: Record<string, unknown> })
@@ -3155,7 +3155,7 @@ describe("Stripe webhook financial integrity", () => {
       expect(userWriteValues(admin).every((values) => !("stripe_connected_account_id" in values))).toBe(true);
       expect(admin.state.doneEvents).toEqual(new Set(["evt_deauth_1", "evt_deauth_2"]));
       expect(mocks.subscriptionRetrieve).not.toHaveBeenCalled();
-      // Aviso nao critico, so com o id do perfil.
+      // Non-critical notice, only with the profile id.
       expect(mocks.notifyOps).toHaveBeenCalledWith(expect.objectContaining({
         event: "stripe.connect.deauthorized",
         severity: "warn",
@@ -3198,7 +3198,7 @@ describe("Stripe webhook financial integrity", () => {
       mocks.getAdmin.mockReturnValue(admin);
 
       expect((await postEvent(deauthorizedEvent("evt_deauth_unknown", "acct_unknown"))).status).toBe(200);
-      // Sem conta no evento nao ha o que procurar.
+      // Without an account on the event there is nothing to look up.
       expect((await postEvent(deauthorizedEvent("evt_deauth_no_account"))).status).toBe(200);
 
       expect(admin.state.userUpdates).toEqual([
@@ -3235,7 +3235,7 @@ describe("Stripe webhook financial integrity", () => {
       expect(mocks.notifyOps).not.toHaveBeenCalled();
     });
 
-    // A sessao vive na conta do professor, que pode mexer no metadata dela.
+    // The session lives in the teacher's account, which can change its metadata.
     it.each([
       ["removed", {}],
       ["altered", { orderId: "order_forged", courseId: "course_other", userId: "user_other" }],
@@ -3356,7 +3356,7 @@ describe("Stripe webhook financial integrity", () => {
       expect(admin.state.couponReservation).toBe("reserved");
       expect(admin.state.rpcCalls.map((call) => call.name)).not.toContain("finalize_course_coupon_reservation");
       expect(mocks.notifyOps).toHaveBeenCalledWith(foreignReservationAlert);
-      // A venda em si segue registrada: so a reserva alheia fica de fora.
+      // The sale itself is still recorded: only the foreign reservation is left out.
       expect(fulfillCalls(admin)).toHaveLength(1);
     });
 
@@ -3413,7 +3413,7 @@ describe("Stripe webhook financial integrity", () => {
       expect(mocks.notifyOps).toHaveBeenCalledWith(foreignReservationAlert);
     });
 
-    // Sem reserva nao ha o que proteger: um id inventado nao pode gastar o alerta.
+    // Without a reservation there is nothing to protect: an invented id must not spend the alert.
     it("stays silent for a reservation id that does not exist", async () => {
       const admin = createAdmin("checkout");
       admin.state.couponReservation = "reserved";
@@ -3427,7 +3427,7 @@ describe("Stripe webhook financial integrity", () => {
       expect(mocks.notifyOps).not.toHaveBeenCalled();
     });
 
-    // Planos so existem na conta da plataforma; o id do Price e publico.
+    // Plans only exist on the platform account; the Price id is public.
     function planSubscription() {
       return {
         id: "sub_plan_lookalike", status: "trialing", customer: "cus_x", cancel_at_period_end: false,
@@ -3488,8 +3488,8 @@ describe("Stripe webhook financial integrity", () => {
       expect(admin.state.doneEvents).toContain("evt_invoice_failed");
     });
 
-    // Assinatura do proprio professor marcada como de curso, com um curso que
-    // nao existe aqui: 2xx, nada gravado, so log (sem alerta).
+    // The teacher's own subscription marked as a course one, with a course that
+    // does not exist here: 2xx, nothing saved, log only (no alert).
     function unknownCourseSubscription() {
       return {
         id: "sub_unknown_course", status: "active", customer: "cus_x", cancel_at_period_end: false,
@@ -3504,7 +3504,7 @@ describe("Stripe webhook financial integrity", () => {
       expect(admin.state.orderWrites).toEqual([]);
       expect(admin.state.paymentWrites).toEqual([]);
       expect(admin.state.ledgerIds.size).toBe(0);
-      // Le a linha salva (nao ha), nunca grava.
+      // Reads the saved row (there is none), never writes.
       const courseSubscriptionWrites = admin.from.mock.results
         .map((result) => result.value as unknown as { table: string; operation: string })
         .filter((query) => query.table === "course_subscriptions" && query.operation !== "select");
@@ -3512,20 +3512,20 @@ describe("Stripe webhook financial integrity", () => {
       expect(mocks.notifyOps).not.toHaveBeenCalled();
     }
 
-    // Assinatura nossa (linha salva pelo invoice.paid) cujo courseId foi trocado
-    // no painel do professor por um curso que nao existe.
+    // A subscription of ours (row saved by invoice.paid) whose courseId was swapped
+    // in the teacher's dashboard for a course that does not exist.
     const savedRow = { id: "sub_unknown_course", course_id: "course_1", user_id: "user_1", teacher_id: "teacher_1" };
     const mismatchAlert = (subscriptionId: string) => expect.objectContaining({
       event: "stripe.course_subscription.metadata_mismatch",
       severity: "critical",
       context: expect.objectContaining({ subscriptionId }),
-      // Por conta conectada: um professor nao inunda nem cala o alerta de outro.
+      // Per connected account: one teacher cannot flood or silence another's alert.
       throttleKey: expect.stringMatching(/^stripe\.course_subscription\.metadata_mismatch:acct_/),
     });
 
     it("books a renewal of our subscription from the saved row when its courseId was edited", async () => {
       const admin = createAdmin("checkout");
-      // A fatura aponta para sub_1: a linha salva e dessa assinatura.
+      // The invoice points to sub_1: the saved row belongs to this subscription.
       admin.state.savedCourseSubscription = { ...savedRow, id: "sub_1" };
       mocks.getAdmin.mockReturnValue(admin);
       mocks.subscriptionRetrieve.mockResolvedValue(unknownCourseSubscription());
@@ -3583,8 +3583,8 @@ describe("Stripe webhook financial integrity", () => {
       expect(response.status).toBe(500);
     });
 
-    // Uma regra so: com linha salva, apagar ou trocar chaves do metadata nao muda
-    // curso, aluno nem professor (o dono do curso). O metadata so e comparado.
+    // A single rule: with a saved row, deleting or swapping metadata keys does not change
+    // the course, learner or teacher (the course owner). The metadata is only compared.
     function ourSubscription(edit: (metadata: Record<string, string>) => void = () => undefined) {
       const metadata: Record<string, string> = {
         purpose: "course_subscription", courseId: "course_1", userId: "user_1", teacherId: "teacher_1",
@@ -3746,8 +3746,8 @@ describe("Stripe webhook financial integrity", () => {
       expect(admin.state.saleRows).toEqual({ orders: [], payments: [], payout_ledger: [] });
     });
 
-    // STRIPE_CONNECT_APPLICATION_ID: assinatura nova (sem linha salva) so vale se
-    // o Stripe diz que a nossa aplicacao a criou. Sem a variavel, nada muda.
+    // STRIPE_CONNECT_APPLICATION_ID: a new subscription (no saved row) only counts if
+    // Stripe says our application created it. Without the variable, nothing changes.
     describe("subscription.application", () => {
       function appSubscription(application: unknown) {
         return { ...ourSubscription(), application };
@@ -3800,8 +3800,8 @@ describe("Stripe webhook financial integrity", () => {
         expect(admin.state.ledgerIds.size).toBe(0);
         expect(admin.state.orderWrites).toEqual([]);
         expect(admin.state.paymentWrites).toEqual([]);
-        // Chaves do professor (null): esperado, sem alarme. Outro id de aplicacao
-        // pode ser a variavel errada (todo aluno novo sem acesso): alarme critico.
+        // Teacher's own keys (null): expected, no alarm. Another application id
+        // may be the wrong variable (every new learner without access): critical alarm.
         if (application === null) {
           expect(mocks.notifyOps).not.toHaveBeenCalled();
         } else {

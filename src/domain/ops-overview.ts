@@ -1,11 +1,11 @@
 /**
- * Overview de /ops: "como estamos?" em Hoje / 7 dias / 30 dias, cada numero
- * contra o periodo anterior de mesmo tamanho. Puro: nao le rede, nao formata,
- * nao conhece React. As linhas chegam cruas do Supabase (lidas pelo admin
- * sob as policies que ele ja tem) e saem como contagens e somas por moeda.
+ * Overview of /ops: "how are we doing?" in Today / 7 days / 30 days, each number
+ * against the previous period of the same length. Pure: does not read the network, does not format,
+ * does not know React. The rows arrive raw from Supabase (read by the admin
+ * under the policies they already have) and leave as counts and sums per currency.
  *
- * Dias em UTC: a janela sai de epoch ms, entao o fuso do navegador de quem
- * olha nao muda o numero.
+ * Days in UTC: the window comes from epoch ms, so the time zone of the browser of whoever
+ * is looking does not change the number.
  */
 import { isInternalSmokeCourse } from "@/domain/teacher-course";
 import { DEFAULT_PLATFORM_FEE_BPS, isRefundableEnrollmentSource, platformFeeForSale } from "@/lib/payments/rules";
@@ -21,7 +21,7 @@ export function parseOverviewPeriod(value: string | null | undefined): OverviewP
   return overviewPeriods.find((period) => period === value) ?? "7d";
 }
 
-/** Instantes em epoch ms; as duas pontas de cada periodo sao inclusivas. */
+/** Instants in epoch ms; both ends of each period are inclusive. */
 export type OverviewWindow = {
   period: OverviewPeriod;
   days: number;
@@ -31,9 +31,9 @@ export type OverviewWindow = {
   previousEnd: number;
 };
 
-// "7 dias" = hoje (ate agora) + os 6 dias UTC anteriores. O anterior e a mesma
-// janela deslocada N dias: Today compara com ontem ate a mesma hora, nao com
-// o dia inteiro de ontem (que sempre ganharia de um dia pela metade).
+// "7 days" = today (until now) + the 6 previous UTC days. The previous one is the same
+// window shifted N days: Today compares with yesterday until the same hour, not with
+// the whole day of yesterday (which would always beat half a day).
 export function resolveOverviewWindow(period: OverviewPeriod, now = new Date()): OverviewWindow {
   const days = PERIOD_DAYS[period];
   const end = now.getTime();
@@ -45,7 +45,7 @@ export function resolveOverviewWindow(period: OverviewPeriod, now = new Date()):
 export type Measure = {
   current: number;
   previous: number;
-  /** Um valor por dia UTC do periodo atual; vazio em Today. */
+  /** One value per UTC day of the current period; empty in Today. */
   series: number[];
 };
 
@@ -92,7 +92,7 @@ export function measure<T>(
   return result;
 }
 
-/** Valores na unidade interna (x100 em toda moeda); nunca somados entre moedas. */
+/** Values in the internal unit (x100 in every currency); never added across currencies. */
 export type MoneyLine = { currency: string; current: number; previous: number };
 
 // USD (the platform default) first, the rest alphabetical.
@@ -131,7 +131,7 @@ export function addMoney(left: readonly MoneyLine[], right: readonly MoneyLine[]
   return [...lines.values()].sort(byCurrency);
 }
 
-// Mesmo predicado da loja e do sitemap: `smoke-` no id, "[QA]" no titulo.
+// Same predicate as the store and the sitemap: `smoke-` in the id, "[QA]" in the title.
 function isRealCourse(id: string | null | undefined, title: string | null | undefined): boolean {
   return !isInternalSmokeCourse({ id: id ?? "", title: title ?? "" });
 }
@@ -140,7 +140,7 @@ function record(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
-// --- Linhas cruas, so as colunas que o Overview le --------------------------
+// --- Raw rows, only the columns the Overview reads --------------------------
 
 export type OverviewUserRow = { created_at: string; roles: unknown };
 export type OverviewCourseRow = {
@@ -171,9 +171,9 @@ export type OverviewOrderRow = {
   updated_at: string;
 };
 
-// --- Resumos, um por leitura ------------------------------------------------
+// --- Summaries, one per read ------------------------------------------------
 
-/** Criador novo = cadastro do periodo que ja tem o papel de professor. */
+/** New creator = sign-up of the period that already has the teacher role. */
 export function summarizeUsers(rows: readonly OverviewUserRow[], window: OverviewWindow) {
   const creators = rows.filter((row) => Array.isArray(row.roles) && row.roles.includes("teacher"));
   return {
@@ -184,14 +184,14 @@ export function summarizeUsers(rows: readonly OverviewUserRow[], window: Overvie
 
 export function summarizeCourses(rows: readonly OverviewCourseRow[], window: OverviewWindow) {
   const real = rows.filter((row) => isRealCourse(row.id, row.title));
-  // Estado de agora, nao do periodo: nao ha data de publicacao no curso.
+  // State of now, not of the period: there is no publication date on the course.
   const liveCreators = new Set(real.filter((row) => row.status === "published").map((row) => row.owner_id)).size;
   return { created: measure(real, (row) => row.created_at, window), liveCreators };
 }
 
 /**
- * Eventos COURSE_PUBLISHED_BY_CREATOR do audit_log: o curso nao guarda quando
- * foi publicado. Despublicar e publicar de novo no mesmo periodo conta uma vez.
+ * COURSE_PUBLISHED_BY_CREATOR events from the audit_log: the course does not store when
+ * it was published. Unpublishing and publishing again in the same period counts once.
  */
 export function summarizePublications(rows: readonly OverviewAuditRow[], window: OverviewWindow): Measure {
   const real = rows
@@ -209,7 +209,7 @@ export function summarizePublications(rows: readonly OverviewAuditRow[], window:
   return measure(firstPerPeriod.map(({ row }) => row), (row) => row.created_at, window);
 }
 
-/** Pagas = fontes que geram cobranca (payment, subscription); gratis = free_course. Concessoes so no total. */
+/** Paid = sources that generate a charge (payment, subscription); free = free_course. Grants only in the total. */
 export function summarizeEnrollments(rows: readonly OverviewEnrollmentRow[], window: OverviewWindow) {
   const real = rows.filter((row) => isRealCourse(row.course_id, row.course_title));
   const at = (row: OverviewEnrollmentRow) => row.created_at;
@@ -223,11 +223,11 @@ export function summarizeEnrollments(rows: readonly OverviewEnrollmentRow[], win
 const REFUND_STATUSES = new Set(["refunded", "partially_refunded"]);
 
 /**
- * Pedido = venda (renovacao de assinatura tambem vira pedido). Venda conta
- * por paid_at e so quando cobrou algo (cupom de 100% fica fora); reembolso
- * por updated_at, o momento em que o webhook gravou o desfecho (o pedido nao
- * tem refunded_at). Pagamento com falha fica fora: checkout expirado reescreve
- * "failed" para "cancelled", entao a contagem seria quase sempre 0.
+ * Order = sale (a subscription renewal also becomes an order). A sale counts
+ * by paid_at and only when it charged something (a 100% coupon stays out); a refund
+ * by updated_at, the moment the webhook stored the outcome (the order does not
+ * have refunded_at). A failed payment stays out: an expired checkout rewrites
+ * "failed" to "cancelled", so the count would almost always be 0.
  */
 export function summarizeOrders(rows: readonly OverviewOrderRow[], window: OverviewWindow) {
   const real = rows.filter((row) => isRealCourse(row.course_id, row.course_title));
@@ -239,10 +239,10 @@ export function summarizeOrders(rows: readonly OverviewOrderRow[], window: Overv
   return {
     paidOrders: measure(paid, paidAt, window),
     gross: measureMoney(paid, paidAt, currency, (row) => row.amount_minor, window),
-    // A conta do webhook (percentual + parte fixa, platformFeeForSale) na
-    // proporcao do que nao foi reembolsado: o reembolso devolve a taxa na mesma
-    // proporcao (refund_application_fee: true), como a carteira do criador ja
-    // desconta.
+    // The webhook's calculation (percentage + fixed part, platformFeeForSale) on the
+    // proportion of what was not refunded: the refund returns the fee in the same
+    // proportion (refund_application_fee: true), as the creator's wallet already
+    // deducts.
     platformFees: measureMoney(paid, paidAt, currency, (row) => {
       if (row.amount_minor <= 0) return 0;
       const fee = platformFeeForSale(
@@ -258,10 +258,10 @@ export function summarizeOrders(rows: readonly OverviewOrderRow[], window: Overv
 }
 
 /**
- * Eventos STOREFRONT_ACTIVATION_FEE_PAID: e o unico lugar legivel que guarda o
- * valor (a cobranca e da plataforma, sem linha em orders). Evento sem valor
- * gravado entra na contagem, nao na soma. Uma reentrega do webhook grava o
- * evento de novo: um pagamento (paymentIntentId) conta uma vez.
+ * STOREFRONT_ACTIVATION_FEE_PAID events: it is the only readable place that stores the
+ * value (the charge belongs to the platform, with no row in orders). An event without a stored
+ * value enters the count, not the sum. A webhook redelivery stores the
+ * event again: one payment (paymentIntentId) counts once.
  */
 export function summarizeActivations(allRows: readonly OverviewAuditRow[], window: OverviewWindow) {
   const seen = new Set<string>();

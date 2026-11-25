@@ -48,7 +48,7 @@ function rowToCourseAsset(row: CourseAssetRow): CourseAsset {
     isPreview: row.is_preview,
     lessonId: row.lesson_id,
     moduleId: row.module_id,
-    // `?? null`: antes da migration 20261007040000 as colunas nem vêm.
+    // `?? null`: before migration 20261007040000 the columns do not even come back.
     title: row.title ?? null,
     position: row.position ?? null,
     createdAt: row.created_at,
@@ -71,8 +71,8 @@ type UploadCourseAssetInput = {
 export type UploadCourseAssetProgress = {
   bytesTransferred: number;
   totalBytes: number;
-  // null quando o transporte não informa progresso (supabase-js upload()). A UI
-  // mostra "enviando" sem número em vez de uma barra parada em 0%.
+  // null when the transport does not report progress (supabase-js upload()). The UI
+  // shows "uploading" with no number instead of a bar stuck at 0%.
   percent: number | null;
   state: "paused" | "running" | "success";
 };
@@ -127,9 +127,9 @@ export async function uploadCourseAsset(input: UploadCourseAssetInput) {
     state: "running",
   });
 
-  // A storage-js ignora `contentType` quando o corpo é um File e grava o tipo
-  // do próprio File: um SVG ficava image/svg+xml no storage. O novo File só
-  // aponta para os mesmos bytes, com o tipo seguro.
+  // storage-js ignores `contentType` when the body is a File and stores the File's
+  // own type: an SVG ended up as image/svg+xml in storage. The new File only
+  // points to the same bytes, with the safe type.
   const { error: uploadError } = await supabase.storage
     .from(bucket)
     .upload(storagePath, new File([input.file], input.file.name, { type: contentType }), {
@@ -187,9 +187,9 @@ export async function uploadCourseAsset(input: UploadCourseAssetInput) {
     throw error;
   }
 
-  // "success" só depois de a linha existir e a capa estar gravada. Emitido
-  // antes, uma falha no insert deixava "Upload complete 100%" na tela ao lado
-  // da caixa vermelha dizendo que não foi possível enviar.
+  // "success" only after the row exists and the cover is stored. Emitted
+  // earlier, a failure on the insert left "Upload complete 100%" on the screen next to
+  // the red box saying the upload could not be done.
   input.onProgress?.({
     bytesTransferred: input.file.size,
     totalBytes: input.file.size,
@@ -201,8 +201,8 @@ export async function uploadCourseAsset(input: UploadCourseAssetInput) {
 }
 
 /**
- * Lançado quando o próprio criador cancela o envio. É um desfecho normal, não
- * uma falha: quem chama deve limpar o estado sem mostrar mensagem de erro.
+ * Thrown when the creator themself cancels the upload. It is a normal outcome, not
+ * a failure: the caller should clear the state without showing an error message.
  */
 export class CourseAssetUploadCancelled extends Error {
   constructor() {
@@ -221,10 +221,10 @@ type UploadBunnyVideoInput = {
   lessonId: string;
   onProgress?: (progress: UploadCourseAssetProgress) => void;
   /**
-   * Recebe a função de cancelamento assim que o envio começa. Sem isto a
-   * instância do tus ficava presa dentro do executor da Promise e
-   * `upload.abort()` era inalcançável — não havia como cancelar um envio em
-   * andamento a não ser fechando a aba.
+   * Receives the cancel function as soon as the upload starts. Without this the
+   * tus instance stayed trapped inside the Promise executor and
+   * `upload.abort()` was unreachable — there was no way to cancel an upload in
+   * progress except by closing the tab.
    */
   onCancelAvailable?: (cancel: () => void) => void;
 };
@@ -295,11 +295,11 @@ export async function uploadLessonVideoToBunny(
 
   // 2. Browser → Bunny, resumable.
   //
-  // A instância do Upload precisa escapar do executor: antes ela nascia e morria
-  // aqui dentro, então `upload.abort()` era inalcançável e não havia como
-  // cancelar. Quem escolhia o arquivo errado de 4 GB, ou travava numa conexão
-  // ruim, só tinha a saída de fechar a aba — e aí nada retomava, o próximo
-  // envio recomeçava do zero e sobrava um vídeo órfão no Bunny.
+  // The Upload instance needs to escape the executor: before, it was born and died
+  // in here, so `upload.abort()` was unreachable and there was no way to
+  // cancel. Someone who picked the wrong 4 GB file, or got stuck on a bad
+  // connection, could only close the tab — and then nothing resumed, the next
+  // upload started from zero and an orphan video was left on Bunny.
   await new Promise<void>((resolve, reject) => {
     const upload = new Upload(input.file, {
       endpoint,
@@ -326,9 +326,9 @@ export async function uploadLessonVideoToBunny(
       onSuccess: () => resolve(),
     });
 
-    // Entrega o cancelador a quem chamou. `abort` do tus devolve uma promise;
-    // ignorá-la é aceitável porque o resultado que interessa é a rejeição
-    // abaixo, que devolve o controle da UI imediatamente.
+    // Hands the canceller to the caller. tus's `abort` returns a promise;
+    // ignoring it is acceptable because the result that matters is the rejection
+    // below, which gives control of the UI back immediately.
     input.onCancelAvailable?.(() => {
       void upload.abort();
       reject(new CourseAssetUploadCancelled());
@@ -360,7 +360,7 @@ export async function uploadLessonVideoToBunny(
     throw insertError;
   }
 
-  // Mesma regra do caminho Supabase: concluído é só quando a linha existe.
+  // Same rule as the Supabase path: done only when the row exists.
   input.onProgress?.({
     bytesTransferred: input.file.size,
     totalBytes: input.file.size,
@@ -376,15 +376,15 @@ export async function uploadLessonVideoToBunny(
  * storage.objects only issues it to the course owner, an enrolled learner, or an
  * admin — so this is safe to call directly from the client.
  *
- * `download`: o link de baixar. O atributo `download` de um <a> não vale para
- * outro domínio (o do Supabase), então o botão "Download" só abria o arquivo.
- * Com `download=<nome>` no link, o Supabase responde "attachment" com o nome
- * original do arquivo. A regra de quem recebe o link é a mesma: a da RLS.
+ * `download`: the download link. The `download` attribute of an <a> does not apply to
+ * another domain (Supabase's), so the "Download" button only opened the file.
+ * With `download=<name>` on the link, Supabase answers "attachment" with the file's
+ * original name. The rule for who gets the link is the same: RLS's.
  *
- * O nome NÃO vai pela opção `download` da storage-js: ela codifica o nome
- * (URLSearchParams) e depois o link inteiro de novo (encodeURI), e o servidor
- * decodifica uma vez só. "Introdução.pdf" baixava como
- * "Introdu%C3%A7%C3%A3o.pdf". Aqui ele é codificado uma vez.
+ * The name does NOT go through storage-js's `download` option: it encodes the name
+ * (URLSearchParams) and then the whole link again (encodeURI), and the server
+ * decodes only once. "Introdução.pdf" downloaded as
+ * "Introdu%C3%A7%C3%A3o.pdf". Here it is encoded once.
  */
 export async function getProtectedCourseAssetObjectUrl(
   asset: CourseAsset,
@@ -399,9 +399,9 @@ export async function getProtectedCourseAssetObjectUrl(
     throw error;
   }
 
-  // Arquivo antigo com tipo fora da lista do bucket (SVG, HTML, XML): o link de
-  // abrir também vem como anexo. Aberto na aba, o script dele rodaria no
-  // domínio do storage. <img> e <video> ignoram o anexo e seguem mostrando.
+  // Old file with a type outside the bucket's list (SVG, HTML, XML): the open
+  // link also comes as an attachment. Opened in the tab, its script would run on the
+  // storage domain. <img> and <video> ignore the attachment and keep displaying.
   if (!options.download && isCourseContentMimeType(asset.contentType)) {
     return data.signedUrl;
   }
@@ -423,15 +423,15 @@ export async function fetchCourseAssets(courseId: string): Promise<CourseAsset[]
     throw error instanceof Error ? error : new Error(String(error));
   }
 
-  // Ordem do professor (posição), depois o nome. Ordenado aqui e não no banco:
-  // `.order("position")` derrubaria a leitura enquanto a coluna não existe.
+  // Teacher's order (position), then the name. Sorted here and not in the database:
+  // `.order("position")` would break the read while the column does not exist.
   return (data ?? []).map(rowToCourseAsset).sort(compareCourseAssets);
 }
 
 /**
- * A RLS não devolve erro quando filtra a linha (sessão sem segundo fator, curso
- * de outro dono): o update só não muda nada. Sem esta conferência a tela dizia
- * "Name saved." sem ter salvado.
+ * RLS does not return an error when it filters out the row (session without a second factor, course
+ * of another owner): the update just changes nothing. Without this check the screen said
+ * "Name saved." without having saved.
  */
 function assertOneRowUpdated(result: { data: unknown[] | null; error: unknown }) {
   if (result.error) {
@@ -442,7 +442,7 @@ function assertOneRowUpdated(result: { data: unknown[] | null; error: unknown })
   }
 }
 
-/** Nome que o aluno vê. Vazio volta a mostrar o nome do arquivo. */
+/** Name the learner sees. Empty goes back to showing the file name. */
 export async function renameCourseAsset(assetId: string, title: string) {
   const supabase = getSupabaseBrowserClient();
   const trimmed = title.trim().slice(0, courseAssetTitleMaxLength);
@@ -456,8 +456,8 @@ export async function renameCourseAsset(assetId: string, title: string) {
 }
 
 /**
- * Grava a ordem da lista: posição = índice. Só manda as linhas que mudaram
- * (trocar dois vizinhos custa duas escritas).
+ * Stores the order of the list: position = index. Only sends the rows that changed
+ * (swapping two neighbors costs two writes).
  */
 export async function saveCourseAssetOrder(ordered: Pick<CourseAsset, "id" | "position">[]) {
   const supabase = getSupabaseBrowserClient();
@@ -473,9 +473,9 @@ export async function saveCourseAssetOrder(ordered: Pick<CourseAsset, "id" | "po
 }
 
 /**
- * Quantos arquivos o professor tem na midia, somando os cursos dele. O painel
- * de Marketing so precisa do numero: pedir as linhas de cada curso (ou abrir
- * um canal realtime por curso) para depois contar seria caro por nada.
+ * How many files the teacher has in media, adding up their courses. The Marketing panel
+ * only needs the number: requesting the rows of each course (or opening
+ * a realtime channel per course) to count afterwards would be expensive for nothing.
  */
 export async function countCourseAssets(courseIds: string[]): Promise<number> {
   if (courseIds.length === 0) {
@@ -495,9 +495,9 @@ export async function countCourseAssets(courseIds: string[]): Promise<number> {
   return count ?? 0;
 }
 
-// Mesmo objeto para a linha que não mudou. ProtectedAssetPreview assina a URL
-// de novo quando recebe um objeto novo: um vídeo enviado recomeçaria no meio e
-// um PDF baixaria de novo a cada recarga, mesmo sem nada ter mudado.
+// Same object for the row that did not change. ProtectedAssetPreview signs the URL
+// again when it receives a new object: an uploaded video would restart in the middle and
+// a PDF would download again on every reload, even with nothing changed.
 function keepUnchangedAssets(previous: CourseAsset[], next: CourseAsset[]): CourseAsset[] {
   const previousById = new Map(previous.map((asset) => [asset.id, asset]));
   return next.map((asset) => {
@@ -511,9 +511,9 @@ function keepUnchangedAssets(previous: CourseAsset[], next: CourseAsset[]): Cour
 }
 
 /**
- * Canal realtime dos anexos do curso. O retorno desliga o canal e traz
- * `reload()`: busca de novo SEM mexer no canal. A sala usa quando uma aula abre
- * pelo calendário, momento em que nada muda no banco e o realtime não acorda.
+ * Realtime channel of the course attachments. The return value shuts the channel down and brings
+ * `reload()`: fetches again WITHOUT touching the channel. The room uses it when a lesson opens
+ * from the calendar, a moment when nothing changes in the database and realtime does not wake up.
  */
 export function subscribeToCourseAssets(
   courseId: string,
@@ -529,13 +529,13 @@ export function subscribeToCourseAssets(
     const thisLoad = ++latestLoad;
     try {
       const assets = await fetchCourseAssets(courseId);
-      // Canal desligado, ou uma carga mais nova já saiu: esta resposta é velha.
+      // Channel shut down, or a newer load already came out: this response is old.
       if (!active || thisLoad !== latestLoad) return;
       delivered = keepUnchangedAssets(delivered, assets);
       callback(delivered);
     } catch (error) {
       if (!active || thisLoad !== latestLoad) return;
-      // A recarga avulsa que falha mantém a lista que já está na tela.
+      // A standalone reload that fails keeps the list that is already on the screen.
       if (quiet) {
         console.warn("Course assets reload failed; keeping the previous list", error);
         return;
@@ -579,18 +579,18 @@ export function subscribeToCourseAssets(
  * editable course state.
  */
 /**
- * Alinha a flag is_preview dos vídeos do curso com a aula escolhida como prévia
- * gratuita.
+ * Aligns the is_preview flag of the course videos with the lesson chosen as the free
+ * preview.
  *
- * A busca anônima que alimenta a página pública de vendas filtra por
- * `.eq("is_preview", true)` (src/app/api/courses/video-token/route.ts). Marcar a
- * aula como prévia no builder só mexia num campo do curso, então um vídeo já
- * enviado nunca ganhava a flag e a loja respondia "Video unavailable" — com o
- * estúdio mostrando tudo pronto.
+ * The anonymous lookup that feeds the public sales page filters by
+ * `.eq("is_preview", true)` (src/app/api/courses/video-token/route.ts). Marking the
+ * lesson as the preview in the builder only touched a course field, so an already
+ * uploaded video never got the flag and the store answered "Video unavailable" — with the
+ * studio showing everything ready.
  *
- * Limpa a flag dos vídeos das outras aulas na mesma passagem: prévia é uma só, e
- * trocar de aula tem de despublicar a anterior, senão o curso vai acumulando
- * vídeos pagos abertos ao público.
+ * Clears the flag on the videos of the other lessons in the same pass: there is only one preview, and
+ * switching lessons has to unpublish the previous one, otherwise the course keeps accumulating
+ * paid videos open to the public.
  */
 export async function syncLessonPreviewAssets(
   courseId: string,
@@ -599,8 +599,8 @@ export async function syncLessonPreviewAssets(
   const supabase = getSupabaseBrowserClient();
   const videoKinds = ["lesson_video", "live_recording"];
 
-  // Desmarca todo vídeo que não seja da aula de prévia (inclui o caso de
-  // previewLessonId vazio, que é "nenhuma prévia").
+  // Unchecks every video that is not from the preview lesson (includes the case of
+  // an empty previewLessonId, which means "no preview").
   const clear = supabase
     .from(courseAssetsTable)
     .update({ is_preview: false })

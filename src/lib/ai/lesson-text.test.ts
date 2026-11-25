@@ -27,8 +27,8 @@ describe("cleanQuiz", () => {
 });
 
 describe("generateQuiz", () => {
-  // Chaves: mockReset devolve o mock, e uma função devolvida pelo beforeEach
-  // vira limpeza no Vitest 5 (seria chamada sem argumentos depois do teste).
+  // Braces: mockReset returns the mock, and a function returned from beforeEach
+  // becomes cleanup in Vitest 5 (it would be called with no arguments after the test).
   beforeEach(() => {
     askJson.mockReset();
   });
@@ -41,7 +41,7 @@ describe("generateQuiz", () => {
         { ...good, answer: 9 },
       ],
     });
-    // random 0.99: nenhuma troca, a ordem do modelo fica.
+    // random 0.99: no swap, the model's order stays.
     await expect(generateQuiz("transcript", deadline, () => 0.99)).resolves.toEqual([good]);
   });
 

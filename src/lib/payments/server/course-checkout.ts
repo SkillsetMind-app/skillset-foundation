@@ -53,7 +53,7 @@ export type CourseCheckoutBody = {
   offerId?: unknown;
   offerCode?: unknown;
   priceId?: unknown;
-  /** true: a caixa do acesso imediato foi marcada (UE, EEE e Reino Unido). */
+  /** true: the immediate-access checkbox was ticked (EU, EEA and UK). */
   withdrawalConsent?: unknown;
 };
 
@@ -75,8 +75,8 @@ export type CourseCheckoutOptions = {
    */
   reuseOpenCheckout?: boolean;
   /**
-   * País do comprador (cabeçalho da hospedagem). UE, EEE e Reino Unido exigem
-   * a caixa do acesso imediato; sem país conhecido, nada é exigido.
+   * The buyer's country (hosting platform header). The EU, EEA and UK require
+   * the immediate-access checkbox; with no known country, nothing is required.
    */
   buyerCountry?: string | null;
 };
@@ -98,7 +98,7 @@ export type CourseCheckoutOptions = {
 // ON the teacher's account: the teacher is the merchant of record, the money
 // never lands in a platform balance, and Stripe deducts our cut automatically
 // via `application_fee_amount`. The platform therefore holds no third-party
-// funds and runs no payout release — see docs/ARQUITETURA.md (Pagamentos).
+// funds and runs no payout release — see docs/ARCHITECTURE.md (Payments and webhooks).
 export async function createCourseCheckoutSession(
   userId: string,
   body: CourseCheckoutBody,
@@ -128,14 +128,14 @@ export async function createCourseCheckoutSession(
       throw new PaymentError("The selected offer code is invalid.");
     }
 
-    // UE, EEE e Reino Unido: o acesso começa na hora, então a compra só segue
-    // com o pedido expresso de acesso imediato e a ciência de que o direito de
-    // desistência de 14 dias termina ali. O aceite vai no metadata do
-    // pagamento (a prova fica com a venda) e é confirmado no e-mail da compra.
-    // ponytail: uma compra já aberta (até 31 min) é devolvida como está. Se ela
-    // nasceu sem o aceite (país desconhecido) e o mesmo comprador volta de um
-    // país que o exige, o metadata dela não ganha o aceite. Raro; se aparecer,
-    // recusar a reutilização quando o aceite veio e a sessão aberta não o tem.
+    // EU, EEA and UK: access starts right away, so the purchase only goes ahead
+    // with the express request for immediate access and the acknowledgment that the 14-day
+    // withdrawal right ends there. The consent goes in the payment
+    // metadata (the proof stays with the sale) and is confirmed in the purchase email.
+    // ponytail: a purchase already open (up to 31 min) is returned as is. If it
+    // was born without the consent (unknown country) and the same buyer comes back from a
+    // country that requires it, its metadata does not get the consent. Rare; if it shows up,
+    // refuse the reuse when the consent came and the open session does not have it.
     const withdrawalConsentGiven = body.withdrawalConsent === true;
     if (requiresWithdrawalConsent(options.buyerCountry) && !withdrawalConsentGiven) {
       throw new PaymentError(
@@ -307,7 +307,7 @@ export async function createCourseCheckoutSession(
     const userEmail = options.customerEmail ?? buyer?.email ?? undefined;
     const appUrl = getAppUrl();
     const stripe = getStripeClient();
-    // Voltar da Stripe nao pode trocar a oferta pela padrao do curso.
+    // Coming back from Stripe must not swap the offer for the course's default one.
     const cancelParams = new URLSearchParams({ checkout: "cancelled" });
     if (priced.offerId) cancelParams.set("offerId", priced.offerId);
     if (priced.priceId) cancelParams.set("priceId", priced.priceId);
@@ -487,9 +487,9 @@ export async function createCourseCheckoutSession(
             customer_email: userEmail,
             client_reference_id: userId,
             line_items: [{ price: subscriptionPriceId, quantity: 1 }],
-            // Os termos da renovação na própria página do Stripe, acima do
-            // botão que recolhe o cartão: a mesma frase do cartão de compra
-            // (aviso de renovação automática, US ROSCA).
+            // The renewal terms on Stripe's own page, above the
+            // button that collects the card: the same sentence as the purchase card
+            // (automatic renewal notice, US ROSCA).
             custom_text: {
               submit: {
                 message: courseSubscriptionDisclosure({

@@ -78,14 +78,14 @@ export async function GET() {
     if (subscription && view && !view.cancelAtPeriodEnd
       && ["active", "trialing"].includes(subscription.status)) {
       try {
-        // A previa preserva o preco contratado, descontos e saldo; nunca usar o catalogo atual.
+        // The preview keeps the contracted price, discounts and balance; never use the current catalog.
         const invoice = await getStripeClient().invoices.createPreview({ subscription: subscription.id });
         if (Number.isSafeInteger(invoice.amount_due) && invoice.amount_due >= 0
           && /^[a-z]{3}$/.test(invoice.currency)) {
           view.nextPayment = { amountMinor: invoice.amount_due, currency: invoice.currency };
         }
       } catch {
-        // Falha de leitura nao pode esconder os controles de cancelamento.
+        // A read failure must not hide the cancellation controls.
       }
     }
 

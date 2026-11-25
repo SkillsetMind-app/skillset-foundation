@@ -76,8 +76,8 @@ export function groupCourseMessageThreads(
   return result;
 }
 
-/** Quantas conversas esperam o professor: a ultima mensagem e do aluno. So
- *  precisa de quem mandou e quando, em qualquer ordem — o texto fica no banco. */
+/** How many conversations are waiting for the teacher: the last message is the learner's. It
+ *  only needs who sent it and when, in any order; the text stays in the database. */
 export function countThreadsAwaitingReply(
   messages: Pick<CourseMessage, "courseId" | "studentId" | "senderId" | "createdAt">[],
   teacherId: string,

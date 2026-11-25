@@ -21,8 +21,8 @@ vi.mock("@/lib/auth/pwned-password", () => ({ assertPasswordNotBreached: vi.fn()
 vi.mock("@/lib/data/user-profiles", () => ({ getUserProfile: vi.fn().mockResolvedValue(null) }));
 vi.mock("@/lib/attribution/first-touch", () => ({ getFirstTouch: () => mocks.firstTouch }));
 
-// Ninguem sabia de onde vinha um cadastro nem em que lingua a pessoa usava o
-// site. As duas coisas vao junto, nos metadados da conta (jsonb, sem migration).
+// Nobody knew where a signup came from or which language the person used the
+// site in. Both go along, in the account metadata (jsonb, no migration).
 describe("signUpWithEmail metadata", () => {
   const input = { displayName: " Ana Souza ", email: "ana@example.test", password: "irrelevant-here" };
 
@@ -54,8 +54,8 @@ describe("signUpWithEmail metadata", () => {
     expect(await signUpMetadata()).toEqual({ display_name: "Ana Souza", name: "Ana Souza", locale: "es" });
   });
 
-  // Onda F: o tique dos termos se perdia no cadastro com confirmacao de e-mail
-  // (sem sessao, o perfil nao grava). Agora vai junto com a conta.
+  // Wave F: the terms checkbox was lost on signup with email confirmation
+  // (with no session, the profile is not written). Now it goes along with the account.
   it("keeps the accepted terms and privacy versions with the account", async () => {
     mocks.firstTouch = null;
 
@@ -65,7 +65,7 @@ describe("signUpWithEmail metadata", () => {
     });
   });
 
-  // O lembrete de 24 h le daqui o curso de onde a pessoa veio.
+  // The 24 h reminder reads from here the course the person came from.
   it("keeps where the confirmation leads, but not the plain start or an oversized value", async () => {
     mocks.firstTouch = null;
     const course = "/welcome?path=student&returnTo=%2Fcourses%2Ffocus";
@@ -85,7 +85,7 @@ describe("getSignupLegalVersions", () => {
     expect(await getSignupLegalVersions()).toEqual({ terms: "2026-09-24", privacy: undefined });
   });
 
-  // A hora do aceite e a da criacao da conta (servidor), nao a do navegador.
+  // The acceptance time is the account creation time (server), not the browser's.
   it("gives the account creation time as the acceptance time", async () => {
     mocks.getUser.mockResolvedValueOnce({
       data: { user: { created_at: "2026-10-05T10:00:00Z", user_metadata: { terms_version: "2026-09-24" } } },

@@ -138,34 +138,34 @@ export function decideHostRoute(input: {
     };
   }
 
-  // Fora dos aliases de entrada, assets e API nunca são tocados: reescrever quebra o Next, e
-  // a API já é agnóstica de origem. Vem antes de tudo porque um domínio não
-  // resolvido ainda precisa servir os próprios assets enquanto o visitante é
-  // mandado embora.
+  // Outside the entry aliases, assets and API are never touched: rewriting breaks Next, and
+  // the API is already origin-agnostic. It comes before everything because an unresolved
+  // domain still needs to serve its own assets while the visitor is
+  // sent away.
   if (NEVER_TOUCH.some((prefix) => pathname.startsWith(prefix))) {
     return { kind: "pass" };
   }
 
-  // O host da plataforma segue normalmente.
+  // The platform host continues as usual.
   if (isPlatformHost(hostname)) {
     return { kind: "pass" };
   }
 
-  // Chegou aqui: o host NÃO é nosso e não resolve para nenhum professor.
+  // Got here: the host is NOT ours and does not resolve to any teacher.
   //
-  // O comentário antigo aqui dizia "pode ser o próprio host da plataforma, uma
-  // URL de preview ou localhost — em qualquer caso a requisição já está onde
-  // deveria" e devolvia `pass`. Essa premissa ficou falsa quando a feature de
-  // domínio próprio entrou: isPlatformHost já passou pela guarda ACIMA,
-  // então o que sobra aqui é justamente o caso perigoso —
-  // um hostname anexado ao projeto da Vercel mas ainda NÃO verificado (a rota
-  // anexa antes de provar posse), ou um cuja linha sumiu quando o professor
-  // desanexou. Nos dois, servir `pass` publicava /login e /signup reais sob um
-  // nome que a plataforma não controla, com certificado válido: exatamente o
-  // coletor de credenciais que o cabeçalho deste arquivo existe para impedir.
+  // The old comment here said "it may be the platform's own host, a
+  // preview URL or localhost: in any case the request is already where
+  // it should be" and returned `pass`. That premise became false when the
+  // custom domain feature came in: isPlatformHost already went through the guard ABOVE,
+  // so what is left here is precisely the dangerous case:
+  // a hostname attached to the Vercel project but NOT yet verified (the route
+  // attaches before proving ownership), or one whose row vanished when the teacher
+  // detached it. In both, serving `pass` published real /login and /signup under a
+  // name the platform does not control, with a valid certificate: exactly the
+  // credential harvester that this file's header exists to prevent.
   //
-  // Falhar FECHADO. O visitante vai para a plataforma; nada de identidade é
-  // renderizado sob um host de terceiro.
+  // Fail CLOSED. The visitor goes to the platform; no identity is
+  // rendered under a third-party host.
   if (!resolvedUid) {
     return { kind: "redirect", url: `${PLATFORM_ORIGIN}${pathname}${search}` };
   }

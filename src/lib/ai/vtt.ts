@@ -1,16 +1,16 @@
-// Legenda WebVTT: só o que as ferramentas de IA do professor precisam. Ler as
-// falas, montar o arquivo de novo, juntar pedaços transcritos com o deslocamento
-// de cada um e tirar o texto puro (base do quiz e das sugestões).
+// WebVTT caption: only what the teacher's AI tools need. Reading the
+// speech lines, rebuilding the file, joining transcribed chunks with the offset
+// of each one and extracting plain text (basis of the quiz and the suggestions).
 //
-// Tudo que sai daqui passa por buildVtt: o arquivo que vai para a Bunny é sempre
-// o normalizado (cabeçalho, falas, nada de STYLE/NOTE/REGION colado pelo
-// professor), então um texto editado à mão não carrega bloco que o player não
-// entende.
+// Everything that leaves here goes through buildVtt: the file that goes to Bunny is always
+// the normalized one (header, speech lines, no STYLE/NOTE/REGION pasted in by the
+// teacher), so a hand-edited text does not carry a block the player does not
+// understand.
 
 export type VttCue = { start: number; end: number; text: string };
 
-// Limite do texto da legenda: ~3x uma aula de 2 horas falada sem pausa. O
-// banco tem o mesmo teto (check em lesson_captions.vtt).
+// Caption text limit: ~3x a 2-hour lesson spoken without a pause. The
+// database has the same cap (check on lesson_captions.vtt).
 export const MAX_VTT_CHARS = 500_000;
 
 const TIME = /^(?:(\d+):)?([0-5]\d):([0-5]\d)[.,](\d{3})$/;
@@ -32,11 +32,11 @@ export function formatVttTime(totalSeconds: number): string {
 }
 
 /**
- * Falas de um WebVTT. Lança se o texto não começa com "WEBVTT" ou se uma linha
- * de tempo não fecha (fim antes do começo, formato inválido): o professor vê o
- * erro em vez de publicar uma legenda que o player descarta em silêncio.
- * `lenient` (só para a saída do Whisper, que às vezes devolve fala de duração
- * zero perto de silêncio) pula a fala quebrada em vez de perder a aula inteira.
+ * Speech lines of a WebVTT. Throws if the text does not start with "WEBVTT" or if a timing
+ * line does not hold up (end before start, invalid format): the teacher sees the
+ * error instead of publishing a caption the player drops silently.
+ * `lenient` (only for Whisper output, which sometimes returns a zero-duration
+ * line near silence) skips the broken line instead of losing the whole lesson.
  */
 export function parseVtt(vtt: string, { lenient = false } = {}): VttCue[] {
   const text = vtt.replace(/^﻿/, "").replace(/\r\n?/g, "\n");
@@ -46,7 +46,7 @@ export function parseVtt(vtt: string, { lenient = false } = {}): VttCue[] {
   for (const block of text.split(/\n{2,}/).slice(1)) {
     const lines = block.split("\n");
     const timingIndex = lines.findIndex((line) => line.includes("-->"));
-    // NOTE, STYLE e REGION não têm linha de tempo: ficam de fora.
+    // NOTE, STYLE and REGION have no timing line: they are left out.
     if (timingIndex === -1) continue;
     const [rawStart, rawRest = ""] = lines[timingIndex].split("-->");
     const start = parseTime(rawStart);
@@ -69,10 +69,10 @@ export function buildVtt(cues: VttCue[]): string {
   return `WEBVTT\n\n${body}\n`;
 }
 
-/** Junta legendas transcritas em pedaços, somando a cada fala o início do pedaço. */
+/** Joins captions transcribed in chunks, adding the chunk's start to each line of speech. */
 export function mergeVtt(parts: { vtt: string; offset: number }[]): string {
   const cues = parts.flatMap(({ vtt, offset }) => {
-    // Pedaço só de silêncio: o Whisper devolve "WEBVTT" sem falas. Não é erro.
+    // A chunk of pure silence: Whisper returns "WEBVTT" with no speech lines. Not an error.
     try {
       return parseVtt(vtt, { lenient: true }).map((cue) => ({ ...cue, start: cue.start + offset, end: cue.end + offset }));
     } catch (error) {
@@ -84,7 +84,7 @@ export function mergeVtt(parts: { vtt: string; offset: number }[]): string {
   return buildVtt(cues);
 }
 
-/** Texto corrido da legenda, sem tempos: a "transcrição" que vai para o modelo. */
+/** Running text of the caption, without times: the "transcript" that goes to the model. */
 export function vttToText(vtt: string): string {
   return parseVtt(vtt)
     .map((cue) => cue.text.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim())

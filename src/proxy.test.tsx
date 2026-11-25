@@ -194,8 +194,8 @@ describe("Next routing configuration for platform entry aliases", () => {
     expect(unstable_doesMiddlewareMatch({ config, nextConfig, url: `https://${host}/auth`, headers: { host } })).toBe(true);
   });
 
-  // /@usuario é rewrite para uma página HTML; um @ válido pode terminar em
-  // ".png" e mesmo assim precisa da CSP do proxy.
+  // /@username is a rewrite to an HTML page; a valid @ can end in
+  // ".png" and still needs the proxy CSP.
   it("keeps creator handles that look like files inside the proxy", async () => {
     const { config } = await import("@/proxy");
     const host = "www.skillsetmind.com";

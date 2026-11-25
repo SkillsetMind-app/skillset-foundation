@@ -37,7 +37,7 @@ export type CreatorOpsSnapshot = {
 export function summarizeCreatorSales(
   orders: Order[],
 ): Pick<CreatorOpsSnapshot, "salesCount" | "salesGrossByCurrency"> {
-  // Pago inteiro ou com reembolso parcial: conta o que ficou com o professor.
+  // Paid in full or with a partial refund: counts what stayed with the teacher.
   const paid = orders.filter((order) => orderRevenueMinor(order) !== null);
   const grossByCurrency = new Map<string, number>();
 
@@ -125,7 +125,7 @@ function addCurrencyAmount(
   totals.set(currency, (totals.get(currency) ?? 0) + amount);
 }
 
-/** Codigo da moeda em maiusculas; sem moeda gravada vira "UNSPECIFIED". */
+/** Currency code in uppercase; with no stored currency it becomes "UNSPECIFIED". */
 export function normalizeCurrency(value: unknown): string {
   const currency = String(value ?? "").trim().toUpperCase();
   return currency || "UNSPECIFIED";

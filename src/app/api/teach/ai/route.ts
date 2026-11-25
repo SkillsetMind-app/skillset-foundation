@@ -20,37 +20,38 @@ import { assertCreatorActivated, enforceRateLimit, paymentErrorResponse } from "
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-// /api/teach/ai — ferramentas de IA do estúdio da aula (só o dono do curso).
-//   GET  ?courseId&lessonId[&assetId]  legendas e quiz da aula + uso do mês
+// /api/teach/ai — AI tools of the lesson studio (course owner only).
+//   GET  ?courseId&lessonId[&assetId]  the lesson's captions and quiz + this month's usage
 //   POST { action, courseId, lessonId, ... }
-//     transcribe      gera a legenda (rascunho) a partir do vídeo da Bunny
-//     saveCaption     grava o texto revisado pelo professor
-//     publishCaption  sobe a legenda para a Bunny (o aluno vê no player)
-//     removeCaption   tira da Bunny e apaga
-//     translate       traduz uma legenda existente para outro idioma (rascunho)
-//     generateQuiz    quiz a partir da transcrição (rascunho)
-//     saveQuiz        grava o quiz editado; publish=true mostra ao aluno
-//     removeQuiz      apaga o quiz
-//     suggest         3 títulos e 3 descrições para a aula ou o módulo (nada é gravado)
+//     transcribe      generates the caption (draft) from the Bunny video
+//     saveCaption     saves the text reviewed by the teacher
+//     publishCaption  uploads the caption to Bunny (the learner sees it in the player)
+//     removeCaption   removes it from Bunny and deletes it
+//     translate       translates an existing caption into another language (draft)
+//     generateQuiz    quiz from the transcript (draft)
+//     saveQuiz        saves the edited quiz; publish=true shows it to the learner
+//     removeQuiz      deletes the quiz
+//     suggest         3 titles and 3 descriptions for the lesson or module (nothing is saved)
 //
-// Ordem dos portões, a mesma do conselheiro: chave ligada, sessão, papel de
-// professor, ativação, limite de pedidos, dono do curso. Tudo antes de gastar IA.
-// As tabelas novas só aceitam service_role: a rota confere o dono e grava,
-// sempre com course_id na chave (o id da aula nasce no browser e é público).
+// Order of the gates, the same as the advisor's: key on, session, teacher role,
+// activation, request limit, course owner. All before spending any AI.
+// The new tables only accept service_role: the route checks the owner and
+// writes, always with course_id in the key (the lesson id is created in the
+// browser and is public).
 
 export const runtime = "nodejs";
-// A transcrição de uma aula longa leva ~1 a 2 minutos (download, ffmpeg e
-// Whisper em paralelo). O teto da plataforma fica alto e o nosso prazo decide antes.
+// Transcribing a long lesson takes ~1 to 2 minutes (download, ffmpeg and
+// Whisper in parallel). The platform cap stays high and our own deadline decides first.
 export const maxDuration = 300;
 const WORK_DEADLINE_MS = 270_000;
 
-// Aula mais longa que a ferramenta aceita. Também é o teto por linha em ai_usage.
+// A lesson longer than the tool accepts. It is also the per-row cap in ai_usage.
 const MAX_LESSON_SECONDS = 2 * 60 * 60;
-// Bunny "Finished": o MP4 de 240p só existe depois da codificação.
+// Bunny "Finished": the 240p MP4 only exists after encoding.
 const BUNNY_FINISHED = 4;
-// A CDN da biblioteca recusa pedido sem Referer.
+// The library's CDN rejects a request without a Referer.
 const CDN_REFERER = "https://skillsetmind.com/";
-// Pedidos de texto por dia (tradução, quiz, sugestões): segura repetição em laço.
+// Text requests per day (translation, quiz, suggestions): stops repetition in a loop.
 const TEXT_DAILY_LIMIT = 40;
 
 const CAPTION_COLUMNS = "language, vtt, video_id, translated_from, updated_at, published_at";
@@ -87,12 +88,12 @@ function captionView(row: CaptionRow, currentVideoId: string | null) {
     translatedFrom: row.translated_from,
     updatedAt: row.updated_at,
     publishedAt: row.published_at,
-    // Feita para outro vídeo (o professor trocou o vídeo da aula).
+    // Made for another video (the teacher swapped the lesson's video).
     stale: currentVideoId !== null && row.video_id !== currentVideoId,
   };
 }
 
-// Nome do idioma nele mesmo ("Español"), que é o que o aluno procura no CC.
+// The language's name in itself ("Español"), which is what the learner looks for in the CC menu.
 function nativeLabel(language: string): string {
   const name = captionLanguageName(language, language);
   return name.charAt(0).toLocaleUpperCase(language) + name.slice(1);
@@ -113,7 +114,7 @@ type Gate = {
 };
 
 async function openGate(courseId: unknown, lessonId: unknown, rateKey: string): Promise<Gate | NextResponse> {
-  // Desligada, a rota não existe: o OPENAI_API_KEY é o mesmo do conselheiro.
+  // When off, the route does not exist: OPENAI_API_KEY is the same as the advisor's.
   if (!isTeacherAiEnabled) return fail(404, "not_found", "Not found.");
   const supabase = await createSupabaseServerClient();
   const { data: auth, error: authError } = await supabase.auth.getUser();
@@ -146,8 +147,8 @@ async function openGate(courseId: unknown, lessonId: unknown, rateKey: string): 
   return { uid, courseId, lessonId, modules: course.modules, supabase };
 }
 
-// O vídeo da Bunny da aula, só se o asset é desta aula e o recibo do servidor
-// confere (course_assets é gravável pelo browser).
+// The lesson's Bunny video, only if the asset belongs to this lesson and the
+// server receipt checks out (course_assets is writable by the browser).
 async function lessonVideoId(gate: Gate, assetId: unknown): Promise<string | null> {
   if (typeof assetId !== "string" || !assetId) return null;
   const { data: asset } = await gate.supabase
@@ -174,9 +175,9 @@ async function loadCaption(gate: Gate, language: string): Promise<CaptionRow | n
 }
 
 async function saveCaptionRow(gate: Gate, row: { language: string; video_id: string; vtt: string; translated_from: string | null }) {
-  // Legenda publicada para OUTRO vídeo não vale para este (a Bunny guarda
-  // legenda por vídeo): volta a ser rascunho. Mesmo vídeo: a publicada
-  // continua no player até o professor publicar a nova.
+  // A caption published for ANOTHER video does not apply to this one (Bunny
+  // keeps captions per video): it goes back to being a draft. Same video: the
+  // published one stays in the player until the teacher publishes the new one.
   const previous = await loadCaption(gate, row.language);
   const { data, error } = await getSupabaseAdminClient()
     .from("lesson_captions")
@@ -197,8 +198,8 @@ async function saveCaptionRow(gate: Gate, row: { language: string; video_id: str
   return data;
 }
 
-// Texto que o professor mandou: normalizado pelo parser (o que vai para a
-// Bunny é sempre um WebVTT limpo).
+// Text the teacher sent: normalized by the parser (what goes to Bunny is
+// always clean WebVTT).
 function normalizedVtt(vtt: unknown): string | null {
   if (typeof vtt !== "string" || vtt.length > MAX_VTT_CHARS) return null;
   try {
@@ -240,8 +241,9 @@ async function saveQuizRow(gate: Gate, questions: QuizQuestion[], status: "draft
   return { questions: data.questions, status: data.status, updatedAt: data.updated_at };
 }
 
-// A transcrição da aula: a legenda do vídeo atual que NÃO é tradução (o
-// idioma falado). Sem ela, nada: quiz de tradução sairia no idioma errado.
+// The lesson transcript: the current video's caption that is NOT a translation
+// (the spoken language). Without it, nothing: a quiz from a translation would
+// come out in the wrong language.
 async function lessonTranscript(gate: Gate, assetId: unknown): Promise<string | null> {
   const videoId = await lessonVideoId(gate, assetId);
   if (!videoId) return null;
@@ -259,7 +261,7 @@ async function lessonTranscript(gate: Gate, assetId: unknown): Promise<string | 
   return data ? vttToText(data.vtt) : null;
 }
 
-// Material de um módulo: título e começo da transcrição (não tradução) de cada aula.
+// Module material: the title and start of the transcript (not a translation) of each lesson.
 async function moduleMaterial(gate: Gate, moduleId: unknown): Promise<string | null> {
   const modules = Array.isArray(gate.modules) ? (gate.modules as { id?: unknown; lessons?: unknown }[]) : [];
   const target = modules.find((module) => module?.id === moduleId);
@@ -279,7 +281,7 @@ async function moduleMaterial(gate: Gate, moduleId: unknown): Promise<string | n
     try {
       textOf.set(row.lesson_id, vttToText(row.vtt).slice(0, 3000));
     } catch {
-      // legenda ilegível: a aula entra só com o título
+      // unreadable caption: the lesson goes in with the title only
     }
   }
   if (textOf.size === 0) return null;
@@ -290,7 +292,7 @@ async function moduleMaterial(gate: Gate, moduleId: unknown): Promise<string | n
 
 function aiFailure(error: unknown) {
   if (error instanceof OpenAIConfigError || (error instanceof OpenAIError && error.code === "no_credit")) {
-    // Sem chave ou sem saldo é problema nosso, não do professor.
+    // A missing key or no balance is our problem, not the teacher's.
     console.error("teacher_ai_unavailable", error instanceof OpenAIError ? error.code : "not_configured");
     return fail(503, "ai_unavailable", "AI tools are temporarily unavailable. Please try again later.");
   }
@@ -353,7 +355,7 @@ export async function POST(request: Request) {
     const language = body.language;
     const videoId = await lessonVideoId(gate, body.assetId);
     if (!videoId) return fail(404, "no_video", "This lesson has no uploaded video.");
-    // Sem o host da CDN não há de onde ler o áudio: falha antes de cobrar.
+    // Without the CDN host there is nowhere to read the audio from: fail before charging.
     if (!process.env.BUNNY_STREAM_CDN_HOSTNAME) {
       console.error("teacher_ai_unavailable", "cdn_hostname_missing");
       return fail(503, "ai_unavailable", "AI tools are temporarily unavailable. Please try again later.");
@@ -404,9 +406,10 @@ export async function POST(request: Request) {
       const saved = await saveCaptionRow(gate, { language, video_id: videoId, vtt, translated_from: null });
       return reply({ caption: captionView(saved, videoId), usage: { usedSeconds, limitSeconds } });
     } catch (error) {
-      // O tempo volta ao saldo só se a OpenAI não cobrou nada: falha antes do
-      // primeiro pedido, ou conta sem chave/saldo. Depois disso o uso fica,
-      // senão um vídeo mudo transcrito em laço gastaria sem tocar o teto.
+      // The time goes back to the balance only if OpenAI charged nothing: a failure
+      // before the first request, or an account with no key/balance. After that the
+      // usage stays, otherwise a silent video transcribed in a loop would spend
+      // without ever touching the cap.
       const noCharge = !spent || error instanceof OpenAIConfigError
         || (error instanceof OpenAIError && error.code === "no_credit");
       if (noCharge) {
@@ -461,8 +464,8 @@ export async function POST(request: Request) {
     if (!videoId || videoId !== caption.video_id) {
       return fail(409, "stale_caption", "These captions were made for a different video. Generate them again.");
     }
-    // A Bunny troca a legenda do idioma inteira. Na primeira publicacao daqui,
-    // pergunta antes se o video ja tem uma (feita fora da ferramenta).
+    // Bunny replaces the whole caption for a language. On the first publish from
+    // here, it first asks whether the video already has one (made outside the tool).
     if (!caption.published_at && body.replace !== true) {
       let existing: string[];
       try {
@@ -511,8 +514,8 @@ export async function POST(request: Request) {
       return fail(503, "unavailable", "Could not load the captions. Please try again.");
     }
     if (!source) return fail(404, "no_caption", "Generate the captions first.");
-    // Traduzir legenda de um vídeo que já saiu da aula gastaria IA à toa: a
-    // tradução nasceria velha e não poderia ser publicada.
+    // Translating the caption of a video that already left the lesson would waste
+    // AI: the translation would be born stale and could not be published.
     if (source.video_id !== (await lessonVideoId(gate, body.assetId))) {
       return fail(409, "stale_caption", "These captions were made for a different video. Generate them again.");
     }
@@ -546,7 +549,7 @@ export async function POST(request: Request) {
       if (action === "suggest") {
         return reply({ suggestions: await suggestTitleAndDescription(forModule ? "module" : "lesson", material, deadline) });
       }
-      // Quiz novo entra como rascunho: o professor revisa antes de o aluno ver.
+      // A new quiz comes in as a draft: the teacher reviews it before the learner sees it.
       return reply({ quiz: await saveQuizRow(gate, await generateQuiz(material, deadline), "draft") });
     } catch (error) {
       return aiFailure(error);

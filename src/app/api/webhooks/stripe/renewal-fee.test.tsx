@@ -26,11 +26,11 @@ vi.mock("@/lib/payments/server/stripe", () => ({
 
 import { POST } from "@/app/api/webhooks/stripe/route";
 
-// course_1 e de teacher_1 (no plano do teste) na conta acct_teacher;
-// course_pro e de teacher_pro, um professor Pro em outra conta.
+// course_1 belongs to teacher_1 (on the test plan) on the acct_teacher account;
+// course_pro belongs to teacher_pro, a Pro teacher on another account.
 function createDb(planId: string, savedSubscription = false) {
   const rows: Record<string, Record<string, Record<string, unknown>>> = {
-    // A linha que o invoice.paid grava para uma assinatura nossa.
+    // The row that invoice.paid saves for a subscription of ours.
     course_subscriptions: savedSubscription
       ? { sub_student_1: { course_id: "course_1", user_id: "user_1", teacher_id: "teacher_1" } }
       : {},
@@ -53,7 +53,7 @@ function createDb(planId: string, savedSubscription = false) {
       },
       upsert: () => q,
       update: () => q,
-      // users por uid, courses por id: coluna errada nao acha a linha.
+      // users by uid, courses by id: the wrong column does not find the row.
       maybeSingle: async () => ({
         data: rows[table]?.[String(table === "users" ? filters.uid : filters.id)] ?? null,
         error: null,
@@ -216,7 +216,7 @@ describe("invoice.created on a student-subscription renewal", () => {
     expect(mocks.updateInvoice).not.toHaveBeenCalled();
   });
 
-  // teacherId e courseId vivem no metadata, que o professor edita no painel dele.
+  // teacherId and courseId live in the metadata, which the teacher edits in their own dashboard.
   it.each([
     ["a Pro teacher's id on the account's own course", { courseId: "course_1", teacherId: "teacher_pro" }],
     ["a Pro teacher's id and course", { courseId: "course_pro", teacherId: "teacher_pro" }],
@@ -238,7 +238,7 @@ describe("invoice.created on a student-subscription renewal", () => {
     }));
   });
 
-  // Curso que nao existe aqui e assinatura do proprio professor: so log, sem alerta.
+  // A course that does not exist here and the teacher's own subscription: log only, no alert.
   it.each([
     ["no course", ""],
     ["a course that does not exist here", "course_unknown"],
@@ -277,8 +277,8 @@ describe("invoice.created on a student-subscription renewal", () => {
     }));
   });
 
-  // Vendido no Pro (sem percentual), professor rebaixado apaga chaves do metadata:
-  // a linha salva mantem a venda e a taxa sai pelo plano do dono do curso.
+  // Sold on Pro (no percentage), downgraded teacher deletes metadata keys:
+  // the saved row keeps the sale and the fee comes from the course owner's plan.
   it.each(["teacherId", "purpose", "courseId"])(
     "still charges the owner's plan fee when metadata %s was deleted", async (key) => {
       mocks.getAdmin.mockReturnValue(createDb("starter", true));
@@ -299,8 +299,8 @@ describe("invoice.created on a student-subscription renewal", () => {
     },
   );
 
-  // Com STRIPE_CONNECT_APPLICATION_ID, assinatura sem linha salva so vale se a
-  // nossa aplicacao a criou; a que ja gravamos segue valendo.
+  // With STRIPE_CONNECT_APPLICATION_ID, a subscription without a saved row only
+  // counts if our application created it; the one we already saved stays valid.
   it.each([
     ["created by the teacher's own keys, no saved row", null, false, false],
     ["created by our application, no saved row", "ca_ours", false, true],

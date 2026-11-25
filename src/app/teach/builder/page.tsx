@@ -17,7 +17,7 @@ export default async function TeacherBuilderPage({
   searchParams?: Promise<{ courseId?: string | string[] }>;
 } = {}) {
   const { t } = await getServerTranslation();
-  // Sem curso, esta rota é a lista de produtos: o esqueleto tem a forma dela.
+  // With no course, this route is the product list: the skeleton has its shape.
   const courseId = (await searchParams)?.courseId;
   const label = t("creatorEditor.builder.shell.loading");
   return (
