@@ -44,14 +44,14 @@ it("lets the student change the choice, checks on demand, shows the right answer
 
   const [first, second] = screen.getAllByRole("group");
   const firstRadios = first.querySelectorAll("input");
-  // Marcar não confere: dá para trocar antes de "Check" (setas do teclado).
+  // Selecting does not check: the choice can be changed before "Check" (keyboard arrows).
   fireEvent.click(firstRadios[0]);
   fireEvent.click(firstRadios[1]);
   expect(firstRadios[0]).not.toBeDisabled();
   fireEvent.click(first.querySelector("button")!);
   expect(first).toHaveTextContent("Not quite. The answer: A cue. The cue comes first.");
   expect(firstRadios[0]).toBeDisabled();
-  // A certa e a escolhida ficam marcadas na propria opcao, nao so no texto.
+  // The right one and the chosen one are marked on the option itself, not only in the text.
   expect(firstRadios[0].closest("label")).toHaveAttribute("data-quiz-mark", "right");
   expect(firstRadios[1].closest("label")).toHaveAttribute("data-quiz-mark", "wrong");
   expect(first.querySelectorAll("[data-quiz-mark]")).toHaveLength(2);

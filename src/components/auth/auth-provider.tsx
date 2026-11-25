@@ -117,8 +117,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [session.status, session.user]);
 
   async function refreshUser() {
-    // O listener coordena tambem o snapshot: uma leitura atrasada nao pode
-    // desfazer onboarding, logout, troca de conta ou exigencia de MFA.
+    // The listener also coordinates the snapshot: a stale read must not
+    // undo onboarding, logout, an account switch or an MFA requirement.
     if (!subscription.current) throw new Error("Auth subscription is inactive");
     await subscription.current.refreshUser();
   }
@@ -183,10 +183,10 @@ function LegalAcceptanceGate({ children }: { children: ReactNode }) {
   const [acceptance, setAcceptance] = useState<{
     uid: string;
     general: boolean;
-    /** Nada aceito ainda: primeira aceitacao, nao "atualizacao". */
+    /** Nothing accepted yet: first acceptance, not an "update". */
     firstTime?: boolean;
     teacher: boolean;
-    /** @ do perfil público, para a linha que diz onde ele fica. */
+    /** @ of the public profile, for the line that says where it lives. */
     username?: string | null;
   } | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -219,14 +219,14 @@ function LegalAcceptanceGate({ children }: { children: ReactNode }) {
 
     async function checkLegalAcceptance() {
       const profile = await getUserProfile(checkedUid);
-      // A versao mudou (ou nada foi aceito): so entao a janela aparece.
+      // The version changed (or nothing was accepted): only then does the dialog appear.
       let general = profile?.termsVersion !== currentTermsVersion
         || profile?.privacyVersion !== currentPrivacyVersion;
-      // Os termos marcados no cadastro. Quem confirma o e-mail ainda nao tinha
-      // sessao para gravar o perfil, entao as versoes esperam nos metadados da
-      // conta e sao gravadas aqui, sem perguntar de novo, com a hora do
-      // cadastro. So no mesmo navegador do cadastro (a marca local): em outro
-      // aparelho, ou se outra pessoa cadastrou este e-mail, a janela pergunta.
+      // The terms ticked at signup. Whoever confirms the email did not yet have
+      // a session to write the profile, so the versions wait in the account
+      // metadata and are written here, without asking again, with the signup
+      // time. Only in the same browser as the signup (the local mark): on another
+      // device, or if someone else signed up this email, the dialog asks.
       if ((!profile?.termsVersion || !profile.privacyVersion) && hasSignupTermsMark(checkedUid)) {
         try {
           const signup = await getSignupLegalVersions();
@@ -235,7 +235,7 @@ function LegalAcceptanceGate({ children }: { children: ReactNode }) {
             general = false;
           }
         } catch {
-          // Nao leu ou nao gravou: a janela pergunta e grava de novo.
+          // Did not read or did not write: the dialog asks and writes again.
         }
         clearSignupTermsMark();
       }
@@ -279,19 +279,19 @@ function LegalAcceptanceGate({ children }: { children: ReactNode }) {
     || pathname.startsWith("/welcome");
   const showGate = needsAcceptance && !onExemptRoute;
 
-  // A janela já cobria a página, mas o Tab saía para o sino e a conta atrás
-  // do escuro e o leitor de tela não sabia que era uma janela. O foco fica
-  // preso dentro e começa na primeira caixa de marcar (sem marcar nada). Sem
-  // Esc, sem clique fora e sem X: aceitar é obrigatório.
+  // The dialog already covered the page, but Tab escaped to the bell and the account behind
+  // the dark overlay, and the screen reader did not know it was a dialog. Focus stays
+  // trapped inside and starts on the first checkbox (without checking anything). No
+  // Esc, no click outside and no X: accepting is mandatory.
   const dialogRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
-  // O foco começa na caixa: sem a descrição ligada, o parágrafo que explica
-  // a janela era pulado pelo leitor de tela.
+  // Focus starts on the checkbox: without the description wired up, the paragraph that explains
+  // the dialog was skipped by the screen reader.
   const bodyId = useId();
   useModalFocus(dialogRef, showGate);
-  // Os tours de boas-vindas esperam a janela (legal-gate-state.ts). Também
-  // enquanto não se sabe se ela vem: um tour aberto antes ficaria atrás dela,
-  // já marcado como visto. Só leitura; nada aqui muda quando a janela abre.
+  // The welcome tours wait for the dialog (legal-gate-state.ts). Also
+  // while it is not yet known whether it will show: a tour opened earlier would sit behind it,
+  // already marked as seen. Read-only; nothing here changes when the dialog opens.
   const tourMustWait = showGate || status === "loading" || (uid !== null && current === null);
   useEffect(() => {
     if (showGate) dialogRef.current?.querySelector<HTMLInputElement>('input[type="checkbox"]')?.focus();
@@ -406,7 +406,7 @@ function LegalAcceptanceGate({ children }: { children: ReactNode }) {
               </span>
             </label>
           ) : null}
-          {/* Aceitar os termos de professor é aceitar o perfil público. */}
+          {/* Accepting the teacher terms means accepting the public profile. */}
           {needsTeacher ? (
             <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
               {t("onboarding.publicProfileNotice").replace(

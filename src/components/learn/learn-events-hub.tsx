@@ -35,17 +35,17 @@ type EventBuckets = Record<string, CourseEvent[]>;
 export function LearnEventsHub() {
   const { t } = useTranslation();
   const { user } = useAuth();
-  // A janela "ao vivo" de course-event.ts com um relógio que anda: a sessão
-  // passa para "Past" e a cancelada sai depois de 7 dias sem recarregar.
+  // The "live" window from course-event.ts with a clock that keeps ticking: the
+  // session moves to "Past" and the cancelled one drops off after 7 days, with no reload.
   const now = useNow();
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [eventBuckets, setEventBuckets] = useState<EventBuckets>({});
   const [loadedSlugs, setLoadedSlugs] = useState<string[]>([]);
   const [isLoadingEnrollments, setIsLoadingEnrollments] = useState(true);
   const [error, setError] = useState("");
-  // Uma falha por leitura: o "Try again" relê só o que falhou (as matrículas,
-  // as agendas que falharam ou os dois), e a agenda nunca aparece vazia por
-  // causa de uma agenda que não chegou.
+  // One failure per read: "Try again" rereads only what failed (the enrollments,
+  // the schedules that failed, or both), and the schedule never shows up empty
+  // because of a schedule that did not arrive.
   const [enrollmentsFailed, setEnrollmentsFailed] = useState(false);
   const [failedSlugs, setFailedSlugs] = useState<string[]>([]);
   const enrollmentsSubscription = useRef<{ reload?: () => Promise<void> } | null>(null);
@@ -110,7 +110,7 @@ export function LearnEventsHub() {
               : [...currentSlugs, courseSlug],
           );
         },
-        // A cancelada aparece marcada, em vez de sumir sem rastro.
+        // The cancelled one shows up marked, instead of vanishing without a trace.
         { includeCancelled: true },
       );
       subscriptions.set(courseSlug, current);
@@ -135,23 +135,23 @@ export function LearnEventsHub() {
         .sort((left, right) => left.startsAt.localeCompare(right.startsAt)),
     [currentCourseSlugs, eventBuckets, now],
   );
-  // As próximas primeiro; as que já passaram ficam numa parte "Past" fechada,
-  // da mais recente para a mais antiga. Antes a lista abria pela sessão mais
-  // antiga, que já tinha acontecido. Enquanto está ao vivo (a janela comum de
-  // course-event.ts) a sessão fica em "Upcoming", com o link de entrar à mão.
-  // Data inválida ("Date pending") também fica em "Upcoming", no fim.
+  // The upcoming ones first; the ones that already happened go in a closed "Past"
+  // part, from the most recent to the oldest. Before, the list opened with the
+  // oldest session, which had already happened. While it is live (the common
+  // window from course-event.ts) the session stays in "Upcoming", with the join link at hand.
+  // An invalid date ("Date pending") also stays in "Upcoming", at the end.
   const { upcoming, past } = useMemo(() => {
     const split = { upcoming: [] as CourseEvent[], past: [] as CourseEvent[] };
     for (const event of events) {
-      // O prazo passa para "Past" na hora em que vence, não 3 h depois.
+      // A deadline moves to "Past" the moment it is due, not 3 h later.
       (getEventLiveState(event.startsAt, now, event.type) === "over" ? split.past : split.upcoming).push(event);
     }
     split.past.reverse();
     return split;
   }, [events, now]);
-  // Matrícula vencida ou reembolsada: o banco deixa de entregar as sessões
-  // daquele curso, e a agenda dizia "nenhuma sessão marcada". As matrículas já
-  // estão aqui: dá para dizer que o acesso terminou, sem leitura nova.
+  // Expired or refunded enrollment: the database stops delivering the sessions
+  // of that course, and the schedule said "no session scheduled". The enrollments
+  // are already here: we can say the access ended, with no new read.
   const endedCourses = Array.from(
     new Set(enrollments.filter((enrollment) => !canOpenEnrollment(enrollment.status)).map((enrollment) => enrollment.courseTitle)),
   );
@@ -162,9 +162,9 @@ export function LearnEventsHub() {
     currentCourseSlugs.length > 0
     && currentCourseSlugs.some((courseSlug) => !loadedSlugs.includes(courseSlug));
 
-  // Uma moldura em volta de todos os estados (espera, erro, vazio, lista): o
-  // "Try again" some ao ser clicado, e o foco vai para ela, que é o mesmo nó do
-  // carregando ao resultado. Sem isso o foco caía no <body>.
+  // One frame around all the states (waiting, error, empty, list): the
+  // "Try again" button disappears when clicked, and focus goes to the frame, which is the same node from
+  // loading to result. Without it, focus fell back to the <body>.
   const frameRef = useRef<HTMLDivElement>(null);
   const frame = (content: ReactNode) => (
     <div ref={frameRef} tabIndex={-1}>
@@ -173,12 +173,12 @@ export function LearnEventsHub() {
   );
 
   if (isLoadingEnrollments || isLoadingEvents) {
-    // O título "Upcoming" e dois cartões, no lugar da frase solta num cartão.
+    // The "Upcoming" title and two cards, in place of the loose sentence in a card.
     return frame(<CardListSkeleton label={t("learnWave2.eventsHub.loading")} head="title" />);
   }
 
-  // Lê de novo o que falhou pelos mesmos canais (sem religar). Até a resposta
-  // vale o "carregando", nunca o vazio.
+  // Rereads what failed through the same channels (without reconnecting). Until the
+  // answer arrives, "loading" applies, never the empty state.
   function retryLoad() {
     frameRef.current?.focus();
     setError("");
@@ -204,7 +204,7 @@ export function LearnEventsHub() {
     );
   }
 
-  // Os dois vazios no EmptyState da plataforma: h2 logo abaixo do h1 do shell.
+  // Both empty states in the platform EmptyState: h2 right below the shell's h1.
   if (enrollments.length === 0) {
     return frame(
       <EmptyState
@@ -226,7 +226,7 @@ export function LearnEventsHub() {
   ) : null;
 
   if (events.length === 0) {
-    // Todas as matrículas terminaram: o título diz isso, não "nenhuma sessão".
+    // All enrollments ended: the title says so, not "no session".
     const allEnded = enrollments.every((enrollment) => !canOpenEnrollment(enrollment.status));
     return frame(
       <EmptyState
@@ -261,8 +261,8 @@ export function LearnEventsHub() {
       {past.length > 0 ? (
         <details className="group rounded-lg border border-[var(--color-line)] bg-white">
           <summary className="flex min-h-12 cursor-pointer list-none items-center [&::-webkit-details-marker]:hidden justify-between gap-3 px-4 text-[var(--color-primary)]">
-            {/* Cabeçalho próprio: os cartões que já passaram ficam sob "Past",
-                não sob "Upcoming", para quem navega por títulos. */}
+            {/* Its own heading: the cards that already happened sit under "Past",
+                not under "Upcoming", for people who navigate by headings. */}
             <h2 className="text-base font-semibold">
               {t("creatorPanel.events.filter.past")}{" "}
               <span className="ml-1 rounded-full bg-[var(--color-surface-soft)] px-2 py-0.5 text-xs font-bold tabular-nums">
@@ -294,28 +294,28 @@ function LearnerEventCard({
   isPast?: boolean;
 }) {
   const { t, locale } = useTranslation();
-  // Cancelada: marcada, a hora original riscada, sem link e sem presença (o
-  // banco nem aceita mudar a resposta de uma sessão cancelada).
+  // Cancelled: marked, the original time struck through, no link and no attendance (the
+  // database does not even accept changing the answer for a cancelled session).
   const isCancelled = event.status === "cancelled";
   const isClosed = isPast || isCancelled;
-  // Prazo não é reunião: "Due: <data>", "Open link" e, vencido, "Due date
-  // passed" (nunca "Happening now" nem "Join").
+  // A deadline is not a meeting: "Due: <date>", "Open link" and, once overdue, "Due date
+  // passed" (never "Happening now" or "Join").
   const isDeadline = event.type === "deadline";
   const [rsvp, setRsvp] = useState<CourseEventRsvp | null>(null);
   const [isLoadingRsvp, setIsLoadingRsvp] = useState(true);
-  // Qual resposta está sendo salva: o "Saving..." aparece no botão tocado
-  // (antes trocava sempre o rótulo de "I will attend", mesmo ao recusar).
+  // Which answer is being saved: "Saving..." shows on the button that was tapped
+  // (before, it always swapped the "I will attend" label, even when declining).
   const [savingStatus, setSavingStatus] = useState<CourseEventRsvpStatus | null>(null);
   const isSavingRsvp = savingStatus !== null;
-  // A resposta salva aparece marcada na hora, sem esperar a volta do tempo
-  // real; a próxima leitura do canal assume de novo.
+  // The saved answer shows as marked right away, without waiting for the real-time
+  // round trip; the next read from the channel takes over again.
   const [savedStatus, setSavedStatus] = useState<CourseEventRsvpStatus | null>(null);
   const chosenStatus = savedStatus ?? rsvp?.status ?? null;
   const [rsvpError, setRsvpError] = useState("");
 
   useEffect(() => {
-    // Sessão que já passou ou cancelada não mostra presença: não abre um
-    // canal por cartão.
+    // A session that already happened or was cancelled does not show attendance: it does not open a
+    // channel per card.
     if (!currentUser || isClosed) {
       return;
     }
@@ -360,7 +360,7 @@ function LearnerEventCard({
 
   const safeJoinUrl = getSafeExternalUrl(event.externalUrl);
   const when = formatEventDateTime(event.startsAt, locale, t("platform.events.datePending"));
-  // Nada marca a sessão como "completed": a que já passou dizia "Scheduled".
+  // Nothing marks the session as "completed": the one that already happened said "Scheduled".
   const statusKey = isCancelled
     ? "creatorPanel.events.status.cancelled"
     : isPast
@@ -413,10 +413,10 @@ function LearnerEventCard({
         </p>
       ) : null}
 
-      {/* Presença: seletor de duas opções, a escolhida cheia e com o tique
-          (aria-pressed). Antes os dois botões tinham a mesma cara qualquer que
-          fosse a resposta, e ela só aparecia num quadro de texto acima. Sessão
-          que já passou ou cancelada não pede presença. */}
+      {/* Attendance: a two-option selector, the chosen one filled and with the check
+          mark (aria-pressed). Before, both buttons looked the same whatever the
+          answer was, and it only showed up in a text box above. A session
+          that already happened or was cancelled does not ask for attendance. */}
       {isClosed ? null : (
         <div role="group" aria-label={t("learnWave2.eventsHub.attendance")} className="mt-5">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
@@ -458,8 +458,8 @@ function LearnerEventCard({
               {t(rsvpError)}
             </InlineAlert>
           ) : null}
-          {/* Depois do "I will attend", um próximo passo: a hora no fuso de
-              quem lê e o calendário (antes o botão só ficava marcado). */}
+          {/* After "I will attend", a next step: the time in the reader's
+              time zone and the calendar (before, the button was only marked). */}
           {chosenStatus === "attending" ? (
             <div className="mt-4 grid gap-3">
               <p className="text-sm font-semibold text-[var(--color-ink)]">
@@ -471,8 +471,8 @@ function LearnerEventCard({
         </div>
       )}
 
-      {/* Sessão que já passou ou cancelada: sem "Join" (nem o aviso de link
-          que falta). */}
+      {/* A session that already happened or was cancelled: no "Join" (nor the notice about the
+          missing link). */}
       {isClosed ? null : safeJoinUrl ? (
         <a
           href={safeJoinUrl}

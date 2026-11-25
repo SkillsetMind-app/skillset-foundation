@@ -46,10 +46,10 @@ export function MemberAreaShell({
 }: {
   children: ReactNode;
   brand?: MemberAreaBrand | null;
-  /** null = o tema ainda não é conhecido (área do criador carregando). */
+  /** null = the theme is not known yet (the creator's area is loading). */
   theme?: MembersTheme | null;
-  /** O curso desta sala: a Ajuda manda a duvida da aula para a comunidade
-   *  dele (ou para a mensagem ao professor, se a comunidade estiver off). */
+  /** This room's course: Help sends the lesson question to its community
+   *  (or to the message to the teacher, if the community is off). */
   course?: HelpCourse | null;
 }) {
   // Same guard-then-inline shape as the storefront hero: the projection already
@@ -61,11 +61,11 @@ export function MemberAreaShell({
       ? brand.accentColor
       : null;
 
-  // Tema desconhecido (null): a mesma casca, cabeçalho inclusive (marca, Ajuda,
-  // sino, conta: a saída continua na tela se a leitura demorar), com a paleta
-  // "pending" de globals.css, que lê os tons da PLATAFORMA. É o mesmo fundo do
-  // aviso de "carregando" do login que vem antes. Pintar o claro aqui fazia a
-  // área escura nascer clara e virar escura um instante depois.
+  // Unknown theme (null): the same shell, header included (brand, Help,
+  // bell, account: the way out stays on screen if the read is slow), with the
+  // "pending" palette from globals.css, which reads the PLATFORM tones. It is the same background as the
+  // "loading" notice of the login that comes before. Painting light here made the
+  // dark area be born light and turn dark a moment later.
   const pending = theme === null;
 
   return (
@@ -108,23 +108,23 @@ export function MemberAreaShell({
               </span>
             )
           ) : (
-            // tone fixo pelo tema do CURSO: a paleta --ma-* não segue o
-            // <html>, então "auto" pintava o logo navy no cabeçalho escuro.
-            // Enquanto o tema não chega (pending) a casca usa os tons da
-            // plataforma, e aí "auto" é o certo.
-            // O logo leva para "My courses", nao para a home publica: quem
-            // esta estudando quer voltar para os seus cursos, nao para a vitrine.
+            // tone fixed by the COURSE theme: the --ma-* palette does not follow the
+            // <html>, so "auto" painted the logo navy in the dark header.
+            // While the theme has not arrived (pending) the shell uses the platform
+            // tones, and there "auto" is right.
+            // The logo leads to "My courses", not to the public home: whoever
+            // is studying wants to go back to their courses, not to the storefront.
             <LogoWordmark href="/learn" nav tone={pending ? "auto" : theme === "dark" ? "dark" : "light"} />
           )}
           <div className="flex shrink-0 items-center gap-2 empty:hidden">
             <AdvisorHeaderSlot />
-            {/* Ajuda, sino e conta, aqui tambem — inclusive na sala com a
-                marca do professor. Antes a sala tinha so o logo (e, sem marca,
-                o sino): para chegar em mensagens, compras ou suporte o aluno
-                precisava sair por "← My courses", e com a marca do professor
-                nem o sino aparecia, embora o painel de mensagens diga que a
-                resposta "cai no sino". A saida da sala continua UMA: "← My
-                courses", na capa ou no cabecalho curto da aula. */}
+            {/* Help, bell and account, here too — including in the room with the
+                teacher's brand. Before, the room had only the logo (and, without a brand,
+                the bell): to reach messages, purchases or support the learner
+                had to leave through "← My courses", and with the teacher's brand
+                not even the bell appeared, even though the messages panel says the
+                reply "lands in the bell". The way out of the room stays ONE: "← My
+                courses", on the cover or in the lesson's short header. */}
             <HelpMenu variant="bar" side="student" course={course} />
             <MemberAreaAccount branded={Boolean(brand)} />
           </div>

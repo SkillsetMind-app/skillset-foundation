@@ -6,15 +6,15 @@ import type { Course } from "@/domain/learning";
 import { recordLessonProgress } from "@/lib/data/lesson-progress";
 
 /**
- * Concluir a aula e seguir para a proxima, pelos dois caminhos: o fim do video
- * e o botao fixo sob a aula.
+ * Completing the lesson and moving on to the next one, by both paths: the end of the video
+ * and the fixed button under the lesson.
  *
- *   - Se salvar a conclusao falha, nada avanca. Antes o cartao "Proxima aula"
- *     aparecia mesmo assim e, num curso sequencial, a proxima abria trancada e
+ *   - If saving the completion fails, nothing advances. Before, the "Next lesson" card
+ *     showed up anyway and, in a sequential course, the next one opened locked and
  *     o servidor negava o video.
- *   - O botao e um pedido explicito: vai direto para a proxima, sem a contagem
- *     de 5 s (que fica para o fim do video).
- *   - Na ultima aula concluida, o botao morto "Completed" vira "Get
+ *   - The button is an explicit request: it goes straight to the next one, without the 5 s
+ *     countdown (which stays for the end of the video).
+ *   - On the last completed lesson, the dead "Completed" button becomes "Get
  *     certificate".
  */
 
@@ -22,7 +22,7 @@ const mocks = vi.hoisted(() => ({
   searchParams: new URLSearchParams(),
   replace: vi.fn(),
   completed: [] as string[],
-  // A lista de concluidas chega de novo pelo realtime: o teste a reemite.
+  // The completed list arrives again through realtime: the test re-emits it.
   emitCompleted: null as null | ((lessonIds: string[]) => void),
   auth: {
     status: "authenticated",
@@ -98,7 +98,7 @@ vi.mock("@/lib/posthog/events", () => ({
   track: new Proxy({}, { get: () => vi.fn() }),
 }));
 
-// O fim do video, sem iframe: um botao que dispara o mesmo onEnded.
+// The end of the video, without an iframe: a button that fires the same onEnded.
 vi.mock("@/components/learn/trusted-embed-player", () => ({
   TrustedEmbedPlayer: ({ onEnded }: { onEnded: () => void }) => (
     <button type="button" onClick={onEnded}>End video</button>
@@ -144,7 +144,7 @@ function playlist() {
   return screen.getByRole("navigation", { name: "Lessons" });
 }
 
-describe("concluir e seguir para a proxima aula", () => {
+describe("complete and move on to the next lesson", () => {
   beforeEach(() => {
     mocks.replace.mockReset();
     vi.mocked(recordLessonProgress).mockReset();
@@ -155,7 +155,7 @@ describe("concluir e seguir para a proxima aula", () => {
     };
   });
 
-  it("fim do video com a conclusao NAO salva: sem cartao de proxima aula, aviso na tela e a aula fica", async () => {
+  it("end of the video with the completion NOT saved: no next lesson card, a notice on screen and the lesson stays", async () => {
     vi.mocked(recordLessonProgress).mockRejectedValue(new Error("network"));
     open("l1");
 
@@ -169,12 +169,12 @@ describe("concluir e seguir para a proxima aula", () => {
     expect(screen.getByRole("button", { name: "End video" })).toBeInTheDocument();
     expect(mocks.replace).not.toHaveBeenCalled();
 
-    // Trocar de aula leva o aviso junto: ele era da aula anterior.
+    // Switching lessons takes the notice along: it belonged to the previous lesson.
     fireEvent.click(within(playlist()).getByRole("button", { name: /Lesson two/ }));
     expect(screen.queryByText("We could not update lesson progress. Please try again.")).not.toBeInTheDocument();
   });
 
-  it("fim do video com a conclusao salva: o cartao de 5 s propoe a proxima", async () => {
+  it("end of the video with the completion saved: the 5 s card offers the next one", async () => {
     vi.mocked(recordLessonProgress).mockResolvedValue({ progressPercent: 50, completedLessonCount: 1 } as never);
     open("l1");
 
@@ -185,7 +185,7 @@ describe("concluir e seguir para a proxima aula", () => {
     expect(screen.getByRole("region", { name: "Next lesson" })).toBeInTheDocument();
   });
 
-  it("botao com a conclusao NAO salva: nao troca de aula", async () => {
+  it("button with the completion NOT saved: does not switch lessons", async () => {
     vi.mocked(recordLessonProgress).mockRejectedValue(new Error("network"));
     open("l1");
 
@@ -197,7 +197,7 @@ describe("concluir e seguir para a proxima aula", () => {
     expect(screen.getByText("We could not update lesson progress. Please try again.")).toBeInTheDocument();
   });
 
-  it("botao com a conclusao salva: vai direto para a proxima, sem contagem", async () => {
+  it("button with the completion saved: goes straight to the next one, with no countdown", async () => {
     vi.mocked(recordLessonProgress).mockResolvedValue({ progressPercent: 50, completedLessonCount: 1 } as never);
     open("l1");
 
@@ -207,13 +207,13 @@ describe("concluir e seguir para a proxima aula", () => {
 
     expect(mocks.replace).toHaveBeenCalledWith("/learn/courses/demo-course?lesson=l2", { scroll: false });
     expect(screen.queryByRole("region", { name: "Next lesson" })).not.toBeInTheDocument();
-    // Curso sequencial: a proxima abre ja liberada, sem esperar o realtime
-    // trazer a conclusao (o mock nao reenvia a lista).
+    // Sequential course: the next one opens already unlocked, without waiting for realtime
+    // to bring the completion (the mock does not resend the list).
     expect(screen.queryByRole("heading", { name: "Lesson locked" })).not.toBeInTheDocument();
     expect(screen.getByText("Two")).toBeInTheDocument();
   });
 
-  it("trocar de aula com a contagem pendente cancela a contagem", async () => {
+  it("switching lessons with the countdown pending cancels the countdown", async () => {
     vi.mocked(recordLessonProgress).mockResolvedValue({ progressPercent: 33, completedLessonCount: 1 } as never);
     const video = (id: string, title: string) => ({
       id, title, type: "video", duration: "5 min", isPreview: false,
@@ -234,7 +234,7 @@ describe("concluir e seguir para a proxima aula", () => {
     expect(screen.queryByRole("region", { name: "Next lesson" })).not.toBeInTheDocument();
   });
 
-  it("aula ja concluida: 'Next lesson' vai direto, sem salvar de novo e sem contagem", async () => {
+  it("already completed lesson: 'Next lesson' goes straight, without saving again and with no countdown", async () => {
     open("l1", ["l1"]);
 
     await act(async () => {
@@ -246,7 +246,7 @@ describe("concluir e seguir para a proxima aula", () => {
     expect(screen.queryByRole("region", { name: "Next lesson" })).not.toBeInTheDocument();
   });
 
-  it("ultima aula concluida: 'Get certificate' leva ao certificado, sem o botao morto 'Completed'", () => {
+  it("last lesson completed: 'Get certificate' leads to the certificate, without the dead 'Completed' button", () => {
     open("l2", ["l1", "l2"]);
 
     expect(within(lessonBar()).getByRole("link", { name: "Get certificate" })).toHaveAttribute(
@@ -256,21 +256,21 @@ describe("concluir e seguir para a proxima aula", () => {
     expect(within(lessonBar()).queryByRole("button", { name: "Completed" })).not.toBeInTheDocument();
   });
 
-  it("whitelabel: na ultima aula nada leva de volta a plataforma, e 'Completed' nao finge ser acao", () => {
+  it("whitelabel: on the last lesson nothing leads back to the platform, and 'Completed' does not pretend to be an action", () => {
     open("l2", ["l1", "l2"], { whitelabel: true });
 
     expect(within(lessonBar()).queryByRole("link", { name: "Get certificate" })).not.toBeInTheDocument();
     expect(within(lessonBar()).getByRole("button", { name: "Completed" })).toBeDisabled();
   });
 
-  // Drip por prazo: concluir esta nao abre a proxima. O botao dizia "Next
-  // lesson" e o clique nao fazia nada, sem dizer por que.
-  it("proxima trancada por data: o botao diz quando ela abre e fica desligado", () => {
+  // Drip by deadline: completing this one does not open the next. The button said "Next
+  // lesson" and the click did nothing, without saying why.
+  it("next lesson locked by date: the button says when it opens and is disabled", () => {
     const timeDrip = { ...course, dripStrategy: "time_drip_lesson", dripIntervalDays: 1 } as Course;
     mocks.searchParams = new URLSearchParams("lesson=l1");
     mocks.completed = [];
     const { unmount } = render(<EnrolledCourseWorkspace course={timeDrip} />);
-    // Antes de concluir: "Mark complete", sem prometer "& next".
+    // Before completing: "Mark complete", without promising "& next".
     expect(within(lessonBar()).getByRole("button", { name: "Mark complete" })).toBeEnabled();
     unmount();
 
@@ -281,17 +281,17 @@ describe("concluir e seguir para a proxima aula", () => {
   });
 });
 
-// Onda D na sala: o check da aula, o selo de 100% e o painel da aba so se
-// mexem na MUDANCA. Quem chega ve tudo parado (e o que vira LCP nunca nasce
-// com opacidade 0).
-describe("movimento da sala: so na mudanca", () => {
+// Wave D in the classroom: the lesson's check, the 100% badge and the tab panel only
+// move on CHANGE. Whoever arrives sees everything still (and what becomes the LCP is never born
+// with opacity 0).
+describe("classroom motion: only on change", () => {
   beforeEach(() => {
     Element.prototype.scrollIntoView = vi.fn();
   });
 
   const checks = () => [...playlist().querySelectorAll("[data-drawn-check]")];
 
-  it("chegar com as aulas concluidas: check e selo de 100% parados", () => {
+  it("arriving with the lessons completed: check and 100% badge stay still", () => {
     open("l2", ["l1", "l2"]);
     expect(checks()).toHaveLength(2);
     expect(playlist().querySelector(".drawn-check")).toBeNull();
@@ -300,7 +300,7 @@ describe("movimento da sala: so na mudanca", () => {
     expect(seal).not.toHaveClass("milestone-seal");
   });
 
-  it("concluir com a sala aberta: o check daquela aula se desenha e o selo de 100% cresce", () => {
+  it("completing with the classroom open: that lesson's check is drawn and the 100% badge grows", () => {
     open("l2", ["l1"]);
     expect(document.querySelector("[data-milestone-seal]")).toBeNull();
 
@@ -312,12 +312,12 @@ describe("movimento da sala: so na mudanca", () => {
     expect(screen.getByText("100%")).toBeInTheDocument();
   });
 
-  it("o botao de concluir e o button-solid, que afunda ao apertar", () => {
+  it("the complete button is the button-solid, which sinks when pressed", () => {
     open("l1");
     expect(within(lessonBar()).getByRole("button", { name: "Mark complete & next" })).toHaveClass("button-solid");
   });
 
-  it("carga nova entra parada; so a troca de aba anima", async () => {
+  it("a fresh load enters still; only switching tabs animates", async () => {
     vi.resetModules();
     const { useTabChanged } = await import("@/components/learn/classroom-tabs");
     const load = renderHook(() => useTabChanged("lesson"));
@@ -330,7 +330,7 @@ describe("movimento da sala: so na mudanca", () => {
     expect(same.result.current).toBe(false);
   });
 
-  it("na troca de aba so o painel da aba entra subindo: titulo e abas ficam parados", () => {
+  it("on a tab switch only the tab panel slides up: title and tabs stay still", () => {
     const first = open("l1");
     first.unmount();
     render(<EnrolledCourseWorkspace course={course} tab="about" />);

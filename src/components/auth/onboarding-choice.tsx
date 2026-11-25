@@ -114,9 +114,9 @@ const timezoneOptions = [
   "Africa/Johannesburg",
 ];
 
-// O que a tela guarda da conta, como começa numa montagem limpa. Volta a isto
-// quando a sessão passa a ser de outra conta (showCleanEntry): nada do que veio
-// da anterior, lido ou digitado, fica para a nova.
+// What the screen keeps of the account, as it starts on a clean mount. It goes back to this
+// when the session becomes another account's (showCleanEntry): nothing that came
+// from the previous one, read or typed, stays for the new one.
 const cleanEntry = {
   step: 0,
   selectedPath: null as (typeof paths)[number] | null,
@@ -161,8 +161,8 @@ export function OnboardingChoice() {
   const [timezone, setTimezone] = useState(cleanEntry.timezone);
   const [goals, setGoals] = useState<UserGoal[]>(cleanEntry.goals);
   const [onboardingAnswers, setOnboardingAnswers] = useState<OnboardingAnswers>(cleanEntry.onboardingAnswers);
-  // Fica false até uma leitura do perfil responder. Volta a false só na troca
-  // de conta (showCleanEntry), junto com a espera da entrada.
+  // Stays false until a profile read responds. Goes back to false only on an account
+  // switch (showCleanEntry), together with the entry wait.
   const [answersLoaded, setAnswersLoaded] = useState(cleanEntry.answersLoaded);
   const [payoutCountry, setPayoutCountry] = useState(cleanEntry.payoutCountry);
   const [teacherTermsAccepted, setTeacherTermsAccepted] = useState(cleanEntry.teacherTermsAccepted);
@@ -177,32 +177,32 @@ export function OnboardingChoice() {
   const [error, setError] = useState(cleanEntry.error);
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  // Quem ja terminou o cadastro nao repete perfil/objetivos na ativacao.
+  // Whoever already finished the signup does not repeat profile/goals in the activation.
   const [streamlinedTeacherActivation, setStreamlinedTeacherActivation] =
     useState(cleanEntry.streamlinedTeacherActivation);
-  // Na ativacao curta so aparece o que falta. Decidido uma vez, com o que veio
-  // salvo: senao o campo do pais sumia no instante em que a pessoa escolhia, e
-  // o cartao do e-mail some junto com o "verificado" que ela acabou de ver.
-  // "Outro pais" continua aparecendo, por causa do aviso de que sem conta de
-  // recebimento elegivel nao da para vender.
+  // In the short activation only what is missing shows. Decided once, with what came
+  // saved: otherwise the country field would vanish the moment the person chose, and
+  // the email card would vanish along with the "verified" they just saw.
+  // "Other country" keeps showing, because of the notice that without an eligible
+  // payout account selling is not possible.
   const [askPayoutCountry, setAskPayoutCountry] = useState(cleanEntry.askPayoutCountry);
   const [askEmailVerification, setAskEmailVerification] = useState(cleanEntry.askEmailVerification);
-  // O "Try again" da leitura do perfil relê SÓ o perfil (getUserProfile, um
-  // select), com a última pessoa que a sessão entregou. Reinscrever a sessão
-  // (o contador nas dependências do efeito, como em outras telas) rodaria de
-  // novo o resolveProfile do supabase-auth, que grava: claim_my_course_grants
-  // e, faltando a linha, cria o perfil.
+  // "Try again" for the profile read re-reads ONLY the profile (getUserProfile, a
+  // select), with the last person the session delivered. Resubscribing the session
+  // (the counter in the effect dependencies, as on other screens) would run
+  // supabase-auth resolveProfile again, which writes: claim_my_course_grants
+  // and, if the row is missing, creates the profile.
   const authedUserRef = useRef<SkillsetUser | null>(null);
-  // Cada leitura ganha um número; só a mais nova escreve na tela. Uma resposta
-  // atrasada (o "Try again" e uma leitura nova da sessão ao mesmo tempo) não
-  // passa por cima da mais recente.
+  // Each read gets a number; only the newest one writes to the screen. A late
+  // response ("Try again" and a new session read at the same time) does not
+  // overwrite the most recent one.
   const loadGeneration = useRef(0);
-  // O aviso de leitura vive no mesmo lugar e pelo mesmo tempo que o erro de
-  // hoje (sai no próximo clique que limpa o erro); só ele ganha "Try again".
+  // The read notice lives in the same place and for the same time as the error of
+  // today (it goes away on the next click that clears the error); only it gets "Try again".
   const [readError, setReadError] = useState(cleanEntry.readError);
   const showReadError = error !== "" && error === readError;
-  // O título da página (o h1 acima desta tela) fica à vista na espera e depois
-  // dela: recebe o foco do "Try again", que some com a espera.
+  // The page title (the h1 above this screen) stays visible during the wait and after
+  // it: it receives the focus from "Try again", which vanishes with the wait.
   const rootRef = useRef<HTMLDivElement>(null);
   const pageHeadingRef = useRef<HTMLElement | null>(null);
 
@@ -243,7 +243,7 @@ export function OnboardingChoice() {
           )
         : null;
 
-      // Quem terminou como aluno tambem ativa o ensino sem repetir o cadastro.
+      // Whoever finished as a learner also activates teaching without repeating the signup.
       const finishedWizardAsTeacher =
         pathIntent === "teacher" &&
         Boolean(profile?.onboardingCompleted) &&
@@ -265,8 +265,8 @@ export function OnboardingChoice() {
       } else if (intendedPath || existingPath) {
         setSelectedPath(intendedPath ?? existingPath ?? null);
       }
-      // Uma leitura que deu certo tira o aviso de uma leitura anterior que
-      // falhou (outro caminho no endereço relê); os outros erros ficam.
+      // A read that worked clears the notice from an earlier read that
+      // failed (another path in the address re-reads); other errors stay.
       const readMessage = t("onboarding.errorProfileLoadRetry");
       setError((current) => (current === readMessage ? "" : current));
       setReadError("");
@@ -281,11 +281,11 @@ export function OnboardingChoice() {
     }
   }
 
-  // Volta à espera da entrada (nada clicável) e relê o perfil uma vez. O passo
-  // não muda, como em toda leitura desta tela. O aviso costuma estar no passo
-  // 0 (sem perfil lido, nem o "Continue" nem o "Finish" saem dele), mas uma
-  // releitura que falha depois de o caminho do endereço mudar, com o perfil
-  // já lido antes, o mostra no passo em que a pessoa está.
+  // Goes back to the entry wait (nothing clickable) and re-reads the profile once. The step
+  // does not change, as with every read on this screen. The notice is usually on step
+  // 0 (without a profile read, neither "Continue" nor "Finish" leaves it), but a
+  // re-read that fails after the address path changed, with the profile
+  // already read before, shows it on the step where the person is.
   function retryLoad() {
     const authedUser = authedUserRef.current;
     if (!authedUser) return;
@@ -295,9 +295,9 @@ export function OnboardingChoice() {
     return loadProfile(authedUser, true);
   }
 
-  // A sessão passou a ser de outra conta: a tela volta à de uma montagem
-  // limpa, na espera da entrada (nada clicável), até a leitura do perfil da
-  // conta nova responder. Não grava nada.
+  // The session became another account's: the screen goes back to a clean mount's,
+  // on the entry wait (nothing clickable), until the new account's profile read
+  // responds. Writes nothing.
   function showCleanEntry() {
     setIsBootstrapping(true);
     setStep(cleanEntry.step);
@@ -326,16 +326,16 @@ export function OnboardingChoice() {
     // and have to stay fresh, but re-seeding the form on those events throws
     // away everything typed since. Seed once per account per subscription; a
     // pathIntent change re-runs the effect and seeds again.
-    // Guarda DE QUEM é o perfil semeado, não um booleano: a mesma conta de novo
-    // (renovação, foco, INITIAL_SESSION e depois SIGNED_IN, um "loading" no
-    // meio) não relê nem apaga nada. Outra conta (saiu e entrou com outra em
-    // outra aba) relê: senão o Finish gravaria na conta nova o que a tela
-    // trouxe da anterior.
+    // Keeps WHOSE profile was seeded, not a boolean: the same account again
+    // (renewal, focus, INITIAL_SESSION and then SIGNED_IN, a "loading" in the
+    // middle) does not re-read or erase anything. Another account (signed out and in with another in
+    // another tab) re-reads: otherwise Finish would write to the new account what the screen
+    // carried over from the previous one.
     let seededUid: string | null = null;
 
     return listenToAuthState((session) => {
-      // Fora de "authenticated" (troca de conta, saída, segundo fator) não há
-      // pessoa para reler: um "Try again" nessa hora leria o id da anterior.
+      // Outside "authenticated" (account switch, sign-out, second factor) there is no
+      // person to re-read: a "Try again" at that moment would read the previous id.
       if (session.status !== "authenticated" || !session.user) {
         authedUserRef.current = null;
       }
@@ -378,14 +378,14 @@ export function OnboardingChoice() {
 
   const selectedPathIncludesTeacher =
     selectedPath?.roles.some((role) => role === "teacher") ?? false;
-  // Aceitar os termos de professor publica o perfil: dito ao lado da caixa,
-  // com o @ escolhido (ou o formato, antes de escolher).
+  // Accepting the teacher terms publishes the profile: said next to the checkbox,
+  // with the chosen @ (or the format, before choosing).
   const publicProfileNotice = t("onboarding.publicProfileNotice").replace(
     "{handle}",
     () => normalizeUsername(username) || t("onboarding.usernamePlaceholder"),
   );
-  // A ativacao curta nao tem campo de @: sem um, o texto mostrava o exemplo
-  // "@your-name" como se fosse o endereco da pessoa. Diz so que e publico.
+  // The short activation has no @ field: without one, the text showed the example
+  // "@your-name" as if it were the person's address. It only says it is public.
   const streamlinedProfileNotice = normalizeUsername(username)
     ? publicProfileNotice
     : t("onboarding.publicProfileNoticeNoHandle");
@@ -419,7 +419,7 @@ export function OnboardingChoice() {
     </div>
   );
 
-  // O mesmo cartao nas duas telas (ativacao curta e passo 1 do cadastro).
+  // The same card on both screens (short activation and step 1 of the signup).
   const emailVerificationCard = (
     <div className="rounded-lg border border-[var(--color-line)] bg-white p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
       <div className="flex items-start justify-between gap-4">
@@ -429,8 +429,8 @@ export function OnboardingChoice() {
           </p>
           <p className="mt-1">{t("onboarding.emailVerificationDesc")}</p>
         </div>
-        {/* "Required" e aviso, nao erro: as cores de aviso da plataforma (como
-            na aba Seguranca), no lugar do rosa do vermelho antigo com dourado. */}
+        {/* "Required" is a warning, not an error: the platform warning colors (as
+            on the Security tab), instead of the old red pink with gold. */}
         <span
           className={`shrink-0 rounded-chip px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
             emailVerified
@@ -451,8 +451,8 @@ export function OnboardingChoice() {
               />
             </div>
           ) : null}
-          {/* Os dois em contorno e 14px: o botao cheio da tela e o que ativa
-              (ou continua). "I verified my email" cheio competia com ele. */}
+          {/* Both outlined and 14px: the full button on the screen is the one that activates
+              (or continues). A full "I verified my email" competed with it. */}
           <button
             type="button"
             onClick={handleSendVerification}
@@ -533,7 +533,7 @@ export function OnboardingChoice() {
     }
   }
 
-  // Sem o perfil lido, a pessoa fica no passo 0 com o aviso de leitura e o
+  // Without the profile read, the person stays on step 0 with the read notice and
   // "Try again".
   function holdUntilProfileRead() {
     const message = t("onboarding.errorProfileLoadRetry");
@@ -545,10 +545,10 @@ export function OnboardingChoice() {
   function handleNext() {
     setError("");
 
-    // Perfil nunca lido com sucesso: ninguém preenche os passos 1 e 2 antes
-    // de uma leitura que dá certo (o "Try again" bem-sucedido os reescreveria
-    // com o perfil guardado, e concluir gravaria por cima dele). Com o perfil
-    // lido, o "Continue" segue igual.
+    // Profile never read successfully: nobody fills in steps 1 and 2 before
+    // a read that works (a successful "Try again" would rewrite them
+    // with the saved profile, and finishing would write over it). With the profile
+    // read, "Continue" stays the same.
     if (step === 0 && !answersLoaded) {
       holdUntilProfileRead();
       return;
@@ -585,12 +585,12 @@ export function OnboardingChoice() {
   async function handleFinish() {
     setError("");
 
-    // Perfil nunca lido com sucesso: concluir gravaria por cima do perfil
-    // guardado (papeis, nome, @, bio, fuso e objetivos) com o que esta na tela.
-    // Volta ao passo 0 com o aviso de leitura e o "Try again". Quem e novo nao
-    // cai aqui: qualquer leitura que responde, ate vazia (sem linha ou com a
-    // linha recem-criada), marca answersLoaded antes de a tela aparecer. Com a
-    // trava do "Continue" acima, esta e a segunda trava.
+    // Profile never read successfully: finishing would write over the saved
+    // profile (roles, name, @, bio, timezone and goals) with what is on screen.
+    // Goes back to step 0 with the read notice and "Try again". A new person does not
+    // get here: any read that responds, even empty (no row or with the
+    // row just created), sets answersLoaded before the screen appears. Together with the
+    // "Continue" lock above, this is the second lock.
     if (!answersLoaded) {
       holdUntilProfileRead();
       return;
@@ -601,8 +601,8 @@ export function OnboardingChoice() {
       return;
     }
 
-    // A ativacao simplificada preserva perfil/objetivos; so acrescenta o pais
-    // declarado aos portoes existentes de e-mail e termos.
+    // The simplified activation preserves profile/goals; it only adds the declared
+    // country to the existing email and terms gates.
     if (!streamlinedTeacherActivation) {
       const validationError = validateProfileStep();
 
@@ -630,8 +630,8 @@ export function OnboardingChoice() {
       return;
     }
 
-    // O botao "Activate teaching" nao fica mais apagado por falta do aceite:
-    // o clique explica o que falta, em vez de nao fazer nada.
+    // The "Activate teaching" button is no longer grayed out for lack of acceptance:
+    // the click explains what is missing, instead of doing nothing.
     if (selectedPathIncludesTeacher && !teacherTermsAccepted) {
       setStep(0);
       setError(t("onboarding.errorAcceptTerms"));
@@ -641,8 +641,8 @@ export function OnboardingChoice() {
     setIsSaving(true);
 
     try {
-      // Sem a leitura do perfil, gravar so o pais apagaria as outras respostas.
-      // A trava do topo ja barra esse caso; esta fica como segunda trava.
+      // Without the profile read, writing only the country would erase the other answers.
+      // The lock at the top already stops this case; this one is the second lock.
       if (selectedPathIncludesTeacher && answersLoaded) {
         await updateOnboardingAnswers({
           uid,
@@ -674,11 +674,11 @@ export function OnboardingChoice() {
     }
   }
 
-  // A ativacao curta assume o titulo e a descricao da pagina: o padrao de
-  // /onboarding ("Set up your SkillsetMind profile.") fala de montar um perfil
-  // que ela nao monta. Decidido pelo perfil carregado, nao pelo endereco: o
-  // cadastro de 3 passos tambem abre com ?path=teacher. Sem o cartao do e-mail
-  // (ja verificado), "verifique seu e-mail" seria um pedido sem botao.
+  // The short activation takes over the page title and description: the default of
+  // /onboarding ("Set up your SkillsetMind profile.") talks about building a profile
+  // that it does not build. Decided by the loaded profile, not by the address: the
+  // 3-step signup also opens with ?path=teacher. Without the email card
+  // (already verified), "verify your email" would be a request with no button.
   const streamlinedDescriptionKey = askEmailVerification
     ? "onboarding.streamlinedDesc"
     : "onboarding.streamlinedDescVerified";
@@ -688,8 +688,8 @@ export function OnboardingChoice() {
       : null,
   );
 
-  // Só a falha de LEITURA do perfil ganha "Try again"; os outros erros desta
-  // tela (validar, verificar e-mail, ativar) seguem com o aviso de sempre.
+  // Only a profile READ failure gets "Try again"; the other errors on this
+  // screen (validate, verify email, activate) keep the usual notice.
   const errorAlert = showReadError ? (
     <LoadErrorAlert onRetry={retryLoad} focusRef={pageHeadingRef}>
       {error}
@@ -701,14 +701,14 @@ export function OnboardingChoice() {
   ) : null;
 
   if (isBootstrapping) {
-    // O mesmo giro e a mesma frase do fallback de /onboarding, que vem logo
-    // antes: antes eram duas esperas seguidas com cara e texto diferentes.
+    // The same spinner and the same sentence as the /onboarding fallback right
+    // before it: before, there were two waits in a row with different looks and text.
     return <SkillsetSpinner fullscreen={false} title={t("authFlow.loading.title")} />;
   }
 
   if (streamlinedTeacherActivation) {
-    // Por que "Activate teaching" esta apagado. A trava continua a mesma; so
-    // passa a ser dita, na mesma frase que o clique mostraria.
+    // Why "Activate teaching" is grayed out. The lock stays the same; it only
+    // gets stated, in the same sentence the click would show.
     const activateBlockedReason = !emailVerified
       ? t("onboarding.errorVerifyEmail")
       : !payoutCountryAnswered
@@ -717,8 +717,8 @@ export function OnboardingChoice() {
 
     return (
       <div ref={rootRef} className="mt-6 grid gap-5">
-        {/* O titulo e a descricao moram no topo da pagina (o cartao que os
-            repetia saiu); solta, sem a pagina, a tela mostra a descricao. */}
+        {/* The title and description live at the top of the page (the card that
+            repeated them is gone); standalone, without the page, the screen shows the description. */}
         {headingOnPage ? null : (
           <p className="text-sm leading-6 text-[var(--color-ink-soft)]">
             {t(streamlinedDescriptionKey)}
@@ -751,8 +751,8 @@ export function OnboardingChoice() {
 
         {errorAlert}
 
-        {/* Um botao forte so ("Activate teaching"); pular vira texto discreto,
-            no mesmo lugar e com o mesmo destino. */}
+        {/* Only one strong button ("Activate teaching"); skipping becomes discreet text,
+            in the same place and with the same destination. */}
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"

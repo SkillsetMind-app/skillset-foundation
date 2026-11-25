@@ -5,18 +5,18 @@ import { EnrolledCourseWorkspace } from "@/components/learn/enrolled-course-work
 import type { Course } from "@/domain/learning";
 
 /**
- * O professor abre o preview do proprio curso e a aba martela o banco sem parar.
+ * The teacher opens the preview of their own course and the tab hammers the database nonstop.
  *
- * A matricula do preview e montada como literal no corpo do componente, entao
- * ganhava identidade nova a cada render. Tres efeitos declaram esse OBJETO como
- * dependencia, e dois deles abrem inscricao no Supabase e gravam estado no
- * callback: estado novo -> render -> objeto novo -> cancela e reinscreve ->
- * callback -> estado novo. Laco fechado, sem condicao de parada.
+ * The preview enrollment is built as a literal in the component body, so it
+ * got a new identity on every render. Three effects declare that OBJECT as a
+ * dependency, and two of them open a Supabase subscription and write state in the
+ * callback: new state -> render -> new object -> cancel and resubscribe ->
+ * callback -> new state. A closed loop, with no stop condition.
  *
- * Custo real: cota de requisicoes do projeto, churn de canais realtime, aba
- * travando e bateria do celular indo embora. Nada na tela dizia o que era.
+ * Real cost: the project request quota, realtime channel churn, a tab
+ * freezing and the phone battery draining. Nothing on the screen said what it was.
  *
- * O contrato provado aqui: no preview, cada inscricao e aberta UMA vez.
+ * The contract proved here: in the preview, each subscription is opened ONCE.
  */
 
 const mocks = vi.hoisted(() => ({
@@ -66,9 +66,9 @@ const course = {
   membersTheme: "light",
 } as unknown as Course;
 
-// Com o defeito de volta, o laco e SINCRONO dentro do render: o teste nao
-// "falha", ele trava para sempre (foi exatamente o que aconteceu na prova por
-// reversao). Um fusivel converte o travamento em falha que termina.
+// With the defect back, the loop is SYNCHRONOUS inside the render: the test does not
+// "fail", it hangs forever (that is exactly what happened in the proof by
+// reversal). A fuse turns the hang into a failure that ends.
 const FUSIVEL = 20;
 
 function comFusivel<T>(rotulo: string, entrega: T) {
@@ -76,18 +76,18 @@ function comFusivel<T>(rotulo: string, entrega: T) {
   return (_courseId: string, onNext: (valor: T) => void) => {
     vezes += 1;
     if (vezes > FUSIVEL) {
-      throw new Error(`laco: ${rotulo} reinscreveu ${vezes} vezes`);
+      throw new Error(`loop: ${rotulo} resubscribed ${vezes} times`);
     }
     onNext(entrega);
     return vi.fn();
   };
 }
 
-describe("preview do curso do professor nao pode entrar em laco", () => {
+describe("the teacher's course preview must not enter a loop", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // O modo de falha real: a inscricao entrega o estado atual JA no ato de
-    // inscrever. E a gravacao desse estado que fecha o laco.
+    // The real failure mode: the subscription delivers the current state RIGHT when
+    // subscribing. It is writing that state that closes the loop.
     mocks.subscribeToLessonContent.mockImplementation(
       comFusivel("conteudo de aula", new Map()),
     );
@@ -100,13 +100,13 @@ describe("preview do curso do professor nao pode entrar em laco", () => {
     });
   });
 
-  it("abre a inscricao de conteudo de aula uma vez so", () => {
+  it("opens the lesson content subscription only once", () => {
     render(<EnrolledCourseWorkspace course={course} previewMode />);
 
     expect(mocks.subscribeToLessonContent).toHaveBeenCalledTimes(1);
   });
 
-  it("abre a inscricao de anexos uma vez so", () => {
+  it("opens the attachments subscription only once", () => {
     render(
       <EnrolledCourseWorkspace course={course} previewMode enableFirestoreAssets />,
     );
@@ -114,7 +114,7 @@ describe("preview do curso do professor nao pode entrar em laco", () => {
     expect(mocks.subscribeToCourseAssets).toHaveBeenCalledTimes(1);
   });
 
-  it("nao reinscreve quando o componente e renderizado de novo com as mesmas props", () => {
+  it("does not resubscribe when the component is rendered again with the same props", () => {
     const { rerender } = render(
       <EnrolledCourseWorkspace course={course} previewMode />,
     );

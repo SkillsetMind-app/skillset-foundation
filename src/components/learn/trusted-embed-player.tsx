@@ -40,7 +40,7 @@ export function TrustedEmbedPlayer({
   provider,
   title,
 }: {
-  /** A aula abriu pelo cartão "Próxima aula": o embed começa a tocar sozinho. */
+  /** The lesson was opened from the "Next lesson" card: the embed starts playing by itself. */
   autoplay?: boolean;
   embedUrl: string;
   onEnded: () => void;

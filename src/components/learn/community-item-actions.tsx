@@ -16,28 +16,28 @@ import {
 } from "@/lib/data/community-posts";
 import { isRateLimitError } from "@/lib/data/rate-limit-error";
 
-// Moderar um post ou uma resposta da comunidade.
+// Moderating a community post or reply.
 //
 // POR QUE ISTO EXISTE
 //
-// O dono do curso via spam na propria comunidade e nao tinha botao nenhum, e
-// o aluno nao tinha como avisar a equipe ("Report anything off", dizem as
-// regras, sem onde reportar). Quem ve o que:
-//   - autor: Apagar;
-//   - dono do curso (canModerate): Apagar qualquer coisa do curso e
+// The course owner saw spam in their own community and had no button at all, and
+// the learner had no way to alert the staff ("Report anything off", say the
+// rules, with nowhere to report). Who sees what:
+//   - author: Delete;
+//   - course owner (canModerate): Delete anything in the course and
 //     Fixar/Desafixar posts;
-//   - outro membro: Denunciar (vai para a fila do /ops; o professor nao le);
-//   - sem login: nada.
-// O banco decide de verdade (policies de DELETE e de community_reports); isto
-// so mostra o botao para quem o banco vai deixar.
+//   - another member: Report (goes to the /ops queue; the teacher does not read it);
+//   - not signed in: nothing.
+// The database really decides (DELETE and community_reports policies); this
+// only shows the button to whoever the database will allow.
 //
-// Devolve um fragmento: quem usa poe dentro de um container flex-wrap, e o
-// painel aberto (confirmar ou denunciar) ocupa a linha inteira (basis-full).
+// Returns a fragment: whoever uses it puts it inside a flex-wrap container, and the
+// open panel (confirm or report) takes the whole line (basis-full).
 //
-// Teclado: o painel de confirmar recebe o foco (em "Keep it", o lado seguro);
-// Esc fecha o painel aberto e devolve o foco ao botao que o abriu; depois de
-// apagar, o foco vai para o item seguinte da lista (marcado com
-// data-community-item) ou, sem vizinho, para a gaveta ou o titulo da lista
+// Keyboard: the confirm panel receives focus (on "Keep it", the safe side);
+// Esc closes the open panel and returns focus to the button that opened it; after
+// deleting, focus goes to the next item in the list (marked with
+// data-community-item) or, with no neighbor, to the drawer or the list title
 // (data-community-heading). Antes ele caia no body.
 
 const REASONS: CommunityReportReason[] = ["spam", "harassment", "unsafe_content", "off_topic", "other"];
@@ -47,7 +47,7 @@ const ACTION =
 
 const FOCUSABLE = "button:not([disabled]), a[href]";
 
-/** Para onde o foco vai quando o item sai da tela. Calculado ANTES de apagar. */
+/** Where focus goes when the item leaves the screen. Computed BEFORE deleting. */
 function focusTargetAfterDelete(from: HTMLElement | null): HTMLElement | null {
   const item = from?.closest("[data-community-item]");
   const neighbour = [item?.nextElementSibling, item?.previousElementSibling].find((element) =>
@@ -60,8 +60,8 @@ function focusTargetAfterDelete(from: HTMLElement | null): HTMLElement | null {
   );
 }
 
-// O banco recusa a segunda denuncia ABERTA da mesma pessoa no mesmo alvo
-// (trigger community_reports_trusted_fields): a tela agradece de novo.
+// The database refuses the same person's second OPEN report on the same target
+// (trigger community_reports_trusted_fields): the screen says thanks again.
 function isDuplicateReport(failure: unknown): boolean {
   const message = failure && typeof failure === "object" && "message" in failure ? failure.message : null;
   return typeof message === "string" && message.startsWith("COMMUNITY_REPORT_DUPLICATE");
@@ -75,22 +75,22 @@ export function CommunityItemActions({
   onDeleted,
 }: {
   post: CommunityPost;
-  /** Ausente = a acao e sobre o post; presente = sobre esta resposta. */
+  /** Absent = the action is about the post; present = about this reply. */
   comment?: CommunityComment | null;
   currentUser: SkillsetUser | null;
   canModerate: boolean;
-  /** Depois que o banco confirmou: some da tela sem esperar o realtime. */
+  /** After the database confirmed: it disappears from the screen without waiting for realtime. */
   onDeleted?: () => void;
 }) {
   const { t } = useTranslation();
   const panelId = useId();
   const [panel, setPanel] = useState<"none" | "delete" | "report">("none");
   const [busy, setBusy] = useState(false);
-  // Chave do dicionario, nao texto: o idioma pode trocar com o erro na tela.
+  // Dictionary key, not text: the language can change with the error on screen.
   const [error, setError] = useState("");
   const [reason, setReason] = useState<CommunityReportReason>("spam");
   const [detail, setDetail] = useState("");
-  // "done" = acabou de denunciar; "duplicate" = ja tinha denunciado antes.
+  // "done" = just reported; "duplicate" = had already reported before.
   const [reported, setReported] = useState<"" | "done" | "duplicate">("");
   const deleteRef = useRef<HTMLButtonElement>(null);
   const reportRef = useRef<HTMLButtonElement>(null);
@@ -125,7 +125,7 @@ export function CommunityItemActions({
 
   function closeOnEscape(event: KeyboardEvent<HTMLElement>) {
     if (event.key !== "Escape") return;
-    // Fecha so o painel: a gaveta em volta tambem fecha com Esc.
+    // Closes only the panel: the drawer around it also closes with Esc.
     event.preventDefault();
     event.stopPropagation();
     closePanel();
@@ -203,7 +203,7 @@ export function CommunityItemActions({
         <button
           type="button"
           onClick={() => void togglePin()}
-          // aria-disabled, nao disabled: botao desabilitado perde o foco do teclado.
+          // aria-disabled, not disabled: a disabled button loses keyboard focus.
           aria-disabled={busy}
           className={ACTION}
         >
@@ -241,9 +241,9 @@ export function CommunityItemActions({
       ) : null}
 
       {panel === "delete" ? (
-        // Confirmação, não erro: fica um grupo (um alerta seria lido sozinho ao
-        // abrir). O fundo é o token, que no tema escuro sobe para 18%; o 6%
-        // literal sumia no quase preto.
+        // Confirmation, not error: it stays a group (an alert would be read out alone when
+        // it opens). The background is the token, which goes up to 18% in the dark theme; the
+        // literal 6% vanished on near-black.
         <div
           id={panelId}
           role="group"

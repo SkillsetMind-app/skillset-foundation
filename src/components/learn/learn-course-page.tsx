@@ -11,12 +11,12 @@ import { getCourseBySlug } from "@/lib/data/catalog";
 import { getMemberArea } from "@/lib/learn/server/member-area";
 import { CourseViewedTracker } from "@/lib/posthog/page-trackers";
 
-// A pagina da sala de aula, compartilhada por duas rotas:
+// The classroom page, shared by two routes:
 //   /learn/courses/[slug]         -> tab "lesson"
 //   /learn/courses/[slug]/[tab]   -> materials | lives | community | ...
-// Antes so a primeira existia e tudo morava na mesma rolagem. A logica de
-// "catalogo estatico vs curso publicado por professor" e a mesma nas duas; por
-// isso vive aqui e nao em cada arquivo de rota.
+// Before, only the first existed and everything lived in the same scroll. The logic of
+// "static catalog vs course published by a teacher" is the same in both; that is
+// why it lives here and not in each route file.
 export async function LearnCoursePage({
   slug,
   tab,
@@ -24,12 +24,12 @@ export async function LearnCoursePage({
 }: {
   slug: string;
   tab: ClassroomTab;
-  /** Um post da comunidade aberto na gaveta (rota .../community/q/<post>). */
+  /** A community post opened in the drawer (route .../community/q/<post>). */
   openPostId?: string | null;
 }) {
   const { t } = await getServerTranslation();
   const course = getCourseBySlug(slug);
-  // A sala desta rota: a Ajuda do topo manda a duvida da aula para ca.
+  // This route's classroom: the top Help sends the lesson question here.
   const classroomHref = `/learn/courses/${encodeURIComponent(slug)}`;
 
   if (!course) {
@@ -46,9 +46,9 @@ export async function LearnCoursePage({
           <Suspense
             fallback={
               // The classroom's one loading state (same as the route file and
-              // the workspaces), here in the course's own --ma-* colours. O
-              // servidor não lê o endereço aqui: a mesma forma curta do
-              // arquivo de rota (loading.tsx explica a escolha).
+              // the workspaces), here in the course's own --ma-* colours. The
+              // server does not read the address here: the same short form as the
+              // route file (loading.tsx explains the choice).
               <ClassroomLoading label={t("learnWave2.courseLoading.title")} short />
             }
           >

@@ -39,7 +39,7 @@ let readFailure: boolean;
 let writeFailure: boolean;
 let handlers: Set<(event: string, session: unknown) => void>;
 
-// Mapeadores, gravacoes de perfil e sessao reais usam este transporte filtrado.
+// Real mappers, profile writes and session use this filtered transport.
 function usersQuery() {
   let uid: unknown;
   let patch: Row | undefined;
@@ -90,8 +90,8 @@ async function mount() {
   });
   expect(screen.getByTestId("session")).toHaveTextContent("authenticated:student");
   expect(screen.queryByText("Teacher workspace")).not.toBeInTheDocument();
-  // O titulo da ativacao subiu para o h1 da pagina; a tela curta se reconhece
-  // pelo botao que so ela tem.
+  // The activation title moved up to the page h1; the short screen is recognized
+  // by the button only it has.
   await screen.findByRole("button", { name: "onboarding.activateTeaching" });
 }
 
@@ -202,7 +202,7 @@ describe("onboarding refreshes the real provider before navigation", () => {
       for (const handler of handlers) handler("INITIAL_SESSION", { user: authUser });
       for (let i = 0; i < 5; i += 1) await new Promise((resolve) => setTimeout(resolve, 0));
     });
-    // O formulario assina depois de o portao abrir; simula o snapshot do SDK.
+    // The form subscribes after the gate opens; simulates the SDK snapshot.
     await act(async () => {
       for (const handler of handlers) handler("INITIAL_SESSION", { user: authUser });
       for (let i = 0; i < 5; i += 1) await new Promise((resolve) => setTimeout(resolve, 0));

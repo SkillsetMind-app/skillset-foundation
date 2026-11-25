@@ -173,14 +173,14 @@ describe("LoadingScreen recovery without granting access", () => {
     expect(mocks.router.replace).not.toHaveBeenCalled();
   });
 
-  // O-18/A-14: todo login esperava 1400ms aqui mesmo com o destino pronto.
-  // Agora só o bastante para não piscar, e a frase é lida pelo leitor de tela.
+  // O-18/A-14: every login waited 1400ms here even with the destination ready.
+  // Now only long enough not to flash, and the sentence is read by the screen reader.
   it("routes a ready destination after 400ms, not 1400ms", async () => {
     mocks.auth = { status: "authenticated", user: { uid: "u-1" } };
     mocks.getUserProfile.mockResolvedValue({ onboardingCompleted: true, roles: ["teacher"] });
     render(<LoadingScreen />);
     expect(screen.getByRole("status")).toHaveTextContent("authFlow.loading.title");
-    // O Vitest falsifica também performance.now(): a espera é exatamente 400ms.
+    // Vitest also fakes performance.now(): the wait is exactly 400ms.
     await act(async () => { await vi.advanceTimersByTimeAsync(350); });
     expect(mocks.router.replace).not.toHaveBeenCalled();
     await act(async () => { await vi.advanceTimersByTimeAsync(50); });

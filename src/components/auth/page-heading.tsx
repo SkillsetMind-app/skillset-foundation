@@ -11,11 +11,11 @@ import {
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 
-// O titulo grande das telas de entrada (/auth, /onboarding) segue a tela que
-// esta montada embaixo dele. Antes ele ficava fixo: "Sign in as a learner."
-// em cima do link vencido, "Set up your SkillsetMind profile." em cima da
-// ativacao do ensino. A tela de estado avisa a pagina enquanto esta montada;
-// a pagina troca o texto. Sem provedor (tela solta), nada muda.
+// The big title of the entry screens (/auth, /onboarding) follows the screen
+// mounted below it. Before, it was fixed: "Sign in as a learner."
+// on top of the expired link, "Set up your SkillsetMind profile." on top of the
+// teaching activation. The status screen notifies the page while mounted;
+// the page swaps the text. Without a provider (standalone screen), nothing changes.
 type PageHeading = { titleKey: string; descriptionKey?: string };
 
 type PageHeadingState = {
@@ -31,8 +31,8 @@ export function PageHeadingProvider({ children }: { children: ReactNode }) {
   return <PageHeadingContext.Provider value={value}>{children}</PageHeadingContext.Provider>;
 }
 
-// O texto do titulo (ou da descricao): o da tela montada, senao o padrao da
-// pagina, que e tambem o que sai no HTML do servidor.
+// The title (or description) text: the mounted screen's, otherwise the page's
+// default, which is also what goes out in the server HTML.
 export function PageHeadingText({
   part,
   fallback,
@@ -46,10 +46,10 @@ export function PageHeadingText({
   return <>{key ? t(key) : fallback}</>;
 }
 
-// A tela assume o titulo da pagina enquanto esta montada, antes da pintura.
-// Devolve true so quando a pagina JA mostra esse titulo: ate la (sem provedor,
-// ou no HTML do servidor, antes do JavaScript), a tela mostra o seu, e o
-// estado nunca fica sem titulo.
+// The screen takes over the page title while mounted, before paint.
+// Returns true only when the page ALREADY shows that title: until then (no provider,
+// or in the server HTML, before JavaScript), the screen shows its own, and the
+// state is never left without a title.
 export function usePageHeading(heading: PageHeading | null): boolean {
   const context = useContext(PageHeadingContext);
   const setHeading = context?.setHeading;

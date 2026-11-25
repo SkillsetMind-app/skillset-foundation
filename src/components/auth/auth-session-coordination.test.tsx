@@ -45,7 +45,7 @@ function holdProfile(uid = "user-1") {
   return { ...pending, started: started.promise, snapshot };
 }
 
-// Provider, listener, mapeador e portao reais; apenas o transporte e sintetico.
+// Real provider, listener, mapper and gate; only the transport is synthetic.
 function usersQuery() {
   let uid = "";
   return {

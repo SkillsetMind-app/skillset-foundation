@@ -103,8 +103,8 @@ describe("private course messages in the current locale", () => {
     renderMessages(false, "en");
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "Unsent" } });
     expect(screen.getByText("We could not load your messages.")).toBeInTheDocument();
-    // Erro com cara de erro (caixa da casa, lida em voz alta), não a pílula
-    // navy de aviso neutro; e a espera não fica girando por baixo dele.
+    // An error that looks like an error (the app's own box, read aloud), not the
+    // navy pill of a neutral notice; and the wait does not keep spinning underneath it.
     expect(screen.getByRole("alert")).toHaveTextContent("We could not load your messages.");
     expect(screen.queryByRole("status")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
@@ -113,7 +113,7 @@ describe("private course messages in the current locale", () => {
     expect(subscribeToCourseThread).toHaveBeenCalledTimes(1);
   });
 
-  // F-11: a falha da leitura tem saída, no lugar da conversa, e o rascunho fica.
+  // F-11: a read failure has an exit, in place of the conversation, and the draft stays.
   it("Try again reads the thread again and keeps the draft", () => {
     vi.mocked(subscribeToCourseThread).mockImplementationOnce((_course, _student, _next, error) => {
       error(new Error("offline"));
@@ -128,8 +128,8 @@ describe("private course messages in the current locale", () => {
     expect(screen.getByRole("textbox")).toHaveValue("Unsent");
   });
 
-  // O historico surgia de repente acima do formulario: ate a primeira leitura,
-  // linhas de espera no lugar dele, com um aviso so para o leitor de tela.
+  // The history showed up suddenly above the form: until the first read,
+  // wait rows in its place, with a notice only for the screen reader.
   it("shows a wait state where the thread will appear, until the first read", () => {
     let deliver!: (rows: CourseMessage[]) => void;
     vi.mocked(subscribeToCourseThread).mockImplementationOnce((_course, _student, onNext) => {
@@ -145,8 +145,8 @@ describe("private course messages in the current locale", () => {
     expect(screen.getByText("Hello")).toBeInTheDocument();
   });
 
-  // A sala com a marca do professor nao tem sino (member-area-shell.tsx): ali
-  // a descricao nao pode prometer que a resposta "cai no sino".
+  // The classroom with the teacher's brand has no bell (member-area-shell.tsx): there
+  // the description cannot promise that the reply "lands in the bell".
   it("only promises the bell where the bell exists", () => {
     const { unmount } = renderMessages(false, "en");
     expect(screen.getByText(/Replies also land in your notification bell/)).toBeInTheDocument();

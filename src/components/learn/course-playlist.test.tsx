@@ -16,9 +16,9 @@ function ChangeLanguage() {
   return <button onClick={() => setLocale(locale === "en" ? "es" : "en")}>Change language</button>;
 }
 
-// A lista de aulas existia tres vezes na sala e nenhuma ficava visivel com o
-// video tocando. Agora e UMA playlist ao lado do video: modulos em acordeao,
-// aula atual em destaque, check e cadeado por aula, busca no topo.
+// The lesson list existed three times in the classroom and none was visible with the
+// video playing. Now it is ONE playlist beside the video: modules in an accordion,
+// current lesson highlighted, check and lock per lesson, search at the top.
 
 const modules = [
   {
@@ -112,24 +112,24 @@ describe("CoursePlaylist", () => {
     expect(onSelect).toHaveBeenCalledWith("l3");
   });
 
-  it("destaca a aula atual, abre so o modulo dela e fecha os outros", () => {
+  it("highlights the current lesson, opens only its module and closes the others", () => {
     renderPlaylist();
 
     expect(screen.getByRole("button", { name: /Setup/ })).toHaveAttribute("aria-current", "true");
     expect(screen.getByRole("button", { name: /Welcome/ })).not.toHaveAttribute("aria-current");
 
-    // Modulo 2 comeca fechado: a aula dele nao esta na tela.
+    // Module 2 starts closed: its lesson is not on screen.
     const advanced = screen.getByRole("button", { name: /Advanced/ });
     expect(advanced).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByText("Deep dive")).not.toBeInTheDocument();
 
     fireEvent.click(advanced);
     expect(advanced).toHaveAttribute("aria-expanded", "true");
-    // Aula travada pelo gotejamento: cadeado + "Locked" na linha.
+    // A lesson locked by drip: lock + "Locked" on the row.
     expect(screen.getByRole("button", { name: /Deep dive/ })).toHaveTextContent(/Locked/);
   });
 
-  it("escolher uma aula chama onSelect com o id dela", () => {
+  it("choosing a lesson calls onSelect with its id", () => {
     const onSelect = vi.fn();
     renderPlaylist({ onSelect });
 
@@ -138,7 +138,7 @@ describe("CoursePlaylist", () => {
     expect(onSelect).toHaveBeenCalledWith("l1");
   });
 
-  it("na lista so o check da aula concluida e clicavel — para desfazer; nao ha 'Mark complete'", () => {
+  it("in the list only the completed lesson's check is clickable — to undo; there is no 'Mark complete'", () => {
     const onUncomplete = vi.fn();
     renderPlaylist({ onUncomplete });
 
@@ -151,9 +151,9 @@ describe("CoursePlaylist", () => {
     expect(screen.queryByRole("button", { name: /^Mark complete/ })).not.toBeInTheDocument();
   });
 
-  // O check que desfaz media 28px: alvo pequeno demais para o dedo. jsdom nao
-  // faz layout, entao a prova e a folha (o padrao de members-area-hero.test).
-  it("o check que desfaz tem alvo de toque de 44px", () => {
+  // The undo check measured 28px: a target too small for a finger. jsdom does not
+  // do layout, so the proof is the stylesheet (the members-area-hero.test pattern).
+  it("the check that undoes has a 44px touch target", () => {
     renderPlaylist({ onUncomplete: vi.fn() });
     expect(screen.getByRole("button", { name: 'Mark "Welcome" incomplete' })).toHaveClass(
       "member-playlist__status--button",
@@ -162,7 +162,7 @@ describe("CoursePlaylist", () => {
     const css = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
     const rule = (selector: string) => {
       const start = css.indexOf(`\n${selector} {`);
-      expect(start, `${selector} nao esta em globals.css`).toBeGreaterThan(-1);
+      expect(start, `${selector} is not in globals.css`).toBeGreaterThan(-1);
       return css.slice(start, css.indexOf("\n}", start));
     };
     const size = Number(/\swidth:\s*(\d+)px/.exec(rule(".member-playlist__status"))?.[1]);
@@ -171,7 +171,7 @@ describe("CoursePlaylist", () => {
     expect(size + 2 * inset).toBeGreaterThanOrEqual(44);
   });
 
-  it("aula sem duracao: a linha nao comeca com separador solto", () => {
+  it("lesson without duration: the line does not start with a stray separator", () => {
     renderPlaylist({
       modules: [{ ...modules[0], lessons: modules[0].lessons.map((lesson) => ({ ...lesson, duration: "" })) }],
     });
@@ -180,7 +180,7 @@ describe("CoursePlaylist", () => {
     expect(welcome.querySelector(".member-playlist__lesson-meta")?.textContent).toBe("Completed");
   });
 
-  it("sem onUncomplete (preview do professor) o check e so um icone", () => {
+  it("without onUncomplete (teacher preview) the check is just an icon", () => {
     renderPlaylist({ onUncomplete: undefined });
 
     expect(
@@ -188,7 +188,7 @@ describe("CoursePlaylist", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("a busca filtra, abre os modulos com resultado e NAO renumera", () => {
+  it("search filters, opens the modules with results and does NOT renumber", () => {
     const { container } = renderPlaylist();
 
     fireEvent.change(screen.getByRole("searchbox", { name: "Search lessons" }), {
@@ -202,12 +202,12 @@ describe("CoursePlaylist", () => {
     fireEvent.change(screen.getByRole("searchbox", { name: "Search lessons" }), {
       target: { value: "setup" },
     });
-    // "Setup" e a 2a aula do curso — continua "2" mesmo sendo a unica na tela.
-    // (Aula atual mostra o icone de play; forcamos outra selecao no proximo teste.)
+    // "Setup" is the 2nd lesson of the course — it stays "2" even though it is the only one on screen.
+    // (The current lesson shows the play icon; we force another selection in the next test.)
     expect(container.querySelectorAll(".member-playlist__lesson")).toHaveLength(1);
   });
 
-  it("aula agendada mostra a data em que abre, nao so 'Locked'", () => {
+  it("a scheduled lesson shows the date it opens, not just 'Locked'", () => {
     const scheduled = new Map<string, LessonUnlockState>([
       ["l3", { unlocked: false, unlocksAt: new Date("2026-03-05T12:00:00.000Z"), reason: "scheduled" }],
     ]);
@@ -218,9 +218,9 @@ describe("CoursePlaylist", () => {
     expect(screen.getByRole("button", { name: /Deep dive/ })).toHaveTextContent("Unlocks Mar 5, 2026");
   });
 
-  it("trocar de aula rola a lista ate a aula atual — a pessoa nao perde o lugar", () => {
-    // A aula atual era destacada, mas a lista ficava onde estava: o destaque
-    // caia fora da area visivel e a pessoa tinha que cacar onde parou.
+  it("switching lessons scrolls the list to the current lesson — the person does not lose their place", () => {
+    // The current lesson was highlighted, but the list stayed where it was: the highlight
+    // fell outside the visible area and the person had to hunt for where they stopped.
     const scrolled: Array<{ element: Element; options: unknown }> = [];
     Element.prototype.scrollIntoView = function scrollIntoView(
       this: Element,
@@ -245,11 +245,11 @@ describe("CoursePlaylist", () => {
     expect(scrolled).toHaveLength(1);
     expect(scrolled[0].element).toHaveClass("is-current");
     expect(scrolled[0].element).toHaveTextContent("Setup");
-    // "nearest": rola o minimo, e nao mexe se a linha ja estiver a vista.
+    // "nearest": scrolls the minimum, and does not move if the row is already in view.
     expect(scrolled[0].options).toMatchObject({ block: "nearest" });
   });
 
-  it("a numeracao e do curso inteiro (a 2a aula e '2' mesmo filtrada)", () => {
+  it("numbering is for the whole course (the 2nd lesson is '2' even when filtered)", () => {
     const { container } = renderPlaylist({ selectedLessonId: "l1", completedLessonIds: [] });
 
     fireEvent.change(screen.getByRole("searchbox", { name: "Search lessons" }), {

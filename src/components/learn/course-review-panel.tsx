@@ -17,8 +17,8 @@ import {
 type CourseReviewPanelProps = {
   courseId: string;
   progressPercent: number;
-  /** A regra dos 50% so vale para curso com aula: comunidade, evento ao vivo,
-   *  e-book e curso sem aula avaliam sem progresso (submit_course_review). */
+  /** The 50% rule only applies to a course with lessons: community, live event,
+   *  e-book and a course without lessons review without progress (submit_course_review). */
   requiresProgress?: boolean;
   previewMode?: boolean;
 };
@@ -58,16 +58,16 @@ export function CourseReviewPanel({
   const [rating, setRating] = useState(5);
   const [body, setBody] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  // Sucesso e falha separados: antes eram o mesmo estado e a mesma pílula
-  // navy, e "Review saved." tinha a cara de "We could not load your review.".
+  // Success and failure kept apart: before they were the same state and the same navy
+  // pill, and "Review saved." looked like "We could not load your review.".
   const [saved, setSaved] = useState(false);
-  // Chave do dicionário, nunca texto: o idioma pode trocar com o erro na tela.
+  // Dictionary key, never text: the language can change with the error on screen.
   const [error, setError] = useState("");
-  // A falha da leitura tem "Try again" (assina de novo), acima do formulário:
-  // sem ela, as estrelas e o texto podem não ser a resenha já salva.
+  // The read failure has "Try again" (subscribes again), above the form:
+  // without it, the stars and the text may not be the already saved review.
   const [loadFailed, setLoadFailed] = useState(false);
   const [reviewAttempt, setReviewAttempt] = useState(0);
-  // O aviso fica, com o botão ocupado, até a releitura responder.
+  // The notice stays, with the button busy, until the re-read answers.
   const [reviewRetrying, setReviewRetrying] = useState(false);
   const panelRef = useRef<HTMLElement>(null);
   const progressMissing = requiresProgress && progressPercent < 50;
@@ -185,9 +185,9 @@ export function CourseReviewPanel({
           </p>
         ) : null}
 
-        {/* O padrão da casa: "salvou" ao lado do botão, numa região sempre
-            montada (o botão não sai do lugar); a falha numa caixa de erro
-            com ícone, embaixo dele. */}
+        {/* The app's own pattern: "saved" beside the button, in an always
+            mounted region (the button does not move); the failure in an error box
+            with an icon, below it. */}
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="submit"

@@ -9,19 +9,19 @@ import type { Course } from "@/domain/learning";
 import type { AppNotification } from "@/domain/notification";
 
 /**
- * O que a pessoa sofria ao entrar em /learn: duas boas-vindas (a manchete do
- * shell e o "Welcome back"), tres cartoes de metrica dizendo "1 · 0 · 0" e so
- * depois os cursos, cada um com "Open" e "Request refund" lado a lado. O
- * "Continue" abria a CAPA do curso, nao a aula onde ela parou. O que chegou de
- * novo so aparecia no sino.
+ * What the person went through when entering /learn: two welcomes (the shell
+ * headline and the "Welcome back"), three metric cards saying "1 · 0 · 0" and only
+ * then the courses, each with "Open" and "Request refund" side by side. The
+ * "Continue" opened the course COVER, not the lesson where they stopped. What had arrived
+ * new only showed in the bell.
  *
- * Estes testes RENDERIZAM o painel com matriculas de mentira e provam o
- * desenho novo: uma saudacao, retomar direto na aula, filtro de cursos, e
- * nenhum reembolso no cartao.
+ * These tests RENDER the dashboard with fake enrollments and prove the new
+ * design: one greeting, resume straight into the lesson, a course filter, and
+ * no refund on the card.
  */
 
-// O MESMO objeto de usuario em todos os renders: um objeto novo por render
-// reinscreve os efeitos que dependem de `user` e entra em laco.
+// The SAME user object on every render: a new object per render
+// resubscribes the effects that depend on `user` and goes into a loop.
 const { mockUser, fixtures, fuse } = vi.hoisted(() => {
   const mockUser = {
     uid: "student-1",
@@ -81,7 +81,7 @@ const { mockUser, fixtures, fuse } = vi.hoisted(() => {
     status: "active",
     source: "payment",
     progressPercent: 50,
-    // A aula em que a pessoa parou: e para ela que o cartao tem que apontar.
+    // The lesson where the person stopped: that is where the card has to point.
     lastLessonId: "l3",
     updatedAt: "2026-09-01T10:00:00.000Z",
   };
@@ -116,7 +116,7 @@ const { mockUser, fixtures, fuse } = vi.hoisted(() => {
     recordingAssetId: null,
   };
 
-  // Ja em ordem do mais novo para o mais velho, como a fonte devolve.
+  // Already ordered from newest to oldest, as the source returns them.
   const notifications: AppNotification[] = [
     {
       id: "n1",
@@ -163,7 +163,7 @@ const { mockUser, fixtures, fuse } = vi.hoisted(() => {
     notifications,
     liveEvent,
     events: [liveEvent] as CourseEvent[],
-    // Cursos reais que o banco devolve quando o painel pergunta por id.
+    // Real courses the database returns when the dashboard asks by id.
     realCourses: [] as Course[],
     fetchedIds: [] as string[][],
     emitEnrollments: (() => undefined) as (next: Enrollment[]) => void,
@@ -172,20 +172,20 @@ const { mockUser, fixtures, fuse } = vi.hoisted(() => {
     calls: 0,
   };
 
-  // Fusivel: um laco de render sincrono nao estoura o timeout do vitest, come
-  // memoria ate matar o processo. Acima de 20 inscricoes num teste o mock
-  // explode com mensagem legivel em vez de sumir.
+  // Fuse: a synchronous render loop does not trip the vitest timeout, it eats
+  // memory until the process dies. Above 20 subscriptions in one test the mock
+  // blows up with a readable message instead of vanishing.
   function fuse() {
     fixtures.calls += 1;
     if (fixtures.calls > 20) {
-      throw new Error("laco de inscricao: mais de 20 subscribe num teste");
+      throw new Error("subscription loop: more than 20 subscribe calls in one test");
     }
   }
 
   return { mockUser, fixtures, fuse };
 });
 
-// O I18nProvider chama useRouter() para o refresh ao trocar de idioma.
+// The I18nProvider calls useRouter() for the refresh when the language changes.
 const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }));
 vi.mock("next/navigation", async (importOriginal) => ({
   ...await importOriginal<typeof import("next/navigation")>(),
@@ -200,7 +200,7 @@ vi.mock("@/components/learn/welcome-tour", () => ({
   WelcomeTour: () => null,
 }));
 
-// Mostra o que o painel repassa para as fileiras: a lista de cursos e uma so.
+// Shows what the dashboard passes down to the rows: the course list is a single one.
 vi.mock("@/components/learn/learning-paths-rows", () => ({
   LearningPathsRows: ({ enrolledCourses }: { enrolledCourses: { id: string }[] }) => (
     <div>Learning paths: {enrolledCourses.map((course) => course.id).join(",")}</div>
@@ -234,7 +234,7 @@ vi.mock("@/lib/data/enrollments", () => ({
       else onData(fixtures.enrollments);
     };
     read();
-    // Como o de verdade: `reload` le de novo sem mexer no canal.
+    // Like the real one: `reload` reads again without touching the channel.
     return Object.assign(() => undefined, {
       reload: async () => {
         fixtures.reloads += 1;
@@ -244,7 +244,7 @@ vi.mock("@/lib/data/enrollments", () => ({
   },
 }));
 
-// Matriculas ativas a mais, mais antigas que a de Effective Communication.
+// Extra active enrollments, older than the Effective Communication one.
 function extraEnrollments(count: number): Enrollment[] {
   return Array.from({ length: count }, (_, index) => ({
     ...fixtures.base[0],
@@ -290,7 +290,7 @@ describe("LearnDashboard", () => {
     fixtures.reloads = 0;
   });
 
-  it("se as matriculas nao carregam: erro anunciado e 'Try again' como acao principal, que le de novo", async () => {
+  it("if the enrollments do not load: an announced error and 'Try again' as the main action, which reads again", async () => {
     fixtures.enrollmentsFail = true;
     render(<LearnDashboard />);
 
@@ -308,22 +308,22 @@ describe("LearnDashboard", () => {
     expect(await screen.findByRole("heading", { name: "My courses" })).toBeInTheDocument();
   });
 
-  it("sauda uma vez so: um h1 e nenhum 'Welcome back'", async () => {
+  it("greets once only: one h1 and no 'Welcome back'", async () => {
     render(<LearnDashboard />);
 
     const headings = await screen.findAllByRole("heading", { level: 1 });
     expect(headings).toHaveLength(1);
     expect(headings[0]).toHaveTextContent("Hi, Patrick");
     expect(screen.queryByText(/welcome back/i)).not.toBeInTheDocument();
-    // As tres metricas viraram uma linha de texto.
+    // The three metrics became one line of text.
     expect(
       screen.getByText("1 course in progress · 1 live session this week"),
     ).toBeInTheDocument();
   });
 
-  it("titulo de secao nao usa a serifa de display — Manrope 600, tamanho de cartao", async () => {
-    // Cormorant e uma serifa de DISPLAY: em 24px, dentro de um cartao, ela
-    // some — vira "quase o texto do corpo", so que mais claro.
+  it("a section title does not use the display serif — Manrope 600, card size", async () => {
+    // Cormorant is a DISPLAY serif: at 24px, inside a card, it
+    // disappears — it becomes "almost the body text", only lighter.
     fixtures.enrollments = [...fixtures.base, ...extraEnrollments(2)];
     render(<LearnDashboard />);
 
@@ -334,26 +334,26 @@ describe("LearnDashboard", () => {
     }
   });
 
-  it("'Continue watching' abre na aula seguinte a ultima concluida — o mesmo destino do cartao em 'My courses'", async () => {
+  it("'Continue watching' opens on the lesson after the last completed one — the same destination as the card in 'My courses'", async () => {
     fixtures.enrollments = [...fixtures.base, ...extraEnrollments(2)];
     render(<LearnDashboard />);
 
     const region = await screen.findByRole("region", { name: "Continue watching" });
     const link = within(region).getByRole("link", { name: /Effective Communication/ });
-    // lastLessonId = l3 e a ultima aula CONCLUIDA; retomar e l4. Antes o
-    // cartao abria l3 de novo — a pessoa reassistia o que acabou de terminar.
+    // lastLessonId = l3 is the last COMPLETED lesson; resume is l4. Before, the
+    // card opened l3 again — the person rewatched what they had just finished.
     expect(link).toHaveAttribute(
       "href",
       "/learn/courses/effective-communication?lesson=l4",
     );
-    // l4 e a segunda aula do modulo 2; falta so ela (10).
+    // l4 is the second lesson of module 2; only it is left (10).
     expect(
       within(region).getByText("Module 2 · Lesson 2 · 10 min left"),
     ).toBeInTheDocument();
-    // Curso concluido nao entra na fila de retomar.
+    // A completed course does not enter the resume queue.
     expect(within(region).queryByText("Brand Design Atelier")).not.toBeInTheDocument();
 
-    // O mesmo curso em "My courses" leva ao mesmo lugar, nao a capa.
+    // The same course in "My courses" leads to the same place, not the cover.
     const card = within(screen.getByRole("region", { name: "My courses" }))
       .getByRole("heading", { level: 3, name: "Effective Communication" })
       .closest("a") as HTMLElement;
@@ -363,14 +363,14 @@ describe("LearnDashboard", () => {
     );
   });
 
-  it("com ate 3 cursos, 'Continue watching' nao repete o que 'My courses' ja mostra", async () => {
+  it("with up to 3 courses, 'Continue watching' does not repeat what 'My courses' already shows", async () => {
     render(<LearnDashboard />);
 
     const region = await screen.findByRole("region", { name: "My courses" });
     expect(
       screen.queryByRole("region", { name: "Continue watching" }),
     ).not.toBeInTheDocument();
-    // O cartao de "My courses" herda o destino de retomar.
+    // The "My courses" card inherits the resume destination.
     const card = within(region)
       .getByRole("heading", { level: 3, name: "Effective Communication" })
       .closest("a") as HTMLElement;
@@ -380,19 +380,19 @@ describe("LearnDashboard", () => {
     );
   });
 
-  it("o cartao inteiro e o link: sem botao 'Open', progresso dito uma vez, selo so fora do normal", async () => {
+  it("the whole card is the link: no 'Open' button, progress said once, a badge only when out of the ordinary", async () => {
     render(<LearnDashboard />);
 
     const region = await screen.findByRole("region", { name: "My courses" });
-    // Antes: um botao cheio "Open" por cartao.
+    // Before: a full "Open" button per card.
     expect(within(region).queryByRole("link", { name: "Open" })).not.toBeInTheDocument();
 
     const active = within(region)
       .getByRole("heading", { level: 3, name: "Effective Communication" })
       .closest("a") as HTMLElement;
-    // "50%" uma vez (o numero ao lado da barra), sem "50% COMPLETE" visivel.
+    // "50%" once (the number next to the bar), with no visible "50% COMPLETE".
     expect(within(active).getAllByText("50%")).toHaveLength(1);
-    // Ativo e o normal: sem selo "Active"; no lugar, onde a pessoa parou.
+    // Active is the normal state: no "Active" badge; in its place, where the person stopped.
     expect(within(active).queryByText("Active")).not.toBeInTheDocument();
     expect(within(active).getByText("Module 2 · Lesson 2")).toBeInTheDocument();
 
@@ -402,7 +402,7 @@ describe("LearnDashboard", () => {
     expect(within(done).getByText("Completed")).toBeInTheDocument();
   });
 
-  it("matricula estornada nao vira link: cartao parado com o selo do status", async () => {
+  it("a refunded enrollment does not become a link: a stopped card with the status badge", async () => {
     fixtures.enrollments = [{ ...fixtures.base[0], status: "refunded" }];
     render(<LearnDashboard />);
 
@@ -412,7 +412,7 @@ describe("LearnDashboard", () => {
     expect(within(title.closest("article") as HTMLElement).getByText("Refunded")).toBeInTheDocument();
   });
 
-  it("'What's new' vazio nao aparece e nao empurra 'My courses' para baixo", async () => {
+  it("an empty 'What's new' does not show and does not push 'My courses' down", async () => {
     const saved = fixtures.notifications;
     fixtures.notifications = [];
     try {
@@ -425,14 +425,14 @@ describe("LearnDashboard", () => {
     }
   });
 
-  it("um curso fora do catalogo publico ainda retoma na aula: o painel busca so os cursos da pessoa, por id, uma vez", async () => {
-    // Despublicado, ou alem dos 200 que o catalogo baixava: antes o cartao
-    // nunca achava o curso e abria a capa generica.
+  it("a course outside the public catalog still resumes on the lesson: the dashboard fetches only the person's courses, by id, once", async () => {
+    // Unpublished, or beyond the 200 the catalog downloaded: before, the card
+    // never found the course and opened the generic cover.
     const purchase: Enrollment = {
       ...fixtures.base[0],
       id: "enrollment-real",
       courseId: "course-real",
-      // O webhook do Stripe grava o id em course_slug.
+      // The Stripe webhook writes the id in course_slug.
       courseSlug: "course-real",
       courseTitle: "Private Coaching Lab",
       lastLessonId: "r1",
@@ -466,16 +466,16 @@ describe("LearnDashboard", () => {
       ),
     );
     expect(fixtures.fetchedIds).toEqual([["course-real"]]);
-    // A mesma lista desce para as fileiras de baixo, sem segunda busca.
+    // The same list goes down to the rows below, with no second fetch.
     expect(screen.getByText("Learning paths: course-real")).toBeInTheDocument();
 
-    // Progresso salvo re-emite as matriculas; os cursos sao os mesmos, entao
-    // nada e baixado de novo.
+    // Saved progress re-emits the enrollments; the courses are the same, so
+    // nothing is downloaded again.
     act(() => fixtures.emitEnrollments([{ ...purchase, progressPercent: 60 }]));
     expect(fixtures.fetchedIds).toEqual([["course-real"]]);
   });
 
-  it("com poucos cursos nao ha busca nem filtro, e o concluido aparece junto", async () => {
+  it("with few courses there is no search or filter, and the completed one shows together", async () => {
     render(<LearnDashboard />);
 
     const region = await screen.findByRole("region", { name: "My courses" });
@@ -488,8 +488,8 @@ describe("LearnDashboard", () => {
     }
   });
 
-  it("o filtro Completed esconde a em andamento, e In progress e o padrao", async () => {
-    // Busca e filtro so aparecem com mais de 6 cursos.
+  it("the Completed filter hides the in-progress one, and In progress is the default", async () => {
+    // Search and filter only show with more than 6 courses.
     fixtures.enrollments = [...fixtures.base, ...extraEnrollments(5)];
     render(<LearnDashboard />);
 
@@ -510,25 +510,25 @@ describe("LearnDashboard", () => {
     expect(
       within(region).queryByRole("heading", { level: 3, name: "Effective Communication" }),
     ).not.toBeInTheDocument();
-    // Filtro, nao abas: a escolha vai no proprio botao (aria-pressed).
+    // A filter, not tabs: the choice goes on the button itself (aria-pressed).
     expect(within(region).getByRole("button", { name: "Completed" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
   });
 
-  it("nenhum 'Request refund' no cartao, e o aviso de reembolso nao aparece a cada visita", async () => {
+  it("no 'Request refund' on the card, and the refund notice does not show on every visit", async () => {
     render(<LearnDashboard />);
 
     await screen.findByRole("region", { name: "My courses" });
     expect(screen.queryByRole("button", { name: /refund/i })).not.toBeInTheDocument();
-    // Nenhuma compra dentro da janela de reembolso: nada a dizer.
+    // No purchase inside the refund window: nothing to say.
     expect(
       screen.queryByRole("link", { name: "My purchases" }),
     ).not.toBeInTheDocument();
   });
 
-  it("com uma compra ainda dentro da janela de reembolso, aponta My purchases", async () => {
+  it("with a purchase still inside the refund window, it points to My purchases", async () => {
     fixtures.enrollments = [
       ...fixtures.base,
       {
@@ -545,7 +545,7 @@ describe("LearnDashboard", () => {
     ).toHaveAttribute("href", "/account/billing?tab=purchases");
   });
 
-  it("assinatura recente nao mostra o aviso: ela nao gera pedido, nao ha o que reembolsar em Purchases", async () => {
+  it("a recent subscription does not show the notice: it generates no order, there is nothing to refund in Purchases", async () => {
     fixtures.enrollments = [
       ...fixtures.base,
       {
@@ -563,7 +563,7 @@ describe("LearnDashboard", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("curso concluido abre na capa da area de membros, nao na ultima aula", async () => {
+  it("a completed course opens on the members area cover, not on the last lesson", async () => {
     fixtures.enrollments = [
       {
         ...fixtures.base[0],
@@ -581,7 +581,7 @@ describe("LearnDashboard", () => {
     );
   });
 
-  it("mostra a proxima live com 'Join' e as tres ultimas novidades com destino", async () => {
+  it("shows the next live with 'Join' and the last three news items with a destination", async () => {
     render(<LearnDashboard />);
 
     const lives = await screen.findByRole("region", { name: "Upcoming lives" });
@@ -595,17 +595,17 @@ describe("LearnDashboard", () => {
     expect(
       within(news).getByRole("link", { name: /Ana replied to your post/ }),
     ).toHaveAttribute("href", "/learn/community/effective-communication?post=1");
-    // O mesmo destino do sino (notificationHref): a mensagem do professor
-    // abre a conversa, nao a sala inteira.
+    // The same destination as the bell (notificationHref): the teacher's message
+    // opens the conversation, not the whole classroom.
     expect(
       within(news).getByRole("link", { name: /Message from your teacher/ }),
     ).toHaveAttribute("href", "/learn/messages?course=effective-communication");
     expect(within(news).getByText("Certificate issued")).toBeInTheDocument();
-    // A quarta fica para o sino e a caixa de entrada.
+    // The fourth is left for the bell and the inbox.
     expect(within(news).queryByText("Older notification")).not.toBeInTheDocument();
   });
 
-  it("sem live marcada, a coluna some em vez de gastar meia linha dizendo isso, e a metrica some", async () => {
+  it("with no live scheduled, the column disappears instead of spending half a line saying so, and the metric disappears", async () => {
     fixtures.events = [];
     render(<LearnDashboard />);
 
@@ -628,8 +628,8 @@ describe("LearnDashboard", () => {
     },
   );
 
-  // Antes a live saia do painel no minuto em que comecava, levando o "Join".
-  it("a live que esta acontecendo fica no painel, com 'Happening now' e 'Join'; a que acabou sai", async () => {
+  // Before, the live left the dashboard the minute it started, taking the "Join" with it.
+  it("a live that is happening stays on the dashboard, with 'Happening now' and 'Join'; one that ended leaves", async () => {
     fixtures.events = [
       { ...fixtures.liveEvent, id: "running", title: "Running Q&A", startsAt: new Date(Date.now() - 30 * 60_000).toISOString() },
       { ...fixtures.liveEvent, id: "over", title: "Finished Q&A", startsAt: new Date(Date.now() - 4 * 60 * 60_000).toISOString() },
@@ -643,7 +643,7 @@ describe("LearnDashboard", () => {
     expect(within(lives).queryByText("Finished Q&A")).not.toBeInTheDocument();
   });
 
-  it("um prazo sem link diz que e uma data de entrega, nao 'link indisponivel'", async () => {
+  it("a deadline with no link says it is a due date, not 'link unavailable'", async () => {
     fixtures.events = [{ ...fixtures.liveEvent, type: "deadline", externalUrl: "" }];
     render(<LearnDashboard />);
 
@@ -652,8 +652,8 @@ describe("LearnDashboard", () => {
     expect(lives).not.toHaveTextContent("The join link has not been added yet.");
   });
 
-  // Prazo nao e live: nada de "Happening now" por 3 h depois de vencer.
-  it("um prazo com link: 'Due:' e 'Open link'; vencido, sai do painel sem 'Happening now'", async () => {
+  // A deadline is not a live: no "Happening now" for 3 h after it is overdue.
+  it("a deadline with a link: 'Due:' and 'Open link'; overdue, it leaves the dashboard without 'Happening now'", async () => {
     fixtures.events = [
       { ...fixtures.liveEvent, id: "due", title: "Essay due", type: "deadline" },
       { ...fixtures.liveEvent, id: "late", title: "Quiz due", type: "deadline", startsAt: new Date(Date.now() - 30 * 60_000).toISOString() },
@@ -678,13 +678,13 @@ describe("LearnDashboard", () => {
     expect(join).toHaveAttribute("rel", "noreferrer");
   });
 
-  // A agenda saiu da barra lateral do aluno (quatro itens fixos); o caminho
-  // ate ela fica no topo de My courses, na mesma aba, com ou sem live marcada:
-  // e em /learn/events que estao as lives que ja passaram.
+  // The schedule left the student's sidebar (four fixed items); the path
+  // to it sits at the top of My courses, in the same tab, with or without a live scheduled:
+  // the lives that already passed are in /learn/events.
   it.each([
     ["com live marcada", true],
     ["sem live marcada", false],
-  ])("o link para a agenda inteira esta sempre a vista (%s)", async (_label, hasLive) => {
+  ])("the link to the whole schedule is always in view (%s)", async (_label, hasLive) => {
     if (!hasLive) fixtures.events = [];
     render(<LearnDashboard />);
 
@@ -695,7 +695,7 @@ describe("LearnDashboard", () => {
     expect(Boolean(screen.queryByRole("region", { name: "Upcoming lives" }))).toBe(hasLive);
   });
 
-  it("a data da proxima live sai no idioma da pessoa", async () => {
+  it("the next live's date comes out in the person's language", async () => {
     render(<I18nProvider initialLocale="es"><LearnDashboard /></I18nProvider>);
 
     expect(await screen.findByText(
@@ -703,9 +703,9 @@ describe("LearnDashboard", () => {
     )).toBeInTheDocument();
   });
 
-  it("um nome com $& na saudacao aparece literal, sem virar '{name}'", async () => {
-    // Num replace sem callback, "$&" vira o trecho casado ("{name}") e "$'" o
-    // resto da frase. O nome vem do cadastro: e texto da pessoa, nao nosso.
+  it("a name with $& in the greeting shows up literally, without becoming '{name}'", async () => {
+    // In a replace without a callback, "$&" becomes the matched text ("{name}") and "$'" the
+    // rest of the sentence. The name comes from the sign-up: it is the person's text, not ours.
     mockUser.displayName = "Mc$&Donald Simon";
     try {
       render(<LearnDashboard />);

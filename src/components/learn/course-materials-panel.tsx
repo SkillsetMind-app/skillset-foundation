@@ -10,7 +10,7 @@ import { compareCourseAssets, formatCourseAssetSize, getCourseAssetTitle } from 
 import type { CourseModule, Lesson } from "@/domain/learning";
 
 export type CourseMaterialGroups = {
-  /** Arquivos do curso inteiro (sem aula), de cursos antigos. */
+  /** Files of the whole course (no lesson), from old courses. */
   courseFiles: CourseAsset[];
   modules: Array<{
     module: CourseModule;
@@ -20,14 +20,14 @@ export type CourseMaterialGroups = {
 };
 
 /**
- * A aba Materiais: os arquivos de todas as aulas JÁ liberadas, por módulo e
- * aula, na ordem do currículo e na ordem que o professor deu. Antes ela só
- * listava arquivo do curso inteiro, que ninguém mais consegue enviar, e vivia
+ * The Materials tab: the files of all the lessons ALREADY unlocked, by module and
+ * lesson, in curriculum order and in the order the teacher gave. Before, it only
+ * listed whole-course files, which nobody can upload anymore, and lived
  * vazia.
  *
- * A RLS já não entrega a linha da aula fechada (20260915020000); o filtro pela
- * liberação da tela é a mesma regra, para nada aparecer antes de a aula abrir
- * na lista de aulas. Aula fora do currículo não entra.
+ * RLS already does not deliver the closed lesson's row (20260915020000); filtering by the
+ * screen's unlock is the same rule, so nothing shows up before the lesson opens
+ * in the lesson list. A lesson outside the curriculum does not come in.
  */
 export function groupReleasedMaterials(
   modules: CourseModule[],
@@ -63,7 +63,7 @@ export function CourseMaterialsPanel({
   return (
     <section className="member-resource-panel">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        {/* Sem o selo "N files": a aba "Materials N" logo acima já diz. */}
+        {/* No "N files" badge: the "Materials N" tab right above already says it. */}
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
             {t("learn.classroom.resources.title")}
@@ -74,8 +74,8 @@ export function CourseMaterialsPanel({
         </div>
       </div>
       {isLoading ? (
-        // A espera com a forma das linhas de arquivo, no osso da sala
-        // (--ma-line), e a frase só para o leitor de tela.
+        // The wait with the shape of the file rows, in the classroom's bone color
+        // (--ma-line), and the sentence only for the screen reader.
         <div role="status" className="mt-5 grid gap-2">
           <span className="sr-only">{t("learn.classroom.resources.loading")}</span>
           {[0, 1].map((row) => (
@@ -115,7 +115,7 @@ export function CourseMaterialsPanel({
   );
 }
 
-/** Uma linha por arquivo: nome, tamanho e o botão que baixa. */
+/** One row per file: name, size and the button that downloads. */
 export function MaterialFileList({ files, large = false }: { files: CourseAsset[]; large?: boolean }) {
   const { t } = useTranslation();
   return (
@@ -135,8 +135,8 @@ export function MaterialFileList({ files, large = false }: { files: CourseAsset[
                 <MaterialAppHint fileName={asset.fileName} />
               </div>
             </div>
-            {/* Botão cheio só na aula que é só o arquivo (`large`). Na lista,
-                contorno: dez arquivos eram dez botões cheios iguais. */}
+            {/* Solid button only on a lesson that is just the file (`large`). In the list,
+                outline: ten files were ten identical solid buttons. */}
             <ProtectedAssetDownload
               asset={asset}
               label={t("courseMedia.preview.downloadNamed").replace("{title}", () => title)}
@@ -150,13 +150,13 @@ export function MaterialFileList({ files, large = false }: { files: CourseAsset[
 }
 
 /**
- * Ações de um anexo dentro da aula: "Preview" e "Download", discretos. A
- * prévia (PDF de 320px, imagem, vídeo extra) só monta quando a pessoa pede:
- * antes cada anexo já vinha aberto e três PDFs somavam ~1.100px de documento
- * embutido, além de um pedido de link por arquivo ao abrir a aula.
+ * Actions for an attachment inside the lesson: "Preview" and "Download", discreet. The
+ * preview (320px PDF, image, extra video) only mounts when the person asks:
+ * before, every attachment came already open and three PDFs added up to ~1,100px of embedded
+ * document, besides one link request per file when opening the lesson.
  *
- * Um botão só, que troca o rótulo e o aria-expanded: trocar de elemento
- * tirava o foco do teclado e o leitor de tela perdia o lugar.
+ * A single button, which swaps the label and the aria-expanded: swapping the element
+ * took keyboard focus away and the screen reader lost its place.
  */
 export function LessonAssetActions({ asset }: { asset: CourseAsset }) {
   const { t } = useTranslation();
@@ -164,12 +164,12 @@ export function LessonAssetActions({ asset }: { asset: CourseAsset }) {
   const title = getCourseAssetTitle(asset);
   const type = asset.contentType;
   const isVideo = type.startsWith("video/");
-  // Áudio e texto não têm prévia embutida: aberta, ela mostra "Open file" (o
-  // mp3 toca no navegador) e "Download", como antes.
+  // Audio and text have no embedded preview: open, it shows "Open file" (the
+  // mp3 plays in the browser) and "Download", as before.
   const previewable = /^(video|image|audio|text)\//.test(type) || type === "application/pdf";
 
-  // Os outros tipos (docx, mapa mental...) ficam como eram: "Open file" e
-  // "Download" logo de cara. Nada do que a pessoa fazia antes some.
+  // The other types (docx, mind map...) stay as they were: "Open file" and
+  // "Download" right away. Nothing the person did before goes away.
   if (!previewable) {
     return <ProtectedAssetPreview asset={asset} />;
   }
@@ -186,8 +186,8 @@ export function LessonAssetActions({ asset }: { asset: CourseAsset }) {
         >
           {t(open ? "courseMedia.preview.hide" : "courseMedia.preview.show")}
         </button>
-        {/* Aberta, a prévia de imagem, PDF, áudio e texto já traz o próprio
-            "Download"; a de vídeo (só o player) não. */}
+        {/* Open, the image, PDF, audio and text preview already brings its own
+            "Download"; the video one (just the player) does not. */}
         {open && !isVideo ? null : (
           <ProtectedAssetDownload
             asset={asset}
@@ -202,9 +202,9 @@ export function LessonAssetActions({ asset }: { asset: CourseAsset }) {
 }
 
 /**
- * Mapa mental (.xmind, .mm) não abre no celular nem no computador sem um
- * programa próprio: quem baixava ficava com um arquivo "que não abre". Uma
- * linha diz qual programa gratuito usar.
+ * A mind map (.xmind, .mm) does not open on the phone or the computer without its
+ * own program: whoever downloaded it was left with a file that "does not open". A
+ * line says which free program to use.
  */
 export function MaterialAppHint({ fileName }: { fileName: string }) {
   const { t } = useTranslation();

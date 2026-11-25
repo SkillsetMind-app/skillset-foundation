@@ -34,7 +34,7 @@ export function CourseSubscriptionCard({
   const [pending, setPending] = useState(false);
   const [readError, setReadError] = useState(false);
   const [actionError, setActionError] = useState<"cancelError" | "undoError" | null>(null);
-  // "Try again" da leitura: relê pela mesma inscrição; o foco fica no cartão.
+  // "Try again" for the read: re-reads through the same subscription; focus stays on the card.
   const readSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -139,8 +139,8 @@ export function CourseSubscriptionCard({
       ) : (
         <>
           {pastDue ? (
-            // Aviso, não erro: é um estado da assinatura que pede ação, e não
-            // pode interromper o leitor de tela a cada vez que o cartão abre.
+            // A notice, not an error: it is a subscription state that asks for action, and it must not
+            // interrupt the screen reader every time the card opens.
             <InlineAlert tone="warning" className="mt-3 px-3 py-2">
               {t(`${copy}.paymentAttention`)}
             </InlineAlert>

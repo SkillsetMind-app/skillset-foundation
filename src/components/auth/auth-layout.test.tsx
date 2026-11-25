@@ -83,7 +83,7 @@ describe("the auth frame stays consistent during recovery and loading", () => {
 
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(within(screen.getByRole("main")).getByRole("heading", { level: 1, name: "Opening SkillsetMind..." })).toBeInTheDocument();
-    // F-10: a mesma espera do /loading e da área protegida, lida pelo leitor de tela.
+    // F-10: the same wait as /loading and the protected area, read by the screen reader.
     expect(screen.getByRole("status")).toHaveTextContent("Opening SkillsetMind...");
   });
 

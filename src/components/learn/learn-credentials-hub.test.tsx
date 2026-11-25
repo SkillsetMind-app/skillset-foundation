@@ -64,12 +64,12 @@ describe("credentials hub eligibility", () => {
 });
 
 describe("credentials hub hierarchy", () => {
-  // O desenho proprio pintava o hover igual ao filtro escolhido; agora e o
-  // seletor segmentado da casa, com a escolha no proprio botao.
-  it("os filtros sao o seletor segmentado da casa e filtram a lista", () => {
+  // The custom design painted the hover the same as the chosen filter; now it is the
+  // house segmented selector, with the choice on the button itself.
+  it("the filters are the house segmented selector and filter the list", () => {
     show({ ...finished, status: "active", progressPercent: 40 });
     const group = screen.getByRole("group", { name: "Credential filters" });
-    // Quebra a linha: a 360px em espanhol os quatro ficam a vista, sem rolagem.
+    // Wraps the line: at 360px in Spanish all four stay in view, with no scrolling.
     expect(group).toHaveClass("studio-range-tabs", "studio-range-tabs--wrap");
     expect(within(group).getByRole("button", { name: "All 1" })).toHaveAttribute("aria-pressed", "true");
 
@@ -124,8 +124,8 @@ describe("credentials hub issuance errors", () => {
 });
 
 describe("credentials hub load errors", () => {
-  // A falha de leitura era um beco: a única saída era recarregar o navegador.
-  it("a falha das matrículas oferece Try again, que relê pelo mesmo canal", async () => {
+  // The read failure was a dead end: the only way out was to reload the browser.
+  it("an enrollments failure offers Try again, which re-reads through the same channel", async () => {
     const reload = vi.fn(async () => undefined);
     let next: (rows: Enrollment[]) => void = () => {};
     mocks.enrollments.mockImplementation((_uid, onData, onError) => {
@@ -141,7 +141,7 @@ describe("credentials hub load errors", () => {
     expect(reload).toHaveBeenCalledTimes(1);
     expect(mocks.enrollments).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-    // O botão some com o clique: o foco fica na moldura do painel, não no <body>.
+    // The button disappears on click: focus stays on the panel frame, not on <body>.
     const frame = document.activeElement as HTMLElement;
     expect(frame).not.toBe(document.body);
     expect(frame).toHaveAttribute("tabindex", "-1");
@@ -153,9 +153,9 @@ describe("credentials hub load errors", () => {
     expect(frame).toContainElement(screen.getByRole("heading", { name: "Finished course" }));
   });
 
-  // Os certificados agora têm releitura: "Try again" relê só eles, e a lista
-  // não aparece sem os emitidos (até a resposta vale o "carregando").
-  it("a falha dos certificados oferece Try again, que relê só os certificados", () => {
+  // Certificates now have a re-read: "Try again" re-reads only them, and the list
+  // does not show without the issued ones (until the answer arrives, "loading" applies).
+  it("a certificates failure offers Try again, which re-reads only the certificates", () => {
     const enrollmentsReload = vi.fn(async () => undefined);
     const certificatesReload = vi.fn(async () => undefined);
     let deliver: (rows: Certificate[]) => void = () => {};
@@ -181,7 +181,7 @@ describe("credentials hub load errors", () => {
     expect(screen.queryByRole("heading", { name: "Finished course" })).not.toBeInTheDocument();
     expect(document.activeElement).toHaveTextContent("Loading credentials");
 
-    // Falhou de novo: o erro volta, com o botão.
+    // Failed again: the error comes back, with the button.
     act(() => fail(new Error("network")));
     expect(screen.getByRole("alert")).toHaveTextContent("We could not load your issued certificate records.");
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));

@@ -4,8 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { OnboardingChoice } from "@/components/auth/onboarding-choice";
 import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 
-// Aceitar os termos de professor publica o perfil (20261006020000): a tela diz
-// o que fica público e onde, ao lado da caixa dos termos.
+// Accepting the teacher terms publishes the profile (20261006020000): the screen says
+// what becomes public and where, next to the terms checkbox.
 const mocks = vi.hoisted(() => ({
   router: { push: vi.fn(), replace: vi.fn() },
   searchParams: new URLSearchParams("path=teacher"),
@@ -47,14 +47,14 @@ async function signIn() {
   });
 }
 
-describe("OnboardingChoice: o perfil de professor é público", () => {
+describe("OnboardingChoice: the teacher profile is public", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.listeners = [];
   });
   afterEach(cleanup);
 
-  it("ativação rápida: diz o endereço com o @ que o professor já tem", async () => {
+  it("quick activation: states the address with the @ the teacher already has", async () => {
     mocks.getUserProfile.mockResolvedValue({
       onboardingCompleted: true,
       onboardingPath: "teacher",
@@ -70,9 +70,9 @@ describe("OnboardingChoice: o perfil de professor é público", () => {
     )).toBeInTheDocument();
   });
 
-  // O-22: a ativação rápida não tem campo de @. Sem um, o exemplo "@your-name"
-  // parecia o endereço da pessoa; o aviso de que o perfil é público continua.
-  it("ativação rápida sem @: diz que é público sem inventar o endereço", async () => {
+  // O-22: the quick activation has no @ field. Without one, the example "@your-name"
+  // looked like the person's address; the notice that the profile is public stays.
+  it("quick activation without @: says it is public without inventing the address", async () => {
     mocks.getUserProfile.mockResolvedValue({
       onboardingCompleted: true,
       onboardingPath: "teacher",
@@ -89,7 +89,7 @@ describe("OnboardingChoice: o perfil de professor é público", () => {
     expect(screen.queryByText(/@your-name/)).toBeNull();
   });
 
-  it("fluxo completo, antes de escolher o @: mostra o formato do endereço", async () => {
+  it("full flow, before choosing the @: shows the address format", async () => {
     mocks.getUserProfile.mockResolvedValue(null);
     render(<OnboardingChoice />);
     await signIn();

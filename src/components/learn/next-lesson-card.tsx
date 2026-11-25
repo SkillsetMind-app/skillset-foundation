@@ -7,27 +7,27 @@ import type { Lesson } from "@/domain/learning";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 
 const COUNTDOWN_SECONDS = 5;
-/** O aviso entra na região viva um instante DEPOIS de ela existir. */
+/** The notice enters the live region a moment AFTER it exists. */
 const ANNOUNCE_DELAY_MS = 50;
-/** Tem que bater com a transição de `.member-next-lesson.is-leaving`
- *  (--duration-base, o tempo padrão do sistema). */
+/** Must match the transition of `.member-next-lesson.is-leaving`
+ *  (--duration-base, the system's standard time). */
 const EXIT_MS = 180;
 
-// O cartão "Próxima aula" que sobe sobre o vídeo quando ele termina.
+// The "Next lesson" card that slides up over the video when it ends.
 //
 // POR QUE ISTO EXISTE
 //
-// O avanço automático já existia — só acontecia em silêncio: a aula mudava sem
-// aviso, sem "cancelar", e o próximo vídeo carregava mas não tocava. Se o
-// aluno tinha rolado até a discussão, a troca acontecia fora da tela: ele
-// voltava e encontrava outro vídeo, sem saber por quê.
+// The automatic advance already existed — it just happened in silence: the lesson changed with no
+// notice, no "cancel", and the next video loaded but did not play. If the
+// learner had scrolled down to the discussion, the switch happened off screen: they
+// came back and found another video, without knowing why.
 //
-// Aqui: título da próxima aula, contagem de 5 s com anel, "Assistir agora" e
-// "Cancelar". Sem ação, a próxima começa (o pai troca a aula e pede autoplay).
+// Here: the next lesson's title, a 5 s countdown with a ring, "Watch now" and
+// "Cancel". With no action, the next one starts (the parent switches the lesson and asks for autoplay).
 //
-// Entrada e saída são do cartão, não do pai: ele entra subindo (CSS) e, ao
-// cancelar, marca `is-leaving`, desce, e SÓ ENTÃO avisa o pai — que o
-// desmonta. Sem isso o cartão sumia no mesmo quadro em que aparecia.
+// Entry and exit belong to the card, not the parent: it slides up (CSS) and, on
+// cancel, sets `is-leaving`, slides down, and ONLY THEN notifies the parent — which
+// unmounts it. Without this the card disappeared in the same frame it appeared.
 export function NextLessonCard({
   lesson,
   onCancel,
@@ -40,17 +40,17 @@ export function NextLessonCard({
   const { t } = useTranslation();
   const [secondsLeft, setSecondsLeft] = useState(COUNTDOWN_SECONDS);
   const [leaving, setLeaving] = useState(false);
-  // Região viva que já nasce com o texto muitas vezes não é lida (NVDA/JAWS
-  // anunciam MUDANÇAS): ela monta vazia e o texto chega 50ms depois. Timer
-  // próprio, fora da contagem e da navegação.
+  // A live region that is born with its text is often not read (NVDA/JAWS
+  // announce CHANGES): it mounts empty and the text arrives 50ms later. Its own
+  // timer, separate from the countdown and the navigation.
   const [announced, setAnnounced] = useState(false);
   useEffect(() => {
     const timer = window.setTimeout(() => setAnnounced(true), ANNOUNCE_DELAY_MS);
     return () => window.clearTimeout(timer);
   }, []);
 
-  // Saindo: a contagem para (senão o cartão em queda ainda trocaria de aula) e
-  // o pai só desmonta quando a animação termina.
+  // Leaving: the countdown stops (otherwise the falling card would still switch lessons) and
+  // the parent only unmounts when the animation ends.
   useEffect(() => {
     if (!leaving) {
       return;
@@ -79,17 +79,17 @@ export function NextLessonCard({
 
   const progress = 1 - secondsLeft / COUNTDOWN_SECONDS;
 
-  // Aviso para leitor de tela: UMA vez, quando o cartão aparece. Antes o cartão
-  // inteiro era aria-live e o número mudava a cada segundo, então o leitor
-  // relia o cartão cinco vezes. O texto usa a contagem inicial (constante),
-  // não `secondsLeft`, para não mudar a cada tique; a contagem visível fica
-  // fora da árvore de acessibilidade.
+  // Notice for the screen reader: ONCE, when the card appears. Before, the whole card
+  // was aria-live and the number changed every second, so the reader
+  // re-read the card five times. The text uses the initial count (a constant),
+  // not `secondsLeft`, so it does not change on every tick; the visible countdown stays
+  // outside the accessibility tree.
   const announcement = t("learn.classroom.nextLesson.announce")
     .replace("{seconds}", () => String(COUNTDOWN_SECONDS))
     .replace("{title}", () => lesson.title);
 
-  // Região rotulada, não diálogo: o cartão não prende o foco nem bloqueia o
-  // vídeo, e "dialog" prometia ao leitor de tela uma janela que não existe.
+  // A labeled region, not a dialog: the card does not trap focus or block the
+  // video, and "dialog" promised the screen reader a window that does not exist.
   return (
     <div
       role="region"
@@ -110,23 +110,23 @@ export function NextLessonCard({
       <p className="sr-only" role="status">
         {announced ? announcement : ""}
       </p>
-      {/* basis-28 + flex-wrap: no celular o título ficava com 63 a 103px numa
-          linha só ("1.2 What Em…"). Agora ele ocupa a linha, em até duas
-          linhas, e os botões descem para a direita. Do sm para cima o cartão
-          se ajusta ao conteúdo e não quebra (sm:flex-nowrap): com título
-          curto os botões desciam à toa. */}
+      {/* basis-28 + flex-wrap: on the phone the title got 63 to 103px on a
+          single line ("1.2 What Em…"). Now it takes the line, in up to two
+          lines, and the buttons drop down to the right. From sm up the card
+          fits its content and does not wrap (sm:flex-nowrap): with a short
+          title the buttons dropped down for no reason. */}
       <div className="min-w-0 flex-1 basis-28">
-        {/* A contagem fica só no anel; aqui, "Next lesson" parado (o mesmo
-            nome da região, por isso fora da árvore de acessibilidade). */}
+        {/* The countdown stays only in the ring; here, a static "Next lesson" (the same
+            name as the region, so it is outside the accessibility tree). */}
         <p aria-hidden="true" className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/70">
           {t("learn.classroom.nextLesson.title")}
         </p>
         <p className="line-clamp-2 break-words text-sm font-semibold">{lesson.title}</p>
       </div>
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
-        {/* button-solid: na sala ele pinta com a cor do curso e o texto que
-            ela pede (--ma-accent / --ma-on-accent). O dourado da plataforma
-            com texto branco dava 2.56:1. */}
+        {/* button-solid: in the room it paints with the course color and the text
+            it asks for (--ma-accent / --ma-on-accent). The platform gold
+            with white text gave 2.56:1. */}
         <button
           type="button"
           onClick={onPlay}

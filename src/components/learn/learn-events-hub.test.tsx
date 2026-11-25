@@ -6,8 +6,8 @@ import { LearnEventsHub } from "@/components/learn/learn-events-hub";
 import { formatEventDateTime, type CourseEvent } from "@/domain/course-event";
 import type { Enrollment } from "@/domain/enrollment";
 
-// O MESMO usuario em todo render: a inscricao das matriculas depende de
-// `user`, e um objeto novo a cada render reinscreveria em laco.
+// The SAME user on every render: the enrollments subscription depends on
+// `user`, and a new object on each render would resubscribe in a loop.
 const mocks = vi.hoisted(() => {
   const startsAt = "2026-03-14T15:30:00.000Z";
   const base = {
@@ -41,15 +41,15 @@ const mocks = vi.hoisted(() => {
   return {
     user: { uid: "student-1", roles: ["student"] }, startsAt, enrollment, events, base,
     rsvp: null as { status: "attending" | "not_attending" } | null,
-    // Os eventos que abriram um canal de presenca.
+    // The events that opened a presence channel.
     rsvpEvents: [] as string[],
-    // A opcao com que a agenda le as sessoes.
+    // The option the schedule reads the sessions with.
     options: undefined as unknown,
     enrollments: null as Enrollment[] | null,
   };
 });
 
-// O I18nProvider chama useRouter() para o refresh ao trocar de idioma.
+// The I18nProvider calls useRouter() for the refresh when the language changes.
 const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }));
 vi.mock("next/navigation", async (importOriginal) => ({
   ...await importOriginal<typeof import("next/navigation")>(),
@@ -75,7 +75,7 @@ vi.mock("@/lib/data/course-events", () => ({
     options?: unknown,
   ) => {
     mocks.options = options;
-    // Em ordem de inicio, como a fonte devolve.
+    // In start order, as the source returns them.
     onData([...mocks.events].sort((a, b) => a.startsAt.localeCompare(b.startsAt)));
     return () => undefined;
   },
@@ -87,10 +87,10 @@ vi.mock("@/lib/data/course-events", () => ({
   saveCourseEventRsvp: vi.fn(),
 }));
 
-// O hub inteiro ainda fala ingles; so a data passou a seguir o idioma da
-// pessoa, e a data invalida mostra o texto traduzido em vez de "Date pending".
+// The whole hub still speaks English; only the date now follows the person's
+// language, and an invalid date shows the translated text instead of "Date pending".
 describe("LearnEventsHub", () => {
-  it("a data de cada sessao sai no idioma da pessoa; data invalida vira 'Fecha pendiente'", async () => {
+  it("each session's date comes out in the person's language; an invalid date becomes 'Fecha pendiente'", async () => {
     render(<I18nProvider initialLocale="es"><LearnEventsHub /></I18nProvider>);
 
     expect(await screen.findByText(
@@ -99,13 +99,13 @@ describe("LearnEventsHub", () => {
     expect(screen.getByText("Fecha pendiente")).toBeInTheDocument();
   });
 
-  it("as proximas primeiro; as que ja passaram ficam numa parte 'Past' fechada, sem pedir presenca", () => {
+  it("upcoming first; the ones that already passed go in a closed 'Past' part, with no attendance request", () => {
     const saved = mocks.events;
     const hour = 3_600_000;
     mocks.events = [
       { ...mocks.base, id: "old", title: "Old session", startsAt: "2026-03-14T15:30:00.000Z" },
       { ...mocks.base, id: "next", title: "Next session", startsAt: new Date(Date.now() + 48 * hour).toISOString() },
-      // Comecou ha 1h: pode estar rolando, fica em Upcoming com o link de entrar.
+      // Started 1h ago: it may still be going, it stays in Upcoming with the join link.
       { ...mocks.base, id: "running", title: "Running session", startsAt: new Date(Date.now() - hour).toISOString() },
     ];
     try {
@@ -118,13 +118,13 @@ describe("LearnEventsHub", () => {
       const old = screen.getByRole("heading", { name: "Old session" });
       const past = old.closest("details") as HTMLElement;
       expect(past).not.toHaveAttribute("open");
-      // Cabecalho proprio: os cartoes passados nao ficam sob "Upcoming".
+      // Its own heading: the past cards do not sit under "Upcoming".
       expect(within(past).getByRole("heading", { level: 2, name: /Past/ })).toBeInTheDocument();
       expect(within(past).queryByRole("button", { name: "I will attend" })).not.toBeInTheDocument();
       expect(within(past).queryByRole("link", { name: "Join external session" })).not.toBeInTheDocument();
-      // Nem um canal de presenca por cartao passado.
+      // Not one presence channel per past card either.
       expect(mocks.rsvpEvents).not.toContain("old");
-      // A que passou diz "Held" (antes "Scheduled"); a que esta rolando, "Happening now".
+      // The one that passed says "Held" (before "Scheduled"); the one in progress, "Happening now".
       expect(within(past).getByText("Held")).toBeInTheDocument();
       expect(within(past).queryByText("Scheduled")).not.toBeInTheDocument();
       const running = screen.getByRole("heading", { name: "Running session" }).closest("article") as HTMLElement;
@@ -134,7 +134,7 @@ describe("LearnEventsHub", () => {
     }
   });
 
-  it("a resposta escolhida fica marcada no proprio botao (aria-pressed)", () => {
+  it("the chosen answer is marked on the button itself (aria-pressed)", () => {
     const saved = mocks.events;
     mocks.events = [
       { ...mocks.base, id: "next", title: "Next session", startsAt: new Date(Date.now() + 48 * 3_600_000).toISOString() },
@@ -146,7 +146,7 @@ describe("LearnEventsHub", () => {
       const group = screen.getByRole("group", { name: "Attendance" });
       expect(within(group).getByRole("button", { name: "I will attend" })).toHaveAttribute("aria-pressed", "false");
       expect(within(group).getByRole("button", { name: "I cannot attend" })).toHaveAttribute("aria-pressed", "true");
-      // O texto "Not going" num quadro a parte saiu.
+      // The "Not going" text in a separate box is gone.
       expect(screen.queryByText("Not going")).not.toBeInTheDocument();
     } finally {
       mocks.events = saved;
@@ -154,7 +154,7 @@ describe("LearnEventsHub", () => {
     }
   });
 
-  it("a resposta salva fica marcada na hora, sem esperar o tempo real", async () => {
+  it("the saved answer is marked right away, without waiting for realtime", async () => {
     const saved = mocks.events;
     mocks.events = [
       { ...mocks.base, id: "next", title: "Next session", startsAt: new Date(Date.now() + 48 * 3_600_000).toISOString() },
@@ -173,7 +173,7 @@ describe("LearnEventsHub", () => {
     }
   });
 
-  it("a cancelada aparece marcada, com a hora riscada, sem link nem presenca; depois de 7 dias some", () => {
+  it("a canceled session shows as marked, with the time struck through, no link and no attendance; after 7 days it disappears", () => {
     const saved = mocks.events;
     const hour = 3_600_000;
     const startsAt = new Date(Date.now() + 24 * hour).toISOString();
@@ -198,7 +198,7 @@ describe("LearnEventsHub", () => {
     }
   });
 
-  it("'Updated' com a data quando a sessao mudou depois de criada; o prazo sem link diz que nao e reuniao", () => {
+  it("'Updated' with the date when the session changed after it was created; a deadline with no link says it is not a meeting", () => {
     const saved = mocks.events;
     const startsAt = new Date(Date.now() + 48 * 3_600_000).toISOString();
     mocks.events = [
@@ -222,7 +222,7 @@ describe("LearnEventsHub", () => {
     }
   });
 
-  it("depois do 'I will attend': a hora no fuso de quem le e o calendario (Google e .ics)", async () => {
+  it("after 'I will attend': the time in the reader's time zone and the calendar (Google and .ics)", async () => {
     const saved = mocks.events;
     const startsAt = new Date(Date.now() + 48 * 3_600_000).toISOString();
     mocks.events = [{ ...mocks.base, id: "next", title: "Next session", startsAt }];
@@ -234,7 +234,7 @@ describe("LearnEventsHub", () => {
     const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
     try {
       render(<LearnEventsHub />);
-      // Antes de responder, nada de calendario.
+      // Before answering, no calendar.
       expect(screen.queryByRole("link", { name: "Add to Google Calendar" })).not.toBeInTheDocument();
 
       await act(async () => {
@@ -246,8 +246,8 @@ describe("LearnEventsHub", () => {
       expect(google).toHaveAttribute("target", "_blank");
       expect(screen.getByText("The calendar entry lasts 60 minutes: the session has no set end time.")).toBeInTheDocument();
 
-      // O endereço do arquivo só é revogado 1 s depois (no iPad o download
-      // começa depois do clique). Relógio falso: nenhum timer fica pendente.
+      // The file address is only revoked 1 s later (on iPad the download
+      // starts after the click). Fake clock: no timer is left pending.
       vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
       fireEvent.click(screen.getByRole("button", { name: "Download calendar file (.ics)" }));
       expect(click).toHaveBeenCalledOnce();
@@ -273,9 +273,9 @@ describe("LearnEventsHub", () => {
     }
   });
 
-  // Prazo nao e reuniao: "Due:" e "Open link"; vencido vai para "Past" na
-  // hora (nao 3 h depois) e diz "Due date passed", nunca "Happening now".
-  it("um prazo: data de entrega e 'Open link'; vencido, em Past como 'Due date passed'", () => {
+  // A deadline is not a meeting: "Due:" and "Open link"; once overdue it goes to "Past" right
+  // away (not 3 h later) and says "Due date passed", never "Happening now".
+  it("a deadline: due date and 'Open link'; overdue, in Past as 'Due date passed'", () => {
     const saved = mocks.events;
     const startsAt = new Date(Date.now() + 48 * 3_600_000).toISOString();
     mocks.events = [
@@ -299,7 +299,7 @@ describe("LearnEventsHub", () => {
     }
   });
 
-  it("matricula que terminou: diz que o acesso acabou, nao 'nenhuma sessao marcada'", () => {
+  it("an enrollment that ended: says the access ended, not 'no sessions scheduled'", () => {
     const saved = mocks.events;
     mocks.events = [];
     mocks.enrollments = [{ ...mocks.enrollment, status: "refunded" }];

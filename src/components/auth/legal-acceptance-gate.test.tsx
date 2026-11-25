@@ -58,7 +58,7 @@ const OUTDATED_TEACHER = { roles: ["teacher"], teacherTermsAcceptedAt: "2026-05-
 // Lets the profile read resolve and the gate render before asserting absence.
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-// O que os tours de boas-vindas leem para esperar a janela dos termos.
+// What the welcome tours read to wait for the terms dialog.
 function TourWaitProbe() {
   return <span data-testid="tour-waits">{String(useLegalGateWaiting())}</span>;
 }
@@ -135,9 +135,9 @@ describe("LegalAcceptanceGate as the signup recovery path", () => {
     expect(screen.getByRole("button", { name: ACCEPT })).toHaveProperty("disabled", false);
   });
 
-  // C-06: a janela cobria a página, mas o Tab saía para a página de trás e o
-  // leitor de tela não sabia que era uma janela. Ela segue sem saída: Esc não
-  // fecha, e o foco começa na primeira caixa sem marcar nada.
+  // C-06: the dialog covered the page, but Tab escaped to the page behind and the
+  // screen reader did not know it was a dialog. It stays without an exit: Esc does not
+  // close it, and focus starts on the first checkbox with nothing checked.
   it("is a real modal: named, focus inside on the first box, Escape does not close it, error announced", async () => {
     mocks.getUserProfile.mockResolvedValue({ termsVersion: null, privacyVersion: null, marketingConsent: false });
     mocks.acceptUserTerms.mockRejectedValue(new Error("transport details"));
@@ -145,7 +145,7 @@ describe("LegalAcceptanceGate as the signup recovery path", () => {
 
     const dialog = await screen.findByRole("dialog", { name: "Review SkillsetMind terms to continue." });
     expect(dialog).toHaveAttribute("aria-modal", "true");
-    // O foco começa na caixa: a explicação chega pela descrição da janela.
+    // Focus starts on the checkbox: the explanation comes through the dialog description.
     expect(dialog).toHaveAccessibleDescription("Read and accept the SkillsetMind terms to use your account.");
     const [terms, privacy] = screen.getAllByRole("checkbox");
     await waitFor(() => expect(terms).toHaveFocus());
@@ -163,8 +163,8 @@ describe("LegalAcceptanceGate as the signup recovery path", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Could not update your legal acceptance. Please try again.");
   });
 
-  // Os tours de boas-vindas esperam a janela: com a janela na tela, e antes de
-  // se saber se ela vem, o valor é true; aceito, vira false.
+  // The welcome tours wait for the dialog: with the dialog on screen, and before
+  // knowing whether it will show, the value is true; once accepted, it becomes false.
   it("tells the welcome tours to wait while the window is open or still undecided", async () => {
     let resolveProfile!: (profile: unknown) => void;
     mocks.getUserProfile.mockReturnValue(new Promise((done) => { resolveProfile = done; }));
@@ -263,8 +263,8 @@ describe("LegalAcceptanceGate as the signup recovery path", () => {
     await waitFor(() => expect(screen.queryByRole("button", { name: ACCEPT })).toBeNull());
   });
 
-  // Aceitar os termos de professor é aceitar o perfil público: a linha diz o
-  // que fica público e onde. Só junto dos termos de professor.
+  // Accepting the teacher terms means accepting the public profile: the line says
+  // what becomes public and where. Only together with the teacher terms.
   it.each([
     ["en", "Your teacher profile (name, photo, bio and credentials) is public at skillsetmind.com/@ana."],
     ["es", "Tu perfil de profesor (nombre, foto, biografía y credenciales) es público en skillsetmind.com/@ana."],
@@ -349,12 +349,12 @@ describe("LegalAcceptanceGate as the signup recovery path", () => {
   });
 });
 
-// Onda F: os termos eram pedidos duas vezes. A pessoa marcava no cadastro, o
-// tique se perdia no caminho da confirmacao do e-mail, e na chegada vinha uma
-// janela "Legal update". Agora o cadastro guarda as versoes aceitas e esta
-// porta as grava sem perguntar, com a hora do cadastro, mas so no mesmo
-// navegador do cadastro. Fora dele a janela pergunta uma vez, como primeira
-// aceitacao ("Before you start"), nunca como "atualizacao".
+// Wave F: the terms were asked for twice. The person ticked them at signup, the
+// tick was lost on the way through email confirmation, and on arrival came a
+// "Legal update" dialog. Now signup stores the accepted versions and this
+// gate writes them without asking, with the signup time, but only in the same
+// browser as the signup. Outside it the dialog asks once, as a first
+// acceptance ("Before you start"), never as an "update".
 describe("LegalAcceptanceGate asks only once", () => {
   const OLD = { termsVersion: "2026-04-26", privacyVersion: "2026-05-10" };
   const SIGNED_UP_AT = "2026-10-05T10:00:00Z";
@@ -415,8 +415,8 @@ describe("LegalAcceptanceGate asks only once", () => {
     expect(mocks.acceptUserTerms).toHaveBeenCalledWith("u-1", false);
   });
 
-  // Alguem cadastrou o meu e-mail e marcou os termos. A marca, se existir, e
-  // da conta de quem cadastrou neste navegador, nao da minha.
+  // Someone signed up my email and ticked the terms. The mark, if it exists, is
+  // from the account of whoever signed up in this browser, not mine.
   it("someone else signed up with my email: asks, and leaves their mark alone", async () => {
     markSignupTerms("u-someone-else");
     renderSignedIn();

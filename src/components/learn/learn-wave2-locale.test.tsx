@@ -71,7 +71,7 @@ const enrollment: Enrollment = {
 const event: CourseEvent = {
   id: "event-es", courseId: "course-es", courseSlug: "course-es", courseTitle: enrollment.courseTitle,
   ownerId: "teacher", title: "Original session $&", description: "Original event text",
-  // Futura: sessao que ja passou vai para a parte "Past", fechada e sem presenca.
+  // Future: a session that already happened goes to the "Past" part, closed and without attendance.
   type: "live_class", status: "scheduled", startsAt: new Date(Date.now() + 3 * 24 * 3_600_000).toISOString(),
   externalUrl: "https://example.test/live", recordingAssetId: null,
 };
@@ -174,7 +174,7 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     expect(mocks.enrollment).toHaveBeenCalledTimes(1);
   });
 
-  // Reembolsada, cancelada, vencida ou em atraso: também não pode ser beco.
+  // Refunded, cancelled, expired or overdue: it must not be a dead end either.
   it("an inactive enrollment still offers the course page and a way out of the wrong account", () => {
     mocks.enrollment.mockImplementation((_uid, _id, next) => { next({ ...enrollment, status: "refunded" }); return () => {}; });
     show(<CreatorCourseWorkspace initialCourseId="course-es" />);
@@ -304,7 +304,7 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     expect(screen.queryByRole("heading", { name: enrollment.courseTitle })).not.toBeInTheDocument();
   });
 
-  it("falha ao ler a matrícula: \"Try again\" refaz a mesma leitura uma vez, com a espera da sala, e abre o curso", async () => {
+  it("when reading the enrollment fails: \"Try again\" repeats the same read once, with the classroom wait, and opens the course", async () => {
     mocks.enrollment
       .mockImplementationOnce((_uid, _id, _next, fail) => { fail(new Error("Temporary failure")); return () => {}; })
       .mockImplementation(() => () => {});
@@ -316,7 +316,7 @@ describe("learner wave 2 with real provider and dictionaries", () => {
       fireEvent.click(screen.getByRole("button", { name: translate(getDictionary("es"), "appErrors.retry") }));
     });
 
-    // A mesma leitura, uma vez a mais; enquanto ela corre, só a espera (nada para clicar).
+    // The same read, one more time; while it runs, only the wait (nothing to click).
     expect(mocks.enrollment).toHaveBeenCalledTimes(2);
     expect(screen.getByRole("status")).toHaveTextContent(translate(getDictionary("es"), "learnWave2.courseLoading.title"));
     expect(screen.queryByRole("button", { name: translate(getDictionary("es"), "appErrors.retry") })).not.toBeInTheDocument();
@@ -328,14 +328,14 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     expect(mocks.enrollment).toHaveBeenCalledTimes(2);
     expect(mocks.course).toHaveBeenCalledTimes(1);
 
-    // A sala fecha (a matrícula deixa de abrir) e reabre sem "Try again": o
-    // pedido de foco já foi usado e não volta.
+    // The classroom closes (the enrollment stops opening) and reopens without "Try again": the
+    // focus request has already been used and does not come back.
     act(() => { mocks.enrollment.mock.calls[1][2]({ ...enrollment, status: "expired" }); });
     act(() => { mocks.enrollment.mock.calls[1][2](enrollment); });
     expect(screen.getByRole("heading", { name: enrollment.courseTitle })).toHaveAttribute("data-focus-title", "false");
   });
 
-  it("falha ao ler o curso: \"Try again\" refaz só a leitura do curso e abre a sala", async () => {
+  it("when reading the course fails: \"Try again\" repeats only the course read and opens the classroom", async () => {
     mocks.enrollment.mockImplementation((_uid, _id, next) => { next(enrollment); return () => {}; });
     mocks.course
       .mockImplementationOnce((_id, _next, fail) => { fail(new Error("Course unavailable")); return () => {}; })
@@ -352,7 +352,7 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     expect(screen.getByRole("heading", { name: enrollment.courseTitle })).toHaveAttribute("data-focus-title", "true");
   });
 
-  it("sem acesso, sem matrícula ativa ou sem curso: nenhum \"Try again\"", () => {
+  it("with no access, no active enrollment or no course: no \"Try again\"", () => {
     const retry = translate(getDictionary("es"), "appErrors.retry");
     const noEnrollment = show(<CreatorCourseWorkspace initialCourseId="course-es" />);
     expect(screen.getByRole("heading", { name: translate(getDictionary("es"), "learnWave2.workspace.required") })).toBeVisible();
@@ -398,11 +398,11 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     mocks.enrollments.mockImplementation((_uid, next) => { next([enrollment]); return () => {}; });
     show(<LearnCommunityHub />);
     expect(await screen.findByRole("heading", { name: "Comunidad de Original course $&" })).toBeVisible();
-    // O cartão é o curso e a entrada: sem as quatro linhas iguais em todo cartão.
+    // The card is the course and the entry point: without the same four lines on every card.
     expect(screen.getByRole("article").textContent).toBe("Comunidad de Original course $&Abrir comunidad");
     expect(mocks.communityIds).toHaveBeenCalledExactlyOnceWith(["course-es"]);
     expect(screen.getByRole("link", { name: "Abrir comunidad" })).toHaveAttribute("href", "/learn/courses/course-es/community");
-    // Uma comunidade cabe na tela: a busca (um cartão inteiro) só aparece a partir de 3.
+    // One community fits on the screen: the search (a whole card) only shows up from 3.
     expect(screen.queryByRole("searchbox")).toBeNull();
   });
 
@@ -423,10 +423,10 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     expect(mocks.enrollments).toHaveBeenCalledTimes(1);
   });
 
-  // Com a busca digitada e a lista caindo para 2, a caixa some: o texto não
-  // pode seguir filtrando, senão o aluno fica em "nenhuma comunidade" sem ter
-  // onde limpar.
-  it("a busca escondida não filtra: caindo para 2 comunidades, as duas aparecem", async () => {
+  // With a search typed and the list dropping to 2, the box disappears: the text
+  // must not keep filtering, otherwise the learner is stuck on "no community" with
+  // nowhere to clear it.
+  it("a hidden search does not filter: dropping to 2 communities, both show up", async () => {
     const many = Array.from({ length: 3 }, (_, index) => ({
       ...enrollment, id: `enrollment-${index}`, courseId: `course-${index}`, courseSlug: `course-${index}`, courseTitle: `Course ${index} $&`,
     }));
@@ -442,7 +442,7 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     expect(screen.queryByRole("searchbox")).toBeNull();
   });
 
-  it("se as comunidades não carregam, 'Intentar de nuevo' lê de novo sem religar o canal", async () => {
+  it("if the communities do not load, 'Intentar de nuevo' reads again without reconnecting the channel", async () => {
     const reload = vi.fn();
     mocks.enrollments.mockImplementation((_uid, next) => {
       next([enrollment]);
@@ -493,7 +493,7 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     mocks.enrollments.mockImplementation((_uid, next) => { next([enrollment]); return () => {}; });
     mocks.rsvp.mockImplementation((_event, _uid, next) => { next({ status }); return () => {}; });
     show(<LearnEventsHub />);
-    // A resposta salva aparece no proprio botao (aria-pressed), nao num quadro de texto.
+    // The saved answer shows on the button itself (aria-pressed), not in a text box.
     expect(screen.getByRole("button", { name: "Asistiré" })).toHaveAttribute("aria-pressed", String(status === "attending"));
     expect(screen.getByRole("button", { name: "No puedo asistir" })).toHaveAttribute("aria-pressed", String(status === "not_attending"));
     expect(screen.getByRole("link", { name: "Unirse a la sesión externa" })).toHaveAttribute("href", event.externalUrl);
@@ -511,9 +511,9 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Could not update your wishlist. Please try again.");
   });
 
-  // A falha de leitura era um beco: "Try again" relê pelo mesmo canal, trava
-  // enquanto lê, e o vazio não aparece junto do erro.
-  it("a falha da lista de desejos oferece Try again, que relê sem reinscrever", async () => {
+  // A read failure used to be a dead end: "Try again" rereads through the same channel, locks
+  // while it reads, and the empty state does not show up next to the error.
+  it("a wishlist failure offers Try again, which rereads without resubscribing", async () => {
     const reload = vi.fn(async () => undefined);
     let next: (items: unknown[]) => void = () => {};
     mocks.wishlist.mockImplementation((_uid, onData, onError) => {
@@ -534,7 +534,7 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     await act(async () => next([{ id: "saved", courseId: "course-es", courseSlug: "course-es" }]));
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Curso guardado no disponible." })).toBeVisible();
-    // O botão sumiu: o foco ficou na moldura da lista, não no <body>.
+    // The button disappeared: focus stayed on the list frame, not on the <body>.
     expect(document.activeElement).toHaveAttribute("tabindex", "-1");
   });
 
@@ -555,7 +555,7 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     expect(mocks.leaderboard).toHaveBeenCalledTimes(2);
   });
 
-  // F-03 / F-11: a espera tem a forma das linhas; a falha não diz "vazio" e tem saída.
+  // F-03 / F-11: the wait has the shape of the rows; the failure does not say "empty" and has a way out.
   it("leaderboard waits with row shapes, and a failed read offers Try again", () => {
     let fail!: (error: Error) => void;
     mocks.leaderboard.mockImplementationOnce((_window, _next, onError) => { fail = onError; return () => {}; });
@@ -582,9 +582,9 @@ describe("learner wave 2 with real provider and dictionaries", () => {
   });
 });
 
-describe("agenda do aluno: erro de leitura", () => {
-  // A falha das matrículas era um beco; o "Try again" relê pelo mesmo canal.
-  it("a falha das matrículas oferece Try again, e a agenda volta sem reinscrever", () => {
+describe("learner schedule: read error", () => {
+  // An enrollments failure used to be a dead end; "Try again" rereads through the same channel.
+  it("an enrollments failure offers Try again, and the schedule comes back without resubscribing", () => {
     const reload = vi.fn(async () => undefined);
     let next: (rows: Enrollment[]) => void = () => {};
     mocks.enrollments.mockImplementation((_uid, onData, onError) => {
@@ -599,7 +599,7 @@ describe("agenda do aluno: erro de leitura", () => {
     expect(reload).toHaveBeenCalledTimes(1);
     expect(mocks.enrollments).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-    // O botão some com o clique: o foco fica na moldura da agenda, não no <body>.
+    // The button disappears on click: focus stays on the schedule frame, not on the <body>.
     const frame = document.activeElement as HTMLElement;
     expect(frame).not.toBe(document.body);
     expect(frame).toHaveAttribute("tabindex", "-1");
@@ -610,9 +610,9 @@ describe("agenda do aluno: erro de leitura", () => {
     expect(frame).toContainElement(screen.getByRole("heading", { name: event.title }));
   });
 
-  // As agendas agora têm releitura: "Try again" relê só a agenda que falhou,
-  // e até a resposta vale o "carregando", nunca a agenda vazia.
-  it("a falha de uma agenda oferece Try again, que relê só aquela agenda", () => {
+  // The schedules can now be reread: "Try again" rereads only the schedule that failed,
+  // and until the answer arrives, "loading" applies, never the empty schedule.
+  it("a failure in one schedule offers Try again, which rereads only that schedule", () => {
     const enrollmentsReload = vi.fn(async () => undefined);
     const eventsReload = vi.fn(async () => undefined);
     let deliver: (events: CourseEvent[]) => void = () => {};

@@ -196,26 +196,26 @@ describe("AuthPage continues an existing verified session", () => {
     fireEvent.change(view.container.querySelector('input[type="password"]')!, { target: { value: "fixture-password" } });
     fireEvent.submit(view.container.querySelector("form")!);
 
-    // O titulo da pagina vira a instrucao; nada de "Sign in as a learner."
-    // em cima da porta de confirmar.
+    // The page title becomes the instruction; no "Sign in as a learner."
+    // on top of the confirmation gate.
     expect(await screen.findByRole("heading", { level: 1, name: "Check your email" })).toBeInTheDocument();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
-    // So promete seguir sozinha no mesmo aparelho: e o unico caso que a
-    // checagem desta aba enxerga.
-    // (A linha "enviado" tambem e status, sempre montada e vazia ate o envio.)
+    // It only promises to continue by itself on the same device: that is the only case the
+    // check in this tab can see.
+    // (The "sent" line is also a status, always mounted and empty until the send.)
     expect(screen.getByText("If you open the link on this device, this page continues by itself.")).toHaveAttribute("role", "status");
-    // O contador do reenvio nao fica dentro de regiao anunciada.
+    // The resend countdown does not sit inside an announced region.
     expect(screen.getByRole("button", { name: "Resend the link" }).closest("[aria-live]")).toBeNull();
     expect(mocks.router.replace).not.toHaveBeenCalled();
 
-    // Voltar para corrigir o e-mail devolve o titulo do formulario.
+    // Going back to fix the email returns the form title.
     fireEvent.click(screen.getByRole("button", { name: "Wrong email? Change it" }));
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Sign in as a learner.");
     expect(mocks.getUserProfile).not.toHaveBeenCalled();
   });
 
-  // A-12: "Sign in as a learner." seguia em cima de "This link has expired",
-  // que vinha num cartao com um segundo titulo.
+  // A-12: "Sign in as a learner." stayed on top of "This link has expired",
+  // which came in a card with a second title.
   it("turns an expired confirmation link into the page heading, and back", async () => {
     mocks.auth = { status: "unauthenticated", user: null };
     mocks.searchParams = new URLSearchParams("mode=signin&error=confirm_expired&path=student");
@@ -229,8 +229,8 @@ describe("AuthPage continues an existing verified session", () => {
     await waitFor(() => expect(mocks.getPendingSecondFactor).toHaveBeenCalledTimes(1));
   });
 
-  // Antes do JavaScript (HTML do servidor) o titulo da pagina ainda e o do
-  // formulario: a tela do link vencido mantem o seu ate a pagina assumir.
+  // Before JavaScript (server HTML) the page title is still the form's:
+  // the expired-link screen keeps its own until the page takes over.
   it("keeps the expired-link heading in the server HTML, before the page heading switches", () => {
     mocks.auth = { status: "unauthenticated", user: null };
     mocks.searchParams = new URLSearchParams("mode=signin&error=confirm_expired&path=student");

@@ -12,8 +12,8 @@ import { communityEnrollmentCourseIds, createEnrollmentCommunityCards } from "@/
 import { getCommunityCourseIds, subscribeToUserEnrollments } from "@/lib/data/enrollments";
 
 const NO_COURSES: ReadonlySet<string> = new Set();
-// A busca só aparece a partir de 3 comunidades: com uma ou duas ela era um
-// cartão inteiro para filtrar o que já cabe na tela.
+// The search only shows from 3 communities up: with one or two it was a whole
+// card just to filter what already fits on the screen.
 const SEARCH_FROM = 3;
 
 export function LearnCommunityHub() {
@@ -23,11 +23,11 @@ export function LearnCommunityHub() {
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-  // Quais cursos estao com a comunidade ligada, e para qual lista de cursos
-  // isso foi lido (a matricula chega pelo realtime e pode mudar).
+  // Which courses have the community turned on, and for which course list
+  // that was read (the enrollment arrives through realtime and can change).
   const [community, setCommunity] = useState<{ courses: string; ids: ReadonlySet<string> } | null>(null);
   const courses = useMemo(() => communityEnrollmentCourseIds(enrollments).join(" "), [enrollments]);
-  // Cada "Try again" conta uma tentativa: a leitura das comunidades roda de novo.
+  // Each "Try again" counts one attempt: the communities read runs again.
   const [attempt, setAttempt] = useState(0);
   const subscription = useRef<{ reload: () => Promise<void> } | null>(null);
 
@@ -72,8 +72,8 @@ export function LearnCommunityHub() {
     };
   }, [courses, attempt]);
 
-  // Le as matriculas de novo pelo mesmo canal (sem religar) e as comunidades
-  // outra vez. Ate a resposta vale o "carregando", nunca o vazio.
+  // Reads the enrollments again through the same channel (without reconnecting) and the communities
+  // once more. Until the answer arrives, "loading" applies, never the empty state.
   function retryLoad() {
     setError("");
     setIsLoading(true);
@@ -82,13 +82,13 @@ export function LearnCommunityHub() {
     void subscription.current?.reload();
   }
 
-  // Sem curso real nao ha o que perguntar ao banco; com curso, espera a
-  // resposta para a lista atual (nada de cartao de comunidade desligada).
+  // With no real course there is nothing to ask the database; with a course, it waits for the
+  // answer for the current list (no card for a community that is turned off).
   const communityIds = !courses ? NO_COURSES : community?.courses === courses ? community.ids : null;
 
   if (isLoading || (!error && communityIds === null)) {
-    // A linha de cima e dois cartões, no lugar da frase solta num cartão
-    // branco. Sem a busca: ela só aparece com muitas comunidades.
+    // The top row is two cards, in place of the loose sentence in a plain
+    // white card. No search: it only shows with many communities.
     return <CardListSkeleton label={t("learnWave2.communityHub.loading")} head="title" />;
   }
 
@@ -107,14 +107,14 @@ export function LearnCommunityHub() {
     createEnrollmentCommunityCards(enrollments, communityIds ?? NO_COURSES).map((space) => ({
       ...space,
       name: t("learnWave2.communityHub.name").replace("{course}", () => space.courseTitle),
-      // Só para a busca: o cartão não mostra mais a categoria.
+      // Only for the search: the card no longer shows the category.
       categories: t("learnWave2.communityHub.category"),
     }));
   const showSearch = communityCards.length >= SEARCH_FROM;
   const filteredCards = communityCards.filter((space) => {
-    // Com a caixa escondida o texto não filtra: se a contagem cai com uma
-    // busca digitada, o aluno ficava em "No communities match" sem a caixa
-    // para limpar.
+    // With the box hidden the text does not filter: if the count drops with a typed
+    // search, the learner was left on "No communities match" with no box
+    // to clear it.
     const normalizedSearch = showSearch ? search.trim().toLowerCase() : "";
     const matchesSearch =
       !normalizedSearch ||
@@ -181,9 +181,9 @@ export function LearnCommunityHub() {
         </div>
       ) : null}
 
-      {/* Cada cartão diz só o que muda de uma comunidade para outra: o curso.
-          Antes eram quatro linhas iguais em todos ("COURSE COMMUNITY",
-          "ENROLLED COURSE", a mesma frase de descrição e "ENROLLED ONLY"). */}
+      {/* Each card says only what changes from one community to another: the course.
+          Before there were four lines identical on all of them ("COURSE COMMUNITY",
+          "ENROLLED COURSE", the same description sentence and "ENROLLED ONLY"). */}
       <div className="grid gap-4 lg:grid-cols-2">
       {filteredCards.map((space) => (
         <article

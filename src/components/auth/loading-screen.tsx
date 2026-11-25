@@ -16,8 +16,8 @@ import { getUserProfile } from "@/lib/data/user-profiles";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
-// Só o bastante para a tela não piscar quando o destino sai na hora. Eram
-// 1400ms em todo login e toda volta do Google, mesmo com o destino pronto.
+// Only long enough so the screen does not flash when the destination is ready right away. It was
+// 1400ms on every login and every return from Google, even with the destination ready.
 const MINIMUM_LOADING_MS = 400;
 const LONG_WAIT_MS = 5000;
 
@@ -55,8 +55,8 @@ export function LoadingScreen() {
       let destination = getAuthRoute("signin", intent, returnTo);
 
       if (status === "mfa_required") {
-        // Senha aceita, código ainda não. A tela de login retoma o desafio ao
-        // montar; caminho e deep link seguem no query para não se perderem.
+        // Password accepted, code not yet. The login screen resumes the challenge on
+        // mount; path and deep link stay in the query so they are not lost.
         const params = new URLSearchParams();
         if (intent) params.set("path", intent);
         if (returnTo) params.set("returnTo", returnTo);
@@ -113,8 +113,8 @@ export function LoadingScreen() {
         </button>
       ) : null}
       {hasError ? (
-        // text-left: a tela de espera centra tudo, mas o aviso tem ícone à
-        // esquerda; centrado, a segunda linha descolava dele.
+        // text-left: the wait screen centers everything, but the notice has an icon on the
+        // left; centered, the second line detached from it.
         <InlineAlert tone="error" className="mt-4 text-left">
           {t("authFlow.loading.error")}
         </InlineAlert>

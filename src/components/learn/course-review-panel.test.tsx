@@ -64,8 +64,8 @@ describe("CourseReviewPanel locale and state", () => {
     expect(submitCourseReview).toHaveBeenCalledExactlyOnceWith({ courseId: "course-test", rating: 3, body });
     await act(async () => resolve({ success: true, reviewId: "review-test", ratingAverage: 3, ratingCount: 1 }));
     expect(screen.getByText("Review saved. Thank you for rating this course.")).toBeInTheDocument();
-    // Sucesso com cara de sucesso, ao lado do botão (que não sai do lugar), e
-    // sem a caixa de erro: antes os dois eram a mesma pílula navy.
+    // Success that looks like success, beside the button (which does not move), and
+    // without the error box: before, the two were the same navy pill.
     const status = screen.getByRole("status");
     expect(status).toHaveTextContent("Review saved. Thank you for rating this course.");
     expect(document.querySelector("button[type=submit]")!.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -122,8 +122,8 @@ describe("CourseReviewPanel locale and state", () => {
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "Draft $$ $&" } });
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Enviar reseña" })); });
     expect(screen.getByText(expected)).toBeInTheDocument();
-    // A falha é uma caixa de erro (lida em voz alta), e a região do "salvou"
-    // fica vazia.
+    // The failure is an error box (read aloud), and the "saved" region
+    // stays empty.
     expect(screen.getByRole("alert")).toHaveTextContent(expected);
     expect(screen.getByRole("status").textContent).toBe("");
     expect(screen.getByRole("textbox")).toHaveValue("Draft $$ $&");
@@ -145,8 +145,8 @@ describe("CourseReviewPanel locale and state", () => {
     expect(submitCourseReview).not.toHaveBeenCalled();
   });
 
-  // F-11: a falha da leitura tem saída; o aviso fica, com o botão ocupado, até a
-  // releitura responder, e a resenha salva chega e preenche o formulário.
+  // F-11: a read failure has an exit; the notice stays, with the button busy, until the
+  // re-read answers, and the saved review arrives and fills in the form.
   it("Try again keeps the alert busy until the saved review arrives", () => {
     vi.mocked(subscribeToUserCourseReview).mockImplementationOnce((_courseId, _userId, _onNext, onError) => {
       onError(new Error("offline"));

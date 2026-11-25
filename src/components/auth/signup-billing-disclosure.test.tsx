@@ -62,7 +62,7 @@ const expected = {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.params = new URLSearchParams("path=teacher");
-  mocks.fetch.mockRejectedValue(new Error("Rede proibida neste teste"));
+  mocks.fetch.mockRejectedValue(new Error("Network forbidden in this test"));
   vi.stubGlobal("fetch", mocks.fetch);
 });
 afterEach(() => {
@@ -93,21 +93,21 @@ function disclosure(locale: "en" | "es") {
   return notice!;
 }
 
-describe.each(["en", "es"] as const)("Disclosures no cadastro %s", (locale) => {
-  it("explica a contratacao antes de email ou Google, sem inicia-la", () => {
+describe.each(["en", "es"] as const)("Disclosures in signup %s", (locale) => {
+  it("explains the purchase before email or Google, without starting it", () => {
     const t = mount(locale);
     const notice = disclosure(locale);
     const google = screen.getByRole("button", { name: t("auth.continueWithGoogle") });
     expect(notice.compareDocumentPosition(google) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    // Sem o aceite o botao segue clicavel: o clique explica o que falta e nao
-    // inicia nada (o afterEach confere que Google, cadastro e rede ficaram parados).
+    // Without the acceptance the button stays clickable: the click explains what is missing and does not
+    // start anything (afterEach checks that Google, signup and network stayed idle).
     expect(google).toBeEnabled();
     expect(screen.getByRole("checkbox")).not.toBeChecked();
     fireEvent.click(google);
     expect(screen.getByRole("alert")).toHaveTextContent(t("auth.signup.acceptTermsForGoogle"));
   });
 
-  it("mantem as condicoes perto da criacao da conta no segundo passo", () => {
+  it("keeps the conditions near account creation on the second step", () => {
     const t = mount(locale);
     fireEvent.change(screen.getByLabelText(t("auth.signup.fullName")), { target: { value: "Alex Example" } });
     fireEvent.change(screen.getByLabelText(t("auth.email")), { target: { value: "alex@example.test" } });
@@ -119,7 +119,7 @@ describe.each(["en", "es"] as const)("Disclosures no cadastro %s", (locale) => {
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "2");
   });
 
-  it("nao atribui plano de professor ao aluno e acompanha a escolha", () => {
+  it("does not assign a teacher plan to the learner and follows the choice", () => {
     mocks.params = new URLSearchParams("path=student");
     const t = mount(locale);
     expect(screen.queryByRole("link", { name: expected[locale].link })).not.toBeInTheDocument();

@@ -32,7 +32,7 @@ const cardClass =
 const actionClass =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-4 text-sm font-semibold";
 
-/** Quem não é aluno nem dono vai para a vitrine pública do criador. */
+/** Whoever is neither a learner nor the owner goes to the creator's public storefront. */
 export function memberAreaStorefrontPath(ref: string): string {
   return ref.startsWith("@")
     ? `/@${encodeURIComponent(ref.slice(1))}`
@@ -56,7 +56,7 @@ function priceLabel(
   try {
     const amount = new Intl.NumberFormat(locale, { style: "currency", currency: product.currency.toUpperCase() })
       .format(product.priceAmountMinor / 100);
-    // Mesmo formato da página de vendas: "$19.00 / month".
+    // Same format as the sales page: "$19.00 / month".
     if (product.paymentType === "subscription_monthly") return `${amount} / ${labels.month}`;
     if (product.paymentType === "subscription_yearly") return `${amount} / ${labels.year}`;
     return amount;
@@ -65,10 +65,10 @@ function priceLabel(
   }
 }
 
-// Esqueleto no formato da área pronta: capa com título e três cartões. Antes
-// era uma frase solta, e a página inteira se montava de uma vez. A cor do osso
-// segue o tema quando ele já é conhecido (--ma-line) e cai no cinza da
-// plataforma na moldura neutra.
+// A skeleton in the shape of the finished area: a cover with a title and three cards. Before,
+// it was a loose sentence, and the whole page came together at once. The skeleton color
+// follows the theme when it is already known (--ma-line) and falls back to the platform
+// gray in the neutral frame.
 const bone = "animate-pulse rounded-lg bg-[var(--ma-line,var(--color-surface-strong))]";
 
 export function MemberAreaHomeSkeleton({ label }: { label: string }) {
@@ -92,8 +92,8 @@ export function MemberAreaHomeSkeleton({ label }: { label: string }) {
 }
 
 /**
- * /learn/areas/[criador] (e /[area] numa extra): a área do criador para o
- * aluno. Não libera aula: cada produto abre a própria sala.
+ * /learn/areas/[criador] (and /[area] on an extra one): the creator's area for the
+ * learner. It does not unlock lessons: each product opens its own room.
  */
 export function MemberAreaHomeView({
   areaRef,
@@ -111,7 +111,7 @@ export function MemberAreaHomeView({
 
   useEffect(() => {
     let cancelled = false;
-    // A comunidade da área é um extra: se ela falhar, a área abre sem o cartão.
+    // The area's community is an extra: if it fails, the area opens without the card.
     Promise.all([getMemberAreaHome(areaRef, slug), getMemberAreaCommunity(areaRef, slug).catch(() => null)])
       .then(([home, community]) => {
         if (cancelled) return;
@@ -131,8 +131,8 @@ export function MemberAreaHomeView({
   }, [areaRef, slug, retryKey, router]);
 
   if (state.status !== "ready") {
-    // O tema só chega com a leitura: até lá vale o último visto nesta área, ou
-    // a moldura neutra (null). O erro mantém o claro padrão de antes.
+    // The theme only arrives with the read: until then the last one seen in this area applies, or
+    // the neutral frame (null). The error keeps the default light theme from before.
     const remembered = rememberedMemberAreaTheme(areaRef, slug);
     return (
       <MemberAreaShell brand={brand} theme={state.status === "loading" ? remembered : remembered ?? undefined}>
@@ -216,16 +216,16 @@ export function MemberAreaHomeView({
                 {t("learn.memberArea.communityBody").replace("{name}", () => area.creatorName ?? areaName)}
               </span>
             </span>
-            {/* Texto de 14px: --ma-accent é fundo de botão (2,9:1 num curso
-                escuro); o texto de destaque legível é --ma-accent-ink. */}
+            {/* 14px text: --ma-accent is a button background (2.9:1 on a dark
+                course); the readable highlight text is --ma-accent-ink. */}
             <span className="ml-auto hidden shrink-0 text-sm font-semibold text-[var(--ma-accent-ink)] sm:inline">
               {t("learn.memberArea.communityOpen")}
             </span>
           </Link>
         ) : null}
 
-        {/* Seção vazia some: título e "nada aqui" embaixo eram uma seção
-            inteira sem conteúdo. Só "My products" fica com o aviso de vazio. */}
+        {/* An empty section goes away: a title and "nothing here" below were a whole
+            section with no content. Only "My products" stays with the empty notice. */}
         {continueWatching ? (
           <section aria-labelledby="area-continue-title" className="grid gap-3">
             <h2 id="area-continue-title" className="text-xl font-semibold text-[var(--ma-ink)]">
@@ -273,10 +273,10 @@ export function MemberAreaHomeView({
                         {t(`courseCreation.types.${product.productFormat ?? "course"}.label`)}
                       </span>
                       <span className="line-clamp-2 break-words text-base font-semibold text-[var(--ma-ink)]">{product.title}</span>
-                      {/* A barra da casa (ui/progress-bar), nas cores da área, e
-                          anunciada como barra. O número escrito embaixo é o
-                          mesmo rótulo dela: fica fora da árvore para o nome do
-                          cartão não dizer o progresso duas vezes. */}
+                      {/* The house bar (ui/progress-bar), in the area's colors, and
+                          announced as a bar. The number written below is the
+                          same label as the bar: it stays out of the tree so the name of the
+                          card does not say the progress twice. */}
                       <ProgressBar
                         value={product.progressPercent}
                         label={t("learn.memberArea.progress").replace("{percent}", () => String(Math.round(product.progressPercent)))}

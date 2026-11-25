@@ -18,18 +18,18 @@ import {
 import { isRateLimitError } from "@/lib/data/rate-limit-error";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 
-// A gaveta da pergunta (mockup 5, 11b).
+// The question drawer (mockup 5, 11b).
 //
 // POR QUE ISTO EXISTE
 //
-// Abrir uma pergunta trocava de pagina e perdia o feed; sem endereco, nao
-// dava para compartilhar nem voltar. Agora a pergunta desliza da direita
-// (560px) por cima do feed escurecido; no celular sobe como folha inferior.
-// A URL muda (.../community/q/<post>), Esc ou o X fecham. A
-// resposta aceita fica em verde no topo, as demais embaixo, e a caixa de
-// resposta e fixa no rodape. A mesma gaveta serve para qualquer post.
+// Opening a question switched pages and lost the feed; with no address, it was not
+// possible to share or go back. Now the question slides in from the right
+// (560px) over the darkened feed; on the phone it rises as a bottom sheet.
+// The URL changes (.../community/q/<post>), Esc or the X close it. The
+// accepted answer stays in green at the top, the others below, and the reply
+// box is fixed at the bottom. The same drawer serves any post.
 
-// Fora do componente: useModalFocus refaz o efeito se a funcao mudar.
+// Outside the component: useModalFocus re-runs the effect if the function changes.
 const focusCommunityHeading = () => document.querySelector<HTMLElement>("[data-community-heading]");
 
 export function CommunityPostDrawer({
@@ -47,18 +47,18 @@ export function CommunityPostDrawer({
   instructorIds: ReadonlySet<string>;
   canModerate: boolean;
   onClose: () => void;
-  /** Tira da tela o post ou a resposta que acabou de ser apagado. */
+  /** Removes from the screen the post or reply that was just deleted. */
   onHide: (id: string) => void;
 }) {
   const { t, locale } = useTranslation();
   const panelRef = useRef<HTMLDivElement>(null);
   const [body, setBody] = useState("");
   const [isSending, setIsSending] = useState(false);
-  // Chave do dicionario, nao texto: o idioma pode trocar com o erro na tela.
+  // Dictionary key, not text: the language can change with the error on screen.
   const [error, setError] = useState("");
 
-  // Fechou porque o post foi apagado: o botao que abriu a gaveta sumiu junto,
-  // e o foco vai para o titulo da lista.
+  // It closed because the post was deleted: the button that opened the drawer went away with it,
+  // and focus goes to the list title.
   useModalFocus(panelRef, true, focusCommunityHeading);
 
   useEffect(() => {
@@ -126,7 +126,7 @@ export function CommunityPostDrawer({
   return (
     <div className="community-drawer-backdrop" onClick={onClose} data-testid="drawer-backdrop">
       {/* tabIndex -1: useModalFocus poe o foco no proprio painel ao abrir;
-          sem ele o foco ficava no cartao do feed, atras da gaveta. */}
+          without it focus stayed on the feed card, behind the drawer. */}
       <div
         ref={panelRef}
         role="dialog"
@@ -136,8 +136,8 @@ export function CommunityPostDrawer({
         className="community-drawer outline-none"
         onClick={(event) => event.stopPropagation()}
       >
-        {/* Um jeito so de fechar, o X (e o Esc), como nas outras gavetas. O
-            "Back to feed" ao lado fazia a mesma coisa. */}
+        {/* Only one way to close, the X (and Esc), like the other drawers. The
+            "Back to feed" beside it did the same thing. */}
         <header className="flex items-center justify-end gap-2 border-b border-[var(--color-line)] px-4 py-3">
           <button
             type="button"
@@ -177,8 +177,8 @@ export function CommunityPostDrawer({
           {post.body ? (
             <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--color-ink-soft)]">{post.body}</p>
           ) : null}
-          {/* Fixar, apagar e denunciar DEPOIS do texto: entre o autor e o
-              título, a linha de ações era a primeira coisa lida na pergunta. */}
+          {/* Pin, delete and report AFTER the text: between the author and the
+              title, the actions row was the first thing read in the question. */}
           <div className="mt-3 flex flex-wrap items-center gap-2 empty:hidden">
             <CommunityItemActions
               post={post}

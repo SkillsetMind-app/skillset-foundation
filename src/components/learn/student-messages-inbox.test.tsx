@@ -8,24 +8,24 @@ import type { CourseMessage } from "@/domain/course-message";
 import { sendCourseMessage } from "@/lib/data/course-messages";
 
 /**
- * Reanalise item 12 — a caixa de mensagens do aluno. Antes, responder ao
- * professor exigia rolar ate o fim da pagina de cada aula; com tres cursos,
- * tres lugares, e nenhuma lista. Aqui: uma conversa por curso, a aberta no
- * endereco (?course=), e a volta sempre no canto superior esquerdo.
+ * Re-analysis item 12 — the learner's message inbox. Before, replying to the
+ * teacher meant scrolling to the bottom of every lesson page; with three courses,
+ * three places, and no list. Here: one conversation per course, the open one in the
+ * address (?course=), and the way back always in the top left corner.
  */
 
 const mocks = vi.hoisted(() => ({
   searchParams: new URLSearchParams(),
   push: vi.fn(),
   messages: [] as unknown[],
-  // "data": a leitura chega na hora; "pending": ainda nao chegou; "error": falhou.
+  // "data": the read arrives right away; "pending": it has not arrived yet; "error": it failed.
   mode: "data" as "data" | "pending" | "error",
   subscriptions: 0,
-  // O que o canal entrega depois de inscrito: uma leitura nova (tempo real) ou uma falha.
+  // What the channel delivers once subscribed: a new read (real time) or a failure.
   emit: (() => undefined) as (messages: unknown[]) => void,
   fail: (() => undefined) as () => void,
-  // Um objeto de usuario para a sessao inteira (objeto novo por render
-  // reinscreve o efeito e entra em laco).
+  // One user object for the whole session (a new object per render
+  // resubscribes the effect and loops).
   auth: { status: "authenticated", user: { uid: "student-1", email: "s@example.com", roles: ["student"] } },
 }));
 
@@ -44,7 +44,7 @@ vi.mock("@/lib/data/course-messages", () => ({
     (_studentId: string, onNext: (messages: unknown[]) => void, onError: (error: Error) => void) => {
       mocks.subscriptions += 1;
       if (mocks.subscriptions > 20) {
-        throw new Error("subscribeToStudentMessages chamado mais de 20 vezes: laco de render");
+        throw new Error("subscribeToStudentMessages called more than 20 times: render loop");
       }
       const read = () => {
         if (mocks.mode === "data") onNext(mocks.messages);
@@ -53,7 +53,7 @@ vi.mock("@/lib/data/course-messages", () => ({
       mocks.emit = onNext;
       mocks.fail = () => onError(new Error("offline"));
       read();
-      // Como o de verdade: desligar o canal, e `reload` que le de novo sem mexer nele.
+      // Like the real one: turn the channel off, and `reload`, which reads again without touching it.
       return Object.assign(vi.fn(), { reload: vi.fn(async () => read()) });
     },
   ),
@@ -93,7 +93,7 @@ function renderInbox(search = "", messages: unknown[] = twoCourses) {
   return render(<StudentMessagesInbox />);
 }
 
-describe("caixa de mensagens do aluno", () => {
+describe("learner's message inbox", () => {
   beforeEach(() => {
     mocks.push.mockReset();
     mocks.subscriptions = 0;
@@ -101,7 +101,7 @@ describe("caixa de mensagens do aluno", () => {
     vi.mocked(sendCourseMessage).mockClear();
   });
 
-  it("antes da primeira leitura mostra carregando, nao 'No conversations yet'", () => {
+  it("before the first read it shows loading, not 'No conversations yet'", () => {
     mocks.mode = "pending";
     renderInbox("", []);
 
@@ -109,7 +109,7 @@ describe("caixa de mensagens do aluno", () => {
     expect(screen.queryByText("No conversations yet")).not.toBeInTheDocument();
   });
 
-  it("se a primeira leitura falha: erro com 'Try again' no lugar do vazio, e o retry le de novo", async () => {
+  it("if the first read fails: an error with 'Try again' instead of the empty state, and the retry reads again", async () => {
     mocks.mode = "error";
     renderInbox("", []);
 
@@ -126,7 +126,7 @@ describe("caixa de mensagens do aluno", () => {
     expect(screen.getByRole("navigation", { name: "Conversations" })).toBeInTheDocument();
   });
 
-  it("'Try again' nao religa o canal: a mensagem que chega depois em tempo real entra na lista", async () => {
+  it("'Try again' does not reconnect the channel: a message that arrives later in real time enters the list", async () => {
     mocks.mode = "error";
     renderInbox("", []);
     mocks.mode = "data";
@@ -134,7 +134,7 @@ describe("caixa de mensagens do aluno", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     });
-    // Religar com o mesmo nome devolvia o canal antigo, saindo: nada mais chegava.
+    // Reconnecting with the same name returned the old channel, on its way out: nothing else arrived.
     expect(mocks.subscriptions).toBe(1);
 
     act(() => mocks.emit([
@@ -145,7 +145,7 @@ describe("caixa de mensagens do aluno", () => {
     expect(within(list).getByText("Mindset")).toBeInTheDocument();
   });
 
-  it("releitura que falha com a lista na tela: aviso visivel sem conversa aberta, que some na leitura seguinte", () => {
+  it("a re-read that fails with the list on screen: a visible notice with no conversation open, which goes away on the next read", () => {
     renderInbox();
 
     act(() => mocks.fail());
@@ -156,7 +156,7 @@ describe("caixa de mensagens do aluno", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("no celular, com uma conversa aberta, a lista sai (so volta no computador)", () => {
+  it("on the phone, with a conversation open, the list goes away (it only comes back on the computer)", () => {
     renderInbox("course=course-1");
 
     const list = screen.getByRole("navigation", { name: "Conversations", hidden: true });
@@ -164,7 +164,7 @@ describe("caixa de mensagens do aluno", () => {
     expect(screen.getByRole("region", { name: "Conversation: Leadership" })).toBeInTheDocument();
   });
 
-  it("uma conversa por curso, a mais recente primeiro, dizendo quem falou por ultimo", () => {
+  it("one conversation per course, the most recent first, saying who spoke last", () => {
     renderInbox();
 
     const list = screen.getByRole("navigation", { name: "Conversations" });
@@ -176,7 +176,7 @@ describe("caixa de mensagens do aluno", () => {
     expect(items[1]).toHaveTextContent("You: Thanks!");
   });
 
-  it("abrir uma conversa grava o curso no endereco", () => {
+  it("opening a conversation writes the course to the address", () => {
     renderInbox();
 
     fireEvent.click(screen.getByRole("button", { name: /Communication/ }));
@@ -184,7 +184,7 @@ describe("caixa de mensagens do aluno", () => {
     expect(mocks.push).toHaveBeenCalledWith("/learn/messages?course=course-2");
   });
 
-  it("?course= abre aquela conversa, com a volta levando a lista", () => {
+  it("?course= opens that conversation, with the way back leading to the list", () => {
     renderInbox("course=course-1");
 
     const thread = screen.getByRole("region", { name: "Conversation: Leadership" });
@@ -198,13 +198,13 @@ describe("caixa de mensagens do aluno", () => {
     );
   });
 
-  it("na lista, a volta leva ao painel", () => {
+  it("on the list, the way back leads to the dashboard", () => {
     renderInbox();
 
     expect(screen.getByRole("link", { name: /Back/ })).toHaveAttribute("href", "/learn");
   });
 
-  it("responder manda pelo mesmo caminho da aula: o proprio aluno, naquele curso", async () => {
+  it("replying sends through the same path as the lesson: the learner themselves, in that course", async () => {
     renderInbox("course=course-2");
 
     fireEvent.change(screen.getByLabelText("Your message"), {
@@ -221,16 +221,16 @@ describe("caixa de mensagens do aluno", () => {
     );
   });
 
-  it("sem conversa: um estado vazio de uma linha, com a volta", () => {
+  it("no conversation: a one-line empty state, with the way back", () => {
     renderInbox("", []);
 
     expect(screen.getByText("No conversations yet")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Back/ })).toHaveAttribute("href", "/learn");
   });
 
-  // A lista e a conversa chamavam o formatador de hora sem `t` nem `locale`:
-  // em espanhol a hora saia em ingles ("5m ago").
-  it("mostra a hora da conversa no idioma da pessoa", () => {
+  // The list and the conversation called the time formatter without `t` or `locale`:
+  // in Spanish the time came out in English ("5m ago").
+  it("shows the conversation time in the person's language", () => {
     mocks.searchParams = new URLSearchParams("course=course-1");
     mocks.messages = [
       message({ id: "m-es", createdAt: new Date(Date.now() - 5 * 60_000).toISOString() }),
@@ -241,22 +241,22 @@ describe("caixa de mensagens do aluno", () => {
       </I18nProvider>,
     );
 
-    // Uma vez na lista de conversas, outra na mensagem aberta.
+    // Once in the conversation list, once in the open message.
     expect(screen.getAllByText(/Hace 5 min/)).toHaveLength(2);
   });
 });
 
-// Mensagens subiu para os itens fixos do aluno (antes morava no grupo Account,
-// que vinha fechado para quem estava em "Learn"). Embaixo ficam so compras e
-// configuracoes; os avisos chegam pelo sino.
-describe("Mensagens entre os itens fixos do aluno", () => {
-  it("Messages fica na secao fixa, so para o aluno", () => {
+// Messages moved up to the learner's pinned items (before, it lived in the Account group,
+// which came closed for someone in "Learn"). Below stay only purchases and
+// settings; notices arrive through the bell.
+describe("Messages among the learner's pinned items", () => {
+  it("Messages stays in the pinned section, for the learner only", () => {
     const item = platformNav.find((entry) => entry.href === "/learn/messages");
 
     expect(item).toMatchObject({ sectionKey: "learn", contexts: ["learner"] });
   });
 
-  it("compras e configuracoes ficam embaixo, na secao da conta", () => {
+  it("purchases and settings stay below, in the account section", () => {
     for (const href of ["/account", "/account/billing"]) {
       const item = platformNav.find((entry) => entry.href === href);
       expect(item?.contexts, href).toContain("learner");

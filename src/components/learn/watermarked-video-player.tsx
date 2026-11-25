@@ -34,11 +34,11 @@ export function VideoWatermark({
   const { user } = useAuth();
   const { locale, t } = useTranslation();
   const [timestamp, setTimestamp] = useState<number | null>(null);
-  // Uma etiqueta só, que muda de canto a cada ~30 s. Antes eram duas fixas o
-  // tempo todo (e-mail e hora no canto superior, "protected playback" no
-  // inferior). Uma etiqueta pequena e translúcida que passeia pelos quatro
-  // cantos continua carimbando a gravação inteira — o objetivo anti-pirataria —
-  // e atrapalha menos quem está assistindo.
+  // A single label that changes corner every ~30 s. Before, there were two
+  // fixed ones all the time (email and time in the top corner, "protected
+  // playback" in the bottom one). A small, translucent label that wanders
+  // through the four corners still stamps the whole recording, which is the
+  // anti-piracy goal, and bothers the person watching less.
   const [corner, setCorner] = useState(0);
 
   useEffect(() => {
@@ -59,9 +59,9 @@ export function VideoWatermark({
     };
   }, []);
 
-  // Um código curto da conta, nunca o e-mail nem o nome: quem assiste não
-  // precisa ver o próprio dado pessoal na tela, e a equipe ainda acha a conta
-  // de quem vazou uma gravação pelo início do uid.
+  // A short account code, never the email or the name: the viewer does not
+  // need to see their own personal data on screen, and the staff can still
+  // find the account of whoever leaked a recording from the start of the uid.
   const viewerCode = viewerCodeFromUid(user?.uid);
   const viewerLabel = viewerCode
     ? `ID ${viewerCode}`
@@ -102,8 +102,8 @@ const watermarkCorners = [
   "left-3 top-3",
 ] as const;
 
-/** De quantos em quantos segundos a posição vai para o armazenamento. O evento
- *  `timeupdate` dispara ~4x por segundo; gravar em todos é desperdício. */
+/** How many seconds apart the position is sent to storage. The `timeupdate`
+ *  event fires ~4x per second; saving on every one is wasteful. */
 const SAVE_EVERY_SECONDS = 10;
 
 export function WatermarkedVideoPlayer({
@@ -118,23 +118,24 @@ export function WatermarkedVideoPlayer({
   /** Fires when the clip plays to the end — the auto-advance signal for the
    *  native player (the iframe backends have to hand-roll their own). */
   onEnded?: () => void;
-  /** "Esta pessoa, nesta aula" (lessonPositionRef). Sem ela o vídeo
-   *  simplesmente começa do zero, como antes. */
+  /** "This person, in this lesson" (lessonPositionRef). Without it the video
+   *  simply starts from zero, as before. */
   resume?: LessonPositionRef | null;
   src: string;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const lastSavedRef = useRef(0);
-  // Espelho da posição atual: no desmonte (trocar de aula, sair da sala) o
-  // elemento já pode ter ido embora, e é justamente aí que a última gravação
-  // importa mais.
+  // Mirror of the current position: on unmount (switching lessons, leaving
+  // the room) the element may already be gone, and that is exactly when the
+  // last save matters most.
   const positionRef = useRef({ seconds: 0, duration: 0 });
 
   useEffect(() => {
     lastSavedRef.current = 0;
     positionRef.current = { seconds: 0, duration: 0 };
-    // Abrir a aula já é o evento do funil: quem desiste no meio não deixava
-    // rastro nenhum, porque `lesson_progress` só nasce na conclusão.
+    // Opening the lesson is already the funnel event: someone who quits midway
+    // used to leave no trace, because `lesson_progress` is only created on
+    // completion.
     markLessonOpened(resume);
 
     return () => {
@@ -144,17 +145,17 @@ export function WatermarkedVideoPlayer({
   }, [resume, src]);
 
   function handleLoadedMetadata() {
-    // A posição vem do banco (atravessa aparelhos) e por isso chega depois do
-    // metadado. Guardar QUAL aula pediu: se o aluno trocou de aula enquanto a
-    // resposta vinha, ela não vale mais.
+    // The position comes from the database (it crosses devices) and so it
+    // arrives after the metadata. Remember WHICH lesson asked: if the learner
+    // switched lessons while the response was on its way, it no longer applies.
     const pedido = resume;
 
     void readLessonPosition(pedido).then((seconds) => {
       const video = videoRef.current;
 
-      // `seconds < duration` é o corta-circuito: uma posição de outra gravação
-      // da mesma aula (o professor regravou) não pode jogar o aluno para fora
-      // da linha do tempo.
+      // `seconds < duration` is the circuit breaker: a position from another
+      // recording of the same lesson (the teacher re-recorded it) must not
+      // throw the learner outside the timeline.
       if (video && pedido === resume && seconds > 0 && seconds < video.duration) {
         video.currentTime = seconds;
       }
@@ -179,7 +180,7 @@ export function WatermarkedVideoPlayer({
   }
 
   function handleEnded() {
-    // Terminou: não há posição a guardar, e o desmonte não deve ressuscitá-la.
+    // It finished: there is no position to save, and the unmount must not bring it back.
     positionRef.current = { seconds: 0, duration: 0 };
     lastSavedRef.current = 0;
     clearLessonPosition(resume);

@@ -38,7 +38,7 @@ export function CommunityLeaderboard({
     ready: boolean;
   }>({ window: "7d", board: null, ready: false });
   const [error, setError] = useState("");
-  // "Try again": o número novo assina de novo a mesma janela.
+  // "Try again": the new number subscribes again to the same window.
   const [boardAttempt, setBoardAttempt] = useState(0);
   const sectionRef = useRef<HTMLElement>(null);
 
@@ -148,7 +148,7 @@ export function CommunityLeaderboard({
 
       <div className="mt-5 grid gap-2">
         {!ready ? (
-          // A espera com a forma das linhas do ranking, e não uma frase solta.
+          // The wait with the shape of the ranking rows, and not a loose sentence.
           <div role="status" className="grid gap-2">
             <span className="sr-only">{t("learnWave2.leaderboard.loading")}</span>
             {[0, 1, 2].map((row) => (
@@ -203,7 +203,7 @@ export function CommunityLeaderboard({
         </div>
       ) : null}
 
-      {/* Falhou: o aviso com "Try again", no lugar da lista (que não diz "vazio"). */}
+      {/* Failed: the notice with "Try again", in place of the list (which does not say "empty"). */}
       {error ? (
         <LoadErrorAlert
           className="mt-3"

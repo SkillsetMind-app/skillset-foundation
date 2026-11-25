@@ -19,8 +19,8 @@ export function PlatformInviteAcceptance({ id }: { id: string }) {
   const [reauthenticationPath, setReauthenticationPath] = useState("");
   const returnTo = encodeURIComponent(`/invitations/${encodeURIComponent(id)}`);
 
-  // Mesma moldura do /auth (logo, voltar ao inicio, idioma): a pagina solta,
-  // sem logo nem caminho de volta, nao parecia ser da SkillsetMind.
+  // The same frame as /auth (logo, back to home, language): the loose page,
+  // with no logo or way back, did not look like part of SkillsetMind.
   return <AuthFrame homeLabel={t("auth.page.backToHome")}><section className="min-w-0 space-y-5 text-[var(--color-ink)]">
     <h1 className="auth-title display-title">{t(`${copy}.acceptTitle`)}</h1>
     {reauthenticationPath ? <div className="space-y-4">

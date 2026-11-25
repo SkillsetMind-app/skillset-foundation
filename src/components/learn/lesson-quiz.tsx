@@ -7,13 +7,13 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import type { QuizQuestion } from "@/lib/ai/lesson-text";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
-// "Check your understanding" abaixo da aula: o quiz que o professor publicou.
-// Autocorreção na hora, nada gravado (sem nota, sem certificado ligado a ele).
-// A leitura passa pela RLS de lesson_quizzes: matriculado, aula liberada,
-// quiz publicado. Sem quiz, nada aparece.
+// "Check your understanding" below the lesson: the quiz the teacher published.
+// Instant self-grading, nothing saved (no grade, no certificate tied to it).
+// The read goes through the RLS on lesson_quizzes: enrolled, lesson unlocked,
+// quiz published. With no quiz, nothing shows.
 //
-// Escolher e conferir são dois passos: no teclado, as setas MARCAM a opção do
-// grupo de rádio, então conferir na marcação travaria a primeira tentativa.
+// Choosing and checking are two steps: on the keyboard, the arrow keys SELECT the option of the
+// radio group, so checking on selection would lock in the first attempt.
 export function LessonQuiz({ courseId, lessonId }: { courseId: string; lessonId: string }) {
   const { t } = useTranslation();
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
@@ -22,7 +22,7 @@ export function LessonQuiz({ courseId, lessonId }: { courseId: string; lessonId:
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
-    // Sem reset aqui: a sala de aula monta um LessonQuiz por aula (key={lesson.id}).
+    // No reset here: the classroom mounts one LessonQuiz per lesson (key={lesson.id}).
     let live = true;
     void getSupabaseBrowserClient()
       .from("lesson_quizzes")
@@ -45,9 +45,9 @@ export function LessonQuiz({ courseId, lessonId }: { courseId: string; lessonId:
   const headingId = `lesson-quiz-${lessonId}`;
 
   return (
-    // O quiz chega depois do resto da aula (leitura própria): entra com a
-    // subida curta do sistema em vez de aparecer de uma vez empurrando a
-    // página. h3: subseção da aula, que é o h2 do painel.
+    // The quiz arrives after the rest of the lesson (its own read): it comes in with the
+    // system's short rise instead of appearing all at once and pushing the
+    // page down. h3: a subsection of the lesson, which is the panel's h2.
     <section aria-labelledby={headingId} className="motion-rise-in mt-6 grid gap-4 rounded-lg border border-[var(--color-line)] p-4">
       <h3 id={headingId} ref={headingRef} tabIndex={-1} className="text-base font-semibold text-[var(--color-ink)] outline-none">
         {t("learn.classroom.quiz.title")}
@@ -59,10 +59,10 @@ export function LessonQuiz({ courseId, lessonId }: { courseId: string; lessonId:
           <fieldset key={index} className="grid gap-2">
             <legend className="mb-1 text-sm font-semibold text-[var(--color-ink)]">{question.question}</legend>
             {question.options.map((option, optionIndex) => {
-              // Conferida, a pergunta marca a certa (borda e check) e, se a
-              // escolha foi outra, a escolhida (borda e X). Antes so mudava uma
-              // palavra cinza embaixo. Cores da paleta do curso, com reserva
-              // na da plataforma.
+              // Once checked, the question marks the right one (border and check) and, if the
+              // choice was a different one, the chosen one (border and X). Before, only a gray
+              // word below changed. Colors from the course palette, falling back
+              // to the platform's.
               const mark = !isChecked
                 ? null
                 : optionIndex === question.answer
@@ -137,7 +137,7 @@ export function LessonQuiz({ courseId, lessonId }: { courseId: string; lessonId:
               onClick={() => {
                 setChosen({});
                 setChecked({});
-                // O botão some com o recomeço: o foco volta ao título do quiz.
+                // The button disappears on restart: focus goes back to the quiz title.
                 headingRef.current?.focus();
               }}
             >

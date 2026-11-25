@@ -7,16 +7,16 @@ import { useEffect, useRef, useState } from "react";
 import { classroomTabHref, type ClassroomTab } from "@/domain/classroom-tabs";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 
-// A ultima aba aberta nesta visita. Cada aba e uma rota, entao a sala remonta
-// a cada troca; o modulo continua carregado na navegacao do app e zera numa
-// carga nova. No servidor nada grava aqui (efeito nao roda), entao a primeira
-// pintura sai igual dos dois lados.
+// The last tab opened in this visit. Each tab is a route, so the classroom remounts
+// on every switch; the module stays loaded during in-app navigation and resets on a
+// fresh load. On the server nothing writes here (the effect does not run), so the first
+// paint comes out the same on both sides.
 let lastClassroomTab: ClassroomTab | null = null;
 
 /**
- * true quando a sala abriu por TROCA de aba, nao por carga da pagina: so ai o
- * painel entra com motion-panel-in. A carga entra parada, e o que vira LCP
- * (capa, titulo, video) nunca nasce com opacidade 0.
+ * true when the classroom opened by SWITCHING tabs, not by page load: only then the
+ * panel enters with motion-panel-in. A load enters still, and what becomes the LCP
+ * (cover, title, video) is never born with opacity 0.
  */
 export function useTabChanged(tab: ClassroomTab): boolean {
   const [changed] = useState(() => lastClassroomTab !== null && lastClassroomTab !== tab);
@@ -32,10 +32,10 @@ export type ClassroomTabItem = {
   count?: number;
 };
 
-// A barra de abas da sala: Lesson · Materials · Lives · Community · Messages ·
-// Review · About. Substitui a faixa "Lesson tools", cujos botoes so rolavam a
-// pagina. Cada aba e um <Link> de verdade: entra no historico, tem endereco,
-// pode ser compartilhada. A aula atual vai junto no endereco (?lesson=).
+// The classroom tab bar: Lesson · Materials · Lives · Community · Messages ·
+// Review · About. Replaces the "Lesson tools" strip, whose buttons only scrolled the
+// page. Each tab is a real <Link>: it goes into history, has an address,
+// and can be shared. The current lesson travels in the address (?lesson=).
 export function ClassroomTabs({
   basePath,
   active,
@@ -47,17 +47,17 @@ export function ClassroomTabs({
   active: ClassroomTab;
   lessonId: string | null;
   tabs: ClassroomTabItem[];
-  /** "Get certificate" morava na faixa de ferramentas; segue aqui, no fim da
-   *  barra, quando o curso esta 100% (e fora do whitelabel). */
+  /** "Get certificate" used to live in the tools strip; it stays here, at the end of the
+   *  bar, when the course is 100% (and outside whitelabel). */
   certificateHref?: string | null;
 }) {
   const { t } = useTranslation();
   const navRef = useRef<HTMLElement>(null);
 
-  // No celular a barra rola de lado com a barra de rolagem escondida: "Review"
-  // e "About" pareciam nao existir. A aba aberta vem para o meio da barra, e a
-  // borda direita esmaece enquanto houver aba escondida para a direita.
-  // So mexe no scrollLeft da propria barra, nunca na rolagem da pagina.
+  // On the phone the bar scrolls sideways with the scrollbar hidden: "Review"
+  // and "About" seemed not to exist. The open tab comes to the middle of the bar, and the
+  // right edge fades while there is a tab hidden to the right.
+  // It only touches the bar's own scrollLeft, never the page scroll.
   useEffect(() => {
     const nav = navRef.current;
     if (!nav) return;

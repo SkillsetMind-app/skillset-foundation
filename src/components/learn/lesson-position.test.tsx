@@ -9,14 +9,14 @@ import {
 } from "@/lib/learn/lesson-position";
 
 /**
- * O "retomar" era por AULA, nunca por posição: parar aos 22 minutos e voltar
- * no segundo zero. Aqui se prova o ciclo inteiro no player nativo — guardar
- * enquanto toca, restaurar ao reabrir, e apagar quando não vale mais.
+ * "Resume" worked per LESSON, never per position: stop at minute 22 and come back
+ * at second zero. This proves the whole cycle in the native player — save
+ * while playing, restore on reopen, and erase when it no longer applies.
  *
- * A partir da migração 20260903120000 a fonte é o BANCO, para a posição
- * atravessar aparelhos; o navegador virou reserva. As duas metades estão
- * provadas aqui: de onde a posição vem quando há matrícula, e o que sobra
- * quando não há.
+ * Since migration 20260903120000 the source is the DATABASE, so the position
+ * crosses devices; the browser became the fallback. Both halves are
+ * proven here: where the position comes from when there is an enrollment, and what is left
+ * when there is not.
  */
 
 vi.mock("@/components/auth/auth-provider", () => ({
@@ -48,12 +48,12 @@ vi.mock("@/lib/data/lesson-playback", () => ({
   ) => gravarNoBanco(enrollmentId, lessonId, positionSeconds, durationSeconds),
 }));
 
-/** Aluno matriculado: a posição vai e volta do banco. */
+/** Enrolled learner: the position goes to and comes back from the database. */
 const REF = lessonPositionRef("student-1", "enr-1", "l1")!;
-/** Sem matrícula (preview do professor, sessão anônima): só o navegador. */
+/** No enrollment (teacher preview, anonymous session): the browser only. */
 const REF_LOCAL = lessonPositionRef("student-1", null, "l1")!;
 
-/** O jsdom não implementa mídia: currentTime e duration são só propriedades. */
+/** jsdom does not implement media: currentTime and duration are just properties. */
 function fakeMedia(video: HTMLVideoElement, currentTime: number, duration: number) {
   Object.defineProperty(video, "duration", { value: duration, configurable: true });
   Object.defineProperty(video, "currentTime", {
@@ -73,8 +73,8 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
-describe("a aula volta onde parou", () => {
-  it("tocando, a posição é gravada — e não a cada quadro", () => {
+describe("the lesson resumes where it stopped", () => {
+  it("while playing, the position is saved — and not on every frame", () => {
     render(
       <WatermarkedVideoPlayer fileName="aula.mp4" resume={REF} src="blob:aula" />,
     );
@@ -86,8 +86,8 @@ describe("a aula volta onde parou", () => {
     expect(gravarNoBanco).toHaveBeenCalledWith("enr-1", "l1", 42, 600);
     expect(window.localStorage.getItem(REF.storageKey)).toBe("42");
 
-    // 3 s depois ainda é a mesma gravação: o timeupdate dispara ~4x por
-    // segundo e escrever em todos seria desperdício — de banco, agora.
+    // 3 s later it is still the same save: timeupdate fires ~4x per
+    // second and writing on every one would be a waste — of the database, now.
     gravarNoBanco.mockClear();
     (video as { currentTime: number }).currentTime = 45;
     fireEvent.timeUpdate(video);
@@ -99,8 +99,8 @@ describe("a aula volta onde parou", () => {
     expect(gravarNoBanco).toHaveBeenCalledWith("enr-1", "l1", 61, 600);
   });
 
-  it("reabrindo a aula, o vídeo pula para o segundo que o BANCO guardou", async () => {
-    // O celular parou aos 137 s; este é o computador, com localStorage vazio.
+  it("when the lesson is reopened, the video jumps to the second the DATABASE saved", async () => {
+    // The phone stopped at 137 s; this is the computer, with empty localStorage.
     buscarNoBanco.mockResolvedValue(137);
 
     render(
@@ -116,14 +116,14 @@ describe("a aula volta onde parou", () => {
     expect(buscarNoBanco).toHaveBeenCalledWith("enr-1", "l1");
   });
 
-  it("banco fora do ar: a posição deste navegador ainda vale", async () => {
-    buscarNoBanco.mockRejectedValue(new Error("sem rede"));
+  it("database down: this browser's position still counts", async () => {
+    buscarNoBanco.mockRejectedValue(new Error("no network"));
     window.localStorage.setItem(REF.storageKey, "90");
 
     await expect(readLessonPosition(REF)).resolves.toBe(90);
   });
 
-  it("sem matrícula não se consulta o banco — só o navegador", async () => {
+  it("without an enrollment the database is not queried — only the browser", async () => {
     window.localStorage.setItem(REF_LOCAL.storageKey, "77");
 
     await expect(readLessonPosition(REF_LOCAL)).resolves.toBe(77);
@@ -134,7 +134,7 @@ describe("a aula volta onde parou", () => {
     expect(window.localStorage.getItem(REF_LOCAL.storageKey)).toBe("120");
   });
 
-  it("posição maior que a duração é ignorada (o professor regravou a aula)", async () => {
+  it("a position greater than the duration is ignored (the teacher re-recorded the lesson)", async () => {
     buscarNoBanco.mockResolvedValue(500);
 
     render(
@@ -143,7 +143,7 @@ describe("a aula volta onde parou", () => {
 
     const video = screen.getByLabelText("aula.mp4") as HTMLVideoElement;
 
-    // A nova take tem 90 s: pular para 500 jogaria o aluno para fora da linha.
+    // The new take is 90 s long: jumping to 500 would throw the learner off the timeline.
     fakeMedia(video, 0, 90);
     fireEvent.loadedMetadata(video);
 
@@ -151,7 +151,7 @@ describe("a aula volta onde parou", () => {
     expect(video.currentTime).toBe(0);
   });
 
-  it("terminando a aula a posição some — voltar nela não cai nos créditos", () => {
+  it("when the lesson ends the position is erased — going back to it does not land on the credits", () => {
     const onEnded = vi.fn();
     window.localStorage.setItem(REF.storageKey, "300");
 
@@ -170,12 +170,12 @@ describe("a aula volta onde parou", () => {
     fireEvent.ended(video);
 
     expect(window.localStorage.getItem(REF.storageKey)).toBeNull();
-    // Zero EXPLÍCITO: no banco isso zera a posição (nulo seria "só passei aqui").
+    // EXPLICIT zero: in the database this resets the position (null would mean "I just passed by").
     expect(gravarNoBanco).toHaveBeenCalledWith("enr-1", "l1", 0, null);
     expect(onEnded).toHaveBeenCalledTimes(1);
   });
 
-  it("sem referência (preview do professor) nada é gravado", () => {
+  it("without a reference (teacher preview) nothing is saved", () => {
     expect(lessonPositionRef(null, "enr-1", "l1")).toBeNull();
 
     render(
@@ -192,8 +192,8 @@ describe("a aula volta onde parou", () => {
   });
 });
 
-describe("o funil: abrir a aula já deixa rastro", () => {
-  it("abrir manda posição NULA — registra a visita sem apagar a retomada", () => {
+describe("the funnel: opening the lesson already leaves a trace", () => {
+  it("opening sends a NULL position — records the visit without erasing the resume point", () => {
     render(
       <WatermarkedVideoPlayer fileName="aula.mp4" resume={REF} src="blob:aula" />,
     );
@@ -202,19 +202,19 @@ describe("o funil: abrir a aula já deixa rastro", () => {
   });
 });
 
-describe("o que não vale a pena guardar", () => {
-  it("os primeiros segundos e os últimos são descartados", async () => {
+describe("what is not worth saving", () => {
+  it("the first seconds and the last ones are discarded", async () => {
     saveLessonPosition(REF_LOCAL, 3, 600);
     await expect(readLessonPosition(REF_LOCAL)).resolves.toBe(0);
 
-    // Perto do fim, apaga o que houvesse — não só deixa de gravar.
+    // Near the end, it erases whatever was there — it does not just stop saving.
     saveLessonPosition(REF_LOCAL, 200, 600);
     await expect(readLessonPosition(REF_LOCAL)).resolves.toBe(200);
     saveLessonPosition(REF_LOCAL, 595, 600);
     await expect(readLessonPosition(REF_LOCAL)).resolves.toBe(0);
   });
 
-  it("armazenamento bloqueado não derruba a aula", async () => {
+  it("blocked storage does not break the lesson", async () => {
     const setItem = vi
       .spyOn(Storage.prototype, "setItem")
       .mockImplementation(() => {
@@ -227,7 +227,7 @@ describe("o que não vale a pena guardar", () => {
     setItem.mockRestore();
   });
 
-  it("banco recusando a escrita não derruba a aula", () => {
+  it("a database refusing the write does not break the lesson", () => {
     gravarNoBanco.mockRejectedValue(new Error("RATE_LIMIT"));
 
     expect(() => saveLessonPosition(REF, 42, 600)).not.toThrow();

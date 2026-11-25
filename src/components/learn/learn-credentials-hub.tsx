@@ -40,8 +40,8 @@ export function LearnCredentialsHub() {
   const [isLoading, setIsLoading] = useState(true);
   const [certificatesReady, setCertificatesReady] = useState(false);
   const [error, setError] = useState("");
-  // Uma falha por leitura: o "Try again" relê só a que falhou, cada uma pelo
-  // seu canal, e a lista nunca aparece sem os certificados emitidos.
+  // One failure per read: "Try again" re-reads only the one that failed, each through
+  // its own channel, and the list never shows without the issued certificates.
   const [enrollmentsFailed, setEnrollmentsFailed] = useState(false);
   const [certificatesFailed, setCertificatesFailed] = useState(false);
   const enrollmentsSubscription = useRef<{ reload?: () => Promise<void> } | null>(null);
@@ -120,9 +120,9 @@ export function LearnCredentialsHub() {
     ? candidates
     : candidates.filter((candidate) => candidate.status === activeFilter);
 
-  // Uma moldura em volta de todos os estados (espera, erro, vazio, lista): o
-  // "Try again" some ao ser clicado, e o foco vai para ela, que é o mesmo nó do
-  // carregando ao resultado. Sem isso o foco caía no <body>.
+  // A frame around all the states (wait, error, empty, list): the
+  // "Try again" disappears when clicked, and focus goes to the frame, which is the same node from
+  // loading to result. Without this, focus fell on <body>.
   const frameRef = useRef<HTMLDivElement>(null);
   const frame = (content: ReactNode) => (
     <div ref={frameRef} tabIndex={-1}>
@@ -131,12 +131,12 @@ export function LearnCredentialsHub() {
   );
 
   if (isLoading || !certificatesReady) {
-    // Os filtros e dois cartões, no lugar da frase solta num cartão branco.
+    // The filters and two cards, in place of the loose sentence in a plain white card.
     return frame(<CardListSkeleton label={t("learnWave2.credentials.loading")} head="tabs" />);
   }
 
-  // Lê de novo o que falhou (matrículas, certificados ou os dois) pelos mesmos
-  // canais (sem religar). Até a resposta vale o "carregando", nunca o vazio.
+  // Re-reads what failed (enrollments, certificates or both) through the same
+  // channels (without reconnecting). Until the answer arrives, "loading" applies, never the empty state.
   function retryLoad() {
     frameRef.current?.focus();
     setError("");
@@ -162,7 +162,7 @@ export function LearnCredentialsHub() {
     );
   }
 
-  // O vazio da plataforma (EmptyState), em h2 logo abaixo do h1 do shell.
+  // The platform's empty state (EmptyState), as an h2 right under the shell's h1.
   if (candidates.length === 0) {
     return frame(
       <EmptyState
@@ -179,14 +179,14 @@ export function LearnCredentialsHub() {
     );
   }
 
-  // Um cabeçalho só, o do shell (o h1 da página). Antes vinham mais dois por
-  // cima dos cartões: um destaque com três quadros de números e o título da
-  // seção, e os filtros logo abaixo repetiam as mesmas contagens.
+  // A single heading, the shell's (the page h1). Before, two more came
+  // above the cards: a highlight with three number boxes and the section
+  // title, and the filters right below repeated the same counts.
   return frame(
     <div className="grid gap-5">
       <div>
-        {/* O seletor segmentado da casa: o desenho proprio daqui pintava o
-            hover igual a escolhida, e nao se sabia qual filtro estava ligado. */}
+        {/* The house segmented selector: the custom design here painted the
+            hover the same as the chosen one, and you could not tell which filter was on. */}
         <PeriodTabs
           options={credentialFilters}
           value={activeFilter}
@@ -265,10 +265,10 @@ function CredentialCard({ candidate }: { candidate: CredentialCandidate }) {
     }
   }
 
-  // O estado uma vez: um selo e a barra com o número no fim da linha. Antes o
-  // cartão dizia o progresso três ou quatro vezes (selo, frase, quadro
-  // "PROGRESS" com ícone, barra e um "40%" de 24px). A frase só fica quando há
-  // algo a fazer ou a explicar: pronto para emitir, revogado, sem acesso.
+  // The status once: a badge and the bar with the number at the end of the line. Before, the
+  // card said the progress three or four times (badge, sentence, a
+  // "PROGRESS" box with icon, bar and a 24px "40%"). The sentence only stays when there is
+  // something to do or explain: ready to issue, revoked, no access.
   const percent = Math.max(0, Math.min(100, candidate.progressPercent));
   const detailKey = isEligible
     ? "learnWave2.credentials.eligibleDetail"

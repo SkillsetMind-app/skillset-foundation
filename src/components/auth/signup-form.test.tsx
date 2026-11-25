@@ -89,8 +89,8 @@ describe("SignupForm presents only the available paths", () => {
     fireEvent.click(screen.getByRole("button", { name: "auth.signup.continue" }));
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "2");
     expect(screen.getByLabelText("auth.password")).toHaveFocus();
-    // A-10: as regras da senha estao a vista antes de digitar e sao a
-    // descricao do campo, nao parte do nome dele.
+    // A-10: the password rules are visible before typing and are the
+    // field description, not part of its name.
     expect(screen.getByText("authFlow.passwordRules.title")).toBeInTheDocument();
     expect(screen.getByLabelText("auth.password")).toHaveAccessibleDescription(/authFlow\.passwordRules\.length/);
     expect(mocks.signUpWithEmail).not.toHaveBeenCalled();
@@ -103,8 +103,8 @@ describe("SignupForm presents only the available paths", () => {
     expect(mocks.signUpWithEmail).not.toHaveBeenCalled();
   });
 
-  // F-09: os pontinhos viraram a barra da casa. O leitor de tela ouve o mesmo
-  // passo, de 1 a 2, e o texto visível não é lido duas vezes.
+  // F-09: the dots became the house bar. The screen reader hears the same
+  // step, from 1 to 2, and the visible text is not read twice.
   it("draws the steps with the shared bar and keeps the step values", () => {
     render(<SignupForm />);
     const bar = () => screen.getByRole("progressbar", { name: "auth.signup.progress" });
@@ -233,8 +233,8 @@ describe("SignupForm once the account exists", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  // Sem sessao ainda (espera a confirmacao do e-mail): a marca deste navegador
-  // e o que deixa a primeira pagina logada gravar o tique sem perguntar.
+  // No session yet (waiting for email confirmation): this browser's mark
+  // is what lets the first logged-in page write the tick without asking.
   it("marks this browser as the one that ticked the terms when the email still needs confirming", async () => {
     window.localStorage.clear();
     mocks.signUpWithEmail.mockResolvedValue({ user: { uid: "u-1" }, needsEmailConfirmation: true });
@@ -335,11 +335,11 @@ describe("SignupForm with Google", () => {
   });
 });
 
-// O bug: quem apertava "matricular" sem conta ia criar conta com o curso na
-// URL (returnTo). A tela de ENTRAR respeitava esse endereco; o CADASTRO nao —
-// jogava a pessoa em /welcome sem ele, e ela terminava no painel, longe do
-// curso que ia comprar. A venda morria entre duas telas.
-describe("SignupForm leva o curso junto para o cadastro", () => {
+// The bug: whoever pressed "enroll" without an account would create an account with the course in the
+// URL (returnTo). The SIGN-IN screen respected that address; SIGNUP did not —
+// it dropped the person on /welcome without it, and they ended on the dashboard, far from the
+// course they were going to buy. The sale died between two screens.
+describe("SignupForm carries the course along into signup", () => {
   const destino = "/courses/focus";
   const paraOnboarding = "/welcome?path=student&returnTo=%2Fcourses%2Ffocus";
 
@@ -356,11 +356,11 @@ describe("SignupForm leva o curso junto para o cadastro", () => {
 
   afterEach(() => {
     cleanup();
-    // Os outros blocos contam com a URL limpa.
+    // The other blocks count on a clean URL.
     mocks.searchParams = new URLSearchParams();
   });
 
-  it("manda o destino adiante ao criar a conta, em vez de descarta-lo", async () => {
+  it("passes the destination along when creating the account, instead of discarding it", async () => {
     mocks.searchParams = new URLSearchParams("returnTo=" + destino);
     render(<SignupForm />);
 
@@ -369,10 +369,10 @@ describe("SignupForm leva o curso junto para o cadastro", () => {
     await waitFor(() =>
       expect(mocks.router.push).toHaveBeenCalledWith(paraOnboarding),
     );
-    // E tambem dentro do e-mail de confirmacao: quem confirma no celular nao
-    // tem nada da aba original, entao o endereco viaja no proprio link.
-    // Os termos marcados vao junto com a conta (Onda F: sem isso eram pedidos
-    // de novo depois da confirmacao do e-mail).
+    // And also inside the confirmation email: whoever confirms on the phone has
+    // nothing from the original tab, so the address travels in the link itself.
+    // The ticked terms go along with the account (Wave F: without this they were asked
+    // again after the email confirmation).
     expect(mocks.signUpWithEmail).toHaveBeenCalledWith(
       expect.objectContaining({ acceptedTerms: true }),
       undefined,
@@ -380,7 +380,7 @@ describe("SignupForm leva o curso junto para o cadastro", () => {
     );
   });
 
-  it("ignora destino de outro dominio (nao vira redirecionamento aberto)", async () => {
+  it("ignores a destination on another domain (it does not become an open redirect)", async () => {
     mocks.searchParams = new URLSearchParams("returnTo=https://outro.com/pego");
     render(<SignupForm />);
 
@@ -391,7 +391,7 @@ describe("SignupForm leva o curso junto para o cadastro", () => {
     );
   });
 
-  it("nao perde o destino quando a pessoa troca aprender por ensinar", () => {
+  it("does not lose the destination when the person switches from learning to teaching", () => {
     mocks.searchParams = new URLSearchParams("returnTo=" + destino);
     render(<SignupForm />);
 
@@ -403,7 +403,7 @@ describe("SignupForm leva o curso junto para o cadastro", () => {
     );
   });
 
-  it("carrega o destino pela volta do Google tambem", () => {
+  it("carries the destination through the Google round trip too", () => {
     mocks.searchParams = new URLSearchParams("returnTo=" + destino);
     render(<SignupForm />);
 
@@ -446,10 +446,10 @@ describe("SignupForm leva o curso junto para o cadastro", () => {
   });
 });
 
-// O botao de um plano em /pricing chega aqui com ?plan= e ?cycle=. Antes a
-// escolha morria nesta tela e o professor escolhia o plano de novo la dentro.
-// Agora ela vira o destino (a tela de cartao) e viaja como qualquer returnTo.
-describe("SignupForm leva o plano de /pricing ate o cartao", () => {
+// The button of a plan on /pricing arrives here with ?plan= and ?cycle=. Before, the
+// choice died on this screen and the teacher chose the plan again inside.
+// Now it becomes the destination (the card screen) and travels like any returnTo.
+describe("SignupForm carries the /pricing plan through to the card screen", () => {
   const doBotao = "path=teacher&plan=starter&cycle=yearly";
   const cartao = "%2Faccount%2Fbilling%2Fupgrade%3Fplan%3Dstarter%26cycle%3Dyearly";
 
@@ -466,7 +466,7 @@ describe("SignupForm leva o plano de /pricing ate o cartao", () => {
     mocks.searchParams = new URLSearchParams();
   });
 
-  it("poe o plano no link do e-mail de confirmacao e na ida para o onboarding", async () => {
+  it("puts the plan in the confirmation email link and in the trip to onboarding", async () => {
     mocks.searchParams = new URLSearchParams(doBotao);
     render(<SignupForm />);
 
@@ -477,7 +477,7 @@ describe("SignupForm leva o plano de /pricing ate o cartao", () => {
     expect(mocks.signUpWithEmail).toHaveBeenCalledWith(expect.anything(), undefined, paraOnboarding);
   });
 
-  it("leva o plano pela volta do Google", () => {
+  it("carries the plan through the Google round trip", () => {
     mocks.searchParams = new URLSearchParams(doBotao);
     render(<SignupForm />);
 
@@ -487,9 +487,9 @@ describe("SignupForm leva o plano de /pricing ate o cartao", () => {
     expect(mocks.signInWithGoogle).toHaveBeenCalledWith(`/loading?next=welcome&path=teacher&returnTo=${cartao}`);
   });
 
-  // Trocar ensinar por aprender reescreve o endereco: o plano segue nele como
-  // returnTo, entao voltar para "ensinar" nao perde a escolha.
-  it("nao perde o plano quando a pessoa troca ensinar por aprender", () => {
+  // Switching from teach to learn rewrites the address: the plan stays in it as
+  // returnTo, so going back to "teach" does not lose the choice.
+  it("does not lose the plan when the person switches from teaching to learning", () => {
     mocks.searchParams = new URLSearchParams(doBotao);
     render(<SignupForm />);
 
@@ -501,7 +501,7 @@ describe("SignupForm leva o plano de /pricing ate o cartao", () => {
     );
   });
 
-  it("leva o plano para quem ja tem conta e prefere entrar", () => {
+  it("carries the plan to whoever already has an account and prefers to sign in", () => {
     mocks.searchParams = new URLSearchParams(doBotao);
     render(<SignupForm />);
 
@@ -518,7 +518,7 @@ describe("SignupForm leva o plano de /pricing ate o cartao", () => {
     "path=teacher&plan=starter",
     "path=teacher&cycle=yearly",
     "path=teacher&plan=https%3A%2F%2Foutro.com&cycle=monthly",
-  ])("ignora o que nao e um plano publico com ciclo valido: %s", async (query) => {
+  ])("ignores what is not a public plan with a valid cycle: %s", async (query) => {
     mocks.searchParams = new URLSearchParams(query);
     render(<SignupForm />);
 
@@ -528,7 +528,7 @@ describe("SignupForm leva o plano de /pricing ate o cartao", () => {
     expect(mocks.signUpWithEmail).toHaveBeenCalledWith(expect.anything(), undefined, "/welcome?path=teacher");
   });
 
-  it("sem plano no endereco, o cadastro de professor segue como sempre", async () => {
+  it("with no plan in the address, the teacher signup goes on as usual", async () => {
     mocks.searchParams = new URLSearchParams("path=teacher");
     render(<SignupForm />);
 

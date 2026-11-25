@@ -4,10 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VideoDock } from "@/components/learn/video-dock";
 
 /**
- * No celular o vídeo sumia ao rolar. Agora ele se prende no topo, pequeno —
- * e o que mais importa provar é o que NÃO acontece: o elemento do vídeo não é
- * arrancado e recolocado, porque um iframe remontado recarrega e a aula
- * voltaria ao segundo zero.
+ * On a phone the video used to disappear when scrolling. Now it pins to the
+ * top, small, and what matters most to prove is what does NOT happen: the
+ * video element is not pulled out and put back, because a remounted iframe
+ * reloads and the lesson would return to second zero.
  */
 
 let observerCallback: IntersectionObserverCallback | null = null;
@@ -28,7 +28,7 @@ class FakeIntersectionObserver {
   }
 }
 
-/** Rola a página: `top` negativo = o vídeo ficou acima da tela. */
+/** Scrolls the page: negative `top` = the video is above the screen. */
 function scrollTo(top: number, height = 200) {
   const intersecting = top + height > 0 && top < 800;
 
@@ -56,8 +56,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("mini player no celular", () => {
-  it("passado o vídeo ele vira mini, e o MESMO nó de vídeo continua na página", () => {
+describe("mini player on a phone", () => {
+  it("once the video is scrolled past it becomes a mini, and the SAME video node stays on the page", () => {
     render(
       <VideoDock title="Aula 3 — Fechamento">
         <video data-testid="clip" />
@@ -73,14 +73,14 @@ describe("mini player no celular", () => {
 
     expect(dock.dataset.mini).toBe("true");
     expect(dock.className).toContain("member-video-dock--mini");
-    // A prova do não-remonte: MESMO objeto de nó, antes e depois.
+    // The proof of no remount: the SAME node object, before and after.
     expect(screen.getByTestId("clip")).toBe(before);
-    // E o espaço do quadro fica reservado, senão a página salta.
+    // And the frame's space stays reserved, otherwise the page jumps.
     expect(dock.style.minHeight).toBe("200px");
     expect(screen.getByText("Aula 3 — Fechamento")).toBeInTheDocument();
   });
 
-  it("rolando de volta ele desliga sozinho", () => {
+  it("scrolling back turns it off by itself", () => {
     render(
       <VideoDock title="Aula 3">
         <video data-testid="clip" />
@@ -97,7 +97,7 @@ describe("mini player no celular", () => {
     expect(dock.style.minHeight).toBe("");
   });
 
-  it("fechar vale até o vídeo voltar à tela — não desliga o recurso", () => {
+  it("closing lasts until the video returns to the screen and does not turn the feature off", () => {
     render(
       <VideoDock title="Aula 3" closeLabel="Fechar mini player">
         <video data-testid="clip" />
@@ -110,17 +110,17 @@ describe("mini player no celular", () => {
     fireEvent.click(screen.getByRole("button", { name: "Fechar mini player" }));
     expect(dock.dataset.mini).toBe("false");
 
-    // Continuar rolando para baixo NÃO o traz de volta.
+    // Continuing to scroll down does NOT bring it back.
     scrollTo(-900);
     expect(dock.dataset.mini).toBe("false");
 
-    // Voltar ao vídeo e passar de novo, sim.
+    // Going back to the video and passing it again does.
     scrollTo(120);
     scrollTo(-400);
     expect(dock.dataset.mini).toBe("true");
   });
 
-  it("chegar ao rodapé não acende o mini (o vídeo está ACIMA, não abaixo)", () => {
+  it("reaching the footer does not turn the mini on (the video is ABOVE, not below)", () => {
     render(
       <VideoDock title="Aula 3">
         <video data-testid="clip" />
@@ -129,13 +129,13 @@ describe("mini player no celular", () => {
 
     const dock = document.querySelector(".member-video-dock") as HTMLElement;
 
-    // Primeira leitura com a sala ainda abaixo da dobra: top positivo e fora
-    // da tela. Antes de existir a checagem de `top`, isto acendia o mini.
+    // First reading with the room still below the fold: positive top and off
+    // screen. Before the `top` check existed, this turned the mini on.
     scrollTo(2000);
     expect(dock.dataset.mini).toBe("false");
   });
 
-  it("aula sem vídeo não observa nada: o quadro vazio nunca sobe", () => {
+  it("a lesson without video observes nothing: the empty frame never goes up", () => {
     render(
       <VideoDock title="Aula de texto" enabled={false}>
         <p>Sem vídeo</p>

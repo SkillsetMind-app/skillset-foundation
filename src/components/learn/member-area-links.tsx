@@ -14,13 +14,13 @@ const studentStatuses = new Set(["active", "completed"]);
 
 type AreaLink = { href: string; name: string };
 
-// Os atalhos dependem de tres leituras em fila (cursos, depois perfis e areas)
-// e chegavam ~0,4 s depois do cabecalho do /learn: no celular o botao abria
-// uma segunda linha e "My courses" descia 54px. Os ultimos atalhos montados
-// para as MESMAS matriculas ficam neste aparelho e guardam o lugar desde o
-// cabecalho (as matriculas chegam junto com ele). So gravamos quando as duas
-// leituras deram certo: uma falha leva tudo a area principal e nao pode virar
-// a lembranca de um aluno de area extra.
+// The shortcuts depend on three reads in a queue (courses, then profiles and areas)
+// and arrived ~0.4 s after the /learn header: on the phone the button opened
+// a second line and "My courses" dropped 54px. The last shortcuts built
+// for the SAME enrollments stay on this device and hold the place from the
+// header on (the enrollments arrive along with it). We only write when both
+// reads succeeded: a failure sends everything to the main area and must not become
+// the memory of a learner of an extra area.
 const LINKS_CACHE_KEY = "skillset:learn-member-area-links.v1";
 const EMPTY_SUBSCRIBE = () => () => {};
 
@@ -37,7 +37,7 @@ function cachedLinksFor(raw: string | null, purchasedKey: string): [string, Area
   try {
     const saved = JSON.parse(raw);
     if (saved?.key !== purchasedKey || !Array.isArray(saved.links)) return null;
-    // So enderecos da propria area de membros: o armazenamento nao e fonte confiavel de link.
+    // Only addresses inside the members area itself: storage is not a trustworthy source of links.
     return saved.links.filter(
       (entry: unknown): entry is [string, AreaLink] =>
         Array.isArray(entry) &&
@@ -52,9 +52,9 @@ function cachedLinksFor(raw: string | null, purchasedKey: string): [string, Area
 }
 
 /**
- * /learn: um atalho "Área de {nome}" por área de quem a pessoa é aluna: a
- * principal de cada criador e, se ela comprou produto de uma área extra, essa
- * extra (com o nome dela).
+ * /learn: a "{name}'s area" shortcut per area the person is a learner of: the
+ * main one of each creator and, if they bought a product from an extra area, that
+ * extra one (with its name).
  */
 export function MemberAreaLinks({
   courses,
@@ -63,13 +63,13 @@ export function MemberAreaLinks({
 }: {
   courses: readonly TeacherCourse[];
   enrollments: readonly Enrollment[];
-  // A leitura dos cursos terminou (bem ou mal). Antes disso o lugar guardado
-  // segura; depois, sem curso nenhum que bata, nao ha atalho a esperar.
+  // The courses read finished (well or badly). Before that the stored place
+  // holds; after, with no matching course at all, there is no shortcut to wait for.
   coursesSettled?: boolean;
 }) {
   const { t } = useTranslation();
-  // Os produtos comprados, so pelas matriculas: ja existe quando o cabecalho
-  // aparece, antes da lista de cursos.
+  // The purchased products, from the enrollments only: it already exists when the header
+  // appears, before the course list.
   const purchasedKey = useMemo(
     () =>
       Array.from(
@@ -83,7 +83,7 @@ export function MemberAreaLinks({
         .join(","),
     [enrollments],
   );
-  // "courseId:ownerId" de cada produto comprado, em ordem estável.
+  // "courseId:ownerId" of each purchased product, in a stable order.
   const ownedKey = useMemo(() => {
     const owned = new Set(purchasedKey ? purchasedKey.split(",") : []);
     return courses
@@ -93,7 +93,7 @@ export function MemberAreaLinks({
       .join(",");
   }, [courses, purchasedKey]);
   const [profiles, setProfiles] = useState<{ key: string; ok: boolean; list: PublicProfile[] } | null>(null);
-  // null = ainda perguntando: sem atalho, para não mandar o aluno de uma extra à principal.
+  // null = still asking: no shortcut, so the learner of an extra area is not sent to the main one.
   const [slugs, setSlugs] = useState<{
     key: string;
     ok: boolean;
@@ -108,7 +108,7 @@ export function MemberAreaLinks({
       .then((next) => {
         if (!cancelled) setProfiles({ key: ownedKey, ok: true, list: next });
       })
-      // Atalho é conveniência: sem o perfil, o painel segue sem ele.
+      // A shortcut is a convenience: without the profile, the dashboard goes on without it.
       .catch(() => {
         if (!cancelled) setProfiles({ key: ownedKey, ok: false, list: [] });
       });
@@ -116,7 +116,7 @@ export function MemberAreaLinks({
       .then((map) => {
         if (!cancelled) setSlugs({ key: ownedKey, ok: true, map });
       })
-      // Sem a resposta, todo atalho leva à principal, como antes das extras.
+      // Without the answer, every shortcut leads to the main area, as before the extras.
       .catch(() => {
         if (!cancelled) setSlugs({ key: ownedKey, ok: false, map: new Map() });
       });
@@ -125,7 +125,7 @@ export function MemberAreaLinks({
     };
   }, [ownedKey]);
 
-  // Uma entrada por (criador, área), na ordem dos produtos.
+  // One entry per (creator, area), in the order of the products.
   const links = new Map<string, AreaLink>();
   const resolved = slugs?.key === ownedKey ? slugs.map : null;
   const profileList = profiles?.key === ownedKey ? profiles.list : [];
@@ -140,9 +140,9 @@ export function MemberAreaLinks({
       name: extra ? extra.name?.trim() || creatorName : creatorName,
     });
   }
-  // As duas leituras desta lista chegaram: os atalhos de agora valem.
+  // Both reads of this list arrived: the current shortcuts count.
   const settled = coursesSettled && (!ownedKey || (resolved !== null && profiles?.key === ownedKey));
-  // E so as duas boas viram lembranca (inclusive "nenhum atalho").
+  // And only the two good ones become memory (including "no shortcut").
   const freshJson =
     settled && ownedKey && slugs?.ok && profiles?.ok && ownedKey.split(",").length === purchasedKey.split(",").length
       ? JSON.stringify([...links])
@@ -152,7 +152,7 @@ export function MemberAreaLinks({
     try {
       window.localStorage.setItem(LINKS_CACHE_KEY, `{"key":${JSON.stringify(purchasedKey)},"links":${freshJson}}`);
     } catch {
-      // ponytail: armazenamento bloqueado: os atalhos so esperam as leituras, como antes.
+      // ponytail: storage blocked: the shortcuts just wait for the reads, as before.
     }
   }, [purchasedKey, freshJson]);
   const cachedRaw = useSyncExternalStore(EMPTY_SUBSCRIBE, readLinksCache, () => null);
@@ -160,9 +160,9 @@ export function MemberAreaLinks({
   const label = (link: AreaLink) => t("learn.memberArea.openArea").replace("{name}", () => link.name);
 
   if (!settled) {
-    // O lugar guardado nao navega: o produto pode ter mudado de area desde a
-    // ultima visita, e o endereco velho levaria a area errada. O botao de
-    // verdade entra no mesmo lugar, do mesmo tamanho, quando as leituras chegam.
+    // The stored place does not navigate: the product may have changed area since the
+    // last visit, and the old address would lead to the wrong area. The real
+    // button takes the same place, at the same size, when the reads arrive.
     return (
       <>
         {(cached ?? []).map(([key, link]) => (
@@ -186,17 +186,17 @@ export function MemberAreaLinks({
 }
 
 /**
- * A área do criador para o "voltar" da sala: { href, nome } quando ele tem
- * perfil público, senão null (a sala volta para /learn). Pela mesma leitura
- * pública que a sala já faz para nomear o professor. Produto numa área extra
- * volta para ela.
+ * The creator's area for the room's "back": { href, name } when they have a
+ * public profile, otherwise null (the room goes back to /learn). Through the same public
+ * read the room already does to name the teacher. A product in an extra area
+ * goes back to it.
  */
 export function useCreatorAreaLink(
   ownerId: string | null | undefined,
   courseId: string | null = null,
 ): { href: string; name: string } | null {
   const [profile, setProfile] = useState<PublicProfile | null>(null);
-  // A área do produto: slug null = principal.
+  // The product's area: slug null = the main one.
   const [area, setArea] = useState<{ courseId: string; slug: string | null; name: string | null } | null>(null);
 
   useEffect(() => {
@@ -212,7 +212,7 @@ export function useCreatorAreaLink(
         const found = slugs.get(courseId);
         if (!cancelled) setArea({ courseId, slug: found?.slug ?? null, name: found?.name ?? null });
       })
-      // Sem a resposta, volta para a principal.
+      // Without the answer, it goes back to the main one.
       .catch(() => {
         if (!cancelled) setArea({ courseId, slug: null, name: null });
       });
@@ -223,7 +223,7 @@ export function useCreatorAreaLink(
 
   const creatorName = profile && profile.uid === ownerId ? publicProfileName(profile) : null;
   if (!profile || !creatorName) return null;
-  // Enquanto pergunta, a principal: o "voltar" aparece já no primeiro desenho.
+  // While asking, the main one: the "back" shows up already on the first paint.
   const extra = courseId && area?.courseId === courseId && area.slug ? area : null;
   return {
     href: memberAreaPath({ username: profile.username, ownerId: profile.uid, slug: extra?.slug }),

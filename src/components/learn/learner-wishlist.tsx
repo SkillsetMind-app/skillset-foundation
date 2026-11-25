@@ -29,8 +29,8 @@ export function LearnerWishlist() {
   const [items, setItems] = useState<WishlistItem[]>([]);
   const [publishedCourses, setPublishedCourses] = useState<CourseCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  // Cada leitura com a sua falha: a lista que chegar não apaga o erro da outra,
-  // e a falha ao remover não troca a lista pelo aviso.
+  // Each read has its own failure: a list that arrives does not clear the other's error,
+  // and a failure to remove does not replace the list with the notice.
   const [loadFailed, setLoadFailed] = useState(false);
   const [published, setPublished] = useState({ ready: false, failed: false });
   const [removeFailed, setRemoveFailed] = useState(false);
@@ -84,7 +84,7 @@ export function LearnerWishlist() {
     };
   }, []);
 
-  // "Try again" lê de novo só o que falhou, pelos mesmos canais (sem religar).
+  // "Try again" rereads only what failed, through the same channels (without reconnecting).
   function retryLoad() {
     return Promise.all([
       loadFailed ? wishlistSubscription.current?.reload() : undefined,
@@ -121,16 +121,16 @@ export function LearnerWishlist() {
     }
   }
 
-  // Uma moldura em volta dos estados: o "Try again" some quando a leitura dá
-  // certo, e o foco fica nela em vez de cair no <body>.
+  // One frame around the states: the "Try again" button disappears when the read
+  // succeeds, and focus stays on the frame instead of falling to the <body>.
   const frame = (content: ReactNode) => (
     <div ref={frameRef} tabIndex={-1}>
       {content}
     </div>
   );
 
-  // A espera com a forma da lista (dois cartões com capa e texto), e a frase
-  // só para o leitor de tela: antes era uma frase solta num cartão.
+  // The wait has the shape of the list (two cards with a cover and text), and the sentence
+  // is only for the screen reader: before, it was a loose sentence in a card.
   if (isLoading) {
     return frame(
       <div role="status" className="grid gap-5 lg:grid-cols-2">
@@ -167,13 +167,13 @@ export function LearnerWishlist() {
     </div>
   ) : null;
 
-  // Sem linhas que valham: a lista nunca chegou, ou os cursos nunca chegaram e
-  // todo favorito pareceria "indisponível". Só o aviso, nunca o vazio.
+  // No rows worth showing: the list never arrived, or the courses never arrived and
+  // every favorite would look "unavailable". Only the notice, never the empty state.
   if (loadErrorKey && (items.length === 0 || (published.failed && !published.ready))) {
     return frame(<div className="dash-card dash-card--strong p-5">{alerts}</div>);
   }
 
-  // O vazio da plataforma (EmptyState), em h2 logo abaixo do h1 do shell.
+  // The platform's empty state (EmptyState), as an h2 right below the shell's h1.
   if (items.length === 0) {
     return frame(
       <EmptyState
@@ -190,7 +190,7 @@ export function LearnerWishlist() {
     );
   }
 
-  // Linhas já na tela ficam; o aviso vem acima delas, na largura toda.
+  // Rows already on the screen stay; the notice comes above them, at full width.
   return frame(
     <section className="grid gap-5 lg:grid-cols-2">
       {alerts ? <div className="lg:col-span-2">{alerts}</div> : null}
@@ -217,8 +217,8 @@ export function LearnerWishlist() {
                   <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">
                     {course.category}
                   </p>
-                  {/* h2: os cartões ficam logo abaixo do h1 do shell (antes o h2
-                      do vazio vinha primeiro no arquivo e escondia o salto). */}
+                  {/* h2: the cards sit right below the shell's h1 (before, the empty
+                      state's h2 came first in the file and hid the jump). */}
                   <h2 className="mt-3 text-lg font-semibold leading-6 text-[var(--color-primary)]">
                     {course.title}
                   </h2>

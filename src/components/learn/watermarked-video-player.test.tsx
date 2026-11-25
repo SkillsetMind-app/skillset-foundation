@@ -67,7 +67,7 @@ describe("VideoWatermark", () => {
     expect(screen.queryByText(/student@example\.com/)).toBeNull();
   });
 
-  it("uma etiqueta so, pequena, que muda de canto a cada ~30 s", () => {
+  it("a single small label that changes corner every ~30 s", () => {
     vi.useFakeTimers();
     try {
       const { container } = render(
@@ -76,8 +76,8 @@ describe("VideoWatermark", () => {
         </VideoWatermark>,
       );
 
-      // Antes eram duas etiquetas fixas o tempo todo (e-mail/hora em cima,
-      // "protected playback" embaixo). Agora e uma, com tudo dentro.
+      // Before, there were two fixed labels all the time (email/time on top,
+      // "protected playback" at the bottom). Now it is one, with everything inside.
       const labels = container.querySelectorAll("[data-watermark-corner]");
       expect(labels).toHaveLength(1);
       expect(labels[0].textContent).toMatch(/ID 4F3A-92C1/);

@@ -6,17 +6,17 @@ import { EnrolledCourseWorkspace } from "@/components/learn/enrolled-course-work
 import type { Course } from "@/domain/learning";
 
 /**
- * A tela pós-pagamento promete, com todas as letras: "Keep this page open: it
+ * The post-payment screen promises, in so many words: "Keep this page open: it
  * opens automatically the moment your enrollment is confirmed."
  *
- * A ÚNICA coisa capaz de cumprir essa promessa era o `postgres_changes` — um
- * WebSocket. Aba de celular em segundo plano, proxy corporativo ou wi-fi
- * instável derrubam esse socket em silêncio: o canal continua "inscrito" e
- * nunca dispara. A promessa virava mentira e o comprador — que já pagou —
- * ficava ali para sempre, sem saber que bastava recarregar.
+ * The ONLY thing able to keep that promise was `postgres_changes` — a
+ * WebSocket. A phone tab in the background, a corporate proxy or unstable
+ * wi-fi silently drop that socket: the channel stays "subscribed" and
+ * never fires. The promise became a lie and the buyer — who already paid —
+ * was left there forever, not knowing that reloading was enough.
  *
- * Estes testes seguram a rede de segurança: enquanto a matrícula não chega, a
- * inscrição é reemitida periodicamente, ANTES e DEPOIS da carência de 90s.
+ * These tests hold the safety net: while the enrollment has not arrived, the
+ * subscription is re-issued periodically, BOTH BEFORE and AFTER the 90s grace period.
  */
 
 const mocks = vi.hoisted(() => ({
@@ -55,13 +55,13 @@ const course = {
   membersTheme: "light",
 } as unknown as Course;
 
-describe("rede de segurança entre pagar e a matrícula aparecer", () => {
+describe("safety net between paying and the enrollment showing up", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     mocks.subscribeToEnrollment.mockReset();
-    // Socket "vivo" que entrega o estado atual (nenhuma matrícula ainda) e
-    // depois nunca mais dispara — exatamente o modo de falha real: o canal
-    // segue inscrito e o webhook nunca chega até ele.
+    // A "live" socket that delivers the current state (no enrollment yet) and
+    // then never fires again — exactly the real failure mode: the channel
+    // stays subscribed and the webhook never reaches it.
     mocks.subscribeToEnrollment.mockImplementation((_uid, _slug, onNext) => {
       onNext(null);
       return vi.fn();
@@ -72,7 +72,7 @@ describe("rede de segurança entre pagar e a matrícula aparecer", () => {
     vi.useRealTimers();
   });
 
-  it("reemite a inscrição enquanto a matrícula não chega", () => {
+  it("re-subscribes while the enrollment has not arrived", () => {
     render(<EnrolledCourseWorkspace course={course} />);
 
     const initialCalls = mocks.subscribeToEnrollment.mock.calls.length;
@@ -82,21 +82,21 @@ describe("rede de segurança entre pagar e a matrícula aparecer", () => {
       vi.advanceTimersByTime(11_000);
     });
 
-    // Dois ciclos de 5s dentro da carência.
+    // Two 5s cycles inside the grace period.
     expect(mocks.subscribeToEnrollment.mock.calls.length).toBeGreaterThan(
       initialCalls,
     );
   });
 
-  it("NÃO desiste depois dos 90s de carência", () => {
+  it("does NOT give up after the 90s grace period", () => {
     render(<EnrolledCourseWorkspace course={course} />);
 
     act(() => {
       vi.advanceTimersByTime(95_000);
     });
 
-    // A carência expirou: a cópia muda, mas o fallback tem de continuar. Passar
-    // dos 90s é justamente o sinal de que o WebSocket não entregou — desligar o
+    // The grace period expired: the copy changes, but the fallback must keep going. Passing
+    // 90s is precisely the sign that the WebSocket did not deliver — turning off the
     // poll aqui deixaria o socket morto como único caminho restante.
     expect(
       screen.getByText(/taking longer than usual/i),

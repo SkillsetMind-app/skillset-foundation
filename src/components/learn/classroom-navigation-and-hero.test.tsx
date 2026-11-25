@@ -10,21 +10,21 @@ import type { CourseAsset } from "@/domain/course-asset";
 import { subscribeToCourseAssets } from "@/lib/data/course-assets";
 import { recordLessonProgress, subscribeToCompletedLessons } from "@/lib/data/lesson-progress";
 
-// As inscricoes devolvem a funcao de desligar com `reload` (o "Try again").
+// The subscriptions return the unsubscribe function with `reload` (the "Try again").
 const unsubscribable = () => Object.assign(vi.fn(), { reload: vi.fn(async () => undefined) });
 
 /**
- * P2/P4 da paridade com a Hotmart (§4.2 e §4.3 do relatorio de 2026-09-06):
- *   - anterior / proxima junto do titulo da aula, uma vez so, sem burlar o
- *     cadeado;
- *   - "Tocando agora" na playlist, so no item atual;
- *   - "Informacoes da aula" saiu: tipo, duracao, modulo e arquivos ja estao
- *     na tela, cada um uma vez;
+ * P2/P4 of the Hotmart parity (§4.2 and §4.3 of the 2026-09-06 report):
+ *   - previous / next next to the lesson title, only once, without bypassing the
+ *     lock;
+ *   - "Now playing" in the playlist, only on the current item;
+ *   - "Lesson information" is gone: type, duration, module and files are already
+ *     on screen, each one once;
  *   - "N de M aulas · X%" e "Ver certificado" (so a 100%) no hero da home.
  *
- * Arquivo proprio: classroom-home.test.tsx ja e pesado e um arquivo grande
- * estoura a RAM. Os mocks sao os MESMOS de la — em especial o `auth` unico
- * por sessao (um objeto novo por render reinscreve a matricula em laco).
+ * Its own file: classroom-home.test.tsx is already heavy and a big file
+ * blows up the RAM. The mocks are the SAME as there — especially the single `auth`
+ * per session (a new object per render re-subscribes the enrollment in a loop).
  */
 
 const mocks = vi.hoisted(() => ({
@@ -51,11 +51,11 @@ vi.mock("@/components/auth/auth-provider", () => ({
 
 vi.mock("@/lib/data/enrollments", () => ({
   subscribeToEnrollment: vi.fn((...args: unknown[]) => {
-    // Fusivel: um laco de inscricao e sincrono dentro do render — nem o
-    // timeout do vitest alcanca. Vira falha que termina, nao travamento.
+    // Fuse: a subscription loop is synchronous inside render — not even the
+    // vitest timeout reaches it. It becomes a failure that ends, not a hang.
     mocks.enrollmentSubscriptions += 1;
     if (mocks.enrollmentSubscriptions > 20) {
-      throw new Error("subscribeToEnrollment chamado mais de 20 vezes: laco de render");
+      throw new Error("subscribeToEnrollment called more than 20 times: render loop");
     }
     const onNext = args.find((arg) => typeof arg === "function") as (
       enrollment: unknown,
@@ -127,15 +127,15 @@ vi.mock("@/components/learn/course-review-panel", () => ({
 vi.mock("@/components/learn/community-feed", () => ({
   CommunityFeed: () => <div data-testid="community-feed" />,
 }));
-// O anexo da aula abre um preview protegido (URL assinada). Nao e o alvo
+// The lesson attachment opens a protected preview (signed URL). It is not the target
 // daqui: so a contagem importa.
 vi.mock("@/components/shared/protected-asset-preview", () => ({
   ProtectedAssetPreview: () => null,
   ProtectedAssetDownload: () => null,
 }));
 
-// Tres aulas em dois modulos: da para testar "primeira" (sem anterior),
-// "ultima" (sem proxima) e a troca de modulo no meio.
+// Three lessons in two modules: it is possible to test "first" (no previous),
+// "last" (no next) and the module change in the middle.
 const course = {
   id: "course-1",
   slug: "demo-course",
@@ -188,7 +188,7 @@ function renderClassroom(
 
 function head() {
   const element = document.querySelector(".member-classroom-head");
-  if (!element) throw new Error("cabecalho curto da aula nao renderizou");
+  if (!element) throw new Error("the lesson's short header did not render");
   return element as HTMLElement;
 }
 
@@ -208,8 +208,8 @@ beforeEach(() => {
   };
 });
 
-describe("anterior / proxima junto do titulo", () => {
-  it("troca de aula pelo cabecalho, grava a aula no endereco e move o destaque da playlist", () => {
+describe("previous / next next to the title", () => {
+  it("switches lesson from the header, writes the lesson to the address and moves the playlist highlight", () => {
     renderClassroom("lesson=l1");
 
     const previous = within(head()).getByRole("button", { name: "Previous lesson" });
@@ -217,7 +217,7 @@ describe("anterior / proxima junto do titulo", () => {
     expect(previous).toHaveAttribute("aria-disabled", "true");
     expect(next).not.toHaveAttribute("aria-disabled");
 
-    // Desabilitado nao e "some": segue focavel, so nao faz nada.
+    // Disabled is not "gone": it stays focusable, it just does nothing.
     fireEvent.click(previous);
     expect(mocks.replace).not.toHaveBeenCalled();
 
@@ -230,14 +230,14 @@ describe("anterior / proxima junto do titulo", () => {
       "aria-current",
       "true",
     );
-    // Na aula 2 os dois vizinhos existem — inclusive a proxima, que esta no
-    // outro modulo (a ordem e a do curso inteiro, nao a do modulo).
+    // On lesson 2 both neighbors exist — including the next one, which is in the
+    // other module (the order is the whole course's, not the module's).
     expect(within(head()).getByRole("button", { name: "Previous lesson: Lesson one" })).not.toHaveAttribute("aria-disabled");
     expect(within(head()).getByRole("button", { name: "Next lesson: Lesson three" })).not.toHaveAttribute("aria-disabled");
     expect(recordLessonProgress).not.toHaveBeenCalled();
   });
 
-  it("nunca burla o cadeado: a proxima bloqueada fica desabilitada e o clique nao abre nada", () => {
+  it("never bypasses the lock: the locked next one stays disabled and the click opens nothing", () => {
     renderClassroom("lesson=l1", [], { course: { ...course, dripStrategy: "sequential_progress" } });
 
     const next = within(head()).getByRole("button", { name: "Next lesson: Lesson two" });
@@ -251,25 +251,25 @@ describe("anterior / proxima junto do titulo", () => {
     );
   });
 
-  it("na ultima aula 'proxima' desabilita, e o 'anterior' solto da barra inferior sumiu", () => {
+  it("on the last lesson 'next' is disabled, and the loose 'previous' in the bottom bar is gone", () => {
     renderClassroom("lesson=l3", ["l1", "l2"]);
 
     expect(within(head()).getByRole("button", { name: "Next lesson" })).toHaveAttribute("aria-disabled", "true");
     expect(within(head()).getByRole("button", { name: "Previous lesson: Lesson two" })).not.toHaveAttribute("aria-disabled");
-    // Um so "anterior" na sala inteira (antes: outro, com "← titulo", sob o video).
+    // Only one "previous" in the whole classroom (before: another, with "← title", under the video).
     expect(screen.getAllByRole("button", { name: /^Previous lesson/ })).toHaveLength(1);
     expect(screen.queryByRole("button", { name: /^← / })).toBeNull();
   });
 
-  it("fora da aba da aula o cabecalho nao tem setas (elas trocam a aula, nao a aba)", () => {
+  it("outside the lesson tab the header has no arrows (they switch the lesson, not the tab)", () => {
     renderClassroom("lesson=l2", [], { tab: "review" });
 
     expect(within(head()).queryByRole("button", { name: /lesson/i })).toBeNull();
   });
 });
 
-describe("Tocando agora na playlist", () => {
-  it("so no item atual, em EN e ES, mantendo aria-current e sem reinscrever", () => {
+describe("Now playing in the playlist", () => {
+  it("only on the current item, in EN and ES, keeping aria-current and without resubscribing", () => {
     mocks.searchParams = new URLSearchParams("lesson=l2");
     mocks.completed = [];
     render(
@@ -294,27 +294,27 @@ describe("Tocando agora na playlist", () => {
   });
 });
 
-// "Lesson information" repetia o que ja esta na tela: o tipo (o sobrescrito do
-// painel), a duracao (o chip), o modulo (a lista de aulas) e os arquivos (a
-// lista do corpo). Saiu; cada informacao fica uma vez, no lugar dela.
-describe("informacoes da aula sem repeticao", () => {
-  it("tipo, duracao e modulo aparecem uma vez, sem o painel 'Lesson information'", () => {
+// "Lesson information" repeated what is already on screen: the type (the panel's
+// superscript), the duration (the chip), the module (the lesson list) and the files (the
+// body list). It is gone; each piece of information stays once, in its own place.
+describe("lesson information without repetition", () => {
+  it("type, duration and module appear once, without the 'Lesson information' panel", () => {
     renderClassroom("lesson=l2");
 
     expect(screen.queryByRole("button", { name: "Lesson information" })).toBeNull();
     expect(document.getElementById("member-lesson-info")).toBeNull();
     // O tipo: so o sobrescrito do painel.
     expect(screen.getAllByText("Text lesson")).toHaveLength(1);
-    // A duracao: o chip do cabecalho do painel.
+    // The duration: the chip in the panel header.
     expect(document.querySelector(".member-lesson-panel__head .member-meta-chip")).toHaveTextContent("7 min");
-    // O modulo: na lista de aulas.
+    // The module: in the lesson list.
     expect(within(playlist()).getByText("Module one")).toBeInTheDocument();
-    // Sem gotejamento por data nada fala de liberacao.
+    // With no date-based drip, nothing talks about unlocking.
     expect(screen.queryByText("Available from")).toBeNull();
     expect(recordLessonProgress).not.toHaveBeenCalled();
   });
 
-  it("com arquivos do curso, conta so os materiais da aula (miniatura nao conta)", () => {
+  it("with course files, counts only the lesson's materials (thumbnail does not count)", () => {
     mocks.searchParams = new URLSearchParams("lesson=l2");
     mocks.completed = [];
     let emit!: (assets: CourseAsset[]) => void;
@@ -334,8 +334,8 @@ describe("informacoes da aula sem repeticao", () => {
       asset({ id: "other-lesson", lessonId: "l1" }),
     ]));
 
-    // So o material desta aula, uma vez, na lista do corpo (a miniatura e o
-    // arquivo da outra aula ficam de fora); nenhuma contagem repetida.
+    // Only this lesson's material, once, in the body list (the thumbnail and the
+    // other lesson's file stay out); no repeated count.
     const body = document.getElementById("member-lesson-content") as HTMLElement;
     expect(within(body).getAllByText("Worksheet.pdf")).toHaveLength(1);
     expect(within(body).queryByText("thumb.png")).toBeNull();
@@ -343,14 +343,14 @@ describe("informacoes da aula sem repeticao", () => {
   });
 });
 
-describe("hero da home do curso", () => {
-  it("mostra 'N de M aulas · X%' e o certificado so a 100%; sem contagens fica como era", () => {
+describe("course home hero", () => {
+  it("shows 'N of M lessons · X%' and the certificate only at 100%; without counts it stays as it was", () => {
     const { rerender, container } = render(
       <MembersAreaHero theme="dark" title="Course" progressPercent={25}
         completedCount={3} totalCount={12} certificateHref="/learn/credentials" />,
     );
     expect(screen.getByText("3 of 12 lessons · 25%")).toBeInTheDocument();
-    // A barra da capa e anunciada como barra de progresso.
+    // The cover's bar is announced as a progress bar.
     expect(screen.getByRole("progressbar", { name: "25% complete" })).toHaveAttribute("aria-valuenow", "25");
     expect(screen.queryByRole("link", { name: "Get certificate" })).toBeNull();
 
@@ -359,24 +359,24 @@ describe("hero da home do curso", () => {
         completedCount={12} totalCount={12} certificateHref="/learn/credentials" />,
     );
     expect(screen.getByText("12 of 12 lessons · 100%")).toBeInTheDocument();
-    // O mesmo rotulo da barra de abas e do botao da ultima aula.
+    // The same label on the tab bar and on the last lesson's button.
     expect(screen.getByRole("link", { name: "Get certificate" })).toHaveAttribute("href", "/learn/credentials");
 
-    // Sem destino (whitelabel) nada aparece, mesmo a 100%.
+    // With no destination (whitelabel) nothing shows, even at 100%.
     rerender(
       <MembersAreaHero theme="dark" title="Course" progressPercent={100}
         completedCount={12} totalCount={12} />,
     );
     expect(screen.queryByRole("link", { name: "Get certificate" })).toBeNull();
 
-    // Sem as contagens: identico ao de hoje.
+    // Without the counts: identical to today's.
     rerender(<MembersAreaHero theme="dark" title="Course" progressPercent={42} />);
     expect(screen.getByText("42%")).toBeInTheDocument();
     expect(screen.getByText("complete")).toBeInTheDocument();
     expect(container.querySelector(".members-hero__cta")).toBeNull();
   });
 
-  it("na sala, o hero le o progresso ja calculado e o certificado reusa /learn/credentials", () => {
+  it("in the classroom, the hero reads the already computed progress and the certificate reuses /learn/credentials", () => {
     const { unmount } = renderClassroom("");
     expect(screen.getByText("0 of 3 lessons · 0%")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Get certificate" })).toBeNull();
@@ -386,16 +386,16 @@ describe("hero da home do curso", () => {
     expect(screen.getByText("3 of 3 lessons · 100%")).toBeInTheDocument();
     const hero = document.querySelector(".members-hero") as HTMLElement;
     expect(within(hero).getByRole("link", { name: "Get certificate" })).toHaveAttribute("href", "/learn/credentials");
-    // Uma vez so na capa: a barra de abas nao repete o certificado do hero.
+    // Only once on the cover: the tab bar does not repeat the hero's certificate.
     expect(screen.getAllByRole("link", { name: "Get certificate" })).toHaveLength(1);
-    // Terminou: a acao principal e o certificado, nao "continuar".
+    // Finished: the main action is the certificate, not "continue".
     expect(within(hero).queryByRole("link", { name: /^Continue/ })).toBeNull();
     expect(recordLessonProgress).not.toHaveBeenCalled();
   });
 
-  // A capa do curso nao tinha acao principal: a pessoa via titulo, descricao
-  // e progresso, e tinha de achar a aula sozinha.
-  it("primeira visita: 'Start lesson 1' abre a primeira aula", () => {
+  // The course cover had no main action: the person saw the title, description
+  // and progress, and had to find the lesson on their own.
+  it("first visit: 'Start lesson 1' opens the first lesson", () => {
     renderClassroom("");
 
     const hero = document.querySelector(".members-hero") as HTMLElement;
@@ -405,7 +405,7 @@ describe("hero da home do curso", () => {
     );
   });
 
-  it("com progresso, na aba About: 'Continue: <aula>' abre a aula em que a pessoa estava", () => {
+  it("with progress, on the About tab: 'Continue: <lesson>' opens the lesson the person was on", () => {
     renderClassroom("lesson=l2", ["l1"], { tab: "about" });
 
     const hero = document.querySelector(".members-hero") as HTMLElement;
@@ -415,7 +415,7 @@ describe("hero da home do curso", () => {
     );
   });
 
-  it("antes do progresso chegar, a capa nao chuta 'Start lesson 1' para quem ja comecou", () => {
+  it("before progress arrives, the cover does not guess 'Start lesson 1' for someone who already started", () => {
     let emit!: (lessonIds: string[]) => void;
     vi.mocked(subscribeToCompletedLessons).mockImplementationOnce((_id, onNext) => {
       emit = onNext;
@@ -430,16 +430,16 @@ describe("hero da home do curso", () => {
     expect(within(hero).getByRole("link", { name: "Continue: Lesson two" })).toBeInTheDocument();
   });
 
-  it("whitelabel: nenhum certificado no hero mesmo a 100% (nada leva de volta a plataforma)", () => {
+  it("whitelabel: no certificate in the hero even at 100% (nothing leads back to the platform)", () => {
     renderClassroom("lesson=l3", ["l1", "l2", "l3"], { tab: "about", whitelabel: true });
 
     expect(screen.getByText("3 of 3 lessons · 100%")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /certificate/i })).toBeNull();
   });
 
-  // O titulo da area de membros e a saudacao da capa; muito professor poe o
-  // proprio nome ali, e a sala inteira ficava sem dizer que curso era.
-  it("com titulo proprio na capa, o nome do curso aparece na capa e no cabecalho da aula", () => {
+  // The members area title is the cover's greeting; many teachers put their
+  // own name there, and the whole classroom never said which course it was.
+  it("with its own title on the cover, the course name shows on the cover and in the lesson header", () => {
     const named = { ...course, membersTitle: "Patrick Simon" } as Course;
     const { unmount } = renderClassroom("", [], { course: named });
     const hero = document.querySelector(".members-hero") as HTMLElement;
@@ -452,15 +452,15 @@ describe("hero da home do curso", () => {
     expect(screen.queryByText("Patrick Simon")).toBeNull();
   });
 
-  it("o subtitulo do professor continua no lugar dele", () => {
+  it("the teacher's subtitle stays in its place", () => {
     renderClassroom("", [], { course: { ...course, membersTitle: "Patrick Simon", membersSubtitle: "Live cohort" } as Course });
     const hero = document.querySelector(".members-hero") as HTMLElement;
     expect(within(hero).getByText("Live cohort")).toBeInTheDocument();
   });
 });
 
-describe("EN <-> ES com a sala aberta", () => {
-  it("traduz setas, badge e informacoes sem trocar de aula, fechar o painel ou reinscrever", () => {
+describe("EN <-> ES with the classroom open", () => {
+  it("translates arrows, badge and information without switching lessons, closing the panel or re-subscribing", () => {
     mocks.searchParams = new URLSearchParams("lesson=l2");
     mocks.completed = [];
     render(
@@ -477,9 +477,9 @@ describe("EN <-> ES com a sala aberta", () => {
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
     expect(within(head()).getByRole("button", { name: "Siguiente lección: Lesson three" })).toBeInTheDocument();
     expect(within(head()).getByRole("button", { name: "Lección anterior: Lesson one" })).toBeInTheDocument();
-    // O mesmo elemento, traduzido: a aula nao foi remontada.
+    // The same element, translated: the lesson was not remounted.
     expect(screen.getByText("Lección de texto")).toBe(eyebrow);
-    // Titulo do modulo e do autor: nao se traduz.
+    // Module and author title: not translated.
     expect(within(list).getByText("Module one")).toBeInTheDocument();
     expect(screen.getByText("Reproduciendo ahora")).toBeInTheDocument();
 

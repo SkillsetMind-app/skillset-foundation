@@ -33,8 +33,8 @@ export function AuthPage() {
     () => getAuthPathIntentFromSearchParams(searchParams),
     [searchParams],
   );
-  // O titulo diz o papel. Sem isso o papel so aparecia num eyebrow miudo e
-  // quem entrava pela porta errada nao percebia.
+  // The title states the role. Without it the role only showed in a tiny eyebrow and
+  // whoever came in through the wrong door did not notice.
   const modeKey = isSignup ? "Signup" : "Signin";
   const roleKey = pathIntent === "teacher" ? "Educator" : "Learner";
 
@@ -53,8 +53,8 @@ export function AuthPage() {
 
   return (
     <AuthFrame homeLabel={t("auth.page.backToHome")}>
-      {/* Com uma tela de estado no lugar do formulario ("confirme seu
-          e-mail", link vencido), o titulo diz o estado (page-heading.tsx). */}
+      {/* With a status screen in place of the form ("confirm your
+          email", expired link), the title states the status (page-heading.tsx). */}
       <PageHeadingProvider>
         <h1 className="auth-title display-title">
           <PageHeadingText part="title" fallback={t(`auth.page.title${modeKey}${roleKey}`)} />

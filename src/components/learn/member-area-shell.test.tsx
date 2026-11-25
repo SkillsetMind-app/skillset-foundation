@@ -3,8 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import { MemberAreaShell } from "@/components/learn/member-area-shell";
 
-// O sino precisa da assinatura de notificações; o que ele faz na casca está
-// provado em member-area-bell.test.tsx. Aqui só o shell.
+// The bell needs the notifications subscription; what it does in the shell is
+// proved in member-area-bell.test.tsx. Here, only the shell.
 vi.mock("@/components/platform/notification-bell", () => ({
   NotificationBell: () => null,
 }));
@@ -41,12 +41,12 @@ describe("MemberAreaShell", () => {
     ).not.toBeNull();
   });
 
-  // Tema ainda desconhecido (área do criador carregando): nem claro nem escuro,
-  // para a área escura não nascer clara e virar escura.
-  // O cabeçalho fica (logo, Ajuda, conta): se a leitura demorar, a saída
-  // continua na tela. E nada de aria-busy em volta do aviso de carregando,
-  // que o leitor de tela poderia calar.
-  it("theme null: paleta neutra da plataforma, com o cabeçalho e sem aria-busy", () => {
+  // Theme still unknown (the creator's area is loading): neither light nor dark,
+  // so the dark area is not born light and then turns dark.
+  // The header stays (logo, Help, account): if the read is slow, the way out
+  // stays on screen. And no aria-busy around the loading notice,
+  // which the screen reader might silence.
+  it("theme null: neutral platform palette, with the header and without aria-busy", () => {
     const { container } = render(
       <MemberAreaShell theme={null}>
         <p role="status">Loading</p>
@@ -65,10 +65,10 @@ describe("MemberAreaShell", () => {
     ["dark", "logo-wordmark__themed--dark"],
     ["light", "logo-wordmark__themed--light"],
   ] as const)(
-    "o logo segue o tema do curso (%s), não o tema do app",
+    "the logo follows the course theme (%s), not the app theme",
     (theme, tone) => {
-      // O --ma-bg-top do curso escuro é quase preto mesmo com o app no tema
-      // claro: o logo "auto" seguia o <html> e saía azul-marinho no escuro.
+      // The dark course's --ma-bg-top is almost black even with the app in the
+      // light theme: the "auto" logo followed <html> and came out navy on dark.
       const { container } = render(
         <MemberAreaShell theme={theme}>
           <p>Lesson</p>
@@ -91,8 +91,8 @@ describe("MemberAreaShell", () => {
     expect(container.querySelector('a[href="/"]')).toBeNull();
   });
 
-  it("o nome da marca do professor nao usa a serifa de display", () => {
-    // Cormorant e uma serifa de DISPLAY: em 18px, na barra de cima, ela some.
+  it("the teacher's brand name does not use the display serif", () => {
+    // Cormorant is a DISPLAY serif: at 18px, in the top bar, it disappears.
     const { container } = render(
       <MemberAreaShell brand={{ name: "Atelier Curie" }}>
         <p>content</p>
@@ -135,16 +135,16 @@ describe("MemberAreaShell", () => {
 
     const style = container.querySelector<HTMLElement>("[data-members-theme]")?.style;
 
-    // Branco fixo em cima desse amarelo dava 1,6:1.
+    // Fixed white on top of that yellow gave 1.6:1.
     expect(style?.getPropertyValue("--ma-on-accent")).toBe("#0a0d12");
-    // O hover nao pode voltar ao vermelho da plataforma com tinta escura em cima.
+    // The hover must not go back to the platform red with dark ink on top.
     expect(style?.getPropertyValue("--ma-accent-hover")).toBe("#f5c518");
   });
 
-  // A sala nao tinha menu da conta nem Ajuda, e o logo levava para a home
-  // publica. Agora: logo -> My courses; Ajuda e conta no topo, com ou sem a
-  // marca do professor.
-  it("o logo leva para My courses, nao para a home publica", () => {
+  // The room had no account menu or Help, and the logo led to the public
+  // home. Now: logo -> My courses; Help and account at the top, with or without the
+  // teacher's brand.
+  it("the logo leads to My courses, not to the public home", () => {
     const { container } = render(
       <MemberAreaShell>
         <p>Lesson</p>
@@ -158,24 +158,24 @@ describe("MemberAreaShell", () => {
   it.each([
     ["sem marca", null],
     ["com a marca do professor", { name: "Atelier Curie" }],
-  ])("tem Ajuda e menu da conta (%s)", (_label, brand) => {
+  ])("has Help and an account menu (%s)", (_label, brand) => {
     render(
       <MemberAreaShell brand={brand}>
         <p>Lesson</p>
       </MemberAreaShell>,
     );
 
-    // Uma Ajuda so: a sala nao tem barra lateral, entao ela mora no topo.
+    // Only one Help: the room has no sidebar, so it lives at the top.
     expect(screen.getAllByRole("button", { name: "Help" })).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Open account menu" })).toBeInTheDocument();
   });
 
-  // Na sala com a marca do professor, o menu da conta nao abre portas para
-  // dentro da SkillsetMind; sem marca, elas continuam.
+  // In the room with the teacher's brand, the account menu does not open doors into
+  // SkillsetMind; without a brand, they stay.
   it.each([
     ["sem marca", null, true],
     ["com a marca do professor", { name: "Atelier Curie" }, false],
-  ])("menu da conta %s: 'Become a teacher' e 'Go to dashboard' aparecem = %s", (_label, brand, shown) => {
+  ])("account menu %s: 'Become a teacher' and 'Go to dashboard' appear = %s", (_label, brand, shown) => {
     render(
       <MemberAreaShell brand={brand}>
         <p>Lesson</p>
@@ -187,7 +187,7 @@ describe("MemberAreaShell", () => {
       if (shown) expect(screen.getByRole("link", { name })).toBeInTheDocument();
       else expect(screen.queryByRole("link", { name })).toBeNull();
     }
-    // A Ajuda nao se repete dentro do menu da conta.
+    // Help is not repeated inside the account menu.
     expect(screen.getAllByRole("button", { name: "Help" })).toHaveLength(1);
     expect(screen.getByRole("button", { name: /sign out/i })).toBeInTheDocument();
   });
@@ -195,7 +195,7 @@ describe("MemberAreaShell", () => {
   it.each([
     [true, "/learn/courses/curso-1/community"],
     [false, "/learn/courses/curso-1/messages"],
-  ])("a duvida da aula vai para a comunidade do curso (comunidade ligada: %s)", (communityEnabled, href) => {
+  ])("the lesson question goes to the course community (community enabled: %s)", (communityEnabled, href) => {
     render(
       <MemberAreaShell course={{ href: "/learn/courses/curso-1", communityEnabled }}>
         <p>Lesson</p>

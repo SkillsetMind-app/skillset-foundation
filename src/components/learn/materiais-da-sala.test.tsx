@@ -8,24 +8,24 @@ import type { Course } from "@/domain/learning";
 import { getProtectedCourseAssetObjectUrl } from "@/lib/data/course-assets";
 
 /**
- * Materiais na sala do aluno:
- *   - a aba Materiais lista os arquivos de TODAS as aulas já liberadas, por
- *     módulo e aula, na ordem do professor; aula trancada não entra;
- *   - aula só de arquivo mostra o arquivo com um botão grande de baixar, não
+ * Materials in the learner's classroom:
+ *   - the Materials tab lists the files of ALL lessons already released, by
+ *     module and lesson, in the teacher's order; a locked lesson is not included;
+ *   - a file-only lesson shows the file with a big download button, not
  *     "Media not attached yet";
- *   - "Download" pede o link assinado (com o nome do arquivo) NO CLIQUE, não
- *     ao abrir a aba; aula trancada não tem botão, e recusa do storage vira
- *     aviso, não download;
- *   - na aula com vídeo, a lista de anexos mostra o nome dado pelo professor,
- *     sem selo "Preview" em material, e diz com que programa abrir .xmind.
+ *   - "Download" asks for the signed link (with the file name) ON CLICK, not
+ *     when the tab opens; a locked lesson has no button, and a refusal from storage becomes
+ *     a notice, not a download;
+ *   - in a lesson with a video, the attachment list shows the name given by the teacher,
+ *     with no "Preview" badge on material, and says which program opens .xmind.
  */
 
 const mocks = vi.hoisted(() => ({
   searchParams: new URLSearchParams(),
   completed: [] as string[],
   assets: [] as CourseAsset[],
-  // O mesmo objeto a cada chamada, como o provider de verdade: um `user` novo
-  // a cada render reinscreve a matrícula sem fim e estoura a memória.
+  // The same object on every call, like the real provider: a new `user`
+  // on every render resubscribes the enrollment endlessly and blows up memory.
   auth: {
     status: "authenticated",
     user: { uid: "student-1", email: "student@example.com", roles: ["student"] },
@@ -74,7 +74,7 @@ vi.mock("@/lib/data/course-assets", () => ({
     onNext(mocks.assets);
     return Object.assign(vi.fn(), { reload: vi.fn(async () => undefined) });
   }),
-  // O link de baixar se distingue do de abrir pelo nome no fim.
+  // The download link is distinguished from the open link by the name at the end.
   getProtectedCourseAssetObjectUrl: vi.fn(async (asset: CourseAsset, options?: { download?: boolean }) =>
     `https://storage.test/${asset.id}${options?.download ? `?download=${encodeURIComponent(asset.fileName)}` : ""}`),
 }));
@@ -105,7 +105,7 @@ vi.mock("@/lib/posthog/events", () => ({
   track: new Proxy({}, { get: () => vi.fn() }),
 }));
 
-// Sequencial: a aula 1 abre já; a 2 depois de concluir a 1; a 3 depois da 2.
+// Sequential: lesson 1 opens right away; lesson 2 after finishing 1; lesson 3 after 2.
 const course = {
   id: "course-1", slug: "demo-course", title: "Demo course", category: "Leadership",
   summary: "", image: null, membersTheme: "light", communityEnabled: false,
@@ -138,7 +138,7 @@ const assets = [
   file("thumb", "l1", "thumb.png", { kind: "lesson_thumbnail", contentType: "image/png" }),
 ];
 
-// O botão manda o navegador baixar clicando num <a> com o link assinado.
+// The button tells the browser to download by clicking an <a> with the signed link.
 let linkClicks: MockInstance<HTMLAnchorElement["click"]>;
 const downloadsStarted = () => linkClicks.mock.contexts.map((link) => (link as HTMLAnchorElement).href);
 const signedAssetIds = () => vi.mocked(getProtectedCourseAssetObjectUrl).mock.calls.map(([asset]) => asset.id);
@@ -154,8 +154,8 @@ beforeEach(() => {
 
 afterEach(() => linkClicks.mockRestore());
 
-describe("aba Materiais", () => {
-  it("agrupa só o que está liberado, por módulo e aula, na ordem do professor", () => {
+describe("Materials tab", () => {
+  it("groups only what is released, by module and lesson, in the teacher's order", () => {
     const released = new Set(["l1", "l2"]);
     const groups = groupReleasedMaterials(course.modules, assets, (id) => released.has(id));
 
@@ -166,7 +166,7 @@ describe("aba Materiais", () => {
       .toEqual([["l1", ["slides", "workbook"]], ["l2", ["plan"]]]);
   });
 
-  it("na sala, lista os arquivos liberados com botão de baixar e esconde a aula trancada", async () => {
+  it("in the classroom, lists the released files with a download button and hides the locked lesson", async () => {
     render(<EnrolledCourseWorkspace course={course} tab="materials" enableFirestoreAssets />);
 
     const panel = screen.getByRole("heading", { level: 2, name: "Files to download from your lessons" }).closest("section")!;
@@ -174,15 +174,15 @@ describe("aba Materiais", () => {
     expect(within(panel).getByRole("heading", { level: 3, name: "Getting started" })).toBeInTheDocument();
     expect(within(panel).getByRole("heading", { level: 4, name: "Welcome" })).toBeInTheDocument();
     expect(within(panel).getByRole("heading", { level: 3, name: "Course files" })).toBeInTheDocument();
-    // Ordem do professor: Slides (posição 0) antes de Workbook (1).
+    // Teacher's order: Slides (position 0) before Workbook (1).
     const names = within(panel).getAllByText(/^(Slides|Workbook|plan\.pdf|Syllabus\.pdf)$/).map((node) => node.textContent);
     expect(names).toEqual(["Syllabus.pdf", "Slides", "Workbook", "plan.pdf"]);
-    // A aula 3 (trancada) não aparece: nem o módulo, nem o arquivo, nem um link.
+    // Lesson 3 (locked) does not show up: not the module, not the file, not a link.
     expect(within(panel).queryByText("Going deeper")).toBeNull();
     expect(within(panel).queryByText("advanced.pdf")).toBeNull();
     expect(within(panel).queryByText("thumb.png")).toBeNull();
 
-    // Abrir a aba não pede link nenhum (eram 4 pedidos aqui, um por arquivo).
+    // Opening the tab does not request any link (there used to be 4 requests here, one per file).
     await act(async () => {});
     expect(getProtectedCourseAssetObjectUrl).not.toHaveBeenCalled();
     expect(within(panel).getAllByRole("button", { name: /^Download / })).toHaveLength(4);
@@ -197,7 +197,7 @@ describe("aba Materiais", () => {
     expect(signedAssetIds()).not.toContain("secret");
   });
 
-  it("enquanto o link chega, o botão mostra que está carregando e ignora outro clique", async () => {
+  it("while the link is on its way, the button shows it is loading and ignores another click", async () => {
     let finish!: (url: string) => void;
     vi.mocked(getProtectedCourseAssetObjectUrl).mockImplementationOnce(
       () => new Promise<string>((resolve) => { finish = resolve; }),
@@ -217,7 +217,7 @@ describe("aba Materiais", () => {
     expect(downloadsStarted()).toEqual(["https://storage.test/slides?download=zz-slides.pdf"]);
   });
 
-  it("sem arquivo liberado, diz que ainda não há o que baixar", () => {
+  it("with no released file, says there is nothing to download yet", () => {
     mocks.assets = [file("secret", "l3", "advanced.pdf")];
     mocks.completed = [];
     render(<EnrolledCourseWorkspace course={course} tab="materials" enableFirestoreAssets />);
@@ -227,8 +227,8 @@ describe("aba Materiais", () => {
   });
 });
 
-describe("aula só de arquivo", () => {
-  it("mostra o arquivo com um botão grande de baixar, sem 'Media not attached yet'", async () => {
+describe("file-only lesson", () => {
+  it("shows the file with a big download button, without 'Media not attached yet'", async () => {
     mocks.searchParams = new URLSearchParams("lesson=l2");
     render(<EnrolledCourseWorkspace course={course} enableFirestoreAssets />);
 
@@ -243,7 +243,7 @@ describe("aula só de arquivo", () => {
     expect(downloadsStarted()).toEqual(["https://storage.test/plan?download=plan.pdf"]);
   });
 
-  it("aula ainda trancada não entrega link de baixar", async () => {
+  it("a lesson that is still locked does not hand out a download link", async () => {
     mocks.searchParams = new URLSearchParams("lesson=l3");
     render(<EnrolledCourseWorkspace course={course} enableFirestoreAssets />);
 
@@ -254,7 +254,7 @@ describe("aula só de arquivo", () => {
     expect(signedAssetIds()).not.toContain("secret");
   });
 
-  it("quando o storage recusa o link, aparece o aviso e nada é baixado", async () => {
+  it("when storage refuses the link, the notice appears and nothing is downloaded", async () => {
     vi.mocked(getProtectedCourseAssetObjectUrl).mockRejectedValueOnce(new Error("denied"));
     mocks.searchParams = new URLSearchParams("lesson=l2");
     render(<EnrolledCourseWorkspace course={course} enableFirestoreAssets />);
@@ -268,13 +268,13 @@ describe("aula só de arquivo", () => {
   });
 });
 
-describe("anexos da aula com vídeo", () => {
-  it("mostram o nome dado pelo professor, sem 'Preview' em material, e o programa do mapa mental", async () => {
+describe("attachments of a lesson with a video", () => {
+  it("show the name given by the teacher, with no 'Preview' on material, and the mind map program", async () => {
     mocks.searchParams = new URLSearchParams("lesson=l1");
     mocks.assets = [
       file("video", "l1", "aula-1.mp4", { kind: "lesson_video", contentType: "video/mp4" }),
       file("slides", "l1", "zz-slides.pdf", { title: "Slides", position: 0 }),
-      // Marcado como "prévia" no tempo da caixa que saiu: continua só de matriculado.
+      // Marked as "preview" back when the old box existed: it stays enrolled-only.
       file("map", "l1", "mapa.xmind", { position: 1, isPreview: true, contentType: "application/vnd.xmind.workbook" }),
       file("freemind", "l1", "ideias.mm", { position: 2, contentType: "application/x-freemind" }),
     ];
@@ -283,8 +283,8 @@ describe("anexos da aula com vídeo", () => {
     const slides = (await screen.findByText("Slides")).closest("div.rounded-lg") as HTMLElement;
     expect(within(slides).queryByText("zz-slides.pdf")).toBeNull();
     const map = screen.getByText("mapa.xmind").closest("div.rounded-lg") as HTMLElement;
-    // Nem "Enrolled" (valia para todo anexo) nem o selo "Preview" em material.
-    // Mapa mental nao tem previa: fica como era, "Open file" e "Download".
+    // Neither "Enrolled" (it applied to every attachment) nor the "Preview" badge on material.
+    // A mind map has no preview: it stays as it was, "Open file" and "Download".
     expect(within(map).queryByText("Enrolled")).toBeNull();
     expect(within(map).queryByText("Preview")).toBeNull();
     expect(await within(map).findByRole("link", { name: "Open file" })).toBeInTheDocument();
@@ -293,7 +293,7 @@ describe("anexos da aula com vídeo", () => {
     expect(screen.getByText("To open it, use the free app FreeMind or Freeplane.")).toBeInTheDocument();
   });
 
-  it("a previa do anexo so monta quando a pessoa pede: abrir a aula nao pede link por arquivo", async () => {
+  it("the attachment preview only mounts when the person asks: opening the lesson does not request a link per file", async () => {
     mocks.searchParams = new URLSearchParams("lesson=l1");
     mocks.assets = [
       file("video", "l1", "aula-1.mp4", { kind: "lesson_video", contentType: "video/mp4" }),
@@ -311,13 +311,13 @@ describe("anexos da aula com vídeo", () => {
       fireEvent.click(preview);
     });
     expect(signedAssetIds()).toContain("slides");
-    // O MESMO botao troca de rotulo (o foco do teclado nao se perde), com o nome do arquivo.
+    // The SAME button swaps its label (keyboard focus is not lost), with the file name.
     const hide = screen.getByRole("button", { name: "Hide preview of Slides" });
     expect(hide).toBe(preview);
     expect(hide).toHaveAttribute("aria-expanded", "true");
   });
 
-  it("audio na aula ganha 'Preview', que abre o 'Open file' para tocar no navegador", async () => {
+  it("audio in the lesson gets 'Preview', which opens 'Open file' to play in the browser", async () => {
     mocks.searchParams = new URLSearchParams("lesson=l1");
     mocks.assets = [
       file("video", "l1", "aula-1.mp4", { kind: "lesson_video", contentType: "video/mp4" }),

@@ -6,14 +6,14 @@ import type { Course } from "@/domain/learning";
 import { subscribeToCourseAssets } from "@/lib/data/course-assets";
 
 /**
- * A aula selecionada nao estava no endereco: recarregar a pagina ou voltar no
- * navegador abria a "primeira aula nao concluida", nao a que a pessoa estava
- * vendo; um link compartilhado nunca abria a mesma aula. E a troca de aula
- * podia acontecer fora da tela (o aluno rolava ate a discussao, o video
- * acabava, a proxima entrava la em cima).
+ * The selected lesson was not in the address: reloading the page or going back in
+ * the browser opened the "first unfinished lesson", not the one the person was
+ * viewing; a shared link never opened the same lesson. And the lesson switch
+ * could happen off screen (the learner scrolled down to the discussion, the video
+ * ended, the next lesson came in up there).
  *
- * Contrato: ?lesson=<id> abre aquela aula; toda selecao grava o endereco e
- * rola ate o player; mudar o endereco por fora (voltar/avancar) muda a aula.
+ * Contract: ?lesson=<id> opens that lesson; every selection writes the address and
+ * scrolls to the player; changing the address from outside (back/forward) changes the lesson.
  */
 
 const mocks = vi.hoisted(() => ({
@@ -89,36 +89,36 @@ const course = {
   ],
 } as unknown as Course;
 
-// O titulo da aula aberta e o h2 do cabecalho do painel da aula, dentro do
-// player (a secao tem outros h4: o cartao "continuar", a lista de aulas).
+// The title of the open lesson is the h2 of the lesson panel header, inside the
+// player (the section has other h4s: the "continue" card, the lesson list).
 function playerHeading() {
   return document
     .getElementById("member-lesson-player")
     ?.querySelector(".member-lesson-panel__head h2")?.textContent;
 }
 
-describe("a aula atual vive no endereco", () => {
+describe("the current lesson lives in the address", () => {
   const scrollIntoView = vi.fn();
 
   beforeEach(() => {
     mocks.replace.mockReset();
     scrollIntoView.mockReset();
     Element.prototype.scrollIntoView = scrollIntoView;
-    // jsdom sem requestAnimationFrame em alguns ambientes: roda na hora.
+    // jsdom without requestAnimationFrame in some environments: run it right away.
     window.requestAnimationFrame = (cb: FrameRequestCallback) => {
       cb(0);
       return 0;
     };
   });
 
-  it("abre a aula do ?lesson= em vez da primeira", () => {
+  it("opens the lesson from ?lesson= instead of the first one", () => {
     mocks.searchParams = new URLSearchParams("lesson=l2");
     render(<EnrolledCourseWorkspace course={course} previewMode />);
 
     expect(playerHeading()).toBe("Lesson two");
   });
 
-  it("ao escolher uma aula, grava o endereco e rola ate o player", () => {
+  it("when a lesson is chosen, writes the address and scrolls to the player", () => {
     mocks.searchParams = new URLSearchParams();
     render(<EnrolledCourseWorkspace course={course} previewMode />);
     expect(playerHeading()).toBe("Lesson one");
@@ -133,9 +133,9 @@ describe("a aula atual vive no endereco", () => {
     expect(scrollIntoView).toHaveBeenCalled();
   });
 
-  // O marcador de volta da Stripe nao pode sobreviver a troca de aula: cada link
-  // de aula copiado ou reaberto contaria outra compra.
-  it("ao trocar de aula, tira o ?checkout do endereco e mantem o resto", () => {
+  // The Stripe return marker must not survive a lesson switch: every lesson link
+  // copied or reopened would count another purchase.
+  it("when switching lessons, removes ?checkout from the address and keeps the rest", () => {
     mocks.searchParams = new URLSearchParams("checkout=success&campaign=literal");
     render(<EnrolledCourseWorkspace course={course} previewMode />);
 
@@ -147,7 +147,7 @@ describe("a aula atual vive no endereco", () => {
     expect(url).not.toMatch(/checkout/);
   });
 
-  it("voltar no navegador (endereco muda por fora) muda a aula", () => {
+  it("going back in the browser (address changes from outside) changes the lesson", () => {
     mocks.searchParams = new URLSearchParams("lesson=l2");
     const { rerender } = render(
       <EnrolledCourseWorkspace course={course} previewMode />,
@@ -161,10 +161,10 @@ describe("a aula atual vive no endereco", () => {
   });
 });
 
-// A duracao nao se digita mais (decisao de 14/09): a maioria das aulas chega
-// com o fallback "Self-paced" de published-courses. O relogio so aparece com
-// duracao de verdade.
-describe("relogio da aula so com duracao", () => {
+// The duration is no longer typed in (September 14 decision): most lessons arrive
+// with the "Self-paced" fallback from published-courses. The clock only shows up with
+// a real duration.
+describe("lesson clock only with a duration", () => {
   function lessonClock() {
     return document
       .getElementById("member-lesson-player")
@@ -175,7 +175,7 @@ describe("relogio da aula so com duracao", () => {
     mocks.searchParams = new URLSearchParams("lesson=l1");
   });
 
-  it("aula sem duracao nao mostra o relogio", () => {
+  it("a lesson without a duration does not show the clock", () => {
     const [aula] = course.modules[0].lessons;
     const semDuracao = {
       ...course,
@@ -187,20 +187,20 @@ describe("relogio da aula so com duracao", () => {
     expect(lessonClock()).toBeNull();
   });
 
-  it("aula com duracao mostra o relogio", () => {
+  it("a lesson with a duration shows the clock", () => {
     render(<EnrolledCourseWorkspace course={course} previewMode />);
 
     expect(lessonClock()).toHaveTextContent("5 min");
   });
 });
 
-// Aula nova nasce "video" e o tipo nao se troca mais (decisao de 14/09). Sem
-// video, o aviso do player sai do conteudo: aula de leitura nao pode dizer
+// A new lesson is born as "video" and the type can no longer be changed (September 14 decision). Without
+// a video, the player notice follows the content: a reading lesson cannot say
 // "Media not attached yet".
-// Decisao de 14/09: o texto da aula e simples, e os links viram clicaveis na
-// area de membros sem HTML cru. A quebra de linha do professor continua.
-describe("texto da aula com links", () => {
-  it("vira link clicavel e mantem a quebra de linha", () => {
+// September 14 decision: the lesson text is plain, and links become clickable in the
+// members area without raw HTML. The teacher's line breaks are kept.
+describe("lesson text with links", () => {
+  it("becomes a clickable link and keeps the line break", () => {
     mocks.searchParams = new URLSearchParams("lesson=l1");
     const comLink = {
       ...course,
@@ -225,7 +225,7 @@ describe("texto da aula com links", () => {
   });
 });
 
-describe("aviso do player sem video segue o conteudo, nao o tipo", () => {
+describe("player notice without a video follows the content, not the type", () => {
   function playerNotice() {
     return document
       .getElementById("member-lesson-player")
@@ -246,9 +246,9 @@ describe("aviso do player sem video segue o conteudo, nao o tipo", () => {
     ],
   } as unknown as Course;
 
-  // Antes: uma caixa de video vazia de 260-520px dizendo "leia as notas
-  // abaixo". Aula de leitura nao tem caixa de video; o texto vem logo.
-  it("aula so com texto nao tem caixa de video vazia", () => {
+  // Before: an empty video box of 260-520px saying "read the notes
+  // below". A reading lesson has no video box; the text comes right away.
+  it("a text-only lesson has no empty video box", () => {
     mocks.searchParams = new URLSearchParams("lesson=l1");
     render(<EnrolledCourseWorkspace course={semVideo} previewMode />);
 
@@ -258,7 +258,7 @@ describe("aviso do player sem video segue o conteudo, nao o tipo", () => {
     expect(screen.getByText("leia isto")).toBeInTheDocument();
   });
 
-  it("aula sem video e sem texto continua com o aviso de midia", () => {
+  it("a lesson with no video and no text keeps the media notice", () => {
     mocks.searchParams = new URLSearchParams("lesson=l2");
     render(<EnrolledCourseWorkspace course={semVideo} previewMode />);
 
@@ -266,9 +266,9 @@ describe("aviso do player sem video segue o conteudo, nao o tipo", () => {
     expect(playerNotice()).toBe("Media not attached yet");
   });
 
-  // Quase toda aula de video tem uma linha de resumo: o resumo nao pode
-  // transformar "video ainda nao enviado" em "aula de leitura".
-  it("aula de video com resumo e sem midia continua com o aviso de midia", () => {
+  // Almost every video lesson has a summary line: the summary must not
+  // turn "video not uploaded yet" into a "reading lesson".
+  it("a video lesson with a summary and no media keeps the media notice", () => {
     mocks.searchParams = new URLSearchParams("lesson=l3");
     render(<EnrolledCourseWorkspace course={semVideo} previewMode />);
 
@@ -276,17 +276,17 @@ describe("aviso do player sem video segue o conteudo, nao o tipo", () => {
     expect(playerNotice()).toBe("Media not attached yet");
   });
 
-  // Enquanto os anexos da aula nao chegam, o aviso e de carregamento: antes a
-  // aula de video piscava "Media not attached yet" ate o player aparecer.
-  it("com os anexos ainda carregando mostra carregando, nao midia faltando", () => {
+  // While the lesson attachments have not arrived, the notice is a loading one: before, the
+  // video lesson flashed "Media not attached yet" until the player showed up.
+  it("with attachments still loading, shows loading, not missing media", () => {
     mocks.searchParams = new URLSearchParams("lesson=l3");
-    // O mock padrao nunca responde: a assinatura dos anexos fica pendente.
+    // The default mock never responds: the attachments subscription stays pending.
     render(<EnrolledCourseWorkspace course={semVideo} previewMode enableFirestoreAssets />);
 
     expect(playerNotice()).toBe("Loading lesson content...");
   });
 
-  it("depois que os anexos chegam vazios mostra midia faltando", () => {
+  it("after the attachments arrive empty, shows missing media", () => {
     mocks.searchParams = new URLSearchParams("lesson=l3");
     vi.mocked(subscribeToCourseAssets).mockImplementation((_courseId, onAssets) => {
       onAssets([]);

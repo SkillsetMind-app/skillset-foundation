@@ -5,10 +5,10 @@ import { EnrolledCourseWorkspace } from "@/components/learn/enrolled-course-work
 import type { Course } from "@/domain/learning";
 
 /**
- * O cartão "Subscription" (com "Cancel subscription") só existia ao lado do
- * currículo. Quem assinava um produto sem aula (uma comunidade, por exemplo)
- * não tinha onde cancelar, e o aviso de renovação manda cancelar na página do
- * curso. Agora o cartão aparece também fora da trilha de aulas.
+ * The "Subscription" card (with "Cancel subscription") only existed next to the
+ * curriculum. Someone who subscribed to a product with no lessons (a community,
+ * for example) had nowhere to cancel, and the renewal notice tells them to cancel on the
+ * course page. Now the card also appears outside the lesson track.
  */
 
 vi.mock("next/navigation", () => ({
@@ -73,7 +73,7 @@ vi.mock("@/lib/posthog/events", () => ({
   track: new Proxy({}, { get: () => vi.fn() }),
 }));
 
-// O cartão de verdade lê a assinatura no banco: aqui basta saber que ele veio.
+// The real card reads the subscription from the database: here it is enough to know it showed up.
 vi.mock("@/components/learn/course-subscription-card", () => ({
   CourseSubscriptionCard: ({ subscriptionId }: { subscriptionId: string }) => (
     <div data-testid="subscription-card">{subscriptionId}</div>
@@ -96,20 +96,20 @@ function course(modules: unknown[]) {
   } as unknown as Course;
 }
 
-describe("assinante sempre tem onde cancelar", () => {
-  // jsdom não rola: a sala chama scrollIntoView ao abrir uma aula.
+describe("a subscriber always has somewhere to cancel", () => {
+  // jsdom does not scroll: the classroom calls scrollIntoView when it opens a lesson.
   beforeEach(() => {
     Element.prototype.scrollIntoView = vi.fn();
   });
 
-  it("produto sem aula: o cartão da assinatura aparece na sala", () => {
+  it("product without lessons: the subscription card appears in the classroom", () => {
     const { container } = render(<EnrolledCourseWorkspace course={course([])} />);
 
     expect(screen.getAllByTestId("subscription-card")).toHaveLength(1);
     expect(container.querySelector("[data-subscription-panel]")).toHaveTextContent("sub_1");
   });
 
-  it("curso com aulas: o cartão segue ao lado do currículo, uma vez só", () => {
+  it("course with lessons: the card stays next to the curriculum, only once", () => {
     const { container } = render(
       <EnrolledCourseWorkspace course={course([{ id: "m1", title: "Module one", summary: "", lessons: [lesson] }])} />,
     );

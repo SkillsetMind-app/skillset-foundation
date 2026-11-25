@@ -20,37 +20,37 @@ import {
 } from "@/lib/data/community-posts";
 import { isRateLimitError } from "@/lib/data/rate-limit-error";
 
-// Comentarios da aula sob o player (paridade Hotmart, §4.3 / P3).
+// Lesson comments under the player (Hotmart parity, §4.3 / P3).
 //
-// POR QUE ISTO EXISTE
+// WHY THIS EXISTS
 //
-// A conversa do curso mora na aba Community, longe do video. O feed ja liga
-// pergunta a aula (lesson_id), entao a lista daqui e o MESMO dado do feed —
-// as mesmas funcoes de src/lib/data/community-posts.ts, o mesmo canal por
-// curso (community_posts:course:<id>), filtrado pela aula aberta. Publicar e
-// o mesmo caminho da pergunta com aula anexada (category question + lessonId
-// + "lesson N"): nenhuma tabela, RPC ou migration nova, e a pergunta aparece
-// na aba Community como qualquer outra. Sem curtidas nem respostas aqui —
-// isso segue no feed ("Ver na comunidade" abre o post na gaveta).
+// The course conversation lives in the Community tab, far from the video. The feed
+// already links a question to a lesson (lesson_id), so the list here is the SAME data as the feed —
+// the same functions from src/lib/data/community-posts.ts, the same channel per
+// course (community_posts:course:<id>), filtered by the open lesson. Posting is
+// the same path as a question with a lesson attached (category question + lessonId
+// + "lesson N"): no new table, RPC or migration, and the question shows up
+// in the Community tab like any other. No likes or replies here —
+// those stay in the feed ("View in community" opens the post in the drawer).
 //
-// ponytail: o canal e por curso, um de cada vez — a aba da aula e a aba
-// Community nunca estao montadas juntas, e trocar de aula so troca o filtro.
-// Posts novos entram na hora (o feed guarda os de outras pessoas atras da
-// pilula "N new posts"); se a lista sob o player virar ruido, o upgrade e
-// reaproveitar a pilula.
+// ponytail: the channel is per course, one at a time — the lesson tab and the
+// Community tab are never mounted together, and switching lessons only changes the filter.
+// New posts come in right away (the feed holds other people's posts behind the
+// "N new posts" pill); if the list under the player gets noisy, the upgrade is
+// to reuse the pill.
 
 type LessonCommentsProps = {
   course: Course;
-  /** A aula aberta: id para filtrar, numero para o "lesson N" do feed. */
+  /** The open lesson: id to filter by, number for the feed's "lesson N". */
   lesson: { id: string; number: number };
-  /** "/learn/courses/<curso>" — "Ver na comunidade" nasce daqui. */
+  /** "/learn/courses/<course>" — "View in community" is built from here. */
   basePath: string;
   previewMode: boolean;
 };
 
 export function LessonComments({ course, lesson, basePath, previewMode }: LessonCommentsProps) {
-  // Comunidade desligada no curso: a secao inteira some (nada de caixa
-  // desabilitada apontando para uma aba que nao existe).
+  // Community turned off for the course: the whole section disappears (no disabled
+  // box pointing to a tab that does not exist).
   if (!course.communityEnabled) {
     return null;
   }
@@ -72,8 +72,8 @@ function LessonCommentsPanel({
 }: Omit<LessonCommentsProps, "course"> & { courseSlug: string }) {
   const { user } = useAuth();
   const { t, locale } = useTranslation();
-  // Preview do professor e visitante sem sessao: mesma porta do feed
-  // (matricula), sem abrir inscricao nenhuma.
+  // Teacher preview and a visitor with no session: the same gate as the feed
+  // (enrollment), without opening any subscription.
   const canRead = !previewMode && Boolean(user);
   const [feed, setFeed] = useState<{ posts: CommunityPost[]; ready: boolean }>({
     posts: [],
@@ -83,19 +83,19 @@ function LessonCommentsPanel({
   const [open, setOpen] = useState(false);
   const [body, setBody] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // Chave do dicionario, nao texto: o idioma pode trocar com o erro na tela.
+  // Dictionary key, not text: the language can change while the error is on the screen.
   const [error, setError] = useState("");
-  // A falha da leitura à parte do erro do formulário: tem "Try again", que
-  // relê pelo mesmo canal; o aviso só sai quando os comentários chegam, e os
-  // que já estão na tela ficam. O foco vai para a seção (o botão some).
+  // The read failure is kept apart from the form error: it has "Try again", which
+  // rereads through the same channel; the notice only goes away when the comments arrive, and the
+  // ones already on the screen stay. Focus goes to the section (the button disappears).
   const [postsFailed, setPostsFailed] = useState(false);
-  // O leitor de tela ouve só o próprio comentário publicado, não a lista:
-  // numa conversa movimentada a lista viva lia cada post que chegava.
+  // The screen reader hears only the posted comment itself, not the list:
+  // in a busy conversation the live list read out every post that arrived.
   const [posted, setPosted] = useState(false);
   const postsSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
   const sectionRef = useRef<HTMLElement>(null);
-  // Publicar ou cancelar desmonta a caixa de texto que tinha o foco, e ele
-  // caía no <body>: volta para a caixa em repouso, de onde a pessoa veio.
+  // Posting or cancelling unmounts the text box that had focus, and focus
+  // fell to the <body>: it goes back to the box at rest, where the person came from.
   const composerRef = useRef<HTMLButtonElement>(null);
   const returnFocus = useRef(false);
 
@@ -132,8 +132,8 @@ function LessonCommentsPanel({
     return subscribeToCourseCommunityComments(courseSlug, setComments, () => undefined);
   }, [canRead, courseSlug]);
 
-  // A mesma ordem do feed (fixados primeiro, depois do mais novo ao mais
-  // antigo) — filterPosts e o que a aba Community usa.
+  // The same order as the feed (pinned first, then from newest to
+  // oldest) — filterPosts is what the Community tab uses.
   const lessonPosts = useMemo(
     () => filterPosts(feed.posts.filter((post) => post.lessonId === lesson.id), "all"),
     [feed.posts, lesson.id],
@@ -152,7 +152,7 @@ function LessonCommentsPanel({
     if (!user) {
       return;
     }
-    // Primeira linha = a pergunta (o titulo do feed); o resto = detalhes.
+    // First line = the question (the feed title); the rest = details.
     const [firstLine = "", ...rest] = body.trim().split("\n");
     const title = firstLine.trim();
     const details = rest.join("\n").trim();
@@ -195,7 +195,7 @@ function LessonCommentsPanel({
     >
       <div className="flex items-center gap-2">
         <MessageCircle size={15} className="text-[var(--color-accent-fg)]" aria-hidden />
-        {/* h3: subseção da aula (o título da aula é o h2 do painel). */}
+        {/* h3: lesson subsection (the lesson title is the panel's h2). */}
         <h3 id="member-lesson-comments-title" className="text-sm font-bold text-[var(--color-ink)]">
           {t("learn.classroom.lessonComments.title")}
           {count == null ? "" : ` · ${count}`}
@@ -237,9 +237,9 @@ function LessonCommentsPanel({
           </div>
         </form>
       ) : (
-        // A "caixa" em repouso e um botao com cara de campo (o mesmo desenho
-        // do compositor do feed): so vira textarea ao clicar. Desabilitada
-        // no preview e sem sessao, com a mensagem da porta do feed.
+        // The "box" at rest is a button that looks like a field (the same design
+        // as the feed composer): it only becomes a textarea on click. Disabled
+        // in preview and with no session, showing the feed gate's message.
         <button
           ref={composerRef}
           type="button"
@@ -265,17 +265,17 @@ function LessonCommentsPanel({
 
       {canRead ? (
         <div className="mt-3 grid gap-2">
-          {/* Só "publicado" quando o próprio comentário entra. O "carregando"
-              é um só, o do painel da aula (F-02): o palco e estes comentários
-              anunciavam ao mesmo tempo. */}
+          {/* Only "posted" when the comment itself goes in. There is only one "loading",
+              the one from the lesson panel (F-02): the stage and these comments
+              used to announce at the same time. */}
           <p role="status" className="sr-only">
             {posted ? t("learn.classroom.lessonComments.posted") : ""}
           </p>
-          {/* Com a leitura em erro, nem "carregando" nem o vazio: só o aviso. */}
+          {/* With the read in error, neither "loading" nor the empty state: only the notice. */}
           {!feed.ready || (postsFailed && lessonPosts.length === 0) ? (
             postsFailed ? null : (
-              // Esperando: uma linha no formato do comentário (avatar e duas
-              // linhas), no lugar do texto "Loading lesson comments...".
+              // Waiting: a line shaped like the comment (avatar and two
+              // lines), in place of the "Loading lesson comments..." text.
               <div aria-hidden="true" className="flex gap-3 rounded-md border border-[var(--color-line)] bg-white p-3">
                 <span className="h-8 w-8 shrink-0 rounded-full bg-[var(--ma-line,var(--color-surface-strong))] motion-safe:animate-pulse" />
                 <span className="grid flex-1 content-center gap-2">

@@ -50,8 +50,8 @@ describe("PlatformInviteAcceptance", () => {
     await waitFor(() => expect(mocks.assign).toHaveBeenCalledWith("/onboarding?path=teacher"));
     expect(mocks.acceptPlatformInvite).toHaveBeenCalledTimes(1);
   });
-  // F-04: esperando, o botão guarda a largura. Os dois rótulos moram na mesma
-  // célula e o que não vale fica fora do leitor: o nome é sempre o texto à vista.
+  // F-04: while waiting, the button keeps its width. Both labels live in the same
+  // cell and the one that does not apply stays out of the reader: the name is always the visible text.
   it("keeps its width while accepting: same cell for both labels, the visible one names the button", async () => {
     let finish!: (value: { next_path: string }) => void;
     mocks.acceptPlatformInvite.mockReturnValue(new Promise(resolve => { finish = resolve; }));
@@ -76,7 +76,7 @@ describe("PlatformInviteAcceptance", () => {
     expect(mocks.assign).not.toHaveBeenCalled();
   });
 
-  // O-19: o convite abria numa pagina solta, sem logo nem caminho de volta.
+  // O-19: the invite used to open on a loose page, with no logo or way back.
   it("opens inside the sign-in frame, with one page title and a way home", () => {
     mocks.useAuth.mockReturnValue({ status: "unauthenticated", user: null });
     render(<PlatformInviteAcceptance id={invitation.id} />);

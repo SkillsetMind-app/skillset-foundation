@@ -115,12 +115,12 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
-describe("CourseSubscriptionCard — idioma e estado recebido", () => {
+describe("CourseSubscriptionCard — language and received state", () => {
   it.each([
     { interval: "month", label: "Acceso mensual" },
     { interval: "year", label: "Acceso anual" },
     { interval: null, label: "Acceso recurrente" },
-  ] as const)("traduz a cadência $interval como frase completa e localiza a data", ({ interval, label }) => {
+  ] as const)("translates the $interval cadence as a full sentence and localizes the date", ({ interval, label }) => {
     renderCard("es");
     emit({ ...subscription, interval });
 
@@ -133,7 +133,7 @@ describe("CourseSubscriptionCard — idioma e estado recebido", () => {
     expect(setCourseSubscriptionCancellation).not.toHaveBeenCalled();
   });
 
-  it("troca EN↔ES mantendo dados literais, foco, inscrição e ausência de escrita", () => {
+  it("switches EN↔ES keeping literal data, focus, subscription and no writes", () => {
     const view = renderCard();
     const row = { ...subscription };
     const original = { ...row };
@@ -160,7 +160,7 @@ describe("CourseSubscriptionCard — idioma e estado recebido", () => {
     expect(mocks.unsubscribe).toHaveBeenCalledTimes(1);
   });
 
-  it("distingue loading de null legítimo e traduz ambos sem reiniciar a leitura", () => {
+  it("tells loading apart from a legitimate null and translates both without restarting the read", () => {
     renderCard("es");
     expect(within(card()).getByText("Cargando suscripción...")).toBeVisible();
     expect(within(card()).queryByText("Todavía no hay detalles de la suscripción.")).not.toBeInTheDocument();
@@ -180,7 +180,7 @@ describe("CourseSubscriptionCard — idioma e estado recebido", () => {
     expect(setCourseSubscriptionCancellation).not.toHaveBeenCalled();
   });
 
-  it("anuncia erro inicial, traduz o erro existente e só mostra vazio depois de null válido", () => {
+  it("announces the initial error, translates the existing error and only shows the empty state after a valid null", () => {
     renderCard();
     failRead();
     expect(within(card()).getByRole("alert")).toBeVisible();
@@ -198,9 +198,9 @@ describe("CourseSubscriptionCard — idioma e estado recebido", () => {
     expect(setCourseSubscriptionCancellation).not.toHaveBeenCalled();
   });
 
-  // O erro de leitura era um beco: "Try again" relê pela mesma inscrição, e o
-  // aviso só sai quando a assinatura chega. Nenhuma ação de cobrança é chamada.
-  it("a falha da leitura oferece Try again, que relê sem reinscrever", () => {
+  // The read error was a dead end: "Try again" re-reads through the same subscription, and the
+  // notice only goes away when the subscription arrives. No billing action is called.
+  it("the read failure offers Try again, which re-reads without resubscribing", () => {
     const reload = vi.fn(async () => undefined);
     vi.mocked(subscribeToCourseSubscription).mockImplementation((_id, next, error) => {
       onSubscription = next;
@@ -222,7 +222,7 @@ describe("CourseSubscriptionCard — idioma e estado recebido", () => {
     expect(setCourseSubscriptionCancellation).not.toHaveBeenCalled();
   });
 
-  it.each(["active", "trialing"])("preserva a apresentação do ciclo de %s com e sem cancelamento agendado", (status) => {
+  it.each(["active", "trialing"])("keeps the presentation of the %s cycle with and without a scheduled cancellation", (status) => {
     renderCard();
     emit({ ...subscription, status });
     expect(card()).toHaveTextContent(/renews Aug 15, 2026/i);
@@ -240,7 +240,7 @@ describe("CourseSubscriptionCard — idioma e estado recebido", () => {
   });
 
   it.each(["canceled", "incomplete_expired", "paused", "incomplete", "future_contract"])(
-    "%s mostra fim do período nas duas flags, sem transformar o estado em promessa futura",
+    "%s shows the end of the period on both flags, without turning the state into a future promise",
     (status) => {
       renderCard();
       for (const cancelAtPeriodEnd of [false, true]) {
@@ -260,7 +260,7 @@ describe("CourseSubscriptionCard — idioma e estado recebido", () => {
     },
   );
 
-  it.each([null, "invalid-fixture-date"])("data final %s não inventa um término ou uma renovação", (currentPeriodEnd) => {
+  it.each([null, "invalid-fixture-date"])("end date %s does not invent an end or a renewal", (currentPeriodEnd) => {
     renderCard();
     emit({ ...subscription, status: "canceled", cancelAtPeriodEnd: true, currentPeriodEnd });
     expect(card()).toHaveTextContent("Period end Date pending");
@@ -273,7 +273,7 @@ describe("CourseSubscriptionCard — idioma e estado recebido", () => {
     expect(setCourseSubscriptionCancellation).not.toHaveBeenCalled();
   });
 
-  it.each(["past_due", "unpaid"])("%s informa atenção ao pagamento sem garantir nova tentativa de cobrança", (status) => {
+  it.each(["past_due", "unpaid"])("%s flags payment attention without guaranteeing a new charge attempt", (status) => {
     renderCard();
     for (const cancelAtPeriodEnd of [false, true]) {
       emit({ ...subscription, status, cancelAtPeriodEnd, pastDue: status === "unpaid" });
@@ -308,8 +308,8 @@ const actions = [
   },
 ] as const;
 
-describe("CourseSubscriptionCard — contrato de ação preservado", () => {
-  it.each([false, true])("controle EN: encaminha resume=%s uma vez e aguarda o stream", async (resume) => {
+describe("CourseSubscriptionCard — action contract preserved", () => {
+  it.each([false, true])("EN control: forwards resume=%s once and waits for the stream", async (resume) => {
     const pending = deferredCancellation();
     vi.mocked(setCourseSubscriptionCancellation).mockReturnValue(pending.promise);
     const view = renderCard();
@@ -340,7 +340,7 @@ describe("CourseSubscriptionCard — contrato de ação preservado", () => {
     expect(mocks.unsubscribe).toHaveBeenCalledTimes(1);
   });
 
-  it.each(actions)("$english conserva payload/pending e apresenta a falha no idioma atual", async (action) => {
+  it.each(actions)("$english keeps payload/pending and shows the failure in the current language", async (action) => {
     const pending = deferredCancellation();
     vi.mocked(setCourseSubscriptionCancellation).mockReturnValue(pending.promise);
     renderCard();
@@ -371,7 +371,7 @@ describe("CourseSubscriptionCard — contrato de ação preservado", () => {
     expect(setCourseSubscriptionCancellation).toHaveBeenCalledTimes(1);
   });
 
-  it.each(actions)("$english aguarda o stream para trocar a flag ou o status após sucesso", async (action) => {
+  it.each(actions)("$english waits for the stream to switch the flag or status after success", async (action) => {
     const pending = deferredCancellation();
     vi.mocked(setCourseSubscriptionCancellation).mockReturnValue(pending.promise);
     renderCard();
@@ -405,7 +405,7 @@ describe("CourseSubscriptionCard — contrato de ação preservado", () => {
     expect(setCourseSubscriptionCancellation).toHaveBeenCalledExactlyOnceWith(subscription.courseId, action.resume);
   });
 
-  it("a recuperação da leitura limpa somente seu erro e preserva a falha independente da ação", async () => {
+  it("recovering the read clears only its own error and preserves the action's independent failure", async () => {
     const pending = deferredCancellation();
     vi.mocked(setCourseSubscriptionCancellation).mockReturnValue(pending.promise);
     renderCard();

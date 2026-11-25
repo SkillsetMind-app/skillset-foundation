@@ -22,8 +22,8 @@ import {
 const RESEND_COOLDOWN_SECONDS = 60;
 const CONFIRMED_CHECK_MS = 6000;
 
-// Espera entre reenvios, para o botao nao virar fonte de spam. A mesma para as
-// duas telas que reenviam o link.
+// Wait between resends, so the button does not become a source of spam. The same for the
+// two screens that resend the link.
 function useResendCooldown() {
   const [cooldown, setCooldown] = useState(0);
   useEffect(() => {
@@ -36,11 +36,11 @@ function useResendCooldown() {
   return [cooldown, () => setCooldown(RESEND_COOLDOWN_SECONDS)] as const;
 }
 
-// A linha "enviado" fica sempre montada (vazia e fora do fluxo antes do
-// envio) e so o TEXTO entra e sai: regiao viva que ja nasce cheia costuma nao
-// ser lida. O numero que corre no botao fica fora dela, entao o leitor de tela
-// nao le "59s... 58s..."; quando a espera acaba, "ja pode pedir outro" entra
-// na mesma linha.
+// The "sent" line is always mounted (empty and out of the flow before the
+// send) and only the TEXT comes and goes: a live region that is born full is usually not
+// read. The number ticking on the button stays outside it, so the screen reader
+// does not read "59s... 58s..."; when the wait ends, "you can ask for another" comes in
+// on the same line.
 function ResendStatus({ sent, cooldown, message }: { sent: boolean; cooldown: number; message: string }) {
   const { t } = useTranslation();
   return (
@@ -55,17 +55,17 @@ function ResendStatus({ sent, cooldown, message }: { sent: boolean; cooldown: nu
   );
 }
 
-// A porta "confirme seu e-mail", logo depois de criar a conta (e tambem quando
-// alguem tenta entrar sem ter confirmado).
+// The "confirm your email" gate, right after creating the account (and also when
+// someone tries to sign in without having confirmed).
 //
-// POR QUE ISTO EXISTE
+// WHY THIS EXISTS
 //
-// A tela anterior dizia "abra o link, depois volte e entre" e oferecia um
-// botao "ir para o login". Se o e-mail nao chegava — spam, endereco errado,
-// atraso — nao havia o que fazer: o login devolvia "e-mail nao confirmado" e
-// pronto. Cinco contas reais ficaram paradas assim. Agora: reenviar (com
-// espera de 60 s para nao virar spam), trocar o e-mail, e a promessa do que
-// vem depois (o perfil), para a pessoa saber que vale a pena clicar.
+// The previous screen said "open the link, then come back and sign in" and offered a
+// "go to login" button. If the email never arrived — spam, wrong address,
+// delay — there was nothing to do: the login returned "email not confirmed" and
+// that was it. Five real accounts were left stuck like this. Now: resend (with a
+// 60 s wait so it does not become spam), change the email, and the promise of what
+// comes next (the profile), so the person knows it is worth clicking.
 export function ConfirmEmailGate({
   email,
   intent = null,
@@ -75,12 +75,12 @@ export function ConfirmEmailGate({
   email: string;
   intent?: AuthPathIntent | null;
   returnTo?: string | null;
-  /** Volta ao formulario com o e-mail preenchido, para corrigir. */
+  /** Goes back to the form with the email filled in, to fix it. */
   onChangeEmail?: () => void;
 }) {
   const { t } = useTranslation();
-  // O titulo grande da pagina (/auth) seguia "Crie sua conta" em cima da
-  // porta de confirmar: com ela na tela, vira "Check your email".
+  // The big page title (/auth) stayed "Crie sua conta" on top of the
+  // confirmation gate: with the gate on screen, it becomes "Check your email".
   usePageHeading({ titleKey: "auth.signup.checkEmailTitle" });
   const [cooldown, startCooldown] = useResendCooldown();
   const [isSending, setIsSending] = useState(false);
@@ -100,14 +100,14 @@ export function ConfirmEmailGate({
     getSafeReturnTo(new URLSearchParams({ returnTo: returnTo ?? "" })),
   );
 
-  // Confirmou em outra aba (o link do e-mail abre ao lado)? Esta aba nao
-  // ficava sabendo e esperava para sempre. Olha de novo a cada poucos segundos
-  // e quando a aba volta ao foco — nunca escondida, nunca depois de sair. So
-  // conta a sessao DESTE e-mail: outra conta logada ao lado nao puxa esta aba.
-  // Navegacao completa, nao router: o provider de sessao desta aba ainda acha
-  // que ninguem entrou, e so recarregando ele le o cookie novo.
-  // ponytail: outro APARELHO (celular) nao deixa sessao nesta aba, entao isto
-  // nao o enxerga; para isso segue o link "ja confirmei? entrar".
+  // Confirmed in another tab (the email link opens next to it)? This tab did not
+  // find out and waited forever. It checks again every few seconds
+  // and when the tab regains focus — never while hidden, never after leaving. It only
+  // counts the session of THIS email: another account signed in alongside does not pull this tab.
+  // Full navigation, not the router: the session provider in this tab still thinks
+  // nobody signed in, and only by reloading does it read the new cookie.
+  // ponytail: another DEVICE (phone) leaves no session in this tab, so this
+  // does not see it; for that there is the "already confirmed? sign in" link.
   useEffect(() => {
     let done = false;
 
@@ -161,10 +161,10 @@ export function ConfirmEmailGate({
     }
   }
 
-  // Sem aria-live na secao inteira: o leitor de tela lia "Resend in 59s...
-  // 58s..." a cada segundo durante um minuto. So o "enviado de novo" e a
-  // espera sao anunciados. A instrucao e o titulo da pagina ("Check your
-  // email"); "Resend" deixou de ser o botao cheio, porque nao e o proximo passo.
+  // No aria-live on the whole section: the screen reader read "Resend in 59s...
+  // 58s..." every second for a minute. Only the "sent again" and the
+  // wait are announced. The instruction is the page title ("Check your
+  // email"); "Resend" is no longer the full button, because it is not the next step.
   return (
     <section className="mt-5 grid gap-4">
       <p className="text-sm leading-6 text-[var(--color-ink-soft)]">
@@ -176,7 +176,7 @@ export function ConfirmEmailGate({
         role="status"
         className="flex items-center gap-2.5 rounded-md bg-[var(--color-surface-soft)] px-3.5 py-3 text-sm font-semibold leading-5 text-[var(--color-ink)]"
       >
-        {/* O anel da casa, nos mesmos 16px de antes (o "sm" tem 20px). */}
+        {/* The house ring, at the same 16px as before (the "sm" one is 20px). */}
         <SpinnerRing size="sm" className="size-4! shrink-0" />
         {t("auth.signup.confirmWaiting")}
       </p>
@@ -224,15 +224,15 @@ export function ConfirmEmailGate({
   );
 }
 
-// Link de confirmacao vencido ou ja usado (o login abre isto com
-// ?error=confirm_expired). Antes a pessoa caia num texto sobre "links de troca
-// de senha" e sem botao de reenviar: beco sem saida. Aqui ela digita o e-mail e
-// pede outro link, pelo MESMO reenvio da porta acima (CAPTCHA, espera de 60 s e
-// o limite do proprio Supabase).
+// Expired or already used confirmation link (the login opens this with
+// ?error=confirm_expired). Before, the person landed on text about "password reset
+// links" with no resend button: a dead end. Here they type the email and
+// ask for another link, through the SAME resend as the gate above (CAPTCHA, 60 s wait and
+// the limit of Supabase itself).
 //
-// A resposta e sempre a mesma frase, exista a conta ou nao, ja confirmada ou
-// nao: esta tela nao pode servir para descobrir quem tem cadastro. So aparece
-// erro do que acontece antes de procurar a conta (CAPTCHA, conexao).
+// The answer is always the same sentence, whether the account exists or not, already confirmed or
+// not: this screen must not be usable to find out who has signed up. Only an
+// error from what happens before looking up the account (CAPTCHA, connection) shows.
 export function ExpiredConfirmationLink({
   intent = null,
   returnTo = null,
@@ -240,13 +240,13 @@ export function ExpiredConfirmationLink({
 }: {
   intent?: AuthPathIntent | null;
   returnTo?: string | null;
-  /** Ja confirmou: volta ao formulario de entrada com o e-mail digitado. */
+  /** Already confirmed: goes back to the sign-in form with the typed email. */
   onSignIn: (email: string) => void;
 }) {
   const { t } = useTranslation();
-  // Em /auth o aviso vira o titulo da pagina ("Sign in as a learner." ficava
-  // em cima dele). O titulo proprio so sai depois que a pagina ja mostra o
-  // dela: no HTML do servidor e solta, a tela segue com o seu.
+  // On /auth the notice becomes the page title ("Sign in as a learner." used to sit
+  // on top of it). The own title only shows once the page already shows
+  // its own: in the server HTML it is loose, and the screen keeps its own.
   const titleOnPage = usePageHeading({ titleKey: "auth.signup.expiredTitle" });
   const [email, setEmail] = useState("");
   const [cooldown, startCooldown] = useResendCooldown();
@@ -268,7 +268,7 @@ export function ExpiredConfirmationLink({
     try {
       await resendSignupConfirmation(
         email.trim(),
-        // O link novo leva ao mesmo lugar que o vencido: o curso, se havia.
+        // The new link leads to the same place as the expired one: the course, if there was one.
         getLoadingRoute("welcome", intent, getSafeReturnTo(new URLSearchParams({ returnTo: returnTo ?? "" }))),
         captchaToken || undefined,
       );
@@ -278,19 +278,19 @@ export function ExpiredConfirmationLink({
       if (isAccountNeutralAuthError(caughtError)) {
         setError({ cause: caughtError });
       } else {
-        // Limite, conta inexistente, ja confirmada: mesma frase de sempre.
+        // Rate limit, nonexistent account, already confirmed: the same sentence as always.
         setSent(true);
         startCooldown();
       }
     } finally {
-      // O token do CAPTCHA vale uma vez: renova para a proxima tentativa.
+      // The CAPTCHA token is good once: renew it for the next attempt.
       if (isCaptchaEnabled) setCaptchaResetSignal((n) => n + 1);
       setIsSending(false);
     }
   }
 
   return (
-    // Sem o cartao tingido: a tela e a propria pagina, nao um quadro dentro dela.
+    // Without the tinted card: the screen is the page itself, not a frame inside it.
     <form
       onSubmit={(event) => void handleSend(event)}
       className="mt-5 grid gap-3"

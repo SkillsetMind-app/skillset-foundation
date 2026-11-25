@@ -48,10 +48,10 @@ function clickGoogle() {
   );
 }
 
-// Quem clica num plano em /pricing e ja tem conta entra por aqui: o plano vem
-// em ?plan= e ?cycle=, ou ja como returnTo (o link "ja tenho conta" do
-// cadastro). So professor sem plano abre a tela de cartao.
-describe("LoginForm com um plano escolhido em /pricing", () => {
+// Whoever clicks a plan on /pricing and already has an account comes in through here: the plan comes
+// in ?plan= and ?cycle=, or already as returnTo (the "I already have an account" link on
+// signup). Only a teacher without a plan opens the card screen.
+describe("LoginForm with a plan chosen on /pricing", () => {
   const cartao = "/account/billing/upgrade?plan=starter&cycle=yearly";
   const comCartao = "returnTo=%2Faccount%2Fbilling%2Fupgrade%3Fplan%3Dstarter%26cycle%3Dyearly";
 
@@ -87,17 +87,17 @@ describe("LoginForm com um plano escolhido em /pricing", () => {
     expect(await entrar(profile)).toBe(destino);
   });
 
-  it("quem entra pela porta de aluno nao abre o cartao", async () => {
+  it("whoever enters through the learner door does not open the card screen", async () => {
     mocks.searchParams = new URLSearchParams({ path: "student", returnTo: cartao });
     expect(await entrar({ onboardingCompleted: true, roles: ["teacher"] })).toBe("/loading?next=route&path=student");
   });
 
-  it("plano fora da lista e ignorado: entra como sempre", async () => {
+  it("a plan outside the list is ignored: signs in as usual", async () => {
     mocks.searchParams = new URLSearchParams("path=teacher&plan=plus&cycle=yearly");
     expect(await entrar({ onboardingCompleted: true, roles: ["teacher"] })).toBe("/loading?next=route&path=teacher");
   });
 
-  it("leva o plano pela volta do Google", () => {
+  it("carries the plan through the Google round trip", () => {
     render(<LoginForm />);
 
     clickGoogle();
@@ -165,7 +165,7 @@ describe("LoginForm with Google", () => {
   });
 });
 
-describe("LoginForm: campo de senha e botao de e-mail", () => {
+describe("LoginForm: password field and email button", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getPendingSecondFactor.mockResolvedValue(null);
@@ -174,9 +174,9 @@ describe("LoginForm: campo de senha e botao de e-mail", () => {
 
   afterEach(cleanup);
 
-  // A-10: com o link dentro do <label>, o leitor de tela lia o campo como
+  // A-10: with the link inside the <label>, the screen reader read the field as
   // "Password Forgot password?".
-  it("o campo se chama so 'Password', o link fica fora do rotulo e o olho alterna o tipo", () => {
+  it("the field is named just 'Password', the link stays outside the label and the eye toggles the type", () => {
     render(<LoginForm />);
 
     const field = screen.getByLabelText("auth.password");
@@ -186,14 +186,14 @@ describe("LoginForm: campo de senha e botao de e-mail", () => {
     const eye = screen.getByRole("button", { name: "auth.showPassword" });
     fireEvent.click(eye);
     expect(field).toHaveAttribute("type", "text");
-    // Um nome so; o estado vem do aria-pressed.
+    // A single name; the state comes from aria-pressed.
     expect(eye).toHaveAttribute("aria-pressed", "true");
     expect(eye).toHaveAccessibleName("auth.showPassword");
     expect(screen.getByRole("textbox", { name: "auth.password" })).toBe(field);
   });
 
-  // A-09: o rotulo de espera so no botao apertado; os dois seguem travados.
-  it("entrar com e-mail muda so o rotulo do botao de e-mail", async () => {
+  // A-09: the wait label only on the pressed button; both stay locked.
+  it("signing in with email changes only the label of the email button", async () => {
     vi.mocked(signInWithEmail).mockReturnValue(new Promise(() => {}) as never);
     const view = render(<LoginForm />);
     fireEvent.change(view.container.querySelector('input[type="email"]')!, { target: { value: "alex@example.test" } });
@@ -206,11 +206,11 @@ describe("LoginForm: campo de senha e botao de e-mail", () => {
   });
 });
 
-// A-17: quem fechava a tela do codigo ficava com a sessao aal1 no cookie. O
-// provider agora expoe isso como `mfa_required` e manda para ca — entao esta
-// tela tem que (1) retomar o desafio sozinha, sem pedir a senha de novo, e
-// (2) ter uma saida que encerre a sessao de verdade, nao so esconda a tela.
-describe("LoginForm com sessao encerrada pela conta", () => {
+// A-17: whoever closed the code screen was left with the aal1 session in the cookie. The
+// provider now exposes this as `mfa_required` and sends them here — so this
+// screen has to (1) resume the challenge on its own, without asking for the password again, and
+// (2) have an exit that really ends the session, not just hide the screen.
+describe("LoginForm with a session ended by the account", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getPendingSecondFactor.mockResolvedValue(null);
@@ -218,9 +218,9 @@ describe("LoginForm com sessao encerrada pela conta", () => {
 
   afterEach(cleanup);
 
-  // O proxy derruba a sessao revogada e manda para ca com ?error=session_revoked.
-  // Sem a frase propria, caia em "link invalido ou expirado", que nao explica nada.
-  it("diz por que a pessoa saiu, em vez de falar de link expirado", () => {
+  // The proxy drops the revoked session and sends them here with ?error=session_revoked.
+  // Without its own sentence, it fell into "invalid or expired link", which explains nothing.
+  it("says why the person was signed out, instead of talking about an expired link", () => {
     mocks.searchParams = new URLSearchParams("error=session_revoked");
     render(<LoginForm />);
 
@@ -229,7 +229,7 @@ describe("LoginForm com sessao encerrada pela conta", () => {
   });
 });
 
-describe("LoginForm com segundo fator pendente", () => {
+describe("LoginForm with a pending second factor", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getPendingSecondFactor.mockResolvedValue(
@@ -240,7 +240,7 @@ describe("LoginForm com segundo fator pendente", () => {
 
   afterEach(cleanup);
 
-  it("retoma a tela do codigo ao montar quando a sessao aal1 ficou no cookie", async () => {
+  it("resumes the code screen on mount when the aal1 session stayed in the cookie", async () => {
     render(<LoginForm />);
 
     expect(await screen.findByLabelText(/auth\.mfaCodeLabel/)).toBeTruthy();
@@ -249,7 +249,7 @@ describe("LoginForm com segundo fator pendente", () => {
     ).toBeNull();
   });
 
-  it("'usar outra conta' (botao so de texto) tem pelo menos 24px de area", async () => {
+  it("'use another account' (a text-only button) has at least 24px of area", async () => {
     render(<LoginForm />);
     await screen.findByLabelText(/auth\.mfaCodeLabel/);
 
@@ -258,7 +258,7 @@ describe("LoginForm com segundo fator pendente", () => {
     ).toContain("min-h-6");
   });
 
-  it("'usar outra conta' sai de verdade antes de voltar ao formulario de senha", async () => {
+  it("'use another account' really signs out before going back to the password form", async () => {
     render(<LoginForm />);
     await screen.findByLabelText(/auth\.mfaCodeLabel/);
 
@@ -273,11 +273,11 @@ describe("LoginForm com segundo fator pendente", () => {
   });
 });
 
-// Onda F: link de confirmacao vencido ou ja usado. Antes caia numa frase sobre
-// "reset links" (troca de senha) e sem jeito de pedir outro. Agora: a tela de
-// reenviar, com a mesma resposta para qualquer e-mail, para ninguem descobrir
-// quem tem cadastro.
-describe("LoginForm com link de confirmacao vencido", () => {
+// Wave F: expired or already used confirmation link. Before, it fell into a sentence about
+// "reset links" (password reset) with no way to ask for another. Now: the
+// resend screen, with the same answer for any email, so nobody finds out
+// who has signed up.
+describe("LoginForm with an expired confirmation link", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getPendingSecondFactor.mockResolvedValue(null);
@@ -296,7 +296,7 @@ describe("LoginForm com link de confirmacao vencido", () => {
     fireEvent.click(screen.getByRole("button", { name: "auth.signup.expiredSend" }));
   }
 
-  it("mostra a tela de pedir outro link, e nao o texto de troca de senha", () => {
+  it("shows the ask-for-another-link screen, not the password reset text", () => {
     render(<LoginForm />);
 
     expect(screen.getByRole("heading", { name: "auth.signup.expiredTitle" })).toBeTruthy();
@@ -305,7 +305,7 @@ describe("LoginForm com link de confirmacao vencido", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  it("reenvia pelo reenvio que ja existe, para o mesmo curso, com a espera de 60 s", async () => {
+  it("resends through the existing resend, for the same course, with the 60 s wait", async () => {
     render(<LoginForm />);
     askForNewLink();
 
@@ -324,7 +324,7 @@ describe("LoginForm com link de confirmacao vencido", () => {
     ["o limite de envios", { code: "over_email_send_rate_limit", status: 429 }],
     ["conta que nao existe", { code: "user_not_found", status: 404 }],
     ["falha do servidor de e-mail", { message: "Error sending confirmation email", status: 500 }],
-  ])("responde %s com a mesma frase de enviado", async (_label, error) => {
+  ])("answers %s with the same sent sentence", async (_label, error) => {
     mocks.resend.mockRejectedValue(error);
     render(<LoginForm />);
     askForNewLink();
@@ -333,7 +333,7 @@ describe("LoginForm com link de confirmacao vencido", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  it("mostra a falha do CAPTCHA, que nao diz nada sobre a conta", async () => {
+  it("shows the CAPTCHA failure, which says nothing about the account", async () => {
     mocks.resend.mockRejectedValue({ message: "captcha protection: request disallowed" });
     render(<LoginForm />);
     askForNewLink();
@@ -342,7 +342,7 @@ describe("LoginForm com link de confirmacao vencido", () => {
     expect(screen.queryByText("auth.signup.expiredSent")).toBeNull();
   });
 
-  it("'ja confirmou? entrar' abre o formulario com o e-mail digitado", () => {
+  it("'already confirmed? sign in' opens the form with the typed email", () => {
     render(<LoginForm />);
     fireEvent.change(screen.getByLabelText("auth.email"), {
       target: { value: "ana@example.test" },

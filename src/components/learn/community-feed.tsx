@@ -59,14 +59,14 @@ import { isRateLimitError } from "@/lib/data/rate-limit-error";
 //
 // POR QUE ISTO EXISTE
 //
-// A tela anterior mostrava tudo o que uma comunidade PODE ter: seis espacos
-// com contagem, Latest/Top/Unanswered, um compositor com cinco tipos, chips
-// de espaco e de papel em cada post, ranking e cartao de regras. Esta mostra
+// The previous screen showed everything a community CAN have: six spaces
+// with counts, Latest/Top/Unanswered, a composer with five types, space
+// and role chips on every post, ranking and a rules card. This one shows
 // o que ela DEVE ter: um feed, tres filtros (All · Questions · From
-// <instrutor>), duas acoes (Ask a question · Share), cartao leve com a
-// primeira resposta dentro, e uma coluna com o que esta acontecendo agora.
-// Posts novos de outras pessoas nao empurram a tela: viram a pilula
-// "N new posts" ate a pessoa querer ve-los.
+// <instructor>), two actions (Ask a question · Share), a light card with the
+// first answer inside, and a column with what is happening right now.
+// New posts from other people do not push the screen: they become the
+// "N new posts" pill until the person wants to see them.
 
 export type CommunityFeedLesson = {
   id: string;
@@ -76,23 +76,23 @@ export type CommunityFeedLesson = {
 
 type CommunityFeedProps = {
   space: CommunitySpace;
-  /** A aula aberta na sala — "Ask a question" ja nasce com ela anexada. */
+  /** The lesson open in the classroom — "Ask a question" is born with it attached. */
   currentLesson?: CommunityFeedLesson | null;
-  /** Nome do instrutor para o filtro "From <nome>". */
+  /** Instructor name for the "From <name>" filter. */
   instructorName?: string | null;
-  /** Quem e instrutor alem de quem escreveu com papel de professor. */
+  /** Who is an instructor besides whoever wrote with the teacher role. */
   instructorIds?: string[];
-  /** O viewer modera este espaco (dono do curso): fixa posts, publica avisos,
-   *  apaga post e resposta de qualquer membro. */
+  /** The viewer moderates this space (course owner): pins posts, publishes notices,
+   *  deletes any member's post and reply. */
   canModerate?: boolean;
-  /** O dono do curso abrindo "como membro" nao tem matricula; nao barrar. */
+  /** The course owner opening "as a member" has no enrollment; do not block them. */
   skipEnrollmentGate?: boolean;
-  /** Post aberto na gaveta — vem da rota .../community/q/<post>. */
+  /** Post open in the drawer — comes from the route .../community/q/<post>. */
   openPostId?: string | null;
 };
 
 const SAY_HI_WINDOW_MS = 7 * 24 * 3_600_000;
-// O cartão aparece 24 h antes; quando a sessão acaba vem da janela comum
+// The card shows up 24 h before; when the session ends it comes from the common window
 // (getEventLiveState, course-event.ts).
 const LIVE_SOON_WINDOW_MS = 24 * 3_600_000;
 
@@ -109,7 +109,7 @@ export function CommunityFeed({
   const { t, locale } = useTranslation();
   const router = useRouter();
   const pathname = usePathname() ?? "";
-  // "/learn/courses/<curso>/community" — sem a gaveta ("/q/<post>") no fim.
+  // "/learn/courses/<course>/community" — without the drawer ("/q/<post>") at the end.
   const communityPath = pathname.replace(/\/q\/[^/]+$/, "");
   const openPost = useCallback(
     (postId: string) => router.push(`${communityPath}/q/${encodeURIComponent(postId)}`),
@@ -118,12 +118,12 @@ export function CommunityFeed({
   const closePost = useCallback(() => router.push(communityPath), [communityPath, router]);
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
   const [enrollmentReady, setEnrollmentReady] = useState(skipEnrollmentGate);
-  // Chave do dicionario, nao texto: o idioma pode trocar com o erro na tela.
+  // Dictionary key, not text: the language can change with the error on screen.
   const [error, setError] = useState("");
-  // "Posted." na região de status depois de publicar: a lista deixou de ser
-  // aria-live, o próprio post entra direto nela e o formulário fecha, então
-  // quem usa leitor de tela não ouvia nada. Some depois de alguns segundos
-  // para o próximo post ser anunciado de novo.
+  // "Posted." in the status region after publishing: the list stopped being
+  // aria-live, the post itself goes straight into it and the form closes, so
+  // screen reader users heard nothing. It goes away after a few seconds
+  // so the next post is announced again.
   const [posted, setPosted] = useState(false);
   useEffect(() => {
     if (!posted) return;
@@ -131,9 +131,9 @@ export function CommunityFeed({
     return () => window.clearTimeout(timer);
   }, [posted]);
 
-  // Feed: `all` e tudo o que chegou; `visible` e o que esta na tela; `pending`
-  // sao posts de OUTRAS pessoas que chegaram pelo realtime e esperam a pessoa
-  // clicar na pilula. Os proprios posts entram na hora (quem publica quer ver
+  // Feed: `all` is everything that arrived; `visible` is what is on screen; `pending`
+  // are posts by OTHER people that arrived through realtime and wait for the person to
+  // click the pill. Your own posts go in right away (whoever publishes wants to see
   // o que publicou).
   const [feed, setFeed] = useState<{
     all: CommunityPost[];
@@ -149,19 +149,19 @@ export function CommunityFeed({
   const [filter, setFilter] = useState<CommunityFeedFilter>("all");
   const [query, setQuery] = useState("");
   const [asideView, setAsideView] = useState<"none" | "members" | "rules">("none");
-  // O que esta pessoa apagou agora: some na hora, mesmo que uma leitura
-  // antiga do realtime ainda o traga.
+  // What this person just deleted: it disappears right away, even if an old
+  // realtime read still brings it back.
   const [deleted, setDeleted] = useState<ReadonlySet<string>>(() => new Set());
   const hide = useCallback((id: string) => setDeleted((current) => new Set(current).add(id)), []);
 
-  // Falhas de LEITURA à parte do `error` (o do compositor): cada uma com o seu
-  // "Try again", que relê pelo mesmo canal e só some quando a leitura volta.
+  // READ failures kept apart from `error` (the composer's): each one with its own
+  // "Try again", which re-reads through the same channel and only goes away when the read comes back.
   const [accessFailed, setAccessFailed] = useState(false);
   const [postsFailed, setPostsFailed] = useState(false);
   const enrollmentSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
   const postsSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
-  // O título do feed é o ponto fixo do foco quando o botão some; a porta
-  // de acesso, enquanto a matrícula não chega.
+  // The feed title is the fixed focus point when the button goes away; the access
+  // gate, while the enrollment has not arrived.
   const headingRef = useRef<HTMLHeadingElement>(null);
   const gateRef = useRef<HTMLElement>(null);
   const focusFeedOnOpen = useRef(false);
@@ -179,7 +179,7 @@ export function CommunityFeed({
         setEnrollmentReady(true);
       },
       () => {
-        // Falhou de novo: o foco não pula sozinho numa leitura boa mais tarde.
+        // It failed again: focus does not jump on its own to a good read later on.
         focusFeedOnOpen.current = false;
         setAccessFailed(true);
         setEnrollmentReady(true);
@@ -194,8 +194,8 @@ export function CommunityFeed({
 
   const canRead = skipEnrollmentGate || Boolean(enrollment);
 
-  // A porta some quando o "Try again" do acesso dá certo: o foco segue para o
-  // título do feed, em vez de cair no <body>.
+  // The gate goes away when the access "Try again" succeeds: focus moves on to the
+  // feed title, instead of falling on <body>.
   useEffect(() => {
     if (canRead && focusFeedOnOpen.current) {
       focusFeedOnOpen.current = false;
@@ -237,9 +237,9 @@ export function CommunityFeed({
         setPostsFailed(false);
       },
       () => {
-        // O feed não muda: posts já na tela ficam, com o aviso acima deles.
-        // Sem nenhuma leitura boa ele segue "não pronto", e a primeira que
-        // chegar depois do "Try again" entra direto, não como "N new posts".
+        // The feed does not change: posts already on screen stay, with the notice above them.
+        // With no good read it stays "not ready", and the first one that
+        // arrives after "Try again" goes straight in, not as "N new posts".
         setPostsFailed(true);
       },
     );
@@ -271,7 +271,7 @@ export function CommunityFeed({
     return subscribeToCourseEvents(space.courseSlug, setEvents, () => undefined);
   }, [canRead, space.courseSlug]);
 
-  // "Live in 40 min" tem que andar sozinho.
+  // "Live in 40 min" has to move on its own.
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 30_000);
     return () => window.clearInterval(timer);
@@ -299,8 +299,8 @@ export function CommunityFeed({
   const nextLive = useMemo(() => pickNextLive(events, now), [events, now]);
   const isNewHere =
     Boolean(enrollment) && now - toMillis(enrollment?.createdAt) < SAY_HI_WINDOW_MS;
-  // A gaveta acha o post em tudo o que chegou — inclusive o que ainda espera
-  // na pilula (um link compartilhado aponta para um post que a pessoa nunca viu).
+  // The drawer finds the post among everything that arrived — including what is still waiting
+  // in the pill (a shared link points to a post the person never saw).
   const drawerPost = useMemo(
     () =>
       openPostId && !deleted.has(openPostId)
@@ -314,8 +314,8 @@ export function CommunityFeed({
   }
 
   if (!enrollmentReady) {
-    // A mesma forma da espera dos posts, com a faixa dos filtros em cima: o
-    // acesso e os posts chegam sem trocar de frase nem pular.
+    // The same shape as the posts' wait, with the filter strip on top: access
+    // and posts arrive without changing sentence or jumping.
     return (
       <div className="grid gap-4">
         <div aria-hidden="true" className={`h-11 w-72 max-w-full rounded-md ${feedBone}`} />
@@ -351,11 +351,11 @@ export function CommunityFeed({
   return (
     <div className="community-feed grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
       <div className="grid gap-4">
-        {/* Título só para leitor de tela: logo acima já estão o nome do curso
-            (h1) e a aba "Community" ativa, e o eyebrow mais o h2 de 24px
-            repetiam os dois. Fora do fluxo (sr-only), não abre espaço na
-            grade. Recebe o foco quando o último post visível é apagado, e aí
-            aparece (focus:not-sr-only) para o foco não sumir da tela. */}
+        {/* Title only for the screen reader: right above are already the course name
+            (h1) and the active "Community" tab, and the eyebrow plus the 24px h2
+            repeated both. Out of flow (sr-only), it takes no space in the
+            grid. It receives focus when the last visible post is deleted, and then
+            shows up (focus:not-sr-only) so focus does not vanish from the screen. */}
         <h2
           ref={headingRef}
           data-community-heading
@@ -372,12 +372,12 @@ export function CommunityFeed({
           </p>
         ) : null}
 
-        {/* Tres filtros no lugar de seis espacos com ordenacao. Filtram uma
-            lista, nao trocam de painel: grupo com aria-pressed, no desenho do
-            seletor segmentado da casa (moldura clara, a escolhida em pastilha
-            com borda e sombra). Em utilities, e nao .studio-range-tabs: a sala
-            troca a paleta pelas classes (borda, bg-white, surface-soft e as
-            tintas), e o .studio-range-tabs usaria as da plataforma num curso
+        {/* Three filters in place of six spaces with sorting. They filter a
+            list, they do not switch panels: a group with aria-pressed, in the design of the
+            app's own segmented selector (light frame, the chosen one in a pill
+            with border and shadow). In utilities, and not .studio-range-tabs: the classroom
+            swaps the palette through classes (border, bg-white, surface-soft and the
+            tints), and .studio-range-tabs would use the platform's in a course
             escuro. */}
         <div className="flex flex-wrap items-center gap-2">
           <div role="group" aria-label={t("learn.community.filters")} className="inline-flex max-w-full flex-wrap gap-1 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-1">
@@ -443,8 +443,8 @@ export function CommunityFeed({
         {error ? <InlineAlert tone="error">{t(error)}</InlineAlert> : null}
 
         {feed.pending > 0 ? (
-          // 76px = a barra do topo da área de membros (~68px, sticky, z-40)
-          // + 8px: com top-2 o aviso grudava ATRÁS da barra e sumia.
+          // 76px = the members area top bar (~68px, sticky, z-40)
+          // + 8px: with top-2 the notice stuck BEHIND the bar and disappeared.
           <div className="sticky top-[76px] z-10 flex justify-center">
             <button
               type="button"
@@ -456,9 +456,9 @@ export function CommunityFeed({
           </div>
         ) : null}
 
-        {/* O leitor de tela ouve só a linha "N new posts" (ou "Posted."
-            depois de publicar). Antes a lista inteira era aria-live: cada
-            curtida e cada post novo eram lidos. */}
+        {/* The screen reader hears only the "N new posts" line (or "Posted."
+            after publishing). Before, the whole list was aria-live: every
+            like and every new post was read out. */}
         <p role="status" className="sr-only">
           {feed.pending > 0
             ? t(`learn.community.${feed.pending === 1 ? "newPostOne" : "newPostMany"}`).replace("{count}", () => String(feed.pending))
@@ -468,11 +468,11 @@ export function CommunityFeed({
         </p>
 
         <div className="grid gap-3">
-          {/* Com a leitura em erro, nem "carregando" nem o vazio: só o aviso. */}
+          {/* With the read in error, neither "loading" nor the empty state: only the notice. */}
           {!feed.ready ? (
             postsFailed ? null : <FeedPostsSkeleton label={t("learn.community.feedLoading")} />
           ) : shownPosts.length === 0 && postsFailed ? null : shownPosts.length === 0 ? (
-            // O vazio de lista da plataforma; h3 como o título de cada post.
+            // The platform's empty list state; h3 like each post's title.
             <EmptyState as="h3" title={t(livePosts.length === 0 ? "learn.community.empty" : "learn.community.emptyFilter")} />
           ) : (
             shownPosts.map((post) => (
@@ -504,8 +504,8 @@ export function CommunityFeed({
       ) : null}
 
       <aside className="grid gap-3">
-        {/* Só com uma live marcada. Antes a lateral sempre abria com um
-            cartão vazio "No live scheduled yet.". */}
+        {/* Only with a live scheduled. Before, the side column always opened with an
+            empty "No live scheduled yet." card. */}
         {nextLive ? <LiveCard live={nextLive} now={now} locale={locale} /> : null}
 
         <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)]">
@@ -550,7 +550,7 @@ export function CommunityFeed({
           >
             {t("learn.community.rules")}
           </button>
-          {/* A comunidade da área (/learn/areas/...) não tem aba de gravações. */}
+          {/* The area's community (/learn/areas/...) has no recordings tab. */}
           {pathname.startsWith("/learn/areas/") ? null : (
             <Link
               href={pathname.replace(/\/community(\/.*)?$/, "") + "/lives"}
@@ -609,15 +609,15 @@ function Composer({
   instructorLabel: string;
   answeredPosts: CommunityPost[];
   canModerate: boolean;
-  /** Recebe a CHAVE do dicionario (ou "" para limpar); o pai traduz na tela. */
+  /** Receives the dictionary KEY (or "" to clear); the parent translates it on screen. */
   onError: (messageKey: string) => void;
-  /** Publicou: o pai anuncia "Posted." na região de status do feed. */
+  /** Published: the parent announces "Posted." in the feed's status region. */
   onPosted: () => void;
 }) {
   const { t, locale } = useTranslation();
   const [mode, setMode] = useState<"idle" | "ask" | "share" | "update">("idle");
-  // Depois de publicar o formulário fecha e o botão que tinha o foco some:
-  // o foco volta para o campo do compositor, em vez de cair no corpo da página.
+  // After publishing the form closes and the button that had focus goes away:
+  // focus goes back to the composer field, instead of falling on the page body.
   const promptRef = useRef<HTMLButtonElement>(null);
   const focusPromptAfterPost = useRef(false);
   useEffect(() => {
@@ -628,9 +628,9 @@ function Composer({
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // A aula anexada acompanha a aula aberta na sala ate a pessoa tira-la —
-  // derivado, sem efeito sincronizando estado: a escolha guarda PARA QUAL aula
-  // foi feita; se a sala trocar de aula, a escolha vence.
+  // The attached lesson follows the lesson open in the classroom until the person removes it —
+  // derived, with no effect syncing state: the choice stores WHICH lesson it
+  // was made for; if the classroom switches lessons, the choice wins.
   const currentLessonId = currentLesson?.id ?? null;
   const [lessonChoice, setLessonChoice] = useState<{
     forLessonId: string | null;
@@ -697,9 +697,9 @@ function Composer({
           ref={promptRef}
           type="button"
           onClick={() => setMode("share")}
-          // basis-48: a 375px o campo ficava com 134px (100px em espanhol) e a
-          // frase quebrava em 3 ou 4 linhas; agora ele ocupa a linha e os
-          // botões descem.
+          // basis-48: at 375px the field was left with 134px (100px in Spanish) and the
+          // sentence broke into 3 or 4 lines; now it takes the line and the
+          // buttons drop down.
           className="min-h-11 flex-1 basis-48 rounded-md bg-[var(--color-surface-soft)] px-4 text-left text-sm text-[var(--color-ink-muted)]"
         >
           {t("learn.community.composer.prompt")}
@@ -711,8 +711,8 @@ function Composer({
         >
           {t("learn.community.composer.ask")}
         </button>
-        {/* Sem "Share" ao lado: o campo de mentira já abre o mesmo
-            formulário, e o botão a mais quebrava a linha no celular. */}
+        {/* No "Share" beside it: the fake field already opens the same
+            form, and the extra button broke the line on the phone. */}
         {canModerate ? (
           <button
             type="button"
@@ -855,7 +855,7 @@ function FeedCard({
   currentUser: SkillsetUser | null;
   instructorIds: ReadonlySet<string>;
   canModerate: boolean;
-  /** Abre o post na gaveta (titulo e "View N replies"). */
+  /** Opens the post in the drawer (title and "View N replies"). */
   onOpen: () => void;
   onDeleted: () => void;
 }) {
@@ -866,7 +866,7 @@ function FeedCard({
   const [showAll, setShowAll] = useState(false);
   const [replyBody, setReplyBody] = useState("");
   const [isReplying, setIsReplying] = useState(false);
-  // Chave do dicionario, nao texto.
+  // Dictionary key, not text.
   const [replyError, setReplyError] = useState("");
 
   useEffect(() => subscribeToPostLikes(post.id, setLikes, () => undefined), [post.id]);
@@ -876,7 +876,7 @@ function FeedCard({
   const answered = isAnswered(post);
   const inline = pickInlineReply(post, comments, instructorIds);
   const isOwn = currentUser?.uid === post.authorId;
-  // O "curtir" do próprio post fica travado: o motivo vai junto do botão.
+  // The "like" on your own post is locked: the reason goes along with the button.
   const clapReasonId = useId();
   const liked = currentUser ? likes.likerIds.includes(currentUser.uid) : false;
   const inlineIsAnswer = Boolean(inline && post.acceptedCommentId === inline.id);
@@ -887,7 +887,7 @@ function FeedCard({
     try {
       await setCommunityPostLike(post.id, !liked, currentUser);
     } catch {
-      // O contador vem do listener; um toggle perdido nao merece modal.
+      // The counter comes from the listener; a lost toggle does not deserve a modal.
     } finally {
       setLikePending(false);
     }
@@ -926,8 +926,8 @@ function FeedCard({
     <article
       data-community-item
       aria-label={post.title ?? post.body.slice(0, 60)}
-      // O post do instrutor se marca pelo "· Instructor" do cabeçalho; a
-      // borda colorida à esquerda é proibida pelo contrato de design.
+      // The instructor's post is marked by the "· Instructor" in the header; the
+      // colored border on the left is forbidden by the design contract.
       className="rounded-lg border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)]"
     >
       <header className="flex flex-wrap items-center gap-2 text-xs text-[var(--color-ink-muted)]">
@@ -986,12 +986,12 @@ function FeedCard({
           aria-describedby={isOwn ? clapReasonId : undefined}
           className={`inline-flex min-h-11 items-center gap-1.5 rounded-md px-3 ${liked ? "bg-[var(--color-surface-soft)] text-[var(--color-ink)]" : "hover:bg-[var(--color-surface-soft)]"} disabled:opacity-60`}
         >
-          {/* Ícone, não emoji (o contrato de design proíbe emoji na interface). */}
+          {/* Icon, not emoji (the design contract forbids emoji in the interface). */}
           <ThumbsUp size={14} aria-hidden />
           {likes.count}
         </button>
-        {/* O motivo à vista, ao lado do botão travado: antes só o leitor de
-            tela sabia por que o "Like" do próprio post não respondia. */}
+        {/* The reason in plain sight, beside the locked button: before, only the screen
+            reader knew why the "Like" on your own post did not respond. */}
         {isOwn ? (
           <span id={clapReasonId} className="font-normal text-[var(--color-ink-soft)]">
             {t("learn.community.card.clapOwn")}
@@ -1013,8 +1013,8 @@ function FeedCard({
             {t("learn.community.card.viewReplies").replace("{count}", () => String(comments.length))}
           </button>
         ) : null}
-        {/* Fixar, Apagar e Denunciar moram aqui, com alvo de toque de 44px
-            (o "Pin" no cabecalho tinha 24px). */}
+        {/* Pin, Delete and Report live here, with a 44px touch target
+            (the "Pin" in the header was 24px). */}
         <CommunityItemActions
           post={post}
           currentUser={currentUser}
@@ -1097,8 +1097,8 @@ function LiveCard({ live, now, locale }: { live: CourseEvent; now: number; local
   const { t } = useTranslation();
   const state = getEventLiveState(live.startsAt, now);
   const running = state === "live";
-  // O link de entrar aparece 15 min antes, como nas outras telas (antes só
-  // depois do início).
+  // The join link shows up 15 min before, as on the other screens (before, only
+  // after the start).
   const canJoin = running || state === "startingSoon";
   const safeJoinUrl = getSafeExternalUrl(live.externalUrl);
   return (
@@ -1114,7 +1114,7 @@ function LiveCard({ live, now, locale }: { live: CourseEvent; now: number; local
         <Radio size={12} aria-hidden /> {liveChipLabel(live, now, t)}
       </p>
       <p className="mt-2 text-sm font-semibold text-[var(--color-ink)]">{live.title}</p>
-      {/* A mesma frase das outras telas, com data e fuso (antes "Wed 04:00 PM"). */}
+      {/* The same sentence as the other screens, with date and time zone (before "Wed 04:00 PM"). */}
       <p className="mt-0.5 text-xs text-[var(--color-ink-muted)]">
         {formatEventDateTime(live.startsAt, locale, t("platform.events.datePending"))}
       </p>
@@ -1138,8 +1138,8 @@ function LiveCard({ live, now, locale }: { live: CourseEvent; now: number; local
   );
 }
 
-// A sessão de início mais perto de agora (pickClosestEvent): a mais antiga
-// seguia "ao vivo" por 3 h e escondia a seguinte. Prazo não é live: fica fora.
+// The session whose start is nearest to now (pickClosestEvent): the oldest
+// stayed "live" for 3 h and hid the next one. A deadline is not live: it stays out.
 function pickNextLive(events: CourseEvent[], now: number): CourseEvent | null {
   return pickClosestEvent(
     events.filter((event) => {
@@ -1187,12 +1187,12 @@ function Avatar({ name, online = false, small = false }: { name: string; online?
   );
 }
 
-// Osso das esperas do feed: na sala, a linha do curso (--ma-line), como as
-// outras esperas da sala; fora dela, o tom dos esqueletos da casa.
+// Bones of the feed waits: in the classroom, the course line (--ma-line), like the
+// other classroom waits; outside it, the tone of the app's own skeletons.
 const feedBone = "bg-[var(--ma-line,var(--color-surface-strong))] motion-safe:animate-pulse";
 
-// Dois cartões de post no lugar da frase "Loading...": a frase fica só para o
-// leitor de tela, num role="status".
+// Two post cards in place of the "Loading..." sentence: the sentence stays only for the
+// screen reader, in a role="status".
 function FeedPostsSkeleton({ label }: { label: string }) {
   return (
     <div role="status" className="grid gap-3">
