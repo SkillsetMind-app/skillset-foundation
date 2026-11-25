@@ -5,7 +5,11 @@ import {
   EmbeddedCheckout,
   EmbeddedCheckoutProvider,
 } from "@stripe/react-stripe-js";
-import { loadStripe, type Stripe } from "@stripe/stripe-js";
+import type { Stripe } from "@stripe/stripe-js";
+// "/pure": the plain entry injects Stripe.js (270 kB) the moment this file is
+// imported, so every page that could open a checkout paid for it on load.
+// From here it is fetched when a checkout actually renders.
+import { loadStripe } from "@stripe/stripe-js/pure";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { BrandName } from "@/components/shared/brand-name";

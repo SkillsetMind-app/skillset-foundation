@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => {
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: mocks.refresh }),
 }));
-vi.mock("@stripe/stripe-js", () => ({ loadStripe: vi.fn().mockResolvedValue(null) }));
+vi.mock("@stripe/stripe-js/pure", () => ({ loadStripe: vi.fn().mockResolvedValue(null) }));
 vi.mock("@stripe/react-stripe-js", () => ({
   EmbeddedCheckoutProvider: (props: { children: ReactNode; options: unknown }) => {
     mocks.checkoutProvider(props.options);

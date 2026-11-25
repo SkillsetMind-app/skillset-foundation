@@ -18,7 +18,7 @@ const mocks = vi.hoisted(() => {
 });
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => {} }) }));
 vi.mock("@/lib/theme/theme-provider", () => ({ useTheme: () => ({ resolvedTheme: "light" }) }));
-vi.mock("@stripe/connect-js", () => ({ loadConnectAndInitialize: mocks.initialize }));
+vi.mock("@stripe/connect-js/pure", () => ({ loadConnectAndInitialize: mocks.initialize }));
 vi.mock("@/lib/payments/connect", async (original) => ({
   ...await original<object>(), startTeacherStripeOnboarding: mocks.hosted,
 }));
