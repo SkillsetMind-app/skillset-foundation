@@ -8,6 +8,14 @@ const nextConfig: NextConfig = {
   // fingerprinting with no functional value and, on a public repo, points
   // scanners straight at the framework version. (Security audit 2026-06-18.)
   poweredByHeader: false,
+  experimental: {
+    // The stylesheet is 270 kB (45 kB compressed) and nothing paints before it
+    // arrives. As a separate file it is only requested once the HTML is in,
+    // and then shares the connection with every script on the page. Inline,
+    // it travels with the HTML. `style-src` already allows inline styles
+    // (src/lib/security/csp.ts). Production builds only.
+    inlineCss: true,
+  },
   // AI captions: the route calls the ffmpeg binary (src/lib/ai/audio.ts). The
   // package only exports the PATH to the binary, so file tracing does not see
   // it on its own: it stays out of the bundle and is added by hand to this
