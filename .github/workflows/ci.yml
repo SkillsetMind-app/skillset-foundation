@@ -85,7 +85,7 @@ jobs:
   #     there is no secret to get);
   #   - the production database is never touched. These tests write.
   rls:
-    name: RLS smoke tests (banco efêmero)
+    name: RLS smoke tests (ephemeral database)
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
