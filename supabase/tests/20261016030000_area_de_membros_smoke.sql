@@ -101,25 +101,25 @@ values ('smoke-area-asset-b', pg_temp.course('b'), pg_temp.uid(1)::text, 'lesson
 insert into storage.objects(bucket_id, name) values ('course-content', pg_temp.file_path('b'));
 -- Public profile last: a test email never gets a profile through the trigger.
 insert into public.public_profiles(uid, display_name, username)
-values (pg_temp.uid(1)::text, 'Eton Smoke', 'smoke-area-eton');
+values (pg_temp.uid(1)::text, 'Evan Smoke', 'smoke-area-evan');
 
 -- 1) Learner of A, virtual area: A in mine, B and H in the storefront (newest first),
 --    draft out, continue from the last lesson touched.
 select pg_temp.act_as(pg_temp.uid(2));
 set local role authenticated;
-select pg_temp.assert_true(pg_temp.ids(pg_temp.home('@smoke-area-eton') -> 'my_products')
+select pg_temp.assert_true(pg_temp.ids(pg_temp.home('@smoke-area-evan') -> 'my_products')
   = array[pg_temp.course('a')], 'student owns only A');
-select pg_temp.assert_true(pg_temp.ids(pg_temp.home('@smoke-area-eton') -> 'more_products')
+select pg_temp.assert_true(pg_temp.ids(pg_temp.home('@smoke-area-evan') -> 'more_products')
   = array[pg_temp.course('h'), pg_temp.course('b')], 'storefront: published not bought, newest first, no draft');
-select pg_temp.assert_true((select d #>> '{area,name}' = 'Eton Smoke' and d #>> '{area,theme}' = 'light'
+select pg_temp.assert_true((select d #>> '{area,name}' = 'Evan Smoke' and d #>> '{area,theme}' = 'light'
     and not (d #>> '{area,configured}')::boolean and not (d #>> '{area,is_owner_preview}')::boolean
     and d #>> '{continue,lesson_id}' = 'a-2' and d #>> '{continue,lesson_title}' = 'Lesson a 2'
     and (d #>> '{continue,position_seconds}')::int = 42
-  from (select pg_temp.home('@smoke-area-eton') as d) x), 'virtual area defaults and continue');
+  from (select pg_temp.home('@smoke-area-evan') as d) x), 'virtual area defaults and continue');
 select pg_temp.assert_true((select bool_and((select array_agg(k order by k collate "C") from jsonb_object_keys(p) k(k))
     = array['course_id','cover_image_url','currency','payment_type','price_amount_minor','sales_key','title'])
-  from jsonb_array_elements(pg_temp.home('@smoke-area-eton') -> 'more_products') p), 'storefront exposes only public fields');
-select pg_temp.assert_true(pg_temp.home('@SMOKE-AREA-ETON') is not null
+  from jsonb_array_elements(pg_temp.home('@smoke-area-evan') -> 'more_products') p), 'storefront exposes only public fields');
+select pg_temp.assert_true(pg_temp.home('@SMOKE-AREA-EVAN') is not null
   and pg_temp.home(pg_temp.uid(1)::text) is not null, 'area resolves by @ in any case and by uid');
 select pg_temp.assert_true(pg_temp.home('@nobody-here') is null, 'unknown creator is null');
 
@@ -129,21 +129,21 @@ reset role;
 -- to the lesson after the last completed one (a-1 -> a-2), not to the completed course.
 select pg_temp.act_as(pg_temp.uid(5), 'authenticated', 'aal1');
 set local role authenticated;
-select pg_temp.assert_true(pg_temp.home('@smoke-area-eton') is null, 'second factor missing from session');
+select pg_temp.assert_true(pg_temp.home('@smoke-area-evan') is null, 'second factor missing from session');
 reset role;
 select pg_temp.act_as(pg_temp.uid(5));
 set local role authenticated;
 select pg_temp.assert_true((select d #>> '{continue,course_id}' = pg_temp.course('a')
     and d #>> '{continue,lesson_id}' = 'a-2' and d #>> '{continue,lesson_title}' = 'Lesson a 2'
     and (d #>> '{continue,position_seconds}')::int = 0
-  from (select pg_temp.home('@smoke-area-eton') as d) x), 'continue: next after last completed, never a completed course');
-select pg_temp.assert_true(pg_temp.ids(pg_temp.home('@smoke-area-eton') -> 'my_products')
+  from (select pg_temp.home('@smoke-area-evan') as d) x), 'continue: next after last completed, never a completed course');
+select pg_temp.assert_true(pg_temp.ids(pg_temp.home('@smoke-area-evan') -> 'my_products')
   @> array[pg_temp.course('h')], 'completed course stays in my products');
 reset role;
 -- Refunded is not a learner.
 select pg_temp.act_as(pg_temp.uid(6));
 set local role authenticated;
-select pg_temp.assert_true(pg_temp.home('@smoke-area-eton') is null, 'refunded student gets null');
+select pg_temp.assert_true(pg_temp.home('@smoke-area-evan') is null, 'refunded student gets null');
 reset role;
 
 -- 2) The area unlocks nothing of B.
@@ -173,11 +173,11 @@ reset role;
 -- 3) Someone who is neither learner nor owner gets null; anon does not even execute.
 select pg_temp.act_as(pg_temp.uid(3));
 set local role authenticated;
-select pg_temp.assert_true(pg_temp.home('@smoke-area-eton') is null, 'outsider gets null');
+select pg_temp.assert_true(pg_temp.home('@smoke-area-evan') is null, 'outsider gets null');
 reset role;
 select pg_temp.act_as(pg_temp.uid(4));
 set local role authenticated;
-select pg_temp.assert_true(pg_temp.home('@smoke-area-eton') is null, 'other creator gets null');
+select pg_temp.assert_true(pg_temp.home('@smoke-area-evan') is null, 'other creator gets null');
 -- 4) Another creator does not put the owner's product in their area, and nothing is written.
 select pg_temp.refused(format($q$select public.save_my_member_area_products('[{"course_id": %s}]')$q$,
   to_jsonb(pg_temp.course('a'))), '42501', 'MEMBER_AREA_COURSE_NOT_OWNED');
@@ -195,7 +195,7 @@ select pg_temp.refused(format($q$select public.save_my_member_area('x', 'light',
   'users/' || pg_temp.uid(4)::text || '/member-area/cover.jpg'), '23514');
 select pg_temp.refused(format($q$select public.save_my_member_area('x', 'light', %L, null)$q$,
   'users/' || pg_temp.uid(1)::text || '/member-area/../../' || pg_temp.uid(4)::text || '/x.jpg'), '23514');
-select public.save_my_member_area(' Eton Academy ', 'dark',
+select public.save_my_member_area(' Evan Academy ', 'dark',
   'users/' || pg_temp.uid(1)::text || '/member-area/cover.jpg', 'Welcome');
 select public.save_my_member_area_products(jsonb_build_array(
   jsonb_build_object('course_id', pg_temp.course('b'), 'visible', true),
@@ -206,18 +206,18 @@ select pg_temp.refused($q$select public.save_my_member_area_products('[{"course_
 -- Owner preview: nothing bought, storefront with only what is visible.
 select pg_temp.assert_true((select (d #>> '{area,is_owner_preview}')::boolean
     and pg_temp.ids(d -> 'more_products') = array[pg_temp.course('b'), pg_temp.course('a')]
-  from (select pg_temp.home('@smoke-area-eton') as d) x), 'owner preview');
+  from (select pg_temp.home('@smoke-area-evan') as d) x), 'owner preview');
 reset role;
 
 -- The learner sees the change: name, theme, cover, welcome; hidden H disappears from the storefront.
 select pg_temp.act_as(pg_temp.uid(2));
 set local role authenticated;
-select pg_temp.assert_true((select d #>> '{area,name}' = 'Eton Academy' and d #>> '{area,theme}' = 'dark'
+select pg_temp.assert_true((select d #>> '{area,name}' = 'Evan Academy' and d #>> '{area,theme}' = 'dark'
     and d #>> '{area,welcome_text}' = 'Welcome' and (d #>> '{area,configured}')::boolean
     and d #>> '{area,cover_path}' like 'users/%/member-area/cover.jpg'
     and pg_temp.ids(d -> 'my_products') = array[pg_temp.course('a')]
     and pg_temp.ids(d -> 'more_products') = array[pg_temp.course('b')]
-  from (select pg_temp.home('@smoke-area-eton') as d) x), 'student sees saved area, hidden and draft stay out');
+  from (select pg_temp.home('@smoke-area-evan') as d) x), 'student sees saved area, hidden and draft stay out');
 select pg_temp.assert_true(not exists (select 1 from public.member_areas)
   and not exists (select 1 from public.member_area_products), 'student reads area tables directly');
 reset role;
@@ -239,13 +239,13 @@ values (pg_temp.uid(2)::text || '__' || pg_temp.course('h'), pg_temp.uid(2)::tex
   pg_temp.course('h'), 'Smoke area h', 'smoke', '', 'active', 'admin');
 select pg_temp.act_as(pg_temp.uid(2));
 set local role authenticated;
-select pg_temp.assert_true(pg_temp.ids(pg_temp.home('@smoke-area-eton') -> 'my_products')
+select pg_temp.assert_true(pg_temp.ids(pg_temp.home('@smoke-area-evan') -> 'my_products')
   = array[pg_temp.course('a'), pg_temp.course('h')], 'hidden product stays in my products');
 reset role;
 
 -- anon does not execute the area function.
 select pg_temp.act_as(null, 'anon');
 set local role anon;
-select pg_temp.refused($q$select public.get_member_area_home('@smoke-area-eton')$q$, '42501');
+select pg_temp.refused($q$select public.get_member_area_home('@smoke-area-evan')$q$, '42501');
 reset role;
 rollback;
