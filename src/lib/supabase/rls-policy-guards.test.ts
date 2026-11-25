@@ -67,7 +67,7 @@ function policyDefinitions(text: string, file: string): Array<[string, Policy]> 
 
   return [...definitions].map(([, name, table, body]) => [
     name.toLowerCase(),
-    { tabela: table.replace(/"/g, ""), corpo: body, arquivo: file },
+    { table: table.replace(/"/g, ""), body, file },
   ]);
 }
 
@@ -99,11 +99,11 @@ function effectivePolicies(): Map<string, Policy> {
 /** Policies that query `enrollments` without also checking the status. */
 function policiesWithoutStatus(efetivas: Map<string, Policy>): string[] {
   return [...efetivas.entries()]
-    .filter(([name, { corpo: body }]) => {
+    .filter(([name, { body }]) => {
       if (EXCEPTIONS.has(name)) return false;
       return /\benrollments\b/i.test(body) && !/e\.status/i.test(body);
     })
-    .map(([name, { tabela: table, arquivo: file }]) => `${table}.${name} (${file})`);
+    .map(([name, { table, file }]) => `${table}.${name} (${file})`);
 }
 
 describe("RLS policies that read enrollments", () => {
