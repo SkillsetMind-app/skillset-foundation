@@ -17,6 +17,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties }
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { PlatformPageHeader } from "@/components/platform/platform-page-header";
+import { CoverThumbnail } from "@/components/shared/cover-thumbnail";
 import { PeriodTabs } from "@/components/shared/period-tabs";
 import { StatusChip } from "@/components/shared/status-chip";
 import { TeacherOverviewMetrics } from "@/components/teacher/teacher-overview-metrics";
@@ -639,13 +640,14 @@ function StudioProductsSection({
                     the cover when it exists, the same icon when it does not. Without the
                     cover the card was just text and the teacher did not recognize their
                     own product. */}
-                <div className="mb-3 grid aspect-video w-full place-items-center overflow-hidden rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
+                <div className="relative mb-3 grid aspect-video w-full place-items-center overflow-hidden rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
                   {course.coverImageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    // At most four cards, all at the top of the home: eager.
+                    <CoverThumbnail
                       src={course.coverImageUrl}
                       alt=""
-                      className="h-full w-full object-cover"
+                      sizes="(min-width: 1280px) 20vw, (min-width: 640px) 45vw, 100vw"
+                      eager
                     />
                   ) : (
                     <Layers3 aria-hidden="true" size={19} strokeWidth={1.7} />

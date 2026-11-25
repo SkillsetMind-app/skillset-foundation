@@ -16,6 +16,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { CoverThumbnail } from "@/components/shared/cover-thumbnail";
 import { ListingSearchBar } from "@/components/shared/listing-search-bar";
 import { ShortId } from "@/components/shared/short-id";
 import { StatusChip } from "@/components/shared/status-chip";
@@ -450,14 +451,9 @@ export function TeacherCourseStudio({
                   >
                     <td className="block pb-4 lg:table-cell lg:px-4 lg:py-4">
                       <div className="flex min-w-0 items-center gap-3">
-                        <div className="grid aspect-video w-24 shrink-0 place-items-center overflow-hidden rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
+                        <div className="relative grid aspect-video w-24 shrink-0 place-items-center overflow-hidden rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
                           {course.coverImageUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={course.coverImageUrl}
-                              alt=""
-                              className="h-full w-full object-cover"
-                            />
+                            <CoverThumbnail src={course.coverImageUrl} alt="" sizes="96px" />
                           ) : (
                             <Layers3 aria-hidden="true" size={19} strokeWidth={1.7} />
                           )}

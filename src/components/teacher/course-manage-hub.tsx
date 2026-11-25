@@ -8,6 +8,7 @@ import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { CoverThumbnail } from "@/components/shared/cover-thumbnail";
 import { ShortId } from "@/components/shared/short-id";
 import { StatusChip } from "@/components/shared/status-chip";
 import { BusyLabel } from "@/components/ui/busy-label";
@@ -634,14 +635,14 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
           <div className="flex min-w-0 items-center gap-4">
             <div className="relative aspect-video w-28 shrink-0 overflow-hidden rounded-md border fine-rule bg-[var(--color-surface-soft)]">
               {course.coverImageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <CoverThumbnail
                   src={course.coverImageUrl}
                   alt={t("creatorPanel.hub.header.coverAlt").replace(
                     "{title}",
                     () => course.title || t("creatorPanel.hub.header.courseFallback")
                   )}
-                  className="h-full w-full object-cover"
+                  sizes="112px"
+                  eager
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
