@@ -16,7 +16,7 @@ import {
 import { toDate } from "@/lib/format-date";
 
 const resolutionActions: AccountActionResolution[] = ["processing", "completed", "rejected"];
-// Fechar um pedido (concluído ou recusado) pergunta antes: eram um clique (I-04).
+// Closing a request (completed or rejected) asks first: they were one click (I-04).
 const confirmedResolutions = new Set<AccountActionResolution>(["completed", "rejected"]);
 const DAY_MS = 24 * 60 * 60 * 1000;
 

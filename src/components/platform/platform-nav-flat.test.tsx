@@ -3,11 +3,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { PlatformNav } from "@/components/platform/platform-nav";
 
-// Os menus por papel. O aluno via 10 links em dois grupos que abriam e
-// fechavam (quem estava em "Learn" nao via "Messages"); o professor via 18
-// links, com as mensagens dos alunos escondidas dentro de "Marketing" e tres
-// itens que nao faziam nada. Agora: aluno com quatro itens fixos + Ajuda, e
-// compras/configuracoes embaixo; professor com oito itens no primeiro nivel.
+// The menus by role. The learner saw 10 links in two groups that opened and
+// closed (someone in "Learn" did not see "Messages"); the teacher saw 18
+// links, with the learners' messages hidden inside "Marketing" and three
+// items that did nothing. Now: learner with four fixed items + Help, and
+// purchases/settings at the bottom; teacher with eight items at the first level.
 
 const mocks = vi.hoisted(() => ({
   pathname: "/teach",
@@ -38,8 +38,8 @@ afterEach(() => {
   mocks.roles = ["teacher"];
 });
 
-/** O que a pessoa ve no primeiro nivel, em ordem: links diretos, gatilhos de
- *  grupo e o botao Ajuda. O rodape (Marketplace) fica de fora. */
+/** What the person sees at the first level, in order: direct links, group
+ *  triggers and the Help button. The footer (Marketplace) is left out. */
 function firstLevel() {
   const nav = screen.getByRole("navigation", { name: "Workspace" });
   return [...nav.querySelectorAll(":scope > .platform-nav-section")].flatMap((section) =>
@@ -49,8 +49,8 @@ function firstLevel() {
   );
 }
 
-describe("barra do professor", () => {
-  it("oito itens no primeiro nivel (mais Eventos dentro de Produtos), Ajuda por ultimo", () => {
+describe("teacher sidebar", () => {
+  it("eight items at the first level (plus Events inside Products), Help last", () => {
     render(<PlatformNav />);
 
     expect(firstLevel()).toEqual([
@@ -80,10 +80,10 @@ describe("barra do professor", () => {
     }
   });
 
-  it("Vendas e Promover sao os dois unicos grupos", () => {
+  it("Sales and Promote are the only two groups", () => {
     render(<PlatformNav />);
 
-    // Vendas e o primeiro grupo: vem aberto.
+    // Sales is the first group: it comes open.
     const sales = screen.getByRole("button", { name: "Sales" });
     expect(sales).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("link", { name: "Sales" })).toHaveAttribute("href", "/teach/sales");
@@ -98,7 +98,7 @@ describe("barra do professor", () => {
     expect(screen.getByRole("link", { name: "Media library" })).toHaveAttribute("href", "/teach/media");
   });
 
-  it("os itens que sairam: mortos, ferramentas (avatar) e o pulo para o lado do aluno (topo)", () => {
+  it("the items that left: dead ones, tools (avatar) and the jump to the learner side (top)", () => {
     render(<PlatformNav />);
     fireEvent.click(screen.getByRole("button", { name: "Promote" }));
 
@@ -116,7 +116,7 @@ describe("barra do professor", () => {
     }
   });
 
-  it("o numero de pendentes aparece ao lado de Inbox", () => {
+  it("the number of pending items appears beside Inbox", () => {
     render(<PlatformNav navigationCounts={{ "/teach/messages": 3 }} />);
 
     const inbox = screen.getByRole("link", { name: /Inbox/ });
@@ -133,11 +133,11 @@ describe("barra do professor", () => {
   });
 });
 
-describe("barra do aluno", () => {
+describe("learner sidebar", () => {
   it.each([
     ["so estuda", ["student"], ["My purchases", "/account/billing"]],
     ["tambem ensina", ["student", "teacher"], ["Billing", "/account/billing"]],
-  ] as const)("quatro itens fixos, Ajuda, e embaixo compras e configuracoes (%s)", (_label, roles, purchases) => {
+  ] as const)("four fixed items, Help, and at the bottom purchases and settings (%s)", (_label, roles, purchases) => {
     mocks.roles = [...roles];
     mocks.pathname = "/learn";
     render(<PlatformNav />);
@@ -159,7 +159,7 @@ describe("barra do aluno", () => {
     expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/account");
   });
 
-  it("sem planos de criador, sem 'Classroom' e sem pulo para o estudio na barra", () => {
+  it("no creator plans, no 'Classroom' and no jump to the studio on the bar", () => {
     mocks.roles = ["student", "teacher"];
     mocks.pathname = "/learn";
     render(<PlatformNav />);
@@ -171,7 +171,7 @@ describe("barra do aluno", () => {
     expect(document.querySelector('a[href="/teach"]')).toBeNull();
   });
 
-  it("a Ajuda da barra abre as tres escolhas do aluno no lugar", () => {
+  it("the bar's Help opens the learner's three choices in place", () => {
     mocks.roles = ["student"];
     mocks.pathname = "/learn";
     render(<PlatformNav />);

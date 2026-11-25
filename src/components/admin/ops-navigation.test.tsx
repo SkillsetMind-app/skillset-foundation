@@ -93,7 +93,7 @@ function ChangeAuditLanguage() {
   return <button onClick={() => setLocale(locale === "en" ? "es" : "en")}>Change audit language</button>;
 }
 
-describe("filas de Operações na barra", () => {
+describe("Operations queues in the sidebar", () => {
   it("contains the access matrix in its own keyboard-scrollable region", () => {
     mocks.query = "tab=access";
     render(<OpsPage />);
@@ -169,7 +169,7 @@ describe("filas de Operações na barra", () => {
     expect(current[0]).toHaveAttribute("href", `/ops?tab=${id}`);
     expect(current[0]).toHaveTextContent(label);
     expect(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByText(label)).toBeInTheDocument();
-    // Cada aba se chama pelo nome dela, não "Operations" nas nove (I-07).
+    // Each tab is named after itself, not "Operations" on all nine (I-07).
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(label);
     expect(screen.getByRole("heading", { name: heading })).toBeInTheDocument();
   });
@@ -199,7 +199,7 @@ describe("filas de Operações na barra", () => {
     mocks.query = "tab=users";
     const row = (status: string) => ({ id: `r-${status}`, type: "account_deletion", requestedBy: "u-1", email: null, status, requestedAt: null, updatedAt: null, resolvedBy: null, resolvedAt: null });
     let rows: unknown[] = initial.map(row);
-    // O contador e o painel assinam a mesma fonte; cada inscrição recebe a lista atual.
+    // The counter and the panel subscribe to the same source; each subscription receives the current list.
     mocks.accounts.mockImplementation((next: (value: unknown[]) => void) => { next(rows); return vi.fn(); });
     const order = () => {
       const requests = screen.getByRole("heading", { name: "Export and deletion requests." });
@@ -211,11 +211,11 @@ describe("filas de Operações na barra", () => {
     expect(order()).toBe(expected);
     rows = initial.length ? [] : [row("pending")];
     act(() => { for (const [next] of mocks.accounts.mock.calls) (next as (value: unknown[]) => void)(rows); });
-    // A contagem mudou de fato (o selo acompanha), mas a ordem não.
+    // The count really did change (the badge follows it), but the order did not.
     if (initial.length) expect(sidebar()).not.toHaveTextContent(/Users, 1 pending/);
     else expect(sidebar()).toHaveTextContent(/Users, 1 pending/);
     expect(order()).toBe(expected);
-    // O mesmo nó da tabela continua no lugar (um <dialog> aberto nela não sai da camada do topo).
+    // The same table node stays in place (a <dialog> open inside it does not leave the top layer).
     expect(screen.getByRole("heading", { name: "Find learners and educators." }).closest("section")).toBe(table);
   });
 
@@ -302,7 +302,7 @@ describe("filas de Operações na barra", () => {
     render(<PlatformNav collapsed navigationCounts={{ "/ops?tab=verification": 128 }} />);
     const verification = screen.getByRole("link", { name: "Creator verification, 128 pending" });
     expect(verification).toHaveTextContent("99+");
-    // Sem title (a dica é o próprio rótulo, que traz a contagem exata).
+    // No title (the hint is the label itself, which carries the exact count).
     expect(verification).not.toHaveAttribute("title");
     expect(verification.querySelector(".platform-sidebar-label")).toHaveTextContent("Creator verification, 128 pending");
   });
@@ -366,12 +366,12 @@ describe("audit presentation inside the protected Operations page", () => {
     const entries: AuditLogEntry[] = actions.map(([action], index) => ({ id: `event-${index}`, action, actorId: "actor-$$-$&", actorEmail: index ? null : "actor@example.test", targetType: index === 4 ? "future_target" : index < 2 ? "order" : "user", targetId: `target-$$-$&-${index}`, summary: `Registro histórico $$50 $& "áéí" ${index}`, metadata: {}, createdAt: index === 4 ? "not-a-date" : "2026-09-04T12:00:00.000Z" }));
     mocks.audit.mockImplementation((next: (rows: AuditLogEntry[]) => void) => { next(entries); return vi.fn(); });
     render(<I18nProvider initialLocale="en"><ChangeAuditLanguage /><OpsPage /></I18nProvider>);
-    // Uma vez no bloco e uma na tabela (o CSS mostra um dos dois).
+    // Once in the block and once in the table (CSS shows one of the two).
     for (const [, english] of actions) expect(screen.getAllByText(english)).toHaveLength(2);
     fireEvent.click(screen.getByRole("button", { name: "Change audit language" }));
     expect(screen.getByRole("heading", { name: "Registro de auditoría" })).toBeInTheDocument();
-    // Os blocos (cartão estreito) e a tabela (cartão largo) têm os mesmos
-    // eventos, na mesma ordem; o CSS mostra um dos dois.
+    // The blocks (narrow card) and the table (wide card) have the same
+    // events, in the same order; CSS shows one of the two.
     const articles = screen.getAllByRole("article");
     for (const [index, entry] of entries.entries()) {
       const article = articles[index];
@@ -381,12 +381,12 @@ describe("audit presentation inside the protected Operations page", () => {
       expect(article).toHaveTextContent(entry.actorEmail ?? entry.actorId);
     }
     expect(screen.getAllByText("future target")).toHaveLength(2);
-    // Cada parte com o próprio rótulo, não uma frase corrida (I-06).
+    // Each part has its own label, not one run-on sentence (I-06).
     const parts = (index: number) => [...articles[index].querySelectorAll("dt")].map((term) => [term.textContent, term.nextElementSibling?.textContent]);
     expect(parts(4)).toEqual([["Cuándo", "Fecha pendiente"], ["Responsable", "actor-$$-$&"], ["Destino", "target-$$-$&-4"]]);
     const date = new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date(entries[0].createdAt!));
     expect(parts(0)).toEqual([["Cuándo", date], ["Responsable", "actor@example.test"], ["Destino", "target-$$-$&-0"]]);
-    // I-06: no cartão largo, uma tabela de verdade, com cada parte na sua coluna.
+    // I-06: on the wide card, a real table, with each part in its own column.
     const table = screen.getByRole("table", { name: "Registro de auditoría, del más reciente al más antiguo" });
     expect(articles[0].parentElement).toHaveClass("@3xl:hidden");
     expect(table.closest(".hidden")).toHaveClass("@3xl:block");
@@ -398,7 +398,7 @@ describe("audit presentation inside the protected Operations page", () => {
     expect(within(rows[0]).getByRole("rowheader")).toHaveTextContent(`${actions[0][2]}${entries[0].summary}`);
     expect(actorCell).toHaveTextContent("actor@example.test");
     expect(within(targetCell).getByText("target-$$-$&-0")).toHaveClass("select-all", "font-mono");
-    // O título da página é o nome da fila (I-07); o painel é achado pela explicação dele.
+    // The page title is the queue name (I-07); the panel is found by its explanation.
     expect(screen.getByRole("heading", { level: 1, name: "Registro de auditoría" })).toBeInTheDocument();
     const panel = screen.getByText(/Los reembolsos y las solicitudes de cuenta se registran aquí/).closest("section")!;
     expect(panel).not.toHaveClass("platform-content");

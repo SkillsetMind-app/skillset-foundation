@@ -3,17 +3,17 @@ import { describe, expect, it } from "vitest";
 
 import { DrawnCheck, MilestoneSeal, useJustDone } from "@/components/ui/drawn-check";
 
-// "1 festa por marco": o check e o selo so se mexem na MUDANCA. Abrir a tela
-// com tudo pronto, ou uma leitura que chega atrasada, nao conta.
+// "1 celebration per milestone": the check and the seal only move on the CHANGE. Opening the screen
+// with everything done, or a read that arrives late, does not count.
 describe("useJustDone", () => {
-  it("o que ja estava feito na primeira leitura nao conta", () => {
+  it("what was already done on the first read does not count", () => {
     const { result } = renderHook(({ done }) => useJustDone(done), {
       initialProps: { done: ["a", "b"] },
     });
     expect([...result.current]).toEqual([]);
   });
 
-  it("o que fica feito depois conta; desfazer e refazer conta de novo", () => {
+  it("what becomes done afterward counts; undoing and redoing counts again", () => {
     const { result, rerender } = renderHook(({ done }) => useJustDone(done), {
       initialProps: { done: ["a"] },
     });
@@ -25,11 +25,11 @@ describe("useJustDone", () => {
     expect([...result.current].sort()).toEqual(["a", "b"]);
   });
 
-  it("antes de `ready` nada conta, e a linha de base sai da primeira leitura pronta", () => {
+  it("before `ready` nothing counts, and the baseline comes from the first ready read", () => {
     const { result, rerender } = renderHook(({ done, ready }) => useJustDone(done, ready), {
       initialProps: { done: [] as string[], ready: false },
     });
-    // Os valores falsos iniciais viram verdade junto com a leitura: nao e festa.
+    // The initial false values become true together with the read: not a celebration.
     rerender({ done: ["payouts"], ready: true });
     expect([...result.current]).toEqual([]);
     rerender({ done: ["payouts", "price"], ready: true });
@@ -37,8 +37,8 @@ describe("useJustDone", () => {
   });
 });
 
-describe("DrawnCheck e MilestoneSeal", () => {
-  it("so levam a classe que anima com `animate`; sem ela nascem inteiros", () => {
+describe("DrawnCheck and MilestoneSeal", () => {
+  it("only carry the animating class with `animate`; without it they are born whole", () => {
     const { container, rerender } = render(<DrawnCheck />);
     const check = container.querySelector("svg")!;
     expect(check).toHaveAttribute("aria-hidden", "true");

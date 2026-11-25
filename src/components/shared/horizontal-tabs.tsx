@@ -8,7 +8,7 @@ export type HorizontalTabItem = {
   value: string;
   label: string;
   disabled?: boolean;
-  /** Contador ao lado do nome (fila com itens pendentes). Omitido = sem badge. */
+  /** Counter next to the name (queue with pending items). Omitted = no badge. */
   count?: number;
 };
 
@@ -29,13 +29,13 @@ export function HorizontalTabs({
 }: HorizontalTabsProps) {
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const enabledTabs = tabs.filter((tab) => !tab.disabled);
-  // Tab entra na barra pela aba ativa e as setas andam dentro dela (padrão de
-  // abas da WAI-ARIA). Sem ativa válida, a primeira habilitada recebe o Tab.
+  // Tab enters the bar through the active tab and the arrows move within it (WAI-ARIA
+  // tabs pattern). With no valid active tab, the first enabled one receives Tab.
   const focusValue = enabledTabs.some((tab) => tab.value === activeValue)
     ? activeValue
     : enabledTabs[0]?.value;
 
-  // Setas andam uma aba (com volta); Home e End vão à primeira e à última.
+  // Arrows move one tab (wrapping around); Home and End go to the first and the last.
   function moveFocus(currentValue: string, key: string) {
     const currentIndex = enabledTabs.findIndex((tab) => tab.value === currentValue);
     const last = enabledTabs.length - 1;
@@ -86,10 +86,10 @@ export function HorizontalTabs({
                   event.preventDefault();
                 }
               }}
-              // Ativa = texto navy e linha (latão é de marco, não de seleção).
-              // As outras ficam no cinza apagado e o hover só escurece o texto,
-              // sem linha. Mesmo peso em todas: negrito só na ativa mudaria a
-              // largura e a barra pularia ao trocar.
+              // Active = navy text and line (brass is for milestones, not selection).
+              // The others stay in muted gray and the hover only darkens the text,
+              // with no line. Same weight on all: bold only on the active one would change the
+              // width and the bar would jump when switching.
               className={cn(
                 "shrink-0 border-b-2 bg-transparent px-5 py-3 text-sm font-semibold transition duration-[180ms] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-60",
                 isActive

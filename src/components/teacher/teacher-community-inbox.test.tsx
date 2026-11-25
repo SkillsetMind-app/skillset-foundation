@@ -29,7 +29,7 @@ const HOUR = 3_600_000;
 const mocks = vi.hoisted(() => ({
   auth: {
     status: "authenticated",
-    user: { uid: "owner-1", email: "p@example.com", displayName: "Patrick S.", roles: ["teacher"] },
+    user: { uid: "owner-1", email: "p@example.com", displayName: "Preston S.", roles: ["teacher"] },
   },
   postsCallback: null as null | ((posts: CommunityPost[]) => void),
   commentsCallback: null as null | ((comments: CommunityComment[]) => void),
@@ -110,8 +110,8 @@ const posts: CommunityPost[] = [
 ];
 
 const comments: CommunityComment[] = [
-  comment({ id: "c-done", postId: "q-done", authorId: "owner-1", authorName: "Patrick S.", authorRole: "teacher", createdAt: new Date(NOW - 3 * 24 * HOUR + 6 * HOUR).toISOString() }),
-  comment({ id: "c-replied", postId: "q-replied", authorId: "owner-1", authorName: "Patrick S.", authorRole: "teacher", createdAt: new Date(NOW - 24 * HOUR).toISOString() }),
+  comment({ id: "c-done", postId: "q-done", authorId: "owner-1", authorName: "Preston S.", authorRole: "teacher", createdAt: new Date(NOW - 3 * 24 * HOUR + 6 * HOUR).toISOString() }),
+  comment({ id: "c-replied", postId: "q-replied", authorId: "owner-1", authorName: "Preston S.", authorRole: "teacher", createdAt: new Date(NOW - 24 * HOUR).toISOString() }),
   comment({ id: "c-student", postId: "q-old", authorId: "student-4", authorName: "Marcos" }),
 ];
 
@@ -289,7 +289,7 @@ describe("'All posts': the teacher moderates their own community", () => {
 
   // The read (subscribeToCommunityPosts) already delivers pinned posts on top and the newest
   // first; the list shows them in that order.
-  const update = post({ id: "update", category: "announcement", authorId: "owner-1", authorName: "Patrick S.", body: "Live on Friday.", pinned: true, createdAt: new Date(NOW - 4 * 24 * HOUR).toISOString() });
+  const update = post({ id: "update", category: "announcement", authorId: "owner-1", authorName: "Preston S.", body: "Live on Friday.", pinned: true, createdAt: new Date(NOW - 4 * 24 * HOUR).toISOString() });
   const ordered = [update, posts[1], posts[4], posts[3], posts[0], posts[2]];
 
   async function renderWithPinned() {

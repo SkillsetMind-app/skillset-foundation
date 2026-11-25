@@ -1,6 +1,6 @@
-// Nomes legíveis das ações e alvos da auditoria. Mora fora do ops-dashboard
-// para a ficha da pessoa usar os mesmos rótulos em vez do código cru
-// ("user.account_block") (I-10). Ação desconhecida vira texto com espaços.
+// Readable names for audit actions and targets. Lives outside ops-dashboard
+// so the person's record uses the same labels instead of the raw code
+// ("user.account_block") (I-10). Unknown action becomes text with spaces.
 const auditActionLabels: Record<string, string> = {
   "refund.requested": "actions.refundRequested",
   "refund.issued": "actions.refundIssued",

@@ -108,9 +108,9 @@ describe.each([
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
-  // "Uploading 0%" o envio inteiro (o Storage não informa progresso) se lia
-  // como "travou". Mesmo contrato do #138: sem número do transporte, sem
-  // número na tela.
+  // "Uploading 0%" for the whole upload (Storage does not report progress) read
+  // as "stuck". Same contract as #138: no number from the transport, no
+  // number on screen.
   it("preserves progress, disabled state and file reset until upload completes", async () => {
     let complete!: (url: string) => void;
     const pending = new Promise<string>((resolve) => { complete = resolve; });
@@ -143,12 +143,12 @@ describe.each([
     const status = await screen.findByRole("status");
     expect(status).toHaveTextContent("Sending...");
     expect(status).not.toHaveTextContent("%");
-    // F-20: sem porcentagem, a barra indeterminada mostra que o envio anda.
+    // F-20: with no percentage, the indeterminate bar shows the upload is moving.
     expect(status.querySelector(".upload-indeterminate-fill")).not.toBeNull();
     expect(upload).toHaveBeenCalledExactlyOnceWith("user-1", file, expect.any(Function));
     expect(input).toBeDisabled();
     expect(input.closest("label")).toHaveClass("pointer-events-none", "opacity-60");
-    // O rótulo fica estável; "Uploading" aparecia aqui e na nota ao mesmo tempo.
+    // The label stays stable; "Uploading" used to show here and in the note at the same time.
     expect(input.closest("label")).not.toHaveTextContent("Uploading");
     expect(input.value).toBe("");
     expect(screen.queryByText(success)).not.toBeInTheDocument();
@@ -159,19 +159,19 @@ describe.each([
     expect(input.closest("label")).not.toHaveClass("pointer-events-none");
     expect(input.closest("label")).toHaveTextContent(replace);
     expect(screen.getByText(success)).toBeInTheDocument();
-    // A nota de envio saiu; o único status que fica é o "salvo" ao lado do botão.
+    // The upload note is gone; the only status left is the "saved" next to the button.
     expect(screen.getByRole("status")).toHaveTextContent(success);
     expect(mocks.refreshUser).toHaveBeenCalledTimes(upload === mocks.uploadUserAvatar ? 1 : 0);
   });
 });
 
-describe("ProfileSettingsPanel - leitura que falha", () => {
+describe("ProfileSettingsPanel - read that fails", () => {
   beforeEach(() => {
     mocks.getUserProfile.mockReset();
   });
   afterEach(cleanup);
 
-  it("ganha \"Try again\", que lê o perfil de novo uma vez só e mostra os dados", async () => {
+  it("gets \"Try again\", which reads the profile again once and shows the data", async () => {
     let resolve!: (value: unknown) => void;
     mocks.updateUserIdentity.mockReset();
     mocks.getUserProfile
@@ -179,7 +179,7 @@ describe("ProfileSettingsPanel - leitura que falha", () => {
       .mockReturnValueOnce(new Promise((done) => { resolve = done; }));
     const { container } = render(<ProfileSettingsPanel />);
     expect(await screen.findByText("We could not load your profile settings.")).toBeInTheDocument();
-    // Leitura falhada: nada editável (campos vazios gravariam por cima do perfil).
+    // Failed read: nothing editable (empty fields would be saved over the profile).
     expect(container.querySelector("form")).toBeNull();
     expect(screen.queryByRole("textbox")).toBeNull();
     expect(screen.queryByRole("button", { name: "Save profile" })).toBeNull();
@@ -189,7 +189,7 @@ describe("ProfileSettingsPanel - leitura que falha", () => {
     const retry = screen.getByRole("button", { name: "Try again" });
     fireEvent.click(retry);
     fireEvent.click(retry);
-    // Lendo: a espera de sempre, sem formulário para Enter salvar.
+    // Reading: the usual wait, with no form for Enter to save.
     expect(screen.getByRole("status")).toHaveTextContent("Loading profile settings...");
     expect(screen.queryByRole("button", { name: "Save profile" })).toBeNull();
     await act(async () => resolve({ displayName: "Ana Souza", username: "anasouza", bio: "Coach de equipes", roles: ["student"] }));
@@ -200,7 +200,7 @@ describe("ProfileSettingsPanel - leitura que falha", () => {
     expect(screen.queryByText("We could not load your profile settings.")).toBeNull();
   });
 
-  it("o \"Try again\" que dá certo não traz de volta um erro de antes da falha", async () => {
+  it("the \"Try again\" that succeeds does not bring back an error from before the failure", async () => {
     const avatarError = "Use a JPG, PNG, or WebP under 5 MB profile image.";
     mocks.getUserProfile.mockResolvedValueOnce({ displayName: "Ana", roles: ["student"] });
     const { rerender } = render(<ProfileSettingsPanel />);
@@ -208,7 +208,7 @@ describe("ProfileSettingsPanel - leitura que falha", () => {
     fireEvent.change(input, { target: { files: [new File(["x"], "notes.txt", { type: "text/plain" })] } });
     expect(screen.getByText(avatarError)).toBeInTheDocument();
 
-    // A sessão entrega a pessoa de novo (objeto novo) e essa releitura falha.
+    // The session hands over the person again (new object) and that re-read fails.
     const previousUser = mocks.user;
     mocks.user = { ...previousUser };
     mocks.getUserProfile
@@ -224,7 +224,7 @@ describe("ProfileSettingsPanel - leitura que falha", () => {
     }
   });
 
-  it("erro que não é de leitura não ganha \"Try again\"", async () => {
+  it("an error that is not a read error does not get \"Try again\"", async () => {
     mocks.getUserProfile.mockResolvedValue({ displayName: "Ana", roles: ["student"] });
     render(<ProfileSettingsPanel />);
     const input = await screen.findByLabelText<HTMLInputElement>("Upload profile photo");

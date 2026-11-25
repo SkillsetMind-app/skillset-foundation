@@ -16,11 +16,11 @@ const mocks = vi.hoisted(() => ({
   // Stable object: a new one per render resubscribes effects and loops.
   auth: {
     status: "authenticated",
-    user: { uid: "u-1", email: "patrick@example.com", displayName: "Patrick Simon", roles: ["student"] } as
+    user: { uid: "u-1", email: "preston@example.com", displayName: "Preston Sloan", roles: ["student"] } as
       Pick<SkillsetUser, "uid" | "email" | "displayName" | "roles"> | null,
   },
   profile: {
-    displayName: "Patrick Simon",
+    displayName: "Preston Sloan",
     phoneNumber: null as string | null,
     onboardingAnswers: {} as Record<string, unknown>,
   },
@@ -47,7 +47,7 @@ vi.mock("@/lib/data/user-profiles", () => ({
 beforeEach(() => {
   mocks.auth = {
     status: "authenticated",
-    user: { uid: "u-1", email: "patrick@example.com", displayName: "Patrick Simon", roles: ["student"] },
+    user: { uid: "u-1", email: "preston@example.com", displayName: "Preston Sloan", roles: ["student"] },
   };
 });
 
@@ -55,7 +55,7 @@ describe("welcome: the profile step comes first", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.searchParams = new URLSearchParams();
-    mocks.profile = { displayName: "Patrick Simon", phoneNumber: null, onboardingAnswers: {} };
+    mocks.profile = { displayName: "Preston Sloan", phoneNumber: null, onboardingAnswers: {} };
     mocks.getUserProfile.mockImplementation(() => Promise.resolve(mocks.profile));
     mocks.updateOnboardingAnswers.mockResolvedValue(undefined);
     mocks.updateUserIdentity.mockResolvedValue(undefined);
@@ -68,7 +68,7 @@ describe("welcome: the profile step comes first", () => {
     render(<OnboardingWizard />);
 
     expect(await screen.findByText("First, tell us who you are.")).toBeInTheDocument();
-    expect(screen.getByLabelText("Full name")).toHaveValue("Patrick Simon");
+    expect(screen.getByLabelText("Full name")).toHaveValue("Preston Sloan");
     expect(screen.getByLabelText("Phone")).toHaveValue("");
 
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
@@ -88,7 +88,7 @@ describe("welcome: the profile step comes first", () => {
 
     await waitFor(() =>
       expect(mocks.updateUserIdentity).toHaveBeenCalledWith("u-1", {
-        displayName: "Patrick Simon",
+        displayName: "Preston Sloan",
         phoneNumber: null,
       }),
     );
@@ -119,7 +119,7 @@ describe("welcome: the profile step comes first", () => {
 
     await waitFor(() =>
       expect(mocks.updateUserIdentity).toHaveBeenCalledWith("u-1", {
-        displayName: "Patrick Simon",
+        displayName: "Preston Sloan",
         phoneNumber: "+55 (16) 99999-1234",
       }),
     );
@@ -135,7 +135,7 @@ describe("welcome: the profile step comes first", () => {
   it("whoever arrived with the wrong role in the link goes back a step and switches", async () => {
     mocks.searchParams = new URLSearchParams("path=teacher");
     mocks.profile = {
-      displayName: "Patrick Simon",
+      displayName: "Preston Sloan",
       phoneNumber: "+1 555 123 4567",
       onboardingAnswers: { profileConfirmed: true, path: "teacher" },
     };
@@ -166,7 +166,7 @@ describe("welcome: the profile step comes first", () => {
 
   it("whoever already introduced themselves does not see the step again when going back", async () => {
     mocks.profile = {
-      displayName: "Patrick Simon",
+      displayName: "Preston Sloan",
       phoneNumber: "+55 16 99999-1234",
       onboardingAnswers: { profileConfirmed: true },
     };
@@ -192,7 +192,7 @@ describe("welcome: the end takes the person back to where they were", () => {
     vi.clearAllMocks();
     mocks.searchParams = new URLSearchParams();
     mocks.profile = {
-      displayName: "Patrick Simon",
+      displayName: "Preston Sloan",
       phoneNumber: "+1 555 123 4567",
       onboardingAnswers: respostasDeAluno,
     };
@@ -237,7 +237,7 @@ describe("welcome: the end takes the person back to where they were", () => {
     // rest of the sentence. The name comes from signup: it is the person's text, not ours.
     mocks.auth = {
       status: "authenticated",
-      user: { uid: "u-1", email: "patrick@example.com", displayName: "Mc$&Donald Simon", roles: ["student"] },
+      user: { uid: "u-1", email: "preston@example.com", displayName: "Mc$&Donald Stone", roles: ["student"] },
     };
 
     await terminar();
@@ -263,7 +263,7 @@ describe("welcome: the end takes the person back to where they were", () => {
     const continuar = screen.getByRole("button", { name: "Continue" });
     expect(continuar).toHaveFocus();
     // The screen reader hears the title and the sentence along with the focused button.
-    expect(continuar).toHaveAccessibleDescription(/You're all set, Patrick\..*Taking you there now\./);
+    expect(continuar).toHaveAccessibleDescription(/You're all set, Preston\..*Taking you there now\./);
     expect(mocks.router.replace).not.toHaveBeenCalled();
     fireEvent.click(continuar);
     expect(mocks.router.replace).toHaveBeenCalledExactlyOnceWith("/courses/focus");
@@ -308,7 +308,7 @@ describe("welcome: the end takes the person back to where they were", () => {
   it("a teacher still goes to the teacher signup, with or without a destination", async () => {
     mocks.searchParams = new URLSearchParams("path=teacher&returnTo=/courses/focus");
     mocks.profile = {
-      displayName: "Patrick Simon",
+      displayName: "Preston Sloan",
       phoneNumber: "+1 555 123 4567",
       onboardingAnswers: {
         profileConfirmed: true,
@@ -318,7 +318,7 @@ describe("welcome: the end takes the person back to where they were", () => {
         alreadySold: "no",
         payoutCountry: "US",
         audienceSize: "100,000+ followers",
-        instagramHandle: "patrick",
+        instagramHandle: "preston",
       },
     };
 
@@ -340,7 +340,7 @@ describe("welcome: the end takes the person back to where they were", () => {
   it("a teacher who chose a plan on /pricing carries the plan to the teacher signup", async () => {
     mocks.searchParams = new URLSearchParams({ path: "teacher", returnTo: cartao });
     mocks.profile = {
-      displayName: "Patrick Simon",
+      displayName: "Preston Sloan",
       phoneNumber: "+1 555 123 4567",
       onboardingAnswers: {
         profileConfirmed: true,
@@ -350,7 +350,7 @@ describe("welcome: the end takes the person back to where they were", () => {
         alreadySold: "no",
         payoutCountry: "US",
         audienceSize: "100,000+ followers",
-        instagramHandle: "patrick",
+        instagramHandle: "preston",
       },
     };
 
@@ -387,7 +387,7 @@ describe("welcome: the teacher also says where they heard about us", () => {
     vi.clearAllMocks();
     mocks.searchParams = new URLSearchParams("path=teacher");
     mocks.profile = {
-      displayName: "Patrick Simon",
+      displayName: "Preston Sloan",
       phoneNumber: "+1 555 123 4567",
       onboardingAnswers: {
         profileConfirmed: true,
@@ -435,7 +435,7 @@ describe("welcome: progress, question change and keyboard", () => {
     vi.clearAllMocks();
     mocks.searchParams = new URLSearchParams("path=teacher");
     mocks.profile = {
-      displayName: "Patrick Simon",
+      displayName: "Preston Sloan",
       phoneNumber: "+1 555 123 4567",
       onboardingAnswers: { profileConfirmed: true, path: "teacher" },
     };
@@ -481,7 +481,7 @@ describe("welcome: progress, question change and keyboard", () => {
   });
 
   it("Enter in a text field still moves forward", async () => {
-    mocks.profile = { displayName: "Patrick Simon", phoneNumber: null, onboardingAnswers: {} };
+    mocks.profile = { displayName: "Preston Sloan", phoneNumber: null, onboardingAnswers: {} };
     render(<OnboardingWizard />);
     const phone = await screen.findByLabelText("Phone");
 
@@ -495,7 +495,7 @@ describe("welcome: progress, question change and keyboard", () => {
     const scrollIntoView = vi.fn();
     Element.prototype.scrollIntoView = scrollIntoView;
     try {
-      mocks.profile = { displayName: "Patrick Simon", phoneNumber: null, onboardingAnswers: {} };
+      mocks.profile = { displayName: "Preston Sloan", phoneNumber: null, onboardingAnswers: {} };
       render(<OnboardingWizard />);
       await screen.findByLabelText("Phone");
 
@@ -556,7 +556,7 @@ describe("welcome: resumes checkout after losing the session", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.searchParams = new URLSearchParams({ path: "student", returnTo: checkout });
-    mocks.profile = { displayName: "Patrick Simon", phoneNumber: null, onboardingAnswers: {} };
+    mocks.profile = { displayName: "Preston Sloan", phoneNumber: null, onboardingAnswers: {} };
     mocks.getUserProfile.mockImplementation(() => Promise.resolve(mocks.profile));
     mocks.updateOnboardingAnswers.mockResolvedValue(undefined);
     mocks.updateUserIdentity.mockResolvedValue(undefined);
@@ -619,7 +619,7 @@ describe("H3: the teacher's declared country", () => {
     vi.clearAllMocks();
     mocks.searchParams = new URLSearchParams("path=teacher");
     mocks.profile = {
-      displayName: "Patrick Simon",
+      displayName: "Preston Sloan",
       phoneNumber: "+1 555 123 4567",
       onboardingAnswers: {
         profileConfirmed: true, path: "teacher", profession: "Coach",
@@ -716,7 +716,7 @@ describe("welcome: the buyer goes on to checkout without answering the interest 
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.profile = { displayName: "Patrick Simon", phoneNumber: null, onboardingAnswers: {} };
+    mocks.profile = { displayName: "Preston Sloan", phoneNumber: null, onboardingAnswers: {} };
     mocks.getUserProfile.mockImplementation(() => Promise.resolve(mocks.profile));
     mocks.updateOnboardingAnswers.mockResolvedValue(undefined);
     mocks.updateUserIdentity.mockResolvedValue(undefined);
@@ -768,7 +768,7 @@ describe("welcome: the buyer goes on to checkout without answering the interest 
   ])("teacher %s: the program question stays required, in the same position", async (_label, returnTo) => {
     mocks.searchParams = new URLSearchParams({ path: "teacher", ...(returnTo ? { returnTo } : {}) });
     mocks.profile = {
-      displayName: "Patrick Simon",
+      displayName: "Preston Sloan",
       phoneNumber: "+1 555 123 4567",
       onboardingAnswers: { profileConfirmed: true, path: "teacher", profession: "Coach" },
     };
@@ -832,7 +832,7 @@ describe("F-09: the interview bar is the house bar, with the same values", () =>
     ["professor, último passo", "teacher", professorCompleto, 8, 8, /Instagram handle/],
   ])("%s: Question N of M in the sentence and in the bar", async (_label, path, answers, current, total, title) => {
     mocks.searchParams = new URLSearchParams({ path });
-    mocks.profile = { displayName: "Patrick Simon", phoneNumber: "+1 555 123 4567", onboardingAnswers: { ...answers } };
+    mocks.profile = { displayName: "Preston Sloan", phoneNumber: "+1 555 123 4567", onboardingAnswers: { ...answers } };
     render(<OnboardingWizard />);
     expect(await screen.findByText(title)).toBeInTheDocument();
 
@@ -897,7 +897,7 @@ describe("welcome: 'Continue' waiting and the read that failed on arrival", () =
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.searchParams = new URLSearchParams("path=student");
-    mocks.profile = { displayName: "Patrick Simon", phoneNumber: null, onboardingAnswers: {} };
+    mocks.profile = { displayName: "Preston Sloan", phoneNumber: null, onboardingAnswers: {} };
     mocks.getUserProfile.mockImplementation(() => Promise.resolve(mocks.profile));
     mocks.updateOnboardingAnswers.mockResolvedValue(undefined);
     mocks.updateUserIdentity.mockResolvedValue(undefined);
@@ -930,7 +930,7 @@ describe("welcome: 'Continue' waiting and the read that failed on arrival", () =
 
   it("the read failed on arrival: 'Try again' repeats the read once and resumes where the person left off", async () => {
     mocks.profile = {
-      displayName: "Patrick Simon",
+      displayName: "Preston Sloan",
       phoneNumber: null,
       onboardingAnswers: { profileConfirmed: true, path: "student" },
     };
@@ -958,7 +958,7 @@ describe("welcome: 'Continue' waiting and the read that failed on arrival", () =
     mocks.getUserProfile.mockRejectedValueOnce(new Error("offline"));
     render(<OnboardingWizard />);
     await screen.findByRole("alert");
-    fireEvent.change(screen.getByLabelText("Full name"), { target: { value: "Patrick Simon" } });
+    fireEvent.change(screen.getByLabelText("Full name"), { target: { value: "Preston Sloan" } });
 
     let finishRead!: () => void;
     mocks.getUserProfile.mockReturnValueOnce(new Promise((resolve) => { finishRead = () => resolve(mocks.profile); }));

@@ -4,10 +4,10 @@ import { describe, expect, it } from "vitest";
 
 import { SpotArt, spotArtScenes } from "@/components/ui/spot-art";
 
-// As regras do desenho que dá para medir no código: escondida do leitor de
-// tela, leve para internet ruim, sem rede, e um latão só por cena.
-describe.each(spotArtScenes)("a cena %s", (scene) => {
-  it.each(["default", "light"] as const)("sai escondida do leitor de tela e com menos de 3 KB (%s)", (tone) => {
+// The drawing rules that can be measured in code: hidden from the screen
+// reader, light for a bad connection, no network, and one brass per scene.
+describe.each(spotArtScenes)("the %s scene", (scene) => {
+  it.each(["default", "light"] as const)("renders hidden from the screen reader and under 3 KB (%s)", (tone) => {
     const { container } = render(<SpotArt scene={scene} tone={tone} />);
     const svg = container.querySelector("svg")!;
     expect(svg).toHaveAttribute("aria-hidden", "true");
@@ -17,19 +17,19 @@ describe.each(spotArtScenes)("a cena %s", (scene) => {
     expect(new TextEncoder().encode(markup).length).toBeLessThan(3 * 1024);
   });
 
-  it("não baixa nada: sem imagem, sem link, sem número desenhado", () => {
+  it("downloads nothing: no image, no link, no drawn number", () => {
     const markup = renderToStaticMarkup(<SpotArt scene={scene} />);
     expect(markup).not.toMatch(/<image|<text|<use|href=|url\(/);
   });
 
-  // O recibo vai no gráfico de receita, onde latão cheio é proibido: só latão
-  // claro. As outras cenas têm exatamente um.
-  it(`tem ${scene === "noSales" ? "zero elementos" : "um único elemento"} em latão cheio`, () => {
+  // The receipt goes in the revenue chart, where solid brass is forbidden: only light
+  // brass. The other scenes have exactly one.
+  it(`has ${scene === "noSales" ? "zero elementos" : "um único elemento"} in solid brass`, () => {
     const markup = renderToStaticMarkup(<SpotArt scene={scene} />);
     expect(markup.match(/var\(--art-brass\)/g) ?? []).toHaveLength(scene === "noSales" ? 0 : 1);
   });
 
-  it("a gravura fica entre 15% e 35% de opacidade", () => {
+  it("the engraving stays between 15% and 35% opacity", () => {
     const { container } = render(<SpotArt scene={scene} />);
     const engraving = [...container.querySelectorAll(".spot-art__engraving")];
     expect(engraving.length).toBeGreaterThan(0);

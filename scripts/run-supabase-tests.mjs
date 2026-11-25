@@ -23,54 +23,54 @@ import { execFileSync } from "node:child_process";
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
 
-const PASTA = process.argv[2] ?? "supabase/tests";
+const TESTS_DIR = process.argv[2] ?? "supabase/tests";
 const url = process.env.DATABASE_URL;
 
 if (!url) {
   console.error(
-    "DATABASE_URL não definida.\n" +
-      "Estes testes precisam de um banco com dados (eles leem um usuário real e " +
-      "desfazem tudo no fim). Aponte para staging, nunca para produção sem ler os " +
-      "arquivos antes.",
+    "DATABASE_URL is not set.\n" +
+      "These tests need a database with data (they read a real user and " +
+      "roll everything back at the end). Point it at staging, never at production " +
+      "without reading the files first.",
   );
   process.exit(2);
 }
 
-const arquivos = readdirSync(PASTA)
+const files = readdirSync(TESTS_DIR)
   .filter((f) => f.endsWith(".sql"))
   .sort();
 
-if (arquivos.length === 0) {
-  console.error(`Nenhum .sql encontrado em ${PASTA}`);
+if (files.length === 0) {
+  console.error(`No .sql file found in ${TESTS_DIR}`);
   process.exit(2);
 }
 
-let falhas = 0;
-for (const arquivo of arquivos) {
-  const caminho = join(PASTA, arquivo);
-  process.stdout.write(`  ${arquivo} ... `);
+let failures = 0;
+for (const file of files) {
+  const filePath = join(TESTS_DIR, file);
+  process.stdout.write(`  ${file} ... `);
   try {
     // -v ON_ERROR_STOP=1 is redundant (the files already carry \set
     // ON_ERROR_STOP on) and cheap: it guarantees a non-zero exit even if
     // someone removes that line.
-    execFileSync("psql", [url, "-v", "ON_ERROR_STOP=1", "-q", "-f", caminho], {
+    execFileSync("psql", [url, "-v", "ON_ERROR_STOP=1", "-q", "-f", filePath], {
       stdio: ["ignore", "pipe", "pipe"],
     });
     console.log("ok");
-  } catch (erro) {
-    falhas += 1;
-    console.log("FALHOU");
-    const saida = [erro.stdout?.toString(), erro.stderr?.toString()]
+  } catch (error) {
+    failures += 1;
+    console.log("FAILED");
+    const output = [error.stdout?.toString(), error.stderr?.toString()]
       .filter(Boolean)
       .join("\n")
       .trim();
-    if (saida) console.error(saida.split("\n").map((l) => `      ${l}`).join("\n"));
+    if (output) console.error(output.split("\n").map((l) => `      ${l}`).join("\n"));
   }
 }
 
 console.log(
-  falhas === 0
-    ? `\n${arquivos.length} testes de banco passaram`
-    : `\n${falhas} de ${arquivos.length} testes de banco FALHARAM`,
+  failures === 0
+    ? `\n${files.length} database tests passed`
+    : `\n${failures} of ${files.length} database tests FAILED`,
 );
-process.exit(falhas === 0 ? 0 : 1);
+process.exit(failures === 0 ? 0 : 1);

@@ -34,10 +34,10 @@ describe("SecuritySettingsPanel feedback", () => {
     Element.prototype.scrollIntoView = vi.fn();
   });
 
-  // A resposta aparecia depois da grade inteira E do cartão de dois fatores
-  // (abaixo do `lg`, uma tela longe do botão) e a página rolava até ela.
-  // Agora ela nasce logo abaixo do botão que a pediu, sem rolar nada.
-  it("mostra a confirmação do link logo abaixo do botão, sem rolar a página", async () => {
+  // The response appeared after the whole grid AND the two-factor card
+  // (below `lg`, a screen away from the button) and the page scrolled to it.
+  // Now it appears right below the button that asked for it, with no scrolling.
+  it("shows the link confirmation right below the button, without scrolling the page", async () => {
     mockedResetPassword.mockResolvedValue(undefined);
     render(<SecuritySettingsPanel />);
 
@@ -63,12 +63,12 @@ describe("SecuritySettingsPanel feedback", () => {
     expect(mockedResetPassword).toHaveBeenCalledTimes(2);
   });
 
-  it("troca o texto só do botão apertado enquanto o pedido anda", async () => {
+  it("changes the text only of the pressed button while the request is in flight", async () => {
     let finish!: () => void;
     mockedResetPassword.mockReturnValue(new Promise<void>((resolve) => { finish = resolve; }));
     render(<SecuritySettingsPanel />);
-    // Os dois rótulos na mesma célula: o da espera escondido e fora do nome.
-    // O sublinhado do hover mora no próprio par (o do botão não atravessa o
+    // The two labels in the same cell: the waiting one hidden and out of the name.
+    // The hover underline lives on the pair itself (the button's does not cross the
     // inline-grid).
     const reset = screen.getByRole("button", { name: "Email me a reset link" });
     expect(within(reset).getByText("Sending...")).toHaveAttribute("aria-hidden", "true");
@@ -85,20 +85,20 @@ describe("SecuritySettingsPanel feedback", () => {
     expect(screen.getByRole("button", { name: "Email me a reset link" })).toBeEnabled();
   });
 
-  it("com o e-mail já verificado não oferece reenviar nem atualizar o status", () => {
+  it("with the email already verified it offers neither resend nor refresh status", () => {
     render(<SecuritySettingsPanel />);
 
     expect(screen.getByText("Verified")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Send email" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Refresh status" })).toBeNull();
-    // Rótulo visível em cada campo, não só o placeholder.
+    // Visible label on each field, not just the placeholder.
     expect(screen.getByLabelText("Current password")).toHaveClass("field-input");
     expect(screen.getByLabelText("New email address")).toHaveClass("field-input");
   });
 
-  // A-10: as regras so surgiam na 1a letra (e empurravam o botao), e aqui nao
-  // havia o olho que o login e o cadastro tem.
-  it("mostra as regras antes de digitar, ligadas ao campo, e o olho nas duas senhas", () => {
+  // A-10: the rules only showed up at the 1st letter (and pushed the button), and here there was no
+  // eye that login and sign-up have.
+  it("shows the rules before typing, linked to the field, and the eye on both passwords", () => {
     render(<SecuritySettingsPanel />);
 
     const next = screen.getByLabelText("New password");
@@ -111,15 +111,15 @@ describe("SecuritySettingsPanel feedback", () => {
     fireEvent.click(eyes[1]);
     expect(next).toHaveAttribute("type", "text");
     expect(screen.getByLabelText("Current password")).toHaveAttribute("type", "password");
-    // Um nome so; o estado vem do aria-pressed. O nome do campo e so o rotulo.
+    // One name only; the state comes from aria-pressed. The field name is only the label.
     expect(eyes[1]).toHaveAttribute("aria-pressed", "true");
     expect(eyes[0]).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByRole("textbox", { name: "New password" })).toBe(next);
   });
 
-  // F-12: os dois botões apagados diziam nada. Agora dizem o que falta,
-  // ligados a eles, e a frase sai junto com a trava.
-  it("os botões apagados dizem o que falta, ligados a eles", () => {
+  // F-12: the two grayed-out buttons said nothing. Now they say what is missing,
+  // linked to them, and the sentence goes away together with the lock.
+  it("the grayed-out buttons say what is missing, linked to them", () => {
     render(<SecuritySettingsPanel />);
 
     const send = screen.getByRole("button", { name: "Send change confirmation" });

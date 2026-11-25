@@ -70,8 +70,8 @@ export function UpgradeModal({
         aria-label={t("billingCheckout.close")}
         onClick={onClose}
       />
-      {/* O painel da casa do sm em diante; no celular segue em tela cheia,
-          sem canto nem borda. */}
+      {/* The app's standard panel from sm up; on the phone it stays full screen,
+          without corner or border. */}
       <div className="dialog-panel dialog-panel--xl modal-panel relative z-[75] flex flex-col overflow-hidden max-sm:rounded-none max-sm:border-0">
         <header className="flex items-center justify-between gap-3 border-b border-[var(--color-line)] px-5 py-4 sm:px-6">
           <div>

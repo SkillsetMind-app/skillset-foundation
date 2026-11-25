@@ -15,8 +15,8 @@ type ExportTableButtonProps = {
   filename: string;
   className?: string;
   disabled?: boolean;
-  /** Por que quem chama desligou (ex.: a leitura falhou); sem isto, so o caso
-   *  que o botao conhece, zero linhas, ganha motivo. */
+  /** Why the caller disabled it (e.g. the read failed); without this, only the case
+   *  the button knows about, zero rows, gets a reason. */
   disabledReason?: string;
 };
 
@@ -83,8 +83,8 @@ export function ExportTableButton({
   const menuRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
   const isDisabled = disabled || rows.length === 0;
-  // Zero linhas so diz "nada para exportar" quando quem chama nao desligou: uma
-  // leitura que falhou tambem chega com zero linhas, e ai o motivo e outro.
+  // Zero rows only says "nothing to export" when the caller did not disable it: a
+  // read that failed also arrives with zero rows, and then the reason is another one.
   const reason = disabled
     ? disabledReason
     : rows.length === 0
@@ -98,8 +98,8 @@ export function ExportTableButton({
     const menu = menuRef.current;
     if (!trigger || !menu) return;
 
-    // Mesmo posicionamento medido do Tooltip: o portal escapa de ancestrais
-    // que recortam, e os dois lados ficam limitados ao viewport visivel.
+    // Same measured positioning as Tooltip: the portal escapes clipping
+    // ancestors, and both sides stay limited to the visible viewport.
     function position() {
       const viewport = window.visualViewport;
       const width = viewport?.width ?? (document.documentElement.clientWidth || window.innerWidth);
@@ -132,8 +132,8 @@ export function ExportTableButton({
         event.stopPropagation();
       }
       setOpen(false);
-      // Tab segue seu curso nativo a partir do gatilho, sem prender foco no
-      // portal ao fim do body. Escape consome apenas este menu, como LocaleSwitcher.
+      // Tab follows its native course from the trigger, without trapping focus in the
+      // portal at the end of the body. Escape consumes only this menu, like LocaleSwitcher.
       trigger!.focus({ preventScroll: true });
     }
     position();
@@ -194,11 +194,11 @@ export function ExportTableButton({
   }
 
   return (
-    // `contents`: o botão e o motivo entram direto na fileira de quem chama. O
-    // motivo vai para uma linha só dele, embaixo da fileira (basis-full,
-    // order-last): ao lado do botão, ele aparecia no meio da busca e fazia os
-    // filtros de Vendas e Relatórios quebrarem de linha. O menu é um portal
-    // com posição fixa: não precisa de caixa em volta.
+    // `contents`: the button and the reason go straight into the caller's row. The
+    // reason goes on a line of its own, below the row (basis-full,
+    // order-last): next to the button, it showed up in the middle of the search and made the
+    // Sales and Reports filters wrap to a new line. The menu is a portal
+    // with fixed position: it needs no surrounding box.
     <div className={cn("contents", className)}>
       <button
         ref={triggerRef}
@@ -215,8 +215,8 @@ export function ExportTableButton({
         <Download aria-hidden="true" size={14} strokeWidth={1.9} />
         {t("platform.ops.exportButton.export")}
       </button>
-      {/* T-15: o motivo de estar desligado era só title e leitor de tela, e no
-          toque não aparecia. Agora é uma linha visível, ligada ao botão. */}
+      {/* T-15: the reason for being disabled was only a title and screen reader, and on
+          touch it did not show. Now it is a visible line, tied to the button. */}
       {reason ? (
         <span id={`${menuId}-reason`} className="order-last basis-full text-xs leading-5 text-[var(--color-ink-soft)] sm:text-right">
           {reason}

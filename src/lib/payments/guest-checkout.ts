@@ -7,7 +7,7 @@ export function isGuestCheckoutEnabled(): boolean {
     && Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
 }
 
-/** "patrick@example.com" -> "p•••@example.com". */
+/** "preston@example.com" -> "p•••@example.com". */
 export function maskEmail(email: string): string {
   const at = email.lastIndexOf("@");
   if (at < 1) return "•••";

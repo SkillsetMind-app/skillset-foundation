@@ -175,9 +175,9 @@ export function OpsOverviewPanel({ counts }: { counts: OpsQueueCounts }) {
                 : undefined}
               className={`inline-flex min-h-11 items-center rounded-none px-3 text-sm font-semibold ${
                 option === period
-                  // O `!` é de quando a regra de link do globals.css tinha cor
-                  // fora de camada e vencia a classe (o período escolhido saía
-                  // azul-marinho sobre azul-marinho). Hoje a cor pedida já vale.
+                  // The `!` dates from when the link rule in globals.css had a color
+                  // outside any layer and beat the class (the chosen period came out
+                  // navy on navy). Today the requested color already wins.
                   ? "bg-[var(--color-primary)] text-[var(--color-on-primary)]!"
                   : "text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
               }`}
@@ -318,8 +318,8 @@ function Tile<T>({
     <div data-tile className="min-w-0 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4">
       <p className="text-xs font-medium text-[var(--color-ink-soft)]">{label}</p>
       {read.status === "loading" ? (
-        // Já com a altura do cartão pronto (número, variação e o gráfico de
-        // 24px): a grade não pula quando os números chegam (I-12).
+        // Already at the finished card height (number, change and the
+        // 24px chart): the grid does not jump when the numbers arrive (I-12).
         <div role="status">
           <p className="mt-2 text-2xl font-semibold text-[var(--color-ink-muted)]">
             <span aria-hidden="true">…</span>

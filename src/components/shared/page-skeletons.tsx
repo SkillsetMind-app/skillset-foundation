@@ -1,23 +1,23 @@
-// Esperas no formato do que vem, para as telas que ainda esperavam com uma
-// frase solta num cartão (ou com nada). O texto fica para o leitor de tela, num
-// role="status" só; os blocos são aria-hidden. Sem hook nem "use client": serve
-// ao servidor e ao cliente. Um tom de osso só, o dos esqueletos da casa
+// Placeholders shaped like what is coming, for the screens that used to wait with a
+// loose sentence in a card (or with nothing). The text is left for the screen reader, in a
+// single role="status"; the blocks are aria-hidden. No hook and no "use client": it serves
+// both server and client. A single bone tone, the one used by the house skeletons
 // (BuilderSkeleton).
 const tone = "bg-[var(--color-surface-strong)]";
 const bone = `rounded-md ${tone}`;
 const card = "rounded-lg border border-[var(--color-line)] bg-white shadow-[var(--shadow-soft)]";
 
 /**
- * A casca da plataforma enquanto a sessão resolve (F-03, estágio 0): era um
- * anel no meio de uma página vazia e, depois, a barra lateral, o topo e o
- * conteúdo entravam de uma vez. As medidas não moram aqui: cada peça usa a
- * MESMA classe da PlatformShell (`.platform-grid` e seus modificadores dão a
- * largura da barra, `.platform-topbar__inner` a altura do topo,
- * `.platform-content` o respiro, `.platform-mobile-nav` a barra de baixo do
- * celular), então a troca pela casca de verdade não mexe em nada. Inerte: sem
- * link, sem botão, sem nome nem rótulo do menu; um role="status" só, com a
- * frase de antes para o leitor de tela. A barra lateral fica só no navy dela:
- * o osso claro pintado sobre o navy seria um segundo tom.
+ * The platform shell while the session resolves (F-03, stage 0): it used to be a
+ * ring in the middle of an empty page and then the sidebar, the top bar and the
+ * content all came in at once. The measurements do not live here: each piece uses the
+ * SAME class as the PlatformShell (`.platform-grid` and its modifiers give the
+ * sidebar width, `.platform-topbar__inner` the top bar height,
+ * `.platform-content` the breathing room, `.platform-mobile-nav` the phone's
+ * bottom bar), so swapping in the real shell moves nothing. Inert: no
+ * link, no button, no menu name or label; a single role="status", with the
+ * previous sentence for the screen reader. The sidebar stays in its navy only:
+ * the light bone painted over the navy would be a second tone.
  */
 export function PlatformShellSkeleton({
   label,
@@ -28,7 +28,7 @@ export function PlatformShellSkeleton({
   label: string;
   collapsed: boolean;
   auto: boolean;
-  /** A coluna de 1280px das telas do estúdio, da conta e das listas do aluno. */
+  /** The 1280px column of the studio, account and learner list screens. */
   framed: boolean;
 }) {
   return (
@@ -51,8 +51,8 @@ export function PlatformShellSkeleton({
             <div className="platform-main-column">
               <div aria-hidden="true" className="platform-topbar">
                 <div className="platform-topbar__inner motion-safe:animate-pulse">
-                  {/* A marca só no celular e o caminho só de 768px para cima,
-                      como no topo de verdade. */}
+                  {/* The brand only on the phone and the path only from 768px up,
+                      as in the real top bar. */}
                   <span className={`platform-topbar__logo size-10 ${bone}`} />
                   <span className={`hidden h-4 w-48 md:block ${bone}`} />
                   <span className="platform-topbar__actions">
@@ -67,8 +67,8 @@ export function PlatformShellSkeleton({
                   role="status"
                   className={["space-y-6", framed ? "mx-auto w-full min-[1440px]:max-w-7xl" : ""].join(" ")}
                 >
-                  {/* O anel tinha a frase num h1 à vista: quem anda pelos
-                      títulos com o leitor de tela continua achando um. */}
+                  {/* The ring had the sentence in a visible h1: whoever moves through the
+                      headings with the screen reader still finds one. */}
                   <h1 className="sr-only">{label}</h1>
                   <div aria-hidden="true" className="border-b border-[var(--color-line)] pb-5 pt-2 motion-safe:animate-pulse">
                     <div className={`h-9 w-72 max-w-full ${bone}`} />
@@ -87,7 +87,7 @@ export function PlatformShellSkeleton({
           </div>
         </div>
       </div>
-      {/* A barra de baixo do celular: a classe só a mostra abaixo de 768px. */}
+      {/* The phone's bottom bar: the class only shows it below 768px. */}
       <div aria-hidden="true" className="platform-mobile-nav motion-safe:animate-pulse">
         {[0, 1, 2, 3, 4].map((item) => (
           <span key={item} className="grid min-w-0 flex-1 place-items-center gap-1 px-2 py-2">
@@ -101,9 +101,9 @@ export function PlatformShellSkeleton({
 }
 
 /**
- * As listas de cartões da área do aluno (certificados, sessões ao vivo,
- * comunidades): a fileira de cima e dois cartões lado a lado. `head` é o que
- * fica em cima na tela pronta: os filtros ou o título da seção.
+ * The learner area's card lists (certificates, live sessions,
+ * communities): the top row and two cards side by side. `head` is what
+ * sits on top in the finished screen: the filters or the section title.
  */
 export function CardListSkeleton({ label, head }: { label: string; head: "tabs" | "title" }) {
   return (

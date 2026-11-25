@@ -32,7 +32,7 @@ type MobileSidebarDrawerProps = {
   navigationCounts?: PlatformNavCounts;
 };
 
-// Os itens da lista, nao o ☰ do topo da barra: o foco volta para um destino.
+// The list items, not the ☰ at the top of the bar: focus returns to a destination.
 function visibleNavigationControl() {
   return Array.from(document.querySelectorAll<HTMLElement>(
     ".platform-sidebar .platform-sidebar-nav .platform-nav-link, .platform-mobile-nav button",
@@ -55,9 +55,9 @@ export function MobileSidebarDrawer({
 
   useModalFocus(drawerRef, open, visibleNavigationControl);
   const homeHref = getWorkspaceHomeHref(pathname, user);
-  // O atalho e sempre o OUTRO lado: no lado do professor, "Learn"; no do
-  // aluno, "Teach" (so para quem ensina). Antes era sempre "Teach", e no
-  // estudio ele se fundia com o Home — nao havia como ir estudar pela barra.
+  // The shortcut is always the OTHER side: on the teacher side, "Learn"; on the
+  // learner side, "Teach" (only for those who teach). It used to always be "Teach", and in the
+  // studio it merged with Home — there was no way to go study from the bar.
   const side = getWorkspaceSide(pathname, user);
   const workspaceItem = useMemo(() => {
     const canTeach = Boolean(user) && hasPermission({ roles: user?.roles ?? [] }, "teacherStudio.access");
@@ -76,10 +76,10 @@ export function MobileSidebarDrawer({
       items.findIndex((candidate) => candidate.href === item.href) === index,
   );
 
-  // Qual aba e a pagina atual. "Home" so vale no inicio da area: antes ela
-  // ficava marcada em TODA pagina do estudio (/teach/sales, /teach/reports...),
-  // que so se alcancam pelo "More". As outras abas valem para as paginas
-  // dentro delas (/account/billing e Profile).
+  // Which tab is the current page. "Home" only applies at the start of the area: before, it
+  // was marked on EVERY studio page (/teach/sales, /teach/reports...),
+  // which are only reached through "More". The other tabs apply to the pages
+  // inside them (/account/billing and Profile).
   const isCurrentTab = (href: string) =>
     href === homeHref ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
   const noTabIsCurrent = !primaryItems.some((item) => isCurrentTab(item.href));
@@ -95,8 +95,8 @@ export function MobileSidebarDrawer({
       }
     }
 
-    // Abaixo de 1180px o rail recolhido abre esta gaveta; acima, o grupo abre a
-    // propria barra.
+    // Below 1180px the collapsed rail opens this drawer; above, the group opens the
+    // sidebar itself.
     const desktop = window.matchMedia?.("(min-width: 1180px)");
     function handleDesktopChange() {
       if (desktop?.matches) onClose();
@@ -123,8 +123,8 @@ export function MobileSidebarDrawer({
             <Link
               key={item.href}
               href={item.href}
-              // aria-current diz ao leitor de tela qual é a página; o traço da
-              // aba atual vem da mesma marca (globals.css).
+              // aria-current tells the screen reader which page it is; the current
+              // tab's underline comes from the same marker (globals.css).
               aria-current={active ? "page" : undefined}
               className={[
                 "grid min-w-0 flex-1 place-items-center gap-1 px-2 py-2 text-[11px] font-bold text-[var(--color-ink-soft)]",
@@ -139,8 +139,8 @@ export function MobileSidebarDrawer({
         <button
           type="button"
           onClick={onOpen}
-          // Página que só existe dentro de "More" (vendas, relatórios...):
-          // nenhuma das abas é ela, então a marca fica no "More".
+          // A page that only exists inside "More" (sales, reports...):
+          // none of the tabs is it, so the marker stays on "More".
           data-current={noTabIsCurrent ? "true" : undefined}
           className="grid min-w-0 flex-1 place-items-center gap-1 px-2 py-2 text-[11px] font-bold text-[var(--color-ink-soft)]"
           aria-label={t("platform.mobile.openMore")}
@@ -152,9 +152,9 @@ export function MobileSidebarDrawer({
 
       {open ? (
         <div className="fixed inset-0 z-[100] min-[1180px]:hidden">
-          {/* Fundo e entrada das outras janelas: o fundo acende e a gaveta
-              sobe 8px (só sem "reduzir movimento"). Antes aparecia num corte
-              seco, com um navy próprio. */}
+          {/* Backdrop and entrance of the other dialogs: the backdrop lights up and the drawer
+              rises 8px (only without "reduce motion"). Before, it appeared in a hard
+              cut, with its own navy. */}
           <button
             type="button"
             className="dialog-backdrop absolute inset-0"

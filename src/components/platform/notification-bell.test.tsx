@@ -5,13 +5,13 @@ import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { NotificationBell } from "@/components/platform/notification-bell";
 import type { AppNotification } from "@/domain/notification";
 
-// Os avisos de resposta (20261006041500_avisos_de_resposta.sql) chegam com
-// title vazio e os ids em params: o sino monta a frase no idioma de quem le e
-// leva direto para a pergunta, a caixa do professor, o suporte ou a conversa.
+// The reply notifications (20261006041500_avisos_de_resposta.sql) arrive with
+// an empty title and the ids in params: the bell builds the sentence in the language of whoever reads and
+// leads straight to the question, the teacher's inbox, support or the conversation.
 
 const mocks = vi.hoisted(() => ({
   rows: [] as AppNotification[],
-  // "rows" entrega na hora; "pending" segura a resposta; "error" falha.
+  // "rows" delivers at once; "pending" holds the answer; "error" fails.
   mode: "rows" as "rows" | "pending" | "error",
   next: null as null | ((rows: AppNotification[]) => void),
   fail: null as null | ((error: Error) => void),
@@ -61,8 +61,8 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-describe("o sino antes, durante e depois da leitura", () => {
-  it("enquanto a lista nao chega mostra o formato do aviso, nunca 'caught up'", () => {
+describe("the bell before, during and after the read", () => {
+  it("while the list has not arrived it shows the notification shape, never 'caught up'", () => {
     mocks.mode = "pending";
     openBell("en");
 
@@ -75,13 +75,13 @@ describe("o sino antes, durante e depois da leitura", () => {
     expect(screen.queryByRole("status")).toBeNull();
   });
 
-  it("se a leitura falha mostra o erro e 'Try again' rele sem desligar o canal", () => {
+  it("if the read fails it shows the error and 'Try again' re-reads without dropping the channel", () => {
     mocks.mode = "error";
     openBell("en");
 
     expect(screen.getByRole("alert")).toHaveTextContent("We could not load your notifications.");
     expect(screen.queryByText("You're all caught up")).toBeNull();
-    // Escondido o grupo fica sem nome acessivel; o rotulo e conferido pelo atributo.
+    // When hidden the group has no accessible name; the label is checked by the attribute.
     const filters = screen.getByRole("group", { hidden: true });
     expect(filters).toHaveAttribute("aria-label", "Filter notifications");
     expect(filters).not.toBeVisible();
@@ -91,14 +91,14 @@ describe("o sino antes, durante e depois da leitura", () => {
     expect(mocks.unsubscribe).not.toHaveBeenCalled();
     expect(screen.queryByRole("alert")).toBeNull();
     expect(screen.getByRole("status")).toHaveTextContent("Loading your notifications...");
-    // O botao saiu da tela: o foco foi para o titulo, nao caiu na pagina.
+    // The button left the screen: focus went to the title, it did not fall onto the page.
     expect(screen.getByRole("heading", { name: "Notifications" })).toHaveFocus();
 
     act(() => mocks.next?.([notice({ id: "s", type: "support_reply", link: "/support" })]));
     expect(hrefOf("Support replied to your request")).toBe("/support");
   });
 
-  it("uma releitura que falha com a lista na tela mantem a lista", () => {
+  it("a re-read that fails with the list on screen keeps the list", () => {
     mocks.rows = [notice({ id: "s", type: "support_reply", link: "/support" })];
     openBell("en");
 
@@ -107,9 +107,9 @@ describe("o sino antes, durante e depois da leitura", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  // "Mark all read" falhava calado: o catch engolia e a pessoa achava que
-  // tinha marcado. Agora o painel diz, e os avisos seguem como nao lidos.
-  it("'Mark all read' que falha diz no painel e deixa os avisos nao lidos", async () => {
+  // "Mark all read" used to fail silently: the catch swallowed it and the person thought they
+  // had marked them. Now the panel says so, and the notifications stay unread.
+  it("a 'Mark all read' that fails says so in the panel and leaves the notifications unread", async () => {
     const { markAllNotificationsAsRead } = await import("@/lib/data/notifications");
     vi.mocked(markAllNotificationsAsRead).mockRejectedValueOnce(new Error("offline"));
     mocks.rows = [notice({ id: "s", type: "support_reply", link: "/support" })];
@@ -124,12 +124,12 @@ describe("o sino antes, durante e depois da leitura", () => {
     expect(screen.getByText("Support replied to your request")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Open notifications, 1 unread" })).toBeTruthy();
 
-    // Fechar e abrir de novo comeca limpo: a falha antiga nao volta nem e lida.
+    // Closing and opening again starts clean: the old failure does not come back nor is it read out.
     fireEvent.click(screen.getByRole("button", { name: "Close notifications" }));
     fireEvent.click(screen.getByRole("button", { name: "Open notifications, 1 unread" }));
     expect(screen.queryByRole("alert")).toBeNull();
 
-    // Falhou de novo: o aviso volta. A tentativa seguinte que da certo o tira.
+    // Failed again: the notice comes back. The next attempt that succeeds removes it.
     vi.mocked(markAllNotificationsAsRead).mockRejectedValueOnce(new Error("offline"));
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Mark all read" }));
@@ -141,7 +141,7 @@ describe("o sino antes, durante e depois da leitura", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  it("abre como dialogo, leva o foco para dentro e o Esc devolve ao sino", () => {
+  it("opens as a dialog, takes focus inside and Esc returns it to the bell", () => {
     openBell("en");
     const bell = screen.getByRole("button", { name: "Open notifications" });
     expect(bell).toHaveAttribute("aria-haspopup", "dialog");
@@ -156,12 +156,12 @@ describe("o sino antes, durante e depois da leitura", () => {
     expect(bell).toHaveFocus();
   });
 
-  it("o X fecha e devolve o foco ao sino; os alvos tem 44px", () => {
+  it("the X closes and returns focus to the bell; the targets are 44px", () => {
     mocks.rows = [notice({ id: "s", type: "support_reply", link: "/support" })];
     openBell("en");
 
     expect(screen.getByRole("button", { name: "Mark all read" })).toHaveClass("min-h-11");
-    // All/Unread sao filtros (aria-pressed), nao abas; continuam com 44px.
+    // All/Unread are filters (aria-pressed), not tabs; they keep 44px.
     const filters = within(screen.getByRole("group", { name: "Filter notifications" })).getAllByRole("button");
     expect(filters).toHaveLength(2);
     for (const tab of filters) expect(tab).toHaveClass("min-h-11");
@@ -178,20 +178,20 @@ describe("o sino antes, durante e depois da leitura", () => {
     expect(screen.getByRole("button", { name: /Open notifications/ })).toHaveFocus();
   });
 
-  it("no celular o painel se prende a barra do topo, com 16px de cada lado", () => {
+  it("on a phone the panel attaches to the top bar, with 16px on each side", () => {
     openBell("en");
     const panel = screen.getByRole("dialog", { name: "Notifications" });
-    // Abaixo de 768px a caixa do sino deixa de ser a referencia (a conta e o
-    // idioma ficam a direita dele e o painel comecava fora da tela): o painel
-    // fica a 16px da borda direita da barra e tem no maximo a tela menos 32px.
+    // Below 768px the bell's box stops being the reference (the account and the
+    // language sit to its right and the panel started off screen): the panel
+    // stays 16px from the bar's right edge and is at most the screen minus 32px.
     expect(panel.parentElement).toHaveClass("relative", "max-md:static");
     expect(panel).toHaveClass("absolute", "right-0", "max-md:right-4", "w-[min(380px,calc(100vw-32px))]");
     expect(panel).toHaveClass("max-h-[calc(100svh-96px)]", "overflow-hidden");
   });
 });
 
-describe("o sino com os avisos de resposta", () => {
-  it("monta cada frase em espanhol e leva direto ao lugar da resposta", () => {
+describe("the bell with the reply notifications", () => {
+  it("builds each sentence in Spanish and leads straight to the place of the reply", () => {
     mocks.rows = [
       notice({
         id: "q", type: "community_question", actorName: "Ana", body: "¿Cómo exporto la hoja?",
@@ -227,12 +227,12 @@ describe("o sino com os avisos de resposta", () => {
     expect(hrefOf("Dani respondió tu publicación")).toBe("/learn/courses/c1/community/q/p2");
     expect(hrefOf("Caio respondió una publicación que comentaste")).toBe("/learn/courses/c1/community/q/p1");
     expect(hrefOf("Soporte respondió tu solicitud")).toBe("/support");
-    // O titulo ingles que o banco ja gravava tambem sai traduzido.
+    // The English title the database already stored also comes out translated.
     expect(hrefOf("Nuevo mensaje de tu profesor")).toBe("/learn/messages?course=c1");
     expect(screen.queryByText("New message from your teacher")).toBeNull();
   });
 
-  it("em ingles, e com 'Someone' quando nao ha nome de quem respondeu", () => {
+  it("in English, and with 'Someone' when there is no name for whoever replied", () => {
     mocks.rows = [
       notice({
         id: "c", type: "community_comment", actorName: null,
@@ -246,7 +246,7 @@ describe("o sino com os avisos de resposta", () => {
     expect(hrefOf("Support replied to your request")).toBe("/support");
   });
 
-  it("um nome com '$&' aparece como foi escrito", () => {
+  it("a name with '$&' appears as it was written", () => {
     mocks.rows = [notice({ id: "q", type: "community_question", actorName: "A$&B", link: "/teach/courses/c1/community" })];
     openBell("en");
 

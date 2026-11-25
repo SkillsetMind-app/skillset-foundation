@@ -27,7 +27,7 @@ export function HeroCtas() {
           <LayoutDashboard aria-hidden="true" size={16} strokeWidth={1.9} />
           {t("home.hero.ctaDashboard")}
         </Link>
-        {/* Loja vazia não vira atalho: sobra o painel. */}
+        {/* An empty storefront does not become a shortcut: only the dashboard is left. */}
         {hasRealCourses ? (
           <Link href="/courses" className="button-outline-light">
             {t("home.hero.ctaBrowse")}

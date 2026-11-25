@@ -1,8 +1,8 @@
-// Cartões de curso enquanto a lista carrega. Um molde só para o fallback do
-// servidor e para o carregamento do cliente: antes eram 6 cartões num e 3 no
-// outro, os dois sem a linha de preço, e a página pulava a cada troca. Mesmas
-// classes do CourseTile (capa, corpo e rodapé com preço), então o cartão de
-// verdade nasce na mesma altura. Sem hook: serve ao servidor e ao cliente.
+// Course cards while the list loads. One mold for the server fallback
+// and for the client loading: before, there were 6 cards in one and 3 in the
+// other, both without the price row, and the page jumped on every swap. Same
+// classes as CourseTile (cover, body and footer with price), so the real
+// card is born at the same height. No hook: it serves the server and the client.
 export function CourseGridSkeleton({ count = 6 }: { count?: number }) {
   return (
     <div className="marketplace-course-grid" aria-hidden="true">

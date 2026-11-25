@@ -7,14 +7,14 @@ import { getPublicProfilesByIds } from "@/lib/data/user-profiles";
 export type InstructorName = { name: string; photoURL: string | null; verified: boolean };
 
 /**
- * Nome e foto do professor de cada cartao da lista, em UMA consulta.
+ * Name and photo of the teacher on each card in the list, in ONE query.
  *
- * O cartao mostra quem ensina — comprar um curso e escolher uma pessoa, e a
- * lista escondia esse dado. Resolver perfil dentro do cartao daria uma consulta
- * por cartao; aqui a lista inteira vira um `in (...)` so.
+ * The card shows who teaches — buying a course means choosing a person, and the
+ * list used to hide that data. Resolving the profile inside the card would make one query
+ * per card; here the whole list becomes a single `in (...)`.
  *
- * Professor sem perfil publico simplesmente nao aparece no cartao: identidade
- * de instrutor nao se inventa.
+ * A teacher with no public profile simply does not appear on the card: an
+ * instructor's identity is not made up.
  */
 export function useInstructorNames(
   ownerIds: (string | undefined)[],
@@ -22,8 +22,8 @@ export function useInstructorNames(
   const [names, setNames] = useState<Map<string, InstructorName>>(
     () => new Map(),
   );
-  // Chave estavel: o efeito so roda de novo quando o CONJUNTO de donos muda,
-  // e nao a cada render da lista (que remonta o array toda vez).
+  // Stable key: the effect only runs again when the SET of owners changes,
+  // and not on every render of the list (which rebuilds the array every time).
   const key = Array.from(new Set(ownerIds.filter(Boolean) as string[]))
     .sort()
     .join(",");
@@ -50,8 +50,8 @@ export function useInstructorNames(
           ),
         );
       })
-      // Falha silenciosa: a lista de cursos continua util sem a linha do
-      // professor. Um erro vermelho no catalogo por causa de um avatar, nao.
+      // Silent failure: the course list stays useful without the teacher's line.
+      // A red error in the catalog over an avatar is not.
       .catch(() => {});
 
     return () => {

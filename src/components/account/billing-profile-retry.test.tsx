@@ -4,13 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BillingTabs } from "./billing-tabs";
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 
-// Billing › Overview quando o PERFIL não carrega: a frase mandava atualizar a
-// página e não tinha botão. Agora o aviso ganha "Try again", que assina a
-// leitura do perfil de novo, uma vez só.
+// Billing › Overview when the PROFILE does not load: the sentence told the user to refresh the
+// page and had no button. Now the notice gets "Try again", which subscribes to the
+// profile read again, only once.
 type Read = { next: (profile: { stripeCustomerId?: string } | null) => void; fail: (error: Error) => void };
 
 const mocks = vi.hoisted(() => ({
-  // Objeto estável: um novo a cada render reassinaria a leitura.
+  // Stable object: a new one on every render would resubscribe the read.
   user: { uid: "learner-1", roles: ["student"] },
   reads: [] as Read[],
   portal: vi.fn(),
@@ -52,8 +52,8 @@ function renderBilling() {
   render(<I18nProvider initialLocale="en"><BillingTabs /></I18nProvider>);
 }
 
-describe("Billing › Overview com a leitura do perfil falhando", () => {
-  it("mostra 'Try again', assina o perfil de novo uma vez e o portal aparece", () => {
+describe("Billing › Overview with the profile read failing", () => {
+  it("shows 'Try again', subscribes to the profile again once, and the portal appears", () => {
     renderBilling();
     expect(mocks.reads).toHaveLength(1);
     act(() => mocks.reads[0].fail(new Error("offline")));
@@ -64,7 +64,7 @@ describe("Billing › Overview com a leitura do perfil falhando", () => {
     fireEvent.click(retry);
     fireEvent.click(retry);
 
-    // Lendo: o esqueleto de sempre, e só uma assinatura nova.
+    // Reading: the usual skeleton, and only one new subscription.
     expect(screen.getByRole("status")).toHaveTextContent("Loading your billing overview...");
     expect(mocks.reads).toHaveLength(2);
 
@@ -74,7 +74,7 @@ describe("Billing › Overview com a leitura do perfil falhando", () => {
     expect(mocks.reads).toHaveLength(2);
   });
 
-  it("o erro de abrir o portal não ganha 'Try again'", async () => {
+  it("the error from opening the portal does not get 'Try again'", async () => {
     mocks.portal.mockRejectedValue(new Error("boom"));
     renderBilling();
     act(() => mocks.reads[0].next({ stripeCustomerId: "cus_1" }));

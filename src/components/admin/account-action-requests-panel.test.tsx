@@ -18,8 +18,8 @@ function ChangeLanguage() {
 function panel() { return <I18nProvider initialLocale="en"><ChangeLanguage /><AccountActionRequestsPanel /></I18nProvider>; }
 function language() { fireEvent.click(screen.getByRole("button", { name: "Change language" })); }
 function deliver(rows = [request]) { act(() => mocks.subscribe.mock.calls[0][0](rows)); }
-// Concluir e recusar passam pela janela de confirmação; em processo segue direto.
-// O confirmar ignora cliques nos primeiros CONFIRM_GUARD_MS (só o Date é falso).
+// Completing and rejecting go through the confirmation dialog; in-progress goes straight through.
+// Confirm ignores clicks in the first CONFIRM_GUARD_MS (only Date is fake).
 function confirmIn(label: string) {
   vi.advanceTimersByTime(CONFIRM_GUARD_MS);
   fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: label }));
@@ -89,9 +89,9 @@ describe("account request presentation and canonical actions", () => {
     }
     expect(mocks.resolve).toHaveBeenCalledWith(request.id, status, "admin-$$-$&");
     expect(within(screen.getByRole("article")).getByRole("button", { name: label })).toHaveAttribute("aria-busy", "true");
-    // O mesmo nome nas duas faces; a do anel já guardava o lugar em repouso.
+    // The same name on both faces; the ring one already held the place at rest.
     expect(within(screen.getByRole("article")).getByRole("button", { name: label }).querySelectorAll('[class*="grid-area"]')).toHaveLength(2);
-    // A janela de confirmação só fecha quando a gravação termina.
+    // The confirmation dialog only closes when the write finishes.
     if (status !== "processing") expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText("Pendiente")).toBeInTheDocument();
     expect(screen.queryByText(statusLabel, { exact: true })).toBeNull();

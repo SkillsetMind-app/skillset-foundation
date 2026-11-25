@@ -9,26 +9,26 @@ import { cn } from "@/lib/cn";
 
 export type LoadErrorAlertProps = {
   children: ReactNode;
-  /** Lê de novo. O aviso só sai quando a tela recebe os dados: quem decide é ela. */
+  /** Reads again. The alert is only dismissed when the screen receives the data: the screen decides. */
   onRetry: () => Promise<unknown> | void;
-  /** Nó que fica na tela nos dois desfechos e recebe o foco ao clicar. */
+  /** Node that stays on screen in both outcomes and receives focus on click. */
   focusRef: RefObject<HTMLElement | null>;
-  /** Releitura que a tela acompanha por conta própria (router.refresh). */
+  /** A re-read that the screen tracks on its own (router.refresh). */
   busy?: boolean;
   className?: string;
-  /** Espaçamento do próprio aviso, para as telas que já o tinham compacto ou largo. */
+  /** Spacing of the alert itself, for screens that already had it compact or wide. */
   alertClassName?: string;
 };
 
 /**
- * Erro de LEITURA com saída: o aviso e um "Try again" que lê de novo. Eram
- * umas 39 mensagens "could not load" e só 7 com botão; o único jeito de sair
- * era recarregar a página no navegador. (O RetryAlert do professor é outro:
- * repete um salvamento, não uma leitura.)
+ * A READ error with a way out: the alert and a "Try again" that reads again. There were
+ * about 39 "could not load" messages and only 7 with a button; the only way out
+ * was reloading the page in the browser. (The teacher's RetryAlert is a different one:
+ * it repeats a save, not a read.)
  *
- * O botão trava enquanto a releitura corre (aria-busy, "Trying again...").
- * Travado ele perde o foco, e some quando a leitura dá certo: por isso o foco
- * vai antes para `focusRef`, senão caía no <body>.
+ * The button locks while the re-read runs (aria-busy, "Trying again...").
+ * Once locked it loses focus, and disappears when the read succeeds: that is why focus
+ * goes first to `focusRef`, otherwise it would fall to the <body>.
  */
 export function LoadErrorAlert({
   children,
@@ -40,8 +40,8 @@ export function LoadErrorAlert({
 }: LoadErrorAlertProps) {
   const { t } = useTranslation();
   const [retrying, setRetrying] = useState(false);
-  // Trava também na própria função: dois cliques antes de a tela redesenhar
-  // não abrem duas releituras.
+  // Lock in the function itself too: two clicks before the screen redraws
+  // do not start two re-reads.
   const inFlight = useRef(false);
   const locked = busy || retrying;
 
@@ -53,7 +53,7 @@ export function LoadErrorAlert({
     try {
       await onRetry();
     } catch {
-      // A falha da releitura já volta como erro na própria tela; o aviso fica.
+      // The re-read failure already comes back as an error on the screen itself; the alert stays.
     } finally {
       inFlight.current = false;
       setRetrying(false);

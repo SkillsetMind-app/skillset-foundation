@@ -3,10 +3,10 @@ import { join, relative } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-// A barra lateral da plataforma fica em z-index 65 (acima da topbar, 60).
-// Uma janela de tela cheia abaixo disso aparece com o começo das linhas
-// escondido atrás da barra: foi o que aconteceu com o aviso de termos (z-50)
-// e com os tours de boas-vindas (z-60). O site público não tem barra lateral.
+// The platform sidebar sits at z-index 65 (above the topbar, 60).
+// A full-screen dialog below that shows up with the start of the lines
+// hidden behind the bar: that is what happened with the terms notice (z-50)
+// and with the welcome tours (z-60). The public site has no sidebar.
 const root = join(process.cwd(), "src", "components");
 const PUBLIC_SITE = "site";
 
@@ -24,7 +24,7 @@ function tsxFiles(dir: string): string[] {
   });
 }
 
-describe("camadas das janelas de tela cheia", () => {
+describe("layers of the full-screen dialogs", () => {
   it("lê o z-index da barra lateral no CSS", () => {
     expect(sidebarZ).toBeGreaterThan(0);
   });
@@ -37,30 +37,30 @@ describe("camadas das janelas de tela cheia", () => {
       ),
     );
 
-  // Lista vazia vira zero testes e passa calada: o padrão de classe mudou.
-  it("acha as janelas de tela cheia", () => {
+  // An empty list becomes zero tests and passes silently: the class pattern changed.
+  it("finds the full-screen dialogs", () => {
     expect(overlays.length).toBeGreaterThan(0);
   });
 
-  it.each(overlays)("%s fica acima da barra lateral (z %i)", (_, z) => {
+  it.each(overlays)("%s sits above the sidebar (z %i)", (_, z) => {
     expect(z).toBeGreaterThan(sidebarZ);
   });
 });
 
-// O teste acima só lê "fixed inset-0 z-" escrito no componente. Ficavam de
-// fora as camadas feitas por classe do CSS (estúdio da aula, gaveta da
-// comunidade, faixa "Rascunho salvo") e o que não cobre a tela inteira, como
-// o cartão de envio do vídeo, que em z 90 ficava por cima de toda janela.
-// Aqui a escala com nome do :root é a régua, e cada camada é lida no CSS.
-describe("escala de camadas com nome", () => {
-  // Sem comentários: o do topo cita "z-index: 1" no meio do texto.
+// The test above only reads "fixed inset-0 z-" written in the component. Left
+// out were the layers made by a CSS class (lesson studio, community
+// drawer, "Draft saved" strip) and what does not cover the whole screen, like
+// the video upload card, which at z 90 sat above every dialog.
+// Here the named scale in :root is the ruler, and each layer is read from the CSS.
+describe("named layer scale", () => {
+  // Without comments: the one at the top cites "z-index: 1" in the middle of the text.
   const css = readFileSync(join(process.cwd(), "src", "app", "globals.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
   const rootBlock = css.slice(css.indexOf(":root {"), css.indexOf("\n}", css.indexOf(":root {")));
   const layers: Record<string, number> = Object.fromEntries(
     [...rootBlock.matchAll(/--z-([a-z-]+):\s*(\d+);/g)].map((m) => [m[1], Number(m[2])]),
   );
 
-  // z-index da 1ª regra do seletor; aceita número ou var(--z-...).
+  // z-index of the selector's 1st rule; accepts a number or var(--z-...).
   function zOf(selector: string): number {
     const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const body = css.match(new RegExp(`^\\s*${escaped} \\{([^}]*)\\}`, "m"))?.[1] ?? "";
@@ -69,7 +69,7 @@ describe("escala de camadas com nome", () => {
     return named ? layers[named] : Number(value);
   }
 
-  it("lê a escala no :root, de baixo para cima", () => {
+  it("reads the scale in :root, from bottom to top", () => {
     const order = ["dropdown", "topbar", "rail", "status", "float", "banner", "modal", "modal-studio", "modal-top", "tooltip"];
     const values = order.map((name) => layers[name]);
     expect(values.every((value) => Number.isFinite(value))).toBe(true);
@@ -84,30 +84,30 @@ describe("escala de camadas com nome", () => {
     [".cookie-consent", "banner"],
     [".community-drawer-backdrop", "modal"],
     [".lesson-modal-overlay", "modal-studio"],
-  ])("%s está na camada %s", (selector, layer) => {
+  ])("%s is on layer %s", (selector, layer) => {
     expect(zOf(selector)).toBe(layers[layer]);
   });
 
-  it("a barra lateral lida pelo teste de cima é a mesma da escala", () => {
+  it("the sidebar read by the test above is the same one in the scale", () => {
     expect(sidebarZ).toBe(layers.rail);
   });
 
-  // Avisos de andamento não cobrem o que a pessoa está usando: no celular o
-  // cartão subido sentava em cima da caixa de mensagem do Advisor (68) e do
-  // menu de categoria (67), e a faixa cobria o menu por 4s.
-  it("a camada de status fica acima do menu lateral e abaixo do menu de categoria e do Advisor", () => {
+  // Progress notices do not cover what the person is using: on a phone the
+  // uploaded card sat on top of the Advisor message box (68) and the
+  // category menu (67), and the strip covered the menu for 4s.
+  it("the status layer sits above the side menu and below the category menu and the Advisor", () => {
     expect(layers.status).toBeGreaterThan(layers.rail);
     expect(layers.status).toBeLessThan(zOf(".course-category-menu"));
     expect(layers.status).toBeLessThan(zOf(".floating-action"));
   });
 
-  it("o cartão de envio do vídeo fica na camada de status, abaixo de toda janela", () => {
+  it("the video upload card sits on the status layer, below every dialog", () => {
     const source = readFileSync(join(root, "teacher", "lesson-upload-provider.tsx"), "utf8");
     const named = source.match(/<aside[^>]*className="[^"]*\bfixed\b[^"]*\bz-\[var\(--z-([a-z-]+)\)\]/)?.[1];
     expect(named).toBe("status");
     expect(layers.status).toBeLessThan(layers.modal);
-    // No celular ele sobe acima da barra de baixo, como o aviso de cookies, e
-    // o teto desconta a subida para o topo não sair da tela.
+    // On a phone it rises above the bottom bar, like the cookie notice, and
+    // the cap discounts the rise so the top does not leave the screen.
     expect(source).toContain("lesson-upload-card");
     const lifted = css.match(/body:has\(\.platform-mobile-nav\) \.lesson-upload-card \{([^}]*)\}/)?.[1] ?? "";
     expect(lifted).toContain("bottom: calc(60px + 1rem + env(safe-area-inset-bottom, 0px));");

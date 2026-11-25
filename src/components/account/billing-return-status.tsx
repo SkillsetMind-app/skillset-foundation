@@ -12,14 +12,14 @@ import { PLAN_TRIAL_DAYS } from "@/data/plans";
 import { fetchPlanBillingState, type PlanSubscriptionView } from "@/lib/payments/billing";
 import { formatTrialDate } from "@/lib/payments/plan-disclosure";
 
-// Quem acabou de dar o cartao chegava a "Review your subscription status." e
-// a um unico botao "Back to billing": nada dizia que o teste gratis comecou
-// nem levava de volta ao estudio. A tela agora pergunta ao servidor (a mesma
-// leitura da pagina de Billing, alimentada pelo webhook da Stripe) e confirma.
-// A referencia na URL continua sem provar nada: quem confirma e a assinatura.
+// Whoever had just entered their card landed on "Review your subscription status." and
+// a single "Back to billing" button: nothing said the free trial had started
+// nor led back to the studio. The screen now asks the server (the same
+// read as the Billing page, fed by the Stripe webhook) and confirms.
+// The reference in the URL still proves nothing: the subscription is what confirms.
 const POLL_MS = 3000;
-// ~45 s. O webhook costuma chegar em poucos segundos; passou disso, a tela
-// volta ao texto antigo ("confira em Billing") em vez de girar para sempre.
+// ~45 s. The webhook usually arrives in a few seconds; past that, the screen
+// goes back to the old text ("check in Billing") instead of spinning forever.
 const MAX_TRIES = 15;
 
 export function BillingReturnStatus() {
@@ -43,7 +43,7 @@ export function BillingReturnStatus() {
           return;
         }
       } catch {
-        // Leitura falhou (rede, sessao): tenta de novo ate o limite.
+        // The read failed (network, session): tries again up to the limit.
       }
       if (cancelled) return;
       if (tries >= MAX_TRIES) {
@@ -60,9 +60,9 @@ export function BillingReturnStatus() {
     };
   }, []);
 
-  // O botao do estudio so existe depois da confirmacao. Esperando ou sem
-  // resposta, a saida e Billing (e o suporte, quando a confirmacao nao veio):
-  // nada aqui pode parecer confirmado.
+  // The studio button only exists after confirmation. While waiting or with no
+  // answer, the way out is Billing (and support, when the confirmation did not arrive):
+  // nothing here may look confirmed.
   const backToBilling = (variant: "solid" | "outline") => (
     <Link href="/account/billing?tab=overview" className={buttonClasses({ variant })}>
       {t("billingCheckout.backToBilling")}
@@ -88,8 +88,8 @@ export function BillingReturnStatus() {
       ? t("billingCheckout.returnBody")
       : t("billingCheckout.confirmingBody");
 
-  // A regiao viva e uma so nos tres estados (mora no cartao): trocar o
-  // elemento a cada estado fazia o anuncio do resultado se perder.
+  // The live region is a single one across the three states (it lives in the card): swapping the
+  // element on each state made the announcement of the result get lost.
   return (
     <PaymentReturnCard
       icon={confirmed ? (

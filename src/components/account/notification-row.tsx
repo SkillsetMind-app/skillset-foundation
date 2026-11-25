@@ -130,8 +130,8 @@ export function NotificationRow({
           {formatNotificationTime(notification.createdAt, t, locale)}
         </p>
       </div>
-      {/* O ponto era o unico sinal de "nao lida" e o leitor de tela nao o
-          lia. Agora ele diz "Unread". */}
+      {/* The dot was the only "unread" signal and the screen reader did not
+          read it. Now it says "Unread". */}
       {!notification.read ? (
         <span
           role="img"

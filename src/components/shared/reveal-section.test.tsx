@@ -3,9 +3,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { RevealSection } from "@/components/shared/reveal-section";
 
-// A entrada da seção é enfeite: o que nasce visível (sem JavaScript, antes da
-// hidratação ou já na tela) continua visível. Só o que está abaixo da tela é
-// armado e entra quando o topo chega a 90% da altura da tela.
+// The section's entrance is decoration: what is born visible (without JavaScript, before
+// hydration or already on screen) stays visible. Only what is below the screen is
+// armed and enters when the top reaches 90% of the screen height.
 type Callback = (entries: Array<{ isIntersecting: boolean }>) => void;
 
 function mountAt(top: number) {
@@ -32,20 +32,20 @@ afterEach(() => {
 });
 
 describe("RevealSection", () => {
-  it("sem IntersectionObserver a seção nunca é armada, mesmo abaixo da tela", () => {
+  it("without IntersectionObserver the section is never armed, even below the screen", () => {
     expect(window.IntersectionObserver).toBeUndefined();
     vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({ top: window.innerHeight + 400 } as DOMRect);
     render(<RevealSection data-testid="section">conteudo</RevealSection>);
     expect(screen.getByTestId("section").className).not.toContain("reveal-on-view--armed");
   });
 
-  it("já na tela ao montar: fica como está, sem esconder", () => {
+  it("already on screen on mount: stays as it is, without hiding", () => {
     const { section, observers } = mountAt(window.innerHeight - 1);
     expect(section.className).not.toContain("reveal-on-view--armed");
     expect(observers).toHaveLength(0);
   });
 
-  it("abaixo da tela: armada, e entra quando o topo passa dos 90% da tela", () => {
+  it("below the screen: armed, and enters when the top passes 90% of the screen", () => {
     const { section, observers } = mountAt(window.innerHeight + 400);
     expect(section.className).toContain("reveal-on-view--armed");
     expect(section.className).not.toContain("reveal-on-view--in");

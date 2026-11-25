@@ -10,14 +10,14 @@ const css = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
 
 function rule(selector: string, from = 0): string {
   const start = css.indexOf(`${selector} {`, from);
-  expect(start, `${selector} nao encontrado`).toBeGreaterThan(-1);
+  expect(start, `${selector} not found`).toBeGreaterThan(-1);
   return css.slice(start, css.indexOf("}", start));
 }
 
 const options = ["monthly", "yearly"] as const;
 
 describe("PeriodTabs — seletor segmentado", () => {
-  it("marca a escolha no proprio botao e so quebra a linha quando pedido", () => {
+  it("marks the choice on the button itself and only wraps the line when asked", () => {
     const onChange = vi.fn();
     const { rerender } = render(
       <PeriodTabs options={options} value="monthly" onChange={onChange} label="Billing cycle" renderLabel={(o) => o} />,
@@ -35,18 +35,18 @@ describe("PeriodTabs — seletor segmentado", () => {
     expect(screen.getByRole("group", { name: "Billing cycle" })).toHaveClass("studio-range-tabs", "studio-range-tabs--wrap");
   });
 
-  // A moldura de 4px e do grupo: tocar nela nao escolhe nada. No toque o
-  // botao precisa dos 44px inteiros (publico de 55+ no celular).
-  it("da 44px ao botao em tela de toque", () => {
+  // The 4px frame belongs to the group: touching it chooses nothing. On touch the
+  // button needs the full 44px (55+ audience on the phone).
+  it("gives the button 44px on a touch screen", () => {
     const touch = css.indexOf("@media (pointer: coarse) {");
     expect(touch).toBeGreaterThan(css.indexOf(".studio-range-tabs button {"));
     expect(rule(".studio-range-tabs button", touch)).toContain("min-height: 44px;");
     expect(css.indexOf(".studio-range-tabs button {", touch)).toBeLessThan(css.indexOf("}", touch));
   });
 
-  // Credenciais: quatro filtros com numero. Rolando por dentro, "En curso N"
-  // ficava escondido a 360px; a variante quebra a linha na mesma moldura.
-  it("a variante --wrap quebra a linha em vez de rolar por dentro", () => {
+  // Credentials: four filters with a number. Scrolling inside, "En curso N"
+  // was hidden at 360px; the variant wraps the line within the same frame.
+  it("the --wrap variant wraps the line instead of scrolling inside", () => {
     const wrap = rule(".studio-range-tabs--wrap");
     expect(wrap).toContain("flex-wrap: wrap;");
     expect(wrap).toContain("overflow-x: visible;");

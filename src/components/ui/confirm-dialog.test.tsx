@@ -4,14 +4,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CONFIRM_GUARD_MS, ConfirmDialog } from "@/components/ui/confirm-dialog";
 
-// O jsdom não implementa showModal/close: o stub faz o mínimo que o navegador
-// faz (atributo open e o evento close), como em account-control-dialog.test.
+// jsdom does not implement showModal/close: the stub does the minimum the browser
+// does (the open attribute and the close event), as in account-control-dialog.test.
 const originalShow = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal");
 const originalClose = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "close");
 
 beforeEach(() => {
-  // Só o relógio (Date) é falso: a trava do toque duplo lê Date.now(), e os
-  // setTimeout reais continuam servindo o findBy/waitFor.
+  // Only the clock (Date) is fake: the double-tap guard reads Date.now(), and the
+  // real setTimeout calls keep serving findBy/waitFor.
   vi.useFakeTimers({ toFake: ["Date"] });
   Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value() { this.setAttribute("open", ""); } });
   Object.defineProperty(HTMLDialogElement.prototype, "close", { configurable: true, value() { if (!this.hasAttribute("open")) return; this.removeAttribute("open"); this.dispatchEvent(new Event("close")); } });
@@ -58,7 +58,7 @@ function openDialog(onConfirm: () => unknown = vi.fn(), errorLabel?: string) {
 }
 
 describe("ConfirmDialog", () => {
-  it("abre modal, cabe na tela, descreve a consequência e começa no lado seguro", () => {
+  it("opens as a modal, fits on the screen, describes the consequence and starts on the safe side", () => {
     const { dialog } = openDialog();
     expect(dialog).toHaveAttribute("open");
     expect(dialog).toHaveClass("modal-panel", "modal-panel-scroll");
@@ -67,10 +67,10 @@ describe("ConfirmDialog", () => {
     expect(screen.getByRole("button", { name: "Yes, delete" })).toHaveClass("button-danger", "button-danger-solid");
   });
 
-  // O rodapé da casa empilha abaixo do sm com column-reverse: o último no
-  // código fica em cima. O Cancelar vem primeiro, então no celular fica
-  // embaixo, onde o polegar cai; do sm em diante, à esquerda do confirmar.
-  it("no rodapé da casa o Cancelar vem antes do confirmar (embaixo quando empilha)", () => {
+  // The standard footer stacks below sm with column-reverse: the last one in the
+  // code ends up on top. Cancel comes first, so on phones it sits
+  // at the bottom, where the thumb lands; from sm up, to the left of confirm.
+  it("in the standard footer Cancel comes before confirm (at the bottom when stacked)", () => {
     const { dialog } = openDialog();
     const keep = within(dialog).getByRole("button", { name: "Keep it" });
     const remove = within(dialog).getByRole("button", { name: "Yes, delete" });
@@ -81,7 +81,7 @@ describe("ConfirmDialog", () => {
     expect(keep).toHaveFocus();
   });
 
-  it("cancelar e Esc fecham sem confirmar e devolvem o foco ao gatilho", () => {
+  it("cancel and Esc close without confirming and return focus to the trigger", () => {
     const onConfirm = vi.fn();
     const { trigger } = openDialog(onConfirm);
     fireEvent.click(screen.getByRole("button", { name: "Keep it" }));
@@ -94,7 +94,7 @@ describe("ConfirmDialog", () => {
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
-  it("confirma uma vez só, trava durante o pedido e fecha quando ele termina", async () => {
+  it("confirms only once, locks during the request and closes when it finishes", async () => {
     let finish!: () => void;
     const onConfirm = vi.fn(() => new Promise<void>((resolve) => { finish = resolve; }));
     openDialog(onConfirm);
@@ -106,7 +106,7 @@ describe("ConfirmDialog", () => {
     expect(screen.getByRole("button", { name: "Deleting…" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Keep it" })).toBeDisabled();
 
-    // Esc no meio do pedido não fecha.
+    // Esc in the middle of the request does not close it.
     fireEvent(screen.getByRole("dialog"), new Event("cancel", { cancelable: true }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
 
@@ -115,9 +115,9 @@ describe("ConfirmDialog", () => {
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
-  // O confirmar trocava o rótulo pelo de espera e crescia; agora os dois moram
-  // na mesma célula (busyLabel do Button) e o nome é sempre o que está à vista.
-  it("o confirmar guarda os dois rótulos: o nome é o de repouso e, ocupado, o de espera", async () => {
+  // Confirm used to swap its label for the waiting one and grow; now both live
+  // in the same cell (the Button's busyLabel) and the name is always the visible one.
+  it("confirm holds both labels: the name is the resting one and, when busy, the waiting one", async () => {
     let finish!: () => void;
     openDialog(vi.fn(() => new Promise<void>((resolve) => { finish = resolve; })));
     vi.advanceTimersByTime(CONFIRM_GUARD_MS);
@@ -133,9 +133,9 @@ describe("ConfirmDialog", () => {
     await act(async () => finish());
   });
 
-  // No celular o confirmar ocupa a largura toda logo abaixo do centro: num
-  // toque duplo em "Delete account", o 2º toque cairia nele.
-  it("ignora o confirmar logo depois de abrir e aceita depois da trava", () => {
+  // On phones confirm takes the full width right below the center: on a double
+  // tap on "Delete account", the 2nd tap would land on it.
+  it("ignores confirm right after opening and accepts it after the guard", () => {
     const onConfirm = vi.fn();
     openDialog(onConfirm);
     const confirm = screen.getByRole("button", { name: "Yes, delete" });
@@ -144,7 +144,7 @@ describe("ConfirmDialog", () => {
     vi.advanceTimersByTime(CONFIRM_GUARD_MS - 1);
     fireEvent.click(confirm);
     expect(onConfirm).not.toHaveBeenCalled();
-    // A trava não desliga o botão: só descarta o clique.
+    // The guard does not disable the button: it only discards the click.
     expect(confirm).toBeEnabled();
     expect(screen.getByRole("button", { name: "Keep it" })).toHaveFocus();
 
@@ -153,7 +153,7 @@ describe("ConfirmDialog", () => {
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
-  it("se o onConfirm rejeitar, fica aberta, destrava e avisa; a nova tentativa fecha", async () => {
+  it("if onConfirm rejects, it stays open, unlocks and warns; a new attempt closes it", async () => {
     const onConfirm = vi.fn()
       .mockRejectedValueOnce(new Error("network"))
       .mockResolvedValueOnce(undefined);
@@ -171,9 +171,9 @@ describe("ConfirmDialog", () => {
     expect(onConfirm).toHaveBeenCalledTimes(2);
   });
 
-  // Aviso sem escolha (era o window.alert): um botão só, sem vermelho, que
-  // fecha no primeiro toque; dar ciência não desfaz nada.
-  it("acknowledge: um botão só, com o foco, sem trava de toque duplo", async () => {
+  // Notice with no choice (it was window.alert): a single button, no red, that
+  // closes on the first tap; acknowledging undoes nothing.
+  it("acknowledge: a single button, with focus, with no double-tap guard", async () => {
     const onConfirm = vi.fn();
     const onClose = vi.fn();
     render(
@@ -187,13 +187,13 @@ describe("ConfirmDialog", () => {
     expect(ok).toHaveFocus();
     expect(ok).not.toHaveClass("button-danger-solid");
 
-    // Sem avançar o relógio: o primeiro toque já vale.
+    // Without advancing the clock: the first tap already counts.
     fireEvent.click(ok);
     expect(onConfirm).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   });
 
-  it("acknowledge: Esc também fecha", () => {
+  it("acknowledge: Esc also closes", () => {
     const onClose = vi.fn();
     render(
       <ConfirmDialog acknowledge title="Upload in progress" confirmLabel="OK" onConfirm={vi.fn()} onClose={onClose}>
@@ -204,7 +204,7 @@ describe("ConfirmDialog", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("mostra o errorLabel de quem chamou no lugar da frase genérica", async () => {
+  it("shows the caller's errorLabel in place of the generic sentence", async () => {
     openDialog(vi.fn().mockRejectedValue(new Error("network")), "Could not delete it.");
     vi.advanceTimersByTime(CONFIRM_GUARD_MS);
     fireEvent.click(screen.getByRole("button", { name: "Yes, delete" }));

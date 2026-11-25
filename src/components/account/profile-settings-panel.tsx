@@ -76,13 +76,13 @@ export function ProfileSettingsPanel() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  // "Try again" da leitura do perfil: a mesma leitura do efeito, de novo.
+  // "Try again" for the profile read: the same read from the effect, again.
   const [loadAttempt, setLoadAttempt] = useState(0);
-  // A leitura falhou: o formulário NÃO aparece (os campos estariam vazios, e
-  // salvar gravaria bio, telefone e metas vazios por cima do perfil guardado).
-  // Separado do `error`, que outro aviso (validar, foto) podia sobrescrever.
+  // The read failed: the form does NOT appear (the fields would be empty, and
+  // saving would write empty bio, phone and goals over the stored profile).
+  // Separate from `error`, which another notice (validate, photo) could overwrite.
   const [loadFailed, setLoadFailed] = useState(false);
-  // A seção fica na tela nos dois desfechos e recebe o foco do "Try again".
+  // The section stays on screen in both outcomes and receives the focus from "Try again".
   const sectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -133,8 +133,8 @@ export function ProfileSettingsPanel() {
     };
   }, [user, loadAttempt]);
 
-  // Volta à espera de sempre (o esqueleto) até a leitura nova responder. Limpa
-  // também o erro de antes da falha (foto, salvar): ele voltaria com o formulário.
+  // Goes back to the usual wait (the skeleton) until the new read responds. Also clears
+  // the error from before the failure (photo, save): it would come back with the form.
   function retryLoad() {
     setError("");
     setLoadFailed(false);
@@ -150,9 +150,9 @@ export function ProfileSettingsPanel() {
     return [timezone, ...timezoneOptions];
   }, [timezone]);
 
-  // Qualquer edição depois de salvar tira o "Profile updated.": a frase só vale
-  // para o que foi gravado. Campos de texto chegam pelo onChange do form; os
-  // botões (objetivos, credenciais) chamam aqui.
+  // Any edit after saving removes "Profile updated.": the sentence only holds
+  // for what was saved. Text fields arrive through the form's onChange; the
+  // buttons (goals, credentials) call here.
   const clearSuccess = () => setSuccess("");
 
   function toggleGoal(goal: UserGoal) {
@@ -302,10 +302,10 @@ export function ProfileSettingsPanel() {
   );
 
   if (isLoading) {
-    // F-03: título e descrição já são conhecidos e entram de vez; só o
-    // formulário espera, em blocos do tamanho da foto e dos primeiros campos
-    // (regra do BuilderSkeleton). Antes era um cartão com uma linha e o
-    // formulário inteiro caía depois, empurrando tudo.
+    // F-03: title and description are already known and show up at once; only the
+    // form waits, in blocks the size of the photo and the first fields
+    // (BuilderSkeleton rule). Before it was a card with one line and the
+    // whole form dropped in afterwards, pushing everything.
     const block = "bg-[var(--color-surface-strong)]";
     return (
       <section ref={sectionRef} tabIndex={-1} className="settings-section-card outline-none">
@@ -334,7 +334,7 @@ export function ProfileSettingsPanel() {
   }
 
   if (loadFailed) {
-    // Só o título e o aviso com "Try again": nada editável sobre dados que não vieram.
+    // Only the title and the notice with "Try again": nothing editable over data that did not arrive.
     return (
       <section ref={sectionRef} tabIndex={-1} className="settings-section-card outline-none">
         {header}
@@ -369,9 +369,9 @@ export function ProfileSettingsPanel() {
               }`}
             >
               <UploadCloud size={16} aria-hidden />
-              {/* F-20: o rótulo não troca durante o envio; quem diz o
-                  andamento é só a nota logo abaixo (antes "Uploading..." aqui
-                  e "Uploading 37%" ali, ao mesmo tempo). */}
+              {/* F-20: the label does not change during the upload; what says the
+                  progress is only the note right below (before, "Uploading..." here
+                  and "Uploading 37%" there, at the same time). */}
               {photoURL
                 ? t("accountProfile.photo.replace")
                 : t("accountProfile.photo.upload")}
@@ -584,8 +584,8 @@ export function ProfileSettingsPanel() {
           <InlineAlert tone="error">{formatValidationMessage(error, t)}</InlineAlert>
         ) : null}
 
-        {/* O "salvo" fica ao lado do botão: acima dele, nascia e empurrava o
-            botão recém-clicado para baixo. */}
+        {/* The "saved" stays next to the button: above it, it appeared and pushed the
+            just-clicked button down. */}
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="submit"

@@ -110,12 +110,12 @@ export function CourseReviewsSection({
 }
 
 /**
- * O perfil publico do professor, uma assinatura so por pagina.
+ * The teacher's public profile, one subscription per page.
  *
- * A pagina de venda usa o mesmo perfil em dois lugares (a assinatura embaixo do
- * titulo e o cartao do instrutor), e cada `subscribeToPublicProfile` abre um
- * canal realtime com o mesmo nome — dois deles brigariam pelo mesmo canal. Por
- * isso quem assina e a pagina, e o cartao recebe o perfil pronto.
+ * The sales page uses the same profile in two places (the signature under the
+ * title and the instructor card), and each `subscribeToPublicProfile` opens a
+ * realtime channel with the same name — two of them would fight over the same channel. So
+ * the page is the one that subscribes, and the card receives the finished profile.
  */
 export function useInstructorProfile(teacherId: string): PublicProfile | null {
   const [profile, setProfile] = useState<PublicProfile | null>(null);
@@ -163,7 +163,7 @@ export function CourseInstructorCard({
             {profile.verification ? <VerifiedBadge compact verification={profile.verification} /> : null}
           </div>
           {profile.credentials.length > 0 ? (
-            // A marca fica fora do truncate: credencial longa não a esconde.
+            // The mark stays outside the truncate: a long credential does not hide it.
             <p className="flex min-w-0 items-baseline text-xs text-[var(--color-ink-soft)]">
               <span className="truncate">{profile.credentials[0]}</span>
               {profile.verification ? null : <SelfReportedTag />}
@@ -182,7 +182,7 @@ export function CourseInstructorCard({
       ) : null}
       <Link
         href={`/instructors/${encodeURIComponent(teacherId)}`}
-        // No toque o link tem 44px de altura (era 16px, na pagina de venda).
+        // On touch the link is 44px tall (it was 16px, on the sales page).
         className="mt-3 inline-flex items-center text-xs font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline pointer-coarse:mt-0 pointer-coarse:min-h-11"
       >{t("publicCourses.fullProfile")}</Link>
     </div>

@@ -10,9 +10,9 @@ type Step = {
   Icon: LucideIcon;
 };
 
-// Server component: só texto traduzido, nenhum estado. Sai do bundle do
-// navegador; o que precisa do cliente aqui é o RevealSection, que continua
-// cliente e é montado como filho.
+// Server component: only translated text, no state. It stays out of the
+// browser bundle; what needs the client here is RevealSection, which remains a
+// client component and is mounted as a child.
 export async function HowItWorksStrip() {
   const { t } = await getServerTranslation();
 
@@ -39,10 +39,10 @@ export async function HowItWorksStrip() {
 
   return (
     <section className="home-how__panel mx-auto w-full max-w-7xl px-5 py-16 sm:px-8 sm:py-20 lg:py-24">
-      {/* Título de seção maior, de 36px no celular a 52px, sempre abaixo do
-          título do topo (clamp(2.3rem, 4.6vw, 3.6rem)) em qualquer largura.
-          Mais largo (max-w-4xl) para ficar em duas linhas: o painel preso do
-          computador precisa caber abaixo da barra. */}
+      {/* Larger section title, from 36px on phones to 52px, always below the
+          top title (clamp(2.3rem, 4.6vw, 3.6rem)) at any width.
+          Wider (max-w-4xl) to stay on two lines: the pinned desktop
+          panel has to fit below the bar. */}
       <RevealSection className="home-heading max-w-4xl">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {t("home.how.kicker")}
@@ -74,12 +74,12 @@ export async function HowItWorksStrip() {
                 <h3 className="mt-5 text-lg font-bold text-[var(--color-primary)]">
                   {step.title}
                 </h3>
-                {/* Texto corrido em 17px (18px do md) e na cor de texto cheia,
-                    para leitura de quem tem 55+. Do lg para cima os passos
-                    viram três colunas estreitas dentro do painel preso, que
-                    precisa caber abaixo da barra em 1280x640 e 1024x720 (o
-                    passo 3 em espanhol é o mais longo): ali 16px com linha de
-                    24px ocupa a mesma altura dos 14px/28px de antes. */}
+                {/* Running text at 17px (18px from md) and in the full text color,
+                    for readers who are 55+. From lg up the steps
+                    become three narrow columns inside the pinned panel, which
+                    has to fit below the bar at 1280x640 and 1024x720 (step 3
+                    in Spanish is the longest): there 16px with a 24px line
+                    takes the same height as the 14px/28px from before. */}
                 <p className="mt-3 text-[1.0625rem] leading-[1.6] text-[var(--color-ink)] md:text-lg lg:text-base lg:leading-6">
                   {step.description}
                 </p>

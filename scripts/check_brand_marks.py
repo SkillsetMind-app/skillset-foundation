@@ -45,16 +45,16 @@ def main():
     for path, colour in MARKS.items():
         r = analyse(path, colour)
         results[path] = r
-        print(f"{path}: {r['size'][0]}x{r['size'][1]} | pretos={r['black']} | cinza={r['grey']} | opacos={r['opaque']} | fora da cor={r['off_colour']}")
+        print(f"{path}: {r['size'][0]}x{r['size'][1]} | black={r['black']} | grey={r['grey']} | opaque={r['opaque']} | off colour={r['off_colour']}")
         if r["size"] != (512, 512) or r["black"] or r["grey"] or r["off_colour"] > 20:
             ok = False
     a1 = results["public/brand/logo-mark-navy.png"]["alpha"]
     a2 = results["public/brand/logo-mark-white.png"]["alpha"]
     diff = sum(1 for p, q in zip(a1.getdata(), a2.getdata()) if abs(p - q) > 8)
-    print(f"geometria (alpha) diferente entre navy e white: {diff} pixels")
+    print(f"alpha geometry differs between navy and white: {diff} pixels")
     if diff:
         ok = False
-    print("OK" if ok else "FALHOU")
+    print("OK" if ok else "FAILED")
     sys.exit(0 if ok else 1)
 
 

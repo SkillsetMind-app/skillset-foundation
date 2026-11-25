@@ -3,17 +3,17 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
 /**
- * O pior buraco do inventário: 138 rótulos no projeto, e a ligação entre
- * campo, dica e mensagem de erro existe em DOIS lugares (2 aria-describedby,
- * 2 aria-invalid). Quem usa leitor de tela preenche o formulário, erra um
- * campo, e não recebe nem qual campo nem o porquê.
+ * The worst hole in the inventory: 138 labels in the project, and the link between
+ * field, hint and error message exists in TWO places (2 aria-describedby,
+ * 2 aria-invalid). Someone using a screen reader fills in the form, gets a
+ * field wrong, and learns neither which field nor why.
  *
- * Aqui isso não é opcional: o children recebe as props de acessibilidade
- * prontas para espalhar no controle, então o autor não precisa lembrar.
+ * Here that is not optional: children receives the accessibility props
+ * ready to spread on the control, so the author does not have to remember.
  *
- * O `id` vem de fora em vez de useId() de propósito — useId é hook, hook
- * obriga "use client", e a maioria dos chamadores já tem um id por causa do
- * htmlFor. Componente de servidor sai mais barato que a conveniência.
+ * The `id` comes from outside instead of useId() on purpose — useId is a hook, a hook
+ * forces "use client", and most callers already have an id because of
+ * htmlFor. A server component is cheaper than the convenience.
  */
 export type FieldA11y = {
   id: string;
@@ -43,8 +43,8 @@ export function Field({
 }: FieldProps) {
   const hintId = hint ? `${id}-hint` : undefined;
   const errorId = error ? `${id}-error` : undefined;
-  // Os dois juntos e nessa ordem: o leitor de tela anuncia a dica antes do
-  // erro, que é a ordem em que a pessoa precisa deles.
+  // Both together and in this order: the screen reader announces the hint before the
+  // error, which is the order in which the person needs them.
   const describedBy = [hintId, errorId].filter(Boolean).join(" ") || undefined;
 
   return (
@@ -72,8 +72,8 @@ export function Field({
       })}
 
       {error ? (
-        // role="alert" porque o erro aparece DEPOIS do envio: sem ele, a
-        // mensagem entra na página em silêncio.
+        // role="alert" because the error appears AFTER submit: without it, the
+        // message enters the page silently.
         <p
           id={errorId}
           role="alert"

@@ -4,19 +4,19 @@ import { cn } from "@/lib/cn";
 
 export type BusyLabelProps = {
   busy: boolean;
-  /** O rótulo de repouso ("Save"). */
+  /** The resting label ("Save"). */
   idle: ReactNode;
-  /** O rótulo da espera ("Saving..."). Continua escrito: quem espera lê o que está acontecendo. */
+  /** The waiting label ("Saving..."). It stays written out: whoever waits reads what is happening. */
   busyText: ReactNode;
   className?: string;
 };
 
 /**
- * Rótulo de botão que espera sem mudar de largura. Os dois textos moram na
- * mesma célula da grade (o truque dos passos do tour de boas-vindas), então a
- * célula tem sempre a largura do maior e o botão não encolhe nem cresce ao
- * salvar, o que fazia os vizinhos pularem. O que não vale agora fica invisível
- * e fora da árvore de acessibilidade: o nome do botão é sempre o texto à vista.
+ * Button label that waits without changing width. Both texts live in the
+ * same grid cell (the trick from the welcome tour steps), so the
+ * cell always has the width of the larger one and the button neither shrinks nor grows
+ * on save, which used to make the neighbors jump. Whichever text does not apply now is invisible
+ * and outside the accessibility tree: the button's name is always the visible text.
  */
 export function BusyLabel({ busy, idle, busyText, className }: BusyLabelProps) {
   return (

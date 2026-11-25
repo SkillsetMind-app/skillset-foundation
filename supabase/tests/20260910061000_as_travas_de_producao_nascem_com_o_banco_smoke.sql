@@ -11,7 +11,7 @@
 -- the 13 guards on public tables inside this transaction and requires an exact RED.
 begin;
 \if :{?without_production_guards}
-\ir fixtures/20260910061000_sem_as_travas.sql
+\ir fixtures/20260910061000_without_the_locks.sql
 \endif
 
 create temp table guard_checks (name text, passed boolean);

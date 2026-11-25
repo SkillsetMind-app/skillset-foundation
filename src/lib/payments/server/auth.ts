@@ -166,7 +166,7 @@ export function paymentErrorResponse(error: unknown): NextResponse {
       notifyOps({
         event: "payments.configuration.unavailable",
         severity: "critical",
-        summary: "O pagamento esta habilitado, mas falta uma configuracao necessaria. Compras podem estar bloqueadas. Revise a configuracao e publique novamente.",
+        summary: "Payments are enabled, but a required setting is missing. Purchases may be blocked. Review the configuration and deploy again.",
         context: { status: 503 },
       });
     }
@@ -180,7 +180,7 @@ export function paymentErrorResponse(error: unknown): NextResponse {
       notifyOps({
         event: "payments.dashboard.unavailable",
         severity: "warn",
-        summary: "Um professor nao conseguiu abrir o painel da Stripe. Verifique a disponibilidade da integracao e a conta de recebimento.",
+        summary: "A teacher could not open the Stripe dashboard. Check that the integration is available and check the payout account.",
         context: { status: 502 },
       });
     }
@@ -193,7 +193,7 @@ export function paymentErrorResponse(error: unknown): NextResponse {
   notifyOps({
     event: "payments.request.failed",
     severity: "critical",
-    summary: "Uma operacao de pagamento falhou inesperadamente. O cliente pode nao ter conseguido concluir. Verifique as falhas de pagamento antes de pedir nova tentativa.",
+    summary: "A payment operation failed unexpectedly. The customer may not have been able to finish. Check the payment failures before asking them to try again.",
     context: { status: 500 },
   });
   return NextResponse.json(

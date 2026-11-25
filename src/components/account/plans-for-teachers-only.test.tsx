@@ -3,8 +3,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { PlansForTeachersOnly } from "@/components/account/plans-for-teachers-only";
 
-// "Plans & fees" saiu do menu do aluno, mas /account/plans continuava aberto
-// pelo endereco. Os planos sao o que o professor paga para vender.
+// "Plans & fees" left the learner's menu, but /account/plans stayed open
+// by address. Plans are what the teacher pays to sell.
 
 const mocks = vi.hoisted(() => ({
   roles: ["student"] as string[],
@@ -22,7 +22,7 @@ afterEach(() => {
 });
 
 describe("/account/plans", () => {
-  it("o aluno vai para My purchases, sem ver os planos", () => {
+  it("the learner goes to My purchases, without seeing the plans", () => {
     mocks.roles = ["student"];
     render(<PlansForTeachersOnly><p>Plans</p></PlansForTeachersOnly>);
 
@@ -30,7 +30,7 @@ describe("/account/plans", () => {
     expect(mocks.replace).toHaveBeenCalledWith("/account/billing");
   });
 
-  it("o professor continua vendo os planos", () => {
+  it("the teacher still sees the plans", () => {
     mocks.roles = ["teacher"];
     render(<PlansForTeachersOnly><p>Plans</p></PlansForTeachersOnly>);
 

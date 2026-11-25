@@ -4,11 +4,11 @@ import { cn } from "@/lib/cn";
 import { Eyebrow } from "@/components/ui/eyebrow";
 
 /**
- * Desvio consciente da especificação: ela propunha título em "text-lg
- * font-semibold" (8 usos no código). A forma que o app realmente repete é
- * eyebrow + "display-title mt-3 text-3xl" + descrição — 36 usos em 26
- * arquivos, incluindo os dois arquivos migrados nesta onda. O primitivo
- * segue o que existe, não o que a especificação imaginou.
+ * A conscious deviation from the specification: it proposed a title in "text-lg
+ * font-semibold" (8 uses in the code). The form the app really repeats is
+ * eyebrow + "display-title mt-3 text-3xl" + description — 36 uses in 26
+ * files, including the two files migrated in this wave. The primitive
+ * follows what exists, not what the specification imagined.
  */
 export type SectionHeaderProps = {
   eyebrow?: string;
@@ -18,9 +18,9 @@ export type SectionHeaderProps = {
   actions?: ReactNode;
   className?: string;
   /**
-   * "card": titulo de cartao dentro de uma pagina que ja tem a manchete em
-   * serifa. Sem isto a Vitrine tinha tres manchetes (48, 30 e 30px) sob o
-   * mesmo rotulo. O padrao continua "display" para os outros usos.
+   * "card": card title inside a page that already has the headline in
+   * serif. Without this the Storefront had three headlines (48, 30 and 30px) under the
+   * same label. The default stays "display" for the other uses.
    */
   size?: "display" | "card";
 };

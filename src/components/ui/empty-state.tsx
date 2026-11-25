@@ -4,12 +4,12 @@ import { cn } from "@/lib/cn";
 import { Eyebrow } from "@/components/ui/eyebrow";
 
 /**
- * 25 caixas tracejadas no projeto, com ~10 combinações de raio, cor de borda e
- * fundo. Uma forma só aqui, a mais frequente (7 das 25): raio xl, borda
- * tracejada em line-strong sobre surface-soft.
+ * 25 dashed boxes in the project, with ~10 combinations of radius, border color and
+ * background. A single form here, the most frequent one (7 of the 25): xl radius, dashed
+ * border in line-strong over surface-soft.
  *
- * O título é o sans do estúdio, não a serifa de 30px do SectionHeader: um
- * estado vazio é uma frase de orientação, não a manchete da tela.
+ * The title is the studio sans, not the 30px serif of SectionHeader: an
+ * empty state is a sentence of guidance, not the headline of the screen.
  */
 export type EmptyStateProps = {
   eyebrow?: string;
@@ -17,7 +17,7 @@ export type EmptyStateProps = {
   description?: string;
   as?: "h2" | "h3" | "h4";
   action?: ReactNode;
-  /** Cena de ui/spot-art.tsx. Entra subindo 6px (catálogo de movimento, item 10). */
+  /** Scene from ui/spot-art.tsx. It enters rising 6px (motion catalog, item 10). */
   art?: ReactNode;
   className?: string;
 };

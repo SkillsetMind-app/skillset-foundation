@@ -10,7 +10,7 @@ vi.mock("@/components/i18n/i18n-provider", () => ({
   useTranslation: () => ({ locale: "en", t: (key: string) => translate(getDictionary("en"), key) }),
 }));
 vi.mock("@/lib/payments/checkout", () => ({ startGuestCourseCheckout: vi.fn() }));
-// A verificação contra robô devolve o token na hora, como um desafio aprovado.
+// The bot check returns the token right away, like a passed challenge.
 vi.mock("@/components/auth/turnstile-widget", async () => {
   const { useEffect } = await import("react");
   return {
@@ -54,17 +54,17 @@ function fillAndSubmit() {
   fireEvent.submit(nameField().closest("form") as HTMLFormElement);
 }
 
-// UE, EEE e Reino Unido: a caixa do acesso imediato aparece desmarcada e a
-// compra só segue com ela marcada.
-describe("GuestCheckoutForm: acesso imediato (UE, EEE e Reino Unido)", () => {
+// EU, EEA and United Kingdom: the immediate-access box appears unticked and the
+// purchase only continues with it ticked.
+describe("GuestCheckoutForm: immediate access (EU, EEA and United Kingdom)", () => {
   const consentLabel = "I want access now and I understand I lose my 14-day withdrawal right once access starts.";
 
-  it("sem a exigência, a caixa não existe", () => {
+  it("without the requirement, the box does not exist", () => {
     renderForm();
     expect(screen.queryByRole("checkbox", { name: consentLabel })).not.toBeInTheDocument();
   });
 
-  it("com a exigência, a caixa vem desmarcada e segura a compra até ser marcada", async () => {
+  it("with the requirement, the box starts unticked and holds the purchase until it is ticked", async () => {
     vi.mocked(startGuestCourseCheckout).mockResolvedValue("redirected");
     renderForm({ withdrawalConsentRequired: true });
 
@@ -88,8 +88,8 @@ describe("GuestCheckoutForm: acesso imediato (UE, EEE e Reino Unido)", () => {
   });
 });
 
-describe("GuestCheckoutForm: os campos da casa", () => {
-  it("nome e e-mail usam o campo da casa, com rótulo em frase e os mesmos atributos de antes", () => {
+describe("GuestCheckoutForm: the house fields", () => {
+  it("name and email use the house field, with a sentence-case label and the same attributes as before", () => {
     const { container } = renderForm();
 
     const name = nameField();
@@ -110,8 +110,8 @@ describe("GuestCheckoutForm: os campos da casa", () => {
     expect(email).toBeRequired();
     expect(email).not.toHaveAttribute("name");
 
-    // Rótulo em frase (não mais a sobrelinha de 12px em caixa alta), ligado
-    // pelo for/id; o "*" de obrigatório é só visual.
+    // A sentence-case label (no longer the 12px uppercase eyebrow), linked
+    // by for/id; the required "*" is only visual.
     for (const [field, text] of [[name, "Full name"], [email, "Email"]] as const) {
       const label = container.querySelector(`label[for="${field.id}"]`) as HTMLElement;
       expect(label.firstChild?.textContent).toBe(text);
@@ -121,17 +121,17 @@ describe("GuestCheckoutForm: os campos da casa", () => {
       expect(field).not.toHaveAttribute("aria-describedby");
     }
 
-    // A caixa de aceite e a frase dela seguem como eram.
+    // The consent box and its sentence stay as they were.
     const consent = screen.getByRole("checkbox");
     expect(consent).toBeRequired();
     expect(consent).not.toHaveClass("field-input");
     expect(screen.getByRole("link", { name: "Terms of service" })).toHaveAttribute("href", "/legal/terms");
     expect(screen.getByRole("link", { name: "Privacy policy" })).toHaveAttribute("href", "/legal/privacy");
-    // A mesma caixa confirma a maioridade (Termos §1): sem frase nova nem caixa a mais.
+    // The same box confirms adulthood (Terms §1): no new sentence and no extra box.
     expect(consent).toHaveAccessibleName(/^I am 18 or older and I agree to the SkillsetMind Terms of service and Privacy policy\.$/);
   });
 
-  it("um formulário válido manda exatamente o mesmo pedido de antes", async () => {
+  it("a valid form sends exactly the same request as before", async () => {
     vi.mocked(startGuestCourseCheckout).mockResolvedValue("redirected");
     renderForm();
 
@@ -149,7 +149,7 @@ describe("GuestCheckoutForm: os campos da casa", () => {
     });
   });
 
-  it("nome ou e-mail recusados: a frase fica no par de campos e os dois apontam para ela", async () => {
+  it("a rejected name or email: the sentence stays on the pair of fields and both point to it", async () => {
     vi.mocked(startGuestCourseCheckout).mockRejectedValue(new PaymentRequestError("x", 400, "invalid_request"));
     const { container } = renderForm();
 
@@ -163,7 +163,7 @@ describe("GuestCheckoutForm: os campos da casa", () => {
     expect(nameField()).toHaveAttribute("aria-describedby", message.id);
     expect(emailField()).toHaveAccessibleDescription(invalidMessage);
     expect(nameField()).toHaveAccessibleDescription(invalidMessage);
-    // Logo embaixo do e-mail, antes do botão; e não mais repetida no fim.
+    // Right under the email, before the button; and no longer repeated at the end.
     expect(emailField().nextElementSibling).toBe(message);
     const submit = screen.getByRole("button", { name: "Enroll — $49.00" });
     expect(message.compareDocumentPosition(submit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -171,7 +171,7 @@ describe("GuestCheckoutForm: os campos da casa", () => {
     expect(container.querySelectorAll('[role="alert"]')).toHaveLength(1);
   });
 
-  it("os outros erros seguem no aviso do fim, sem marcar os campos", async () => {
+  it("other errors stay in the notice at the end, without marking the fields", async () => {
     vi.mocked(startGuestCourseCheckout).mockRejectedValue(new PaymentRequestError("x", 502, "send_failed"));
     renderForm();
 
@@ -186,7 +186,7 @@ describe("GuestCheckoutForm: os campos da casa", () => {
     expect(submit.compareDocumentPosition(alert) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("sem o aceite, o aviso segue no fim e nada é enviado", async () => {
+  it("without the consent, the notice stays at the end and nothing is sent", async () => {
     renderForm();
 
     fireEvent.change(nameField(), { target: { value: "Ana" } });
@@ -198,7 +198,7 @@ describe("GuestCheckoutForm: os campos da casa", () => {
     expect(startGuestCourseCheckout).not.toHaveBeenCalled();
   });
 
-  it("o botão de pagar diz o mesmo de antes, em repouso e esperando", async () => {
+  it("the pay button says the same as before, at rest and while waiting", async () => {
     vi.mocked(startGuestCourseCheckout).mockReturnValue(new Promise<never>(() => {}));
     renderForm();
 

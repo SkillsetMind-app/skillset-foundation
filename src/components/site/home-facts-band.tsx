@@ -2,18 +2,18 @@ import { PLAN_TRIAL_DAYS } from "@/data/plans";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { supportedStripeCurrencies } from "@/lib/payments/currencies";
 
-// Faixa de fatos logo abaixo do topo, no lugar dos números de receita, alunos
-// e países que a concorrência mostra. Só entra o que já é verdade e já está
-// escrito no site: as 30 moedas do checkout, os 24 meses da Promessa 01, os
-// seis compromissos dela e o 14-day free trial. Nada aqui fala de ganho. A
-// Promessa 01 trava a comissão e a tarifa por venda, não o preço do plano: a
-// legenda diz exatamente isso, para não parecer falsa no dia em que os planos
-// mudarem de preço. Onde o número mora no código (moedas, dias do teste) ele
-// vem de lá, para a faixa não descolar do produto. A legenda do teste começa
-// em minúscula, porque continua o número: "14" + "day free trial, card
-// required" se lê "14-day free trial". Os números são estáticos: o movimento (aparecer e subir 12px,
-// um depois do outro) existe só no globals.css, atrás das mesmas travas da
-// coreografia da home, e fora delas a faixa fica parada e inteira.
+// Facts band right below the top, in place of the revenue, learner
+// and country numbers that the competition shows. Only what is already true and already
+// written on the site goes in: the 30 checkout currencies, the 24 months of Promise 01, its
+// six commitments and the 14-day free trial. Nothing here talks about earnings. Promise
+// 01 locks the commission and the per-sale fee, not the plan price: the
+// caption says exactly that, so it does not look false on the day the plans
+// change price. Where a number lives in the code (currencies, trial days) it
+// comes from there, so the band does not drift away from the product. The trial caption starts
+// in lowercase, because it continues the number: "14" + "day free trial, card
+// required" reads as "14-day free trial". The numbers are static: the motion (fade in and rise 12px,
+// one after the other) lives only in globals.css, behind the same guards as the
+// home choreography, and outside them the band stays still and whole.
 export async function HomeFactsBand() {
   const { t } = await getServerTranslation();
   const facts: ReadonlyArray<{ figure: string; label: string }> = [
@@ -31,12 +31,12 @@ export async function HomeFactsBand() {
       <h2 id="home-facts-title" className="sr-only">
         {t("home.facts.title")}
       </h2>
-      {/* 2x2 no celular, 4 colunas do lg. O número fica sempre abaixo do
-          título do topo (clamp(2.3rem, 4.6vw, 3.6rem)) em qualquer largura;
-          a legenda é texto corrido: 17/18px na cor cheia. A caixa é a mesma
-          do topo e do "How it works" (max-w-7xl com o recuo DENTRO dela):
-          com o recuo na faixa, a 1440px a faixa começava 32px à esquerda
-          das outras seções. O fundo continua de ponta a ponta. */}
+      {/* 2x2 on phones, 4 columns from lg. The number always stays below the
+          top title (clamp(2.3rem, 4.6vw, 3.6rem)) at any width;
+          the caption is running text: 17/18px in full color. The box is the same
+          as the top's and the "How it works" (max-w-7xl with the padding INSIDE it):
+          with the padding on the band, at 1440px the band started 32px to the left
+          of the other sections. The background still runs edge to edge. */}
       <dl className="mx-auto grid w-full max-w-7xl grid-cols-2 gap-x-6 gap-y-10 px-5 sm:px-8 lg:grid-cols-4 lg:gap-x-10">
         {facts.map((fact) => (
           <div key={fact.label} className="home-facts__item">

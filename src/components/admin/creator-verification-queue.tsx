@@ -67,7 +67,7 @@ export function CreatorVerificationQueue({ query = "" }: { query?: string }) {
   const [success, setSuccess] = useState<ReviewDecision | null>(null);
   const [invalidNoteCaseId, setInvalidNoteCaseId] = useState<string | null>(null);
   const [activeCaseId, setActiveCaseId] = useState<string | null>(null);
-  // Qual decisão foi apertada: só ela gira, as outras só travam (I-08).
+  // Which decision was pressed: only it spins, the others only lock (I-08).
   const [activeDecision, setActiveDecision] = useState<ReviewDecision | null>(null);
   const [confirmingRejectId, setConfirmingRejectId] = useState<string | null>(null);
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
@@ -98,7 +98,7 @@ export function CreatorVerificationQueue({ query = "" }: { query?: string }) {
     );
   }, []);
 
-  // Sem data, uma frase inteira: "Submitted Pending timestamp" não se lia.
+  // Without a date, a whole sentence: "Submitted Pending timestamp" did not read well.
   function submittedLine(iso: string) {
     const date = formatSubmittedAt(iso, locale);
     return date ? t(`${copy}.submitted`).replace("{date}", () => date) : t(`${copy}.submittedUnknown`);
@@ -115,7 +115,7 @@ export function CreatorVerificationQueue({ query = "" }: { query?: string }) {
     }
 
     setInvalidNoteCaseId(null);
-    // Recusar é definitivo: pergunta antes, depois de a nota já estar válida.
+    // Rejecting is final: asks first, after the note is already valid.
     if (decision === "rejected" && !confirmed) {
       setConfirmingRejectId(caseId);
       return;
@@ -166,12 +166,12 @@ export function CreatorVerificationQueue({ query = "" }: { query?: string }) {
       </div>
 
       {loadError ? <InlineAlert tone="error" className="mt-5">{t(`${copy}.loadError`)}</InlineAlert> : null}
-      {/* Lugar guardado para o resultado da decisão, do tamanho do aviso: ele
-          aparece sem empurrar a lista para baixo do ponteiro (I-17), pelo
-          mesmo motivo dos botões em lugar fixo das outras filas (#586). A frase
-          mais longa (~56 caracteres) dá três linhas até ~370px (reservadas até
-          400px, com folga), duas até 640px e uma acima; cada linha do aviso
-          tem 24px, mais 26px de moldura. */}
+      {/* Reserved place for the decision result, the size of the notice: it
+          appears without pushing the list below the pointer (I-17), for the
+          same reason as the fixed-place buttons of the other queues (#586). The
+          longest sentence (~56 characters) takes three lines up to ~370px (reserved up to
+          400px, with room to spare), two up to 640px and one above; each line of the notice
+          is 24px, plus 26px of frame. */}
       <div data-result-slot="" className="mt-5 min-h-[98px] min-[400px]:min-h-[74px] sm:min-h-[50px]">
         {reviewError ? <InlineAlert tone="error">{t(`${copy}.reviewError`)}</InlineAlert>
           : success ? <InlineAlert tone="success">{t(`${copy}.success.${success}`)}</InlineAlert> : null}
@@ -208,15 +208,15 @@ export function CreatorVerificationQueue({ query = "" }: { query?: string }) {
                     </p>
                   ) : null}
                 </div>
-                {/* Data em texto simples: a pílula em caixa alta, no lugar onde as
-                    outras filas põem o status, era lida como status (I-17). */}
+                {/* Date as plain text: the uppercase pill, in the place where the
+                    other queues put the status, was read as status (I-17). */}
                 <p className="text-xs tabular-nums text-[var(--color-ink-soft)]">
                   {submittedLine(verificationCase.createdAt)}
                 </p>
               </div>
 
               <div className="mt-4 grid min-w-0 gap-2 rounded-lg border fine-rule bg-white p-4">
-                {/* Só as partes preenchidas: sem região a linha acabava em "()" (I-17). */}
+                {/* Only the filled parts: with no region the line ended in "()" (I-17). */}
                 {verificationCase.registrationId ? <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
                   {[verificationCase.registrationType, verificationCase.registrationId, verificationCase.registrationRegion]
                     .filter(Boolean).join(" · ")}
@@ -271,7 +271,7 @@ export function CreatorVerificationQueue({ query = "" }: { query?: string }) {
               <div className="mt-4 flex flex-wrap gap-2">
                 {decisions.map(
                   (decision) => (
-                    // Recusar em vermelho: era o mesmo contorno de "Request changes" (I-04).
+                    // Reject in red: it was the same outline as "Request changes" (I-04).
                     <Button
                       key={decision}
                       variant={decision === "approved" ? "solid" : decision === "rejected" ? "danger" : "outline"}

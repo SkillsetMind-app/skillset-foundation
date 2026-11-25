@@ -6,14 +6,14 @@ type CardTone = "surface" | "soft" | "strong";
 type CardPadding = "none" | "sm" | "md" | "lg";
 
 /**
- * Emite utilitários que apontam para as variáveis de design em vez de usar a
- * classe global .surface-card: ela está definida DUAS vezes (globals.css:558 e
- * :671) e a segunda vence, trocando o fundo por rgba(255,255,255,0.92) mais um
- * backdrop-filter que ninguém pediu, e perdendo o raio.
+ * Emits utilities that point to the design variables instead of using the
+ * global class .surface-card: it is defined TWICE (globals.css:558 and
+ * :671) and the second wins, swapping the background for rgba(255,255,255,0.92) plus a
+ * backdrop-filter that nobody asked for, and losing the radius.
  *
- * Usar bg-[var(--color-surface)] em vez de bg-white também tira o cartão da
- * regra global do tema escuro ([data-theme="dark"] .bg-white, com !important),
- * que hoje atropela até a exceção .keep-white do certificado.
+ * Using bg-[var(--color-surface)] instead of bg-white also takes the card out of the
+ * global dark theme rule ([data-theme="dark"] .bg-white, with !important),
+ * which today even tramples the certificate's .keep-white exception.
  */
 const toneClass: Record<CardTone, string> = {
   surface: "bg-[var(--color-surface)]",
@@ -34,10 +34,10 @@ export type CardProps = {
   padding?: CardPadding;
   interactive?: boolean;
   /**
-   * Cartão solto na página levanta da superfície; cartão dentro de uma lista,
-   * não — 121 sombras contra 432 bordas montadas à mão, e a maioria das que
-   * ficam dentro de outra caixa não tem sombra nenhuma. Sem esta saída o
-   * primitivo não serve para linha de lista, que é onde ele mais aparece.
+   * A card standing alone on the page lifts off the surface; a card inside a list
+   * does not — 121 shadows against 432 hand-built borders, and most of the ones that
+   * sit inside another box have no shadow at all. Without this escape hatch the
+   * primitive does not suit a list row, which is where it appears most.
    */
   shadow?: boolean;
   className?: string;

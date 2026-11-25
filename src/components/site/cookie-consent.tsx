@@ -50,10 +50,10 @@ export function CookieConsent() {
           </Link>
           .
         </p>
-        {/* So duas escolhas, com o mesmo peso. "Manage preferences" era um
-            link vestido de botao para a politica de privacidade, o mesmo
-            destino do link do texto: nao gerenciava nada e, no celular,
-            ocupava uma linha inteira do aviso. */}
+        {/* Only two choices, with the same weight. "Manage preferences" was a
+            link dressed as a button to the privacy policy, the same
+            destination as the link in the text: it did not manage anything and, on the phone,
+            took up a whole line of the notice. */}
         <div className="cookie-consent__actions">
           <button
             type="button"

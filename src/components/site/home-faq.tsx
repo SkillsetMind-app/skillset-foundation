@@ -4,22 +4,22 @@ import { ArrowRight, ChevronDown } from "lucide-react";
 import { RevealSection } from "@/components/shared/reveal-section";
 import { getServerTranslation } from "@/lib/i18n/server";
 
-// As perguntas que um coach de 55+ faz antes de se cadastrar, só as que a
-// central de ajuda já responde: [categoria do /help, posição nela]. Pergunta
-// e resposta são as mesmas chaves do /help (publicPages.helpFaq), sem reescrever
-// nada, e cada resposta termina com o link para a categoria dela no /help.
-// Ficou de fora "preciso saber mexer com tecnologia?": a central não responde.
+// The questions a 55+ coach asks before signing up, only the ones the
+// help center already answers: [category of /help, position in it]. Question
+// and answer are the same keys as /help (publicPages.helpFaq), without rewriting
+// anything, and each answer ends with the link to its category on /help.
+// Left out: "do I need to know technology?": the help center does not answer it.
 const QUESTIONS = [
-  ["plans", 0], // Qual plano: preço, comissão e o 14-day free trial.
-  ["payouts", 0], // O comprador paga direto ao professor, e quando o dinheiro cai.
-  ["plans", 2], // Cancelar, inclusive durante o teste, sem cobrança.
-  ["refunds", 0], // Reembolso.
-  ["course-creation", 0], // O próprio professor sobe o curso.
-  ["integrations", 0], // Vídeo e arquivos hospedados na plataforma, nada a configurar.
+  ["plans", 0], // Which plan: price, commission and the 14-day free trial.
+  ["payouts", 0], // The buyer pays the teacher directly, and when the money arrives.
+  ["plans", 2], // Cancel, including during the trial, with no charge.
+  ["refunds", 0], // Refund.
+  ["course-creation", 0], // The teacher uploads the course themselves.
+  ["integrations", 0], // Video and files hosted on the platform, nothing to configure.
 ] as const;
 
-// <details>/<summary> nativo: abre e fecha pelo teclado, sem JavaScript. A
-// seta gira ao abrir; com movimento reduzido ela troca de posição sem andar.
+// Native <details>/<summary>: opens and closes by keyboard, without JavaScript. The
+// arrow rotates on open; with reduced motion it changes position without moving.
 export async function HomeFaq() {
   const { t } = await getServerTranslation();
 
@@ -42,8 +42,8 @@ export async function HomeFaq() {
               key={key}
               className="group rounded-lg border fine-rule bg-white shadow-[var(--shadow-soft)] [&_summary::-webkit-details-marker]:hidden"
             >
-              {/* Pergunta em 18px e alvo de toque de 56px (público de 55+); o
-                  anel de foco é o global do <summary>. */}
+              {/* Question at 18px and a 56px touch target (55+ audience); the
+                  focus ring is the global one for <summary>. */}
               <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 rounded-lg px-5 py-4 text-lg font-semibold leading-snug text-[var(--color-ink)]">
                 <span id={questionId}>{t(`${key}.q`)}</span>
                 <ChevronDown
@@ -57,8 +57,8 @@ export async function HomeFaq() {
                 <p className="text-[1.0625rem] leading-[1.6] text-[var(--color-ink)] md:text-lg">
                   {t(`${key}.a`)}
                 </p>
-                {/* O mesmo texto nos seis links: a pergunta entra como
-                    descrição, para a lista de links do leitor de tela. */}
+                {/* The same text on all six links: the question is used as the
+                    description, for the screen reader's list of links. */}
                 <Link
                   href={`/help#${category}`}
                   aria-describedby={questionId}

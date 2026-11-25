@@ -5,11 +5,11 @@ import { parseSidebarPref, SIDEBAR_COOKIE } from "@/lib/ui/sidebar-cookie";
 import { SidebarPreferenceProvider } from "@/lib/ui/sidebar-preference";
 
 /**
- * Layout das áreas com a barra lateral (/learn, /teach, /account, /ops,
- * /support): lê o cookie da barra no servidor, e o primeiro HTML já sai aberto
- * ou recolhido como a pessoa deixou (sem piscar). Fica aqui, e não no layout
- * raiz, para a home, as páginas de venda e o marketplace não levarem nenhum
- * código da barra. Sem cookie, o CSS decide pela largura da tela.
+ * Layout of the areas with the sidebar (/learn, /teach, /account, /ops,
+ * /support): reads the bar's cookie on the server, and the first HTML already comes out open
+ * or collapsed as the person left it (no flicker). It lives here, and not in the root
+ * layout, so the home, the sales pages and the marketplace do not carry any
+ * of the bar's code. Without a cookie, the CSS decides by screen width.
  */
 export default async function SidebarPreferenceLayout({ children }: { children: ReactNode }) {
   const pref = parseSidebarPref((await cookies()).get(SIDEBAR_COOKIE)?.value);

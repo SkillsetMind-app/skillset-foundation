@@ -50,14 +50,14 @@ it("translates a loaded directory without fetching again or translating author d
   expect(listPublicProfiles).toHaveBeenCalledTimes(1);
 });
 
-// O diretório leva ao perfil pelo @ (o endereço canônico), não pelo uid.
+// The directory leads to the profile by the @ (the canonical address), not by the uid.
 it("links each directory card to the @handle address", async () => {
   show(<InstructorsDirectory />);
   expect(await screen.findByRole("link", { name: "Original Author" })).toHaveAttribute("href", "/@author");
 });
 
-// O cartão inteiro é o destino: um link só, no nome, esticado pelo
-// .marketplace-card__link; o "View profile" segue escrito, sem ser outro link.
+// The whole card is the destination: a single link, on the name, stretched by the
+// .marketplace-card__link; the "View profile" stays written, without being another link.
 it("makes the whole directory card one stretched link on the name", async () => {
   show(<InstructorsDirectory />);
   const link = await screen.findByRole("link", { name: "Original Author" });
@@ -80,9 +80,9 @@ it.each([
   expect(listPublicProfiles).toHaveBeenCalledTimes(1);
 });
 
-// O erro era um beco: "Try again" chama a mesma leitura, e o aviso só sai
-// quando ela volta com os perfis.
-it("a falha do diretório oferece Try again, que lê de novo e mostra os perfis", async () => {
+// The error was a dead end: "Try again" calls the same read, and the notice only clears
+// when it comes back with the profiles.
+it("a directory failure offers Try again, which reads again and shows the profiles", async () => {
   fixture.directory = "error";
   show(<InstructorsDirectory />);
   await screen.findByText("Instructor profiles could not load right now.");
@@ -92,12 +92,12 @@ it("a falha do diretório oferece Try again, que lê de novo e mostra os perfis"
   expect(await screen.findByRole("link", { name: "Original Author" })).toBeInTheDocument();
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   expect(listPublicProfiles).toHaveBeenCalledTimes(2);
-  // O botão sumiu: o foco ficou na moldura do diretório, não no <body>.
+  // The button is gone: focus stayed on the directory frame, not on <body>.
   expect(document.activeElement).not.toBe(document.body);
   expect(document.activeElement).toHaveAttribute("tabindex", "-1");
 });
 
-it("dois cliques no Try again do diretório antes de redesenhar abrem uma releitura só", async () => {
+it("two clicks on the directory's Try again before it redraws open a single re-read", async () => {
   fixture.directory = "error";
   show(<InstructorsDirectory />);
   await screen.findByText("Instructor profiles could not load right now.");
@@ -112,14 +112,14 @@ it("dois cliques no Try again do diretório antes de redesenhar abrem uma releit
   expect(listPublicProfiles).toHaveBeenCalledTimes(2);
 });
 
-it("o perfil cujos cursos não carregaram oferece Try again, que pede a página de novo", () => {
+it("a profile whose courses did not load offers Try again, which asks for the page again", () => {
   show(<InstructorProfileView profile={fixture.profile as PublicProfile} courses={null} />);
   fireEvent.click(screen.getByRole("button", { name: "Try again" }));
   expect(routerRefresh).toHaveBeenCalledTimes(1);
 });
 
-// Diretório vazio só leva à loja quando ela tem curso real; o perfil do
-// professor não leva nunca (é o link da bio dele).
+// An empty directory only leads to the store when it has a real course; the teacher's
+// profile never does (it is their bio link).
 it.each([[true, 1], [false, 0]])("links the store only while it has a real course (%s)", async (value, count) => {
   fixture.directory = "empty";
   render(
@@ -136,7 +136,7 @@ it.each([[true, 1], [false, 0]])("links the store only while it has a real cours
 });
 
 it("translates profile labels at render time without touching author data", () => {
-  // Bio longa (mais de 180 caracteres): é a que ganha o "Read more".
+  // A long bio (more than 180 characters): it is the one that gets "Read more".
   const bio = "Original author biography. ".repeat(8).trim();
   show(<InstructorProfileView profile={{ ...(fixture.profile as PublicProfile), bio }} courses={[course]} />);
   expect(screen.getByRole("heading", { name: "Courses" })).toBeInTheDocument();
@@ -146,7 +146,7 @@ it("translates profile labels at render time without touching author data", () =
   expect(screen.getByText("Gratis")).toBeInTheDocument();
   expect(screen.getByText("Leer más")).toBeInTheDocument();
   expect(screen.getByText(bio)).toBeInTheDocument();
-  // Botão principal e linha do curso.
+  // Main button and the course row.
   expect(screen.getAllByText("Original course title")).toHaveLength(2);
 });
 

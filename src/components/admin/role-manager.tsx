@@ -76,9 +76,9 @@ function refusalKey(caught: unknown, fallback: "loadError" | "saveError") {
   return typeof message === "string" ? refusalKeys.get(message) ?? fallback : fallback;
 }
 
-// Os níveis que perguntam antes de gravar: admin nos dois sentidos e Team ao
-// dar (I-04: Team abre reembolsos, moderação e o catálogo inteiro, e era um
-// clique só). Título, botão e frase de cada pergunta.
+// The levels that ask before saving: admin in both directions and Team when
+// giving it (I-04: Team opens refunds, moderation and the whole catalog, and it was one
+// click). Title, button and sentence of each question.
 const LEVEL_QUESTIONS = {
   adminGrant: ["adminGrantTitle", "adminGrantLabel", "confirmAdminGrant"],
   adminRemove: ["adminRemoveTitle", "adminRemoveLabel", "confirmAdminRemove"],
@@ -126,12 +126,12 @@ export function RoleManager() {
   const [waiverBusy, setWaiverBusy] = useState(false);
   const [accountTarget, setAccountTarget] = useState<PlatformUser | null>(null);
   const [waiverFeedback, setWaiverFeedback] = useState<{ uid: string; key: string; failed: boolean } | null>(null);
-  // Quem teve o nível gravado agora: o "Saved" ao lado das caixas (I-11).
+  // Who just had a level saved: the "Saved" next to the boxes (I-11).
   const [savedUid, setSavedUid] = useState("");
 
-  // A pergunta aberta: a pessoa e o pedido do clique. O confirmar roda o que
-  // vinha depois do OK do window.confirm; num nível, sobre os papéis que a
-  // lista tem NA HORA de confirmar (veja confirmAsked).
+  // The open question: the person and the click's request. Confirm runs what
+  // used to come after the OK of window.confirm; for a level, on the roles the
+  // list has AT THE MOMENT of confirming (see confirmAsked).
   const [asking, setAsking] = useState<
     | { kind: "waiver"; user: PlatformUser; waived: boolean }
     | { kind: "level"; user: PlatformUser; level: Level; next: boolean; question: keyof typeof LEVEL_QUESTIONS }
@@ -140,7 +140,7 @@ export function RoleManager() {
 
   function askWaiver(user: PlatformUser, waived: boolean) {
     if (waiverBusy || savingUid) return;
-    // Outro pedido começou: o "Saved" de antes não fala mais deste momento.
+    // Another request started: the earlier "Saved" no longer speaks for this moment.
     setSavedUid("");
     setAsking({ kind: "waiver", user, waived });
   }
@@ -158,9 +158,9 @@ export function RoleManager() {
     }
   }
 
-  // Só a resposta da busca mais nova vale: a de "an" chegando depois da de
-  // "ana" trocava a lista nova pela velha, e o "carregando" apagava na
-  // primeira resposta que chegasse.
+  // Only the response of the newest search counts: the one for "an" arriving after the one for
+  // "ana" swapped the new list for the old one, and "loading" cleared on the
+  // first response that arrived.
   const latestLoad = useRef(0);
   const load = useCallback(async (term: string) => {
     const request = ++latestLoad.current;
@@ -183,12 +183,12 @@ export function RoleManager() {
   }, [search, load]);
 
   function requestLevel(user: PlatformUser, level: Level, next: boolean) {
-    // Um clique novo apaga o "Saved" de antes: com a pergunta cancelada ele
-    // ficava ao lado das caixas, como se a mudança desistida tivesse gravado.
+    // A new click erases the earlier "Saved": with the question canceled it
+    // stayed next to the boxes, as if the abandoned change had been saved.
     setSavedUid("");
     // Admin hands out every other level and Team opens refunds and the whole
     // catalog: never on a stray click. Same confirm the activation waiver
-    // uses. Learner, Instructor e tirar Team gravam direto, como antes.
+    // uses. Learner, Instructor and removing Team save directly, as before.
     const question = levelQuestion(level, next);
     if (question) {
       setAsking({ kind: "level", user, level, next, question });
@@ -200,10 +200,10 @@ export function RoleManager() {
   function confirmAsked() {
     if (!asking) return;
     if (asking.kind === "waiver") return applyWaiver(asking.user, asking.waived);
-    // A janela deixa a pergunta aberta por um tempo, e a busca com atraso pode
-    // trazer papéis mais novos nesse meio-tempo. Gravar os do clique apagaria
-    // essa mudança: o admin entra ou sai sobre os papéis de agora. Se a pessoa
-    // saiu da lista, não grava nada (a janela só fecha).
+    // The dialog keeps the question open for a while, and the delayed search can
+    // bring newer roles in the meantime. Saving the click's roles would erase
+    // that change: the admin enters or leaves on top of the current roles. If the person
+    // left the list, nothing is saved (the dialog just closes).
     const current = users.find((entry) => entry.uid === asking.user.uid);
     return current ? applyLevel(current, asking.level, asking.next) : undefined;
   }
@@ -248,8 +248,8 @@ export function RoleManager() {
   return (
     <section className="min-w-0 rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
       {accountTarget ? <AccountControlDialog key={accountTarget.uid} uid={accountTarget.uid} label={accountTarget.email || personLabel(accountTarget)} onClose={() => setAccountTarget(null)} /> : null}
-      {/* As frases são as mesmas do antigo window.confirm. Erro e aviso de
-          sucesso continuam na lista, onde já apareciam. */}
+      {/* The sentences are the same as the old window.confirm. Error and success
+          notice stay in the list, where they already appeared. */}
       {asking ? (
         <ConfirmDialog
           title={asking.kind === "level"
@@ -269,9 +269,9 @@ export function RoleManager() {
           ).replace("{person}", () => personLabel(asking.user))}
         </ConfirmDialog>
       ) : null}
-      {/* Estas trocam de painel: abas de verdade, no desenho único (I-18). As
-          setas já trocam a aba sem busca nova: a lista de pessoas fica no
-          estado daqui e a de convites carrega uma vez, na primeira visita. */}
+      {/* These switch panels: real tabs, in the single design (I-18). The
+          arrows already switch the tab without a new search: the people list stays in
+          the state here and the invites one loads once, on the first visit. */}
       <HorizontalTabs
         tabs={tabs}
         activeValue={tab}
@@ -313,9 +313,9 @@ export function RoleManager() {
             />}
           </Field>
 
-          {/* A linha de "carregando" só na primeira vez. Numa busca nova a lista
-              fica no lugar, apagada e inerte até a resposta, em vez de virar uma
-              linha de texto e voltar, encolhendo e crescendo a página (I-12). */}
+          {/* The "loading" row only the first time. On a new search the list
+              stays in place, dimmed and inert until the response, instead of turning into a
+              line of text and back, shrinking and growing the page (I-12). */}
           {isLoading && users.length === 0 ? (
             <p role="status" className="mt-6 text-sm text-[var(--color-ink-soft)]">
               {t(`${copy}.loading`)}
@@ -364,10 +364,10 @@ export function RoleManager() {
                         {t(`${copy}.levels.${level.id}.label`)}
                       </label>
                     ))}
-                    {/* Lugar guardado para o "Saved": aparece sem empurrar as
-                        caixas nem os botões de baixo (I-11). A região viva fica
-                        sempre montada e só o texto entra nela: região e texto
-                        nascendo juntos nem sempre são lidos. */}
+                    {/* Reserved space for the "Saved": it appears without pushing the
+                        boxes or the buttons below (I-11). The live region stays
+                        always mounted and only the text goes into it: region and text
+                        born together are not always read. */}
                     <span role="status" className="inline-flex min-h-11 min-w-[7rem] items-center gap-1.5 text-sm font-semibold text-[var(--color-success-fg)]">
                       {savedUid === user.uid ? (
                         <>
