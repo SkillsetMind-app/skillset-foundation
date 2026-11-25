@@ -51,7 +51,7 @@ export async function GET(request: Request) {
   const configurationAlerted = configurationUnavailable && await sendOpsAlert({
     event: "payments.configuration.unavailable",
     severity: "critical",
-    summary: "O pagamento esta habilitado, mas falta uma configuracao necessaria. Compras podem estar bloqueadas. Revise a configuracao e publique novamente.",
+    summary: "Payments are enabled, but a required setting is missing. Purchases may be blocked. Review the configuration and deploy again.",
     context: { status: 503 },
   });
   const configurationResult = configurationUnavailable
