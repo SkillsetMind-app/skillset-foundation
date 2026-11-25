@@ -126,7 +126,7 @@ describe("OnboardingChoice: the normal load (characterization)", () => {
     // Later session events (token renewal, tab focus) do not re-read.
     await act(async () => {
       emit({ status: "authenticated", user: authedUser });
-      emit({ status: "authenticated", user: { ...authedUser, displayName: "Outro" } });
+      emit({ status: "authenticated", user: { ...authedUser, displayName: "Other" } });
     });
     expectOnlyTheRead(1);
     expect(mocks.router.push).not.toHaveBeenCalled();
@@ -239,8 +239,8 @@ describe("OnboardingChoice: the normal load (characterization)", () => {
   }
 
   it.each([
-    ["sem linha", null],
-    ["linha recem-criada", freshRow],
+    ["no row", null],
+    ["freshly created row", freshRow],
   ])("new learner (%s) finishes the signup and goes to /learn", async (_caso, profile) => {
     mocks.getUserProfile.mockResolvedValue(profile);
     mountOnPage();
@@ -258,8 +258,8 @@ describe("OnboardingChoice: the normal load (characterization)", () => {
   });
 
   it.each([
-    ["sem linha", null],
-    ["linha recem-criada", freshRow],
+    ["no row", null],
+    ["freshly created row", freshRow],
   ])("new teacher (%s) finishes the signup and goes to /teach", async (_caso, profile) => {
     mocks.searchParams = new URLSearchParams("path=teacher");
     mocks.getUserProfile.mockResolvedValue(profile);
@@ -562,7 +562,7 @@ describe("OnboardingChoice: account switched in another tab", () => {
     await act(async () => emit({ status: "authenticated", user: authedUser }));
     fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
     fireEvent.change(screen.getByPlaceholderText("onboarding.bioPlaceholder"), {
-      target: { value: "Bio digitada na conta anterior" },
+      target: { value: "Bio typed on the previous account" },
     });
 
     await switchAccount();
@@ -675,16 +675,16 @@ describe("OnboardingChoice: account switched in another tab", () => {
     await act(async () => emit({ status: "authenticated", user: authedUser }));
     fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
     const bio = screen.getByPlaceholderText("onboarding.bioPlaceholder");
-    fireEvent.change(bio, { target: { value: "Bio digitada agora" } });
+    fireEvent.change(bio, { target: { value: "Bio typed just now" } });
 
     await act(async () => emit({ status: "loading", user: null }));
     await act(async () => {
       emit({ status: "authenticated", user: authedUser });
-      emit({ status: "authenticated", user: { ...authedUser, displayName: "Outro" } });
+      emit({ status: "authenticated", user: { ...authedUser, displayName: "Other" } });
     });
     expectOnlyTheRead(1);
     expect(screen.getByPlaceholderText("onboarding.bioPlaceholder")).toBe(bio);
-    expect(bio).toHaveValue("Bio digitada agora");
+    expect(bio).toHaveValue("Bio typed just now");
     expect(screen.getByLabelText("onboarding.publicName")).toHaveValue("Preston Sloan");
     expect(mocks.router.push).not.toHaveBeenCalled();
   });
@@ -703,9 +703,9 @@ describe("OnboardingChoice: account switched in another tab", () => {
   });
 
   it.each([
-    ["antes", true],
-    ["depois", false],
-  ])("a switch with the previous account read still in flight: its response, arriving %s the new one, is ignored", async (_quando, previousFirst) => {
+    ["before", true],
+    ["after", false],
+  ])("a switch with the previous account read still in flight: its response, arriving %s the new one, is ignored", async (_when, previousFirst) => {
     let resolvePrevious!: (profile: unknown) => void;
     let resolveNext!: (profile: unknown) => void;
     mocks.getUserProfile

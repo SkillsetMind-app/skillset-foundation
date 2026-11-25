@@ -96,7 +96,7 @@ afterEach(cleanup);
 
 // The literals of the English screen (today's and those that already went away). If any
 // shows up with the screen in Spanish, the proof fails.
-const INGLES_ANTIGO = [
+const OLD_ENGLISH = [
   "Payouts & tax",
   "Your earnings, your payout setup",
   "Payout schedule",
@@ -136,7 +136,7 @@ describe("teacher wallet in Spanish", () => {
       </I18nProvider>,
     );
 
-    for (const literal of INGLES_ANTIGO) {
+    for (const literal of OLD_ENGLISH) {
       expect(
         screen.queryAllByText(literal),
         `old text: ${literal}`,

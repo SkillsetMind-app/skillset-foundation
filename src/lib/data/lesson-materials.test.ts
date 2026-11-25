@@ -54,8 +54,8 @@ vi.mock("@/lib/supabase/client", () => ({
 
 const material = (overrides: Partial<CourseAsset> = {}): CourseAsset => ({
   id: "asset-1", courseId: "course-1", ownerId: "teacher-1", kind: "lesson_material",
-  fileName: "Apostila final v3.pdf", contentType: "application/pdf", size: 1024,
-  storagePath: "courses/course-1/assets/teacher-1/asset-1/apostila-final-v3.pdf",
+  fileName: "Handout final v3.pdf", contentType: "application/pdf", size: 1024,
+  storagePath: "courses/course-1/assets/teacher-1/asset-1/handout-final-v3.pdf",
   isPreview: false, lessonId: "lesson-1", ...overrides,
 });
 
@@ -85,7 +85,7 @@ describe("signed link", () => {
     // The name does not go through the library option (it encodes twice); it goes
     // at the end of the link, encoded only once.
     expect(mocks.sign).toHaveBeenCalledExactlyOnceWith(material().storagePath, 3600);
-    expect(url).toBe("https://storage.test/signed?download=Apostila%20final%20v3.pdf");
+    expect(url).toBe("https://storage.test/signed?download=Handout%20final%20v3.pdf");
   });
 
   it("the open link stays without the download option", async () => {
@@ -104,8 +104,8 @@ describe("signed link", () => {
 /**
  * The real storage-js builds the link (only the server response is fake).
  * It encodes the name twice (URLSearchParams and then encodeURI) and the
- * storage server decodes once: "Introdução.pdf" used to arrive as
- * "Introdu%C3%A7%C3%A3o.pdf". Here the link is read the way the server reads it
+ * storage server decodes once: "Résumé.pdf" used to arrive as
+ * "R%C3%A9sum%C3%A9.pdf". Here the link is read the way the server reads it
  * (one decoding, like the browser URL) and the name has to arrive identical.
  */
 describe("downloaded file name, with the real storage-js", () => {
@@ -121,7 +121,7 @@ describe("downloaded file name, with the real storage-js", () => {
     global: { fetch: signFetch },
   }).storage;
 
-  it.each(["Apostila (1).pdf", "Introdução.pdf", "a,b&c#d+e%f.pdf"])("%s arrives the same at the server", async (fileName) => {
+  it.each(["Handout (1).pdf", "Résumé.pdf","a,b&c#d+e%f.pdf"])("%s arrives the same at the server", async (fileName) => {
     mocks.realStorage = realStorage;
 
     const url = await getProtectedCourseAssetObjectUrl(material({ fileName }), { download: true });
@@ -135,7 +135,7 @@ describe("downloaded file name, with the real storage-js", () => {
   it("the open link gets no name at all", async () => {
     mocks.realStorage = realStorage;
 
-    const url = await getProtectedCourseAssetObjectUrl(material({ fileName: "Introdução.pdf" }));
+    const url = await getProtectedCourseAssetObjectUrl(material({ fileName: "Résumé.pdf" }));
 
     expect(new URL(url).searchParams.has("download")).toBe(false);
   });
@@ -168,10 +168,10 @@ describe("order and name", () => {
   });
 
   it("renaming trims the text; empty goes back to the file name", async () => {
-    await renameCourseAsset("asset-1", "  Guia de estudo  ");
+    await renameCourseAsset("asset-1", "  Study guide  ");
     await renameCourseAsset("asset-1", "   ");
 
-    expect(mocks.update.mock.calls).toEqual([[{ title: "Guia de estudo" }], [{ title: null }]]);
+    expect(mocks.update.mock.calls).toEqual([[{ title: "Study guide" }], [{ title: null }]]);
     expect(mocks.eq).toHaveBeenCalledWith("id", "asset-1");
   });
 
@@ -197,7 +197,7 @@ describe("order and name", () => {
   it("a rename that changed no row is an error, not 'saved'", async () => {
     mocks.eq.mockResolvedValueOnce({ data: [], error: null });
 
-    await expect(renameCourseAsset("asset-1", "Guia")).rejects.toThrow("course-asset-not-updated");
+    await expect(renameCourseAsset("asset-1", "Guide")).rejects.toThrow("course-asset-not-updated");
   });
 
   it("reordering with a row that did not change is an error, not 'saved'", async () => {
@@ -210,16 +210,16 @@ describe("order and name", () => {
 
 describe("file type on upload", () => {
   it.each([
-    ["mapa.xmind", "", "application/vnd.xmind.workbook"],
-    ["mapa.mm", "text/x-objective-c++", "application/x-freemind"],
-    ["livro.epub", "application/epub+zip", "application/epub+zip"],
-    ["notas.md", "", "application/octet-stream"],
+    ["map.xmind", "", "application/vnd.xmind.workbook"],
+    ["map.mm", "text/x-objective-c++", "application/x-freemind"],
+    ["book.epub", "application/epub+zip", "application/epub+zip"],
+    ["notes.md", "", "application/octet-stream"],
     // Active content: opened inline, the script would run on the storage domain.
     ["logo.svg", "image/svg+xml", "application/octet-stream"],
-    ["pagina.html", "text/html", "application/octet-stream"],
+    ["page.html", "text/html", "application/octet-stream"],
     ["feed.xml", "text/xml", "application/octet-stream"],
   ])("%s (browser said %j) goes up as %s", async (name, browserType, expected) => {
-    const file = new File(["conteudo"], name, { type: browserType });
+    const file = new File(["content"], name, { type: browserType });
 
     await uploadCourseAsset({
       courseId: "course-1", ownerId: "teacher-1", kind: "lesson_material", file,
@@ -232,7 +232,7 @@ describe("file type on upload", () => {
     const body = mocks.upload.mock.lastCall?.[1] as File;
     expect(body.type).toBe(expected);
     expect(body.name).toBe(name);
-    expect(await body.text()).toBe("conteudo");
+    expect(await body.text()).toBe("content");
     expect(mocks.insert).toHaveBeenCalledWith(expect.objectContaining({ content_type: expected, file_name: name }));
   });
 });
@@ -240,7 +240,7 @@ describe("file type on upload", () => {
 describe("old file with active content", () => {
   it.each([
     ["logo.svg", "image/svg+xml"],
-    ["pagina.html", "text/html"],
+    ["page.html", "text/html"],
     ["feed.xml", "text/xml"],
   ])("the open link for %s (%s) comes as an attachment, with the same signed request", async (fileName, contentType) => {
     const url = await getProtectedCourseAssetObjectUrl(material({ fileName, contentType }));

@@ -48,14 +48,14 @@ CROSS JOIN (VALUES ('SELECT'), ('INSERT'), ('UPDATE'), ('DELETE')) AS p(priv);
 -- any row returned here is the regression this migration closes.
 DO $$
 DECLARE
-  linhas int;
+  view_rows int;
 BEGIN
   SET LOCAL ROLE anon;
   BEGIN
-    SELECT count(*) INTO linhas FROM public.stripe_events_needing_attention;
+    SELECT count(*) INTO view_rows FROM public.stripe_events_needing_attention;
     RESET ROLE;
     RAISE EXCEPTION
-      'SMOKE_ASSERTION_FAILED: anon read stripe_events_needing_attention (% rows)', linhas;
+      'SMOKE_ASSERTION_FAILED: anon read stripe_events_needing_attention (% rows)', view_rows;
   EXCEPTION WHEN insufficient_privilege THEN
     RESET ROLE;
   END;
@@ -67,13 +67,13 @@ $$;
 -- query runs without a privilege error.
 DO $$
 DECLARE
-  linhas int;
+  view_rows int;
 BEGIN
   SET LOCAL ROLE service_role;
-  SELECT count(*) INTO linhas FROM public.stripe_events_needing_attention;
+  SELECT count(*) INTO view_rows FROM public.stripe_events_needing_attention;
   RESET ROLE;
   PERFORM pg_temp.assert_true(
-    linhas >= 0, 'service_role must still be able to read the view'
+    view_rows >= 0, 'service_role must still be able to read the view'
   );
 END;
 $$;

@@ -156,8 +156,8 @@ describe("MemberAreaShell", () => {
   });
 
   it.each([
-    ["sem marca", null],
-    ["com a marca do professor", { name: "Atelier Curie" }],
+    ["no brand", null],
+    ["with the teacher's brand", { name: "Atelier Curie" }],
   ])("has Help and an account menu (%s)", (_label, brand) => {
     render(
       <MemberAreaShell brand={brand}>
@@ -173,8 +173,8 @@ describe("MemberAreaShell", () => {
   // In the room with the teacher's brand, the account menu does not open doors into
   // SkillsetMind; without a brand, they stay.
   it.each([
-    ["sem marca", null, true],
-    ["com a marca do professor", { name: "Atelier Curie" }, false],
+    ["no brand", null, true],
+    ["with the teacher's brand", { name: "Atelier Curie" }, false],
   ])("account menu %s: 'Become a teacher' and 'Go to dashboard' appear = %s", (_label, brand, shown) => {
     render(
       <MemberAreaShell brand={brand}>
@@ -193,11 +193,11 @@ describe("MemberAreaShell", () => {
   });
 
   it.each([
-    [true, "/learn/courses/curso-1/community"],
-    [false, "/learn/courses/curso-1/messages"],
+    [true, "/learn/courses/course-1/community"],
+    [false, "/learn/courses/course-1/messages"],
   ])("the lesson question goes to the course community (community enabled: %s)", (communityEnabled, href) => {
     render(
-      <MemberAreaShell course={{ href: "/learn/courses/curso-1", communityEnabled }}>
+      <MemberAreaShell course={{ href: "/learn/courses/course-1", communityEnabled }}>
         <p>Lesson</p>
       </MemberAreaShell>,
     );
@@ -207,7 +207,7 @@ describe("MemberAreaShell", () => {
     expect(within(dialog).getByRole("link", { name: /Question about a lesson/ })).toHaveAttribute("href", href);
     expect(within(dialog).getByRole("link", { name: /Private matter with the teacher/ })).toHaveAttribute(
       "href",
-      "/learn/courses/curso-1/messages",
+      "/learn/courses/course-1/messages",
     );
   });
 });

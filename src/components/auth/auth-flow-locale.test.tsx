@@ -315,7 +315,7 @@ describe("auth flow follows the selected language without resetting state", () =
     expect(mocks.updateOnboardingAnswers).toHaveBeenCalledTimes(2);
   });
 
-  it("traduz o pais e o aviso sem perder a escolha ou inferir elegibilidade", async () => {
+  it("translates the country and the notice without losing the choice or inferring eligibility", async () => {
     mocks.getUserProfile.mockResolvedValue({
       onboardingAnswers: { profileConfirmed: true, path: "teacher", profession: "Coach", primaryGoal: ["Business"], alreadySold: "no" },
     });

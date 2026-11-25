@@ -56,21 +56,21 @@ function fakeClient({
   level?: string;
   levelError?: boolean;
 }) {
-  const fora = { message: "banco fora" };
+  const dbDown = { message: "database down" };
   const courses = (value: string) => ({
     maybeSingle: async () =>
       idError
-        ? { data: null, error: fora }
+        ? { data: null, error: dbDown }
         : { data: rows.find((row) => row.id === value) ?? null, error: null },
     limit: async () =>
       keyError
-        ? { data: null, error: fora }
+        ? { data: null, error: dbDown }
         : { data: rows.filter((row) => row.title_key === value), error: null },
   });
   const users = (value: string) => ({
     maybeSingle: async () =>
       rolesError
-        ? { data: null, error: fora }
+        ? { data: null, error: dbDown }
         : { data: value === userId ? { roles } : null, error: null },
   });
   const session = {
@@ -78,7 +78,7 @@ function fakeClient({
     mfa: {
       getAuthenticatorAssuranceLevel: async () =>
         levelError
-          ? { data: null, error: fora }
+          ? { data: null, error: dbDown }
           : { data: { currentLevel: level }, error: null },
     },
   };
@@ -93,7 +93,7 @@ function fakeClient({
   };
 }
 
-const draft: Row = { id: "c-1", title_key: "meu-curso", status: "draft", owner_id: "dono" };
+const draft: Row = { id: "c-1", title_key: "my-course", status: "draft", owner_id: "owner" };
 const published: Row = { ...draft, status: "published" };
 const inReview: Row = { ...draft, status: "in_review" };
 const authDown = new AuthError("fetch failed", 0, "unexpected_failure");
@@ -105,17 +105,17 @@ describe("getCourseRefAccess", () => {
 
   it("a course nobody can read is a 404", async () => {
     server.client = fakeClient({});
-    expect(await getCourseRefAccess("nao-existe")).toBe("missing");
+    expect(await getCourseRefAccess("does-not-exist")).toBe("missing");
   });
 
   it("a published course stays visible by id and by title_key", async () => {
     server.client = fakeClient({ rows: [published] });
     expect(await getCourseRefAccess("c-1")).toBe("visible");
-    expect(await getCourseRefAccess("meu-curso")).toBe("visible");
+    expect(await getCourseRefAccess("my-course")).toBe("visible");
   });
 
   it("a draft that RLS returns to the logged-in owner stays visible (preview)", async () => {
-    server.client = fakeClient({ userId: "dono", rows: [draft] });
+    server.client = fakeClient({ userId: "owner", rows: [draft] });
     expect(await getCourseRefAccess("c-1")).toBe("visible");
   });
 
@@ -127,7 +127,7 @@ describe("getCourseRefAccess", () => {
   });
 
   it("in review: a logged-in stranger and an anonymous visitor get a 404, the owner sees it", async () => {
-    server.client = fakeClient({ userId: "outra-pessoa", rows: [inReview] });
+    server.client = fakeClient({ userId: "someone-else", rows: [inReview] });
     expect(await getCourseRefAccess("c-1")).toBe("missing");
     server.client = fakeClient({ rows: [inReview] });
     expect(await getCourseRefAccess("c-1")).toBe("missing");
@@ -138,34 +138,34 @@ describe("getCourseRefAccess", () => {
       rows: [inReview],
     });
     expect(await getCourseRefAccess("c-1")).toBe("missing");
-    server.client = fakeClient({ userId: "dono", rows: [inReview] });
+    server.client = fakeClient({ userId: "owner", rows: [inReview] });
     expect(await getCourseRefAccess("c-1")).toBe("visible");
   });
 
   it("in review: admin and ops in an aal2 session see it (moderation queue)", async () => {
     for (const role of ["admin", "ops"]) {
-      server.client = fakeClient({ userId: "moderador", roles: [role], level: "aal2", rows: [inReview] });
+      server.client = fakeClient({ userId: "moderator", roles: [role], level: "aal2", rows: [inReview] });
       expect(await getCourseRefAccess("c-1")).toBe("visible");
     }
   });
 
   it("in review: an operational role without aal2 does not open the preview", async () => {
-    server.client = fakeClient({ userId: "moderador", roles: ["admin"], level: "aal1", rows: [inReview] });
+    server.client = fakeClient({ userId: "moderator", roles: ["admin"], level: "aal1", rows: [inReview] });
     expect(await getCourseRefAccess("c-1")).toBe("missing");
   });
 
   it("in review: a failure of Auth, of the profile or of the session level never becomes a 404", async () => {
     server.client = fakeClient({ userError: authDown, rows: [inReview] });
     expect(await getCourseRefAccess("c-1")).toBe("unknown");
-    server.client = fakeClient({ userId: "moderador", rolesError: true, rows: [inReview] });
+    server.client = fakeClient({ userId: "moderator", rolesError: true, rows: [inReview] });
     expect(await getCourseRefAccess("c-1")).toBe("unknown");
-    server.client = fakeClient({ userId: "moderador", roles: ["admin"], levelError: true, rows: [inReview] });
+    server.client = fakeClient({ userId: "moderator", roles: ["admin"], levelError: true, rows: [inReview] });
     expect(await getCourseRefAccess("c-1")).toBe("unknown");
   });
 
   it("a failure in the lookup by id does not continue to title_key: it is unknown", async () => {
     server.client = fakeClient({ idError: true, rows: [published] });
-    expect(await getCourseRefAccess("meu-curso")).toBe("unknown");
+    expect(await getCourseRefAccess("my-course")).toBe("unknown");
   });
 
   // Suspended and restored account: GoTrue still accepts the old session, but the
@@ -176,15 +176,15 @@ describe("getCourseRefAccess", () => {
     server.client = fakeClient({ userError: denied });
     expect(await getCourseRefAccess("c-1")).toBe("unknown");
     // Really logged in, a course that does not exist: still a 404.
-    server.client = fakeClient({ userId: "aluno" });
-    expect(await getCourseRefAccess("nao-existe")).toBe("missing");
+    server.client = fakeClient({ userId: "learner" });
+    expect(await getCourseRefAccess("does-not-exist")).toBe("missing");
   });
 
   it("a read failure never becomes a 404", async () => {
     server.client = fakeClient({ keyError: true });
-    expect(await getCourseRefAccess("meu-curso")).toBe("unknown");
+    expect(await getCourseRefAccess("my-course")).toBe("unknown");
     server.fail = true;
-    expect(await getCourseRefAccess("meu-curso")).toBe("unknown");
+    expect(await getCourseRefAccess("my-course")).toBe("unknown");
   });
 });
 
@@ -196,7 +196,7 @@ describe("listPublishedCourses", () => {
     const rows = [
       { ...base, id: "c-real", title: "Deep Focus Systems", title_key: "deep-focus-systems" },
       { ...base, id: "smoke-ci-course", title: "Smoke checkout", title_key: "smoke-checkout" },
-      { ...base, id: "c-qa", title: "[QA] Curso de teste interno", title_key: "qa-curso-de-teste-interno" },
+      { ...base, id: "c-qa", title: "[QA] Internal test course", title_key: "qa-internal-test-course" },
     ];
     server.fail = false;
     server.client = {
@@ -293,7 +293,7 @@ describe("hasRealPublishedCourse", () => {
   });
 
   it("a read failure answers no and goes to the log", async () => {
-    anonClient({ data: null, error: { message: "banco fora" } });
+    anonClient({ data: null, error: { message: "database down" } });
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
       expect(await hasRealPublishedCourse()).toBe(false);
@@ -319,11 +319,11 @@ describe("getShowcaseCourseCover", () => {
   }
 
   it("reads only the title and cover of the published course with that id", async () => {
-    const calls = anonClient({ data: { title: "Emotional Intelligence Mastery", cover_image_url: "https://x/capa.jpg" }, error: null });
+    const calls = anonClient({ data: { title: "Emotional Intelligence Mastery", cover_image_url: "https://x/cover.jpg" }, error: null });
 
     expect(await getShowcaseCourseCover("c-1")).toEqual({
       title: "Emotional Intelligence Mastery",
-      coverImageUrl: "https://x/capa.jpg",
+      coverImageUrl: "https://x/cover.jpg",
     });
     expect(calls).toEqual([
       ["from", "courses"],
@@ -340,7 +340,7 @@ describe("getShowcaseCourseCover", () => {
   });
 
   it("a read failure answers null and goes to the log", async () => {
-    anonClient({ data: null, error: { message: "banco fora" } });
+    anonClient({ data: null, error: { message: "database down" } });
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
       expect(await getShowcaseCourseCover("c-1")).toBeNull();

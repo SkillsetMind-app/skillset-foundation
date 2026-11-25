@@ -340,8 +340,8 @@ describe("SignupForm with Google", () => {
 // it dropped the person on /welcome without it, and they ended on the dashboard, far from the
 // course they were going to buy. The sale died between two screens.
 describe("SignupForm carries the course along into signup", () => {
-  const destino = "/courses/focus";
-  const paraOnboarding = "/welcome?path=student&returnTo=%2Fcourses%2Ffocus";
+  const returnPath = "/courses/focus";
+  const onboardingUrl = "/welcome?path=student&returnTo=%2Fcourses%2Ffocus";
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -361,13 +361,13 @@ describe("SignupForm carries the course along into signup", () => {
   });
 
   it("passes the destination along when creating the account, instead of discarding it", async () => {
-    mocks.searchParams = new URLSearchParams("returnTo=" + destino);
+    mocks.searchParams = new URLSearchParams("returnTo=" + returnPath);
     render(<SignupForm />);
 
     submitSignup();
 
     await waitFor(() =>
-      expect(mocks.router.push).toHaveBeenCalledWith(paraOnboarding),
+      expect(mocks.router.push).toHaveBeenCalledWith(onboardingUrl),
     );
     // And also inside the confirmation email: whoever confirms on the phone has
     // nothing from the original tab, so the address travels in the link itself.
@@ -376,7 +376,7 @@ describe("SignupForm carries the course along into signup", () => {
     expect(mocks.signUpWithEmail).toHaveBeenCalledWith(
       expect.objectContaining({ acceptedTerms: true }),
       undefined,
-      paraOnboarding,
+      onboardingUrl,
     );
   });
 
@@ -392,7 +392,7 @@ describe("SignupForm carries the course along into signup", () => {
   });
 
   it("does not lose the destination when the person switches from learning to teaching", () => {
-    mocks.searchParams = new URLSearchParams("returnTo=" + destino);
+    mocks.searchParams = new URLSearchParams("returnTo=" + returnPath);
     render(<SignupForm />);
 
     fireEvent.click(screen.getByRole("radio", { name: "auth.signup.roleTeach" }));
@@ -404,7 +404,7 @@ describe("SignupForm carries the course along into signup", () => {
   });
 
   it("carries the destination through the Google round trip too", () => {
-    mocks.searchParams = new URLSearchParams("returnTo=" + destino);
+    mocks.searchParams = new URLSearchParams("returnTo=" + returnPath);
     render(<SignupForm />);
 
     fireEvent.click(screen.getByRole("checkbox"));
@@ -450,8 +450,8 @@ describe("SignupForm carries the course along into signup", () => {
 // choice died on this screen and the teacher chose the plan again inside.
 // Now it becomes the destination (the card screen) and travels like any returnTo.
 describe("SignupForm carries the /pricing plan through to the card screen", () => {
-  const doBotao = "path=teacher&plan=starter&cycle=yearly";
-  const cartao = "%2Faccount%2Fbilling%2Fupgrade%3Fplan%3Dstarter%26cycle%3Dyearly";
+  const buttonQuery = "path=teacher&plan=starter&cycle=yearly";
+  const card = "%2Faccount%2Fbilling%2Fupgrade%3Fplan%3Dstarter%26cycle%3Dyearly";
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -467,47 +467,47 @@ describe("SignupForm carries the /pricing plan through to the card screen", () =
   });
 
   it("puts the plan in the confirmation email link and in the trip to onboarding", async () => {
-    mocks.searchParams = new URLSearchParams(doBotao);
+    mocks.searchParams = new URLSearchParams(buttonQuery);
     render(<SignupForm />);
 
     submitSignup();
 
-    const paraOnboarding = `/welcome?path=teacher&returnTo=${cartao}`;
-    await waitFor(() => expect(mocks.router.push).toHaveBeenCalledWith(paraOnboarding));
-    expect(mocks.signUpWithEmail).toHaveBeenCalledWith(expect.anything(), undefined, paraOnboarding);
+    const onboardingUrl = `/welcome?path=teacher&returnTo=${card}`;
+    await waitFor(() => expect(mocks.router.push).toHaveBeenCalledWith(onboardingUrl));
+    expect(mocks.signUpWithEmail).toHaveBeenCalledWith(expect.anything(), undefined, onboardingUrl);
   });
 
   it("carries the plan through the Google round trip", () => {
-    mocks.searchParams = new URLSearchParams(doBotao);
+    mocks.searchParams = new URLSearchParams(buttonQuery);
     render(<SignupForm />);
 
     fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByRole("button", { name: /auth\.continueWithGoogle/ }));
 
-    expect(mocks.signInWithGoogle).toHaveBeenCalledWith(`/loading?next=welcome&path=teacher&returnTo=${cartao}`);
+    expect(mocks.signInWithGoogle).toHaveBeenCalledWith(`/loading?next=welcome&path=teacher&returnTo=${card}`);
   });
 
   // Switching from teach to learn rewrites the address: the plan stays in it as
   // returnTo, so going back to "teach" does not lose the choice.
   it("does not lose the plan when the person switches from teaching to learning", () => {
-    mocks.searchParams = new URLSearchParams(doBotao);
+    mocks.searchParams = new URLSearchParams(buttonQuery);
     render(<SignupForm />);
 
     fireEvent.click(screen.getByRole("radio", { name: "auth.signup.roleLearn" }));
 
     expect(mocks.router.replace).toHaveBeenCalledWith(
-      `/auth?mode=signup&path=student&returnTo=${cartao}`,
+      `/auth?mode=signup&path=student&returnTo=${card}`,
       { scroll: false },
     );
   });
 
   it("carries the plan to whoever already has an account and prefers to sign in", () => {
-    mocks.searchParams = new URLSearchParams(doBotao);
+    mocks.searchParams = new URLSearchParams(buttonQuery);
     render(<SignupForm />);
 
     expect(screen.getByRole("link", { name: "auth.signup.alreadyHaveAccount" })).toHaveAttribute(
       "href",
-      `/auth?mode=signin&path=teacher&returnTo=${cartao}`,
+      `/auth?mode=signin&path=teacher&returnTo=${card}`,
     );
   });
 

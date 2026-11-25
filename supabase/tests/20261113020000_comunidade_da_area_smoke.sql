@@ -53,15 +53,15 @@ update public.users
 insert into public.courses(id, owner_id, slug, title, summary, category, status, currency,
   price_amount_minor, payment_type, modules, product_format, community_enabled)
 values
-  ('smoke-ac-a', pg_temp.uid(1)::text, 'smoke-ac-a', 'Smoke area community A', 'Curso deste smoke.', 'smoke',
+  ('smoke-ac-a', pg_temp.uid(1)::text, 'smoke-ac-a', 'Smoke area community A', 'Course of this smoke test.', 'smoke',
     'published', 'usd', 0, 'free', '[]'::jsonb, 'course', true),
-  ('smoke-ac-c', pg_temp.uid(1)::text, 'smoke-ac-c', 'Smoke area community C', 'Comunidade deste smoke.', 'smoke',
+  ('smoke-ac-c', pg_temp.uid(1)::text, 'smoke-ac-c', 'Smoke area community C', 'Community of this smoke test.', 'smoke',
     'published', 'usd', 0, 'free', '[]'::jsonb, 'community', true),
-  ('smoke-ac-x', pg_temp.uid(4)::text, 'smoke-ac-x', 'Smoke area community X', 'Do outro professor.', 'smoke',
+  ('smoke-ac-x', pg_temp.uid(4)::text, 'smoke-ac-x', 'Smoke area community X', 'From the other teacher.', 'smoke',
     'published', 'usd', 0, 'free', '[]'::jsonb, 'community', true),
-  ('smoke-ac-f', pg_temp.uid(1)::text, 'smoke-ac-f', 'Smoke area community F', 'Brinde gratis.', 'smoke',
+  ('smoke-ac-f', pg_temp.uid(1)::text, 'smoke-ac-f', 'Smoke area community F', 'Free gift.', 'smoke',
     'published', 'usd', 0, 'free', '[]'::jsonb, 'course', true),
-  ('smoke-ac-d', pg_temp.uid(1)::text, 'smoke-ac-d', 'Smoke area community D', 'Comunidade em rascunho.', 'smoke',
+  ('smoke-ac-d', pg_temp.uid(1)::text, 'smoke-ac-d', 'Smoke area community D', 'Draft community.', 'smoke',
     'draft', 'usd', 0, 'free', '[]'::jsonb, 'community', true);
 insert into public.enrollments(id, user_id, course_id, course_slug, course_title, course_category,
   course_image, status, source)

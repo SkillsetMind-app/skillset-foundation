@@ -20,7 +20,7 @@ afterEach(() => {
 });
 
 // The literals the screen showed before this PR. If any comes back, the test fails.
-const INGLES_ANTIGO_LISTA = [
+const OLD_ENGLISH_LIST = [
   "Other prices",
   "Offers & prices",
   "Create one-time or subscription packages. The default drives the main page; every active offer has an exact buyer link.",
@@ -29,7 +29,7 @@ const INGLES_ANTIGO_LISTA = [
   "Launch checkout",
 ];
 
-const INGLES_ANTIGO_FORMULARIO = [
+const OLD_ENGLISH_FORM = [
   "Other prices",
   "Name of this price",
   "How often they pay",
@@ -50,7 +50,7 @@ const INGLES_ANTIGO_FORMULARIO = [
   "Free",
 ];
 
-function semIngles(literais: string[]) {
+function withoutEnglish(literais: string[]) {
   for (const literal of literais) {
     expect(screen.queryByText(literal), `old text: ${literal}`).toBeNull();
     expect(
@@ -136,7 +136,7 @@ describe("offers panel in Spanish", () => {
     // with the offer name in the button name.
     expect(screen.getByRole("button", { name: "Copiar enlace de página de pago de Launch" })).toHaveTextContent("Copiar enlace");
 
-    semIngles(INGLES_ANTIGO_LISTA);
+    withoutEnglish(OLD_ENGLISH_LIST);
   });
 
   it("the new offer form no longer has any English text", async () => {
@@ -148,8 +148,8 @@ describe("offers panel in Spanish", () => {
     renderEs();
 
     // With no offer at all the form already comes open, next to the empty state.
-    const nome = await screen.findByLabelText("Nombre de este precio");
-    expect(nome).toHaveValue("Otro precio");
+    const nameField = await screen.findByLabelText("Nombre de este precio");
+    expect(nameField).toHaveValue("Otro precio");
     expect(
       screen.getByText(
         "Todavía no hay otros precios. Se paga el precio que definiste en Precios.",
@@ -163,9 +163,9 @@ describe("offers panel in Spanish", () => {
     expect(screen.getByLabelText("Importe")).toBeInTheDocument();
     expect(screen.getByLabelText("Moneda")).toBeInTheDocument();
 
-    const cadaCuanto = screen.getByLabelText("Cada cuánto pagan");
+    const howOften = screen.getByLabelText("Cada cuánto pagan");
     expect(
-      Array.from(cadaCuanto.querySelectorAll("option")).map(
+      Array.from(howOften.querySelectorAll("option")).map(
         (option) => option.textContent,
       ),
     ).toEqual([
@@ -183,7 +183,7 @@ describe("offers panel in Spanish", () => {
     ).toBeInTheDocument();
 
     // The initial English name also disappeared from the field.
-    expect(nome).not.toHaveValue("Standard offer");
-    semIngles(INGLES_ANTIGO_FORMULARIO);
+    expect(nameField).not.toHaveValue("Standard offer");
+    withoutEnglish(OLD_ENGLISH_FORM);
   });
 });

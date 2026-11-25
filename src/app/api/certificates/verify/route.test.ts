@@ -91,11 +91,11 @@ describe("GET /api/certificates/verify", () => {
     await verify();
 
     const [, args] = mocks.rpc.mock.calls[0] as [string, RpcArgs];
-    const esperada = rateLimitKeyFromIp(
+    const expected = rateLimitKeyFromIp(
       new Request("http://localhost/x", { headers: { "x-forwarded-for": FORWARDED } }),
       "cert",
     );
-    expect(args.p_rate_key).toBe(esperada);
+    expect(args.p_rate_key).toBe(expected);
   });
 
   it("translates RATE_LIMIT into 429 with the usual open CORS", async () => {

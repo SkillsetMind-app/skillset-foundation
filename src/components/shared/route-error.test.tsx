@@ -15,8 +15,8 @@ afterEach(() => {
 });
 
 const boundaries = [
-  ["estúdio do professor", TeachError, "/teach", "teach"],
-  ["área do aluno", LearnError, "/learn", "learn"],
+  ["teacher studio", TeachError, "/teach", "teach"],
+  ["learner area", LearnError, "/learn", "learn"],
 ] as const;
 
 describe("error inside an area", () => {

@@ -79,9 +79,9 @@ describe("CourseUnlockModal", () => {
   // "Buy course" on a free course was wrong: the verb and the notice come from the
   // price the course already carries, always from the same pair.
   it.each([
-    ["pago", 24900, "Buy course - $249.00", "You do not have access to this course yet. Buy it to start watching right here in your members area."],
-    ["grátis", 0, "Enroll free", "Enroll free to watch every lesson."],
-    ["sem preço", null, "Unlock course", "You do not have access to this course yet. Unlock it to start watching right here in your members area."],
+    ["paid", 24900, "Buy course - $249.00", "You do not have access to this course yet. Buy it to start watching right here in your members area."],
+    ["free", 0, "Enroll free", "Enroll free to watch every lesson."],
+    ["no price", null, "Unlock course", "You do not have access to this course yet. Unlock it to start watching right here in your members area."],
   ] as const)("course %s: button and notice match", (_kind, priceAmountMinor, label, note) => {
     render(<CourseUnlockModal course={course({ priceAmountMinor, currency: "USD" })} onClose={() => {}} />);
 

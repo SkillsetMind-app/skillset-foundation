@@ -130,10 +130,10 @@ select pg_temp.check_guard('all fourteen production guards are installed and bou
     ('public.payout_ledger', 'payout_ledger_server_write_only', 'public.server_write_only()', 31),
     ('public.support_tickets', 'support_tickets_update_guard', 'public.support_tickets_update_guard()', 19),
     ('auth.users', 'on_auth_user_created', 'public.handle_new_user()', 5)
-  ) as v(tabela, nome, funcao, tipo)
-  join pg_trigger t on t.tgrelid = v.tabela::regclass and t.tgname = v.nome
+  ) as v(table_name, trigger_name, function_name, trigger_type)
+  join pg_trigger t on t.tgrelid = v.table_name::regclass and t.tgname = v.trigger_name
   where not t.tgisinternal and t.tgenabled <> 'D'
-    and t.tgfoid = v.funcao::regprocedure and t.tgtype = v.tipo));
+    and t.tgfoid = v.function_name::regprocedure and t.tgtype = v.trigger_type));
 
 select name, passed from guard_checks order by name;
 do $$

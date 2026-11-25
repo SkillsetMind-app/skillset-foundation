@@ -181,7 +181,7 @@ describe("welcome: the profile step comes first", () => {
 // this far, the end of onboarding always dumped the person on /learn. The course
 // they were about to buy vanished on the last step.
 describe("welcome: the end takes the person back to where they were", () => {
-  const respostasDeAluno = {
+  const studentAnswers = {
     profileConfirmed: true,
     path: "student",
     primaryGoal: ["Business"],
@@ -194,7 +194,7 @@ describe("welcome: the end takes the person back to where they were", () => {
     mocks.profile = {
       displayName: "Preston Sloan",
       phoneNumber: "+1 555 123 4567",
-      onboardingAnswers: respostasDeAluno,
+      onboardingAnswers: studentAnswers,
     };
     mocks.getUserProfile.mockImplementation(() => Promise.resolve(mocks.profile));
     mocks.updateOnboardingAnswers.mockResolvedValue(undefined);
@@ -293,7 +293,7 @@ describe("welcome: the end takes the person back to where they were", () => {
   });
 
   it("discards a destination on another domain", async () => {
-    mocks.searchParams = new URLSearchParams("returnTo=https://outro.com/pego");
+    mocks.searchParams = new URLSearchParams("returnTo=https://other.com/taken");
 
     await terminar();
 
@@ -335,10 +335,10 @@ describe("welcome: the end takes the person back to where they were", () => {
 
   // The only thing that goes with the teacher to /onboarding is the plan they
   // chose on /pricing: there, the last button opens that plan's card screen.
-  const cartao = "/account/billing/upgrade?plan=pro&cycle=monthly";
+  const card = "/account/billing/upgrade?plan=pro&cycle=monthly";
 
   it("a teacher who chose a plan on /pricing carries the plan to the teacher signup", async () => {
-    mocks.searchParams = new URLSearchParams({ path: "teacher", returnTo: cartao });
+    mocks.searchParams = new URLSearchParams({ path: "teacher", returnTo: card });
     mocks.profile = {
       displayName: "Preston Sloan",
       phoneNumber: "+1 555 123 4567",
@@ -369,7 +369,7 @@ describe("welcome: the end takes the person back to where they were", () => {
 
   // A plan belongs to those who teach: whoever finished as a learner does not land on the card screen.
   it("a learner with a plan in the address ends on /learn, not on the card screen", async () => {
-    mocks.searchParams = new URLSearchParams({ returnTo: cartao });
+    mocks.searchParams = new URLSearchParams({ returnTo: card });
 
     await terminar();
 
@@ -747,8 +747,8 @@ describe("welcome: the buyer goes on to checkout without answering the interest 
   // The /pricing plan is not a destination for the learner (they end on /learn):
   // the interest stays required, as today.
   it.each([
-    ["sem destino", null],
-    ["com o plano de /pricing", plano],
+    ["without a destination", null],
+    ["with the /pricing plan", plano],
   ])("learner %s still has to answer the interest question", async (_label, returnTo) => {
     mocks.searchParams = new URLSearchParams({ path: "student", ...(returnTo ? { returnTo } : {}) });
     mocks.profile.onboardingAnswers = { profileConfirmed: true, path: "student" };
@@ -762,9 +762,9 @@ describe("welcome: the buyer goes on to checkout without answering the interest 
   });
 
   it.each([
-    ["sem destino", null],
-    ["com o checkout de um curso", checkout],
-    ["com o plano de /pricing", plano],
+    ["without a destination", null],
+    ["with a course checkout", checkout],
+    ["with the /pricing plan", plano],
   ])("teacher %s: the program question stays required, in the same position", async (_label, returnTo) => {
     mocks.searchParams = new URLSearchParams({ path: "teacher", ...(returnTo ? { returnTo } : {}) });
     mocks.profile = {
@@ -790,12 +790,12 @@ describe("welcome: the buyer goes on to checkout without answering the interest 
   });
 
   it("learner branch: with a destination, only the interest changes, and only from required to optional", () => {
-    const semDestino = getVisibleQuestions({ path: "student" }, true, false);
-    const comDestino = getVisibleQuestions({ path: "student" }, true, true);
+    const withoutDestination = getVisibleQuestions({ path: "student" }, true, false);
+    const withDestination = getVisibleQuestions({ path: "student" }, true, true);
 
-    expect(semDestino.find((question) => question.id === "primaryGoal")?.required).toBe(true);
-    expect(comDestino).toEqual(
-      semDestino.map((question) => (question.id === "primaryGoal" ? { ...question, required: false } : question)),
+    expect(withoutDestination.find((question) => question.id === "primaryGoal")?.required).toBe(true);
+    expect(withDestination).toEqual(
+      withoutDestination.map((question) => (question.id === "primaryGoal" ? { ...question, required: false } : question)),
     );
   });
 });
@@ -805,7 +805,7 @@ describe("welcome: the buyer goes on to checkout without answering the interest 
 // "Question N of M") and the visible sentence stay the same on the first, a middle
 // and the last step of both paths.
 describe("F-09: the interview bar is the house bar, with the same values", () => {
-  const professorCompleto = {
+  const completeTeacher = {
     profileConfirmed: true,
     path: "teacher",
     profession: "Coach",
@@ -824,12 +824,12 @@ describe("F-09: the interview bar is the house bar, with the same values", () =>
   afterEach(cleanup);
 
   it.each([
-    ["aluno, primeiro passo", "student", {}, 1, 3, "First, tell us who you are."],
-    ["aluno, passo do meio", "student", { profileConfirmed: true, path: "student" }, 2, 3, "What do you want to learn first?"],
-    ["aluno, último passo", "student", { profileConfirmed: true, path: "student", primaryGoal: ["Business"] }, 3, 3, "Where did you hear about SkillsetMind?"],
-    ["professor, primeiro passo", "teacher", {}, 1, 8, "First, tell us who you are."],
-    ["professor, passo do meio", "teacher", { profileConfirmed: true, path: "teacher", profession: "Coach" }, 3, 8, "What kind of program will you publish?"],
-    ["professor, último passo", "teacher", professorCompleto, 8, 8, /Instagram handle/],
+    ["learner, first step", "student", {}, 1, 3, "First, tell us who you are."],
+    ["learner, middle step", "student", { profileConfirmed: true, path: "student" }, 2, 3, "What do you want to learn first?"],
+    ["learner, last step", "student", { profileConfirmed: true, path: "student", primaryGoal: ["Business"] }, 3, 3, "Where did you hear about SkillsetMind?"],
+    ["teacher, first step", "teacher", {}, 1, 8, "First, tell us who you are."],
+    ["teacher, middle step", "teacher", { profileConfirmed: true, path: "teacher", profession: "Coach" }, 3, 8, "What kind of program will you publish?"],
+    ["teacher, last step", "teacher", completeTeacher, 8, 8, /Instagram handle/],
   ])("%s: Question N of M in the sentence and in the bar", async (_label, path, answers, current, total, title) => {
     mocks.searchParams = new URLSearchParams({ path });
     mocks.profile = { displayName: "Preston Sloan", phoneNumber: "+1 555 123 4567", onboardingAnswers: { ...answers } };
@@ -852,20 +852,20 @@ describe("F-09: the interview bar is the house bar, with the same values", () =>
   // The question list, the order and the required flag of each one, written out here
   // in full: the bundle only changed the bar design.
   it("the questions, the order and the required flag of each path stay the same", () => {
-    const lista = (...args: Parameters<typeof getVisibleQuestions>) =>
+    const visibleQuestions = (...args: Parameters<typeof getVisibleQuestions>) =>
       getVisibleQuestions(...args).map(({ number, id, required }) => `${number}:${id}:${required ? "obrigatória" : "opcional"}`);
 
-    expect(lista({ path: "student" }, true, false)).toEqual([
+    expect(visibleQuestions({ path: "student" }, true, false)).toEqual([
       "1:profile:obrigatória",
       "2:primaryGoal:obrigatória",
       "3:sourceOfDiscovery:opcional",
     ]);
-    expect(lista({ path: "student" }, true, true)).toEqual([
+    expect(visibleQuestions({ path: "student" }, true, true)).toEqual([
       "1:profile:obrigatória",
       "2:primaryGoal:opcional",
       "3:sourceOfDiscovery:opcional",
     ]);
-    expect(lista({ path: "teacher", alreadySold: "no" }, true, false)).toEqual([
+    expect(visibleQuestions({ path: "teacher", alreadySold: "no" }, true, false)).toEqual([
       "1:profile:obrigatória",
       "2:profession:obrigatória",
       "3:primaryGoal:obrigatória",
@@ -875,7 +875,7 @@ describe("F-09: the interview bar is the house bar, with the same values", () =>
       "7:sourceOfDiscovery:opcional",
       "8:instagramHandle:opcional",
     ]);
-    expect(lista({ path: "teacher", alreadySold: "yes" }, false, true)).toEqual([
+    expect(visibleQuestions({ path: "teacher", alreadySold: "yes" }, false, true)).toEqual([
       "1:profile:obrigatória",
       "2:path:obrigatória",
       "3:profession:obrigatória",

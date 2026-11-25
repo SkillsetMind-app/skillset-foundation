@@ -65,7 +65,7 @@ function renderOverlay(overrides: { onSelect?: () => void; onClose?: () => void 
 }
 
 describe("LessonListOverlay", () => {
-  it("aula sem duracao: a linha nao comeca com separador solto", () => {
+  it("lesson without duration: the row does not start with a loose separator", () => {
     renderOverlay();
 
     const welcome = screen.getByRole("button", { name: /Welcome/ });

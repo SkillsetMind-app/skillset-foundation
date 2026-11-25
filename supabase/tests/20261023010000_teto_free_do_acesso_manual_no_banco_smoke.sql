@@ -58,7 +58,7 @@ select 'smoke-free-cap-plan-' || n, pg_temp.uid(n)::text, 'basic', 'active', now
 from generate_series(1, 2) n;
 insert into public.courses(id, owner_id, slug, title, summary, category, status, currency, price_amount_minor)
 select 'smoke-free-cap-' || n, pg_temp.uid(n)::text, 'smoke-free-cap-' || n,
-  'Smoke free cap ' || n, 'Curso usado só por este smoke.', 'smoke', 'published', 'brl', 0
+  'Smoke free cap ' || n, 'Course used only by this smoke test.', 'smoke', 'published', 'brl', 0
 from generate_series(1, 2) n;
 delete from public.subscriptions where id = 'smoke-free-cap-plan-1';
 delete from public.platform_settings where key in ('require_activation_fee', 'require_creator_verification');

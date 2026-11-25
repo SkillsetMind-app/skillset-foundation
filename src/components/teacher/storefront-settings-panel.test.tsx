@@ -442,10 +442,10 @@ describe("StorefrontSettingsPanel", () => {
     });
 
     it.each([
-      ["sem imagem", {}],
-      ["só com o logo", { logoUrl }],
-      ["só com a capa", { heroImageUrl: heroUrl }],
-      ["com as duas", { logoUrl, heroImageUrl: heroUrl }],
+      ["no image", {}],
+      ["only the logo", { logoUrl }],
+      ["only the cover", { heroImageUrl: heroUrl }],
+      ["both", { logoUrl, heroImageUrl: heroUrl }],
     ] as const)("Save sends the same payload %s", async (_state, branding: { logoUrl?: string; heroImageUrl?: string }) => {
       givenImages(branding);
       render(<StorefrontSettingsPanel />);
@@ -497,22 +497,22 @@ describe("StorefrontSettingsPanel", () => {
 
   describe("real storefront language", () => {
     it.each(["en", "es"] as const)("translates the form from %s and preserves the draft, order, featured placement and authored data", async (initialLocale) => {
-      const author = "Autoria $$ e $&";
-      const firstTitle = "Curso $$ e $& de autoria";
-      const secondTitle = "Outro curso autoral";
-      const draft = "Rascunho $$ e $& que permanece";
+      const author = "Authorship $$ and $&";
+      const firstTitle = "Course $$ and $& of authorship";
+      const secondTitle = "Another authored course";
+      const draft = "Draft $$ and $& that stays";
       mocks.getUserProfile.mockResolvedValueOnce({
         displayName: author,
         storefront: {
           branding: { themePreset: "default" },
-          showcase: { tagline: "Texto salvo", orderedCourseIds: ["second", "first", "old"] },
+          showcase: { tagline: "Saved text", orderedCourseIds: ["second", "first", "old"] },
         },
       });
       mocks.subscribeToTeacherCourses.mockImplementation((_uid, onData) => {
         onData([
           { id: "first", ownerId: "teacher-1", title: firstTitle, status: "published", modules: [] },
           { id: "second", ownerId: "teacher-1", title: secondTitle, status: "published", modules: [] },
-          { id: "draft", ownerId: "teacher-1", title: "Curso ainda privado", status: "draft", modules: [] },
+          { id: "draft", ownerId: "teacher-1", title: "Course still private", status: "draft", modules: [] },
         ]);
         return vi.fn();
       });
@@ -541,7 +541,7 @@ describe("StorefrontSettingsPanel", () => {
       expect(screen.getByText("Orden de los cursos")).toBeInTheDocument();
       expect(screen.getByText("Solo cursos publicados")).toBeInTheDocument();
       expect(screen.queryByText("Curso aún privado")).not.toBeInTheDocument();
-      expect(screen.queryByText("Curso ainda privado")).not.toBeInTheDocument();
+      expect(screen.queryByText("Course still private")).not.toBeInTheDocument();
       expect(screen.getByLabelText("Subir logotipo de la tienda")).toHaveAttribute("type", "file");
       expect(screen.getByLabelText("Subir imagen de portada de la tienda")).toHaveAttribute("accept", "image/jpeg,image/png,image/webp");
       expect(screen.getByRole("button", { name: `Mover ${firstTitle} hacia arriba` })).toBeDisabled();
@@ -622,7 +622,7 @@ describe("StorefrontSettingsPanel", () => {
 
     it("blocks changes after a load failure and recovers the saved data only on retry, preserving EN↔ES", async () => {
       const savedProfile = {
-        displayName: "Autoria $$ e $&",
+        displayName: "Authorship $$ and $&",
         storefront: {
           branding: {
             accentColor: "#2468ab",
@@ -631,7 +631,7 @@ describe("StorefrontSettingsPanel", () => {
             themePreset: "warm",
           },
           showcase: {
-            tagline: "Texto salvo $$ e $&",
+            tagline: "Saved text $$ and $&",
             orderedCourseIds: ["second", "first"],
             featuredCourseId: "first",
           },
@@ -644,8 +644,8 @@ describe("StorefrontSettingsPanel", () => {
       mocks.getUserProfile.mockReturnValueOnce(initialLoad).mockReturnValueOnce(retryLoad);
       mocks.subscribeToTeacherCourses.mockImplementation((_uid, onData) => {
         onData([
-          { id: "first", ownerId: "teacher-1", title: "Curso $$ e $&", status: "published", modules: [] },
-          { id: "second", ownerId: "teacher-1", title: "Outro curso salvo", status: "published", modules: [] },
+          { id: "first", ownerId: "teacher-1", title: "Course $$ and $&", status: "published", modules: [] },
+          { id: "second", ownerId: "teacher-1", title: "Another saved course", status: "published", modules: [] },
         ]);
         return vi.fn();
       });
@@ -709,8 +709,8 @@ describe("StorefrontSettingsPanel", () => {
       ]));
       const courseRows = screen.getAllByRole("listitem");
       expect(courseRows).toHaveLength(2);
-      expect(courseRows[0]).toHaveTextContent("Outro curso salvo");
-      expect(courseRows[1]).toHaveTextContent("Curso $$ e $&");
+      expect(courseRows[0]).toHaveTextContent("Another saved course");
+      expect(courseRows[1]).toHaveTextContent("Course $$ and $&");
       expect(within(courseRows[1]).getByRole("button", { name: "Destacado" })).toHaveAttribute("aria-pressed", "true");
       expect(screen.getByLabelText("Subir logotipo de la tienda")).toBeEnabled();
       expect(screen.getByRole("button", { name: "Eliminar logotipo de la tienda" })).toBeEnabled();
@@ -730,13 +730,13 @@ describe("StorefrontSettingsPanel", () => {
         themePreset: "warm",
       };
       const savedShowcase = {
-        tagline: "Texto salvo $$ e $&",
+        tagline: "Saved text $$ and $&",
         orderedCourseIds: ["second", "first"],
         featuredCourseId: "first",
       };
-      const draft = { accentColor: "#13579b", tagline: "Rascunho $$ e $& preservado", themePreset: "cool" };
+      const draft = { accentColor: "#13579b", tagline: "Draft $$ and $& preserved", themePreset: "cool" };
       mocks.getUserProfile.mockResolvedValueOnce({
-        displayName: "Autoria $$ e $&",
+        displayName: "Authorship $$ and $&",
         storefront: { branding: savedBranding, showcase: savedShowcase },
       });
       let deliverCourses: (courses: unknown[]) => void = () => undefined;
@@ -802,15 +802,15 @@ describe("StorefrontSettingsPanel", () => {
       expectDraftIntact();
       expectNoWrites();
       act(() => deliverCourses([
-        { id: "first", ownerId: "teacher-1", title: "Curso $$ e $&", status: "published", modules: [] },
-        { id: "second", ownerId: "teacher-1", title: "Outro curso salvo", status: "published", modules: [] },
+        { id: "first", ownerId: "teacher-1", title: "Course $$ and $&", status: "published", modules: [] },
+        { id: "second", ownerId: "teacher-1", title: "Another saved course", status: "published", modules: [] },
       ]));
       expect(screen.getByRole("button", { name: "Guardar tienda" })).toBeEnabled();
       expectDraftIntact();
       const courseRows = screen.getAllByRole("listitem");
       expect(courseRows).toHaveLength(2);
-      expect(courseRows[0]).toHaveTextContent("Outro curso salvo");
-      expect(courseRows[1]).toHaveTextContent("Curso $$ e $&");
+      expect(courseRows[0]).toHaveTextContent("Another saved course");
+      expect(courseRows[1]).toHaveTextContent("Course $$ and $&");
       expect(within(courseRows[1]).getByRole("button", { name: "Destacado" })).toHaveAttribute("aria-pressed", "true");
       expectNoWrites();
       fireEvent.click(screen.getByRole("button", { name: "Guardar tienda" }));
@@ -827,7 +827,7 @@ describe("StorefrontSettingsPanel", () => {
 
     it("translates removal and later cleanup without deleting the object before persistence", async () => {
       mocks.getUserProfile.mockResolvedValueOnce({
-        displayName: "Autor $$ e $&",
+        displayName: "Author $$ and $&",
         storefront: { branding: { themePreset: "default", logoUrl: "https://media.example/logo.png" }, showcase: {} },
       });
       let finishSave: () => void = () => undefined;

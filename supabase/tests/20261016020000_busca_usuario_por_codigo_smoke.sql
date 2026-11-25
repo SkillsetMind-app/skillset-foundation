@@ -32,10 +32,10 @@ end $$;
 -- Fixtures: 1 admin, 2 target (learner), 3 learner.
 select set_config('skillset.trusted_write', 'on', true);
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
-select pg_temp.uid(n), 'authenticated', 'authenticated', 'busca-codigo-' || n || '@example.test',
+select pg_temp.uid(n), 'authenticated', 'authenticated', 'code-lookup-' || n || '@example.test',
   now(), '{}', '{}', now(), now() from generate_series(1, 3) n;
 insert into public.users(uid, email, roles, onboarding_completed)
-select id::text, email, '["student"]'::jsonb, true from auth.users where email like 'busca-codigo-%@example.test'
+select id::text, email, '["student"]'::jsonb, true from auth.users where email like 'code-lookup-%@example.test'
 on conflict (uid) do nothing;
 update public.users set roles = '["admin"]' where uid = pg_temp.uid(1)::text;
 insert into auth.sessions(id, user_id, created_at, updated_at)
@@ -68,6 +68,6 @@ select pg_temp.assert_true((select count(*) from public.admin_search_users('4F3A
 -- 5) The old search stays the same: whole uid and email.
 select pg_temp.assert_true((select array_agg(uid) from public.admin_search_users(pg_temp.uid(2)::text))
   = array[pg_temp.uid(2)::text], 'full uid');
-select pg_temp.assert_true((select count(*) from public.admin_search_users('busca-codigo-')) = 3, 'email search');
+select pg_temp.assert_true((select count(*) from public.admin_search_users('code-lookup-')) = 3, 'email search');
 reset role;
 rollback;

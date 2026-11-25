@@ -125,9 +125,9 @@ describe("Stripe notice on the sales screens", () => {
     });
 
     it.each([
-      ["sem visita anterior", null],
-      ["conta ja conectada na ultima visita", { uid: "teacher-1", ready: true }],
-      ["ultima visita foi de outra pessoa", { uid: "someone-else", ready: false }],
+      ["no previous visit", null],
+      ["account already connected on the last visit", { uid: "teacher-1", ready: true }],
+      ["the last visit was by another person", { uid: "someone-else", ready: false }],
     ])("%s: nothing until the profile arrives", (_label, saved) => {
       mocks.profilePending = true;
       if (saved) remember(saved.uid, saved.ready);

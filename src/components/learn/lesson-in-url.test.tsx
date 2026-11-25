@@ -208,7 +208,7 @@ describe("lesson text with links", () => {
         {
           ...course.modules[0],
           lessons: [
-            { id: "l1", title: "Leitura", type: "video", duration: "Self-paced", isPreview: true, contentText: "linha 1\nveja https://a.com/x.", description: "" },
+            { id: "l1", title: "Reading", type: "video", duration: "Self-paced", isPreview: true, contentText: "line 1\nsee https://a.com/x.", description: "" },
           ],
         },
       ],
@@ -221,7 +221,7 @@ describe("lesson text with links", () => {
     expect(link).toHaveTextContent("https://a.com/x");
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", "noopener noreferrer nofollow ugc");
-    expect(body.textContent).toContain("linha 1\nveja https://a.com/x.");
+    expect(body.textContent).toContain("line 1\nsee https://a.com/x.");
   });
 });
 
@@ -238,9 +238,9 @@ describe("player notice without a video follows the content, not the type", () =
       {
         ...course.modules[0],
         lessons: [
-          { id: "l1", title: "Leitura", type: "video", duration: "Self-paced", isPreview: true, contentText: "leia isto", description: "" },
-          { id: "l2", title: "Vazia", type: "video", duration: "Self-paced", isPreview: false, contentText: null, description: "" },
-          { id: "l3", title: "Video pendente", type: "video", duration: "Self-paced", isPreview: false, contentText: null, description: "Resumo curto" },
+          { id: "l1", title: "Reading", type: "video", duration: "Self-paced", isPreview: true, contentText: "read this", description: "" },
+          { id: "l2", title: "Empty", type: "video", duration: "Self-paced", isPreview: false, contentText: null, description: "" },
+          { id: "l3", title: "Pending video", type: "video", duration: "Self-paced", isPreview: false, contentText: null, description: "Short summary" },
         ],
       },
     ],
@@ -252,17 +252,17 @@ describe("player notice without a video follows the content, not the type", () =
     mocks.searchParams = new URLSearchParams("lesson=l1");
     render(<EnrolledCourseWorkspace course={withoutVideo} previewMode />);
 
-    expect(playerHeading()).toBe("Leitura");
+    expect(playerHeading()).toBe("Reading");
     expect(playerNotice()).toBeUndefined();
     expect(document.querySelector("#member-lesson-player .member-video-stage")).toBeNull();
-    expect(screen.getByText("leia isto")).toBeInTheDocument();
+    expect(screen.getByText("read this")).toBeInTheDocument();
   });
 
   it("a lesson with no video and no text keeps the media notice", () => {
     mocks.searchParams = new URLSearchParams("lesson=l2");
     render(<EnrolledCourseWorkspace course={withoutVideo} previewMode />);
 
-    expect(playerHeading()).toBe("Vazia");
+    expect(playerHeading()).toBe("Empty");
     expect(playerNotice()).toBe("Media not attached yet");
   });
 
@@ -272,7 +272,7 @@ describe("player notice without a video follows the content, not the type", () =
     mocks.searchParams = new URLSearchParams("lesson=l3");
     render(<EnrolledCourseWorkspace course={withoutVideo} previewMode />);
 
-    expect(playerHeading()).toBe("Video pendente");
+    expect(playerHeading()).toBe("Pending video");
     expect(playerNotice()).toBe("Media not attached yet");
   });
 

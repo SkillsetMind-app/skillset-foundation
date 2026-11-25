@@ -130,12 +130,12 @@ SELECT pg_temp.check_advisor('each stored turn spends both the hourly and the da
 
 DO $$
 DECLARE
-  falhas text;
+  failed_checks text;
   total integer;
 BEGIN
-  SELECT string_agg(name, '; '), count(*) INTO falhas, total FROM advisor_checks WHERE NOT passed;
-  IF falhas IS NOT NULL THEN
-    RAISE EXCEPTION 'ADVISOR_QUOTA_REGRESSION: %', falhas;
+  SELECT string_agg(name, '; '), count(*) INTO failed_checks, total FROM advisor_checks WHERE NOT passed;
+  IF failed_checks IS NOT NULL THEN
+    RAISE EXCEPTION 'ADVISOR_QUOTA_REGRESSION: %', failed_checks;
   END IF;
   SELECT count(*) INTO total FROM advisor_checks;
   IF total <> 15 THEN

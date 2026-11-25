@@ -68,7 +68,8 @@ test Supabase project.
 - A comment explains the **why** (the defect it prevents, the business rule); it does not
   repeat what the code says.
 - Two exceptions. Migrations that were already applied are never edited, so their old
-  Portuguese comments stay. The Spanish product copy in `src/data/i18n` is product
+  Portuguese file names and comments stay, and so does the name of the smoke test that
+  pairs with each of them in `supabase/tests`. The Spanish product copy in `src/data/i18n` is product
   text, not a translation leftover.
 
 ### Screen text

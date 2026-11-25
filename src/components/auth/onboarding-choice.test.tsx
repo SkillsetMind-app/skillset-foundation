@@ -164,8 +164,8 @@ describe("H3: country in the teacher activation", () => {
   });
 
   it.each([
-    ["quem nao terminou o cadastro", () => mocks.getUserProfile.mockResolvedValue({ ...profile, onboardingCompleted: false })],
-    ["perfil que nao carregou", () => mocks.getUserProfile.mockRejectedValueOnce(new Error("offline"))],
+    ["someone who did not finish signup", () => mocks.getUserProfile.mockResolvedValue({ ...profile, onboardingCompleted: false })],
+    ["a profile that did not load", () => mocks.getUserProfile.mockRejectedValueOnce(new Error("offline"))],
   ])("%s sees the 3-step signup under the default title", async (_caso, arrange) => {
     arrange();
     await mountOnPage();
@@ -202,10 +202,10 @@ describe("H3: country in the teacher activation", () => {
     expect(mocks.completeUserOnboarding).toHaveBeenCalledTimes(1);
     return mocks.router.push.mock.calls[0][0];
   }
-  const cartao = "/account/billing/upgrade?plan=starter&cycle=yearly";
+  const card = "/account/billing/upgrade?plan=starter&cycle=yearly";
 
   it("with a plan chosen on /pricing, the end opens that plan's card screen", async () => {
-    expect(await ativar(new URLSearchParams({ path: "teacher", returnTo: cartao }).toString())).toBe(cartao);
+    expect(await ativar(new URLSearchParams({ path: "teacher", returnTo: card }).toString())).toBe(card);
   });
 
   it("without a chosen plan, the end stays on /teach", async () => {
@@ -244,7 +244,7 @@ describe("H3: country in the teacher activation", () => {
   });
 
   it("whoever skips the activation does not open the card screen", async () => {
-    mocks.searchParams = new URLSearchParams({ path: "teacher", returnTo: cartao });
+    mocks.searchParams = new URLSearchParams({ path: "teacher", returnTo: card });
     await mount();
     fireEvent.click(screen.getByRole("button", { name: "onboarding.skipForNow" }));
     expect(mocks.router.push).toHaveBeenCalledExactlyOnceWith("/learn");
@@ -331,10 +331,10 @@ describe("H3: country in the teacher activation", () => {
   // The full signup (3 steps) ends in the same place as the short activation;
   // the learner does not open a plan card even if the address carries one.
   it.each([
-    ["teacher", cartao],
+    ["teacher", card],
     ["student", "/learn"],
-  ])("direct flow %s with a chosen plan ends at %s", async (path, destino) => {
-    mocks.searchParams = new URLSearchParams({ path, returnTo: cartao });
+  ])("direct flow %s with a chosen plan ends at %s", async (path, destination) => {
+    mocks.searchParams = new URLSearchParams({ path, returnTo: card });
     mocks.getUserProfile.mockResolvedValue({ ...profile, onboardingCompleted: false });
     await mount();
     if (path === "teacher") {
@@ -343,14 +343,14 @@ describe("H3: country in the teacher activation", () => {
     fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
     fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
     fireEvent.click(screen.getByRole("button", { name: "onboarding.finishSetup" }));
-    await waitFor(() => expect(mocks.router.push).toHaveBeenCalledExactlyOnceWith(destino));
+    await waitFor(() => expect(mocks.router.push).toHaveBeenCalledExactlyOnceWith(destination));
   });
 
   // F-04: the waiting button does not change width. Both labels live in the
   // same cell; the one that does not apply is hidden from the reader, so the button
   // name is always the visible text. Lock, type and action stay the same.
   it.each([
-    ["ativação curta", true, "onboarding.activateTeaching", "onboarding.activating"],
+    ["short activation", true, "onboarding.activateTeaching", "onboarding.activating"],
     ["cadastro completo", false, "onboarding.finishSetup", "onboarding.saving"],
   ] as const)("%s: the final button states the wait without changing width", async (_label, onboardingCompleted, idle, busy) => {
     let release!: () => void;

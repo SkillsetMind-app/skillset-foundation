@@ -26,8 +26,8 @@ vi.mock("@/components/auth/auth-provider", () => ({
   }),
 }));
 
-const buscarNoBanco = vi.fn<(enrollmentId: string, lessonId: string) => Promise<number>>();
-const gravarNoBanco =
+const fetchFromDb = vi.fn<(enrollmentId: string, lessonId: string) => Promise<number>>();
+const saveToDb =
   vi.fn<
     (
       enrollmentId: string,
@@ -39,13 +39,13 @@ const gravarNoBanco =
 
 vi.mock("@/lib/data/lesson-playback", () => ({
   fetchLessonPosition: (enrollmentId: string, lessonId: string) =>
-    buscarNoBanco(enrollmentId, lessonId),
+    fetchFromDb(enrollmentId, lessonId),
   recordLessonPlayback: (
     enrollmentId: string,
     lessonId: string,
     positionSeconds: number | null,
     durationSeconds?: number | null,
-  ) => gravarNoBanco(enrollmentId, lessonId, positionSeconds, durationSeconds),
+  ) => saveToDb(enrollmentId, lessonId, positionSeconds, durationSeconds),
 }));
 
 /** Enrolled learner: the position goes to and comes back from the database. */
@@ -65,10 +65,10 @@ function fakeMedia(video: HTMLVideoElement, currentTime: number, duration: numbe
 
 beforeEach(() => {
   window.localStorage.clear();
-  buscarNoBanco.mockReset();
-  buscarNoBanco.mockResolvedValue(0);
-  gravarNoBanco.mockReset();
-  gravarNoBanco.mockResolvedValue(undefined);
+  fetchFromDb.mockReset();
+  fetchFromDb.mockResolvedValue(0);
+  saveToDb.mockReset();
+  saveToDb.mockResolvedValue(undefined);
 });
 
 afterEach(cleanup);
@@ -76,48 +76,48 @@ afterEach(cleanup);
 describe("the lesson resumes where it stopped", () => {
   it("while playing, the position is saved — and not on every frame", () => {
     render(
-      <WatermarkedVideoPlayer fileName="aula.mp4" resume={REF} src="blob:aula" />,
+      <WatermarkedVideoPlayer fileName="lesson.mp4" resume={REF} src="blob:lesson" />,
     );
 
-    const video = screen.getByLabelText("aula.mp4") as HTMLVideoElement;
+    const video = screen.getByLabelText("lesson.mp4") as HTMLVideoElement;
 
     fakeMedia(video, 42, 600);
     fireEvent.timeUpdate(video);
-    expect(gravarNoBanco).toHaveBeenCalledWith("enr-1", "l1", 42, 600);
+    expect(saveToDb).toHaveBeenCalledWith("enr-1", "l1", 42, 600);
     expect(window.localStorage.getItem(REF.storageKey)).toBe("42");
 
     // 3 s later it is still the same save: timeupdate fires ~4x per
     // second and writing on every one would be a waste — of the database, now.
-    gravarNoBanco.mockClear();
+    saveToDb.mockClear();
     (video as { currentTime: number }).currentTime = 45;
     fireEvent.timeUpdate(video);
-    expect(gravarNoBanco).not.toHaveBeenCalled();
+    expect(saveToDb).not.toHaveBeenCalled();
     expect(window.localStorage.getItem(REF.storageKey)).toBe("42");
 
     (video as { currentTime: number }).currentTime = 61;
     fireEvent.timeUpdate(video);
-    expect(gravarNoBanco).toHaveBeenCalledWith("enr-1", "l1", 61, 600);
+    expect(saveToDb).toHaveBeenCalledWith("enr-1", "l1", 61, 600);
   });
 
   it("when the lesson is reopened, the video jumps to the second the DATABASE saved", async () => {
     // The phone stopped at 137 s; this is the computer, with empty localStorage.
-    buscarNoBanco.mockResolvedValue(137);
+    fetchFromDb.mockResolvedValue(137);
 
     render(
-      <WatermarkedVideoPlayer fileName="aula.mp4" resume={REF} src="blob:aula" />,
+      <WatermarkedVideoPlayer fileName="lesson.mp4" resume={REF} src="blob:lesson" />,
     );
 
-    const video = screen.getByLabelText("aula.mp4") as HTMLVideoElement;
+    const video = screen.getByLabelText("lesson.mp4") as HTMLVideoElement;
 
     fakeMedia(video, 0, 600);
     fireEvent.loadedMetadata(video);
 
     await waitFor(() => expect(video.currentTime).toBe(137));
-    expect(buscarNoBanco).toHaveBeenCalledWith("enr-1", "l1");
+    expect(fetchFromDb).toHaveBeenCalledWith("enr-1", "l1");
   });
 
   it("database down: this browser's position still counts", async () => {
-    buscarNoBanco.mockRejectedValue(new Error("no network"));
+    fetchFromDb.mockRejectedValue(new Error("no network"));
     window.localStorage.setItem(REF.storageKey, "90");
 
     await expect(readLessonPosition(REF)).resolves.toBe(90);
@@ -127,27 +127,27 @@ describe("the lesson resumes where it stopped", () => {
     window.localStorage.setItem(REF_LOCAL.storageKey, "77");
 
     await expect(readLessonPosition(REF_LOCAL)).resolves.toBe(77);
-    expect(buscarNoBanco).not.toHaveBeenCalled();
+    expect(fetchFromDb).not.toHaveBeenCalled();
 
     saveLessonPosition(REF_LOCAL, 120, 600);
-    expect(gravarNoBanco).not.toHaveBeenCalled();
+    expect(saveToDb).not.toHaveBeenCalled();
     expect(window.localStorage.getItem(REF_LOCAL.storageKey)).toBe("120");
   });
 
   it("a position greater than the duration is ignored (the teacher re-recorded the lesson)", async () => {
-    buscarNoBanco.mockResolvedValue(500);
+    fetchFromDb.mockResolvedValue(500);
 
     render(
-      <WatermarkedVideoPlayer fileName="aula.mp4" resume={REF} src="blob:aula" />,
+      <WatermarkedVideoPlayer fileName="lesson.mp4" resume={REF} src="blob:lesson" />,
     );
 
-    const video = screen.getByLabelText("aula.mp4") as HTMLVideoElement;
+    const video = screen.getByLabelText("lesson.mp4") as HTMLVideoElement;
 
     // The new take is 90 s long: jumping to 500 would throw the learner off the timeline.
     fakeMedia(video, 0, 90);
     fireEvent.loadedMetadata(video);
 
-    await waitFor(() => expect(buscarNoBanco).toHaveBeenCalled());
+    await waitFor(() => expect(fetchFromDb).toHaveBeenCalled());
     expect(video.currentTime).toBe(0);
   });
 
@@ -157,21 +157,21 @@ describe("the lesson resumes where it stopped", () => {
 
     render(
       <WatermarkedVideoPlayer
-        fileName="aula.mp4"
+        fileName="lesson.mp4"
         onEnded={onEnded}
         resume={REF}
-        src="blob:aula"
+        src="blob:lesson"
       />,
     );
 
-    const video = screen.getByLabelText("aula.mp4") as HTMLVideoElement;
+    const video = screen.getByLabelText("lesson.mp4") as HTMLVideoElement;
 
     fakeMedia(video, 600, 600);
     fireEvent.ended(video);
 
     expect(window.localStorage.getItem(REF.storageKey)).toBeNull();
     // EXPLICIT zero: in the database this resets the position (null would mean "I just passed by").
-    expect(gravarNoBanco).toHaveBeenCalledWith("enr-1", "l1", 0, null);
+    expect(saveToDb).toHaveBeenCalledWith("enr-1", "l1", 0, null);
     expect(onEnded).toHaveBeenCalledTimes(1);
   });
 
@@ -179,26 +179,26 @@ describe("the lesson resumes where it stopped", () => {
     expect(lessonPositionRef(null, "enr-1", "l1")).toBeNull();
 
     render(
-      <WatermarkedVideoPlayer fileName="aula.mp4" resume={null} src="blob:aula" />,
+      <WatermarkedVideoPlayer fileName="lesson.mp4" resume={null} src="blob:lesson" />,
     );
 
-    const video = screen.getByLabelText("aula.mp4") as HTMLVideoElement;
+    const video = screen.getByLabelText("lesson.mp4") as HTMLVideoElement;
 
     fakeMedia(video, 120, 600);
     fireEvent.timeUpdate(video);
 
     expect(window.localStorage.length).toBe(0);
-    expect(gravarNoBanco).not.toHaveBeenCalled();
+    expect(saveToDb).not.toHaveBeenCalled();
   });
 });
 
 describe("the funnel: opening the lesson already leaves a trace", () => {
   it("opening sends a NULL position — records the visit without erasing the resume point", () => {
     render(
-      <WatermarkedVideoPlayer fileName="aula.mp4" resume={REF} src="blob:aula" />,
+      <WatermarkedVideoPlayer fileName="lesson.mp4" resume={REF} src="blob:lesson" />,
     );
 
-    expect(gravarNoBanco).toHaveBeenCalledWith("enr-1", "l1", null, null);
+    expect(saveToDb).toHaveBeenCalledWith("enr-1", "l1", null, null);
   });
 });
 
@@ -228,7 +228,7 @@ describe("what is not worth saving", () => {
   });
 
   it("a database refusing the write does not break the lesson", () => {
-    gravarNoBanco.mockRejectedValue(new Error("RATE_LIMIT"));
+    saveToDb.mockRejectedValue(new Error("RATE_LIMIT"));
 
     expect(() => saveLessonPosition(REF, 42, 600)).not.toThrow();
     expect(window.localStorage.getItem(REF.storageKey)).toBe("42");

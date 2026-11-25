@@ -125,7 +125,7 @@ const cases: Case[] = [
     query: [["from", "enrollments"], ["select", "*"], ["eq", "id", "u-1__course-1"], ["maybeSingle"]],
     channel: { name: "enrollments:one:u-1__course-1", filter: { event: "*", schema: "public", table: "enrollments", filter: "id=eq.u-1__course-1" } },
     realtime: "payload",
-    answer: (id) => ({ id, user_id: "u-1", course_id: "c-1", course_slug: "course-1", course_title: "Curso" }),
+    answer: (id) => ({ id, user_id: "u-1", course_id: "c-1", course_slug: "course-1", course_title: "Course" }),
     idOf: (value) => (value as { id: string } | null)?.id ?? null,
   },
   {
@@ -157,7 +157,7 @@ const cases: Case[] = [
   },
   // The canceled option: the SAME query and the same channel, only the filter changes.
   {
-    name: "subscribeToCourseEvents com includeCancelled",
+    name: "subscribeToCourseEvents with includeCancelled",
     subscribe: (callback, onError) =>
       subscribeToCourseEvents("course-1", callback as never, onError, { includeCancelled: true }),
     query: [["from", "course_events"], ["select", "*"], ["eq", "course_slug", "course-1"]],
@@ -170,14 +170,14 @@ const cases: Case[] = [
 
 describe("subscribeToCourseEvents: the canceled ones", () => {
   const rows = [
-    { id: "marcada", course_slug: "course-1", status: "scheduled", starts_at: "2026-12-01T10:00:00Z" },
-    { id: "cancelada", course_slug: "course-1", status: "cancelled", starts_at: "2026-12-02T10:00:00Z" },
-    { id: "realizada", course_slug: "course-1", status: "completed", starts_at: "2026-12-03T10:00:00Z" },
+    { id: "scheduled", course_slug: "course-1", status: "scheduled", starts_at: "2026-12-01T10:00:00Z" },
+    { id: "cancelled", course_slug: "course-1", status: "cancelled", starts_at: "2026-12-02T10:00:00Z" },
+    { id: "completed", course_slug: "course-1", status: "completed", starts_at: "2026-12-03T10:00:00Z" },
   ];
 
   it.each([
-    ["sem a opção, só as marcadas (como antes)", undefined, ["marcada"]],
-    ["com a opção, as marcadas e as canceladas", { includeCancelled: true }, ["marcada", "cancelada"]],
+    ["without the option, only the scheduled ones (as before)", undefined, ["scheduled"]],
+    ["with the option, the scheduled and the cancelled ones", { includeCancelled: true }, ["scheduled", "cancelled"]],
   ] as const)("%s", async (_label, options, ids) => {
     fake.reads = [];
     fake.channels = [];
@@ -226,32 +226,32 @@ describe("reload() of the learner and site subscriptions", () => {
   it.each(cases)("$name: without reload, the initial read that comes back after turning off still delivers (as before)", async (item) => {
     const { subscription, delivered } = await start(item);
     subscription();
-    fake.reads[0].answer({ data: item.answer("inicial"), error: null });
+    fake.reads[0].answer({ data: item.answer("initial"), error: null });
     await settle();
-    expect(delivered()).toEqual(["inicial"]);
+    expect(delivered()).toEqual(["initial"]);
     expect(fake.removeChannel).toHaveBeenCalledOnce();
   });
 
   it.each(reloadCases)("$name: without reload, the channel's re-reads deliver in the order they come back (as before)", async (item) => {
     const { delivered, channel } = await start(item);
-    fake.reads[0].answer({ data: item.answer("inicial"), error: null });
+    fake.reads[0].answer({ data: item.answer("initial"), error: null });
     channel().handler();
     channel().handler();
     await reads(3);
-    fake.reads[2].answer({ data: item.answer("canal-2"), error: null });
+    fake.reads[2].answer({ data: item.answer("channel-2"), error: null });
     await settle();
-    fake.reads[1].answer({ data: item.answer("canal-1"), error: null });
+    fake.reads[1].answer({ data: item.answer("channel-1"), error: null });
     await settle();
-    expect(delivered()).toEqual(["inicial", "canal-2", "canal-1"]);
+    expect(delivered()).toEqual(["initial", "channel-2", "channel-1"]);
   });
 
   it.each(payloadCases)("$name: the channel delivers the row that changed, with no new read (as before)", async (item) => {
     const { delivered, channel } = await start(item);
-    fake.reads[0].answer({ data: item.answer("inicial"), error: null });
+    fake.reads[0].answer({ data: item.answer("initial"), error: null });
     await settle();
-    channel().handler({ eventType: "UPDATE", new: item.answer("mudou") });
+    channel().handler({ eventType: "UPDATE", new: item.answer("changed") });
     channel().handler({ eventType: "DELETE", old: {} });
-    expect(delivered()).toEqual(["inicial", "mudou", null]);
+    expect(delivered()).toEqual(["initial", "changed", null]);
     expect(fake.reads).toHaveLength(1);
   });
 
@@ -263,32 +263,32 @@ describe("reload() of the learner and site subscriptions", () => {
     void subscription.reload();
     void subscription.reload();
     await reads(3);
-    fake.reads[2].answer({ data: item.answer("nova"), error: null });
+    fake.reads[2].answer({ data: item.answer("newest"), error: null });
     await settle();
-    fake.reads[1].answer({ data: item.answer("velha"), error: null });
+    fake.reads[1].answer({ data: item.answer("oldest"), error: null });
     await settle();
-    expect(delivered()).toEqual(["nova"]);
+    expect(delivered()).toEqual(["newest"]);
     expect(onError).toHaveBeenCalledOnce();
   });
 
   it.each(reloadCases)("$name: the channel re-reads after the reload: the channel's counts, the reload's that comes back later is dropped", async (item) => {
     const { subscription, delivered, channel } = await start(item);
-    fake.reads[0].answer({ data: item.answer("inicial"), error: null });
+    fake.reads[0].answer({ data: item.answer("initial"), error: null });
     await settle();
 
     void subscription.reload();
     channel().handler();
     await reads(3);
-    fake.reads[2].answer({ data: item.answer("canal"), error: null });
+    fake.reads[2].answer({ data: item.answer("channel"), error: null });
     await settle();
     fake.reads[1].answer({ data: item.answer("reload"), error: null });
     await settle();
-    expect(delivered()).toEqual(["inicial", "canal"]);
+    expect(delivered()).toEqual(["initial", "channel"]);
   });
 
   it.each(reloadCases)("$name: the reload after a channel re-read: the reload counts, the older channel read is dropped", async (item) => {
     const { subscription, delivered, channel } = await start(item);
-    fake.reads[0].answer({ data: item.answer("inicial"), error: null });
+    fake.reads[0].answer({ data: item.answer("initial"), error: null });
     await settle();
 
     channel().handler();
@@ -297,9 +297,9 @@ describe("reload() of the learner and site subscriptions", () => {
     await reads(3);
     fake.reads[2].answer({ data: item.answer("reload"), error: null });
     await settle();
-    fake.reads[1].answer({ data: item.answer("canal-velho"), error: null });
+    fake.reads[1].answer({ data: item.answer("old-channel"), error: null });
     await settle();
-    expect(delivered()).toEqual(["inicial", "reload"]);
+    expect(delivered()).toEqual(["initial", "reload"]);
   });
 
   it.each(cases)("$name: a reload that fails reports through onError and the promise resolves", async (item) => {
@@ -324,7 +324,7 @@ describe("reload() of the learner and site subscriptions", () => {
     const retry = subscription.reload();
     await reads(2);
     subscription();
-    fake.reads[1].answer({ data: item.answer("tarde"), error: null });
+    fake.reads[1].answer({ data: item.answer("late"), error: null });
     await expect(retry).resolves.toBeUndefined();
     expect(callback).not.toHaveBeenCalled();
     expect(onError).toHaveBeenCalledOnce();
@@ -391,10 +391,10 @@ describe("reload() of the teacher's reads (Earnings and Subscriptions)", () => {
     const retry = subscription.reload();
     await reads(2);
     expect(fake.reads[1].query).toEqual(teacherQuery(item.table));
-    fake.reads[1].answer({ data: item.answer("de-novo"), error: null });
+    fake.reads[1].answer({ data: item.answer("again"), error: null });
     await expect(retry).resolves.toBeUndefined();
     expect(callback).toHaveBeenCalledOnce();
-    expect((callback.mock.calls[0][0] as Array<{ id: string }>).map((row) => row.id)).toEqual(["de-novo"]);
+    expect((callback.mock.calls[0][0] as Array<{ id: string }>).map((row) => row.id)).toEqual(["again"]);
     expect(onError).toHaveBeenCalledOnce();
     expect(fake.channels).toHaveLength(1);
     expect(fake.removeChannel).not.toHaveBeenCalled();
@@ -405,7 +405,7 @@ describe("reload() of the teacher's reads (Earnings and Subscriptions)", () => {
     subscription();
     const retry = subscription.reload();
     await reads(2);
-    fake.reads[1].answer({ data: item.answer("tarde"), error: null });
+    fake.reads[1].answer({ data: item.answer("late"), error: null });
     await expect(retry).resolves.toBeUndefined();
     expect(callback).not.toHaveBeenCalled();
     expect(onError).toHaveBeenCalledOnce();

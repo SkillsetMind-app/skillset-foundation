@@ -61,9 +61,9 @@ describe("subscribeToStudentMessages", () => {
     // "Try again" (read 2) and, before it comes back, a new message (read 3).
     void subscription.reload();
     fake.onChange();
-    fake.reads[2]({ data: [row("nova"), row("velha")], error: null });
+    fake.reads[2]({ data: [row("new"), row("old")], error: null });
     await vi.waitFor(() => expect(callback).toHaveBeenCalledOnce());
-    fake.reads[1]({ data: [row("velha")], error: null });
+    fake.reads[1]({ data: [row("old")], error: null });
     await settle();
 
     expect(callback).toHaveBeenCalledOnce();

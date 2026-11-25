@@ -66,7 +66,7 @@ export async function extractAudioChunks(opts: {
     throw new AudioExtractError(`video_fetch_${response.status}`);
   }
 
-  const dir = await mkdtemp(join(tmpdir(), "aula-audio-"));
+  const dir = await mkdtemp(join(tmpdir(), "lesson-audio-"));
   try {
     await runFfmpeg(
       ffmpegPath,

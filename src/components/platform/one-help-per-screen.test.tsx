@@ -56,8 +56,8 @@ function helpTriggers() {
 
 describe("one Help per screen", () => {
   it.each([
-    ["estudio", "/teach/sales", ["teacher"], "My students"],
-    ["area do aluno", "/learn", ["student"], "Private matter with the teacher"],
+    ["studio", "/teach/sales", ["teacher"], "My students"],
+    ["learner area", "/learn", ["student"], "Private matter with the teacher"],
   ])("%s: only the sidebar's, not in the top bar or the account menu", (_label, pathname, roles, choice) => {
     mocks.pathname = pathname;
     mocks.roles = roles;
@@ -87,13 +87,13 @@ describe("one Help per screen", () => {
   });
 
   it.each([
-    ["sem marca", null],
-    ["com a marca do professor", { name: "Atelier Curie" }],
+    ["no brand", null],
+    ["with the teacher's brand", { name: "Atelier Curie" }],
   ])("classroom (%s): only the top one, with the classroom's course", (_label, brand) => {
-    mocks.pathname = "/learn/courses/curso-1";
+    mocks.pathname = "/learn/courses/course-1";
     mocks.roles = ["student"];
     render(
-      <MemberAreaShell brand={brand} course={{ href: "/learn/courses/curso-1", communityEnabled: true }}>
+      <MemberAreaShell brand={brand} course={{ href: "/learn/courses/course-1", communityEnabled: true }}>
         <p>Lesson</p>
       </MemberAreaShell>,
     );
@@ -104,7 +104,7 @@ describe("one Help per screen", () => {
     expect(
       within(screen.getByRole("dialog", { name: "What do you need help with?" }))
         .getByRole("link", { name: /Question about a lesson/ }),
-    ).toHaveAttribute("href", "/learn/courses/curso-1/community");
+    ).toHaveAttribute("href", "/learn/courses/course-1/community");
   });
 
   // Tablet: the bar is an icon rail; its Help opens the drawer already on

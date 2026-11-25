@@ -139,8 +139,8 @@ describe("creator course page", () => {
     mocks.getPublicCourseByRef.mockResolvedValue(null);
     mocks.getCourseRefAccess.mockResolvedValue("missing");
 
-    await expect(renderPage("nao-existe")).rejects.toThrow("NEXT_NOT_FOUND");
-    expect(mocks.getCourseRefAccess).toHaveBeenCalledWith("nao-existe");
+    await expect(renderPage("does-not-exist")).rejects.toThrow("NEXT_NOT_FOUND");
+    expect(mocks.getCourseRefAccess).toHaveBeenCalledWith("does-not-exist");
     expect(mocks.notFound).toHaveBeenCalledOnce();
   });
 
@@ -148,7 +148,7 @@ describe("creator course page", () => {
     mocks.getPublicCourseByRef.mockResolvedValue(null);
     mocks.getCourseRefAccess.mockResolvedValue("visible");
 
-    await renderPage("rascunho");
+    await renderPage("draft");
 
     expect(mocks.notFound).not.toHaveBeenCalled();
     expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
@@ -249,8 +249,8 @@ describe("course page indexing", () => {
   // Internal test course: it still opens by direct link, as the store
   // already did, but it cannot stay in the index after leaving the sitemap.
   it("an internal test course is not indexed", async () => {
-    mocks.getPublicCourseByRef.mockResolvedValue({ ...published, title: "[QA] Curso de teste interno" });
-    expect((await metadataFor("qa-curso-de-teste-interno")).robots).toMatchObject({ index: false });
+    mocks.getPublicCourseByRef.mockResolvedValue({ ...published, title: "[QA] Internal test course" });
+    expect((await metadataFor("qa-internal-test-course")).robots).toMatchObject({ index: false });
   });
 });
 
@@ -331,10 +331,10 @@ describe("real course at a sample's address", () => {
   });
 
   it("an address that is neither a sample nor a course is still 404, and the metadata does not query access", async () => {
-    await expect(renderPage("nem-amostra-nem-curso")).rejects.toThrow("NEXT_NOT_FOUND");
+    await expect(renderPage("neither-sample-nor-course")).rejects.toThrow("NEXT_NOT_FOUND");
 
     mocks.getCourseRefAccess.mockClear();
-    await generateMetadata({ params: Promise.resolve({ slug: "nem-amostra-nem-curso" }) });
+    await generateMetadata({ params: Promise.resolve({ slug: "neither-sample-nor-course" }) });
     expect(mocks.getCourseRefAccess).not.toHaveBeenCalled();
   });
 });

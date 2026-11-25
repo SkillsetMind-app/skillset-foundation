@@ -98,7 +98,7 @@ function renderBuilder() {
 }
 
 // Slice 4: cover, description and lessons live on the module page (?module=M).
-function abrirModulo(id: string) {
+function openModule(id: string) {
   mocks.searchParams = new URLSearchParams(`courseId=course-1&tab=content&module=${id}`);
 }
 
@@ -163,7 +163,7 @@ describe("Curriculum tab: the module list comes first", () => {
   });
 
   it("creates the lesson inside the open module, with no module select", async () => {
-    abrirModulo("m2");
+    openModule("m2");
     renderBuilder();
     await screen.findByRole("heading", { name: mocks.course.title });
 
@@ -230,7 +230,7 @@ describe("Curriculum tab: the module list comes first", () => {
 
   it("uploads the cover through the right module and saves the asset without touching the lessons", async () => {
     vi.mocked(uploadCourseAsset).mockResolvedValueOnce("poster-new");
-    abrirModulo("m2");
+    openModule("m2");
     renderBuilder();
     await screen.findByRole("heading", { name: mocks.course.title });
     const poster = screen.getByRole("region", { name: "Module cover" });
@@ -257,8 +257,8 @@ describe("Curriculum tab: the module list comes first", () => {
     fireEvent.change(screen.getByRole("textbox", { name: "Module title" }), { target: { value: "New module" } });
     fireEvent.click(screen.getByRole("button", { name: "Create module" }));
     // The new module opens on its page: it follows the URL the builder pushed.
-    const destino = String(mocks.router.push.mock.calls.at(-1)?.[0]);
-    mocks.searchParams = new URL(destino, "https://example.test").searchParams;
+    const destination = String(mocks.router.push.mock.calls.at(-1)?.[0]);
+    mocks.searchParams = new URL(destination, "https://example.test").searchParams;
     rerender(tree());
     expect(screen.getByLabelText("Module cover", { selector: "input" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Add lesson to module 3" }));
@@ -268,7 +268,7 @@ describe("Curriculum tab: the module list comes first", () => {
 
   it("refuses an invalid file and allows repeating a cover whose upload failed", async () => {
     vi.mocked(uploadCourseAsset).mockRejectedValueOnce(new Error("network"));
-    abrirModulo("m1");
+    openModule("m1");
     renderBuilder();
     await screen.findByRole("heading", { name: mocks.course.title });
     fireEvent.change(screen.getByLabelText("Module cover", { selector: "input" }), {
@@ -297,7 +297,7 @@ describe("Curriculum tab: the module list comes first", () => {
       },
     ];
     try {
-      abrirModulo("m1");
+      openModule("m1");
       renderBuilder();
       await screen.findByRole("heading", { name: mocks.course.title });
 
@@ -323,7 +323,7 @@ describe("Curriculum tab: the module list comes first", () => {
   // lesson must return the six fields intact, even off screen.
   it("editing the title of an old lesson preserves the fields that left the screen", async () => {
     const modulesOriginais = mocks.course.modules;
-    const aulaAntiga = {
+    const oldLesson = {
       id: "l1",
       title: "Old lesson",
       type: "quiz" as const,
@@ -333,9 +333,9 @@ describe("Curriculum tab: the module list comes first", () => {
       externalUrl: "https://drive.google.com/x",
       description: "n",
     };
-    mocks.course.modules = [{ id: "m1", title: "Start here", lessons: [aulaAntiga] }];
+    mocks.course.modules = [{ id: "m1", title: "Start here", lessons: [oldLesson] }];
     try {
-      abrirModulo("m1");
+      openModule("m1");
       renderBuilder();
       await screen.findByRole("heading", { name: mocks.course.title });
       fireEvent.change(screen.getByRole("textbox", { name: "Lesson title" }), {
@@ -346,7 +346,7 @@ describe("Curriculum tab: the module list comes first", () => {
       await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalled(), { timeout: 5000 });
       const lessons = vi.mocked(updateTeacherCourseBuilder).mock.calls.at(-1)?.[1].modules?.[0].lessons;
       expect(lessons).toEqual([
-        expect.objectContaining({ ...aulaAntiga, title: "Renamed lesson" }),
+        expect.objectContaining({ ...oldLesson, title: "Renamed lesson" }),
       ]);
     } finally {
       mocks.course.modules = modulesOriginais;

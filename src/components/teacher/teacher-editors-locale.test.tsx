@@ -132,8 +132,8 @@ describe("ES-09 editors with the shipped dictionaries", () => {
   // builder, which rewrites price and form. The database (20261007030000) refuses
   // switching to "charged with no amount"; repeating what is stored passes.
   it.each([
-    ["sem forma e sem valor (gratis)", undefined, "free"],
-    ["pagamento unico sem valor", "one_time", "one_time"],
+    ["no payment type and no price (free)", undefined, "free"],
+    ["one-time payment with no price", "one_time", "one_time"],
   ] as const)("existing live product, %s: the text saves without touching the price", async (_label, paymentType, sent) => {
     const legacy: TeacherCourse = { ...course, status: "published", paymentType, priceAmountMinor: null };
     vi.mocked(updateTeacherCourseBuilder).mockImplementationOnce(async (_id, input) => {

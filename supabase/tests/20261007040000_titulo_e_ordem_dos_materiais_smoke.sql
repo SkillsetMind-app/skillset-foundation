@@ -35,17 +35,17 @@ exception when check_violation then
   return true;
 end $$;
 create function pg_temp.file_path(p_asset text) returns text language sql immutable as $$
-  select 'courses/smoke-materiais/assets/' || pg_temp.uid(1)::text || '/' || p_asset || '/material.pdf';
+  select 'courses/smoke-materials/assets/' || pg_temp.uid(1)::text || '/' || p_asset || '/material.pdf';
 $$;
 -- What the current role sees, through RLS.
 create function pg_temp.assets_seen() returns text[] language sql stable as $$
   select coalesce(array_agg(id order by id), '{}')
-  from public.course_assets where course_id = 'smoke-materiais';
+  from public.course_assets where course_id = 'smoke-materials';
 $$;
 create function pg_temp.files_seen() returns text[] language sql stable as $$
   select coalesce(array_agg(split_part(name, '/', 5) order by name), '{}')
   from storage.objects
-  where bucket_id = 'course-content' and name like 'courses/smoke-materiais/%';
+  where bucket_id = 'course-content' and name like 'courses/smoke-materials/%';
 $$;
 
 -- 1 owner, 2 active learner (enrolled today), 3 nobody enrolled,
@@ -53,7 +53,7 @@ $$;
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
-select pg_temp.uid(n), 'authenticated', 'authenticated', 'materiais-' || n || '@example.test',
+select pg_temp.uid(n), 'authenticated', 'authenticated', 'materials-' || n || '@example.test',
   now(), '{}', '{}', now(), now()
 from generate_series(1, 4) n;
 -- Keep the creator plan current so this smoke exercises its original guard.
@@ -67,28 +67,28 @@ update public.users
 -- Lesson a opens on the enrollment day; lesson b, 7 days later; lesson c, also on the day.
 insert into public.courses(id, owner_id, slug, title, summary, category, status, currency,
   price_amount_minor, payment_type, modules, drip_strategy)
-values ('smoke-materiais', pg_temp.uid(1)::text, 'smoke-materiais', 'Smoke materiais',
-  'Curso usado só por este smoke de materiais.', 'smoke', 'published', 'usd', 0, 'free',
-  jsonb_build_array(jsonb_build_object('id', 'smoke-materiais-m1', 'title', 'Modulo 1', 'lessons', jsonb_build_array(
-    jsonb_build_object('id', 'sm-a', 'title', 'Aula a', 'type', 'text', 'dripDelayDays', 0),
-    jsonb_build_object('id', 'sm-b', 'title', 'Aula b', 'type', 'text', 'dripDelayDays', 7),
-    jsonb_build_object('id', 'sm-c', 'title', 'Aula c', 'type', 'text', 'dripDelayDays', 0)))),
+values ('smoke-materials', pg_temp.uid(1)::text, 'smoke-materials', 'Smoke materials',
+  'Course used only by this materials smoke test.', 'smoke', 'published', 'usd', 0, 'free',
+  jsonb_build_array(jsonb_build_object('id', 'smoke-materials-m1', 'title', 'Module 1', 'lessons', jsonb_build_array(
+    jsonb_build_object('id', 'sm-a', 'title', 'Lesson a', 'type', 'text', 'dripDelayDays', 0),
+    jsonb_build_object('id', 'sm-b', 'title', 'Lesson b', 'type', 'text', 'dripDelayDays', 7),
+    jsonb_build_object('id', 'sm-c', 'title', 'Lesson c', 'type', 'text', 'dripDelayDays', 0)))),
   'time_drip_custom');
 insert into public.courses(id, owner_id, slug, title, summary, category, status, currency,
   price_amount_minor, payment_type, modules)
-values ('smoke-materiais-outro', pg_temp.uid(4)::text, 'smoke-materiais-outro', 'Smoke materiais outro',
-  'Curso de outro professor, usado só por este smoke.', 'smoke', 'draft', 'usd', 0, 'free', '[]'::jsonb);
+values ('smoke-materials-other', pg_temp.uid(4)::text, 'smoke-materials-other', 'Smoke materials other',
+  'Course of another teacher, used only by this smoke test.', 'smoke', 'draft', 'usd', 0, 'free', '[]'::jsonb);
 insert into public.enrollments(id, user_id, course_id, course_slug, course_title, course_category,
   course_image, status, source)
-values (pg_temp.uid(2)::text || '__smoke-materiais', pg_temp.uid(2)::text, 'smoke-materiais',
-  'smoke-materiais', 'Smoke materiais', 'smoke', '', 'active', 'admin');
+values (pg_temp.uid(2)::text || '__smoke-materials', pg_temp.uid(2)::text, 'smoke-materials',
+  'smoke-materials', 'Smoke materials', 'smoke', '', 'active', 'admin');
 
 -- "Before" rows: no title and no position. In lesson a, three files out
 -- of order and with mixed capitalization; a name made only of spaces; in lesson b
 -- (closed) one file; in lesson c a row that already has a title and position.
 insert into public.course_assets(id, course_id, owner_id, kind, file_name, content_type, size,
   storage_path, lesson_id, title, position, created_at)
-select x.id, 'smoke-materiais', pg_temp.uid(1)::text, 'lesson_material', x.file_name,
+select x.id, 'smoke-materials', pg_temp.uid(1)::text, 'lesson_material', x.file_name,
   'application/pdf', 1, pg_temp.file_path(x.id), x.lesson, x.title, x.position, now()
 from (values
   ('sm-zeta', 'Zeta.pdf', 'sm-a', null, null),
@@ -99,7 +99,7 @@ from (values
   ('sm-kept', 'kept.pdf', 'sm-c', 'Workbook', 5)
 ) x(id, file_name, lesson, title, position);
 insert into storage.objects(bucket_id, name)
-select 'course-content', storage_path from public.course_assets where course_id = 'smoke-materiais';
+select 'course-content', storage_path from public.course_assets where course_id = 'smoke-materials';
 select set_config('skillset.trusted_write', 'off', true);
 
 -- The migration runs again in here, as it runs on a database with old rows.
@@ -124,32 +124,32 @@ select pg_temp.check_material('backfill: a row that already had a title and posi
 
 -- Idempotent: the second pass changes nothing.
 create temp table material_snapshot as
-  select id, title, position from public.course_assets where course_id = 'smoke-materiais';
+  select id, title, position from public.course_assets where course_id = 'smoke-materials';
 \ir ../migrations/20261007040000_titulo_e_ordem_dos_materiais.sql
 select pg_temp.check_material('running the migration again changes nothing',
   not exists (
-    (select id, title, position from public.course_assets where course_id = 'smoke-materiais'
+    (select id, title, position from public.course_assets where course_id = 'smoke-materials'
      except select * from material_snapshot)
     union all
     (select * from material_snapshot
-     except select id, title, position from public.course_assets where course_id = 'smoke-materiais')));
+     except select id, title, position from public.course_assets where course_id = 'smoke-materials')));
 
 -- Today's upload sends neither title nor position, and still goes in.
 select pg_temp.act_as(pg_temp.uid(1), 'authenticated');
 set local role authenticated;
 insert into public.course_assets(id, course_id, owner_id, kind, file_name, content_type, size,
   storage_path, lesson_id)
-values ('sm-new', 'smoke-materiais', pg_temp.uid(1)::text, 'lesson_material', 'mapa.xmind',
+values ('sm-new', 'smoke-materials', pg_temp.uid(1)::text, 'lesson_material', 'map.xmind',
   'application/vnd.xmind.workbook', 1, pg_temp.file_path('sm-new'), 'sm-c');
 select pg_temp.check_material('an upload without title or position still goes in',
   (select title is null and position is null from public.course_assets where id = 'sm-new'));
 
 -- The owner renames and reorders from their own session (the owner's update policy).
-update public.course_assets set title = 'Guia de estudo' where id = 'sm-zeta';
+update public.course_assets set title = 'Study guide' where id = 'sm-zeta';
 update public.course_assets set position = 0 where id = 'sm-zeta';
 update public.course_assets set position = 3 where id = 'sm-blank';
 select pg_temp.check_material('the owner renames a file',
-  (select title from public.course_assets where id = 'sm-zeta') = 'Guia de estudo');
+  (select title from public.course_assets where id = 'sm-zeta') = 'Study guide');
 select pg_temp.check_material('the owner reorders files',
   (select position from public.course_assets where id = 'sm-zeta') = 0
   and (select position from public.course_assets where id = 'sm-blank') = 3);
@@ -171,7 +171,7 @@ reset role;
 -- Teacher of another course: the owner's update policy filters the row, nothing changes.
 select pg_temp.act_as(pg_temp.uid(4), 'authenticated');
 set local role authenticated;
-update public.course_assets set title = 'Outro professor', position = 1 where id = 'sm-beta';
+update public.course_assets set title = 'Other teacher', position = 1 where id = 'sm-beta';
 reset role;
 select pg_temp.act_as(null, 'service_role');
 select pg_temp.check_material('another teacher cannot rename or reorder',

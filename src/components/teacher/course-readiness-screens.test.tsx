@@ -22,7 +22,7 @@ const mocks = vi.hoisted(() => {
       const calls = (subscriptionCounts.get(name) ?? 0) + 1;
       subscriptionCounts.set(name, calls);
       if (calls > 20) {
-        throw new Error(`${name} inscrito ${calls} vezes: laco de render`);
+        throw new Error(`${name} subscribed ${calls} times: render loop`);
       }
       return impl(...args);
     };
@@ -655,7 +655,7 @@ describe("what is missing to publish: a single number on every screen", () => {
     const view = renderBuilder("content");
     await act(async () => {});
     fireEvent.click(screen.getByRole("button", { name: "Add lesson to module 1" }));
-    fireEvent.change(screen.getByRole("textbox", { name: "Lesson title" }), { target: { value: "Aula $$ $&" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Lesson title" }), { target: { value: "Lesson $$ $&" } });
     fireEvent.click(screen.getByRole("button", { name: "Add lesson" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
@@ -664,7 +664,7 @@ describe("what is missing to publish: a single number on every screen", () => {
     act(() => vi.advanceTimersByTime(1800));
     expect(updateTeacherCourseBuilder).toHaveBeenCalledOnce();
     const payload = vi.mocked(updateTeacherCourseBuilder).mock.calls[0][1];
-    expect(payload.modules?.[0].lessons[0].title).toBe("Aula $$ $&");
+    expect(payload.modules?.[0].lessons[0].title).toBe("Lesson $$ $&");
     await act(async () => finishSave());
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     act(() => emitCourse({ ...mocks.course, ...payload }));
@@ -679,7 +679,7 @@ describe("what is missing to publish: a single number on every screen", () => {
       </I18nProvider>,
     );
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Aula $$ $&" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Lesson $$ $&" })).toBeInTheDocument();
     expect(updateTeacherCourseBuilder).toHaveBeenCalledOnce();
     expect(subscribeToTeacherCourse).toHaveBeenCalledOnce();
   });
@@ -715,7 +715,7 @@ describe("what is missing to publish: a single number on every screen", () => {
     await screen.findByRole("heading", { name: mocks.course.title });
     const input = screen.getByLabelText("Upload cover");
     expect(input).toHaveAttribute("accept", "image/*");
-    const big = new File(["x"], "capa.png", { type: "image/png" });
+    const big = new File(["x"], "cover.png", { type: "image/png" });
     Object.defineProperty(big, "size", { value: 600 * 1024 * 1024 });
     fireEvent.change(input, { target: { files: [big] } });
     expect(screen.getByText(/Use an image file under/).closest('[role="alert"]')).not.toBeNull();
@@ -750,7 +750,7 @@ describe("what is missing to publish: a single number on every screen", () => {
 
   // The dialog does not hold the click the way confirm() did: once confirmed, the
   // same link gets the click once and goes on (Next's Link navigates).
-  it("confirmar a saida repete o clique no link uma vez so", async () => {
+  it("confirming the exit repeats the link click only once", async () => {
     const { container } = renderBuilder();
     await screen.findByRole("heading", { name: mocks.course.title });
     fireEvent.change(screen.getByRole("textbox", { name: "Course title" }), { target: { value: "Edited course title" } });
@@ -1409,8 +1409,8 @@ describe("what is missing to publish: a single number on every screen", () => {
   // A course could be published with empty lessons. The builder's Publish
   // now locks and says which lesson is missing; with content in both, it unlocks.
   it.each([
-    ["uma aula vazia", false],
-    ["conteudo nas duas", true],
+    ["one empty lesson", false],
+    ["content in both", true],
   ] as const)("builder: Publish with %s", async (_case, filled) => {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emit({
@@ -1634,8 +1634,8 @@ describe("price tab without what does not apply", () => {
   });
 
   it.each([
-    ["flag desligada, conta do Mexico", undefined, "MX"],
-    ["flag ligada, conta dos EUA", "true", "US"],
+    ["flag off, Mexico account", undefined, "MX"],
+    ["flag on, US account", "true", "US"],
   ])("installments stay hidden: %s", async (_case, flag, country) => {
     if (flag) vi.stubEnv("NEXT_PUBLIC_PAYMENTS_CARD_INSTALLMENTS_ENABLED", flag);
     profileExtra.stripeConnectCountry = country;
@@ -1926,7 +1926,7 @@ describe("publish without surprise", () => {
 
   // The peak of the journey was a gray paragraph just like "Draft saved.". Now it is
   // a panel with the "Published!" scene and focus on the brass copy button.
-  describe("o painel Publicado!", () => {
+  describe("the Published! panel", () => {
     beforeEach(() => {
       window.localStorage.clear();
     });
@@ -2007,7 +2007,7 @@ describe("publish without surprise", () => {
   });
 });
 
-describe("motivo do bloqueio no analytics", () => {
+describe("block reason in analytics", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.resetSubscriptionCounts();
@@ -2042,7 +2042,7 @@ describe("motivo do bloqueio no analytics", () => {
   });
 });
 
-describe("item de payouts no construtor", () => {
+describe("payouts item in the builder", () => {
   afterEach(() => {
     cleanup();
     mocks.searchParams.delete("tab");
@@ -2396,7 +2396,7 @@ describe("milestone banner after creating (created=1)", () => {
 });
 
 // Wave D, review fixes: motion only on CHANGE, never on load.
-describe("movimento so na mudanca", () => {
+describe("motion only on change", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.resetSubscriptionCounts();

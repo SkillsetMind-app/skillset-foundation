@@ -114,7 +114,7 @@ export function BunnyVideoPlayer(props: BunnyVideoPlayerProps) {
     // at second zero, and saving zero would erase exactly the point we are
     // fetching. `cancelado` covers a lesson switch with the response in flight.
     let cancelado = false;
-    let esperandoPosicao = false;
+    let awaitingPosition = false;
 
     function post(message: Record<string, unknown>) {
       try {
@@ -152,7 +152,7 @@ export function BunnyVideoPlayer(props: BunnyVideoPlayerProps) {
 
       if (name === "ended" || name === "finish") {
         resumedRef.current = true;
-        esperandoPosicao = false;
+        awaitingPosition = false;
         lastSavedRef.current = 0;
         clearLessonPosition(resume);
         onEnded?.();
@@ -176,10 +176,10 @@ export function BunnyVideoPlayer(props: BunnyVideoPlayerProps) {
 
       if (!resumedRef.current) {
         resumedRef.current = true;
-        esperandoPosicao = true;
+        awaitingPosition = true;
 
         void readLessonPosition(resume).then((saved) => {
-          esperandoPosicao = false;
+          awaitingPosition = false;
 
           if (cancelado) {
             return;
@@ -195,7 +195,7 @@ export function BunnyVideoPlayer(props: BunnyVideoPlayerProps) {
         return;
       }
 
-      if (esperandoPosicao) {
+      if (awaitingPosition) {
         return;
       }
 

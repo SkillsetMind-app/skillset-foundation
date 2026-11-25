@@ -79,10 +79,10 @@ describe("LoginForm with a plan chosen on /pricing", () => {
   }
 
   it.each([
-    ["professor sem plano abre o cartao", { onboardingCompleted: true, roles: ["teacher"] }, card],
-    ["professor que ja tem plano segue para o estudio", { onboardingCompleted: true, roles: ["teacher"], currentPlanId: "basic" }, "/loading?next=route&path=teacher"],
-    ["quem ainda nao ensina ativa o ensino levando o plano", { onboardingCompleted: true, roles: ["student"] }, `/onboarding?path=teacher&${withCard}`],
-    ["conta sem onboarding passa por ele levando o plano", { onboardingCompleted: false, roles: ["student"] }, `/loading?next=welcome&path=teacher&${withCard}`],
+    ["teacher without a plan opens the card", { onboardingCompleted: true, roles: ["teacher"] }, card],
+    ["teacher who already has a plan goes on to the studio",{ onboardingCompleted: true, roles: ["teacher"], currentPlanId: "basic" }, "/loading?next=route&path=teacher"],
+    ["someone who does not teach yet turns on teaching carrying the plan", { onboardingCompleted: true, roles: ["student"] }, `/onboarding?path=teacher&${withCard}`],
+    ["account without onboarding goes through it carrying the plan",{ onboardingCompleted: false, roles: ["student"] }, `/loading?next=welcome&path=teacher&${withCard}`],
   ])("%s", async (_caso, profile, redirectTarget) => {
     expect(await entrar(profile)).toBe(redirectTarget);
   });
@@ -321,9 +321,9 @@ describe("LoginForm with an expired confirmation link", () => {
   });
 
   it.each([
-    ["o limite de envios", { code: "over_email_send_rate_limit", status: 429 }],
-    ["conta que nao existe", { code: "user_not_found", status: 404 }],
-    ["falha do servidor de e-mail", { message: "Error sending confirmation email", status: 500 }],
+    ["the send limit",{ code: "over_email_send_rate_limit", status: 429 }],
+    ["account that does not exist", { code: "user_not_found", status: 404 }],
+    ["email server failure", { message: "Error sending confirmation email", status: 500 }],
   ])("answers %s with the same sent sentence", async (_label, error) => {
     mocks.resend.mockRejectedValue(error);
     render(<LoginForm />);

@@ -11,10 +11,10 @@
 --   5. get_live_event_session gives a visitor the next session date and the
 --      creator's time zone, only for a published live event.
 begin;
-create temp table travas_checks (name text, passed boolean);
-grant insert, select on travas_checks to authenticated, anon;
+create temp table lock_checks (name text, passed boolean);
+grant insert, select on lock_checks to authenticated, anon;
 create function pg_temp.check_gate(p_name text, p_ok boolean) returns void
-language sql as $$ insert into travas_checks values (p_name, coalesce(p_ok, false)); $$;
+language sql as $$ insert into lock_checks values (p_name, coalesce(p_ok, false)); $$;
 create function pg_temp.uid(n int) returns uuid language sql immutable as $$
   select (lpad(n::text, 8, '0') || '-1007-4020-8000-000000000000')::uuid;
 $$;
@@ -208,13 +208,13 @@ select pg_temp.check_gate('sales page: anon and authenticated execute it',
   has_function_privilege('anon', 'public.get_live_event_session(text)', 'EXECUTE')
   and has_function_privilege('authenticated', 'public.get_live_event_session(text)', 'EXECUTE'));
 
-select pg_temp.check_gate('every case ran', (select count(*) = 23 from travas_checks));
+select pg_temp.check_gate('every case ran', (select count(*) = 23 from lock_checks));
 
-select name, passed from travas_checks order by name;
+select name, passed from lock_checks order by name;
 do $$
 declare failures text;
 begin
-  select string_agg(name, ', ' order by name) into failures from travas_checks where not passed;
+  select string_agg(name, ', ' order by name) into failures from lock_checks where not passed;
   if failures is not null then
     raise exception 'PRODUCT_FORMAT_LOCKS_REGRESSION: %', failures;
   end if;

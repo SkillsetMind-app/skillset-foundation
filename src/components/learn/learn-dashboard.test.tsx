@@ -682,8 +682,8 @@ describe("LearnDashboard", () => {
   // to it sits at the top of My courses, in the same tab, with or without a live scheduled:
   // the lives that already passed are in /learn/events.
   it.each([
-    ["com live marcada", true],
-    ["sem live marcada", false],
+    ["with a live scheduled", true],
+    ["without a live scheduled", false],
   ])("the link to the whole schedule is always in view (%s)", async (_label, hasLive) => {
     if (!hasLive) fixtures.events = [];
     render(<LearnDashboard />);

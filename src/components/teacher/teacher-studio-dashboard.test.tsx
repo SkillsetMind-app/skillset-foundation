@@ -517,9 +517,9 @@ describe("Teacher home: the steps are the real publish gates", () => {
     });
 
     it.each([
-      ["outra largura de tela", { w: window.innerWidth + 200, h: 312 }],
-      ["outra pessoa neste aparelho", { uid: "someone-else", h: 312 }],
-      ["o bloco nao aparecia na ultima visita", { h: 0 }],
+      ["another screen width", { w: window.innerWidth + 200, h: 312 }],
+      ["another person on this device", { uid: "someone-else", h: 312 }],
+      ["the block was not shown on the last visit", { h: 0 }],
     ])("%s: reserves nothing", async (_label, fields) => {
       holdGates();
       saveHeight(fields);
@@ -837,46 +837,46 @@ describe("Teacher home: first visit", () => {
 describe("Teacher home: the card badge is the recorded type", () => {
   it("shows the product type, and free or subscription do not become a type", async () => {
     state.courses = [
-      course({ id: "c1", title: "Grupo", productFormat: "community", paymentType: "subscription_monthly" }),
-      course({ id: "c2", title: "Apostila", productFormat: "ebook", paymentType: "free", priceAmountMinor: 0 }),
-      course({ id: "c3", title: "Antigo", paymentType: "free", priceAmountMinor: 0 }),
+      course({ id: "c1", title: "Group", productFormat: "community", paymentType: "subscription_monthly" }),
+      course({ id: "c2", title: "Handout", productFormat: "ebook", paymentType: "free", priceAmountMinor: 0 }),
+      course({ id: "c3", title: "Legacy", paymentType: "free", priceAmountMinor: 0 }),
     ];
 
     render(<TeacherStudioDashboard />);
 
-    const produtos = await screen.findByRole("region", { name: "Products in your workspace" });
+    const productsRegion = await screen.findByRole("region", { name: "Products in your workspace" });
     const typeOf = (title: string) =>
-      within(produtos).getByRole("link", { name: new RegExp(title) }).querySelector("span.uppercase")?.textContent;
-    expect([typeOf("Grupo"), typeOf("Apostila"), typeOf("Antigo")]).toEqual(["Community", "Digital download", "Course"]);
-    expect(produtos.textContent).not.toContain("creatorPanel.home.formats");
+      within(productsRegion).getByRole("link", { name: new RegExp(title) }).querySelector("span.uppercase")?.textContent;
+    expect([typeOf("Group"), typeOf("Handout"), typeOf("Legacy")]).toEqual(["Community", "Digital download", "Course"]);
+    expect(productsRegion.textContent).not.toContain("creatorPanel.home.formats");
   });
 });
 
 describe("Teacher home: product card status", () => {
   it("Published, Draft and Needs changes come out in different StatusChips", async () => {
     state.courses = [
-      course({ id: "c1", title: "No ar", status: "published" }),
-      course({ id: "c2", title: "Rascunho", status: "draft" }),
-      course({ id: "c3", title: "Com ajuste", status: "needs_changes" }),
+      course({ id: "c1", title: "Live", status: "published" }),
+      course({ id: "c2", title: "Draft", status: "draft" }),
+      course({ id: "c3", title: "Needs work", status: "needs_changes" }),
     ];
 
     render(<TeacherStudioDashboard />);
 
-    const produtos = await screen.findByRole("region", {
+    const productsRegion = await screen.findByRole("region", {
       name: "Products in your workspace",
     });
     const cardOf = (title: string) =>
-      within(produtos).getByRole("link", { name: new RegExp(title) });
+      within(productsRegion).getByRole("link", { name: new RegExp(title) });
     const chipOf = (title: string) => cardOf(title).querySelector(".status-chip");
 
-    expect(chipOf("No ar")).toHaveClass("status-chip--success");
-    expect(chipOf("No ar")).toHaveTextContent("Published");
-    expect(chipOf("Rascunho")).toHaveClass("status-chip--draft");
-    expect(chipOf("Rascunho")).toHaveTextContent("Draft");
-    expect(chipOf("Com ajuste")).toHaveClass("status-chip--danger");
-    expect(chipOf("Com ajuste")).toHaveTextContent("Needs changes");
+    expect(chipOf("Live")).toHaveClass("status-chip--success");
+    expect(chipOf("Live")).toHaveTextContent("Published");
+    expect(chipOf("Draft")).toHaveClass("status-chip--draft");
+    expect(chipOf("Draft")).toHaveTextContent("Draft");
+    expect(chipOf("Needs work")).toHaveClass("status-chip--danger");
+    expect(chipOf("Needs work")).toHaveTextContent("Needs changes");
     // The earlier gold text does not come back on any card.
-    for (const title of ["No ar", "Rascunho", "Com ajuste"]) {
+    for (const title of ["Live", "Draft", "Needs work"]) {
       expect(cardOf(title).innerHTML).not.toContain("--color-accent-fg");
     }
   });
@@ -887,18 +887,18 @@ describe("Teacher home: product card status", () => {
 describe("Teacher home: motion", () => {
   it("cards in a staircase (--i per card) and with the hover that rises", async () => {
     state.courses = [
-      course({ id: "c1", title: "Primeiro" }),
-      course({ id: "c2", title: "Segundo" }),
+      course({ id: "c1", title: "First" }),
+      course({ id: "c2", title: "Second" }),
     ];
 
     render(<TeacherStudioDashboard />);
 
-    const produtos = await screen.findByRole("region", { name: "Products in your workspace" });
-    const list = produtos.querySelector("ul.motion-stagger")!;
+    const productsRegion = await screen.findByRole("region", { name: "Products in your workspace" });
+    const list = productsRegion.querySelector("ul.motion-stagger")!;
     expect(list).not.toBeNull();
     const items = [...list.children] as HTMLElement[];
     expect(items.map((item) => item.style.getPropertyValue("--i"))).toEqual(["0", "1"]);
-    expect(within(produtos).getByRole("link", { name: /Primeiro/ })).toHaveClass("motion-hover-lift");
+    expect(within(productsRegion).getByRole("link", { name: /First/ })).toHaveClass("motion-hover-lift");
   });
 
   // Whoever arrives with everything ready does not see the block (test above). If the last step
@@ -1063,10 +1063,10 @@ describe("Teacher home: change, Top courses, partial refund and failed read", ()
   // that never sold but had more lessons.
   it("Top courses: whoever sold in another currency does not fall below whoever never sold", async () => {
     state.courses = [
-      course({ id: "brl", title: "Reais", status: "published", lessonCount: 1 }),
-      course({ id: "usd", title: "Dolares", status: "published", lessonCount: 1 }),
-      course({ id: "empty-1", title: "Vazio Um", status: "published", lessonCount: 20 }),
-      course({ id: "empty-2", title: "Vazio Dois", status: "published", lessonCount: 30 }),
+      course({ id: "brl", title: "Reals", status: "published", lessonCount: 1 }),
+      course({ id: "usd", title: "Dollars", status: "published", lessonCount: 1 }),
+      course({ id: "empty-1", title: "Empty One", status: "published", lessonCount: 20 }),
+      course({ id: "empty-2", title: "Empty Two", status: "published", lessonCount: 30 }),
     ];
     state.orders = [
       paidOrder({ id: "b1", courseId: "brl", currency: "BRL", amountMinor: 10_000 }),
@@ -1078,7 +1078,7 @@ describe("Teacher home: change, Top courses, partial refund and failed read", ()
 
     const top = (await screen.findByRole("heading", { name: "Top courses" })).closest(".dash-card") as HTMLElement;
     const rows = within(top).getAllByRole("link").filter((link) => link.className.includes("studio-course-row"));
-    expect(rows.map((row) => row.querySelector("strong")?.textContent)).toEqual(["Reais", "Dolares", "Vazio Dois"]);
+    expect(rows.map((row) => row.querySelector("strong")?.textContent)).toEqual(["Reals", "Dollars", "Empty Two"]);
     // Each product in its own value: "$5,000", never the "R$0" of the chart's currency.
     expect(within(rows[1]).getByText("$5,000")).toBeInTheDocument();
     expect(within(rows[1]).queryByText("R$0")).toBeNull();

@@ -117,9 +117,9 @@ describe("payments does not repeat the panel header", () => {
 
     // One h1 only — the panel's. The shell does not add its own (it was the third
     // title of the same screen), and the page does not end up without a level-1 heading.
-    const titulos = screen.getAllByRole("heading", { level: 1 });
-    expect(titulos).toHaveLength(1);
-    expect(titulos[0]).toHaveTextContent("Tus ganancias, tu configuración de pagos");
+    const titles = screen.getAllByRole("heading", { level: 1 });
+    expect(titles).toHaveLength(1);
+    expect(titles[0]).toHaveTextContent("Tus ganancias, tu configuración de pagos");
     // Neither the fixed English title, nor the old name of the page.
     expect(screen.queryByText("Payouts & tax")).toBeNull();
     expect(screen.queryByText("Pagos e impuestos")).toBeNull();

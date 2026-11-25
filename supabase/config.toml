@@ -1,12 +1,12 @@
 # Supabase CLI config -- SkillsetMind / skillset-foundation
 #
-# Escrito em 2026-07-21 junto do baseline remote_schema_2026-07-21.sql.
-# O repositorio nao tinha config.toml, o que era um dos motivos de nao conseguir
-# reconstruir o banco a partir do codigo.
+# Written on 2026-07-21 together with the baseline remote_schema_2026-07-21.sql.
+# The repository had no config.toml, which was one of the reasons the database
+# could not be rebuilt from the code.
 #
-# major_version = 17 confirmado no remoto via "show server_version" -> 17.6.
+# major_version = 17, confirmed on the remote with "show server_version" -> 17.6.
 #
-# Mora em supabase/config.toml porque e o unico caminho que a CLI le.
+# It lives in supabase/config.toml because that is the only path the CLI reads.
 
 project_id = "ijtikldtjvsbtwszokvs"
 

@@ -15,6 +15,6 @@ describe("isValidPhoneNumber", () => {
     expect(isValidPhoneNumber("1234567")).toBe(false);
     expect(isValidPhoneNumber("1234567890123456")).toBe(false);
     expect(isValidPhoneNumber("")).toBe(false);
-    expect(isValidPhoneNumber("meu telefone")).toBe(false);
+    expect(isValidPhoneNumber("my phone")).toBe(false);
   });
 });

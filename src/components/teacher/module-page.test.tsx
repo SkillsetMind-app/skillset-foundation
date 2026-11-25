@@ -555,7 +555,7 @@ describe("module page inside the builder", () => {
     expect(screen.getAllByRole("alert")).toHaveLength(1);
 
     // Typed the title: the notice goes away without waiting for another click.
-    fireEvent.change(title, { target: { value: "Primeira aula" } });
+    fireEvent.change(title, { target: { value: "First lesson" } });
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(title).not.toHaveAttribute("aria-invalid");
 

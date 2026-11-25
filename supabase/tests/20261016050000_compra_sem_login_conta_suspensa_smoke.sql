@@ -46,7 +46,7 @@ select pg_temp.assert_true(not public.guest_buyer_account_blocked(pg_temp.uid(3)
 select pg_temp.assert_true(not public.guest_buyer_account_blocked(pg_temp.uid(4)::text), 'no control row');
 select pg_temp.assert_true(public.guest_buyer_account_blocked(pg_temp.uid(5)::text), 'banned in Auth');
 select pg_temp.assert_true(not public.guest_buyer_account_blocked(pg_temp.uid(6)::text), 'ban expired');
-select pg_temp.assert_true(not public.guest_buyer_account_blocked('nao-existe'), 'unknown uid');
+select pg_temp.assert_true(not public.guest_buyer_account_blocked('does-not-exist'), 'unknown uid');
 reset role;
 
 -- 2) Browser (anon and authenticated) does not execute.

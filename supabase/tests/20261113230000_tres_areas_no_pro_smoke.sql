@@ -66,11 +66,11 @@ update public.users
 insert into public.courses(id, owner_id, slug, title, summary, category, status, currency,
   price_amount_minor, payment_type, modules, product_format, community_enabled)
 values
-  ('smoke-ma-a', pg_temp.uid(1)::text, 'smoke-ma-a', 'Smoke areas A', 'Curso A.', 'smoke',
+  ('smoke-ma-a', pg_temp.uid(1)::text, 'smoke-ma-a', 'Smoke areas A', 'Course A.', 'smoke',
     'published', 'usd', 0, 'free', '[]'::jsonb, 'course', true),
-  ('smoke-ma-b', pg_temp.uid(1)::text, 'smoke-ma-b', 'Smoke areas B', 'Curso B.', 'smoke',
+  ('smoke-ma-b', pg_temp.uid(1)::text, 'smoke-ma-b', 'Smoke areas B', 'Course B.', 'smoke',
     'published', 'usd', 0, 'free', '[]'::jsonb, 'course', true),
-  ('smoke-ma-c', pg_temp.uid(1)::text, 'smoke-ma-c', 'Smoke areas C', 'Comunidade C.', 'smoke',
+  ('smoke-ma-c', pg_temp.uid(1)::text, 'smoke-ma-c', 'Smoke areas C', 'Community C.', 'smoke',
     'published', 'usd', 0, 'free', '[]'::jsonb, 'community', true);
 insert into public.enrollments(id, user_id, course_id, course_slug, course_title, course_category,
   course_image, status, source)

@@ -125,10 +125,10 @@ function introVideo(): CourseAsset {
     courseId: "course-1",
     ownerId: "teacher-1",
     kind: "lesson_video",
-    fileName: "aula.mp4",
+    fileName: "lesson.mp4",
     contentType: "video/mp4",
     size: 1024,
-    storagePath: "courses/course-1/aula.mp4",
+    storagePath: "courses/course-1/lesson.mp4",
     isPreview: false,
     lessonId: "l2",
   };
@@ -174,7 +174,7 @@ const pricingStep = () =>
 
 function startUpload() {
   fireEvent.change(screen.getByLabelText("Upload a lesson video"), {
-    target: { files: [new File(["video-bytes"], "aula.mp4", { type: "video/mp4" })] },
+    target: { files: [new File(["video-bytes"], "lesson.mp4", { type: "video/mp4" })] },
   });
   fireEvent.click(screen.getByRole("button", { name: "Upload file" }));
 }
@@ -452,7 +452,7 @@ describe("lesson page in the builder", () => {
     await renderBuilder();
 
     fireEvent.change(screen.getByLabelText("Upload a lesson video"), {
-      target: { files: [new File(["video-bytes"], "aula.mp4", { type: "video/mp4" })] },
+      target: { files: [new File(["video-bytes"], "lesson.mp4", { type: "video/mp4" })] },
     });
     fireEvent.click(screen.getByRole("button", { name: "Upload file" }));
     expect(transport).toHaveBeenCalledTimes(1);
@@ -485,7 +485,7 @@ describe("lesson page in the builder", () => {
     expect((await screen.findAllByText(missingIntro)).length).toBeGreaterThan(0);
 
     fireEvent.change(screen.getByLabelText("Upload a lesson video"), {
-      target: { files: [new File(["video-bytes"], "aula.mp4", { type: "video/mp4" })] },
+      target: { files: [new File(["video-bytes"], "lesson.mp4", { type: "video/mp4" })] },
     });
     fireEvent.click(screen.getByRole("button", { name: "Upload file" }));
     mocks.assets = [introVideo()];
@@ -511,12 +511,12 @@ describe("lesson page in the builder", () => {
 
     mocks.assets = [];
     const file = screen
-      .getAllByText("aula.mp4")
+      .getAllByText("lesson.mp4")
       .map((element) => element.closest("article"))
       .find((article): article is HTMLElement => article instanceof HTMLElement);
     fireEvent.click(within(file as HTMLElement).getByRole("button"));
     const asking = screen.getByRole("dialog", { name: "Delete this file?" });
-    expect(asking).toHaveAccessibleDescription('Delete "aula.mp4"? This permanently removes the file.');
+    expect(asking).toHaveAccessibleDescription('Delete "lesson.mp4"? This permanently removes the file.');
     clickConfirm(asking, "Delete file");
 
     await waitFor(() => expect(screen.getAllByText(missingIntro).length).toBeGreaterThan(0));

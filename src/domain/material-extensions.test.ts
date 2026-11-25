@@ -22,11 +22,11 @@ function file(name: string, type: string, size = 1024) {
 
 describe("e-book and mind map as lesson material", () => {
   it.each([
-    ["livro.epub", "application/epub+zip"],
-    ["livro.EPUB", ""],
-    ["mapa.xmind", ""],
-    ["mapa.xmind", "application/octet-stream"],
-    ["mapa.mm", ""],
+    ["book.epub", "application/epub+zip"],
+    ["book.EPUB", ""],
+    ["map.xmind", ""],
+    ["map.xmind", "application/octet-stream"],
+    ["map.mm", ""],
   ])("accepts %s (browser type %j)", (name, type) => {
     expect(isAllowedCourseAssetFile(file(name, type), "lesson_material")).toBe(true);
   });
@@ -38,20 +38,20 @@ describe("e-book and mind map as lesson material", () => {
 
   it("the 50 MB cap did not change", () => {
     expect(supabaseUploadLimitBytes).toBe(50 * 1024 * 1024);
-    expect(isAllowedCourseAssetFile(file("livro.epub", "application/epub+zip", supabaseUploadLimitBytes), "lesson_material")).toBe(true);
-    expect(isAllowedCourseAssetFile(file("livro.epub", "application/epub+zip", supabaseUploadLimitBytes + 1), "lesson_material")).toBe(false);
+    expect(isAllowedCourseAssetFile(file("book.epub", "application/epub+zip", supabaseUploadLimitBytes), "lesson_material")).toBe(true);
+    expect(isAllowedCourseAssetFile(file("book.epub", "application/epub+zip", supabaseUploadLimitBytes + 1), "lesson_material")).toBe(false);
   });
 
   it("the cover is still image only, even with a material extension", () => {
-    expect(isAllowedCourseAssetFile(file("mapa.xmind", ""), "course_cover")).toBe(false);
+    expect(isAllowedCourseAssetFile(file("map.xmind", ""), "course_cover")).toBe(false);
   });
 
   it("the extension decides the stored type of the three; the others follow the browser", () => {
-    expect(getCourseAssetContentType(file("mapa.xmind", ""))).toBe("application/vnd.xmind.workbook");
-    expect(getCourseAssetContentType(file("mapa.mm", "text/x-objective-c++"))).toBe("application/x-freemind");
-    expect(getCourseAssetContentType(file("livro.epub", ""))).toBe("application/epub+zip");
-    expect(getCourseAssetContentType(file("aula.pdf", "application/pdf"))).toBe("application/pdf");
-    expect(getCourseAssetContentType(file("sem-tipo.bin", ""))).toBe("application/octet-stream");
+    expect(getCourseAssetContentType(file("map.xmind", ""))).toBe("application/vnd.xmind.workbook");
+    expect(getCourseAssetContentType(file("map.mm", "text/x-objective-c++"))).toBe("application/x-freemind");
+    expect(getCourseAssetContentType(file("book.epub", ""))).toBe("application/epub+zip");
+    expect(getCourseAssetContentType(file("lesson.pdf", "application/pdf"))).toBe("application/pdf");
+    expect(getCourseAssetContentType(file("no-type.bin", ""))).toBe("application/octet-stream");
   });
 });
 
@@ -87,24 +87,24 @@ describe("active content never opens on the storage domain", () => {
   it.each([
     ["logo.svg", "image/svg+xml"],
     ["logo.svg", ""],
-    ["pagina.html", "text/html"],
-    ["pagina.xhtml", "application/xhtml+xml"],
+    ["page.html", "text/html"],
+    ["page.xhtml", "application/xhtml+xml"],
     ["feed.xml", "text/xml"],
     ["feed.xml", "application/xml"],
-    ["estilo.xsl", "text/xsl"],
+    ["style.xsl", "text/xsl"],
   ])("%s (browser said %j) is uploaded as a download", (name, type) => {
     expect(getCourseAssetContentType(file(name, type))).toBe("application/octet-stream");
   });
 
   it.each([
-    ["foto.png", "image/png"],
-    ["aula.mp4", "video/mp4"],
-    ["aula.mov", "video/quicktime"],
+    ["photo.png", "image/png"],
+    ["lesson.mp4", "video/mp4"],
+    ["lesson.mov", "video/quicktime"],
     ["audio.mp3", "audio/mpeg"],
-    ["notas.txt", "text/plain"],
-    ["notas.md", "text/markdown"],
-    ["planilha.csv", "text/csv"],
-    ["texto.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+    ["notes.txt", "text/plain"],
+    ["notes.md", "text/markdown"],
+    ["spreadsheet.csv", "text/csv"],
+    ["text.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
   ])("%s keeps the browser type (%s)", (name, type) => {
     expect(getCourseAssetContentType(file(name, type))).toBe(type);
   });

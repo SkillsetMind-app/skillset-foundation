@@ -42,7 +42,7 @@ insert into auth.users(id, aud, role, email, encrypted_password, email_confirmed
   raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
   (pg_temp.uid(1), 'authenticated', 'authenticated', 'invite-issuer@example.test', '', now(), '{}', '{}', now(), now()),
-  (pg_temp.uid(2), 'authenticated', 'authenticated', 'invite-precadastro@example.test',
+  (pg_temp.uid(2), 'authenticated', 'authenticated', 'invite-preregistered@example.test',
     '$2a$10$syntheticthirdpartyhash', null, '{}', '{}', now(), now()),
   (pg_temp.uid(3), 'authenticated', 'authenticated', 'invite-legit@example.test',
     '$2a$10$syntheticlegitimatehash', now() - interval '30 days', '{}', '{}', now() - interval '30 days', now());
@@ -51,7 +51,7 @@ update public.users set roles = '["admin"]' where uid = pg_temp.uid(1)::text;
 
 select pg_temp.act_as(pg_temp.uid(1), 'authenticated');
 set local role authenticated;
-select public.admin_create_platform_invite('invite-precadastro@example.test', 'admin') ->> 'id' as attack_invite \gset
+select public.admin_create_platform_invite('invite-preregistered@example.test', 'admin') ->> 'id' as attack_invite \gset
 select public.admin_create_platform_invite('invite-legit@example.test', 'staff') ->> 'id' as legit_invite \gset
 reset role;
 
@@ -130,19 +130,19 @@ select pg_temp.check_invite('revoked invite does not reset an unrelated password
   (select encrypted_password = '$2a$10$syntheticlegitimatehash' from auth.users where id = pg_temp.uid(7)));
 select pg_temp.act_as(null, 'service_role');
 insert into public.admin_bootstrap_invites(email, roles) values
-  ('bootstrap-precadastro@example.test', '["admin","teacher"]'),
+  ('bootstrap-preregistered@example.test', '["admin","teacher"]'),
   ('bootstrap-google@example.test', '["admin","teacher"]');
 insert into auth.users(id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
-values (pg_temp.uid(4), 'authenticated', 'authenticated', 'bootstrap-precadastro@example.test',
+values (pg_temp.uid(4), 'authenticated', 'authenticated', 'bootstrap-preregistered@example.test',
   '$2a$10$syntheticthirdpartyhash', null, '{}', '{}', now(), now());
 select pg_temp.check_invite('unconfirmed signup does not receive bootstrap roles',
   (select roles = '["student"]'::jsonb from public.users where uid = pg_temp.uid(4)::text)
-  and exists (select 1 from public.admin_bootstrap_invites where email = 'bootstrap-precadastro@example.test'));
+  and exists (select 1 from public.admin_bootstrap_invites where email = 'bootstrap-preregistered@example.test'));
 update auth.users set email_confirmed_at = clock_timestamp() where id = pg_temp.uid(4);
 select pg_temp.check_invite('email confirmation grants the bootstrap roles',
   (select roles ? 'admin' and roles ? 'teacher' from public.users where uid = pg_temp.uid(4)::text)
-  and not exists (select 1 from public.admin_bootstrap_invites where email = 'bootstrap-precadastro@example.test'));
+  and not exists (select 1 from public.admin_bootstrap_invites where email = 'bootstrap-preregistered@example.test'));
 select pg_temp.check_invite('bootstrap confirmation drops the pre-registered password',
   (select coalesce(encrypted_password, '') = '' from auth.users where id = pg_temp.uid(4)));
 insert into auth.users(id, aud, role, email, encrypted_password, email_confirmed_at,

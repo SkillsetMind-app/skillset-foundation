@@ -60,7 +60,7 @@ select set_config('skillset.trusted_write', 'on', true);
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 -- Domain outside the ones reserved for tests: a test account never gets a public
 -- profile (20261006020000), and here the rows need to exist.
-select pg_temp.uid(n), 'authenticated', 'authenticated', 'selo-' || n || '@smoke.skillsetmind.com',
+select pg_temp.uid(n), 'authenticated', 'authenticated', 'badge-' || n || '@smoke.skillsetmind.com',
   now(), '{}', '{}', now(), now()
 from generate_series(1, 7) n;
 update public.users set roles = '["student","teacher"]', display_name = 'Selo ' || right(uid, 1),

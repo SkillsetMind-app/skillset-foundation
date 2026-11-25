@@ -107,8 +107,8 @@ describe("SiteNav", () => {
   // A store with no real published course does not show: neither in the bar nor in the
   // phone menu. Without a provider the same "no" as a failed read applies.
   it.each([
-    ["sem curso real", false],
-    ["sem provedor", undefined],
+    ["no real course", false],
+    ["no provider", undefined],
   ])("hides Courses while the store is empty (%s)", (_, value) => {
     render(value === undefined ? <SiteNav /> : <RealCoursesProvider value={value}><SiteNav /></RealCoursesProvider>);
 
