@@ -87,7 +87,7 @@ describe("MemberAreaHomeView", () => {
     mocks.getMemberAreaCommunity.mockResolvedValue({ courseId: "c-club", title: "Inner circle", isOwner: false });
     renderView();
     const card = await screen.findByRole("link", { name: /^Community/ });
-    expect(card.getAttribute("href")).toBe("/learn/areas/%40eton/community");
+    expect(card.getAttribute("href")).toBe("/learn/areas/%40evan/community");
     expect(card.textContent).toContain("Talk with everyone learning with Evan Stone.");
     expect(within(screen.getByRole("region", { name: "My products" })).getByRole("link").textContent).toContain("Course");
     // "Open the community" is 14px text: it asks for the course's readable highlight,
