@@ -32,7 +32,8 @@ import { notificationHref, type AppNotification } from "@/domain/notification";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { getCourseBySlug } from "@/lib/data/catalog";
 import { subscribeToCourseEvents } from "@/lib/data/course-events";
-import { subscribeToUserEnrollments } from "@/lib/data/enrollments";
+import { rowToEnrollment, subscribeToUserEnrollments } from "@/lib/data/enrollments";
+import type { EnrollmentSeed } from "@/lib/data/server/learner-enrollments";
 import { subscribeToNotifications } from "@/lib/data/notifications";
 import {
   fetchCoursesByIds,
@@ -58,14 +59,41 @@ const courseFilters = ["in_progress", "completed"] as const;
 type CourseFilter = (typeof courseFilters)[number];
 
 const FALLBACK_COVER = "/brand/logo-mark.png";
+// The one cover the browser should fetch first: every other one stays lazy.
+const FIRST_COVER = { loading: "eager", fetchPriority: "high" } as const;
 
-export function LearnDashboard() {
+// Seeds already drawn once on this page load (see where the seed is read).
+const spentSeeds = new Set<string>();
+
+function sameEnrollments(left: Enrollment[], right: Enrollment[]): boolean {
+  return left.length === right.length && JSON.stringify(left) === JSON.stringify(right);
+}
+
+export function LearnDashboard({ seed = null }: { seed?: EnrollmentSeed | null } = {}) {
   const { user } = useAuth();
   const { t, locale } = useTranslation();
-  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+  // The enrollments the server read for this page load, so the first HTML
+  // already has the courses. Two conditions, both about not drawing rows that
+  // are not the truth any more:
+  // - only for the account they were read for: after an account switch in the
+  //   same tab this prop still holds the previous person's rows;
+  // - only once: the Back button restores this page from the router's cache
+  //   with the same rows, by then out of date (a lesson watched since, a
+  //   course bought since). That mount reads fresh, behind the skeleton.
+  const [seeded] = useState(() =>
+    seed && user?.uid === seed.uid && !spentSeeds.has(seed.id)
+      ? seed.rows.map(rowToEnrollment)
+      : null,
+  );
+  useEffect(() => {
+    if (seed) spentSeeds.add(seed.id);
+  }, [seed]);
+  // Until the browser's own read answers, what is on screen came from the server.
+  const showingSeed = useRef(seeded !== null);
+  const [enrollments, setEnrollments] = useState<Enrollment[]>(seeded ?? []);
   const [enrollmentQuery, setEnrollmentQuery] = useState("");
   const [courseFilter, setCourseFilter] = useState<CourseFilter>("in_progress");
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(seeded === null);
   const [hasError, setHasError] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [eventBuckets, setEventBuckets] = useState<Record<string, CourseEvent[]>>({});
@@ -145,11 +173,18 @@ export function LearnDashboard() {
     const current = subscribeToUserEnrollments(
       user.uid,
       (nextEnrollments) => {
-        setEnrollments(nextEnrollments);
+        showingSeed.current = false;
+        // Right after a seeded load the browser reads the same rows again.
+        // Keeping the array keeps everything derived from it as it is: no
+        // second render of the dashboard, no second subscription per course.
+        setEnrollments((current) => (sameEnrollments(current, nextEnrollments) ? current : nextEnrollments));
         setHasError(false);
         setIsLoading(false);
       },
       () => {
+        // The rows on screen were read by the server moments ago: a re-read
+        // that fails is no reason to take them away and show an error.
+        if (showingSeed.current) return;
         setHasError(true);
         setIsLoading(false);
       },
@@ -472,7 +507,7 @@ export function LearnDashboard() {
             {t("learn.dashboard.continueWatching")}
           </h2>
           <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {continueItems.map(({ enrollment, resume, remainingMinutes, href }) => {
+            {continueItems.map(({ enrollment, resume, remainingMinutes, href }, index) => {
               const percent = clampPercent(enrollment.progressPercent);
               const meta = [
                 resume
@@ -501,6 +536,8 @@ export function LearnDashboard() {
                         fill
                         sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
                         className="object-cover"
+                        // The first cover on the page is its largest picture.
+                        {...(index === 0 ? FIRST_COVER : null)}
                       />
                       <span className="absolute inset-0 grid place-items-center bg-[rgba(15,39,68,0.28)] text-white transition group-hover:bg-[rgba(15,39,68,0.4)]">
                         <PlayCircle aria-hidden="true" size={40} strokeWidth={1.6} />
@@ -683,7 +720,7 @@ export function LearnDashboard() {
           </p>
         ) : (
           <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {visibleEnrollments.map((enrollment) => {
+            {visibleEnrollments.map((enrollment, index) => {
               const percent = clampPercent(enrollment.progressPercent);
               const { resume, href } = courseLink(enrollment);
               // The whole card opens the course (before: a full "Open" button per
@@ -702,6 +739,8 @@ export function LearnDashboard() {
                         fill
                         sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
                         className="object-cover"
+                        // First on the page only when the resume queue above is not shown.
+                        {...(index === 0 && !showContinue ? FIRST_COVER : null)}
                       />
                     </div>
                     <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-accent-fg)]">
