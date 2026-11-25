@@ -124,7 +124,7 @@ const EMPTY_SUBSCRIBE = () => () => {};
 function useShortcutLabel() {
   return useSyncExternalStore(
     EMPTY_SUBSCRIBE,
-    // ponytail: navigator.platform está depreciado mas é o único campo que
+    // ponytail: navigator.platform is deprecated but it is the only field that
     // every browser still fills in; the userAgent covers the rest.
     () =>
       /mac|iphone|ipad|ipod/i.test(`${navigator.platform} ${navigator.userAgent}`)

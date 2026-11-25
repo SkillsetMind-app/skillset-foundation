@@ -126,7 +126,7 @@ describe("a escolha vem do cookie, lida no servidor", () => {
     host.remove();
   });
 
-  it("só as áreas logadas leem o cookie; valor estranho vale como 'sem escolha'", () => {
+  it("only the signed-in areas read the cookie; an odd value counts as 'no choice'", () => {
     const read = (file: string) => readFileSync(path.join(process.cwd(), file), "utf8");
     // The root layout wraps the home and the public pages: nothing from the bar in it.
     const root = read("src/app/layout.tsx");
