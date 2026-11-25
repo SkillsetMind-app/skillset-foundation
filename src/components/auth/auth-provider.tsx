@@ -11,6 +11,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 
@@ -57,43 +58,94 @@ const VIEW_AS_KEY = "skillsetmind.viewAs";
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<AuthSession>({
-    status: "loading",
-    user: null,
-  });
+// The stored preview as an external store. The server has no sessionStorage,
+// and since the session can now arrive already resolved from the server, the
+// first client render must agree with that HTML: it reads "no preview" and the
+// stored one applies right after hydration.
+const viewAsListeners = new Set<() => void>();
+
+function subscribeToViewAs(listener: () => void) {
+  viewAsListeners.add(listener);
+  return () => {
+    viewAsListeners.delete(listener);
+  };
+}
+
+// Set only while sessionStorage refuses the write: the choice still applies on
+// this page, as it did when the role lived in component state.
+let viewAsUnstored: Role | null | undefined;
+
+function readViewAs(): Role | null {
+  if (viewAsUnstored !== undefined) {
+    return viewAsUnstored;
+  }
+  const stored = window.sessionStorage.getItem(VIEW_AS_KEY);
+  return stored && isRole(stored) ? stored : null;
+}
+
+const readNoViewAs = () => null;
+
+// A session handed over by the server belongs to the page load it came with.
+// A provider that mounts again later (after the root error boundary resets,
+// for one) must not start from it: someone may have signed out or switched
+// accounts since, and it would show the previous person until the browser's
+// own check landed.
+const spentSeeds = new WeakSet<AuthSession>();
+
+export function AuthProvider({
+  children,
+  initialSession = null,
+}: {
+  children: ReactNode;
+  /**
+   * The session the server resolved for this page load, or null to let the
+   * browser resolve it (see lib/auth/server-session). Only ever a signed-in
+   * session: the page then renders signed in from the first HTML.
+   */
+  initialSession?: AuthSession | null;
+}) {
+  // Kept from the first render, and only if no earlier provider started from it.
+  const [seed] = useState(() =>
+    initialSession && !spentSeeds.has(initialSession) ? initialSession : null,
+  );
+  const [session, setSession] = useState<AuthSession>(
+    seed ?? { status: "loading", user: null },
+  );
+  // What the listener last reported (the seed until it reports anything).
+  const reported = useRef<AuthSession | null>(seed);
   const subscription = useRef<ReturnType<typeof listenToAuthState> | null>(null);
 
-  // Read once during the first render rather than in an effect: an effect would
-  // paint the un-previewed product first and then swap it, and this base treats
-  // setState-inside-an-effect as an error. Safe against hydration mismatch
-  // because the session is still loading on the first client render, so the
-  // banner is absent on both sides regardless of what is stored.
-  const [viewAsRole, setViewAsRoleState] = useState<Role | null>(() => {
-    if (typeof window === "undefined") {
-      return null;
-    }
-    const stored = window.sessionStorage.getItem(VIEW_AS_KEY);
-    return stored && isRole(stored) ? stored : null;
-  });
+  const viewAsRole = useSyncExternalStore(subscribeToViewAs, readViewAs, readNoViewAs);
 
   const setViewAsRole = useCallback((role: Role | null) => {
-    setViewAsRoleState(role);
-    if (role) {
-      window.sessionStorage.setItem(VIEW_AS_KEY, role);
-    } else {
-      window.sessionStorage.removeItem(VIEW_AS_KEY);
+    try {
+      if (role) {
+        window.sessionStorage.setItem(VIEW_AS_KEY, role);
+      } else {
+        window.sessionStorage.removeItem(VIEW_AS_KEY);
+      }
+      viewAsUnstored = undefined;
+    } catch {
+      viewAsUnstored = role;
     }
+    for (const listener of viewAsListeners) listener();
   }, []);
 
   useEffect(() => {
-    const listener = listenToAuthState(setSession);
+    if (seed) spentSeeds.add(seed);
+    // Seeded only while the page still shows exactly what the server sent. If
+    // this effect runs again after the listener reported something else, the
+    // new listener starts from "loading" like an unseeded one.
+    const listener = listenToAuthState((next) => {
+      reported.current = next;
+      setSession(next);
+    }, seed && reported.current === seed ? seed : null);
     subscription.current = listener;
     return () => {
       subscription.current = null;
       listener();
     };
-  }, []);
+  }, [seed]);
 
   // Mounted on every page, once per full load: the landing's utm_*/referrer,
   // held for the signup form (see lib/attribution/first-touch).

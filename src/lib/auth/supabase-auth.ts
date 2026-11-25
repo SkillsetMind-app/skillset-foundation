@@ -8,8 +8,8 @@ import type {
   SignupInput,
   SkillsetUser,
 } from "@/domain/auth";
-import type { UserProfile } from "@/domain/user-profile";
 import { getFirstTouch } from "@/lib/attribution/first-touch";
+import { mapSupabaseUser } from "@/lib/auth/map-user";
 import { assertPasswordNotBreached } from "@/lib/auth/pwned-password";
 import { getUserProfile, upsertUserProfile } from "@/lib/data/user-profiles";
 import { currentPrivacyVersion, currentTermsVersion } from "@/lib/legal/versions";
@@ -33,35 +33,19 @@ async function claimCourseAccess(supabase: SupabaseClient<Database>): Promise<vo
   }
 }
 
-export function mapSupabaseUser(
-  user: User,
-  profile?: UserProfile | null,
-): SkillsetUser {
-  const metadata = user.user_metadata ?? {};
-  const metaName =
-    (metadata.name as string | undefined) ||
-    (metadata.full_name as string | undefined) ||
-    (metadata.display_name as string | undefined);
-  const metaPhoto =
-    (metadata.avatar_url as string | undefined) ||
-    (metadata.picture as string | undefined);
-
-  return {
-    uid: user.id,
-    email: user.email ?? null,
-    emailVerified: Boolean(user.email_confirmed_at),
-    // Prefer the DB profile; treat empty strings as "unset" so a blank profile
-    // value still falls back to the auth record instead of a missing name.
-    displayName: profile?.displayName || metaName || null,
-    photoURL: profile?.photoURL || metaPhoto || null,
-    roles: profile?.roles ?? ["student"],
-  };
-}
-
-export function listenToAuthState(callback: (session: AuthSession) => void) {
+/**
+ * `seed` is the session the server already resolved for this page load
+ * (server-session.ts). With it the listener starts from that answer instead of
+ * "loading": the page was rendered signed in, and the browser's own check
+ * below still runs and still has the last word.
+ */
+export function listenToAuthState(
+  callback: (session: AuthSession) => void,
+  seed: AuthSession | null = null,
+) {
   const supabase = getSupabaseBrowserClient();
 
-  callback({ status: "loading", user: null });
+  if (!seed) callback({ status: "loading", user: null });
 
   // Monotonic sequence so a slow profile read for an older auth event can never
   // overwrite the state produced by a newer one.
@@ -88,15 +72,15 @@ export function listenToAuthState(callback: (session: AuthSession) => void) {
   // actually changes. `SkillsetUser` is a shallow object of primitives plus an array
   // of roles, so comparing the JSON is reliable and cheap. A false "changed"
   // just repeats the old behavior — the safe error is on this side.
-  let lastEmitted: string | null = null;
-  let currentSession: AuthSession = { status: "loading", user: null };
+  const signatureOf = (session: AuthSession) =>
+    JSON.stringify({ status: session.status, user: session.user });
+  // Seeded: the browser confirming the same session emits nothing.
+  let lastEmitted: string | null = seed ? signatureOf(seed) : null;
+  let currentSession: AuthSession = seed ?? { status: "loading", user: null };
 
   function emit(next: AuthSession) {
     if (!active) return;
-    const signature = JSON.stringify({
-      status: next.status,
-      user: next.user,
-    });
+    const signature = signatureOf(next);
 
     if (signature === lastEmitted) {
       return;

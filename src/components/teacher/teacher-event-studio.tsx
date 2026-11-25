@@ -685,7 +685,10 @@ export function TeacherEventStudio() {
                   {t("courseCreation.eventDate")}
                   <input
                     type="date"
-                    min={editingBase ? undefined : today}
+                    // Only once the browser's time zone is known: on the server
+                    // "today" is the server's date, and that minimum would stay
+                    // on the field (an evening in the Americas could not pick today).
+                    min={editingBase || !computerZone ? undefined : today}
                     value={eventDate}
                     onChange={(event) => setEventDate(event.target.value)}
                     required

@@ -11,6 +11,7 @@ import { CookieConsent } from "@/components/site/cookie-consent";
 import { RealCoursesProvider } from "@/components/site/real-courses";
 import { PostHogProvider } from "@/app/posthog-provider";
 import { brand } from "@/data/brand";
+import { getServerAuthSession } from "@/lib/auth/server-session";
 import { isMarketplaceOpen } from "@/lib/data/server/public-course";
 import { DEFAULT_LOCALE, LOCALE_HTML_LANG } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/dictionaries";
@@ -75,7 +76,13 @@ export default async function RootLayout({
   // Open storefront (12 courses from 5 teachers)? Read once here (anonymous,
   // 5 min cache) so the client islands that link to the store do not fetch anything
   // in the browser.
-  const [locale, hasRealCourses] = await Promise.all([getServerLocale(), isMarketplaceOpen()]);
+  // The session too: a signed-in page load leaves the server already signed in,
+  // instead of a skeleton that waits for the browser to ask Supabase who it is.
+  const [locale, hasRealCourses, initialSession] = await Promise.all([
+    getServerLocale(),
+    isMarketplaceOpen(),
+    getServerAuthSession(),
+  ]);
   const nonce = (await headers()).get("x-nonce") ?? undefined;
 
   return (
@@ -97,7 +104,9 @@ export default async function RootLayout({
             initialDictionary={locale === DEFAULT_LOCALE ? undefined : getDictionary(locale)}
           >
             <RealCoursesProvider value={hasRealCourses}>
-              <AuthProvider><LessonUploadProvider>{children}</LessonUploadProvider></AuthProvider>
+              <AuthProvider initialSession={initialSession}>
+                <LessonUploadProvider>{children}</LessonUploadProvider>
+              </AuthProvider>
             </RealCoursesProvider>
             <CookieConsent />
           </I18nProvider>
