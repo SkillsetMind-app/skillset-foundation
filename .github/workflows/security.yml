@@ -113,27 +113,27 @@ jobs:
         # with room to spare under the job's 10 minutes even counting npm ci.
         run: |
           set +e
-          for tentativa in 1 2 3; do
-            saida=$(timeout 60 npm audit --omit=dev --audit-level=high --fetch-retries=0 2>&1)
-            codigo=$?
-            if [ "$codigo" -eq 0 ]; then
-              echo "$saida"
+          for attempt in 1 2 3; do
+            output=$(timeout 60 npm audit --omit=dev --audit-level=high --fetch-retries=0 2>&1)
+            code=$?
+            if [ "$code" -eq 0 ]; then
+              echo "$output"
               exit 0
             fi
-            if [ "$codigo" -eq 124 ] || echo "$saida" | grep -q "audit endpoint returned an error"; then
-              if [ "$codigo" -eq 124 ]; then
-                echo "Tentativa $tentativa de 3: o registry nao respondeu em 60s."
+            if [ "$code" -eq 124 ] || echo "$output" | grep -q "audit endpoint returned an error"; then
+              if [ "$code" -eq 124 ]; then
+                echo "Attempt $attempt of 3: the registry did not answer within 60s."
               else
-                echo "Tentativa $tentativa de 3: o registry de auditoria respondeu erro."
-                echo "$saida" | grep -E "npm warn audit|npm error" | head -3
+                echo "Attempt $attempt of 3: the audit registry returned an error."
+                echo "$output" | grep -E "npm warn audit|npm error" | head -3
               fi
               sleep 10
               continue
             fi
             # Got here: npm managed to ask and the answer was bad.
             # This is the gate, and now is when it closes.
-            echo "$saida"
+            echo "$output"
             exit 1
           done
-          echo "::warning::npm audit nao rodou: o registry respondeu erro nas 3 tentativas. Isto NAO e um sinal de que as dependencias estao limpas -- o Dependabot segue cobrindo o repo."
+          echo "::warning::npm audit did not run: the registry returned an error on all 3 attempts. This is NOT a sign that the dependencies are clean -- Dependabot still covers the repo."
           exit 0

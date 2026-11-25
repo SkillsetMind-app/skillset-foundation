@@ -23,7 +23,7 @@ jobs:
 
       # The PR gatekeeper ("porteiro") is a security gate: its tests run in this
       # job (a required check), before npm, so a PR that breaks it cannot merge.
-      - name: Porteiro self-tests (python)
+      - name: PR gatekeeper self-tests (python)
         run: |
           set -euo pipefail
           python3 -m unittest scripts/test_porteiro.py
@@ -110,22 +110,22 @@ jobs:
       # only appears in the 2026-07-15 baseline. That is why the directory is
       # moved out of the way and put back right after. The full reason is in
       # scripts/build-test-db.sh.
-      - name: Sobe um Postgres do Supabase, vazio
+      - name: Start an empty Supabase Postgres
         run: |
           set -euo pipefail
-          mv supabase/migrations supabase/.migrations-historico
+          mv supabase/migrations supabase/.migrations-history
           mkdir supabase/migrations
           supabase db start
           rmdir supabase/migrations
-          mv supabase/.migrations-historico supabase/migrations
+          mv supabase/.migrations-history supabase/migrations
 
       # replayable baseline of 2026-07-21 + the 46 later migrations + seed.
-      - name: Aplica o esquema do repositório
+      - name: Apply the repository schema
         run: |
           set -euo pipefail
           eval "$(supabase status -o env | grep '^DB_URL=')"
           if [ -z "${DB_URL:-}" ]; then
-            echo "::error title=Banco efêmero não subiu::supabase status não devolveu DB_URL; os smoke tests de RLS não têm onde rodar."
+            echo "::error title=Ephemeral database did not start::supabase status did not return DB_URL; the RLS smoke tests have nowhere to run."
             exit 1
           fi
           echo "DATABASE_URL=$DB_URL" >> "$GITHUB_ENV"
@@ -134,11 +134,11 @@ jobs:
       - name: RLS smoke tests (supabase/tests)
         run: npm run test:db
 
-      - name: Compra avulsa concorrente (duas conexoes reais)
+      - name: Concurrent single purchase (two real connections)
         timeout-minutes: 3
         run: node scripts/check-order-concurrency.mjs
 
-      - name: Prova por reversao da trava do pedido
+      - name: Revert proof of the order row lock
         timeout-minutes: 3
         run: |
           set +e
@@ -154,11 +154,11 @@ jobs:
           actual=$(printf '%s\n' "$output" | grep -F '[order-concurrency] FAIL')
           test "$actual" = "$expected"
 
-      - name: Certificado e reembolso concorrentes (duas conexoes reais)
+      - name: Concurrent certificate and refund (two real connections)
         timeout-minutes: 3
         run: node scripts/check-certificate-concurrency.mjs
 
-      - name: Prova por reversao da trava da matricula
+      - name: Revert proof of the enrollment lock
         timeout-minutes: 3
         run: |
           set +e
@@ -178,7 +178,7 @@ jobs:
         timeout-minutes: 5
         run: node scripts/check-invite-auth.mjs
 
-      - name: Prova por reversao da revogacao Auth
+      - name: Revert proof of the Auth session revocation
         timeout-minutes: 5
         run: |
           set +e
