@@ -72,7 +72,7 @@ const statusVariants: Record<string, string> = {
   succeeded: "success",
   draft: "draft",
   in_review: "warning",
-  // Produto apagado esperando a limpeza de arquivos e videos (fila pending).
+  // Deleted product waiting for the cleanup of files and videos (pending queue).
   deleting: "warning",
   needs_changes: "danger",
   rejected: "danger",
@@ -95,12 +95,12 @@ const statusVariants: Record<string, string> = {
   incomplete_expired: "inactive",
   refunded: "info",
   reviewed: "info",
-  // Domínio próprio do professor: esperar DNS/verificação é aviso, falha é
-  // perigo — as mesmas variantes que o resto do estúdio usa (P-26).
+  // The teacher's own domain: waiting for DNS/verification is a warning, failure is
+  // danger — the same variants the rest of the studio uses (P-26).
   pending_dns: "warning",
   pending_verification: "warning",
   error: "danger",
-  // Conta suspensa ou bloqueada pede atenção no /ops; caía no cinza de rascunho (I-05).
+  // Suspended or blocked account needs attention in /ops; it used to fall into the draft gray (I-05).
   suspended: "warning",
   blocked: "danger",
 };

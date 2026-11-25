@@ -7,7 +7,7 @@ import { formatEventDateTime } from "@/domain/course-event";
 import type { AppNotification } from "@/domain/notification";
 import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 
-// O I18nProvider chama useRouter() para o refresh ao trocar de idioma.
+// The I18nProvider calls useRouter() to refresh when the language changes.
 const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }));
 vi.mock("next/navigation", async (importOriginal) => ({
   ...await importOriginal<typeof import("next/navigation")>(),
@@ -45,10 +45,10 @@ describe("optional classroom relative-time localization", () => {
   });
 });
 
-// A linha do sino e da caixa de entrada chamava o formatador sem `t` nem
-// `locale`: em espanhol a hora saia em ingles.
+// The bell and inbox row called the formatter without `t` or
+// `locale`: in Spanish the time came out in English.
 describe("NotificationRow", () => {
-  it("mostra a hora da notificacao no idioma da pessoa", () => {
+  it("shows the notification time in the person's language", () => {
     const notification: AppNotification = {
       id: "n1",
       type: "enrollment",
@@ -66,10 +66,10 @@ describe("NotificationRow", () => {
     expect(screen.getByText("Hace 5 min")).toBeInTheDocument();
   });
 
-  // O aviso de sessao chegava em ingles e em UTC para quem usa espanhol. O
-  // fuso aqui e o do aparelho (o mesmo nos dois lados); o formato com fuso
-  // fixo esta em notification-href.test.ts.
-  it("aviso de sessao marcada: titulo traduzido e hora no fuso de quem le", () => {
+  // The session notice arrived in English and in UTC for people using Spanish. The
+  // time zone here is the device's (the same on both sides); the format with a fixed
+  // time zone is in notification-href.test.ts.
+  it("scheduled session notice: translated title and time in the reader's time zone", () => {
     const notification: AppNotification = {
       id: "n2",
       type: "live_event",

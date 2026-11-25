@@ -7,7 +7,7 @@ import { MobileSidebarDrawer } from "@/components/platform/mobile-sidebar-drawer
 import { PlatformNav } from "@/components/platform/platform-nav";
 import { AdvisorSidebar } from "@/components/teacher/advisor-sidebar";
 
-// O botao Ajuda: o mesmo em todo lugar, tres escolhas por lado.
+// The Help button: the same everywhere, three choices per side.
 
 vi.mock("@/components/auth/auth-provider", () => ({
   useAuth: () => ({
@@ -28,7 +28,7 @@ afterEach(() => {
 });
 
 describe("as escolhas por lado", () => {
-  it("aluno fora de um curso: comunidades, mensagens e a central de ajuda antes de uma pessoa", () => {
+  it("learner outside a course: communities, messages and the help center before a person", () => {
     expect(getHelpChoices("student", null, false)).toEqual([
       expect.objectContaining({ id: "lesson", href: "/learn/community" }),
       expect.objectContaining({ id: "private", href: "/learn/messages" }),
@@ -36,7 +36,7 @@ describe("as escolhas por lado", () => {
     ]);
   });
 
-  it("aluno dentro de um curso: a duvida vai para a comunidade dele, ou para o professor se ela estiver desligada", () => {
+  it("learner inside a course: the question goes to its community, or to the teacher if it is turned off", () => {
     const course = { href: "/learn/courses/c-1", communityEnabled: true };
     expect(getHelpChoices("student", course, false)[0]).toMatchObject({
       href: "/learn/courses/c-1/community",
@@ -49,7 +49,7 @@ describe("as escolhas por lado", () => {
     expect(getHelpChoices("student", course, false)[1].href).toBe("/learn/courses/c-1/messages");
   });
 
-  it("professor: Advisor (ou a central, sem Advisor), Caixa de entrada e suporte", () => {
+  it("teacher: Advisor (or the help center, without Advisor), Inbox and support", () => {
     expect(getHelpChoices("teacher", null, true)).toEqual([
       expect.objectContaining({ id: "howTo", opensAdvisor: true }),
       expect.objectContaining({ id: "students", href: "/teach/messages" }),
@@ -61,8 +61,8 @@ describe("as escolhas por lado", () => {
   });
 });
 
-describe("teclado e leitor de tela", () => {
-  it("abre um dialogo com titulo, foca a primeira escolha e fecha no Escape devolvendo o foco", () => {
+describe("keyboard and screen reader", () => {
+  it("opens a dialog with a title, focuses the first choice and closes on Escape returning focus", () => {
     render(<HelpMenu variant="bar" side="student" />);
 
     const trigger = screen.getByRole("button", { name: "Help" });
@@ -83,7 +83,7 @@ describe("teclado e leitor de tela", () => {
     expect(trigger).toHaveFocus();
   });
 
-  it("o topo fecha com clique fora; escolher fecha e avisa quem abriu", () => {
+  it("the top one closes on an outside click; choosing closes it and tells whoever opened it", () => {
     const onNavigate = vi.fn();
     render(<HelpMenu variant="bar" side="student" onNavigate={onNavigate} />);
 
@@ -97,7 +97,7 @@ describe("teclado e leitor de tela", () => {
     expect(onNavigate).toHaveBeenCalledOnce();
   });
 
-  it("setas andam entre as escolhas, dando a volta; do botao, a seta leva para dentro", () => {
+  it("arrows move between the choices, wrapping around; from the button, the arrow leads inside", () => {
     render(<HelpMenu variant="bar" side="student" />);
     const trigger = screen.getByRole("button", { name: "Help" });
     fireEvent.click(trigger);
@@ -122,7 +122,7 @@ describe("teclado e leitor de tela", () => {
     expect(lesson).toHaveFocus();
   });
 
-  it("sair do painel do topo com Tab fecha; o foco segue para onde a pessoa foi", () => {
+  it("leaving the top panel with Tab closes it; focus goes to wherever the person went", () => {
     render(
       <>
         <HelpMenu variant="bar" side="student" />
@@ -133,7 +133,7 @@ describe("teclado e leitor de tela", () => {
     const person = screen.getByRole("link", { name: "Talk to a person" });
     const next = screen.getByRole("link", { name: "Next thing" });
 
-    // Dentro do painel, nao fecha.
+    // Inside the panel, it does not close.
     fireEvent.blur(person, { relatedTarget: screen.getByRole("link", { name: /Question about a lesson/ }) });
     expect(screen.getByRole("dialog")).toBeInTheDocument();
 
@@ -142,9 +142,9 @@ describe("teclado e leitor de tela", () => {
     expect(screen.getByRole("button", { name: "Help" })).toHaveAttribute("aria-expanded", "false");
   });
 
-  // No tablet a barra e um trilho de icones: Ajuda abre a gaveta ja na Ajuda.
-  // A gaveta se foca ao abrir; o foco tem de terminar DENTRO das escolhas.
-  it("aberta pelo trilho recolhido, na gaveta, o foco vai para a primeira escolha", async () => {
+  // On the tablet the sidebar is an icon rail: Help opens the drawer already on Help.
+  // The drawer takes focus on opening; focus has to end up INSIDE the choices.
+  it("opened from the collapsed rail, in the drawer, focus goes to the first choice", async () => {
     render(<MobileSidebarDrawer open initialSection="help" onOpen={vi.fn()} onClose={vi.fn()} />);
 
     const dialog = screen.getByRole("dialog", { name: "What do you need help with?" });
@@ -152,7 +152,7 @@ describe("teclado e leitor de tela", () => {
     await waitFor(() => expect(first).toHaveFocus());
   });
 
-  it("na barra lateral recolhida que se abre ao clicar, o foco vai para a primeira escolha", () => {
+  it("in the collapsed sidebar that opens on click, focus goes to the first choice", () => {
     function Sidebar() {
       const [collapsed, setCollapsed] = useState(true);
       return <PlatformNav collapsed={collapsed} onRequestExpand={() => setCollapsed(false)} />;
@@ -165,7 +165,7 @@ describe("teclado e leitor de tela", () => {
     expect(within(dialog).getAllByRole("link")[0]).toHaveFocus();
   });
 
-  it("o aluno ve 'falar com uma pessoa' depois do assistente", () => {
+  it("the learner sees 'talk to a person' after the assistant", () => {
     render(<HelpMenu variant="bar" side="student" />);
     fireEvent.click(screen.getByRole("button", { name: "Help" }));
 
@@ -178,8 +178,8 @@ describe("teclado e leitor de tela", () => {
   });
 });
 
-describe("dentro do estudio, 'Como faco X' abre o Advisor", () => {
-  it("sem sair da pagina", async () => {
+describe("inside the studio, 'How do I do X' opens the Advisor", () => {
+  it("without leaving the page", async () => {
     render(
       <AdvisorSidebar>
         <HelpMenu variant="bar" side="teacher" />
@@ -193,7 +193,7 @@ describe("dentro do estudio, 'Como faco X' abre o Advisor", () => {
     expect(screen.queryByRole("dialog", { name: "What do you need help with?" })).toBeNull();
   });
 
-  it("fora do estudio, sem Advisor, a mesma escolha leva para a central de ajuda", () => {
+  it("outside the studio, without Advisor, the same choice leads to the help center", () => {
     render(<HelpMenu variant="bar" side="teacher" />);
     fireEvent.click(screen.getByRole("button", { name: "Help" }));
 

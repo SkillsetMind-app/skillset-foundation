@@ -71,7 +71,7 @@ export function PhoneInput({ value, onChange, label }: PhoneInputProps) {
       return;
     }
 
-    // Aberta, a lista começa no país escolhido: as setas andam a partir dele.
+    // When open, the list starts at the chosen country: the arrows move from it.
     listRef.current
       ?.querySelector<HTMLElement>('[aria-selected="true"]')
       ?.focus({ preventScroll: true });
@@ -115,8 +115,8 @@ export function PhoneInput({ value, onChange, label }: PhoneInputProps) {
       <label htmlFor={inputId}>{label ?? t("phoneInput.label")}</label>
       <div
         ref={wrapperRef}
-        // O foco agora entra na lista: um Tab dali levava ao campo de baixo
-        // com a lista ainda aberta por cima dele. Foco saiu da caixa, fecha.
+        // Focus now enters the list: a Tab from there led to the field below
+        // with the list still open on top of it. Focus left the box, it closes.
         onBlur={(event) => {
           const next = event.relatedTarget;
           if (open && next instanceof Node && !event.currentTarget.contains(next)) {
@@ -157,8 +157,8 @@ export function PhoneInput({ value, onChange, label }: PhoneInputProps) {
         />
 
         {open ? (
-          // Lista de opções como a do idioma: diz qual país está escolhido
-          // (antes nenhum ficava marcado) e anda nas setas.
+          // List of options like the language one: says which country is chosen
+          // (before none was marked) and moves with the arrows.
           <div
             ref={listRef}
             id={listId}

@@ -13,10 +13,10 @@ import { VerifiedSeal } from "@/components/shared/verified-badge";
 import type { CourseCard } from "@/lib/data/catalog";
 
 /**
- * O UNICO selo do cartao, e so quando ha o que dizer.
+ * The ONLY badge on the card, and only when there is something to say.
  *
- * "Published" saiu: e o estado interno do curso, nao uma informacao de compra
- * — todo curso do catalogo esta publicado, entao o selo nao separava nada.
+ * "Published" is gone: it is the internal state of the course, not purchase
+ * information — every course in the catalog is published, so the badge separated nothing.
  */
 export function courseCardBadge(card: CourseCard): string | null {
   if (card.featured) return "Featured (paid placement)";
@@ -26,21 +26,21 @@ export function courseCardBadge(card: CourseCard): string | null {
 }
 
 /**
- * O cartao de curso. UM so, para as tres telas que mostram curso em lista:
- * home (FeaturedCourses), catalogo (CourseMarketplace) e vitrine do professor
+ * The course card. ONE only, for the three screens that show courses in a list:
+ * home (FeaturedCourses), catalog (CourseMarketplace) and teacher storefront
  * (InstructorProfileView).
  *
- * Antes eram tres desenhos diferentes para a mesma coisa: na home o cartao
- * inteiro era link, no catalogo so o botao navegava (e o preco aparecia duas
- * vezes, com dois selos e dois botoes de tamanhos diferentes), na vitrine so a
- * capa navegava. Quem procurava curso aprendia a clicar em tres lugares
- * diferentes conforme a pagina.
+ * Before, there were three different designs for the same thing: on home the whole
+ * card was a link, in the catalog only the button navigated (and the price appeared two
+ * times, with two badges and two buttons of different sizes), in the storefront only the
+ * cover navigated. Whoever looked for a course learned to click in three different
+ * places depending on the page.
  *
- * Regras que o componente garante:
- * - o cartao inteiro e link (link esticado a partir do titulo);
- * - o preco aparece UMA vez, no rodape;
- * - no maximo UM selo, e so quando ha o que dizer;
- * - resumo cortado em duas linhas em qualquer tela.
+ * Rules the component guarantees:
+ * - the whole card is a link (stretched link from the title);
+ * - the price appears ONCE, in the footer;
+ * - at most ONE badge, and only when there is something to say;
+ * - summary cut to two lines on any screen.
  */
 export type CourseTileProps = {
   courseData?: Pick<CourseCard, "lessonCount" | "priceAmountMinor" | "currency" | "freePreviewHref" | "ratingCount" | "ownerId" | "featured">;
@@ -48,17 +48,17 @@ export type CourseTileProps = {
   title: string;
   image: string;
   summary?: string;
-  /** Categoria e dados curtos: viram a linha "Categoria · 8 aulas". */
+  /** Category and short data: they become the line "Category · 8 lessons". */
   category?: string;
   meta?: string;
-  /** No maximo um. "Published" nao e selo: e vocabulario interno. */
+  /** At most one. "Published" is not a badge: it is internal vocabulary. */
   badge?: string | null;
   priceLabel?: string;
   rating?: { average: number; count: number } | null;
-  /** `verified`: só o selo, sem popover (o cartão inteiro já é um link). */
+  /** `verified`: only the badge, no popover (the whole card is already a link). */
   instructor?: { name: string; photoURL?: string | null; verified?: boolean } | null;
   actionLabel?: string;
-  /** Botao de salvar e afins. Fica acima do link esticado pelo z-index. */
+  /** Save button and the like. It sits above the stretched link by z-index. */
   overlay?: ReactNode;
   imageSizes?: string;
   className?: string;
@@ -88,8 +88,8 @@ export function CourseTile({
   const displayPrice = typeof courseData?.priceAmountMinor === "number"
     ? new Intl.NumberFormat(locale, { style: "currency", currency: courseData.currency ?? "USD" }).format(courseData.priceAmountMinor / 100)
     : courseData?.ownerId ? t("publicCourses.enrollmentSoon") : priceLabel;
-  // Destaque comprado com o plano vem antes de tudo: quem compra precisa saber
-  // que aquela posição na lista foi paga (o selo único continua sendo um só).
+  // A featured placement bought with the plan comes before everything: whoever buys needs to know
+  // that this position in the list was paid for (the single badge is still just one).
   const displayBadge = courseData
     ? courseData.featured ? t("publicCourses.featuredPaid") : courseData.freePreviewHref ? t("publicCourses.preview") : !courseData.ratingCount ? t("publicCourses.new") : null
     : badge;

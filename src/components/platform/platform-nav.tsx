@@ -90,11 +90,11 @@ const iconMap: Record<string, LucideIcon> = {
   Users,
 };
 
-// Chaves de `platform.navSection.*`; o rotulo visivel sai do dicionario.
-// Professor: oito itens no primeiro nivel (Inicio, Produtos, Alunos, Caixa de
-// entrada, Vendas, Ganhos, Promover, Ajuda). Aluno: quatro itens fixos e a
-// Ajuda; embaixo, compras e configuracoes. "help" nao e uma secao de itens:
-// marca onde o botao Ajuda entra na lista.
+// Keys of `platform.navSection.*`; the visible label comes from the dictionary.
+// Teacher: eight top-level items (Home, Products, Students, Inbox, Sales,
+// Earnings, Promote, Help). Learner: four fixed items and Help; at the bottom,
+// purchases and settings. "help" is not a section of items: it marks where the
+// Help button goes in the list.
 const sectionOrder = [
   "home",
   "products",
@@ -107,14 +107,14 @@ const sectionOrder = [
   "help",
   "operations",
   "account",
-  // Rodape — ver `footerSections`.
+  // Footer — see `footerSections`.
   "discover",
 ];
 
-// Secoes que NAO viram acordeao: cada item vira uma linha direta da barra.
-// So Vendas (vendas, assinaturas, relatorios) e Promover (marketing, loja,
-// midia) seguem em grupo: sao o que se consulta de vez em quando, e assim o
-// primeiro nivel cabe em oito itens.
+// Sections that do NOT become an accordion: each item becomes a direct row of
+// the bar. Only Sales (sales, subscriptions, reports) and Promote (marketing,
+// storefront, media) stay grouped: they are what people check once in a while,
+// and that way the top level fits in eight items.
 const directSections = new Set([
   "home",
   "products",
@@ -127,9 +127,9 @@ const directSections = new Set([
   "operations",
 ]);
 
-// Descoberta nao e o trabalho de produzir nem de estudar: vai para o pe da
-// barra, separada por uma linha. A troca entre aluno e professor e o botao do
-// topo, nao um link aqui.
+// Discovery is not the work of producing or studying: it goes at the bottom of
+// the bar, separated by a line. Switching between learner and teacher is the
+// button at the top, not a link here.
 const footerSections = new Set(["discover"]);
 
 const sectionIconMap: Record<string, LucideIcon> = {
@@ -145,7 +145,7 @@ const sectionIconMap: Record<string, LucideIcon> = {
 };
 
 type PlatformNavProps = {
-  /** O botao ☰ aponta para esta lista (aria-controls). */
+  /** The ☰ button points to this list (aria-controls). */
   id?: string;
   collapsed?: boolean;
   onRequestExpand?: (section: string) => void;
@@ -167,12 +167,12 @@ export function PlatformNav({
   const pathname = usePathname() ?? "";
   const activeHref = currentNavigationHref ?? (pathname === "/ops" ? getOpsNavItem(null, user).href : pathname);
   const panelIdPrefix = useId();
-  // Antes isto guardava UMA seção: abrir um grupo fechava todos os outros.
-  // Medido no /teach, com 6 grupos: nunca havia mais de 7 a 9 links visíveis,
-  // então o criador nunca via o mapa do produto — precisava abrir, memorizar e
-  // fechar. Foi assim que /teach/media e /teach/sales ficaram sem caminho
-  // algum a partir do estado inicial. Agora o conjunto é aberto, e abrir um
-  // grupo não custa fechar outro.
+  // This used to hold ONE section: opening a group closed all the others.
+  // Measured on /teach, with 6 groups: there were never more than 7 to 9 visible
+  // links, so the creator never saw the product map: they had to open, memorize
+  // and close. That is how /teach/media and /teach/sales ended up with no path
+  // at all from the initial state. Now the set is open, and opening one group
+  // does not cost closing another.
   const [sectionChoice, setSectionChoice] = useState<{
     pathname: string;
     sections: string[] | null;
@@ -215,8 +215,8 @@ export function PlatformNav({
       group.items.some((item) => isActivePlatformRoute(pathname, item.href, activeHref))
   )?.section;
   const firstAccordionSection = groups.find((group) => !directSections.has(group.section))?.section;
-  // Padrão: o grupo da rota atual aberto (ou o primeiro), como antes. A
-  // diferença é que a partir daí o usuário acumula grupos abertos.
+  // Default: the group of the current route open (or the first one), as before.
+  // The difference is that from there the user accumulates open groups.
   const defaultSections = [activeAccordionSection ?? firstAccordionSection]
     .filter((section): section is string => Boolean(section));
   const expandedSections =
@@ -241,10 +241,10 @@ export function PlatformNav({
 
   const mainGroups = groups.filter((group) => !footerSections.has(group.section));
   const footerGroups = groups.filter((group) => footerSections.has(group.section));
-  // Ajuda entra logo depois do trabalho do dia (Promover / os itens fixos do
-  // aluno) e antes de compras e configuracoes. E a UNICA Ajuda da tela (nem o
-  // topo nem o menu do avatar repetem). A equipe de operacoes nao tem Ajuda:
-  // as escolhas falam com aluno e professor, nao com o suporte.
+  // Help comes right after the day's work (Promote / the learner's fixed items)
+  // and before purchases and settings. It is the ONLY Help on the screen (neither
+  // the top bar nor the avatar menu repeat it). The operations staff has no Help:
+  // the choices talk to learners and teachers, not to support.
   const helpRank = getSectionRank("help");
   const beforeHelp = mainGroups.filter((group) => getSectionRank(group.section) < helpRank);
   const afterHelp = mainGroups.filter((group) => getSectionRank(group.section) > helpRank);
@@ -254,8 +254,8 @@ export function PlatformNav({
         variant="nav"
         side={context === "teacher" ? "teacher" : "student"}
         collapsed={collapsed}
-        // Recolhida, a Ajuda não abre no lugar (abre a barra ou a gaveta),
-        // como os grupos: não diz "expandida" depois que a gaveta fecha.
+        // Collapsed, Help does not open in place (it opens the bar or the drawer),
+        // like the groups: it does not say "expanded" after the drawer closes.
         open={!collapsed && expandedSections.includes("help")}
         onOpenChange={() => toggleSection("help")}
         autoFocus={initialSection === "help"}
@@ -283,8 +283,8 @@ export function PlatformNav({
     }
 
     const SectionIcon = sectionIconMap[group.section] ?? LayoutDashboard;
-    // Os grupos saiam em ingles cru ("Products", "Sales") em toda lingua,
-    // e a dica do icone recolhido tambem era montada a mao em ingles.
+    // The groups came out in raw English ("Products", "Sales") in every language,
+    // and the collapsed icon's tooltip was also assembled by hand in English.
     const sectionLabel = t(`platform.navSection.${group.section}`);
     const isActiveSection = group.section === activeSection;
     const isExpanded = !collapsed && expandedSections.includes(group.section);
@@ -300,9 +300,9 @@ export function PlatformNav({
           aria-label={
             collapsed ? t("platform.openSectionNav").replace("{section}", sectionLabel) : undefined
           }
-          // Mesma linha de 44px, 14px e chip de 32px dos links diretos: Sales e
-          // Promote pareciam titulos de secao (38px, 11,5px em MAIUSCULAS) e,
-          // na gaveta do celular, ficavam com 30px e a borda na cor do texto.
+          // Same 44px row, 14px and 32px chip as the direct links: Sales and
+          // Promote looked like section titles (38px, 11.5px in UPPERCASE) and,
+          // in the phone drawer, ended up at 30px with the border in the text color.
           className={`platform-nav-link platform-nav-section-trigger group relative flex h-11 min-h-11 w-full shrink-0 items-center gap-2.5 rounded-md border border-transparent py-1.5 text-sm font-semibold text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-surface-strong)] hover:text-[var(--color-ink)] ${
             collapsed ? "justify-center px-0" : "px-2.5"
           } ${
@@ -313,10 +313,10 @@ export function PlatformNav({
                 : ""
           }`}
         >
-          {/* Recolhida, o item e o unico quadrado: sem o chip do icone
-              (era a segunda camada no hover; ver bloco "Rail recolhido"
-              no globals.css). O rotulo abaixo vira a dica no hover e no
-              foco do teclado. */}
+          {/* Collapsed, the item is the only square: no icon chip
+              (it was the second layer on hover; see the "Collapsed rail" block
+              in globals.css). The label below becomes the tooltip on hover and
+              on keyboard focus. */}
           {collapsed ? (
             <SectionIcon aria-hidden="true" size={18} strokeWidth={2} />
           ) : (
@@ -389,10 +389,10 @@ export function resolveContext(pathname: string, subject: PermissionSubject): Pl
     return "ops";
   }
 
-  // /account/payments e o dinheiro do PROFESSOR (a pagina inteira exige
-  // teacherStudio.access). Para quem tambem e admin, a regra abaixo devolvia
-  // "ops" — e como o item Earnings so existe no contexto teacher, a barra
-  // escondia justamente a pagina em que a pessoa estava.
+  // /account/payments is the TEACHER's money (the whole page requires
+  // teacherStudio.access). For someone who is also an admin, the rule below returned
+  // "ops" — and since the Earnings item only exists in the teacher context, the bar
+  // hid exactly the page the person was on.
   if (
     pathname.startsWith("/account/payments")
     && hasPermission(subject, "teacherStudio.access")
@@ -465,15 +465,15 @@ function PlatformNavLink({
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      // Recolhida, o rótulo sai da linha mas fica no DOM: é o nome do link
-      // para o leitor de tela, e o CSS o mostra como dica no hover E no foco
-      // do teclado (o title só aparecia no mouse, e depois de 1s).
+      // Collapsed, the label leaves the row but stays in the DOM: it is the link name
+      // for the screen reader, and the CSS shows it as a tooltip on hover AND on keyboard
+      // focus (the title only appeared on mouse, and after 1s).
       className={`platform-nav-link group relative flex h-11 min-h-11 shrink-0 items-center gap-2.5 rounded-md border px-2.5 py-1.5 text-sm font-semibold transition-colors ${
-        // Gaveta do celular: a pagina atual ganha o fundo mais forte, texto
-        // azul-marinho e o filete dourado, nos dois temas (o fundo claro de
-        // antes ficava mais fraco que o hover e, no escuro, sumia no fundo da
-        // gaveta). No computador o bloco da barra escura (.platform-sidebar)
-        // vence estas classes com !important e desenha o mesmo filete.
+        // Phone drawer: the current page gets the stronger background, navy
+        // text and the gold thread, in both themes (the old light background
+        // was weaker than the hover and, in dark, disappeared into the drawer
+        // background). On desktop the dark bar block (.platform-sidebar)
+        // overrides these classes with !important and draws the same thread.
         active
           ? "platform-nav-active border-[rgba(24,58,94,0.2)] bg-[var(--color-surface-strong)] text-[var(--color-primary)] before:absolute before:left-1 before:top-1/2 before:h-[18px] before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-[var(--color-accent)] before:content-['']"
           : "border-transparent text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-strong)] hover:text-[var(--color-ink)]"
@@ -491,9 +491,9 @@ function PlatformNavLink({
           <Icon aria-hidden="true" size={18} strokeWidth={2} className="shrink-0" />
         </span>
       )}
-      {/* A contagem exata mora dentro do rótulo: com a barra aberta fica só
-          para o leitor de tela (o selo mostra o número); recolhida, a dica
-          mostra "128 pending" mesmo quando o selo diz "99+". */}
+      {/* The exact count lives inside the label: with the bar open it is only
+          for the screen reader (the badge shows the number); collapsed, the tooltip
+          shows "128 pending" even when the badge says "99+". */}
       <span className="platform-sidebar-label min-w-0 truncate">
         {label}
         {countLabel !== undefined ? <span className="platform-sidebar-label-count">, {countLabel}</span> : null}

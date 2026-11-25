@@ -3,11 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 
 import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
 
-// Em /ops, tres cartoes de metrica ficavam entre as abas e o conteudo, sem
-// mudar com a aba. Viraram contadores ao lado do nome da fila.
+// On /ops, three metric cards sat between the tabs and the content, without
+// changing with the tab. They became counters next to the queue name.
 
 describe("HorizontalTabs — contador por aba", () => {
-  it("mostra o numero ao lado do nome quando a fila tem contagem, e nada quando nao tem", () => {
+  it("shows the number next to the name when the queue has a count, and nothing when it does not", () => {
     render(
       <HorizontalTabs
         tabs={[
@@ -27,14 +27,14 @@ describe("HorizontalTabs — contador por aba", () => {
     expect(
       screen.getByRole("tab", { name: /^Published catalog$/ }),
     ).toBeInTheDocument();
-    // Zero e informacao (fila vazia), nao ausencia: aparece, mas sem destaque.
+    // Zero is information (empty queue), not absence: it shows, but without emphasis.
     const support = screen.getByRole("tab", { name: /Support tickets\s*0/ });
     const badge = support.querySelector("span");
     expect(badge).not.toBeNull();
     expect(badge?.className).not.toMatch(/color-accent\)/);
   });
 
-  it("nao mostra contador enquanto a contagem ainda nao chegou (undefined)", () => {
+  it("does not show a counter while the count has not arrived yet (undefined)", () => {
     render(
       <HorizontalTabs
         tabs={[{ value: "verification", label: "Creator verification", count: undefined }]}
@@ -50,9 +50,9 @@ describe("HorizontalTabs — contador por aba", () => {
   });
 });
 
-// O leitor de tela não sabia qual aba estava ativa (aria-pressed num grupo de
-// botões), o Tab parava em cada aba, a ativa era sublinhada em latão e o hover
-// pintava a mesma cor da ativa.
+// The screen reader did not know which tab was active (aria-pressed on a group of
+// buttons), Tab stopped at every tab, the active one was underlined in brass and the hover
+// painted the same color as the active one.
 describe("HorizontalTabs — aba ativa", () => {
   function renderTabs(onChange = () => {}) {
     render(
@@ -69,7 +69,7 @@ describe("HorizontalTabs — aba ativa", () => {
     );
   }
 
-  it("anuncia a ativa e só ela entra no Tab", () => {
+  it("announces the active one and only it enters the Tab order", () => {
     renderTabs();
     expect(screen.getByRole("tablist", { name: "Billing sections" })).toBeInTheDocument();
     const tabs = screen.getAllByRole("tab");
@@ -77,7 +77,7 @@ describe("HorizontalTabs — aba ativa", () => {
     expect(tabs.map((tab) => tab.tabIndex)).toEqual([-1, 0, -1]);
   });
 
-  it("ativa em navy, e o hover das outras não copia a ativa", () => {
+  it("active in navy, and the hover on the others does not copy the active", () => {
     renderTabs();
     const active = screen.getByRole("tab", { name: "Purchases" });
     const other = screen.getByRole("tab", { name: "Overview" });
@@ -89,7 +89,7 @@ describe("HorizontalTabs — aba ativa", () => {
     expect(other.className).not.toContain("hover:text-[var(--color-primary)]");
   });
 
-  it("as setas levam o foco e ativam a vizinha", () => {
+  it("the arrows move focus and activate the neighbor", () => {
     const onChange = vi.fn();
     renderTabs(onChange);
     fireEvent.keyDown(screen.getByRole("tab", { name: "Purchases" }), { key: "ArrowRight" });
@@ -97,7 +97,7 @@ describe("HorizontalTabs — aba ativa", () => {
     expect(onChange).toHaveBeenCalledWith("methods");
   });
 
-  it("Home e End vão à primeira e à última aba", () => {
+  it("Home and End go to the first and the last tab", () => {
     const onChange = vi.fn();
     renderTabs(onChange);
     const active = screen.getByRole("tab", { name: "Purchases" });

@@ -6,10 +6,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PlatformHeader } from "@/components/platform/platform-header";
 
-// A busca morava dentro da barra lateral e so existia com ela expandida: quem
-// recolhia o rail perdia a busca, e no celular — onde a barra vira gaveta — ela
-// nao existia em largura nenhuma. E a dica dizia "Ctrl K" fixa, inclusive no
-// Mac, onde o atalho e ⌘K (achado F26 da auditoria).
+// Search lived inside the sidebar and only existed with it expanded: whoever
+// collapsed the rail lost search, and on the phone — where the bar becomes a drawer — it
+// did not exist at any width. And the hint said a fixed "Ctrl K", including on
+// Mac, where the shortcut is ⌘K (audit finding F26).
 
 const mocks = vi.hoisted(() => ({
   pathname: "/teach",
@@ -82,7 +82,7 @@ afterEach(() => {
   setPlatform(realPlatform);
 });
 
-describe("busca na barra do topo", () => {
+describe("search in the top bar", () => {
   it("uses the theme focus color for the search field boundary", () => {
     let borderColor = "";
     const css = postcss.parse(readFileSync("src/app/globals.css", "utf8"));
@@ -138,7 +138,7 @@ describe("busca na barra do topo", () => {
   });
 
   it.each([
-    // A busca do professor cai na lista de produtos, que le ?q= e filtra.
+    // The teacher's search lands on the products list, which reads ?q= and filters.
     ["/teach", "/teach/builder?q=course%20name"],
     ["/courses", "/courses?q=course%20name"],
     ["/learn", "/courses?q=course%20name"],
@@ -151,7 +151,7 @@ describe("busca na barra do topo", () => {
     expect(mocks.push).toHaveBeenLastCalledWith(expected);
   });
 
-  it("desenha o campo de busca na barra do topo, nao na lateral", () => {
+  it("renders the search field in the top bar, not in the sidebar", () => {
     render(<PlatformHeader />);
 
     const field = screen.getByRole("searchbox", { name: "Search your studio" });
@@ -159,14 +159,14 @@ describe("busca na barra do topo", () => {
     expect(field.closest("header")).toHaveClass("platform-topbar");
   });
 
-  it("no celular o campo continua alcancavel: um botao o abre", () => {
+  it("on the phone the field stays reachable: a button opens it", () => {
     render(<PlatformHeader />);
 
     const toggle = screen.getByRole("button", { name: "Open search" });
     const field = screen.getByRole("searchbox", { name: "Search your studio" });
 
-    // O CSS esconde o campo abaixo de 768px; `data-open` e o que o traz de
-    // volta, e e o unico estado que o jsdom consegue observar.
+    // The CSS hides the field below 768px; `data-open` is what brings it
+    // back, and it is the only state jsdom can observe.
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     expect(field.closest("label")).toHaveAttribute("data-open", "false");
 
@@ -177,14 +177,14 @@ describe("busca na barra do topo", () => {
     expect(field).toHaveFocus();
   });
 
-  it("no celular o Esc fecha a faixa e devolve o foco ao icone", () => {
+  it("on the phone Esc closes the strip and returns focus to the icon", () => {
     render(<PlatformHeader />);
 
     const toggle = screen.getByRole("button", { name: "Open search" });
     const field = screen.getByRole("searchbox", { name: "Search your studio" });
     fireEvent.click(toggle);
     fireEvent.change(field, { target: { value: "anxiety" } });
-    // O Esc so fecha a faixa: o padrao do navegador (apagar o campo) e cancelado.
+    // Esc only closes the strip: the browser default (clearing the field) is canceled.
     expect(fireEvent.keyDown(field, { key: "Escape" })).toBe(false);
 
     expect(field).toHaveValue("anxiety");
@@ -193,7 +193,7 @@ describe("busca na barra do topo", () => {
     expect(toggle).toHaveFocus();
   });
 
-  it("no celular a faixa fecha depois de enviar a busca", () => {
+  it("on the phone the strip closes after the search is submitted", () => {
     render(<PlatformHeader />);
 
     const field = screen.getByRole("searchbox", { name: "Search your studio" });
@@ -213,7 +213,7 @@ describe("busca na barra do topo", () => {
     expect(screen.queryByText("Ctrl K")).toBeNull();
   });
 
-  it("fora do Mac a dica e Ctrl K", () => {
+  it("outside Mac the hint is Ctrl K", () => {
     setPlatform("Win32");
     render(<PlatformHeader />);
 
@@ -221,7 +221,7 @@ describe("busca na barra do topo", () => {
     expect(screen.queryByText("⌘K")).toBeNull();
   });
 
-  it("o texto do campo acompanha a area em que a pessoa esta", () => {
+  it("the field text follows the area the person is in", () => {
     mocks.pathname = "/courses";
     render(<PlatformHeader />);
 

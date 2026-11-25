@@ -9,7 +9,7 @@ import { helpFaqCategories } from "@/data/help-faq";
 import en from "@/data/i18n/en.json";
 import es from "@/data/i18n/es.json";
 
-// Server component: o idioma vem do cookie.
+// Server component: the language comes from the cookie.
 const state = vi.hoisted(() => ({ locale: "en" }));
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => ({ value: state.locale }) }) }));
 
@@ -20,7 +20,7 @@ afterEach(() => {
 
 const dictionaries = [["en", en], ["es", es]] as const;
 
-// As perguntas escolhidas, na ordem da home: [categoria do /help, posição].
+// The chosen questions, in home order: [category of /help, position].
 const expected = [
   ["plans", 0],
   ["payouts", 0],
@@ -33,8 +33,8 @@ const expected = [
 const at = (dict: object, path: string) =>
   path.split(".").reduce<unknown>((node, key) => (node as Record<string, unknown>)[key], dict) as string;
 
-describe("perguntas frequentes da home", () => {
-  it.each(dictionaries)("em %s mostra as perguntas e respostas da central de ajuda, sem reescrever", async (locale, dict) => {
+describe("home frequently asked questions", () => {
+  it.each(dictionaries)("in %s shows the help center questions and answers, without rewriting", async (locale, dict) => {
     state.locale = locale;
     const { container } = render(await HomeFaq());
 
@@ -46,15 +46,15 @@ describe("perguntas frequentes da home", () => {
     items.forEach((item, position) => {
       const [category, index] = expected[position];
       const key = `publicPages.helpFaq.${category}.items.${index}`;
-      // Fechadas ao chegar: quem quer, abre.
+      // Closed on arrival: whoever wants to, opens them.
       expect(item).not.toHaveAttribute("open");
 
       const summary = item.querySelector("summary")!;
       expect(summary.textContent).toBe(at(dict, `${key}.q`));
       expect(item.querySelector("p")?.textContent).toBe(at(dict, `${key}.a`));
 
-      // A resposta termina com o link para a categoria dela no /help, e o link
-      // leva a pergunta como descrição.
+      // The answer ends with the link to its category on /help, and the link
+      // carries the question as its description.
       const links = item.querySelectorAll("a");
       expect(links).toHaveLength(1);
       expect(item.lastElementChild?.lastElementChild).toBe(links[0]);
@@ -66,21 +66,21 @@ describe("perguntas frequentes da home", () => {
     });
   });
 
-  // O link só serve se o /help tiver a categoria e a pergunta: a página monta
-  // as seções a partir de helpFaqCategories, com o id da categoria.
-  it("cada pergunta existe no /help, na categoria para onde o link leva", () => {
+  // The link only works if /help has the category and the question: the page builds
+  // the sections from helpFaqCategories, with the category id.
+  it("each question exists on /help, in the category the link points to", () => {
     for (const [category, index] of expected) {
       const section = helpFaqCategories.find((item) => item.id === category);
       expect(section, category).toBeDefined();
       expect(section!.items[index], `${category}.${index}`).toBeDefined();
-      // A mesma pergunta que o /help mostra em inglês.
+      // The same question that /help shows in English.
       expect(at(en, `publicPages.helpFaq.${category}.items.${index}.q`)).toBe(section!.items[index].q);
     }
   });
 
-  // Sem JavaScript: <details> nativo. A seta gira ao abrir e só anda com
-  // movimento liberado (motion-safe), nos tempos da casa.
-  it("abre e fecha sem JavaScript, e a seta só anda com movimento liberado", async () => {
+  // Without JavaScript: native <details>. The arrow rotates on open and only moves when
+  // motion is allowed (motion-safe), at the house timings.
+  it("opens and closes without JavaScript, and the arrow only moves when motion is allowed", async () => {
     const source = readFileSync(join(process.cwd(), "src/components/site/home-faq.tsx"), "utf8");
     expect(source).not.toContain('"use client"');
     expect(source).not.toMatch(/\bon[A-Z][a-zA-Z]*=/);
@@ -93,7 +93,7 @@ describe("perguntas frequentes da home", () => {
       expect(classes).toContain("motion-safe:duration-[var(--duration-base)]");
       expect(classes.split(" ")).not.toContain("transition-transform");
     }
-    // Alvo de toque de 48px ou mais na pergunta e no link.
+    // Touch target of 48px or more on the question and the link.
     for (const summary of container.querySelectorAll("summary")) expect(summary).toHaveClass("min-h-14", "text-lg");
     for (const link of container.querySelectorAll("details a")) expect(link).toHaveClass("min-h-12");
   });

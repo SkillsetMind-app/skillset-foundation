@@ -35,10 +35,10 @@ function translatedRoster() {
   return <I18nProvider initialLocale="en"><ChangeLanguage /><RoleManager /></I18nProvider>;
 }
 
-// Mudar o nível admin pergunta na janela da plataforma (não mais no
-// window.confirm). O jsdom não tem showModal/close: o stub faz o mínimo que o
-// navegador faz. Só o Date é falso: o confirmar ignora cliques nos primeiros
-// CONFIRM_GUARD_MS (toque duplo), e os setTimeout reais servem o findBy.
+// Changing the admin level asks in the platform dialog (no longer in
+// window.confirm). jsdom has no showModal/close: the stub does the minimum the
+// browser does. Only Date is fake: confirm ignores clicks in the first
+// CONFIRM_GUARD_MS (double tap), and the real setTimeout calls serve findBy.
 const originalShow = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal");
 const originalClose = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "close");
 
@@ -58,7 +58,7 @@ afterEach(() => {
   else Reflect.deleteProperty(HTMLDialogElement.prototype, "close");
 });
 
-// Responde a pergunta aberta, depois da trava do toque duplo.
+// Answers the open question, after the double-tap guard.
 function answer(button: string) {
   const dialog = screen.getByRole("dialog");
   vi.advanceTimersByTime(CONFIRM_GUARD_MS);
@@ -79,8 +79,8 @@ function roster(roles: string[]) {
 }
 
 describe("RoleManager", () => {
-  // As três trocam de painel: são as abas únicas da plataforma (I-18), não
-  // caixas com aria-pressed.
+  // The three switch panels: they are the platform's single tabs (I-18), not
+  // boxes with aria-pressed.
   it("switches panels with the platform tabs", () => {
     mocks.listPlatformUsers.mockResolvedValue([]);
     render(translatedRoster());
@@ -157,11 +157,11 @@ describe("RoleManager", () => {
 
     fireEvent.click(await screen.findByLabelText("Admin"));
 
-    // (a) a frase de sempre, agora na janela da plataforma;
+    // (a) the usual sentence, now in the platform dialog;
     const dialog = screen.getByRole("dialog", { name: "Make this person an administrator?" });
     expect(dialog).toHaveTextContent("Make Test Person an administrator? Admins can change anyone's access, issue refunds and see every account.");
     expect(nativeConfirm).not.toHaveBeenCalled();
-    // (b) desistir não grava nada.
+    // (b) giving up saves nothing.
     answer("Cancel");
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(mocks.setUserRoles).not.toHaveBeenCalled();
@@ -177,16 +177,16 @@ describe("RoleManager", () => {
 
     const dialog = screen.getByRole("dialog", { name: "Make this person an administrator?" });
     expect(mocks.setUserRoles).not.toHaveBeenCalled();
-    // Um clique colado na abertura (toque duplo) é descartado.
+    // A click stuck to the opening (double tap) is discarded.
     fireEvent.click(within(dialog).getByRole("button", { name: "Make administrator" }));
     expect(mocks.setUserRoles).not.toHaveBeenCalled();
-    // Com a pergunta aberta, a busca com atraso traz papéis mais novos (alguém
-    // virou instrutor). Gravar os do clique apagaria essa mudança.
+    // With the question open, the delayed search brings newer roles (someone
+    // became an instructor). Saving the click's roles would erase that change.
     mocks.listPlatformUsers.mockResolvedValue(roster(["student", "teacher"]));
     fireEvent.change(screen.getByRole("searchbox", { name: "Find someone" }), { target: { value: "Test" } });
     await waitFor(() => expect(mocks.listPlatformUsers).toHaveBeenLastCalledWith("Test"));
     await waitFor(() => expect(screen.getByLabelText("Instructor")).toBeChecked());
-    // (c) confirmar grava uma vez: o admin entra sobre os papéis de agora.
+    // (c) confirming saves once: the admin enters on top of the current roles.
     answer("Make administrator");
     fireEvent.click(within(dialog).getByRole("button", { name: "Make administrator" }));
     expect(mocks.setUserRoles).toHaveBeenCalledExactlyOnceWith("u-1", ["student", "teacher", "admin"]);
@@ -237,8 +237,8 @@ describe("RoleManager", () => {
     expect(screen.getByLabelText("Instructor")).toBeChecked();
   });
 
-  // Team abre reembolsos, moderação e o catálogo inteiro: dar Team pergunta,
-  // como admin (I-04). A gravação é a mesma de antes, uma vez, só depois do sim.
+  // Team opens refunds, moderation and the whole catalog: giving Team asks,
+  // like admin (I-04). The save is the same as before, once, only after the yes.
   it("asks before adding someone to the Team and writes once, only after confirmation", async () => {
     mocks.listPlatformUsers.mockResolvedValue(roster(["student"]));
     mocks.setUserRoles.mockResolvedValue(["student", "support", "moderator", "ops"]);
@@ -272,8 +272,8 @@ describe("RoleManager", () => {
     expect(mocks.setUserRoles).toHaveBeenCalledExactlyOnceWith("u-1", ["student"]);
   });
 
-  // Gravar um nível dizia nada: as caixas só apagavam e voltavam (I-11). A
-  // região viva do "Saved" fica sempre montada; só o texto entra e sai.
+  // Saving a level said nothing: the boxes only cleared and came back (I-11). The
+  // "Saved" live region is always mounted; only the text comes in and out.
   it("says Saved next to the levels after a level change, in a reserved live slot", async () => {
     mocks.listPlatformUsers.mockResolvedValue(roster(["student"]));
     let finish!: (roles: string[]) => void;
@@ -294,7 +294,7 @@ describe("RoleManager", () => {
     expect(slot).toHaveTextContent("Guardado");
   });
 
-  // Um "Saved" velho ao lado das caixas dizia que a mudança desistida gravou.
+  // An old "Saved" next to the boxes said the abandoned change was saved.
   it("drops Saved on the next click, a cancelled question, a failed write and a new search", async () => {
     mocks.listPlatformUsers.mockResolvedValue(roster(["student"]));
     mocks.setUserRoles.mockResolvedValueOnce(["student", "teacher"]);
@@ -303,20 +303,20 @@ describe("RoleManager", () => {
 
     fireEvent.click(await screen.findByLabelText("Instructor"));
     await waitFor(() => expect(slot()).toHaveTextContent("Saved"));
-    // Cancelar a pergunta do Team não deixa o "Saved" de antes.
+    // Canceling the Team question does not leave the earlier "Saved".
     fireEvent.click(screen.getByLabelText("Team"));
     expect(slot()).toBeEmptyDOMElement();
     answer("Cancel");
     expect(slot()).toBeEmptyDOMElement();
 
-    // Gravação recusada: o erro aparece e nenhum "Saved".
+    // Refused save: the error shows and no "Saved".
     mocks.setUserRoles.mockRejectedValueOnce({ message: "Private RPC schema detail" });
     fireEvent.click(screen.getByLabelText("Team"));
     answer("Add to Team");
     expect(await screen.findByRole("alert")).toHaveTextContent("That change was refused. Nothing was saved.");
     expect(slot()).toBeEmptyDOMElement();
 
-    // Grava de novo e depois busca: a lista nova não herda o "Saved".
+    // Saves again and then searches: the new list does not inherit the "Saved".
     mocks.setUserRoles.mockResolvedValueOnce(["student"]);
     fireEvent.click(screen.getByLabelText("Instructor"));
     await waitFor(() => expect(slot()).toHaveTextContent("Saved"));
@@ -443,7 +443,7 @@ describe("RoleManager", () => {
     await waitFor(() => expect(mocks.listPlatformUsers).toHaveBeenLastCalledWith("Test"));
     expect(screen.getByText("Test Person").closest("ul")).toHaveAttribute("aria-busy", "true");
     expect(screen.getByText("Test Person").closest("ul")).toHaveClass("opacity-60");
-    // A lista não vira a linha de "carregando" (as regiões do "Saved" ficam montadas e vazias).
+    // The list does not turn into the "loading" row (the "Saved" regions stay mounted and empty).
     expect(screen.queryByText(/Loading the roster/)).toBeNull();
     await act(async () => finish(roster(["student"])));
     expect(screen.getByText("Test Person").closest("ul")).not.toHaveAttribute("aria-busy");
@@ -466,7 +466,7 @@ describe("RoleManager", () => {
     await waitFor(() => expect(mocks.listPlatformUsers).toHaveBeenLastCalledWith("ana"));
     await act(async () => answerAna([{ ...roster(["student"])[0], displayName: "Ana Nova" }]));
     expect(screen.getByText("Ana Nova").closest("ul")).not.toHaveAttribute("aria-busy");
-    // A resposta velha de "an" chega depois e não troca a lista.
+    // The old response for "an" arrives later and does not replace the list.
     await act(async () => answerAn([{ ...roster(["student"])[0], uid: "u-2", displayName: "Andre Velho" }]));
     expect(screen.getByText("Ana Nova")).toBeInTheDocument();
     expect(screen.queryByText("Andre Velho")).toBeNull();

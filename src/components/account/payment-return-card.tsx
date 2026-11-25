@@ -2,13 +2,13 @@ import type { ReactNode } from "react";
 
 import { Card } from "@/components/ui/card";
 
-// As telas de depois do pagamento (retorno do plano, visita sem referencia de
-// checkout, retorno da taxa de ativacao) tinham cada uma um desenho: uma
-// centralizada com icone cinza e um botao de contorno, outra com "THANKS" e
-// uma segunda serifa. Agora o mesmo cartao, na mesma ordem: icone redondo,
-// frase principal, explicacao e acoes, a principal primeiro e a unica cheia.
-// Sem servidor nem estado aqui: as frases e o que confirma (ou nao) o
-// pagamento continuam com cada tela.
+// The screens after payment (plan return, visit without a checkout reference,
+// checkout, activation fee return) each had its own design: one
+// centered with a gray icon and an outline button, another with "THANKS" and
+// a second serif. Now the same card, in the same order: round icon,
+// main sentence, explanation and actions, the main one first and the only filled one.
+// No server and no state here: the sentences and what confirms (or not) the
+// payment stay with each screen.
 export function PaymentReturnCard({
   icon,
   heading,
@@ -20,14 +20,14 @@ export function PaymentReturnCard({
   heading: string;
   body: string;
   actions: ReactNode;
-  /** Fora da casca da plataforma (sem titulo de pagina), a frase e o h1. */
+  /** Outside the platform shell (no page title), the sentence is the h1. */
   headingLevel?: 1 | 2;
 }) {
   const Heading = headingLevel === 1 ? "h1" : "h2";
   return (
     <Card padding="lg">
-      {/* Uma regiao viva so, a mesma em todos os estados: o leitor de tela le
-          a frase principal e, quando ela muda, o resultado. */}
+      {/* A single live region, the same in all states: the screen reader reads
+          the main sentence and, when it changes, the result. */}
       <div role="status" aria-live="polite">
         <span className="grid size-10 place-items-center rounded-full bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
           {icon}

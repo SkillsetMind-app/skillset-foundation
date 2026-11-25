@@ -167,7 +167,7 @@ describe("certificate interface locale does not rewrite issued documents", () =>
     const retry = screen.getByRole("button", { name: "Intentar de nuevo" });
     fireEvent.click(retry);
     fireEvent.click(retry);
-    // Lendo: o papel do certificado de sempre no lugar do aviso.
+    // Reading: the usual certificate paper in place of the notice.
     expect(screen.getByText("Preparando tu certificado...")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Intentar de nuevo" })).toBeNull();
     await act(async () => resolve(certificate));

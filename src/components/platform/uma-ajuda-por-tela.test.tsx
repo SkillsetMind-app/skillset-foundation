@@ -4,12 +4,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { MemberAreaShell } from "@/components/learn/member-area-shell";
 import { PlatformShell } from "@/components/platform/platform-shell";
 
-// Exatamente UMA Ajuda por tela. Antes eram ate tres iguais ao mesmo tempo
-// (barra lateral, topo e menu do avatar), e para quem tem pouca pratica com
-// computador dois botoes iguais parecem duas coisas diferentes.
-//   - estudio e area do aluno: na barra lateral (no celular, na gaveta);
-//   - sala de aula, que nao tem barra lateral: no topo, com o curso;
-//   - operacoes: nenhuma.
+// Exactly ONE Help per screen. Before there were up to three identical ones at the same time
+// (sidebar, top bar and avatar menu), and for someone with little practice with
+// computers two identical buttons look like two different things.
+//   - studio and learner area: in the sidebar (on the phone, in the drawer);
+//   - classroom, which has no sidebar: at the top, with the course;
+//   - operations: none.
 
 const mocks = vi.hoisted(() => ({
   pathname: "/teach",
@@ -54,11 +54,11 @@ function helpTriggers() {
   return screen.queryAllByRole("button", { name: "Help" });
 }
 
-describe("uma Ajuda por tela", () => {
+describe("one Help per screen", () => {
   it.each([
     ["estudio", "/teach/sales", ["teacher"], "My students"],
     ["area do aluno", "/learn", ["student"], "Private matter with the teacher"],
-  ])("%s: so a da barra lateral, nem no topo nem no menu da conta", (_label, pathname, roles, choice) => {
+  ])("%s: only the sidebar's, not in the top bar or the account menu", (_label, pathname, roles, choice) => {
     mocks.pathname = pathname;
     mocks.roles = roles;
     render(<PlatformShell title="Page">Content</PlatformShell>);
@@ -68,7 +68,7 @@ describe("uma Ajuda por tela", () => {
     const help = within(sidebar).getByRole("button", { name: "Help" });
     expect(within(screen.getByRole("banner")).queryByRole("button", { name: "Help" })).toBeNull();
 
-    // Com o menu da conta aberto, continua uma so.
+    // With the account menu open, there is still only one.
     fireEvent.click(screen.getByRole("button", { name: "Open account menu" }));
     expect(helpTriggers()).toHaveLength(1);
 
@@ -76,7 +76,7 @@ describe("uma Ajuda por tela", () => {
     expect(screen.getByRole("dialog", { name: "What do you need help with?" })).toHaveTextContent(choice);
   });
 
-  it("operacoes: nenhuma Ajuda, e nunca as escolhas do aluno", () => {
+  it("operations: no Help, and never the learner's choices", () => {
     mocks.pathname = "/ops";
     mocks.roles = ["admin"];
     render(<PlatformShell title="Operations">Content</PlatformShell>);
@@ -89,7 +89,7 @@ describe("uma Ajuda por tela", () => {
   it.each([
     ["sem marca", null],
     ["com a marca do professor", { name: "Atelier Curie" }],
-  ])("sala de aula (%s): so a do topo, com o curso da sala", (_label, brand) => {
+  ])("classroom (%s): only the top one, with the classroom's course", (_label, brand) => {
     mocks.pathname = "/learn/courses/curso-1";
     mocks.roles = ["student"];
     render(
@@ -107,9 +107,9 @@ describe("uma Ajuda por tela", () => {
     ).toHaveAttribute("href", "/learn/courses/curso-1/community");
   });
 
-  // Tablet: a barra e um trilho de icones; a Ajuda dele abre a gaveta ja na
-  // Ajuda, com o foco dentro das escolhas.
-  it("no trilho do tablet, a Ajuda abre a gaveta com o foco na primeira escolha", async () => {
+  // Tablet: the bar is an icon rail; its Help opens the drawer already on
+  // Help, with focus inside the choices.
+  it("in the tablet rail, Help opens the drawer with focus on the first choice", async () => {
     vi.stubGlobal("matchMedia", (query: string) => ({
       matches: query.includes("768px") && query.includes("1024px"),
       addEventListener: () => {},

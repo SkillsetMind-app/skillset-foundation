@@ -217,8 +217,8 @@ describe("Overview de /ops", () => {
     await settle();
     const period = screen.getByRole("navigation", { name: "Period" });
     expect(within(period).getByRole("link", { name: "30 days" })).toHaveAttribute("aria-current", "page");
-    // O link escolhido tem fundo azul-marinho: o texto pede a cor clara de
-    // cima do navy (on-primary) para não sumir no fundo.
+    // The chosen link has a navy background: the text asks for the light color on
+    // top of the navy (on-primary) so it does not disappear into the background.
     expect(within(period).getByRole("link", { name: "30 days" }).className).toContain(
       "text-[var(--color-on-primary)]!",
     );

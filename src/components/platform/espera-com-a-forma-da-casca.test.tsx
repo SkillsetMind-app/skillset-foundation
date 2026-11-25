@@ -5,10 +5,10 @@ import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { PlatformShell } from "@/components/platform/platform-shell";
 
-// F-03, estágio 0: a espera da guarda desenha a casca da plataforma com as
-// MESMAS classes da PlatformShell. Aqui cada rota protegida que abre na casca
-// é desenhada duas vezes (a espera e a casca de verdade) e as peças que dão
-// largura e respiro têm de sair iguais: a troca de uma pela outra não pula.
+// F-03, stage 0: the guard's wait draws the platform shell with the
+// SAME classes as PlatformShell. Here each protected route that opens in the shell
+// is drawn twice (the wait and the real shell) and the pieces that give
+// width and breathing room must come out equal: swapping one for the other does not jump.
 
 const mocks = vi.hoisted(() => ({
   pathname: "/teach",
@@ -71,7 +71,7 @@ afterEach(() => {
   document.cookie = "skillset_sidebar=; path=/; max-age=0";
 });
 
-// Toda página que chama a guarda e abre na PlatformShell, uma por padrão de rota.
+// Every page that calls the guard and opens in PlatformShell, one per route pattern.
 const shellRoutes = [
   "/teach",
   "/teach/sales",
@@ -93,8 +93,8 @@ const shellRoutes = [
   "/support",
 ];
 
-describe("a espera e a casca de verdade têm a mesma moldura", () => {
-  it.each(shellRoutes)("%s, sem escolha salva", (pathname) => {
+describe("the wait and the real shell have the same frame", () => {
+  it.each(shellRoutes)("%s, with no saved choice", (pathname) => {
     const wait = waitLayout(pathname);
     const shell = shellLayout(pathname);
 
@@ -102,11 +102,11 @@ describe("a espera e a casca de verdade têm a mesma moldura", () => {
     expect(wait.grid).toBe(shell.grid);
     expect(wait.sidebar).toBe(shell.sidebar);
     expect(wait.main).toBe(shell.main);
-    // A coluna de 1280px: nas mesmas rotas, e só nelas.
+    // The 1280px column: on the same routes, and only on them.
     expect(wait.frame).toBe(shell.frame);
   });
 
-  it.each(["collapsed", "expanded"])("com a barra %s escolhida", (pref) => {
+  it.each(["collapsed", "expanded"])("with the %s sidebar chosen", (pref) => {
     document.cookie = `skillset_sidebar=${pref}; path=/`;
     const wait = waitLayout("/teach/sales");
     const shell = shellLayout("/teach/sales");

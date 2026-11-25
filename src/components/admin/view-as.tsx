@@ -50,8 +50,8 @@ export function ViewAsSwitcher() {
         {t(`${copy}.preview.description`)}
       </p>
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        {/* Escolhe um modo, não troca de painel: o seletor segmentado único
-            (I-18). Sem prévia, nenhum fica pressionado ("" não é opção). */}
+        {/* Chooses a mode, does not switch panels: the single segmented selector
+            (I-18). With no preview, none is pressed ("" is not an option). */}
         <PeriodTabs<Role | "">
           options={PREVIEWABLE.map((entry) => entry.role)}
           value={viewAsRole ?? ""}
@@ -77,10 +77,10 @@ export function ViewAsSwitcher() {
 }
 
 /**
- * A faixa é fixa no topo e ficava por cima da barra da plataforma, tampando a
- * busca, o sino e o menu da conta (I-15). Agora ela mede a própria altura e a
- * página desce essa medida (globals.css, `html[data-view-as]`). O observador
- * refaz a medida quando a frase quebra em duas linhas (celular, outro idioma).
+ * The banner is fixed at the top and used to sit on top of the platform bar, covering the
+ * search, the bell and the account menu (I-15). Now it measures its own height and the
+ * page moves down by that measure (globals.css, `html[data-view-as]`). The observer
+ * measures again when the sentence wraps to two lines (phone, another language).
  */
 function reserveBannerSpace(node: HTMLDivElement | null) {
   if (!node) return;

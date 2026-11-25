@@ -97,9 +97,9 @@ it("keeps a Spanish category search result when switching back to English", asyn
   expect(state.query.get("offer")).toBe("SPRING");
 });
 
-it("um título com $& na etiqueta da lista de desejos aparece literal, sem virar '{title}'", async () => {
-  // Num replace sem callback, "$&" vira o trecho casado ("{title}"). O título é
-  // texto do professor, não nosso.
+it("a title with $& in the wishlist label appears literally, without becoming '{title}'", async () => {
+  // In a replace with no callback, "$&" becomes the matched piece ("{title}"). The title is
+  // the teacher's text, not ours.
   state.subscribe.mockImplementation((next: (courses: TeacherCourse[]) => void) => {
     next([{ id: "focus", ownerId: "teacher", title: "Deep $& focus", summary: "Author's own words", category: "Performance", status: "published", modules: [], lessonCount: 3, priceAmountMinor: 9900, currency: "USD" }]);
     return () => {};
@@ -108,9 +108,9 @@ it("um título com $& na etiqueta da lista de desejos aparece literal, sem virar
   expect(await screen.findByRole("button", { name: "Save Deep $& focus to wishlist" })).toBeInTheDocument();
 });
 
-// "All courses 0" enquanto a lista carregava lia como loja vazia; e os cartões
-// de espera não tinham a linha de preço, então a página pulava ao carregar.
-it("enquanto carrega, a categoria fica sem número e os cartões de espera têm o rodapé do cartão real", () => {
+// "All courses 0" while the list loaded read as an empty store; and the waiting cards
+// had no price row, so the page jumped on load.
+it("while loading, the category has no number and the waiting cards have the real card's footer", () => {
   state.query = new URLSearchParams("");
   state.subscribe.mockImplementation(() => () => {});
   const { container } = render(<CourseMarketplace />);
@@ -121,7 +121,7 @@ it("enquanto carrega, a categoria fica sem número e os cartões de espera têm 
   expect(container.querySelectorAll(".marketplace-card .marketplace-card__footer")).toHaveLength(6);
 });
 
-it("a falha ao carregar a lista é anunciada ao leitor de tela", () => {
+it("the failure to load the list is announced to the screen reader", () => {
   state.subscribe.mockImplementation((_next: unknown, onError: () => void) => {
     onError();
     return () => {};
@@ -131,9 +131,9 @@ it("a falha ao carregar a lista é anunciada ao leitor de tela", () => {
   expect(screen.getByRole("alert")).toHaveTextContent(translate(getDictionary("en"), "publicCourses.loadCoursesError"));
 });
 
-// A falha era um beco ("Refresh the page"): agora "Try again" relê pela mesma
-// inscrição, e o vazio "Marketplace opening soon" não aparece junto do erro.
-it("a falha da lista oferece Try again, que relê sem reinscrever e só tira o aviso quando os cursos chegam", async () => {
+// The failure was a dead end ("Refresh the page"): now "Try again" reads again through the same
+// subscription, and the "Marketplace opening soon" empty state does not appear next to the error.
+it("the list failure offers Try again, which reads again without resubscribing and only removes the notice when the courses arrive", async () => {
   state.query = new URLSearchParams("");
   let next: (courses: TeacherCourse[]) => void = () => {};
   let finish: () => void = () => {};
@@ -150,7 +150,7 @@ it("a falha da lista oferece Try again, que relê sem reinscrever e só tira o a
   fireEvent.click(screen.getByRole("button", { name: "Try again" }));
   expect(reload).toHaveBeenCalledTimes(1);
   expect(state.subscribe).toHaveBeenCalledTimes(1);
-  // Travado enquanto lê; o aviso fica até a resposta.
+  // Locked while reading; the notice stays until the response.
   const busy = screen.getByRole("button", { name: "Trying again..." });
   expect(busy).toBeDisabled();
   expect(busy).toHaveAttribute("aria-busy", "true");
@@ -162,13 +162,13 @@ it("a falha da lista oferece Try again, que relê sem reinscrever e só tira o a
   });
   expect(await screen.findByRole("link", { name: "Deep focus" })).toBeInTheDocument();
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-  // O botão sumiu: o foco ficou na seção do catálogo, não no <body>.
+  // The button disappeared: focus stayed on the catalog section, not on <body>.
   expect(document.activeElement).toHaveClass("marketplace-section");
 });
 
-// Salvar um favorito limpava o MESMO aviso: a falha de ler os favoritos sumia
-// com o "Try again", sem os favoritos terem chegado.
-it("a falha ao salvar um favorito não apaga a falha de ler os favoritos, nem o Try again dela", async () => {
+// Saving a favorite used to clear the SAME notice: the failure to read favorites vanished
+// with the "Try again", without the favorites having arrived.
+it("the failure to save a favorite does not erase the failure to read favorites, nor its Try again", async () => {
   state.query = new URLSearchParams("");
   state.auth = { status: "authenticated", user: { uid: "u-1" } };
   state.subscribe.mockImplementation((next: (courses: TeacherCourse[]) => void) => {
@@ -193,10 +193,10 @@ it("a falha ao salvar um favorito não apaga a falha de ler os favoritos, nem o 
   expect(state.wishlist).toHaveBeenCalledTimes(1);
 });
 
-// No celular, cabeçalho e filtros abertos davam uns 800px antes do primeiro
-// curso. Os filtros ficam atrás de um botão (o CSS só os esconde abaixo de
-// 640px) e o botão diz quantos estão valendo; cada filtro segue funcionando.
-it("os filtros ficam atrás de um botão que abre e fecha e diz quantos estão valendo", () => {
+// On the phone, header and open filters took about 800px before the first
+// course. The filters stay behind a button (CSS only hides them below
+// 640px) and the button says how many are in effect; each filter keeps working.
+it("the filters stay behind a button that opens and closes and says how many are in effect", () => {
   state.subscribe.mockImplementation(() => () => {});
   render(<CourseMarketplace />);
 

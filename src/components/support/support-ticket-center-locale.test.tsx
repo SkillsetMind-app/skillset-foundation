@@ -106,7 +106,7 @@ describe("support with the shipped dictionaries", () => {
     expect(screen.queryByText("Private transport detail")).toBeNull();
   });
 
-  // F-11: a leitura que falha tem saída na lista, e a lista não diz "nenhum".
+  // F-11: a read that fails has a way out in the list, and the list does not say "none".
   it("a read failure offers Try again in the list, which reads again", async () => {
     render(center());
     act(() => mocks.subscribe.mock.calls[0][2](new Error("offline")));
@@ -135,8 +135,8 @@ describe("support with the shipped dictionaries", () => {
     expect(screen.queryByText("Private transport detail")).toBeNull();
   });
 
-  // O banco recusa com RATE_LIMIT quando a pessoa passa de 10 tickets na hora
-  // (P2-9). A tela pede para esperar, em vez de "tente de novo em um momento".
+  // The database refuses with RATE_LIMIT when the person goes over 10 tickets in an hour
+  // (P2-9). The screen asks them to wait, instead of "try again in a moment".
   it("asks to wait when the database refuses a ticket over the hourly cap, in both languages", async () => {
     mocks.create.mockRejectedValue({ code: "P0001", message: "RATE_LIMIT" });
     render(center());

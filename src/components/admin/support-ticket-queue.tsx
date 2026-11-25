@@ -29,13 +29,13 @@ export function SupportTicketQueue({ query = "" }: { query?: string }) {
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTicketId, setActiveTicketId] = useState<string | null>(null);
-  // Qual status foi apertado: só ele gira; os outros só travam (I-08).
+  // Which status was pressed: only it spins; the others just lock (I-08).
   const [activeStatus, setActiveStatus] = useState<SupportTicketStatus | null>(null);
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const [replyingTicketId, setReplyingTicketId] = useState<string | null>(null);
-  // A caixa de resposta abre por "Reply", só no chamado pedido: dez chamados
-  // eram dez caixas abertas e dez botões principais (I-09). O rascunho fica
-  // guardado se a caixa fechar sem enviar.
+  // The reply box opens through "Reply", only on the requested ticket: ten tickets
+  // were ten open boxes and ten primary buttons (I-09). The draft stays
+  // saved if the box closes without sending.
   const [openReplies, setOpenReplies] = useState<Record<string, boolean>>({});
   const [loadError, setLoadError] = useState(false);
   const [error, setError] = useState<"statusError" | "replyError" | null>(null);
@@ -116,8 +116,8 @@ export function SupportTicketQueue({ query = "" }: { query?: string }) {
     }
   }
 
-  // Fecha a caixa e devolve o foco ao "Reply" que a abriu: o botão que tinha o
-  // foco some junto com a caixa, e o foco cairia no começo da página.
+  // Closes the box and returns focus to the "Reply" that opened it: the button that had
+  // focus disappears with the box, and focus would fall to the top of the page.
   function closeReply(ticketId: string) {
     flushSync(() => setOpenReplies((open) => ({ ...open, [ticketId]: false })));
     document.getElementById(`support-reply-open-${ticketId}`)?.focus();
@@ -235,9 +235,9 @@ export function SupportTicketQueue({ query = "" }: { query?: string }) {
                   </div>
                 </div>
               ) : null}
-              {/* Cada status sempre no mesmo lugar, o atual travado: tirar o atual
-                  da fila fazia o botão de baixo do clique virar outro status, e
-                  um 2º clique reabria o chamado (I-09). */}
+              {/* Each status always in the same place, the current one locked: taking the current one
+                  out of the queue made the button under the click become another status, and
+                  a 2nd click reopened the ticket (I-09). */}
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 {openReplies[ticket.id] ? null : (
                   <Button id={`support-reply-open-${ticket.id}`} variant="outline" size="sm" className="min-h-11 px-4 py-2"

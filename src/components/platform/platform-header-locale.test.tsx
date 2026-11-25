@@ -7,15 +7,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { PlatformHeader } from "@/components/platform/platform-header";
 
-// O seletor de idioma só existia no site público. Dentro da plataforma
-// (/teach, /learn, /account, /ops) não havia nenhuma forma de trocar: a pessoa
-// tinha que sair para o site, trocar lá, e voltar. As quatro superfícies passam
-// por este mesmo cabeçalho, então é aqui que ele entra — e no extremo direito,
-// onde o olho procura.
+// The language selector only existed on the public site. Inside the platform
+// (/teach, /learn, /account, /ops) there was no way to switch: the person
+// had to leave for the site, switch there, and come back. All four surfaces go
+// through this same header, so this is where it goes in — and at the far right,
+// where the eye looks.
 //
-// I18nProvider é o de verdade, não um mock: o rótulo do botão vem do dicionário
-// pelo mesmo caminho que a página inteira usa. AccountMenu tambem e real:
-// sua largura precisa sobreviver aos estilos genericos dos botoes de icone.
+// I18nProvider is the real one, not a mock: the button's label comes from the dictionary
+// through the same path the whole page uses. AccountMenu is real too:
+// its width has to survive the generic styles of the icon buttons.
 
 const mocks = vi.hoisted(() => ({ pathname: "/teach", roles: ["teacher"] as string[] }));
 
@@ -59,7 +59,7 @@ function renderHeader(pathname: string) {
     </I18nProvider>,
   );
   const actions = container.querySelector(".platform-topbar__actions");
-  if (!actions) throw new Error("cluster da direita não existe no cabeçalho");
+  if (!actions) throw new Error("right cluster does not exist in the header");
   return { actions, trigger: screen.getByRole("button", { name: "Language: English" }) };
 }
 
@@ -74,16 +74,16 @@ afterEach(() => {
   document.documentElement.lang = "";
 });
 
-describe("idioma na barra do topo da plataforma", () => {
+describe("language on the platform's top bar", () => {
   it.each(["/teach", "/learn", "/ops", "/account"])(
-    "%s tem o seletor, e ele é o último item do cluster da direita",
+    "%s has the selector, and it is the last item of the right cluster",
     (pathname) => {
       const { actions, trigger } = renderHeader(pathname);
       expect(actions).toContainElement(trigger);
-      // O componente embrulha o gatilho num <div class="relative"> (o menu é
-      // absoluto). É esse embrulho que precisa ser o último filho.
+      // The component wraps the trigger in a <div class="relative"> (the menu is
+      // absolute). That wrapper is what has to be the last child.
       expect(actions.lastElementChild).toBe(trigger.parentElement);
-      // Depois do menu da conta: mais para a direita que tudo.
+      // After the account menu: further right than everything.
       expect(actions.querySelector(".account-menu-trigger")!.compareDocumentPosition(trigger))
         .toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     },
@@ -144,10 +144,10 @@ describe("idioma na barra do topo da plataforma", () => {
     expect(account.getAttribute("aria-label")).toBeTruthy();
   });
 
-  // O componente continua o compacto (44px, sem seta, sem moldura propria: no
-  // site ele segue discreto). Na barra da plataforma ele ganha a moldura dos
-  // vizinhos pela folha: sem borda nem fundo, o "EN" parecia texto solto.
-  it("usa a variante compacta: alvo 44px sem seta; na barra, a mesma moldura dos vizinhos", () => {
+  // The component stays the compact one (44px, no arrow, no frame of its own: on the
+  // site it stays discreet). On the platform bar it gets its neighbors' frame
+  // through the stylesheet: with no border or background, the "EN" looked like loose text.
+  it("uses the compact variant: 44px target with no arrow; on the bar, the same frame as its neighbors", () => {
     const { trigger } = renderHeader("/teach");
     expect(trigger).toHaveClass("size-11", "locale-switcher-compact", "bg-transparent");
     expect(trigger).not.toHaveClass("border");
@@ -164,7 +164,7 @@ describe("idioma na barra do topo da plataforma", () => {
     expect(framed).toMatchObject({ border: "1px solid var(--color-line)", background: "var(--color-surface)" });
   });
 
-  it("troca o idioma sem sair da plataforma, e persiste", () => {
+  it("switches the language without leaving the platform, and persists", () => {
     const { trigger } = renderHeader("/teach");
     fireEvent.click(trigger);
     fireEvent.click(screen.getByRole("option", { name: "Español" }));
@@ -175,13 +175,13 @@ describe("idioma na barra do topo da plataforma", () => {
   });
 });
 
-// O nome da pagina no topo: "My purchases" para o aluno, "Billing" para quem
-// ensina, a mesma pagina.
-describe("nome de /account/billing no topo", () => {
+// The page name at the top: "My purchases" for the learner, "Billing" for whoever
+// teaches, the same page.
+describe("name of /account/billing at the top", () => {
   it.each([
     [["student"], "My purchases"],
     [["student", "teacher"], "Billing"],
-  ])("%j le %s", (roles, label) => {
+  ])("%j reads %s", (roles, label) => {
     mocks.roles = roles;
     renderHeader("/account/billing");
     const crumbs = screen.getByRole("navigation", { name: "Breadcrumb" });

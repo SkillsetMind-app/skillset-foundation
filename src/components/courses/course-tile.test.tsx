@@ -28,27 +28,27 @@ function renderTile(overrides: Partial<Parameters<typeof CourseTile>[0]> = {}) {
 }
 
 describe("CourseTile", () => {
-  it("faz o cartao inteiro virar link, e nao so o botao", () => {
+  it("makes the whole card a link, not only the button", () => {
     const { container } = renderTile();
 
     const link = screen.getByRole("link", { name: "Deep Focus Systems" });
-    // Link esticado: o ::after cobre o cartao, entao clicar em qualquer canto
-    // navega. Antes so o botao "View course" levava a algum lugar.
+    // Stretched link: the ::after covers the card, so clicking any corner
+    // navigates. Before, only the "View course" button took you anywhere.
     expect(link).toHaveClass("marketplace-card__link");
     expect(container.querySelectorAll("a")).toHaveLength(1);
-    // "View course" virou rotulo do rodape, nao um segundo destino.
+    // "View course" became a footer label, not a second destination.
     expect(
       screen.queryByRole("link", { name: /view course/i }),
     ).not.toBeInTheDocument();
   });
 
-  it("mostra o preco uma vez so", () => {
+  it("shows the price only once", () => {
     renderTile();
 
     expect(screen.getAllByText("$149.00")).toHaveLength(1);
   });
 
-  it("mostra no maximo um selo", () => {
+  it("shows at most one badge", () => {
     const { container } = renderTile({ badge: "Free preview" });
 
     const badges = container.querySelectorAll(".marketplace-card__tag");
@@ -56,13 +56,13 @@ describe("CourseTile", () => {
     expect(badges[0]).toHaveTextContent("Free preview");
   });
 
-  it("sem selo quando nao ha o que dizer", () => {
+  it("no badge when there is nothing to say", () => {
     const { container } = renderTile({ badge: null });
 
     expect(container.querySelectorAll(".marketplace-card__tag")).toHaveLength(0);
   });
 
-  it("salvar nao navega: o botao fica fora do link, nao dentro dele", () => {
+  it("saving does not navigate: the button stays outside the link, not inside it", () => {
     const onSave = vi.fn();
     const { container } = renderTile({
       overlay: (
@@ -77,13 +77,13 @@ describe("CourseTile", () => {
 
     fireEvent.click(save);
     expect(onSave).toHaveBeenCalledTimes(1);
-    // O clique no botao nao pode ter acionado o link do cartao.
+    // The click on the button must not have triggered the card link.
     expect(container.querySelector("a")?.getAttribute("href")).toBe(
       "/courses/focus",
     );
   });
 
-  it("mostra quem ensina e a nota", () => {
+  it("shows who teaches and the rating", () => {
     renderTile({
       instructor: { name: "Ana Prado", photoURL: null },
       rating: { average: 4.8, count: 12 },
@@ -94,7 +94,7 @@ describe("CourseTile", () => {
     expect(screen.getByText("(12)")).toBeInTheDocument();
   });
 
-  it("professor verificado: só o selo, com nome acessível, e sem botão dentro do link", () => {
+  it("verified teacher: only the badge, with an accessible name, and no button inside the link", () => {
     renderTile({ instructor: { name: "Ana Prado", photoURL: null, verified: true } });
 
     expect(screen.getByRole("img", { name: "Verified professional" })).toBeInTheDocument();
@@ -102,13 +102,13 @@ describe("CourseTile", () => {
     expect(screen.queryByText("Verified professional")).toBeNull();
   });
 
-  it("sem verificação, sem selo", () => {
+  it("no verification, no badge", () => {
     renderTile({ instructor: { name: "Ana Prado", photoURL: null, verified: false } });
 
     expect(screen.queryByRole("img", { name: "Verified professional" })).toBeNull();
   });
 
-  it("nao inventa nota quando ninguem avaliou", () => {
+  it("does not invent a rating when nobody has rated", () => {
     renderTile({ rating: { average: 0, count: 0 } });
 
     expect(screen.queryByText(/^\(\d+\)$/)).not.toBeInTheDocument();
@@ -118,40 +118,40 @@ describe("CourseTile", () => {
 describe("courseCardBadge", () => {
   const base = { ratingCount: 3 } as CourseCard;
 
-  it("prefere a amostra gratuita", () => {
+  it("prefers the free preview", () => {
     expect(
       courseCardBadge({ ...base, freePreviewHref: "/courses/x#free-preview" }),
     ).toBe("Free preview");
   });
 
-  it("destaque pago vem antes da amostra e do novo: a posição comprada é dita", () => {
+  it("paid featured placement comes before the preview and the new one: the purchased position is stated", () => {
     expect(
       courseCardBadge({ ...base, featured: true, freePreviewHref: "/courses/x#free-preview", ratingCount: 0 }),
     ).toBe("Featured (paid placement)");
   });
 
-  it("chama de novo o curso sem avaliacao", () => {
+  it("calls a course with no ratings new", () => {
     expect(courseCardBadge({ ...base, ratingCount: 0 })).toBe("New");
   });
 
-  it("nao usa Published como selo: e vocabulario interno", () => {
+  it("does not use Published as a badge: it is internal vocabulary", () => {
     expect(courseCardBadge(base)).toBeNull();
   });
 });
 
-describe("um cartao de curso, nao tres", () => {
-  // As tres telas que listam curso desenhavam o cartao cada uma do seu jeito.
-  // Este teste falha se alguma delas voltar a montar o proprio.
+describe("one course card, not three", () => {
+  // The three screens that list courses each drew the card their own way.
+  // This test fails if any of them goes back to mounting its own.
   it.each([
     ["home", "src/components/site/featured-courses.tsx"],
     ["catalogo", "src/components/courses/course-marketplace.tsx"],
     ["vitrine do professor", "src/components/instructors/instructor-profile-view.tsx"],
-  ])("%s usa o CourseTile", (_surface, path) => {
+  ])("%s uses CourseTile", (_surface, path) => {
     const source = readFileSync(path, "utf8");
 
     expect(source).toContain("course-tile");
     expect(source).toContain("<CourseTile");
-    // Nenhuma delas monta o corpo do cartao por conta propria.
+    // None of them mounts the card body on its own.
     expect(source).not.toContain("marketplace-card__title");
     expect(source).not.toContain("marketplace-card__body");
   });
@@ -170,7 +170,7 @@ it("updates derived card copy after a language switch while preserving authored 
   expect(screen.getByRole("link", { name: props.title })).toHaveAttribute("href", props.href);
 });
 
-// Destaque pago: o comprador vê que a posição foi paga, nas duas línguas.
+// Paid featured placement: the buyer sees that the position was paid for, in both languages.
 it("labels a featured course as paid placement, in English and Spanish", () => {
   const props = { href: "/courses/focus", title: "Deep Focus Systems", image: "/brand/logo-mark.png", courseData: { lessonCount: 2, priceAmountMinor: 14900, currency: "USD", freePreviewHref: "/courses/focus#free-preview", featured: true } };
   const { rerender } = render(<CourseTile {...props} />);

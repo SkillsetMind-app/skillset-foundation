@@ -8,18 +8,18 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAdvisorAvailable } from "@/components/teacher/advisor-sidebar";
 import { requestAdvisorOpen } from "@/lib/ui/floating-action";
 
-// "Com quem eu falo?" O aluno tinha nove portas para pedir ajuda (comentario
-// da aula, comunidade, mensagens, sino, /support escondido...) e nada dizia
-// qual usar; o professor tinha seis. Este botao abre tres escolhas escritas do
-// jeito que a pessoa pensa no problema. E UM por tela: na barra lateral do
-// aluno e do professor (no celular, dentro da gaveta) e, na sala de aula, que
-// nao tem barra lateral, no topo. A equipe de operacoes nao tem Ajuda.
+// "Who do I talk to?" The learner had nine doors for asking for help (lesson comment,
+// community, messages, bell, hidden /support...) and nothing said
+// which one to use; the teacher had six. This button opens three choices written the
+// way the person thinks about the problem. And it is ONE per screen: in the
+// learner and teacher sidebar (on a phone, inside the drawer) and, in the classroom, which
+// has no sidebar, at the top. The operations staff has no Help.
 
 export type HelpSide = "student" | "teacher";
 
-/** A sala de aula em que a pessoa esta, quando ha uma: a duvida sobre a aula
- *  vai para a comunidade DESTE curso (ou para a mensagem ao professor, se a
- *  comunidade estiver desligada). */
+/** The classroom the person is in, when there is one: a question about the lesson
+ *  goes to THIS course's community (or to the message to the teacher, if the
+ *  community is turned off). */
 export type HelpCourse = { href: string; communityEnabled: boolean };
 
 export type HelpChoice = {
@@ -27,9 +27,9 @@ export type HelpChoice = {
   labelKey: string;
   hintKey: string;
   href?: string;
-  /** Abre o Advisor do estudio em vez de navegar. */
+  /** Opens the studio Advisor instead of navigating. */
   opensAdvisor?: boolean;
-  /** Depois do assistente, o caminho para uma pessoa. */
+  /** After the assistant, the way to a person. */
   personHref?: string;
 };
 
@@ -66,7 +66,7 @@ export function getHelpChoices(
       id: "account",
       labelKey: "helpMenu.student.account",
       hintKey: "helpMenu.student.accountHint",
-      // A central de ajuda abre com o assistente no topo.
+      // The help center opens with the assistant at the top.
       href: "/help",
       personHref: "/support",
     },
@@ -76,16 +76,16 @@ export function getHelpChoices(
 type HelpMenuProps = {
   side: HelpSide;
   course?: HelpCourse | null;
-  /** nav: item da barra lateral; bar: botao no topo da sala de aula. */
+  /** nav: a sidebar item; bar: a button at the top of the classroom. */
   variant: "nav" | "bar";
   collapsed?: boolean;
-  /** Controlado pela barra lateral (o rail recolhido pede para abrir a barra). */
+  /** Controlled by the sidebar (the collapsed rail asks to open the sidebar). */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-  /** Ja nasce aberta e com o foco dentro: o rail recolhido abriu a gaveta
-   *  direto na Ajuda. */
+  /** Starts open and with focus inside: the collapsed rail opened the drawer
+   *  straight to Help. */
   autoFocus?: boolean;
-  /** Chamado ao escolher. */
+  /** Called on choosing. */
   onNavigate?: () => void;
   className?: string;
 };
@@ -100,10 +100,10 @@ const labelClass = {
   bar: "help-menu-trigger__label",
 };
 
-// Em repouso, a tinta da página (como a gaveta do celular sempre mostrou nos
-// links): a dica de 12px de cada escolha (.help-menu-choice__hint, opacity 0.8)
-// em ink-soft dava 4,02:1 na gaveta branca. Na barra escura do computador a
-// regra .platform-sidebar .platform-nav-link vence com !important.
+// At rest, the page ink (as the phone drawer always showed on the
+// links): the 12px hint of each choice (.help-menu-choice__hint, opacity 0.8)
+// in ink-soft gave 4.02:1 on the white drawer. On the dark desktop sidebar the
+// rule .platform-sidebar .platform-nav-link wins with !important.
 const choiceClass = {
   nav: "platform-nav-link help-menu-choice-link flex min-h-11 w-full items-center rounded-md border border-transparent px-2.5 py-2 text-sm text-[var(--color-ink)] hover:bg-[var(--color-surface-strong)] hover:text-[var(--color-ink)]",
   bar: "account-menu-item help-menu-choice-link",
@@ -150,12 +150,12 @@ export function HelpMenu({
     onNavigate?.();
   }
 
-  // Ao abrir pelo botao, o foco vai para a primeira escolha: quem usa teclado
-  // ou leitor de tela cai dentro das opcoes, nao perde o lugar. Na barra
-  // recolhida o painel so existe depois que ela abre, entao o pedido de foco
-  // espera o painel aparecer (por isso `collapsed` nas dependencias). Na gaveta
-  // (autoFocus), a gaveta se foca logo depois deste efeito — os pais rodam por
-  // ultimo —, entao a escolha recebe o foco numa microtarefa, depois dela.
+  // When opening via the button, focus goes to the first choice: someone using a keyboard
+  // or screen reader lands inside the options and does not lose their place. In the collapsed
+  // sidebar the panel only exists after it opens, so the focus request
+  // waits for the panel to appear (hence `collapsed` in the dependencies). In the drawer
+  // (autoFocus), the drawer focuses itself right after this effect — parents run
+  // last —, so the choice receives focus in a microtask, after it.
   useEffect(() => {
     const panel = panelRef.current;
     if (!open || !panel || !focusOnOpen.current) return;
@@ -165,7 +165,7 @@ export function HelpMenu({
     else focusFirst();
   }, [open, collapsed, autoFocus]);
 
-  // Setas andam entre as escolhas (e do botao para a primeira ou a ultima).
+  // Arrow keys move between the choices (and from the button to the first or the last).
   function moveFocus(step: 1 | -1) {
     const items = Array.from(panelRef.current?.querySelectorAll<HTMLElement>(choiceSelector) ?? []);
     if (!items.length) return false;
@@ -177,8 +177,8 @@ export function HelpMenu({
     return true;
   }
 
-  // So o botao do topo flutua por cima da pagina; clicar fora ou sair dele com
-  // Tab fecha. Na barra lateral a lista abre no lugar, como os outros grupos.
+  // Only the top button floats over the page; clicking outside or leaving it with
+  // Tab closes it. In the sidebar the list opens in place, like the other groups.
   useEffect(() => {
     if (!open || variant !== "bar") return;
     function dismiss(event: MouseEvent) {
@@ -205,8 +205,8 @@ export function HelpMenu({
         }
       }}
       onBlur={(event) => {
-        // Tab para fora do painel flutuante: fecha, e o foco segue para onde a
-        // pessoa foi. Foco para "lugar nenhum" (clique em texto) nao fecha.
+        // Tab out of the floating panel: it closes, and focus goes to wherever the
+        // person went. Focus going to "nowhere" (a click on text) does not close it.
         const next = event.relatedTarget;
         if (variant === "bar" && open && next instanceof Node && !event.currentTarget.contains(next)) {
           setOpen(false);
@@ -234,8 +234,8 @@ export function HelpMenu({
           <LifeBuoy aria-hidden="true" size={18} strokeWidth={1.9} className="shrink-0" />
         )}
         <span className={labelClass[variant]}>{label}</span>
-        {/* Na barra, a Ajuda abre uma lista no lugar como Sales e Promote:
-            sem a setinha ela parecia um link. */}
+        {/* In the sidebar, Help opens a list in place like Sales and Promote:
+            without the little arrow it looked like a link. */}
         {variant === "nav" && !collapsed ? (
           <ChevronDown
             aria-hidden="true"

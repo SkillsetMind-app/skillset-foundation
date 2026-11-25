@@ -8,14 +8,14 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * Forma curta e estável do id: num UUID, os 8 primeiros caracteres, em
- * maiúsculas. É o que o aluno ou o professor dita para o suporte quando
- * "comprei e não entrou"; o suporte acha o pedido pelo começo do id.
- * Sem coluna nova: sai sempre igual do mesmo id.
+ * Short, stable form of the id: in a UUID, the first 8 characters, in
+ * uppercase. It is what the learner or the teacher dictates to support when
+ * "I bought and did not get in"; support finds the order by the start of the id.
+ * No new column: it always comes out the same from the same id.
  *
- * Id que não é UUID (a renovação de assinatura usa o id da fatura do Stripe,
- * "in_1MtHbE...") sai inteiro: cortado e sem o "_", o começo não achava nada,
- * e os primeiros caracteres eram iguais em toda renovação.
+ * An id that is not a UUID (the subscription renewal uses the Stripe invoice id,
+ * "in_1MtHbE...") comes out whole: cut and without the "_", the start found nothing,
+ * and the first characters were the same on every renewal.
  */
 export function shortId(id: string): string {
   return uuidPattern.test(id) ? id.slice(0, 8).toUpperCase() : id;
@@ -26,7 +26,7 @@ export function ShortId({ id, label }: { id: string; label: string }) {
   const [result, setResult] = useState<"copied" | "failed" | null>(null);
   const value = shortId(id);
 
-  // "Copied" some sozinho; o aviso de falha fica, porque diz o que fazer.
+  // "Copied" disappears by itself; the failure notice stays, because it says what to do.
   useEffect(() => {
     if (result !== "copied") return;
     const timer = setTimeout(() => setResult(null), 2000);

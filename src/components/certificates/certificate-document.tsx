@@ -27,12 +27,12 @@ export function CertificateDocument({
   const issuedOn = formatIssuedAt(certificate.issuedAt);
 
   return (
-    // O certificado é um DOCUMENTO, não uma tela: é impresso, baixado em PDF e
-    // compartilhado. Tem de ser claro sempre. Antes combinava bg-white fixo com
-    // text-[var(--color-ink)], que no tema escuro vira tinta clara — quem já
-    // tinha ligado o dark mode alguma vez abria o certificado por link direto e
-    // baixava um PDF ilegível. Cores literais aqui são a escolha certa, não
-    // descuido: o artefato não deve seguir o tema de quem o abre.
+    // The certificate is a DOCUMENT, not a screen: it is printed, downloaded as PDF and
+    // shared. It must always be light. Before, it combined a fixed bg-white with
+    // text-[var(--color-ink)], which in the dark theme becomes light ink: anyone who had
+    // ever turned on dark mode opened the certificate by direct link and
+    // downloaded an unreadable PDF. Literal colors here are the right choice, not an
+    // oversight: the artifact must not follow the theme of whoever opens it.
     <article className="cert-doc mx-auto w-full max-w-4xl bg-white text-[#102a43] print:max-w-none">
       <div className="cert-doc-frame">
         <div

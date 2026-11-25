@@ -3,19 +3,19 @@ import Image from "next/image";
 import { RevealSection } from "@/components/shared/reveal-section";
 import { getServerTranslation } from "@/lib/i18n/server";
 
-// "Para quem é": só a frase de público que o site já publica (a da faixa
-// final). As três fotos são de gente que
-// não existe, feitas por IA: sem nome, sem frase, nada com cara de depoimento
-// ou de cliente. O texto alternativo descreve a cena, não a pessoa.
+// "Who it is for": only the audience sentence the site already publishes (the one in the
+// final band). The three photos are of people who
+// do not exist, made by AI: no name, no sentence, nothing that looks like a testimonial
+// or a customer. The alt text describes the scene, not the person.
 const PORTRAITS = [
   { src: "/brand/home/home-who-coach.avif", alt: "home.who.coachAlt" },
   { src: "/brand/home/home-who-teacher.avif", alt: "home.who.teacherAlt" },
   { src: "/brand/home/home-who-educator.avif", alt: "home.who.educatorAlt" },
 ] as const;
 
-// Server component, sem estado. No celular os retratos ficam um embaixo do
-// outro, recortados em 4:3 (o rosto fica no quadro); do md para cima, três
-// colunas em 4:5. O movimento existe só no globals.css (computador).
+// Server component, no state. On phones the portraits sit one below the
+// other, cropped to 4:3 (the face stays in the frame); from md up, three
+// columns at 4:5. The motion lives only in globals.css (desktop).
 export async function HomeWhoFor() {
   const { t } = await getServerTranslation();
 

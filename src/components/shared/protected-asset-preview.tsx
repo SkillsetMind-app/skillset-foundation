@@ -84,11 +84,11 @@ function ProtectedAssetPreviewContent({
   }
 
   if (!objectUrl) {
-    // Vídeo: a mesma caixa 16:9 da espera da sala, só com o anel (o texto fica
-    // para o leitor de tela). Era uma pílula branca dentro do palco escuro, que
-    // depois virava o vídeo inteiro. Fora da sala (prévia do professor) a caixa
-    // traz o próprio fundo escuro (globals.css, .protected-asset-loading).
-    // Outros arquivos: uma linha com o anel, sem pílula.
+    // Video: the same 16:9 box as the classroom wait, with only the ring (the text stays
+    // for the screen reader). It used to be a white pill inside the dark stage, which
+    // later became the whole video. Outside the classroom (teacher preview) the box
+    // brings its own dark background (globals.css, .protected-asset-loading).
+    // Other files: one row with the ring, without a pill.
     if (asset.contentType.startsWith("video/")) {
       return (
         <div className="member-video-empty member-video-empty--loading protected-asset-loading" role="status">
@@ -170,14 +170,14 @@ function ProtectedAssetActions({
 }
 
 /**
- * Botão que baixa de verdade. O link de abrir não serve: o `download` de um
- * <a> é ignorado para outro domínio, e o arquivo só abria numa aba. Este pede
- * um link assinado próprio, com o nome original do arquivo (1 hora, mesma RLS
- * de matrícula e aula liberada).
+ * A button that really downloads. The open link will not do: the `download` of an
+ * <a> is ignored for another domain, and the file only opened in a tab. This one asks for
+ * its own signed link, with the file's original name (1 hour, same enrollment
+ * and unlocked-lesson RLS).
  *
- * O link é pedido NO CLIQUE: abrir a aba Materiais não faz um pedido por
- * arquivo, e um link pedido há mais de 1 hora (aba esquecida aberta) não
- * chega vencido ao aluno.
+ * The link is requested ON CLICK: opening the Materials tab does not make a request per
+ * file, and a link requested more than 1 hour ago (tab left open) does not
+ * reach the learner expired.
  */
 export function ProtectedAssetDownload({
   asset,
@@ -186,7 +186,7 @@ export function ProtectedAssetDownload({
 }: {
   asset: CourseAsset;
   className: string;
-  /** Nome acessível quando há vários botões na tela ("Download Apostila"). */
+  /** Accessible name when there are several buttons on the screen ("Download Apostila"). */
   label?: string;
 }) {
   const { t } = useTranslation();
@@ -198,7 +198,7 @@ export function ProtectedAssetDownload({
     setState("loading");
     try {
       const url = await getProtectedCourseAssetObjectUrl(asset, { download: true });
-      // A resposta vem como anexo: o navegador baixa e a página fica onde está.
+      // The response comes as an attachment: the browser downloads and the page stays where it is.
       const link = document.createElement("a");
       link.href = url;
       document.body.append(link);

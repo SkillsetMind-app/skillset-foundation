@@ -10,16 +10,16 @@ vi.mock("@/components/i18n/i18n-provider", () => ({
 
 afterEach(() => { cleanup(); locale.value = "en"; vi.unstubAllGlobals(); });
 
-// jsdom serve em localhost, que é o caso "fora de produção" dos testes acima.
-// Para provar os hosts curtos é preciso fingir o host real; os demais campos
-// de location continuam os de verdade para o next/link não estranhar.
+// jsdom serves on localhost, which is the "outside production" case of the tests above.
+// To prove the short hosts we have to fake the real host; the other fields
+// of location stay real so next/link is not surprised.
 function viewFrom(hostname: string) {
   vi.stubGlobal("location", { ...window.location, hostname });
 }
 
 describe("public account entry", () => {
-  // Mesma aba: para quem tem pouca familiaridade com a internet, aba nova e
-  // "o site sumiu". Antes os dois links abriam em aba nova.
+  // Same tab: for people with little familiarity with the internet, a new tab is
+  // "the site disappeared". The two links used to open in a new tab.
   it("opens two role-intent links in the SAME tab", () => {
     render(<PublicEntryMenu />);
     expect(screen.queryByRole("link", { name: /My courses/ })).not.toBeInTheDocument();
@@ -29,13 +29,13 @@ describe("public account entry", () => {
       expect(link).toHaveAttribute("href", `/auth?mode=signin&path=${intent}`);
       expect(link).not.toHaveAttribute("target");
     }
-    // Entra como os menus da plataforma, em vez de um corte seco.
+    // It enters like the platform menus, instead of a hard cut.
     expect(screen.getByRole("link", { name: "My courses" }).parentElement).toHaveClass("motion-drop-in");
   });
 
-  // Em produção cada intenção entra pelo seu host curto. A rota de sign-in e a
-  // intenção viajam inteiras na URL, porque o proxy responde 307 preservando
-  // caminho e query — o destino final é o mesmo /auth?mode=signin&path=… de sempre.
+  // In production each intent enters through its own short host. The sign-in route and the
+  // intent travel whole in the URL, because the proxy answers 307 preserving
+  // path and query — the final destination is the same /auth?mode=signin&path=… as always.
   it.each(["www.skillsetmind.com", "skillsetmind.com"])(
     "enters through consumer. and app. when viewed from %s, keeping intent in the same tab",
     (hostname) => {
@@ -52,8 +52,8 @@ describe("public account entry", () => {
     },
   );
 
-  // Um preview da Vercel nunca manda ninguém para produção: os hosts curtos só
-  // resolvem lá, e quem está testando precisa continuar no preview.
+  // A Vercel preview never sends anyone to production: the short hosts only
+  // resolve there, and whoever is testing needs to stay on the preview.
   it.each(["skillset-foundation-git-feat-links-skillsetmind.vercel.app", "localhost"])(
     "keeps both links relative when viewed from %s",
     (hostname) => {

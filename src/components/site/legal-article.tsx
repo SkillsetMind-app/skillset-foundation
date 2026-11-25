@@ -3,11 +3,11 @@ import Link from "next/link";
 
 import { PublicPage } from "@/components/site/public-page";
 
-// Os documentos longos (/legal/*, /refund-policy) usam a MESMA moldura das
-// outras páginas públicas: o PublicPage, em modo leitura. Antes eram um molde
-// à parte — cartão dentro de cartão, os dois com sombra, e um h1 em text-6xl
-// fixo que não era o .page-title do resto do site. O texto e a data chegam
-// traduzidos pelas páginas de servidor, mantendo esta moldura síncrona.
+// The long documents (/legal/*, /refund-policy) use the SAME frame as the
+// other public pages: PublicPage, in reading mode. They used to be a separate
+// mold — card inside card, both with a shadow, and an h1 in fixed text-6xl
+// that was not the .page-title of the rest of the site. The text and the date arrive
+// translated by the server pages, keeping this frame synchronous.
 
 type LegalArticleProps = {
   kicker: string;
@@ -40,8 +40,8 @@ export function LegalArticle({
         </>
       }
     >
-      {/* 16px com entrelinha de 28px, igual à introdução do PublicPage logo
-          acima: 14px com 32px separava as linhas em fragmentos soltos. */}
+      {/* 16px with a 28px line height, same as the PublicPage introduction right
+          above: 14px with 32px split the lines into loose fragments. */}
       <div className="mt-10 space-y-10 border-t border-[var(--color-line)] pt-10 text-base leading-7 text-[var(--color-ink-soft)]">
         {children}
       </div>
@@ -73,8 +73,8 @@ export function LegalText({ text }: { text: string }) {
     }
     if (tag === "em") return <em key={index}>{content}</em>;
     const href = legalLinks[tag as keyof typeof legalLinks];
-    // Sem cor própria: o link segue a cor do parágrafo, que é como o site
-    // público foi aprovado. O latão que estava aqui nunca chegou à tela.
+    // No color of its own: the link follows the paragraph color, which is how the public
+    // site was approved. The brass that used to be here never reached the screen.
     return href.startsWith("mailto:") ? (
       <a key={index} className="font-semibold" href={href}>
         {href.slice("mailto:".length)}

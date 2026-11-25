@@ -10,8 +10,8 @@ import type { ProfessionalVerification } from "@/domain/user-profile";
 import { cn } from "@/lib/cn";
 
 /**
- * Ao lado da credencial de quem não tem o selo: o texto é o que o próprio
- * professor digitou, e ninguém conferiu. Com o selo, não aparece.
+ * Next to the credential of someone without the badge: the text is what the
+ * teacher typed, and nobody checked it. With the badge, it does not appear.
  */
 export function SelfReportedTag() {
   const { t } = useTranslation();
@@ -23,11 +23,11 @@ export function SelfReportedTag() {
 }
 
 /**
- * O selo em si: contorno recortado com check, usando o BadgeCheck. Cores em
- * `.verified-seal` (globals.css), que troca no tema escuro.
+ * The badge itself: a cut-out outline with a check, using BadgeCheck. Colors in
+ * `.verified-seal` (globals.css), which switches in the dark theme.
  *
- * Com `label` vira imagem com nome acessível (cartões, onde o selo está dentro
- * de um link e não pode ser botão); sem, é decorativo.
+ * With `label` it becomes an image with an accessible name (cards, where the badge is inside
+ * a link and cannot be a button); without, it is decorative.
  */
 export function VerifiedSeal({
   size = 16,
@@ -54,16 +54,16 @@ export function VerifiedSeal({
 }
 
 /**
- * O selo com as palavras ao lado: o botão do perfil e a prévia da oferta.
- * Tamanho e peso da letra ficam no <span> de dentro (`verifiedLabelTextClass`):
- * a regra fora de camada `button { font: inherit }` do globals.css vence
- * qualquer utilitária de fonte posta no próprio <button>.
+ * The badge with the words next to it: the profile button and the offer preview.
+ * Font size and weight stay in the inner <span> (`verifiedLabelTextClass`):
+ * the unlayered rule `button { font: inherit }` in globals.css beats
+ * any font utility put on the <button> itself.
  */
 export const verifiedLabelClass =
   "inline-flex min-h-8 items-center gap-1.5 whitespace-nowrap rounded-chip border border-[var(--color-line)] bg-[var(--color-surface)] px-2 py-1 uppercase tracking-[0.14em] text-[var(--color-accent-fg)]";
 export const verifiedLabelTextClass = "text-[11px] font-bold leading-none";
 
-/** Frase do popover: o que foi conferido, e quando (data no idioma da página). */
+/** Popover sentence: what was checked, and when (date in the page's language). */
 export function verificationStatement(
   verification: ProfessionalVerification,
   t: (key: string) => string,
@@ -77,20 +77,20 @@ export function verificationStatement(
     : dated ? "verifiedBadge.evidenceReviewed" : "verifiedBadge.evidenceReviewedUndated";
   return t(key)
     .replace("{brand}", () => brand.name)
-    // UTC: o mesmo dia no servidor e no navegador, em qualquer fuso.
+    // UTC: the same day on the server and in the browser, in any time zone.
     .replace("{date}", () =>
       dated ? new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone: "UTC" }).format(date) : "",
     );
 }
 
 /**
- * "Profissional verificado": o selo e, ao lado do nome no perfil, as palavras.
- * `compact` mostra só o selo (com nome acessível) onde falta espaço.
+ * "Verified professional": the badge and, next to the name on the profile, the words.
+ * `compact` shows only the badge (with an accessible name) where space is short.
  *
- * Abre no clique, no toque e no foco do teclado (celular não tem hover); Esc,
- * clique fora ou foco saindo fecham. O texto diz literalmente o que foi
- * conferido e quando — nunca "certificado", nunca o número de registro.
- * Cosmético: nada aqui ordena, filtra ou destaca ninguém.
+ * Opens on click, on touch and on keyboard focus (the phone has no hover); Esc,
+ * a click outside or focus leaving close it. The text says literally what was
+ * checked and when — never "certified", never the registration number.
+ * Cosmetic: nothing here ranks, filters or highlights anyone.
  */
 export function VerifiedBadge({
   verification,
@@ -107,13 +107,13 @@ export function VerifiedBadge({
   const rootRef = useRef<HTMLSpanElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLSpanElement>(null);
-  // Foco que veio de ponteiro (ou que nós mesmos devolvemos) não abre: quem
-  // abre nesse caso é o clique, senão o toque abriria e fecharia na hora.
+  // Focus that came from a pointer (or that we returned ourselves) does not open: what
+  // opens in that case is the click, otherwise touch would open and close it instantly.
   const pointerFocus = useRef(false);
   const label = t("verifiedBadge.label");
 
-  // Nada fora da tela (AGENTS.md §1): o painel nasce centrado no selo e anda
-  // para dentro se passar de alguma borda.
+  // Nothing off screen (AGENTS.md §1): the panel is born centered on the badge and moves
+  // inward if it goes past any edge.
   useLayoutEffect(() => {
     const panel = panelRef.current;
     if (!open || !panel) return;
@@ -123,8 +123,8 @@ export function VerifiedBadge({
     const shift = rect.left < gutter
       ? gutter - rect.left
       : rect.right > width - gutter ? width - gutter - rect.right : 0;
-    // Em `translate`, não em `transform`: a entrada (motion-drop-in) anima o
-    // transform e, se o centro morasse nele, o painel pularia de lado.
+    // In `translate`, not in `transform`: the entrance (motion-drop-in) animates the
+    // transform and, if the center lived in it, the panel would jump sideways.
     panel.style.translate = `calc(-50% + ${shift}px) 0`;
   }, [open]);
 
@@ -146,8 +146,8 @@ export function VerifiedBadge({
     pointerFocus.current = false;
   }
 
-  // Foco que sai para outro elemento fecha. Sem relatedTarget (clique no texto
-  // do painel, troca de janela) fica aberto; o clique fora fecha pelo efeito.
+  // Focus that leaves for another element closes. Without relatedTarget (click on the text
+  // of the panel, window switch) it stays open; the click outside closes through the effect.
   function onBlur(event: FocusEvent) {
     const next = event.relatedTarget as Node | null;
     if (next && !rootRef.current?.contains(next)) {
@@ -171,18 +171,18 @@ export function VerifiedBadge({
           if (!pointerFocus.current) setOpen(true);
         }}
         onClick={() => {
-          // Toque e mouse alternam; Enter/Espaço de quem já abriu pelo foco
-          // não fecham por engano (Esc fecha).
+          // Touch and mouse toggle; Enter/Space from someone who already opened it by focus
+          // do not close it by mistake (Esc closes).
           setOpen(pointerFocus.current ? !open : true);
           pointerFocus.current = false;
         }}
         className={
           compact
-            ? // O selo fica com 28px ao lado do nome, mas o alvo tem 44px: o
-              // ::after cresce sem empurrar a linha (o desenho do "?" de
-              // ajuda). Cresce para a direita, nao para a esquerda: o selo fica
-              // a 2px do nome do instrutor, e um anel igual dos dois lados
-              // roubava o toque do fim do link do nome.
+            ? // The badge is 28px next to the name, but the target is 44px: the
+              // ::after grows without pushing the line (the design of the help
+              // "?"). It grows to the right, not to the left: the badge sits
+              // 2px from the instructor's name, and an equal ring on both sides
+              // stole the touch at the end of the name link.
               "relative grid size-7 place-items-center rounded-sm after:absolute after:-inset-y-2 after:-left-0.5 after:-right-3.5 after:content-['']"
             : cn(verifiedLabelClass, "transition-colors duration-[var(--duration-fast)] hover:border-[var(--color-accent)]")
         }
@@ -211,8 +211,8 @@ export function VerifiedBadge({
           </span>
           <Link
             href="/trust"
-            // No toque o link tem 44px de altura (eram 32px); a margem de cima
-            // encolhe o mesmo tanto.
+            // On touch the link is 44px tall (it was 32px); the top margin
+            // shrinks by the same amount.
             className="mt-3 inline-flex min-h-8 items-center text-xs font-semibold normal-case tracking-normal text-[var(--color-primary)] underline underline-offset-4 pointer-coarse:mt-1.5 pointer-coarse:min-h-11"
           >
             {t("verifiedBadge.trustLink")}

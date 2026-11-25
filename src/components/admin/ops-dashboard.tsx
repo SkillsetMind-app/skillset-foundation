@@ -42,12 +42,12 @@ export function OpsDashboard() {
   const searchHref = canOpenQueue && (activeTab === "verification" || activeTab === "support")
     ? `/ops?${queueSearchParams.toString()}`
     : null;
-  // O selo de "Users" conta estes pedidos; com algum aberto, eles vêm antes da
-  // lista de 50 pessoas em vez de ficarem embaixo dela (I-01). A ordem é
-  // decidida UMA vez, quando a contagem chega: mudar depois moveria o nó da
-  // tabela no DOM, e um <dialog> aberto lá dentro sairia da camada do topo
-  // (perde fundo, foco preso e Esc). Mesmo padrão de estado derivado no render
-  // de ops-overview-metrics.tsx, sem setState em efeito.
+  // The "Users" badge counts these requests; with any open, they come before the
+  // list of 50 people instead of staying below it (I-01). The order is
+  // decided ONCE, when the count arrives: changing it later would move the table
+  // node in the DOM, and an open <dialog> inside it would leave the top layer
+  // (loses backdrop, trapped focus and Esc). Same pattern of state derived on render
+  // as ops-overview-metrics.tsx, with no setState in an effect.
   const [privacyFirst, setPrivacyFirst] = useState<boolean | null>(null);
   if (privacyFirst === null && counts.openPrivacyRequests !== "loading") {
     setPrivacyFirst(typeof counts.openPrivacyRequests === "number" && counts.openPrivacyRequests > 0);
@@ -55,7 +55,7 @@ export function OpsDashboard() {
 
   return (
     <PlatformShell
-      // O título é a fila aberta; "Operations" em todas as nove abas não dizia onde se está (I-07).
+      // The title is the open queue; "Operations" on all nine tabs did not say where you are (I-07).
       eyebrow={t("platform.nav.operations")}
       title={t(currentItem.labelKey)}
       compact
@@ -68,7 +68,7 @@ export function OpsDashboard() {
         [getOpsNavItem("users").href]: counts.openPrivacyRequests,
       }}
     >
-      {/* ops-surface: escopo das regras de CSS só do /ops (globals.css). */}
+      {/* ops-surface: scope of the CSS rules for /ops only (globals.css). */}
       <div className="ops-surface grid min-w-0 gap-5">
         {!canOpenQueue ? (
           <section className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4 sm:p-6">
@@ -107,8 +107,8 @@ export function OpsDashboard() {
           <SupportTicketQueue query={query} />
         ) : activeTab === "users" ? (
           <>
-            {/* Enquanto a contagem carrega, só a tabela: o painel de pedidos entra
-                depois, acima ou abaixo, sem mover a tabela (ela nunca muda de lugar). */}
+            {/* While the count loads, only the table; the requests panel comes in
+                later, above or below, without moving the table (it never changes place). */}
             {privacyFirst === true ? <AccountActionRequestsPanel key="requests" /> : null}
             <OpsUserTable key="users" />
             {privacyFirst === false ? <AccountActionRequestsPanel key="requests" /> : null}
@@ -157,13 +157,13 @@ function AuditLogPanel() {
 
   return (
     <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-      {/* O título da página já diz "Audit log" (I-07); aqui fica só a explicação e a lista. */}
+      {/* The page title already says "Audit log" (I-07); here only the explanation and the list remain. */}
       <p className="max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
         {t(`${copy}.description`)}
       </p>
 
-      {/* Cartão largo: uma tabela, com quando, quem e o alvo em coluna (I-06).
-          Cartão estreito: um bloco por evento, como em sale-list.tsx (#588). */}
+      {/* Wide card: one table, with when, who and the target in columns (I-06).
+          Narrow card: one block per event, as in sale-list.tsx (#588). */}
       <div className="@container mt-5">
         {isLoading ? (
           <p role="status" className="text-sm text-[var(--color-ink-soft)]">
@@ -172,7 +172,7 @@ function AuditLogPanel() {
         ) : error ? (
           <InlineAlert tone="error">{t(`${copy}.loadError`)}</InlineAlert>
         ) : entries.length === 0 ? (
-          // h2: logo abaixo do h1 "Audit log", sem outro título no meio.
+          // h2: right below the h1 "Audit log", with no other title in between.
           <EmptyState as="h2" title={t(`${copy}.empty`)} />
         ) : (
           <>
@@ -195,7 +195,7 @@ function AuditLogPanel() {
                   {formatAuditTarget(entry.targetType, t)}
                 </span>
               </div>
-              {/* Quando, quem e o alvo em partes com rótulo, não numa frase só (I-06). */}
+              {/* When, who and the target as labeled parts, not in a single sentence (I-06). */}
               <dl className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs leading-5 text-[var(--color-ink-soft)]">
                 <div className="flex gap-1.5">
                   <dt>{t(`${copy}.when`)}</dt>

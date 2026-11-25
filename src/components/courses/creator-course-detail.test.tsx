@@ -20,13 +20,13 @@ const fixtures = vi.hoisted(() => ({
   query: "",
   locale: "en" as "en" | "es",
   subscriptions: 0,
-  // true: a assinatura do curso não responde, como uma leitura ainda a caminho.
+  // true: the course subscription does not answer, like a read still on its way.
   holdCourse: false,
-  // O último onNext da assinatura do curso, para entregar o curso mais tarde.
+  // The last onNext of the course subscription, to deliver the course later.
   courseNext: null as ((course: TeacherCourse) => void) | null,
-  // O último onError da assinatura do curso, para simular a rede que cai.
+  // The last onError of the course subscription, to simulate the network dropping.
   courseError: null as ((error: Error) => void) | null,
-  // As chaves públicas (payments.checkout): ligadas, salvo no teste que as desliga.
+  // The public keys (payments.checkout): on, except in the test that turns them off.
   flagsOn: true,
   router: { push: vi.fn(), replace: vi.fn() },
   course: {
@@ -91,7 +91,7 @@ vi.mock("@/lib/supabase/config", () => ({
   getSupabaseClientConfig: () => ({}),
 }));
 
-// Entrega o curso publicado na hora, como a assinatura real faria.
+// Delivers the published course right away, as the real subscription would.
 vi.mock("@/lib/data/published-courses", () => ({
   subscribeToViewableTeacherCourse: (
     _ref: string,
@@ -113,14 +113,14 @@ vi.mock("@/lib/data/course-landings", () => ({
 
 vi.mock("@/lib/data/lesson-content", () => ({
   getLessonContentDoc: vi.fn(),
-  // Devolve o que a aula traz em linha (o fixture padrao nao traz nada).
+  // Returns what the lesson carries inline (the default fixture carries nothing).
   resolveLessonContent: (
     _doc: unknown,
     lesson: { contentText?: string | null; externalUrl?: string | null },
   ) => ({ contentText: lesson.contentText ?? null, externalUrl: lesson.externalUrl ?? null }),
 }));
 
-// A data da sessao do evento ao vivo (get_live_event_session).
+// The session date of the live event (get_live_event_session).
 vi.mock("@/lib/data/course-events", () => ({
   getLiveEventSession: vi.fn(async () => null),
 }));
@@ -151,7 +151,7 @@ vi.mock("@/domain/host-routing", async (importOriginal) => {
 });
 
 // The teacher's sales blocks: one button wired to onEnrol, like their CTA block.
-// `data-price`: o preço que o bloco recebe (sem atributo quando não recebe nada).
+// `data-price`: the price the block receives (no attribute when it receives nothing).
 vi.mock("@/components/courses/course-landing-blocks", () => ({
   CourseLandingBlocks: ({ onEnrol, priceLabel }: { onEnrol?: () => void; priceLabel?: string }) => (
     <div data-testid="landing-blocks" data-price={priceLabel}>
@@ -197,7 +197,7 @@ beforeEach(() => {
   fixtures.auth.user = null;
   fixtures.course.paymentType = "one_time";
   fixtures.course.priceAmountMinor = 14900;
-  // Sem oferta cadastrada o preço cai no campo do próprio curso: US$ 149.
+  // With no registered offer the price falls back to the course's own field: US$ 149.
   vi.stubGlobal(
     "fetch",
     vi.fn(async () => ({ ok: true, json: async () => ({ offers: [] }) })),
@@ -210,19 +210,19 @@ afterEach(() => {
 });
 
 describe("CreatorCourseDetail", () => {
-  it("por padrão desenha o próprio cabeçalho com o título do curso", async () => {
+  it("by default draws its own header with the course title", async () => {
     render(<CreatorCourseDetail courseIdOverride="course-1" />);
 
     await screen.findAllByText("$149.00");
     const title = screen.getByRole("heading", { level: 1, name: "Deep Focus Systems" });
-    // Clamp, não 60px fixos.
+    // Clamp, not a fixed 60px.
     expect(title).toHaveClass("page-title");
     expect(title.className).not.toMatch(/text-6xl/);
   });
 
-  // A aula de previa gratis mostra o texto na pagina do curso: as mesmas
-  // quebras de linha e links clicaveis da area de membros, sem HTML cru.
-  it("texto da aula de previa gratis vira link e mantem a quebra de linha", async () => {
+  // The free preview lesson shows the text on the course page: the same
+  // line breaks and clickable links as the members area, with no raw HTML.
+  it("free preview lesson text becomes a link and keeps the line break", async () => {
     vi.mocked(getLessonContentDoc).mockResolvedValue(null);
     const course = fixtures.course as TeacherCourse;
     const lesson = course.modules[0].lessons[0];
@@ -245,7 +245,7 @@ describe("CreatorCourseDetail", () => {
     }
   });
 
-  it("com hideHeader não repete o título que a página já renderizou no servidor", async () => {
+  it("with hideHeader does not repeat the title the page already rendered on the server", async () => {
     const { container } = render(
       <CreatorCourseDetail courseIdOverride="course-1" hideHeader />,
     );
@@ -253,16 +253,16 @@ describe("CreatorCourseDetail", () => {
     await screen.findAllByText("$149.00");
     expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
     expect(screen.queryByText("Deep Focus Systems")).not.toBeInTheDocument();
-    // O resto do conteúdo interativo continua no lugar.
+    // The rest of the interactive content stays in place.
     expect(container.querySelector("#free-preview")).not.toBeNull();
   });
 });
 
-// Carregar não é erro: antes, um segundo h1 "Loading course..." e um botão que
-// levava o comprador para fora da página; depois, "Loading pricing..." em 36px
-// e "Checkout not available yet" para quem já tinha conta.
-describe("CreatorCourseDetail: enquanto carrega", () => {
-  it.each([false, true])("o curso a caminho mostra o esqueleto: sem título, sem botão de saída (compra: %s)", (checkoutOnly) => {
+// Loading is not an error: before, a second h1 "Loading course..." and a button that
+// took the buyer off the page; after that, "Loading pricing..." at 36px
+// and "Checkout not available yet" for someone who already had an account.
+describe("CreatorCourseDetail: while loading", () => {
+  it.each([false, true])("the course on its way shows the skeleton: no title, no exit button (purchase: %s)", (checkoutOnly) => {
     fixtures.holdCourse = true;
     render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader checkoutOnly={checkoutOnly} />);
 
@@ -272,7 +272,7 @@ describe("CreatorCourseDetail: enquanto carrega", () => {
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
-  it("um erro de verdade segue com o aviso, e vira h2 sob o h1 que o servidor já pôs", () => {
+  it("a real error keeps the notice, and becomes an h2 under the h1 the server already put", () => {
     render(<CreatorCourseDetail hideHeader />);
 
     expect(screen.getByRole("heading", { level: 2, name: "Course not selected." })).toBeInTheDocument();
@@ -280,7 +280,7 @@ describe("CreatorCourseDetail: enquanto carrega", () => {
     expect(screen.queryByText("Creator course")).not.toBeInTheDocument();
   });
 
-  it("o preço a caminho guarda o lugar, e o botão de quem tem conta diz Enroll, desligado", async () => {
+  it("the price on its way holds the place, and the button of someone with an account says Enroll, disabled", async () => {
     fixtures.auth.status = "authenticated";
     fixtures.auth.user = { uid: "buyer" };
     vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
@@ -295,13 +295,13 @@ describe("CreatorCourseDetail: enquanto carrega", () => {
     expect(button).toBeDisabled();
     expect(button).toHaveAttribute("aria-busy", "true");
     expect(screen.queryByText("Checkout not available yet")).not.toBeInTheDocument();
-    // O texto só para o leitor de tela; na tela, a barra do tamanho do preço.
+    // The text only for the screen reader; on screen, a bar the size of the price.
     expect(within(container.querySelector<HTMLElement>("#enroll-card")!).getByText("Loading pricing...")).toHaveClass("sr-only");
   });
 
-  // O bloco de chamada do professor imprimia "Loading pricing..." e "Pricing
-  // unavailable" em 18px negrito, como se fossem o preço.
-  it("o bloco do professor só recebe preço de verdade: nada carregando, nada com falha", async () => {
+  // The teacher's call-to-action block used to print "Loading pricing..." and "Pricing
+  // unavailable" in 18px bold, as if they were the price.
+  it("the teacher's block only receives a real price: nothing loading, nothing failed", async () => {
     vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
     const loading = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
     expect(await screen.findByTestId("landing-blocks")).not.toHaveAttribute("data-price");
@@ -319,16 +319,16 @@ describe("CreatorCourseDetail: enquanto carrega", () => {
     expect(screen.getByTestId("landing-blocks")).toHaveAttribute("data-price", "$149.00");
   });
 
-  // Com o preço carregado, "Offer unavailable" e "Pricing pending" ainda são
-  // frases de estado: o bloco também fica sem a linha do preço. Grátis e preço
-  // de verdade (único ou assinatura) seguem como antes.
+  // With the price loaded, "Offer unavailable" and "Pricing pending" are still
+  // status phrases: the block also goes without the price line. Free and a real
+  // price (one-time or subscription) stay as before.
   it.each([
     ["oferta do link que não existe mais", () => { fixtures.query = "offer=MISSING"; withOffers(); }, "Offer unavailable", null],
     ["preço que não se resolve", () => { fixtures.course.priceAmountMinor = -1; }, "Pricing pending", null],
     ["curso gratuito", () => { fixtures.course.priceAmountMinor = 0; }, "Free", "Free"],
     ["pagamento único", () => {}, "$149.00", "$149.00"],
     ["assinatura", () => { Object.assign(fixtures.course, { paymentType: "subscription_monthly" }); }, "$149.00 / month", "$149.00 / month"],
-  ])("%s: o cartão diz \"%s\" e o bloco recebe %s", async (_caso, arrange, cardPrice, blockPrice) => {
+  ])("%s: the card says \"%s\" and the block receives %s", async (_caso, arrange, cardPrice, blockPrice) => {
     arrange();
     render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
     await screen.findAllByText(cardPrice);
@@ -339,8 +339,8 @@ describe("CreatorCourseDetail: enquanto carrega", () => {
     }
   });
 
-  // Com a compra desligada o botão não diz "Enroll" para virar o aviso depois.
-  it("com a compra desligada, o aviso vem direto, sem o rótulo de espera", async () => {
+  // With purchase turned off the button does not say "Enroll" only to become the notice later.
+  it("with purchase turned off, the notice comes straight away, without the waiting label", async () => {
     fixtures.flagsOn = false;
     fixtures.auth.status = "authenticated";
     fixtures.auth.user = { uid: "buyer" };
@@ -356,7 +356,7 @@ describe("CreatorCourseDetail: enquanto carrega", () => {
     expect(button).not.toHaveAttribute("aria-busy");
   });
 
-  it("o cancelamento da compra é aviso neutro, e o erro de checkout é anunciado", async () => {
+  it("purchase cancellation is a neutral notice, and the checkout error is announced", async () => {
     fixtures.query = "checkout=cancelled";
     fixtures.auth.status = "authenticated";
     fixtures.auth.user = { uid: "buyer" };
@@ -369,18 +369,18 @@ describe("CreatorCourseDetail: enquanto carrega", () => {
   });
 });
 
-// Loja vazia não é destino: a volta e a ação padrão dos estados levam ao início.
-describe("CreatorCourseDetail: links para a loja", () => {
+// An empty store is not a destination: the way back and the default action of the states lead to the start.
+describe("CreatorCourseDetail: links to the store", () => {
   it.each([
     [true, "Back to all courses", "/courses"],
     [false, "Go home", "/"],
-  ])("a volta ao catálogo, no alto da página e fora do cartão de compra (loja com curso real: %s)", async (value, name, href) => {
+  ])("the way back to the catalog, at the top of the page and outside the purchase card (store with a real course: %s)", async (value, name, href) => {
     const { container } = render(<RealCoursesProvider value={value}><CreatorCourseDetail courseIdOverride="course-1" hideHeader /></RealCoursesProvider>);
 
     const back = await screen.findByRole("link", { name });
     expect(back).toHaveAttribute("href", href);
     expect(back.closest("#enroll-card")).toBeNull();
-    // Antes da capa, do título e das seções: é o primeiro item da coluna.
+    // Before the cover, the title and the sections: it is the first item of the column.
     expect(back.parentElement?.firstElementChild).toBe(back);
     expect(back.compareDocumentPosition(container.querySelector("#enroll-card")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
@@ -388,7 +388,7 @@ describe("CreatorCourseDetail: links para a loja", () => {
   it.each([
     [true, "Open marketplace", "/courses"],
     [false, "Go home", "/"],
-  ])("a ação padrão de um estado sem curso (loja com curso real: %s)", (value, name, href) => {
+  ])("the default action of a state with no course (store with a real course: %s)", (value, name, href) => {
     render(<RealCoursesProvider value={value}><CreatorCourseDetail /></RealCoursesProvider>);
 
     expect(screen.getByRole("heading", { name: "Course not selected." })).toBeInTheDocument();
@@ -446,8 +446,8 @@ describe("CreatorCourseDetail: funnel events", () => {
   });
 });
 
-describe("CreatorCourseDetail: o cartão que vende", () => {
-  it("põe o preço no topo do cartão de compra, e não na quarta linha de uma lista", async () => {
+describe("CreatorCourseDetail: the card that sells", () => {
+  it("puts the price at the top of the purchase card, not on the fourth line of a list", async () => {
     const { container } = render(
       <CreatorCourseDetail courseIdOverride="course-1" hideHeader />,
     );
@@ -456,13 +456,13 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
     expect(card).not.toBeNull();
     expect(await screen.findAllByText("$149.00")).toHaveLength(2);
 
-    // O preço é o número grande do topo, antes de qualquer lista.
+    // The price is the big number at the top, before any list.
     const price = card?.querySelector(".display-title");
     expect(price?.textContent).toContain("$149.00");
     expect(price?.textContent).toContain("one-time");
   });
 
-  it("tira Status e Access da lista: são vocabulário interno", async () => {
+  it("removes Status and Access from the list: they are internal vocabulary", async () => {
     const { container } = render(
       <CreatorCourseDetail courseIdOverride="course-1" hideHeader />,
     );
@@ -477,9 +477,9 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
     expect(labels).toContain("Category");
   });
 
-  // Antes: rótulo "Access" no preço e cinco blocos depois do botão, dois em
-  // caixas de cores diferentes. Agora: "Price", o botão e um só bloco de fatos.
-  it("rotula o preço como 'Price' e junta os fatos num bloco só, depois do botão", async () => {
+  // Before: an "Access" label on the price and five blocks after the button, two in
+  // boxes of different colors. Now: "Price", the button and a single block of facts.
+  it("labels the price as 'Price' and gathers the facts in a single block, after the button", async () => {
     fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
     const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
     const button = await screen.findByRole("button", { name: "Enroll — $149.00" });
@@ -496,24 +496,24 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
     for (const fact of facts) {
       expect(button.compareDocumentPosition(fact) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     }
-    // Nenhuma caixa colorida própria: o reembolso e o vendedor são linhas da mesma lista.
+    // No colored box of its own: the refund and the seller are lines of the same list.
     const list = within(card).getByRole("list");
     expect(within(list).getByText("7-day refund guarantee.")).toBeInTheDocument();
-    // A garantia diz as condições que a política impõe e leva à política inteira.
+    // The guarantee states the conditions the policy imposes and leads to the full policy.
     expect(within(list).getByRole("link", { name: "7-day refund guarantee." })).toHaveAttribute("href", "/refund-policy");
     expect(within(list).getByText(/once per course, as long as you have completed less than half of it and no certificate has been issued\./)).toBeInTheDocument();
     expect(within(list).getByText("Sold by your instructor, not by SkillsetMind.")).toBeInTheDocument();
     expect(card.querySelector('[class*="success-soft"]')).toBeNull();
-    // A barra fixa do celular usa o mesmo rótulo do cartão.
+    // The phone's fixed bar uses the same label as the card.
     expect(container.querySelector('a[href="#enroll-card"]')?.closest("div.fixed")).toHaveTextContent(/^Price/);
   });
 
-  // Até o preço chegar o curso ainda não "é grátis": um curso grátis lia
-  // "Paid access opens…", o reembolso e o vendedor enquanto o preço carregava.
+  // Until the price arrives the course is not yet "free": a free course used to read
+  // "Paid access opens…", the refund and the seller while the price loaded.
   it.each([
     ["carregando", () => new Promise(() => {})],
     ["com a leitura falhando", async () => ({ ok: false, json: async () => ({ error: "unavailable" }) })],
-  ])("curso grátis com o preço %s: nenhuma frase de compra paga no cartão", async (_state, respond) => {
+  ])("free course with price %s: no paid-purchase phrase on the card", async (_state, respond) => {
     Object.assign(fixtures.course, { paymentType: "free", priceAmountMinor: 0 });
     vi.stubGlobal("fetch", vi.fn(respond));
     const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
@@ -527,27 +527,27 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
     ]) {
       expect(within(card).queryByText(text)).not.toBeInTheDocument();
     }
-    // A ficha do curso segue no lugar.
+    // The course detail list stays in place.
     expect(within(card).getByText("Category")).toBeInTheDocument();
   });
 
-  it("mantém o cartão à vista: gruda na rolagem e ganha barra fixa no celular", async () => {
+  it("keeps the card in view: sticks on scroll and gets a fixed bar on the phone", async () => {
     const { container } = render(
       <CreatorCourseDetail courseIdOverride="course-1" hideHeader />,
     );
     await screen.findAllByText("$149.00");
 
     expect(container.querySelector("#enroll-card")).toHaveClass("lg:sticky");
-    // Barra de compra: leva ao cartão. Sem IntersectionObserver (jsdom), ou
-    // antes do primeiro aviso dele, nada foi medido: a barra fica à vista no
-    // celular, como sempre foi. Só a medição a esconde.
+    // Purchase bar: leads to the card. Without IntersectionObserver (jsdom), or
+    // before its first notice, nothing was measured: the bar stays in view on the
+    // phone, as it always was. Only the measurement hides it.
     const bar = container.querySelector('a[href="#enroll-card"]');
     expect(bar).not.toBeNull();
     expect(bar?.closest("div.fixed")).toHaveClass("lg:hidden");
     expect(bar?.closest("div.fixed")).not.toHaveClass("hidden");
   });
 
-  it("com o cartão fora da tela a barra de compra aparece (no desktop, no canto); com o botão à vista, some", async () => {
+  it("with the card off screen the purchase bar appears (on desktop, in the corner); with the button in view, it goes away", async () => {
     let notify: ((entries: Array<{ isIntersecting: boolean }>) => void) | null = null;
     const observe = vi.fn();
     vi.stubGlobal("IntersectionObserver", class {
@@ -560,7 +560,7 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
       await screen.findAllByText("$149.00");
       await waitFor(() => expect(observe).toHaveBeenCalledWith(container.querySelector("#enroll-card")));
       const bar = () => container.querySelector('a[href="#enroll-card"]')?.closest("div.fixed");
-      // Antes do primeiro aviso: à vista no celular.
+      // Before the first notice: in view on the phone.
       expect(bar()).toHaveClass("lg:hidden");
       expect(bar()).not.toHaveClass("hidden");
 
@@ -568,21 +568,21 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
       expect(bar()).not.toHaveClass("hidden");
       expect(bar()).toHaveClass("lg:right-6");
 
-      // Topo do cartão à vista, mas o botão ainda abaixo da dobra: a barra fica.
+      // Top of the card in view, but the button still below the fold: the bar stays.
       const cta = container.querySelector("#enroll-card [data-cta-focus]") as HTMLElement;
       const rect = vi.spyOn(cta, "getBoundingClientRect");
       rect.mockReturnValue({ top: window.innerHeight + 200, bottom: window.innerHeight + 244 } as DOMRect);
       act(() => notify?.([{ isIntersecting: true }]));
       expect(bar()).not.toHaveClass("hidden");
 
-      // O botão entrou na tela: a barra some em qualquer largura (display
-      // none: fora da ordem do Tab), e não só a partir de lg.
+      // The button came onto the screen: the bar goes away at any width (display
+      // none: out of the Tab order), and not only from lg up.
       rect.mockReturnValue({ top: 300, bottom: 344 } as DOMRect);
       act(() => notify?.([{ isIntersecting: true }]));
       expect(bar()).toHaveClass("hidden");
       expect(bar()).not.toHaveClass("lg:right-6");
 
-      // Saiu de novo: a barra volta.
+      // Left again: the bar comes back.
       act(() => notify?.([{ isIntersecting: false }]));
       expect(bar()).not.toHaveClass("hidden");
     } finally {
@@ -590,7 +590,7 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
     }
   });
 
-  it("assina o curso com quem ensina, com credencial, nota e duração", async () => {
+  it("signs the course with who teaches, with credential, rating and duration", async () => {
     render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
     await screen.findAllByText("$149.00");
 
@@ -599,11 +599,11 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
     ).toHaveAttribute("href", "/instructors/teacher-1");
     expect(screen.getByText("PhD in cognitive science")).toBeInTheDocument();
     expect(screen.getByText("4.8")).toBeInTheDocument();
-    // Na assinatura e na ficha do cartao de compra.
+    // In the byline and in the detail list of the purchase card.
     expect(screen.getAllByText("1h 30m")).toHaveLength(2);
   });
 
-  it("sem minutos em todas as aulas, não mostra uma duração menor que o curso", async () => {
+  it("without minutes on every lesson, does not show a duration shorter than the course", async () => {
     const course = fixtures.course as TeacherCourse;
     const modules = course.modules;
     course.modules = [{ ...modules[0], lessons: [...modules[0].lessons, { id: "lesson-2", title: "Second", type: "video", description: "" }] }];
@@ -617,9 +617,9 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
     }
   });
 
-  // A 320 px a assinatura quebra linha: o selo vai junto com o nome, sem
-  // margem negativa puxando o ícone para cima de outro item.
-  it("selo verificado: só o ícone, preso ao nome do instrutor", async () => {
+  // At 320 px the byline wraps: the badge goes with the name, with no
+  // negative margin pulling the icon on top of another item.
+  it("verified badge: only the icon, attached to the instructor's name", async () => {
     Object.assign(fixtures.profile, { verification: { kind: "evidence", verifiedAt: null } });
     try {
       render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
@@ -635,10 +635,10 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
     }
   });
 
-  // Sem selo, a credencial é o que o professor digitou: a assinatura diz isso
-  // ao lado dela; com o selo, não. (O cartão do instrutor tem teste próprio
-  // em self-reported-credentials.test.tsx.)
-  it("credencial sem selo vem marcada na assinatura", async () => {
+  // Without a badge, the credential is what the teacher typed: the byline says so
+  // next to it; with the badge, it does not. (The instructor card has its own test
+  // in self-reported-credentials.test.tsx.)
+  it("a credential without a badge comes marked in the byline", async () => {
     render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
     await screen.findAllByText("$149.00");
 
@@ -647,7 +647,7 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
     expect(byline).toHaveTextContent("Self-reported");
   });
 
-  it("credencial com selo não leva a marca", async () => {
+  it("a credential with a badge does not carry the mark", async () => {
     Object.assign(fixtures.profile, { verification: { kind: "evidence", verifiedAt: null } });
     try {
       render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
@@ -658,7 +658,7 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
     }
   });
 
-  it("sobe a prova social: o instrutor vem antes da amostra gratuita", async () => {
+  it("moves up the social proof: the instructor comes before the free preview", async () => {
     const { container } = render(
       <CreatorCourseDetail courseIdOverride="course-1" hideHeader />,
     );
@@ -667,11 +667,11 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
     const blocks = Array.from(
       container.querySelectorAll("#what-you-will-learn, #instructor, #free-preview"),
     ).map((node) => node.id);
-    // Depois do "What you'll learn", e nao no fim da barra lateral.
+    // After "What you'll learn", and not at the end of the sidebar.
     expect(blocks).toEqual(["what-you-will-learn", "instructor", "free-preview"]);
   });
 
-  it("chama o visitante de volta para o checkout do curso depois de criar conta", async () => {
+  it("calls the visitor back to the course checkout after creating an account", async () => {
     render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
 
     const enroll = await screen.findByRole("link", {
@@ -683,7 +683,7 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
     );
   });
 
-  it("oferece as seções que existem, e só elas", async () => {
+  it("offers the sections that exist, and only those", async () => {
     render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
     await screen.findAllByText("$149.00");
 
@@ -755,8 +755,8 @@ describe("CreatorCourseDetail: the sales-page button does what the buy card does
     }
   });
 
-  // UE, EEE e Reino Unido: a leitura das ofertas pede a caixa do acesso
-  // imediato; sem ela marcada o botão não abre a compra.
+  // EU, EEA and United Kingdom: reading the offers asks for the immediate-access
+  // box; without it ticked the button does not open the purchase.
   it("a buyer who must consent to immediate access cannot open checkout until the box is ticked", async () => {
     fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ offers: [], withdrawalConsentRequired: true }) })));
@@ -777,8 +777,8 @@ describe("CreatorCourseDetail: the sales-page button does what the buy card does
     await waitFor(() => expect(startCourseCheckout).toHaveBeenCalledWith("course-1", { withdrawalConsent: true }));
   });
 
-  // O país mudou entre a leitura das ofertas e o clique: o servidor pede a
-  // caixa, e ela aparece junto do aviso (antes ficava só o erro).
+  // The country changed between reading the offers and the click: the server asks for the
+  // box, and it appears next to the notice (before, only the error stayed).
   it("shows the consent box when the server asks for it at the click", async () => {
     fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
     vi.mocked(startCourseCheckout).mockRejectedValueOnce(
@@ -812,14 +812,14 @@ describe("CreatorCourseDetail: the sales-page button does what the buy card does
     expect(fixtures.router.push).not.toHaveBeenCalled();
   });
 
-  describe("sem resposta visível", () => {
+  describe("no visible response", () => {
     const scrollIntoView = vi.fn();
     beforeEach(() => {
       scrollIntoView.mockClear();
       Element.prototype.scrollIntoView = scrollIntoView;
     });
     afterEach(() => {
-      // @ts-expect-error jsdom não define scrollIntoView; remove o stub do teste
+      // @ts-expect-error jsdom does not define scrollIntoView; removes the test's stub
       delete Element.prototype.scrollIntoView;
     });
 
@@ -912,8 +912,8 @@ describe("permanent checkout", () => {
     expect(startCourseCheckout).not.toHaveBeenCalled();
   });
 
-  // Criar conta volta sempre ao checkout; entrar volta à página onde a pessoa
-  // estava. Os dois com a oferta e o preço, nunca o `returnTo` do endereço.
+  // Creating an account always returns to the checkout; signing in returns to the page the person
+  // was on. Both with the offer and the price, never the address's `returnTo`.
   it.each([false, true])("keeps offer and price through signup (to the checkout) and signin (to this page) (checkout %s)", async (checkoutOnly) => {
     fixtures.query = "offer=LAUNCH&priceId=price-1&checkout=cancelled&returnTo=https://evil.example";
     withOffers();
@@ -944,7 +944,7 @@ describe("permanent checkout", () => {
   it("no secure-payment mark while there is no paid price to process", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, json: async () => ({ error: "unavailable" }) })));
     render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
-    // Um aviso só (o vermelho): o lugar do preço não repete "Pricing unavailable".
+    // A single notice (the red one): the price spot does not repeat "Pricing unavailable".
     expect(await screen.findByRole("alert")).toHaveTextContent("Offers are temporarily unavailable.");
     expect(screen.queryByText("Pricing unavailable")).not.toBeInTheDocument();
     expect(screen.queryByText("Secure payment processed by Stripe.")).not.toBeInTheDocument();
@@ -954,8 +954,8 @@ describe("permanent checkout", () => {
     const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
     await screen.findAllByText("$149.00");
     expect(screen.getByText("Category")).toBeInTheDocument();
-    // Sem curso real na loja, a volta leva ao início. Ela fica no alto da
-    // coluna da esquerda, fora do cartão de compra.
+    // With no real course in the store, the way back leads to the start. It sits at the top of the
+    // left column, outside the purchase card.
     expect(screen.getByRole("link", { name: "Go home" })).toHaveAttribute("href", "/");
     expect(container.querySelector('#enroll-card a[href="/"]')).toBeNull();
   });
@@ -1208,7 +1208,7 @@ describe("CreatorCourseDetail — padlocked lessons and the buy popup", () => {
     expect(popupCta.textContent?.trim()).toBe(cardAction(container)?.textContent?.trim());
   });
 
-  // Assinatura: a renovação automática é dita junto do botão, antes do Stripe.
+  // Subscription: the automatic renewal is stated next to the button, before Stripe.
   it("a subscription states price, interval, auto-renewal and how to cancel right before the button", async () => {
     Object.assign(fixtures.course, { paymentType: "subscription_monthly" });
     const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" />);
@@ -1344,10 +1344,10 @@ describe("CreatorCourseDetail — padlocked lessons and the buy popup", () => {
   });
 });
 
-// Comunidade, evento ao vivo e e-book publicam sem grade de aulas. A pagina de
-// venda mostrava "previa ainda sendo preparada", "Enroll to open the remaining
-// 0 lessons" e "Lessons: 0". Agora diz o que o comprador recebe.
-describe("CreatorCourseDetail: o que cada tipo entrega", () => {
+// Community, live event and e-book publish without a lesson grid. The sales
+// page showed "preview still being prepared", "Enroll to open the remaining
+// 0 lessons" and "Lessons: 0". Now it says what the buyer receives.
+describe("CreatorCourseDetail: what each type delivers", () => {
   function renderAs(productFormat: TeacherCourse["productFormat"], modules: TeacherCourse["modules"] = []) {
     const course = fixtures.course as TeacherCourse;
     const saved = { modules: course.modules, lessonCount: course.lessonCount };
@@ -1374,7 +1374,7 @@ describe("CreatorCourseDetail: o que cada tipo entrega", () => {
     expect(screen.queryByRole("link", { name: "Curriculum" })).not.toBeInTheDocument();
   }
 
-  it("comunidade: a pagina fala da comunidade, sem curriculo nem 'Lessons: 0'", async () => {
+  it("community: the page talks about the community, with no curriculum or 'Lessons: 0'", async () => {
     const { container, restore } = renderAs("community");
     try {
       await screen.findAllByText("$149.00");
@@ -1390,7 +1390,7 @@ describe("CreatorCourseDetail: o que cada tipo entrega", () => {
     }
   });
 
-  it("comunidade em espanhol", async () => {
+  it("community in Spanish", async () => {
     fixtures.locale = "es";
     const { restore } = renderAs("community");
     try {
@@ -1404,7 +1404,7 @@ describe("CreatorCourseDetail: o que cada tipo entrega", () => {
     }
   });
 
-  it("e-book: um arquivo para baixar, mesmo com a aula do arquivo no produto", async () => {
+  it("e-book: one file to download, even with the file lesson in the product", async () => {
     const { container, restore } = renderAs("ebook", [
       {
         id: "module-1",
@@ -1421,7 +1421,7 @@ describe("CreatorCourseDetail: o que cada tipo entrega", () => {
     }
   });
 
-  it("evento ao vivo: a data da sessao no fuso de quem ensina, com o fuso escrito", async () => {
+  it("live event: the session date in the teacher's time zone, with the time zone written out", async () => {
     vi.mocked(getLiveEventSession).mockResolvedValueOnce({
       startsAt: "2026-11-20T22:30:00.000Z",
       timeZone: "America/Sao_Paulo",
@@ -1438,7 +1438,7 @@ describe("CreatorCourseDetail: o que cada tipo entrega", () => {
     }
   });
 
-  it("evento ao vivo sem data conhecida diz que ela sera anunciada", async () => {
+  it("live event with no known date says it will be announced", async () => {
     const { restore } = renderAs("live_event");
     try {
       expect(
@@ -1449,7 +1449,7 @@ describe("CreatorCourseDetail: o que cada tipo entrega", () => {
     }
   });
 
-  it("curso segue com previa, curriculo e o numero de aulas", async () => {
+  it("course keeps the preview, curriculum and the number of lessons", async () => {
     const { container, restore } = renderAs("course", (fixtures.course as TeacherCourse).modules);
     try {
       await screen.findAllByText("$149.00");
@@ -1665,16 +1665,16 @@ describe("CreatorCourseDetail: buying without an account", () => {
       expect(fixtures.router.push).not.toHaveBeenCalled();
       expect(scrollIntoView.mock.contexts[0]).toBe(document.getElementById("enroll-card"));
     } finally {
-      // @ts-expect-error jsdom não define scrollIntoView; remove o stub do teste
+      // @ts-expect-error jsdom does not define scrollIntoView; removes the test's stub
       delete Element.prototype.scrollIntoView;
     }
   });
 });
 
-// A capa sozinha acima das colunas empurrava preço e "Enroll" para baixo da
-// primeira tela. Agora o cabeçalho do servidor (`lead`) é o topo da coluna da
-// esquerda e o cartão de compra é a coluna da direita desde o alto.
-describe("CreatorCourseDetail: o cabeçalho do servidor no topo da coluna", () => {
+// The cover alone above the columns pushed the price and "Enroll" below the
+// first screen. Now the server header (`lead`) is the top of the left column and
+// the purchase card is the right column from the top.
+describe("CreatorCourseDetail: the server header at the top of the column", () => {
   const lead = (
     <header id="overview">
       <h1>Deep Focus Systems</h1>
@@ -1682,21 +1682,21 @@ describe("CreatorCourseDetail: o cabeçalho do servidor no topo da coluna", () =
     </header>
   );
 
-  it("o cabeçalho abre a coluna da esquerda, e o cartão de compra é a coluna ao lado", async () => {
+  it("the header opens the left column, and the purchase card is the column beside it", async () => {
     const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader lead={lead} />);
     await screen.findAllByText("$149.00");
 
     const title = screen.getByRole("heading", { level: 1, name: "Deep Focus Systems" });
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     const column = title.closest("section") as HTMLElement;
-    // Mesma grade: a coluna do cabeçalho e o cartão são irmãos.
+    // Same grid: the header column and the card are siblings.
     expect(column.nextElementSibling).toBe(container.querySelector("#enroll-card"));
-    // Antes da assinatura do instrutor e do menu das seções.
+    // Before the instructor byline and the section menu.
     const nav = screen.getByRole("navigation", { name: "Course sections" });
     expect(title.compareDocumentPosition(nav) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("enquanto o curso carrega, o cabeçalho segue à vista (fora do pulso e do aria-hidden)", () => {
+  it("while the course loads, the header stays in view (outside the pulse and the aria-hidden)", () => {
     fixtures.holdCourse = true;
     render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader lead={lead} />);
 
@@ -1707,7 +1707,7 @@ describe("CreatorCourseDetail: o cabeçalho do servidor no topo da coluna", () =
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 
-  it("quando o curso chega, o cabeçalho é o MESMO nó: não desmonta (a capa não pisca)", async () => {
+  it("when the course arrives, the header is the SAME node: it does not unmount (the cover does not flicker)", async () => {
     fixtures.holdCourse = true;
     render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader lead={lead} />);
     const before = screen.getByRole("heading", { level: 1, name: "Deep Focus Systems" });
@@ -1720,7 +1720,7 @@ describe("CreatorCourseDetail: o cabeçalho do servidor no topo da coluna", () =
     expect(before.isConnected).toBe(true);
   });
 
-  it("num estado de erro, o cabeçalho fica no alto e o aviso vira h2", () => {
+  it("in an error state, the header stays at the top and the notice becomes an h2", () => {
     render(<CreatorCourseDetail hideHeader lead={lead} />);
 
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
@@ -1730,8 +1730,8 @@ describe("CreatorCourseDetail: o cabeçalho do servidor no topo da coluna", () =
   });
 });
 
-describe("CreatorCourseDetail: preço que falha e quem vende", () => {
-  it("com a leitura do preço falhando, o cartão diz uma vez só: o aviso vermelho", async () => {
+describe("CreatorCourseDetail: a price that fails and who sells", () => {
+  it("with the price read failing, the card says it only once: the red notice", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, json: async () => ({ error: "unavailable" }) })));
     const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
     const card = await waitFor(() => {
@@ -1744,7 +1744,7 @@ describe("CreatorCourseDetail: preço que falha e quem vende", () => {
     expect(within(card).queryByText("Pricing unavailable")).not.toBeInTheDocument();
   });
 
-  it("na página de venda, quem vende é uma linha com 'Learn more'; a frase inteira segue na página", async () => {
+  it("on the sales page, the seller is one line with 'Learn more'; the full sentence stays on the page", async () => {
     const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
     await screen.findAllByText("$149.00");
     const card = container.querySelector("#enroll-card") as HTMLElement;
@@ -1753,11 +1753,11 @@ describe("CreatorCourseDetail: preço que falha e quem vende", () => {
     expect(details).not.toBeNull();
     expect(details).not.toHaveAttribute("open");
     expect(details.querySelector("summary")).toHaveTextContent("Learn more");
-    // Mesma chave, mesmo texto, sem navegar para outra página.
+    // Same key, same text, without navigating to another page.
     expect(within(details).getByText(/This course is sold directly by the independent educator/)).toBeInTheDocument();
   });
 
-  it("na página de compra, logo antes de pagar, a frase de quem vende fica inteira e aberta", async () => {
+  it("on the purchase page, right before paying, the seller's sentence stays whole and open", async () => {
     render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
     await screen.findByText("$149.00");
 
@@ -1765,7 +1765,7 @@ describe("CreatorCourseDetail: preço que falha e quem vende", () => {
     expect(screen.queryByText("Learn more")).not.toBeInTheDocument();
   });
 
-  it("com o preço a caminho, a barra de compra guarda o lugar com a mesma barra pulsante", async () => {
+  it("with the price on its way, the purchase bar holds the place with the same pulsing bar", async () => {
     vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
     const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
     const bar = await waitFor(() => {
@@ -1778,11 +1778,11 @@ describe("CreatorCourseDetail: preço que falha e quem vende", () => {
     expect(bar.querySelector('[aria-hidden="true"].animate-pulse')).not.toBeNull();
   });
 
-  // S-04: com o preço falhando, a barra mostra o traço do cartão (e não
-  // "Pricing unavailable" em letra de título) e, no lugar do "Enroll" sem
-  // preço, o mesmo "Try again" do aviso do cartão: no celular o cartão fica
-  // no fim da página, depois do currículo inteiro.
-  it("com a leitura do preço falhando, a barra de compra mostra o traço e o 'Try again' do cartão", async () => {
+  // S-04: with the price failing, the bar shows the card's dash (and not
+  // "Pricing unavailable" in title lettering) and, in place of an "Enroll" with no
+  // price, the same "Try again" as the card notice: on the phone the card sits
+  // at the end of the page, after the whole curriculum.
+  it("with the price read failing, the purchase bar shows the dash and the card's 'Try again'", async () => {
     let answerRetry: (response: unknown) => void = () => {};
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({ ok: false, json: async () => ({ error: "unavailable" }) })
@@ -1804,19 +1804,19 @@ describe("CreatorCourseDetail: preço que falha e quem vende", () => {
     expect(within(bar).getByText("Pricing unavailable")).toHaveClass("sr-only");
     expect(bar.querySelector("a")).toBeNull();
     const retry = within(bar).getByRole("button", { name: "Try again" });
-    // A mesma altura de 44px do "Enroll": a barra não encolhe neste estado.
+    // The same 44px height as "Enroll": the bar does not shrink in this state.
     expect(retry).toHaveClass("min-h-11");
     expect(offerReads()).toBe(1);
-    // Os dois rótulos já moram no botão (a largura é a do maior); em repouso o
-    // da espera fica escondido e fora do nome.
+    // Both labels already live in the button (the width is that of the larger); at rest the
+    // waiting one is hidden and outside the name.
     expect(within(retry).getByText("Trying again...")).toHaveAttribute("aria-hidden", "true");
     expect(within(retry).getByText("Try again")).not.toHaveAttribute("aria-hidden");
 
     fireEvent.click(retry);
     fireEvent.click(within(bar).getByRole("button", { name: "Trying again..." }));
 
-    // Uma releitura só, e a barra espera com o botão travado: o mesmo botão,
-    // agora com o nome da espera, e o rótulo de repouso escondido no lugar.
+    // A single re-read, and the bar waits with the button locked: the same button,
+    // now with the waiting name, and the resting label hidden in its place.
     expect(offerReads()).toBe(2);
     const waiting = within(bar).getByRole("button", { name: "Trying again..." });
     expect(waiting).toBe(retry);
@@ -1835,15 +1835,15 @@ describe("CreatorCourseDetail: preço que falha e quem vende", () => {
   });
 });
 
-// Um curso de 10 módulos era uma coluna enorme, tudo aberto.
-describe("CreatorCourseDetail: um módulo por sanfona", () => {
+// A 10-module course was a huge column, everything open.
+describe("CreatorCourseDetail: one module per accordion", () => {
   const mutable = fixtures.course as TeacherCourse;
   const original = mutable.modules;
   afterEach(() => {
     mutable.modules = original;
   });
 
-  it("o primeiro módulo abre sozinho, os outros fecham; aulas e duração na linha do módulo", async () => {
+  it("the first module opens by itself, the others close; lessons and duration on the module line", async () => {
     mutable.modules = [
       original[0],
       {
@@ -1858,21 +1858,21 @@ describe("CreatorCourseDetail: um módulo por sanfona", () => {
     const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
     await screen.findAllByText("$149.00");
 
-    // Cada módulo é um título (navegável por títulos, também no VoiceOver)
-    // com o botão de abrir dentro: o padrão de sanfona.
+    // Each module is a heading (navigable by headings, also in VoiceOver)
+    // with the open button inside: the accordion pattern.
     const curriculum = container.querySelector("#curriculum") as HTMLElement;
     const toggles = Array.from(curriculum.querySelectorAll<HTMLButtonElement>("h2 > button[aria-expanded]"));
     expect(toggles).toHaveLength(2);
     expect(within(curriculum).getByRole("heading", { level: 2, name: /^Foundations 1 lesson · 1h 30m$/ })).toContainElement(toggles[0]);
     expect(toggles[0]).toHaveAttribute("aria-expanded", "true");
     expect(toggles[1]).toHaveAttribute("aria-expanded", "false");
-    // Sem minutos em todas as aulas, a duração não aparece (nada se estima).
+    // Without minutes on every lesson, the duration does not appear (nothing is estimated).
     expect(within(toggles[1]).getByText("2 lessons")).toBeInTheDocument();
     const panel = (toggle: HTMLButtonElement) => document.getElementById(toggle.getAttribute("aria-controls")!) as HTMLElement;
     expect(panel(toggles[0])).not.toHaveAttribute("hidden");
     expect(panel(toggles[1])).toHaveAttribute("hidden");
-    // Nada sai da página: as aulas do módulo fechado seguem no DOM, e a trancada
-    // continua abrindo a compra.
+    // Nothing leaves the page: the lessons of the closed module stay in the DOM, and the locked one
+    // still opens the purchase.
     expect(within(panel(toggles[1])).getByText("Shutdown ritual").closest("button")).toHaveAttribute("aria-haspopup", "dialog");
 
     fireEvent.click(toggles[1]);
@@ -1883,14 +1883,14 @@ describe("CreatorCourseDetail: um módulo por sanfona", () => {
   });
 });
 
-// O-09: quem CRIA CONTA para comprar volta ao checkout do curso, com a oferta,
-// e nao ao topo da pagina de venda. Quem ENTRA (e a compra sem login) volta a
-// esta pagina, como antes. A-11: o cupom e o campo da casa.
-describe("CreatorCourseDetail: o visitante que cria conta volta ao checkout", () => {
+// O-09: whoever CREATES AN ACCOUNT to buy returns to the course checkout, with the offer,
+// and not to the top of the sales page. Whoever SIGNS IN (and the purchase without login) returns to
+// this page, as before. A-11: the coupon is the house field.
+describe("CreatorCourseDetail: the visitor who creates an account returns to the checkout", () => {
   const returnOf = (link: HTMLElement) =>
     new URL(link.getAttribute("href")!, "https://test.local").searchParams.get("returnTo");
 
-  it("curso pago, sem oferta: criar conta volta ao checkout; entrar, a esta pagina", async () => {
+  it("paid course, no offer: creating an account returns to the checkout; signing in, to this page", async () => {
     render(<CreatorCourseDetail courseIdOverride="course-1" />);
     const enroll = await screen.findByRole("link", { name: "Enroll — $149.00" });
 
@@ -1899,7 +1899,7 @@ describe("CreatorCourseDetail: o visitante que cria conta volta ao checkout", ()
       .toHaveAttribute("href", "/auth?mode=signin&returnTo=%2Fcourses%2Fcourse-1");
   });
 
-  it("curso pago com ?offer=: a oferta vai junto nos dois", async () => {
+  it("paid course with ?offer=: the offer goes along in both", async () => {
     fixtures.query = "offer=LAUNCH";
     withOffers();
     render(<CreatorCourseDetail courseIdOverride="focus-slug" />);
@@ -1909,7 +1909,7 @@ describe("CreatorCourseDetail: o visitante que cria conta volta ao checkout", ()
     expect(returnOf(screen.getByRole("link", { name: "Sign in" }))).toBe("/courses/focus-slug?offer=LAUNCH");
   });
 
-  it("curso gratis: criar conta volta ao cartao de entrar gratis do checkout; entrar, a esta pagina", async () => {
+  it("free course: creating an account returns to the checkout's free sign-up card; signing in, to this page", async () => {
     Object.assign(fixtures.course, { paymentType: "free", priceAmountMinor: 0 });
     render(<CreatorCourseDetail courseIdOverride="course-1" />);
     const enroll = await screen.findByRole("link", { name: "Enroll free" });
@@ -1918,10 +1918,10 @@ describe("CreatorCourseDetail: o visitante que cria conta volta ao checkout", ()
     expect(returnOf(screen.getByRole("link", { name: "Sign in" }))).toBe("/courses/course-1");
   });
 
-  // Entrar volta a esta pagina, e quem ja tem o curso ve "Continue learning".
-  // O checkout agora tambem le a matricula: quem cai nele (pelo cadastro ou
-  // pelo "Sign in" da tela de cadastro) ve o mesmo, e nao o botao de pagar.
-  it("quem ja tem o curso e entra pelo cartao volta onde ve 'Continue learning'", async () => {
+  // Signing in returns to this page, and whoever already has the course sees "Continue learning".
+  // The checkout now also reads the enrollment: whoever lands on it (through sign-up or
+  // through the "Sign in" on the sign-up screen) sees the same, and not the pay button.
+  it("whoever already has the course and signs in through the card returns to where they see 'Continue learning'", async () => {
     const view = render(<CreatorCourseDetail courseIdOverride="course-1" />);
     const signin = await screen.findByRole("link", { name: "Sign in" });
     expect(returnOf(signin)).toBe("/courses/course-1");
@@ -1944,7 +1944,7 @@ describe("CreatorCourseDetail: o visitante que cria conta volta ao checkout", ()
     }
   });
 
-  it("a compra sem login (desligada hoje) leva o mesmo destino de antes", async () => {
+  it("purchase without login (turned off today) goes to the same destination as before", async () => {
     vi.stubEnv("NEXT_PUBLIC_GUEST_CHECKOUT_ENABLED", "true");
     vi.stubEnv("NEXT_PUBLIC_TURNSTILE_SITE_KEY", "site-key");
     try {
@@ -1960,7 +1960,7 @@ describe("CreatorCourseDetail: o visitante que cria conta volta ao checkout", ()
     }
   });
 
-  it("a barra do celular continua levando ao cartao, cujo link volta ao checkout", async () => {
+  it("the phone's bar still leads to the card, whose link returns to the checkout", async () => {
     const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" />);
     await screen.findByRole("link", { name: "Enroll — $149.00" });
 
@@ -1970,9 +1970,9 @@ describe("CreatorCourseDetail: o visitante que cria conta volta ao checkout", ()
     expect(returnOf(cardLink)).toBe("/courses/course-1/checkout");
   });
 
-  // O filtro de sempre (getSafeReturnTo, o mesmo do login, do e-mail de
-  // confirmacao e do fim da entrevista) deixa o checkout passar inteiro e
-  // continua barrando o que leva para fora.
+  // The usual filter (getSafeReturnTo, the same as login, the email
+  // confirmation and the end of the interview) lets the checkout through whole and
+  // still blocks what leads outside.
   it.each([
     ["/courses/focus-slug/checkout", "/courses/focus-slug/checkout"],
     ["/courses/focus-slug/checkout?offer=LAUNCH", "/courses/focus-slug/checkout?offer=LAUNCH"],
@@ -1986,7 +1986,7 @@ describe("CreatorCourseDetail: o visitante que cria conta volta ao checkout", ()
     expect(getSafeReturnTo(new URLSearchParams({ returnTo }))).toBe(expected);
   });
 
-  it("o destino que o link leva passa no filtro sem mudar", async () => {
+  it("the destination the link leads to passes the filter unchanged", async () => {
     fixtures.query = "offer=LAUNCH&priceId=price-1";
     withOffers();
     render(<CreatorCourseDetail courseIdOverride="focus-slug" />);
@@ -1995,7 +1995,7 @@ describe("CreatorCourseDetail: o visitante que cria conta volta ao checkout", ()
     expect(getSafeReturnTo(new URLSearchParams({ returnTo: destination }))).toBe(destination);
   });
 
-  it("o cupom usa o campo da casa e guarda o mesmo filtro do texto", async () => {
+  it("the coupon uses the house field and keeps the same filter as the text", async () => {
     fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
     render(<CreatorCourseDetail courseIdOverride="course-1" />);
     fireEvent.click(await screen.findByRole("button", { name: "Have a coupon?" }));
@@ -2003,7 +2003,7 @@ describe("CreatorCourseDetail: o visitante que cria conta volta ao checkout", ()
     const field = screen.getByLabelText("Coupon code");
     expect(field).toHaveClass("field-input");
     expect(field).not.toHaveClass("bg-white");
-    // Rótulo da casa: o mesmo do Field, 14px e sem caixa alta.
+    // House label: the same as Field, 14px and no uppercase.
     const label = screen.getByText("Coupon code");
     expect(label.closest("label")).toContainElement(field);
     expect(label).toHaveClass("text-sm", "text-[var(--color-ink)]");
@@ -2014,17 +2014,17 @@ describe("CreatorCourseDetail: o visitante que cria conta volta ao checkout", ()
   });
 });
 
-// A página de compra lê a matrícula, como a página de venda: quem já tem o
-// curso vê "Continue learning". Até a leitura responder, o botão espera; se
-// ela falhar, fica o botão de pagar de antes (o servidor recusa quem já tem).
-describe("CreatorCourseDetail: a página de compra reconhece quem já tem o curso", () => {
+// The purchase page reads the enrollment, like the sales page: whoever already has the
+// course sees "Continue learning". Until the read answers, the button waits; if
+// it fails, the pay button from before stays (the server refuses whoever already has it).
+describe("CreatorCourseDetail: the purchase page recognizes whoever already has the course", () => {
   const signIn = () => { fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "student-1" }; };
   afterEach(() => {
     enrollmentState.current = null;
     enrollmentState.deliverLater = false;
   });
 
-  it("quem já tem: 'Continue learning' para a sala, sem botão de pagar, uma leitura só", async () => {
+  it("whoever already has it: 'Continue learning' to the classroom, no pay button, a single read", async () => {
     signIn();
     enrollmentState.current = { status: "active" };
     render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
@@ -2036,7 +2036,7 @@ describe("CreatorCourseDetail: a página de compra reconhece quem já tem o curs
     expect(subscribeToEnrollment).toHaveBeenCalledWith("student-1", "course-1", expect.any(Function), expect.any(Function));
   });
 
-  it("quem não tem: com o preço na tela o botão espera a leitura, e só depois oferece pagar", async () => {
+  it("whoever does not: with the price on screen the button waits for the read, and only then offers to pay", async () => {
     signIn();
     enrollmentState.deliverLater = true;
     render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
@@ -2055,7 +2055,7 @@ describe("CreatorCourseDetail: a página de compra reconhece quem já tem o curs
     expect(screen.queryByRole("link", { name: "Continue learning" })).not.toBeInTheDocument();
   });
 
-  it("curso grátis: o botão de entrar grátis também espera a leitura", async () => {
+  it("free course: the free sign-up button also waits for the read", async () => {
     Object.assign(fixtures.course, { paymentType: "free", priceAmountMinor: 0 });
     signIn();
     enrollmentState.deliverLater = true;
@@ -2069,7 +2069,7 @@ describe("CreatorCourseDetail: a página de compra reconhece quem já tem o curs
     expect(await screen.findByRole("button", { name: "Enroll free" })).toBeEnabled();
   });
 
-  it("sem sessão: nada muda, e a matrícula não é lida", async () => {
+  it("no session: nothing changes, and the enrollment is not read", async () => {
     render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
 
     expect(await screen.findByRole("link", { name: "Enroll — $149.00" }))
@@ -2077,7 +2077,7 @@ describe("CreatorCourseDetail: a página de compra reconhece quem já tem o curs
     expect(subscribeToEnrollment).not.toHaveBeenCalled();
   });
 
-  it("a leitura falhou: fica o botão de pagar, como antes", async () => {
+  it("the read failed: the pay button stays, as before", async () => {
     signIn();
     vi.mocked(subscribeToEnrollment).mockImplementationOnce((_uid, _courseId, _onNext, onError) => {
       onError(new Error("offline"));
@@ -2093,10 +2093,10 @@ describe("CreatorCourseDetail: a página de compra reconhece quem já tem o curs
   });
 });
 
-// F-11: com a rede ruim, a leitura que falha tem saída na própria página
-// ("Try again" lê de novo), e nunca mostra preço ou botão de pagar inventados.
-describe("CreatorCourseDetail: a leitura que falha tem 'Try again'", () => {
-  it.each([false, true])("o curso não carregou: aviso, 'Try again' que assina de novo, e a loja como link (compra: %s)", async (checkoutOnly) => {
+// F-11: with a bad network, the read that fails has an exit on the page itself
+// ("Try again" reads again), and never shows an invented price or pay button.
+describe("CreatorCourseDetail: the read that fails has 'Try again'", () => {
+  it.each([false, true])("the course did not load: notice, 'Try again' that resubscribes, and the store as a link (purchase: %s)", async (checkoutOnly) => {
     fixtures.holdCourse = true;
     render(<RealCoursesProvider value><CreatorCourseDetail courseIdOverride="course-1" hideHeader checkoutOnly={checkoutOnly} /></RealCoursesProvider>);
     act(() => fixtures.courseError?.(new Error("offline")));
@@ -2108,7 +2108,7 @@ describe("CreatorCourseDetail: a leitura que falha tem 'Try again'", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(fixtures.subscriptions).toBe(2);
-    // O aviso fica até a resposta, com o botão ocupado.
+    // The notice stays until the response, with the button busy.
     expect(screen.getByRole("button", { name: "Trying again..." })).toHaveAttribute("aria-busy", "true");
 
     act(() => fixtures.courseNext?.(fixtures.course));
@@ -2116,7 +2116,7 @@ describe("CreatorCourseDetail: a leitura que falha tem 'Try again'", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("a releitura que falha de novo devolve o aviso, sem botão de pagar", async () => {
+  it("a re-read that fails again brings the notice back, with no pay button", async () => {
     fixtures.holdCourse = true;
     render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
     act(() => fixtures.courseError?.(new Error("offline")));
@@ -2128,7 +2128,7 @@ describe("CreatorCourseDetail: a leitura que falha tem 'Try again'", () => {
     expect(screen.queryByRole("button", { name: /Enroll/ })).not.toBeInTheDocument();
   });
 
-  it("o preço não carregou: 'Try again' no cartão lê as ofertas de novo, e o preço chega", async () => {
+  it("the price did not load: 'Try again' on the card reads the offers again, and the price arrives", async () => {
     fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({ ok: false, json: async () => ({ error: "unavailable" }) })
@@ -2152,10 +2152,10 @@ describe("CreatorCourseDetail: a leitura que falha tem 'Try again'", () => {
   });
 });
 
-// A leitura da matrícula que não responde nem falha não prende a compra: em 4 s
-// o botão de pagar volta (como numa falha). E a resposta atrasada de outra
-// pessoa não mexe no botão de quem está na página agora.
-describe("CreatorCourseDetail: o prazo da leitura da matrícula no checkout", () => {
+// An enrollment read that neither answers nor fails does not hold up the purchase: in 4 s
+// the pay button comes back (as on a failure). And a late response from another
+// person does not touch the button of whoever is on the page now.
+describe("CreatorCourseDetail: the deadline for reading the enrollment at checkout", () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "student-1" };
@@ -2168,7 +2168,7 @@ describe("CreatorCourseDetail: o prazo da leitura da matrícula no checkout", ()
     enrollmentState.deliverLater = false;
   });
 
-  it("sem resposta em 4 s, o botão de pagar volta, como numa falha", async () => {
+  it("with no response in 4 s, the pay button comes back, as on a failure", async () => {
     render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
     await screen.findByText("$149.00");
     expect(screen.getByRole("button", { name: "Enroll" })).toBeDisabled();
@@ -2182,7 +2182,7 @@ describe("CreatorCourseDetail: o prazo da leitura da matrícula no checkout", ()
     expect(startCourseCheckout).toHaveBeenCalledWith("course-1", {});
   });
 
-  it("a resposta em 1 s vale, e o prazo não muda nada depois", async () => {
+  it("a response in 1 s counts, and the deadline changes nothing afterward", async () => {
     const armed = vi.spyOn(window, "setTimeout");
     const disarmed = vi.spyOn(window, "clearTimeout");
     render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
@@ -2194,7 +2194,7 @@ describe("CreatorCourseDetail: o prazo da leitura da matrícula no checkout", ()
     act(() => enrollmentState.onNext?.({ status: "active" }));
 
     expect(screen.getByRole("link", { name: "Continue learning" })).toBeInTheDocument();
-    // O prazo foi desarmado com a resposta, antes de vencer.
+    // The deadline was disarmed with the response, before expiring.
     expect(disarmed).toHaveBeenCalledWith(deadline);
     act(() => vi.advanceTimersByTime(5_000));
     expect(screen.getByRole("link", { name: "Continue learning" })).toBeInTheDocument();
@@ -2203,7 +2203,7 @@ describe("CreatorCourseDetail: o prazo da leitura da matrícula no checkout", ()
     disarmed.mockRestore();
   });
 
-  it("desmontar não deixa prazo pendente", async () => {
+  it("unmounting leaves no pending deadline", async () => {
     const view = render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
     await screen.findByText("$149.00");
     expect(vi.getTimerCount()).toBeGreaterThan(0);
@@ -2211,7 +2211,7 @@ describe("CreatorCourseDetail: o prazo da leitura da matrícula no checkout", ()
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it("trocou a pessoa com a 1ª leitura no ar: a resposta velha não mexe na de agora", async () => {
+  it("the person changed with the 1st read in flight: the old response does not touch the current one", async () => {
     const old: { next: ((enrollment: unknown) => void) | null } = { next: null };
     vi.mocked(subscribeToEnrollment).mockImplementationOnce((_uid, _courseId, onNext) => {
       old.next = onNext as (enrollment: unknown) => void;

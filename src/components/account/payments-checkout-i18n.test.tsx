@@ -73,9 +73,9 @@ describe("payment checkout localization with real dictionaries", () => {
     let resolve!: (value: Response) => void;
     mocks.fetch.mockReturnValue(new Promise<Response>((done) => { resolve = done; }));
     mount(kind === "activation" ? <ActivationCheckoutPanel /> : <EmbeddedCheckoutPanel planId="pro" cycle="yearly" />);
-    // A espera guarda o lugar do formulario (esqueleto) e anuncia a frase.
+    // The wait holds the place of the form (skeleton) and announces the sentence.
     const waiting = screen.getByRole("status");
-    // Status sem aria-busy: alguns leitores seguram o anuncio com os dois juntos.
+    // Status without aria-busy: some readers hold the announcement when both are together.
     expect(waiting).not.toHaveAttribute("aria-busy");
     expect(waiting).toHaveAttribute("data-skeleton", "stripe");
     expect(waiting).toHaveTextContent(copy("es", "activationCheckout.preparing"));
@@ -147,7 +147,7 @@ describe("payment checkout localization with real dictionaries", () => {
     mocks.fetch.mockResolvedValue(response(status, code));
     mount(<EmbeddedCheckoutPanel planId="starter" cycle="monthly" />);
     expect(await screen.findByRole("alert")).toHaveTextContent(copy("es", `billingCheckout.error.${key}`));
-    // O codigo fica so no recolhido "para o suporte", sem "HTTP" na frase.
+    // The code stays only in the collapsed "for support", with no "HTTP" in the sentence.
     expect(screen.getByRole("alert")).toHaveTextContent(`Código de error: ${status}`);
     expect(screen.getByRole("alert")).not.toHaveTextContent("HTTP");
     expect(screen.getByText("Detalles para soporte").closest("details")).not.toHaveAttribute("open");

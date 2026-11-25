@@ -37,7 +37,7 @@ describe("protected asset preview identity", () => {
       <I18nProvider initialLocale="en"><ChangeLanguage /><ProtectedAssetPreview asset={selectedAsset} /></I18nProvider>,
     );
     expect(screen.getByText("Preparing protected asset...")).toBeInTheDocument();
-    // Arquivo que não é vídeo: uma linha com o anel, sem a pílula branca.
+    // A file that is not a video: one row with the ring, without the white pill.
     expect(screen.getByRole("status")).toHaveTextContent("Preparing protected asset...");
     expect(screen.getByRole("status")).not.toHaveClass("bg-white");
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
@@ -49,7 +49,7 @@ describe("protected asset preview identity", () => {
     });
     if (outcome === "success") {
       expect(screen.getByRole("link", { name: "Abrir archivo" })).toHaveAttribute("href", "blob:protected-image");
-      // O botão de baixar só pede o link dele no clique.
+      // The download button only asks for its link on click.
       expect(screen.getByRole("button", { name: "Descargar" })).toBeInTheDocument();
     } else {
       expect(screen.getByText("El acceso al archivo está protegido. Actualiza tu sesión e inténtalo de nuevo.")).toBeInTheDocument();
@@ -58,7 +58,7 @@ describe("protected asset preview identity", () => {
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
     if (outcome === "success") expect(screen.getByRole("link", { name: "Open file" })).toHaveAttribute("href", "blob:protected-image");
     else expect(screen.getByText("Asset access is protected. Try again after refreshing your session.")).toBeInTheDocument();
-    // Trocar o idioma não pede link novo: só o de abrir.
+    // Switching the language does not ask for a new link: only the open one.
     expect(sign.mock.calls).toEqual([[selectedAsset]]);
     view.unmount();
     if (outcome === "success") expect(URL.revokeObjectURL).toHaveBeenCalledExactlyOnceWith("blob:protected-image");
@@ -71,7 +71,7 @@ describe("protected asset preview identity", () => {
     const pdf = { ...asset("pdf"), fileName: "Apostila (1).pdf", title: "Apostila", kind: "lesson_material" as const, contentType: "application/pdf" };
     render(<ProtectedAssetPreview asset={pdf} />);
 
-    // O nome dado pelo professor é o que aparece.
+    // The name given by the teacher is what appears.
     expect(await screen.findByTitle("Apostila")).toHaveAttribute("src", "https://storage.example/open");
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Download" }));
@@ -90,8 +90,8 @@ describe("protected asset preview identity", () => {
     rerender(<ProtectedAssetPreview asset={asset("next")} />);
     expect(screen.queryByLabelText("old")).not.toBeInTheDocument();
     expect(screen.getByText("Preparing protected asset...")).toBeInTheDocument();
-    // Vídeo: a espera tem o 16:9 do player que vem (a caixa da sala), não uma
-    // pílula branca que depois vira o vídeo inteiro.
+    // Video: the wait has the 16:9 of the player that is coming (the classroom box), not a
+    // white pill that later becomes the whole video.
     expect(screen.getByRole("status")).toHaveClass("member-video-empty--loading", "protected-asset-loading");
     expect(revoke).toHaveBeenCalledWith("blob:old");
   });

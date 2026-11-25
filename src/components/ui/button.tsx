@@ -5,27 +5,27 @@ import { BusyLabel } from "@/components/ui/busy-label";
 import { cn } from "@/lib/cn";
 
 /**
- * Papéis: navy (`solid`) age; latão (`accent`) só nos dois marcos da jornada,
- * "Create product" e "Publish product". Latão nunca em erro, aviso ou apagar
- * (isso é `danger`).
+ * Roles: navy (`solid`) acts; brass (`accent`) only at the two milestones of the journey,
+ * "Create product" and "Publish product". Never brass on error, warning or delete
+ * (that is `danger`).
  */
 export type ButtonVariant = "solid" | "outline" | "danger" | "ghost" | "accent";
 export type ButtonSize = "sm" | "md" | "lg";
 
 /**
- * As classes globais (.button-solid e companhia, globals.css:1006+) definem
- * QUATRO coisas: borda, fundo, cor e sombra. Não definem raio, espaçamento,
- * peso da fonte nem alinhamento do ícone. Por isso cada um dos 361 usos delas
- * repetia à mão "inline-flex items-center gap-2 rounded-[10px] px-4 py-2
- * text-sm font-semibold". É esse resto que mora aqui.
+ * The global classes (.button-solid and company, globals.css:1006+) define
+ * FOUR things: border, background, color and shadow. They do not define radius, spacing,
+ * font weight or icon alignment. That is why each of their 361 uses
+ * repeated by hand "inline-flex items-center gap-2 rounded-[10px] px-4 py-2
+ * text-sm font-semibold". That remainder is what lives here.
  */
 const variantClass: Record<ButtonVariant, string> = {
   solid: "button-solid",
   outline: "button-outline",
   danger: "button-danger",
   accent: "button-accent",
-  // Sem classe global: fundo transparente que só ganha cor no hover. A única
-  // variante que traz a própria transição (as outras vêm do CSS global).
+  // No global class: transparent background that only gains color on hover. The only
+  // variant that brings its own transition (the others come from the global CSS).
   ghost:
     "border border-transparent bg-transparent text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-ink)]",
 };
@@ -33,21 +33,21 @@ const variantClass: Record<ButtonVariant, string> = {
 const sizeClass: Record<ButtonSize, string> = {
   sm: "px-3 py-1.5 text-xs",
   md: "min-h-11 px-4 py-2.5 text-sm",
-  // 48px e 15px/600 vêm de .button-lg (camada components).
+  // 48px and 15px/600 come from .button-lg (components layer).
   lg: "button-lg",
 };
 
-// Sem `transition` aqui: a utility (150ms) vencia a camada components e
-// brigava com o afundar de 120ms / soltar de 180ms do CSS global. Os 60% de
-// desligado valem para o ghost; as outras variantes já os recebem da regra
-// central do globals.css.
+// No `transition` here: the utility (150ms) beat the components layer and
+// fought with the global CSS's 120ms press / 180ms release. The 60% for
+// disabled applies to ghost; the other variants already get it from the
+// central rule in globals.css.
 const base =
   "inline-flex items-center justify-center gap-2 rounded-md font-semibold disabled:cursor-not-allowed disabled:opacity-60";
 
 /**
- * A forma em texto, para quem precisa de <Link> vestido de botão — 40 arquivos
- * fazem isso. Um componente polimórfico para atender next/link custaria mais
- * tipo do que valor: o call site já escreve <Link>, só falta a roupa.
+ * The text form, for whoever needs a <Link> dressed as a button — 40 files
+ * do this. A polymorphic component to serve next/link would cost more
+ * typing than it is worth: the call site already writes <Link>, only the outfit is missing.
  */
 export function buttonClasses(
   options: { variant?: ButtonVariant; size?: ButtonSize; fullWidth?: boolean } = {},
@@ -61,14 +61,14 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;
   size?: ButtonSize;
   fullWidth?: boolean;
-  /** Ícone à esquerda do texto. Decorativo: o nome do botão é o texto. */
+  /** Icon to the left of the text. Decorative: the button's name is the text. */
   icon?: ReactNode;
-  /** Carregando: o spinner toma o lugar do ícone e o botão trava. */
+  /** Loading: the spinner takes the icon's place and the button locks. */
   loading?: boolean;
   /**
-   * Rótulo da espera ("Saving..."), escrito ao lado do spinner enquanto
-   * `loading`. Com ele, os dois rótulos (e o lugar do spinner) ficam
-   * reservados na mesma célula: o botão tem sempre a mesma largura.
+   * Waiting label ("Saving..."), written beside the spinner while
+   * `loading`. With it, both labels (and the spinner's spot) are
+   * reserved in the same cell: the button always has the same width.
    */
   busyLabel?: ReactNode;
 };
@@ -91,7 +91,7 @@ export function Button({
   );
   return (
     <button
-      // Sem type explícito, todo botão dentro de <form> envia o formulário.
+      // Without an explicit type, every button inside a <form> submits the form.
       type={type}
       className={buttonClasses({ variant, size, fullWidth }, className)}
       disabled={disabled || loading}
@@ -104,8 +104,8 @@ export function Button({
           {children}
         </>
       ) : (
-        // O spinner mora na face da espera: invisível em repouso, mas já
-        // ocupando o lugar, então aparecer não alarga o botão.
+        // The spinner lives on the waiting face: invisible at rest, but already
+        // taking up its place, so appearing does not widen the button.
         <BusyLabel
           busy={loading}
           idle={

@@ -6,12 +6,12 @@ import { cn } from "@/lib/cn";
 type AlertTone = "error" | "warning" | "success" | "info";
 
 /**
- * O projeto tem 187 superfícies pintadas de vermelho de erro e 23 role="alert"
- * no total. Ou seja: a esmagadora maioria das mensagens de erro nunca é
- * anunciada por leitor de tela — quem não enxerga a tela envia o formulário,
- * nada acontece de audível, e a pessoa não sabe que falhou.
+ * The project has 187 surfaces painted error red and 23 role="alert"
+ * in total. That is: the overwhelming majority of error messages are never
+ * announced by a screen reader — someone who cannot see the screen submits the form,
+ * nothing audible happens, and the person does not know it failed.
  *
- * O anúncio não é uma prop opcional aqui. Vem junto com a cor, sempre.
+ * The announcement is not an optional prop here. It comes with the color, always.
  */
 const toneClass: Record<AlertTone, string> = {
   error:
@@ -23,8 +23,8 @@ const toneClass: Record<AlertTone, string> = {
   info: "border-[var(--color-line)] bg-[var(--color-info-soft)] text-[var(--color-ink-soft)]",
 };
 
-// Um ícone por tom: sem ele a única diferença entre erro, aviso e sucesso era a
-// cor, e quem não distingue vermelho de verde ficava sem sinal nenhum.
+// One icon per tone: without it the only difference between error, warning and success was
+// color, and whoever cannot tell red from green was left with no signal at all.
 const toneIcon: Record<AlertTone, LucideIcon> = {
   error: AlertCircle,
   warning: AlertTriangle,
@@ -40,12 +40,12 @@ export type InlineAlertProps = {
 };
 
 export function InlineAlert({ tone, title, className, children }: InlineAlertProps) {
-  // "assertive" interrompe a leitura para dar a má notícia; "polite" espera a
-  // frase corrente terminar. Erro é a única coisa que merece interromper.
+  // "assertive" interrupts the reading to deliver the bad news; "polite" waits for the
+  // current sentence to finish. Error is the only thing that deserves to interrupt.
   const urgent = tone === "error";
-  // Seis telas de professor e admin já arrumam os próprios filhos em flex (uma
-  // com o próprio ícone). Elas seguem como antes, sem ícone nem miolo: o ícone
-  // novo não pode empurrar o botão nem dobrar o símbolo delas.
+  // Six teacher and admin screens already arrange their own children in flex (one
+  // with its own icon). They carry on as before, with no icon and no inner wrapper: the new
+  // icon must not push the button or duplicate their symbol.
   const ownLayout = /(^|\s)flex(\s|$)/.test(className ?? "");
   const Icon = toneIcon[tone];
   const content = (
@@ -70,15 +70,15 @@ export function InlineAlert({ tone, title, className, children }: InlineAlertPro
         content
       ) : (
         <>
-          {/* h-[1lh]: a caixa do ícone tem a altura de UMA linha do texto, então
-              ele fica centrado na primeira linha em qualquer tamanho (text-xs ou
-              text-sm) e o texto que quebra alinha embaixo do texto, não dele. */}
+          {/* h-[1lh]: the icon box is the height of ONE line of text, so
+              it stays centered on the first line at any size (text-xs or
+              text-sm) and text that wraps lines up under the text, not under it. */}
           <span className="flex h-[1lh] shrink-0 items-center">
             <Icon aria-hidden="true" size={16} strokeWidth={2.2} />
           </span>
-          {/* Frase simples fica direto na caixa, como antes (é o caso de quase
-              todos os usos); título ou trechos com link ganham um miolo, para
-              não virarem colunas lado a lado. */}
+          {/* A plain sentence goes straight into the box, as before (the case for almost
+              all uses); a title or pieces with a link get an inner wrapper, so
+              they do not become side-by-side columns. */}
           {title || typeof children !== "string" ? <div className="min-w-0 flex-1">{content}</div> : children}
         </>
       )}

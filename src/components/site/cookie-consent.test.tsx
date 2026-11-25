@@ -1,6 +1,6 @@
-// O aviso de cookies oferece duas escolhas de mesmo peso e um link para a
-// politica. O antigo "Manage preferences" abria a mesma politica e nao
-// gerenciava nada: nao pode voltar como botao.
+// The cookie notice offers two choices of equal weight and a link to the
+// policy. The old "Manage preferences" opened the same policy and did not
+// manage anything: it must not come back as a button.
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -16,8 +16,8 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-describe("aviso de cookies", () => {
-  it("mostra so recusar e aceitar, e o link da politica no texto", () => {
+describe("cookie notice", () => {
+  it("shows only decline and accept, and the policy link in the text", () => {
     render(<CookieConsent />);
     const banner = screen.getByRole("dialog", { name: "Cookie preferences" });
 
@@ -31,7 +31,7 @@ describe("aviso de cookies", () => {
     expect(within(banner).queryByText(/manage preferences/i)).toBeNull();
   });
 
-  it("recusar guarda a escolha, desliga a medicao e fecha o aviso", () => {
+  it("declining saves the choice, turns off measurement and closes the notice", () => {
     render(<CookieConsent />);
     fireEvent.click(screen.getByRole("button", { name: "Reject non-essential" }));
 
@@ -40,7 +40,7 @@ describe("aviso de cookies", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("aceitar guarda a escolha, liga a medicao e fecha o aviso", () => {
+  it("accepting saves the choice, turns on measurement and closes the notice", () => {
     render(<CookieConsent />);
     fireEvent.click(screen.getByRole("button", { name: "Accept all" }));
 

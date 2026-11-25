@@ -57,8 +57,8 @@ describe("FeaturedCourses", () => {
     expect(screen.queryByRole("list")).not.toBeInTheDocument();
   });
 
-  // Os 6 cartões chegavam de uma vez e empurravam a página para baixo:
-  // agora o molde do catálogo guarda o lugar até a primeira resposta.
+  // The 6 cards arrived all at once and pushed the page down:
+  // now the catalog's mold holds the place until the first response.
   it("holds the cards' place with the catalog skeleton until the first answer", () => {
     mocks.getSupabaseClientConfig.mockReturnValue({ url: "https://example.test", anonKey: "anon" });
     let answer: (courses: unknown[]) => void = () => {};
@@ -70,8 +70,8 @@ describe("FeaturedCourses", () => {
     const { container } = render(<FeaturedCourses />);
 
     const skeleton = container.querySelector(".marketplace-course-grid[aria-hidden='true']");
-    // Uma fileira: 3 no computador; o wrapper esconde o 2º abaixo de 640px e
-    // o 3º abaixo de 1024px.
+    // One row: 3 on desktop; the wrapper hides the 2nd below 640px and
+    // the 3rd below 1024px.
     expect(skeleton?.querySelectorAll(".marketplace-card.animate-pulse")).toHaveLength(3);
     expect(skeleton?.parentElement?.className).toContain("max-sm:[&_.marketplace-card:nth-child(n+2)]:hidden!");
     expect(skeleton?.parentElement?.className).toContain("max-lg:[&_.marketplace-card:nth-child(n+3)]:hidden!");

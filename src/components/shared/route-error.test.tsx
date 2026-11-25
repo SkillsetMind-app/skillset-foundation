@@ -1,5 +1,5 @@
-// O erro de uma área devolve a pessoa ao início da PRÓPRIA área, não ao site
-// público, e os dois botões precisam funcionar mesmo em /teach e /learn.
+// An area's error returns the person to the start of their OWN area, not to the public
+// site, and both buttons must work even on /teach and /learn.
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -19,8 +19,8 @@ const boundaries = [
   ["área do aluno", LearnError, "/learn", "learn"],
 ] as const;
 
-describe("erro dentro de uma área", () => {
-  it.each(boundaries)("%s: registra o erro com a área e mostra o cartão", (_name, Boundary, _home, boundary) => {
+describe("error inside an area", () => {
+  it.each(boundaries)("%s: logs the error with the area and shows the card", (_name, Boundary, _home, boundary) => {
     const error = Object.assign(new Error("boom"), { digest: "d1" });
     render(<Boundary error={error} reset={vi.fn()} retry={vi.fn()} />);
 
@@ -28,9 +28,9 @@ describe("erro dentro de uma área", () => {
     expect(mocks.capture).toHaveBeenCalledWith(error, { boundary, digest: "d1" });
   });
 
-  // `reset` só redesenha com o mesmo resultado do servidor: o erro voltaria
-  // igual. O botão tem de buscar os dados de novo (`retry`).
-  it.each(boundaries)("%s: 'Try again' busca os dados de novo", (_name, Boundary) => {
+  // `reset` only redraws with the same server result: the error would come back
+  // the same. The button has to fetch the data again (`retry`).
+  it.each(boundaries)("%s: 'Try again' fetches the data again", (_name, Boundary) => {
     const reset = vi.fn();
     const retry = vi.fn();
     render(<Boundary error={new Error("boom")} reset={reset} retry={retry} />);
@@ -40,7 +40,7 @@ describe("erro dentro de uma área", () => {
     expect(reset).not.toHaveBeenCalled();
   });
 
-  it("sem `retry` (versão antiga do Next) 'Try again' ainda limpa o erro", () => {
+  it("without `retry` (old Next version) 'Try again' still clears the error", () => {
     const reset = vi.fn();
     render(<TeachError error={new Error("boom")} reset={reset} />);
 
@@ -48,9 +48,9 @@ describe("erro dentro de uma área", () => {
     expect(reset).toHaveBeenCalledTimes(1);
   });
 
-  // A fronteira de erro só se desfaz quando o endereço muda. Um <Link> para a
-  // própria página não mudaria nada: o link é um <a> comum, com recarga.
-  it.each(boundaries)("%s: 'Go home' é um link comum para o início da área", (_name, Boundary, home) => {
+  // The error boundary only resets when the address changes. A <Link> to the
+  // page itself would change nothing: the link is a plain <a>, with a reload.
+  it.each(boundaries)("%s: 'Go home' is a plain link to the start of the area", (_name, Boundary, home) => {
     render(<Boundary error={new Error("boom")} reset={vi.fn()} retry={vi.fn()} />);
 
     const link = screen.getByRole("link", { name: "Go home" });

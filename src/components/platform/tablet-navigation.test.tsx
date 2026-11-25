@@ -55,7 +55,7 @@ function openGroup(section: "Sales" | "Promote") {
   return trigger;
 }
 
-// A escolha da barra mora no cookie que o servidor le (onda E, parte 2).
+// The bar's choice lives in the cookie that the server reads (wave E, part 2).
 function savePreference(preference: string) {
   document.cookie = `skillset_sidebar=${preference}; path=/`;
 }
@@ -68,7 +68,7 @@ afterEach(() => {
   mocks.pathname = "/teach";
 });
 
-// 1024-1179px: o rail passou a ser o padrao tambem ai, e o grupo abre a gaveta.
+// 1024-1179px: the rail became the default here too, and the group opens the drawer.
 it.each([768, 1023, 1023.5, 1100, 1179])("opens both requested groups with labels and working destinations at %s px", (width) => {
   viewport(width);
   render(<PlatformShell title="Home">Content</PlatformShell>);

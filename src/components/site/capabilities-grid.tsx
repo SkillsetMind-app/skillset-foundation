@@ -17,9 +17,9 @@ type Capability = {
   Icon: LucideIcon;
 };
 
-// Server component: só texto traduzido, nenhum estado. Sai do bundle do
-// navegador; o que precisa do cliente aqui é o RevealSection, que continua
-// cliente e é montado como filho.
+// Server component: only translated text, no state. It stays out of the browser
+// bundle; what needs the client here is RevealSection, which remains a
+// client component and is mounted as a child.
 export async function CapabilitiesGrid() {
   const { t } = await getServerTranslation();
   const capabilities: ReadonlyArray<Capability> = [
@@ -37,9 +37,9 @@ export async function CapabilitiesGrid() {
 
   return (
     <section className="mx-auto w-full max-w-7xl px-5 py-16 sm:px-8 sm:py-20 lg:py-24">
-      {/* Mesma escala de título e de texto das outras seções da home: 36px
-          a 52px, sempre abaixo do título do topo (largo, para caber em duas
-          linhas), e texto de 17/18px na cor cheia. */}
+      {/* Same title and text scale as the other home sections: 36px
+          to 52px, always below the top title (wide, to fit in two
+          lines), and 17/18px text in the full color. */}
       <RevealSection className="home-heading max-w-4xl">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {t("home.capabilities.kicker")}
@@ -56,8 +56,8 @@ export async function CapabilitiesGrid() {
           const { Icon } = capability;
           return (
             <RevealSection key={capability.title} className="home-card">
-              {/* Cartão de leitura, não link: parado no mouse. Subir e trocar
-                  a cor do ícone fazia parecer um botão que não abre nada. */}
+              {/* Reading card, not a link: still on mouse. Lifting and changing
+                  the icon color made it look like a button that opens nothing. */}
               <article className="h-full rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
                 <span
                   className="grid size-12 place-items-center rounded-md bg-[var(--color-surface-soft)] text-[var(--color-primary)] ring-1 ring-inset ring-[var(--color-line)] shadow-[0_6px_14px_rgba(26,54,93,0.08)]"

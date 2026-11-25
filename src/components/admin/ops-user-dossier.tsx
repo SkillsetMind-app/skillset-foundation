@@ -22,7 +22,7 @@ import {
 const copy = "platform.ops.userDossier";
 type LoadError = "mfaRequired" | "missing" | "loadError";
 
-// A ordem das perguntas é a do formulário de entrada (onboarding-wizard.tsx).
+// The order of the questions is that of the sign-up form (onboarding-wizard.tsx).
 const ANSWER_ORDER = [
   "profession",
   "sourceOfDiscovery",
@@ -38,7 +38,7 @@ const PATH_KEYS: Record<string, string> = {
   teacher: "authFlow.onboarding.teacherPath",
 };
 
-// Só recusa conhecida vira texto; diagnóstico do provedor nunca vai para a tela.
+// Only a known refusal becomes text; the provider's diagnostic never goes to the screen.
 function errorKey(caught: unknown): LoadError {
   const message = typeof caught === "object" && caught !== null && "message" in caught ? caught.message : null;
   if (message === "OPS_ADMIN_MFA_REQUIRED") return "mfaRequired";
@@ -53,7 +53,7 @@ function formatDate(value: string | null, locale: string, withTime = false): str
   return new Intl.DateTimeFormat(locale, withTime ? { dateStyle: "medium", timeStyle: "short" } : { dateStyle: "medium" }).format(date);
 }
 
-// Casas decimais vêm da moeda (JPY tem 0, USD tem 2), não de uma divisão fixa por 100.
+// Decimal places come from the currency (JPY has 0, USD has 2), not from a fixed division by 100.
 function formatMinor(amount: number, currency: string | null, locale: string): string {
   if (!currency) return String(amount);
   try {
@@ -64,7 +64,7 @@ function formatMinor(amount: number, currency: string | null, locale: string): s
   }
 }
 
-// Respostas e campos jsonb livres: lista vira texto separado por vírgula.
+// Free-form answers and jsonb fields: a list becomes comma-separated text.
 function plainValue(value: unknown): string | null {
   if (Array.isArray(value)) {
     const items = value.filter((item) => typeof item === "string" && item.trim()) as string[];
@@ -75,8 +75,8 @@ function plainValue(value: unknown): string | null {
   return null;
 }
 
-// `list`: a seção é uma lista só (linha do tempo, pedidos de privacidade). Antes
-// ela repetia o próprio título como rótulo do único campo (I-03).
+// `list`: the section is just one list (timeline, privacy requests). It used to
+// repeat its own title as the label of the only field (I-03).
 function Section({ title, list = false, children }: { title: string; list?: boolean; children: ReactNode }) {
   return (
     <section className="min-w-0 rounded-lg border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)] sm:p-6">
@@ -98,13 +98,13 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
 }
 
 const listClass = "mt-2 grid gap-1 text-xs text-[var(--color-ink-soft)]";
-// Linha de lista: status vira etiqueta e valor ausente não deixa " ·  · " (I-10).
+// List row: status becomes a tag and a missing value does not leave " ·  · " (I-10).
 const rowClass = "flex flex-wrap items-center gap-x-2 gap-y-1 break-words";
 const joined = (...parts: (string | null | undefined | false)[]) => parts.filter(Boolean).join(" · ");
 
-// O cabeçalho da página mora aqui, e não na casca: o h1 é o nome da pessoa,
-// que só chega depois da leitura (I-03). Mesmas classes do cabeçalho compacto
-// da casca, para nada mudar de lugar. Carregando ou com erro, o h1 é o genérico.
+// The page header lives here, not in the shell: the h1 is the person's name,
+// which only arrives after the read (I-03). Same classes as the shell's compact
+// header, so nothing moves. While loading or on error, the h1 is the generic one.
 function PageHeading({ eyebrow, title }: { eyebrow: string; title: string }) {
   return (
     <div className="platform-page-heading platform-page-heading--compact">
@@ -218,14 +218,14 @@ export function OpsUserDossierPanel({ uid }: { uid: string }) {
   const last30 = LAST_30_ORDER.map((key) => `${behavior.last_30_days?.[key] ?? 0} ${t(`${copy}.last30.${key}`)}`).join(" · ");
   const verificationCase = creator.verification_case;
   const evidence = verificationCase ? plainValue(verificationCase.evidence_links) : null;
-  // O nome do plano como a área da conta mostra (billing-tabs.tsx); o código
-  // cru fica só como detalhe, para copiar (I-10).
+  // The plan name as the account area shows it (billing-tabs.tsx); the raw
+  // code stays only as a detail, to copy (I-10).
   const plan = purchases.plan_subscription;
   const planName = plan?.plan_id ? plans.find((entry) => entry.id === plan.plan_id)?.name ?? null : null;
   const levels = identity.roles.length ? identity.roles.map((role) => t(roleLabelKeys[role])).join(", ") : none;
 
   return (
-    // ops-surface: escopo das regras de CSS só do /ops (globals.css).
+    // ops-surface: scope for the CSS rules that apply only to /ops (globals.css).
     <div className="ops-surface grid min-w-0 gap-5">
       {controlOpen ? (
         <AccountControlDialog uid={identity.uid} label={identity.email || identity.display_name || identity.uid}
@@ -237,8 +237,8 @@ export function OpsUserDossierPanel({ uid }: { uid: string }) {
       <header className="min-w-0 rounded-lg border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)] sm:p-6">
         <p className="break-all text-sm text-[var(--color-ink-soft)]">{identity.email ?? none}</p>
         <p className="mt-1 break-all text-xs text-[var(--color-ink-soft)]">UID: {identity.uid}</p>
-        {/* Faixa de resumo: status (uma vez só), nível, plano e entrada, sem
-            rolar até os cartões (I-03). */}
+        {/* Summary strip: status (only once), level, plan and sign-in, without
+            scrolling down to the cards (I-03). */}
         <dl className="mt-4 flex flex-wrap gap-x-8 gap-y-3 border-t border-[var(--color-line)] pt-4 text-sm">
           <Fact label={t("platform.ops.userTable.statusLabel")}>{statusChip}</Fact>
           <Fact label={t("platform.ops.userTable.roleLabel")}>{levels}</Fact>

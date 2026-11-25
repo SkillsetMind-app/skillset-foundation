@@ -6,11 +6,11 @@ import { useEffect, useRef, useSyncExternalStore, type KeyboardEvent } from "rea
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 
-// A busca morava DENTRO da barra lateral e só existia com ela expandida: quem
-// recolhia o rail para ganhar tela perdia a busca, e no celular — onde a barra
-// vira gaveta — ela não existia em largura nenhuma. Buscar não é navegação de
-// menu, é uma ação da página: agora vive na barra do topo, que está presente em
-// toda largura (achado F26 da auditoria).
+// Search lived INSIDE the sidebar and only existed with it expanded: whoever
+// collapsed the rail to gain screen space lost search, and on the phone — where the bar
+// becomes a drawer — it did not exist at any width. Searching is not menu
+// navigation, it is a page action: it now lives in the top bar, which is present at
+// every width (audit finding F26).
 
 export function PlatformSearch({
   pathname,
@@ -19,11 +19,11 @@ export function PlatformSearch({
   onDismiss,
 }: {
   pathname: string;
-  /** No celular a barra do topo não tem largura para o campo; um ícone o abre. */
+  /** On the phone the top bar has no room for the field; an icon opens it. */
   open?: boolean;
   /** A page with a query consumer can preserve its own scope and parameters. */
   searchHref?: string;
-  /** Fecha a faixa do celular: Esc (devolve o foco ao ícone) ou busca enviada. */
+  /** Closes the phone strip: Esc (returns focus to the icon) or search submitted. */
   onDismiss?: (reason: "escape" | "submit") => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -58,8 +58,8 @@ export function PlatformSearch({
       return;
     }
 
-    // A busca do professor ia para /teach?query=, que ninguem le: o Enter
-    // recarregava a Home igual. A lista de produtos ja filtra por ?q=.
+    // The teacher's search went to /teach?query=, which nobody reads: Enter
+    // reloaded Home unchanged. The products list already filters by ?q=.
     const target = pathname.startsWith("/teach")
       ? `/teach/builder?q=${encodeURIComponent(query)}`
       : `/courses?q=${encodeURIComponent(query)}`;
@@ -70,12 +70,12 @@ export function PlatformSearch({
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Enter") {
       submitSearch();
-      // No celular a faixa abre por cima do título da página: ficava aberta
-      // sobre os resultados até a pessoa achar o ícone de novo.
+      // On the phone the strip opens over the page title: it stayed open
+      // over the results until the person found the icon again.
       onDismiss?.("submit");
     } else if (event.key === "Escape" && open) {
-      // Sem isto o navegador também apaga o texto do campo no mesmo Esc, e a
-      // faixa reabria vazia sobre uma lista ainda filtrada.
+      // Without this the browser also clears the field text on the same Esc, and the
+      // strip reopened empty over a list that was still filtered.
       event.preventDefault();
       onDismiss?.("escape");
     }
@@ -106,7 +106,7 @@ export function PlatformSearch({
         aria-label={placeholder}
         onKeyDown={handleKeyDown}
       />
-      {/* Atalho de teclado não é dica para quem está no toque. */}
+      {/* A keyboard shortcut is not a hint for someone on touch. */}
       {shortcutLabel ? <span aria-hidden="true" className="pointer-coarse:hidden">{shortcutLabel}</span> : null}
     </label>
   );
@@ -115,17 +115,17 @@ export function PlatformSearch({
 const EMPTY_SUBSCRIBE = () => () => {};
 
 /**
- * A dica dizia "Ctrl K" fixa, inclusive no Mac, onde o atalho é ⌘K — e o
- * ouvinte sempre aceitou as duas teclas. O servidor não sabe qual é o teclado
- * de quem vai ler, então o instantâneo do servidor é `null` e nada é escrito;
- * o rótulo certo entra na hidratação, sem divergência. É decorativo
- * (aria-hidden), então nascer um quadro depois não custa a ninguém.
+ * The hint said a fixed "Ctrl K", including on Mac, where the shortcut is ⌘K — and the
+ * listener always accepted both keys. The server does not know what keyboard the
+ * reader has, so the server snapshot is `null` and nothing is written;
+ * the right label enters at hydration, with no mismatch. It is decorative
+ * (aria-hidden), so appearing one frame later costs nobody anything.
  */
 function useShortcutLabel() {
   return useSyncExternalStore(
     EMPTY_SUBSCRIBE,
     // ponytail: navigator.platform está depreciado mas é o único campo que
-    // todo navegador ainda preenche; o userAgent cobre o resto.
+    // every browser still fills in; the userAgent covers the rest.
     () =>
       /mac|iphone|ipad|ipod/i.test(`${navigator.platform} ${navigator.userAgent}`)
         ? "⌘K"

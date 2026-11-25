@@ -13,8 +13,8 @@ import { toDate } from "@/lib/format-date";
 import { formatMoney } from "@/lib/format-money";
 import { platformFeeForSale } from "@/lib/payments/rules";
 
-// Quando o dinheiro entrou; sem pagamento ainda, quando o pedido nasceu. O
-// rótulo diz qual das duas é ("Paid on" ou "Created on").
+// When the money came in; with no payment yet, when the order was created. The
+// label says which of the two it is ("Paid on" or "Created on").
 function orderDate(order: Order, locale: string) {
   const paid = toDate(order.paidAt);
   const date = paid ?? toDate(order.createdAt);
@@ -24,8 +24,8 @@ function orderDate(order: Order, locale: string) {
   };
 }
 
-// Os 8 primeiros caracteres bastam para conferir o comprador de olho; o código
-// inteiro fica no title e na ficha da pessoa, aonde o link leva.
+// The first 8 characters are enough to check the buyer by eye; the full code
+// stays in the title and in the person's record, where the link leads.
 function shortId(id: string) {
   return id.length > 8 ? `${id.slice(0, 8)}…` : id;
 }
@@ -51,9 +51,9 @@ export function PaymentOperationsPanel() {
     );
   }, []);
 
-  // Somar BRL com EUR e rotular o resultado como USD produz um número que não
-  // existe — e era exibido como "receita da plataforma". Agora acumula por
-  // moeda e cada uma é formatada na sua própria.
+  // Adding BRL to EUR and labeling the result as USD produces a number that does not
+  // exist, and it was shown as "platform revenue". Now it accumulates per
+  // currency and each one is formatted in its own.
   const totals = useMemo(() => {
     const byCurrency = new Map<
       Order["currency"],
@@ -141,10 +141,10 @@ export function PaymentOperationsPanel() {
 
       <div className="mt-6 grid gap-3 sm:grid-cols-3">
         {[
-          // subscribeToRecentOrders usa .limit(12): estes números descrevem a
-          // amostra visível, não a plataforma. Rotulados como "Gross paid" eram
-          // lidos como receita total — errado por ordem de grandeza assim que
-          // houver mais de 12 vendas.
+          // subscribeToRecentOrders uses .limit(12): these numbers describe the
+          // visible sample, not the platform. Labeled "Gross paid" they were
+          // read as total revenue, wrong by an order of magnitude as soon as there
+          // are more than 12 sales.
           [t(`${copy}.paidSample`), String(totals.paid)],
           [t(`${copy}.grossSample`), totals.gross],
           [t(`${copy}.feeSample`), totals.fee],
@@ -167,9 +167,9 @@ export function PaymentOperationsPanel() {
         <InlineAlert tone="error" className="mt-5">{t(`${copy}.loadError`)}</InlineAlert>
       ) : null}
 
-      {/* Cartão largo: uma tabela, com data, valor e status em coluna (I-06).
-          Cartão estreito: um bloco por pedido, como em sale-list.tsx (#588),
-          em vez de uma tabela que esconderia o valor na rolagem lateral. */}
+      {/* Wide card: a table, with date, amount and status in columns (I-06).
+          Narrow card: one block per order, as in sale-list.tsx (#588),
+          instead of a table that would hide the amount in the sideways scroll. */}
       <div className="@container mt-6">
         {isLoading ? (
           <p role="status" className="text-sm text-[var(--color-ink-soft)]">{t(`${copy}.loading`)}</p>
@@ -194,10 +194,10 @@ export function PaymentOperationsPanel() {
                   {formatMoney(order.amountMinor, order.currency, locale)}
                 </span>
               </div>
-              {/* Em partes com rótulo, não numa linha corrida: a data do pedido
-                  (nunca aparecia), o comprador curto, que abre a ficha da
-                  pessoa, e o código do pedido inteiro, que quebra a linha e
-                  seleciona com um clique para copiar (I-06). */}
+              {/* In labeled parts, not one run-on line: the order date
+                  (it never showed), the short buyer, which opens the
+                  person's record, and the full order code, which wraps and
+                  selects with one click to copy (I-06). */}
               <dl className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs leading-6 text-[var(--color-ink-soft)]">
                 <div className="flex gap-1.5">
                   <dt>{t(`${copy}.${orderDate(order, locale).labelKey}`)}</dt>
@@ -244,7 +244,7 @@ export function PaymentOperationsPanel() {
                   const when = orderDate(order, locale);
                   return (
                     <tr key={order.id} className="border-b fine-rule align-top last:border-b-0">
-                      {/* Pagamento ou criação: o rótulo pequeno diz qual das duas. */}
+                      {/* Payment or creation: the small label says which of the two. */}
                       <td className="whitespace-nowrap px-4 py-3 text-xs text-[var(--color-ink-soft)]">
                         <span className="block">{t(`${copy}.${when.labelKey}`)}</span>
                         <span className="tabular-nums text-[var(--color-ink)]">{when.text}</span>
@@ -257,7 +257,7 @@ export function PaymentOperationsPanel() {
                       </td>
                       <th scope="row" className="max-w-[18rem] px-4 py-3 font-semibold text-[var(--color-ink)]">
                         <span className="block break-words">{order.courseTitle}</span>
-                        {/* O código inteiro, que seleciona com um clique para copiar. */}
+                        {/* The full code, which selects with one click to copy. */}
                         <span className="mt-1 block select-all break-all font-mono text-xs font-normal text-[var(--color-ink-soft)]">{order.id}</span>
                       </th>
                       <td className="px-4 py-3 text-xs text-[var(--color-ink)]">{order.provider}</td>

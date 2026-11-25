@@ -119,8 +119,8 @@ export function InlineHelp({ topic, children, href, className }: InlineHelpProps
         aria-controls={dialogId}
         aria-expanded={open}
         onClick={openHelp}
-        // O "?" fica pequeno ao lado do título, mas o alvo tem 44px: o ::after
-        // cresce 10px para cada lado sem empurrar a linha (era 24px).
+        // The "?" stays small next to the title, but the target is 44px: the ::after
+        // grows 10px on each side without pushing the line (it was 24px).
         className="relative grid size-6 place-items-center rounded-full text-[var(--color-primary)] transition-colors after:absolute after:-inset-2.5 after:content-[''] hover:bg-[var(--color-surface-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary-light)]"
       >
         <CircleHelp aria-hidden="true" size={16} strokeWidth={1.9} />
@@ -140,8 +140,8 @@ export function InlineHelp({ topic, children, href, className }: InlineHelpProps
               }}
               className="contextual-help-dialog"
             >
-              {/* O fundo já acendia; a folha aparecia num corte seco. Entra
-                  como as outras janelas (só sem "reduzir movimento"). */}
+              {/* The background already lit up; the sheet appeared in a hard cut. It enters
+                  like the other dialogs (only without "reduce motion"). */}
               <section className="contextual-help-panel motion-panel-in">
                 <header className="flex items-start justify-between gap-4 border-b border-[var(--color-line)] px-5 py-5 sm:px-6">
                   <div>
@@ -174,8 +174,8 @@ export function InlineHelp({ topic, children, href, className }: InlineHelpProps
                   <Link
                     href={href}
                     onClick={closeHelp}
-                    // No toque o link do rodape tem 44px de altura (eram 19px); o
-                    // respiro do rodape encolhe para a faixa nao crescer.
+                    // On touch the footer link is 44px tall (it was 19px); the
+                    // footer's breathing room shrinks so the strip does not grow.
                     className="inline-flex items-center text-sm font-semibold text-[var(--color-primary)] underline underline-offset-4 pointer-coarse:min-h-11"
                   >
                     {t("platform.help.contextual.related")}

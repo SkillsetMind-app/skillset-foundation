@@ -23,22 +23,22 @@ import {
 import type { CreatorCourse } from "@/lib/data/server/public-profile";
 
 /**
- * O perfil público do professor como link da bio: uma coluna de celular, na
- * ordem cabeçalho → UM botão principal → cursos em linhas → prova → sobre.
+ * The teacher's public profile as a bio link: a single phone column, in the
+ * order header → ONE main button → courses in rows → proof → about.
  *
- * Os dados chegam prontos do servidor (page.tsx). Nada aqui leva para fora do
- * professor: sem "explorar o marketplace", sem link para /courses — o
- * visitante veio do Instagram dele e só sai daqui para um curso dele.
+ * The data arrives ready from the server (page.tsx). Nothing here leads away from the
+ * teacher: no "explore the marketplace", no link to /courses — the
+ * visitor came from their Instagram and only leaves here for one of their courses.
  *
- * Redes sociais (Instagram, site...) ficam para depois: public_profiles ainda
- * não guarda esses campos.
+ * Social networks (Instagram, site...) come later: public_profiles still
+ * does not store those fields.
  */
 export function InstructorProfileView({
   profile,
   courses,
 }: {
   profile: PublicProfile;
-  /** null = a leitura dos cursos falhou (o perfil continua no ar). */
+  /** null = the courses read failed (the profile stays up). */
   courses: CreatorCourse[] | null;
 }) {
   const { t, locale } = useTranslation();
@@ -50,15 +50,15 @@ export function InstructorProfileView({
   const showcase = profile.storefront?.showcase;
   const branding = profile.storefront?.branding;
   const tagline = showcase?.tagline?.trim();
-  // A projeção já sanitiza; segunda trava barata antes de virar CSS.
+  // The projection already sanitizes; a second cheap lock before it becomes CSS.
   const accent = branding?.accentColor && isStorefrontHexColor(branding.accentColor)
     ? branding.accentColor
     : null;
   const ordered = orderShowcaseCourses(courses ?? [], showcase);
   const primary = ordered[0];
-  // Bio longa abre recolhida; a curta aparece inteira, sem botão.
+  // A long bio opens collapsed; a short one shows in full, with no button.
   const longBio = (profile.bio?.length ?? 0) > BIO_PREVIEW_CHARS;
-  // Tema da vitrine (warm/cool/mono) tinge o cabeçalho; "default" não.
+  // The storefront theme (warm/cool/mono) tints the header; "default" does not.
   const theme = branding?.themePreset && branding.themePreset !== "default" ? branding.themePreset : null;
   const ratingCount = ordered.reduce((sum, course) => sum + course.ratingCount, 0);
   const ratingAverage = ratingCount
@@ -68,8 +68,8 @@ export function InstructorProfileView({
     value.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
   return (
-    // minmax(0,1fr): sem isto a coluna toma a largura do título do botão
-    // principal (truncate = sem quebra) e o .page-shell corta o resto.
+    // minmax(0,1fr): without this the column takes the width of the main button's
+    // title (truncate = no wrap) and .page-shell cuts off the rest.
     <article className="grid grid-cols-[minmax(0,1fr)] gap-8">
       <header
         data-section="header"
@@ -85,14 +85,14 @@ export function InstructorProfileView({
               priority
               sizes="(max-width: 640px) 100vw, 640px"
               className="object-cover"
-              // Host do professor, fora do remotePatterns.
+              // The teacher's host, outside remotePatterns.
               unoptimized
             />
           </div>
         ) : null}
         <UserAvatar name={name} photoURL={profile.photoURL} size="lg" />
-        {/* flex-wrap: nome longo no celular empurra o selo para a linha de
-            baixo em vez de sair da tela. */}
+        {/* flex-wrap: a long name on a phone pushes the badge to the next line
+            instead of running off the screen. */}
         <div className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-2">
           <h1 className="display-title text-3xl leading-tight text-[var(--color-primary)] sm:text-4xl">
             {name}
@@ -103,7 +103,7 @@ export function InstructorProfileView({
           <p className="mt-1 text-sm font-semibold text-[var(--color-ink-soft)]">@{profile.username}</p>
         ) : null}
         {tagline ? (
-          // A cor da marca do professor (plano com vitrine) vira o fio acima.
+          // The teacher's brand color (storefront plan) becomes the line above.
           <p
             className={`mt-3 max-w-md text-base font-semibold leading-6 text-[var(--color-primary)] ${accent ? "border-t-2 pt-3" : ""}`}
             style={accent ? { borderColor: accent } : undefined}
@@ -117,7 +117,7 @@ export function InstructorProfileView({
         <Link
           data-section="primary"
           href={primary.href}
-          // Cor da marca do professor no botão; o texto segue o contraste.
+          // The teacher's brand color on the button; the text follows the contrast.
           data-accent={accent ? "" : undefined}
           style={accent ? ({
             "--storefront-accent": accent,
@@ -138,8 +138,8 @@ export function InstructorProfileView({
           {t("publicPages.profile.courses_heading")}
         </h2>
         {courses === null ? (
-          // Os cursos chegam do servidor: "Try again" pede a página de novo
-          // (router.refresh), sem recarregar o navegador nem perder a rolagem.
+          // The courses arrive from the server: "Try again" asks for the page again
+          // (router.refresh), without reloading the browser or losing the scroll.
           <LoadErrorAlert
             className="mt-4"
             focusRef={coursesRef}
@@ -149,7 +149,7 @@ export function InstructorProfileView({
             {t("publicPages.profile.courses_error")}
           </LoadErrorAlert>
         ) : ordered.length === 0 ? (
-          // O vazio da plataforma; h3 sob o h2 "Courses".
+          // The platform's empty state; an h3 under the h2 "Courses".
           <EmptyState
             as="h3"
             className="mt-4"
@@ -175,8 +175,8 @@ export function InstructorProfileView({
         )}
       </section>
 
-      {/* Prova só com número de verdade: zero não aparece. Só a nota: o
-          contador de inscrições do curso não é mantido por nada no banco. */}
+      {/* Proof only with a real number: zero does not appear. Only the rating: the
+          course's enrollment counter is not maintained by anything in the database. */}
       {ratingCount > 0 ? (
         <dl
           data-section="proof"
@@ -208,8 +208,8 @@ export function InstructorProfileView({
             {t("publicPages.profile.about").replace("{name}", () => name)}
           </h2>
           {profile.bio ? (
-            // Bio longa recolhida (quem chega do Instagram quer o curso). Sem JS:
-            // o <details> abre sozinho e o CSS (.creator-bio) solta o texto.
+            // A long bio collapsed (someone arriving from Instagram wants the course). Without JS:
+            // the <details> opens on its own and the CSS (.creator-bio) releases the text.
             <div className="creator-bio mt-3">
               <p className={`creator-bio__text text-sm leading-6 text-[var(--color-ink-soft)] ${longBio ? "line-clamp-3" : ""}`}>
                 {profile.bio}
@@ -242,13 +242,13 @@ export function InstructorProfileView({
   );
 }
 
-/** Acima disto a bio abre recolhida em 3 linhas, com "Read more". */
+/** Above this the bio opens collapsed to 3 lines, with "Read more". */
 const BIO_PREVIEW_CHARS = 180;
 
 /**
- * Ordem da vitrine: o curso em destaque primeiro, depois a ordem do editor.
- * Sem posição, mantém a ordem que chegou (alfabética), no fim — mesma
- * convenção `?? MAX_SAFE_INTEGER` do marketplace para `featured_rank` nulo.
+ * Storefront order: the featured course first, then the editor's order.
+ * Without a position, it keeps the order it arrived in (alphabetical), at the end — the same
+ * `?? MAX_SAFE_INTEGER` convention as the marketplace for a null `featured_rank`.
  */
 function orderShowcaseCourses(
   courses: CreatorCourse[],

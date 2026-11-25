@@ -8,7 +8,7 @@ import { ForCreatorsBand } from "@/components/site/for-creators-band";
 import en from "@/data/i18n/en.json";
 import es from "@/data/i18n/es.json";
 
-// Server component: o idioma vem do cookie.
+// Server component: the language comes from the cookie.
 const state = vi.hoisted(() => ({ locale: "en" }));
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => ({ value: state.locale }) }) }));
 
@@ -26,10 +26,10 @@ async function renderBand(locale: string) {
   return { container, photo, image: photo.querySelector("img")!, sources: [...photo.querySelectorAll("picture > source")] };
 }
 
-describe("faixa final da home com foto", () => {
-  // Dois cortes da mesma cena num <picture>: o navegador baixa só um. 3:4 no
-  // celular; 12:5 do md para cima.
-  it.each(dictionaries)("em %s usa o corte 3:4 no celular e o 12:5 do md para cima", async (locale, dict) => {
+describe("final home band with photo", () => {
+  // Two crops of the same scene in a <picture>: the browser downloads only one.
+  // 3:4 on phones; 12:5 from md up.
+  it.each(dictionaries)("in %s uses the 3:4 crop on phones and the 12:5 crop from md up", async (locale, dict) => {
     const { image, sources } = await renderBand(locale);
 
     expect(sources).toHaveLength(1);
@@ -38,13 +38,13 @@ describe("faixa final da home com foto", () => {
     expect(image.getAttribute("src")).toContain(encodeURIComponent("/brand/home/home-cta-mobile.avif"));
     expect(image.getAttribute("srcset")).toContain(encodeURIComponent("/brand/home/home-cta-mobile.avif"));
     expect(image).toHaveAttribute("alt", dict.home.creators.photoAlt);
-    // No fim da página: preguiçosa, nunca disputa com o topo.
+    // At the end of the page: lazy, never competes with the top.
     expect(image).toHaveAttribute("loading", "lazy");
   });
 
-  // No celular o texto vem embaixo da foto, nunca branco por cima dela: o
-  // quadro da foto não tem texto e só vira fundo (absolute) do lg para cima.
-  it("no celular o texto vem depois da foto, fora do quadro dela", async () => {
+  // On phones the text sits below the photo, never white on top of it: the
+  // photo frame has no text and only becomes a background (absolute) from lg up.
+  it("on phones the text comes after the photo, outside its frame", async () => {
     const { container, photo } = await renderBand("en");
 
     expect(photo.textContent).toBe("");
@@ -55,9 +55,9 @@ describe("faixa final da home com foto", () => {
     expect(photo.contains(lead)).toBe(false);
   });
 
-  // O resto da faixa não muda: título, os dois links de 48px, os planos e os
-  // três itens, na ordem de sempre (a coreografia conta os itens por posição).
-  it.each(dictionaries)("em %s guarda o título, os links e os quatro itens", async (locale, dict) => {
+  // The rest of the band does not change: title, the two 48px links, the plans
+  // and the three items, in the usual order (the choreography counts the items by position).
+  it.each(dictionaries)("in %s keeps the title, the links and the four items", async (locale, dict) => {
     const { container } = await renderBand(locale);
 
     expect(container.querySelector(".home-creators__lead h2")?.textContent).toBe(dict.home.creators.title);
@@ -75,7 +75,7 @@ describe("faixa final da home com foto", () => {
     ]);
   });
 
-  // Peso no celular: as cinco fotos da home somam ~440 KB e não entra outra.
+  // Weight on phones: the five home photos add up to ~440 KB and no other goes in.
   it("as fotos da home cabem no orçamento", () => {
     const folder = join(process.cwd(), "public/brand/home");
     const files = readdirSync(folder);

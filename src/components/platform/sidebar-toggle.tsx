@@ -4,17 +4,17 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 
 type SidebarToggleProps = {
   collapsed: boolean;
-  /** id da lista de navegação que o botão abre e fecha. */
+  /** id of the navigation list that the button opens and closes. */
   controls: string;
   onToggle: () => void;
 };
 
-// O ☰ do topo da barra, à esquerda da marca (como na Hotmart). Recolhida, ele
-// fica no mesmo lugar: o botão não foge do cursor entre um clique e outro.
+// The ☰ at the top of the bar, to the left of the brand (as in Hotmart). Collapsed, it
+// stays in the same place: the button does not run away from the cursor between one click and the next.
 //
-// O ícone é desenhado aqui, e não o Menu do lucide, porque as três barras
-// precisam de classe própria para virar seta (globals.css, ".platform-menu-icon"):
-// aberta, a barra mostra a seta "recolher"; recolhida, o ☰.
+// The icon is drawn here, and not lucide's Menu, because the three bars
+// need their own class to turn into an arrow (globals.css, ".platform-menu-icon"):
+// when open, the bar shows the "collapse" arrow; collapsed, the ☰.
 export function SidebarToggle({ collapsed, controls, onToggle }: SidebarToggleProps) {
   const { t } = useTranslation();
   const label = collapsed ? t("platform.expandSidebar") : t("platform.collapseSidebar");
@@ -36,8 +36,8 @@ export function SidebarToggle({ collapsed, controls, onToggle }: SidebarTogglePr
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
-        // 1,5px na tela, como os ícones do lucide a 18px: o traço não escala
-        // (vector-effect no CSS), senão as barras afinariam ao virar seta.
+        // 1.5px on screen, like lucide's icons at 18px: the stroke does not scale
+        // (vector-effect in the CSS), otherwise the bars would thin out when turning into an arrow.
         strokeWidth="1.5"
         strokeLinecap="round"
       >

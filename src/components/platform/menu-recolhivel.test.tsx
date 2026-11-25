@@ -11,9 +11,9 @@ import { PlatformShell } from "@/components/platform/platform-shell";
 import { parseSidebarPref, SIDEBAR_COOKIE, type SidebarPref } from "@/lib/ui/sidebar-cookie";
 import { SidebarPreferenceProvider } from "@/lib/ui/sidebar-preference";
 
-// Onda E, parte 2: menu lateral recolhível no estilo da Hotmart. Aberto, ícone
-// e nome; fechado, só o ícone, com o nome de dica no hover e no foco. A
-// escolha fica num cookie que o servidor lê: o primeiro HTML já sai certo.
+// Wave E, part 2: a collapsible sidebar in the style of Hotmart. Open, icon
+// and name; closed, only the icon, with the name as a hint on hover and focus. The
+// choice lives in a cookie that the server reads: the first HTML already comes out right.
 
 const mocks = vi.hoisted(() => ({ pathname: "/teach" }));
 
@@ -36,7 +36,7 @@ function setCookie(pref: SidebarPref) {
     : `${SIDEBAR_COOKIE}=; max-age=0; path=/`;
 }
 
-/** Janela de `width` px para o `matchMedia` (o jsdom não avalia media query). */
+/** A window of `width` px for `matchMedia` (jsdom does not evaluate media queries). */
 function viewport(width: number) {
   vi.stubGlobal("matchMedia", (query: string) => {
     const min = Number(query.match(/min-width:\s*(\d+)px/)?.[1] ?? 0);
@@ -77,7 +77,7 @@ describe("a escolha vem do cookie, lida no servidor", () => {
     return host;
   }
 
-  it("cookie 'collapsed': o primeiro HTML já sai recolhido, com o ☰ dizendo 'Expand menu'", () => {
+  it("cookie 'collapsed': the first HTML already comes out collapsed, with the ☰ saying 'Expand menu'", () => {
     const html = serverHtml("collapsed");
     expect(html.querySelector(".platform-grid")).toHaveClass("platform-grid--collapsed");
     expect(html.querySelector(".platform-grid")).not.toHaveClass("platform-grid--auto");
@@ -85,11 +85,11 @@ describe("a escolha vem do cookie, lida no servidor", () => {
     const toggle = html.querySelector(".platform-sidebar-toggle")!;
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     expect(toggle).toHaveAttribute("aria-label", "Expand menu");
-    // Recolhida, a linha do topo é só o ☰ (sem a marca larga).
+    // Collapsed, the top row is just the ☰ (without the wide brand mark).
     expect(html.querySelector(".platform-sidebar-brand__lockup-link")).toBeNull();
   });
 
-  it("cookie 'expanded': aberto, sem depender da largura da tela", () => {
+  it("cookie 'expanded': open, without depending on the screen width", () => {
     const html = serverHtml("expanded");
     expect(html.querySelector(".platform-grid")!.className).not.toMatch(/platform-grid--(collapsed|auto)/);
     expect(html.querySelector(".platform-sidebar")).toHaveClass("sidebar-expanded");
@@ -97,13 +97,13 @@ describe("a escolha vem do cookie, lida no servidor", () => {
     expect(html.querySelector(".platform-sidebar-brand__lockup-link")).not.toBeNull();
   });
 
-  it("sem cookie: a grade sai 'auto' e o CSS decide a largura pela tela", () => {
+  it("no cookie: the grid comes out 'auto' and the CSS decides the width by the screen", () => {
     const html = serverHtml(null);
     expect(html.querySelector(".platform-grid")).toHaveClass("platform-grid--auto");
     expect(html.querySelector(".platform-grid")).not.toHaveClass("platform-grid--collapsed");
   });
 
-  it("hidratar o HTML do servidor não troca nada (sem piscar, sem divergência)", async () => {
+  it("hydrating the server HTML changes nothing (no flicker, no mismatch)", async () => {
     setCookie("collapsed");
     const host = serverHtml("collapsed");
     document.body.appendChild(host);
@@ -128,7 +128,7 @@ describe("a escolha vem do cookie, lida no servidor", () => {
 
   it("só as áreas logadas leem o cookie; valor estranho vale como 'sem escolha'", () => {
     const read = (file: string) => readFileSync(path.join(process.cwd(), file), "utf8");
-    // O layout raiz envolve a home e as páginas públicas: nada da barra nele.
+    // The root layout wraps the home and the public pages: nothing from the bar in it.
     const root = read("src/app/layout.tsx");
     expect(root).not.toMatch(/@\/lib\/ui\/sidebar|sidebar-preference|SidebarPreference/);
     expect(read("src/components/platform/sidebar-preference-layout.tsx")).toContain(
@@ -144,8 +144,8 @@ describe("a escolha vem do cookie, lida no servidor", () => {
   });
 });
 
-describe("o botão ☰", () => {
-  it("é um <button> de verdade com aria-expanded, aria-controls na lista e nome que diz o que faz", () => {
+describe("the ☰ button", () => {
+  it("it is a real <button> with aria-expanded, aria-controls on the list and a name that says what it does", () => {
     render(shell());
     const toggle = toggleButton();
     expect(toggle.tagName).toBe("BUTTON");
@@ -154,12 +154,12 @@ describe("o botão ☰", () => {
     expect(toggle).toHaveAttribute("aria-expanded", "true");
     const nav = document.getElementById(toggle.getAttribute("aria-controls")!);
     expect(nav).toBe(screen.getByRole("navigation", { name: "Workspace" }));
-    // No topo da barra, antes da lista (como na Hotmart), não no pé.
+    // At the top of the bar, before the list (as in Hotmart), not at the bottom.
     expect(toggle.closest(".platform-sidebar-brand")).not.toBeNull();
     expect(toggle.compareDocumentPosition(nav!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("recolhe e abre, e grava a escolha no cookie (que o servidor lê na próxima carga)", () => {
+  it("collapses and opens, and writes the choice to the cookie (which the server reads on the next load)", () => {
     render(shell());
     fireEvent.click(toggleButton());
     expect(sidebar()).toHaveClass("sidebar-collapsed");
@@ -172,23 +172,23 @@ describe("o botão ☰", () => {
     expect(document.cookie).toContain(`${SIDEBAR_COOKIE}=expanded`);
   });
 
-  it("a escolha sobrevive à troca de página (cada página monta o seu shell)", () => {
+  it("the choice survives a page change (each page mounts its own shell)", () => {
     const first = render(shell());
     fireEvent.click(toggleButton());
     first.unmount();
-    // O provider ainda tem o valor da primeira carga; o cookie é que vale.
+    // The provider still has the first load's value; the cookie is what counts.
     render(<SidebarPreferenceProvider value={null}>{shell()}</SidebarPreferenceProvider>);
     expect(sidebar()).toHaveClass("sidebar-collapsed");
   });
 
-  it("em espanhol: 'Contraer menú' / 'Expandir menú'", () => {
+  it("in Spanish: 'Contraer menú' / 'Expandir menú'", () => {
     render(<I18nProvider initialLocale="es">{shell()}</I18nProvider>);
     const toggle = screen.getByRole("button", { name: "Contraer menú" });
     fireEvent.click(toggle);
     expect(toggle).toHaveAccessibleName("Expandir menú");
   });
 
-  it("o ícone é ☰ recolhido e vira seta aberto, só com transform", () => {
+  it("the icon is ☰ when collapsed and becomes an arrow when open, with transform only", () => {
     expect(css).toMatch(
       /\.platform-sidebar:not\(\.sidebar-collapsed\) \.platform-menu-icon path:first-child \{\s*transform: translateY\(6px\) rotate\(-45deg\) scaleX\(0\.53\);/,
     );
@@ -200,8 +200,8 @@ describe("o botão ☰", () => {
   });
 });
 
-describe("recolhida: nome de dica no hover e no foco, e nome acessível", () => {
-  it("cada item tem nome acessível e o rótulo no DOM; nenhum title (dica nativa dobrada)", () => {
+describe("collapsed: name as a hint on hover and focus, and an accessible name", () => {
+  it("each item has an accessible name and the label in the DOM; no title (a doubled native hint)", () => {
     setCookie("collapsed");
     render(shell());
     expect(sidebar()).toHaveClass("sidebar-collapsed");
@@ -216,7 +216,7 @@ describe("recolhida: nome de dica no hover e no foco, e nome acessível", () => 
     expect(within(nav).getByRole("link", { name: "Students" })).toHaveAttribute("href", "/teach/students");
   });
 
-  it("hover e foco dizem à dica onde ficar (--tip-x/--tip-y)", () => {
+  it("hover and focus tell the hint where to sit (--tip-x/--tip-y)", () => {
     setCookie("collapsed");
     render(shell());
     const students = screen.getByRole("link", { name: "Students" });
@@ -227,7 +227,7 @@ describe("recolhida: nome de dica no hover e no foco, e nome acessível", () => 
     expect(inbox.style.getPropertyValue("--tip-x")).toMatch(/^\d+px$/);
   });
 
-  it("no CSS, a dica acende no hover E no foco do teclado, fixa (a lista rola) e só depois da medida", () => {
+  it("in the CSS, the hint lights up on hover AND keyboard focus, fixed (the list scrolls) and only after measuring", () => {
     const start = css.indexOf(".platform-sidebar.sidebar-collapsed .platform-nav-link[style]:is(:hover, :focus-visible) .platform-sidebar-label,");
     expect(start).toBeGreaterThan(-1);
     const rule = css.slice(start, css.indexOf("}", start));
@@ -235,15 +235,15 @@ describe("recolhida: nome de dica no hover e no foco, e nome acessível", () => 
     expect(rule).toContain("position: fixed;");
     expect(rule).toContain("top: var(--tip-y);");
     expect(rule).toContain("left: var(--tip-x);");
-    // Fora do hover/foco o rótulo continua no DOM (nome acessível), só recortado.
+    // Outside hover/focus the label stays in the DOM (accessible name), only clipped.
     expect(css).toMatch(
       /\.sidebar-collapsed \.platform-sidebar-label,\s*\.platform-sidebar-toggle \.platform-sidebar-label \{\s*position: absolute;\s*width: 1px;\s*height: 1px;\s*overflow: hidden;\s*clip-path: inset\(50%\);/,
     );
   });
 });
 
-describe("grupos e Ajuda com a barra recolhida", () => {
-  it("no desktop, Promote recolhido abre a própria barra já no grupo", () => {
+describe("groups and Help with the sidebar collapsed", () => {
+  it("on desktop, a collapsed Promote opens the sidebar itself already on the group", () => {
     viewport(1280);
     setCookie("collapsed");
     render(shell());
@@ -253,7 +253,7 @@ describe("grupos e Ajuda com a barra recolhida", () => {
     expect(screen.getByRole("link", { name: "Media library" })).toHaveAttribute("href", "/teach/media");
   });
 
-  it("na faixa média (1100px), Sales abre a gaveta no grupo, sem gravar escolha", () => {
+  it("in the mid range (1100px), Sales opens the drawer on the group, without saving a choice", () => {
     viewport(1100);
     render(shell());
     fireEvent.click(screen.getByRole("button", { name: "Open Sales navigation" }));
@@ -263,7 +263,7 @@ describe("grupos e Ajuda com a barra recolhida", () => {
     expect(document.cookie).not.toContain(SIDEBAR_COOKIE);
   });
 
-  it("uma Ajuda só, com nome, que abre as escolhas (gaveta no rail, barra no desktop)", () => {
+  it("a single Help, with a name, that opens the choices (drawer on the rail, sidebar on desktop)", () => {
     viewport(1100);
     const { unmount } = render(shell());
     const nav = screen.getByRole("navigation", { name: "Workspace" });
@@ -281,7 +281,7 @@ describe("grupos e Ajuda com a barra recolhida", () => {
   });
 });
 
-describe("telas médias: o rail é o padrão", () => {
+describe("mid-size screens: the rail is the default", () => {
   it.each([
     [1100, null, "sidebar-collapsed"],
     [1100, "expanded", "sidebar-expanded"],
@@ -289,25 +289,25 @@ describe("telas médias: o rail é o padrão", () => {
     [900, "expanded", "sidebar-collapsed"],
     [1180, null, "sidebar-expanded"],
     [1180, "collapsed", "sidebar-collapsed"],
-  ] as const)("em %ipx com escolha %s: %s", (width, pref, expected) => {
+  ] as const)("at %ipx with choice %s: %s", (width, pref, expected) => {
     viewport(width);
     setCookie(pref);
     render(shell());
     expect(sidebar()).toHaveClass(expected);
   });
 
-  it("no CSS, sem escolha salva a coluna é o rail de 64px de 768 a 1179px já no 1º quadro", () => {
+  it("in the CSS, with no saved choice the column is the 64px rail from 768 to 1179px already on the 1st frame", () => {
     const start = css.indexOf("@media (min-width: 768px) and (width < 1180px) {");
     expect(start).toBeGreaterThan(-1);
     const block = css.slice(start, css.indexOf("\n}\n", start));
     expect(block).toMatch(/\.platform-grid--auto \{\s*--platform-sidebar-width: 64px;/);
-    // O que não cabe em 64px some até o JS montar.
+    // What does not fit in 64px disappears until the JS mounts.
     expect(block).toContain(".platform-sidebar-brand__lockup-link");
     expect(block).toContain(".platform-nav-section-items");
   });
 });
 
-describe("movimento leve, e nenhum com 'reduzir movimento'", () => {
+describe("light motion, and none with 'reduce motion'", () => {
   const blocks = (() => {
     const ranges: string[] = [];
     const opener = "@media (prefers-reduced-motion: no-preference) {";
@@ -324,23 +324,23 @@ describe("movimento leve, e nenhum com 'reduzir movimento'", () => {
   })();
   const noPreference = blocks.join("\n");
 
-  it("a largura troca na hora: nem a grade nem o painel animam layout", () => {
+  it("the width switches instantly: neither the grid nor the panel animates layout", () => {
     expect(css).not.toMatch(/transition: grid-template-columns/);
     expect(css).not.toMatch(/\.platform-sidebar-panel \{[^}]*transition: width/);
   });
 
-  it("o nome acende e o ☰ gira em 180ms, só dentro de no-preference e com os tokens", () => {
+  it("the name lights up and the ☰ rotates in 180ms, only inside no-preference and with the tokens", () => {
     expect(noPreference).toMatch(/\.platform-sidebar-label \{\s*transition: opacity var\(--duration-base\) var\(--ease-standard\);/);
     expect(noPreference).toMatch(/\.platform-menu-icon path \{\s*transition: transform var\(--duration-base\) var\(--ease-standard\);/);
     expect(css).toContain("--duration-base: 180ms;");
-    // Fora de no-preference, nenhuma transição no rótulo nem no ícone.
+    // Outside no-preference, no transition on the label or the icon.
     const outside = blocks.reduce((rest, block) => rest.replace(block, ""), css);
     expect(outside).not.toMatch(/\.platform-sidebar-label \{[^}]*transition/);
     expect(outside).not.toMatch(/\.platform-menu-icon path \{[^}]*transition/);
   });
 });
 
-// ─── Segunda rodada: consertos da revisão do PR ─────────────────────────────
+// ─── Second round: fixes from the PR review ─────────────────────────────
 
 const MEDIUM = "(min-width: 768px) and (width < 1180px)";
 const TABLET = "(min-width: 768px) and (width < 1024px)";
@@ -351,7 +351,7 @@ function mediaBlock(query: string) {
   return css.slice(start, css.indexOf("\n}\n", start));
 }
 
-/** O corpo `{ ... }` da regra com exatamente este seletor, dentro de `scope`. */
+/** The `{ ... }` body of the rule with exactly this selector, inside `scope`. */
 function ruleBody(scope: string, selector: string) {
   const at = scope.indexOf(`${selector} {`);
   expect(at, selector).toBeGreaterThan(-1);
@@ -366,8 +366,8 @@ function serverRender(pref: SidebarPref) {
   return host;
 }
 
-describe("tablet: a marca volta ao topo do rail", () => {
-  it("recolhida, a linha do topo tem o ☰ e a marca pequena, que leva à home sem pré-carga", () => {
+describe("tablet: the brand mark returns to the top of the rail", () => {
+  it("collapsed, the top row has the ☰ and the small brand mark, which leads home without prefetch", () => {
     const html = serverRender("collapsed");
     const brand = html.querySelector(".platform-sidebar-brand")!;
     const mark = brand.querySelector("a.platform-sidebar-brand__mark")!;
@@ -378,37 +378,37 @@ describe("tablet: a marca volta ao topo do rail", () => {
     expect(brand.querySelector(".platform-sidebar-brand__lockup-link")).toBeNull();
   });
 
-  it("sem escolha salva a marca pequena já vem no HTML do servidor (1º quadro do tablet); aberta por escolha, não", () => {
+  it("with no saved choice the small brand mark already comes in the server HTML (tablet's 1st frame); open by choice, it does not", () => {
     expect(serverRender(null).querySelector(".platform-sidebar-brand__mark")).not.toBeNull();
     expect(serverRender("expanded").querySelector(".platform-sidebar-brand__mark")).toBeNull();
   });
 
-  it("no CSS, a marca só aparece de 768 a 1023px, onde o ☰ some: os dois nunca dividem a linha", () => {
+  it("in the CSS, the brand mark only appears from 768 to 1023px, where the ☰ goes away: the two never share the row", () => {
     expect(css).toMatch(/\n\.platform-sidebar-brand__mark \{\s*display: none;\s*\}/);
     expect(css).toMatch(/\n\.platform-sidebar-brand__mark img \{\s*width: 2rem;\s*height: 2rem;\s*\}/);
     const tablet = mediaBlock(TABLET);
     expect(ruleBody(tablet, "  .platform-sidebar-brand__mark")).toMatch(/display: inline-flex;/);
     expect(ruleBody(tablet, "  .platform-sidebar .platform-sidebar-toggle")).toMatch(/display: none;/);
-    // Em nenhum outro lugar a marca acende (acima de 1023px o ☰ ocupa a linha).
+    // Nowhere else does the brand mark light up (above 1023px the ☰ takes the row).
     expect(css.match(/\.platform-sidebar-brand__mark \{/g)).toHaveLength(2);
   });
 });
 
-describe("1024–1179px sem escolha: o 1º quadro já é o rail que o JS desenha", () => {
+describe("1024–1179px with no choice: the 1st frame is already the rail that the JS draws", () => {
   const auto = ".platform-grid--auto:not(.platform-grid--collapsed)";
 
-  // O filete dourado do item ativo fica no meio da linha. O item também leva
-  // `before:-translate-y-1/2` (gaveta do celular), que usa a propriedade
-  // `translate`: com `transform: translateY(-50%)` na regra os dois somavam
-  // e o filete ficava 9px acima do ícone.
-  it("filete do item ativo centrado: um deslocamento só, pela mesma propriedade das classes", () => {
+  // The active item's gold line sits in the middle of the row. The item also carries
+  // `before:-translate-y-1/2` (phone drawer), which uses the `translate`
+  // property: with `transform: translateY(-50%)` in the rule the two added up
+  // and the line sat 9px above the icon.
+  it("the active item's gold line centered: a single offset, through the same property as the classes", () => {
     const filete = ruleBody(css, ".platform-sidebar .platform-nav-active::before");
     expect(filete).toMatch(/top: 50%;/);
     expect(filete).toMatch(/translate: 0 -50%;/);
     expect(filete).not.toMatch(/translateY/);
   });
 
-  it("ativo em quadrado branco de 44px, ícones sem caixinha, sem filete e calha da rolagem reservada", () => {
+  it("active in a 44px white square, icons without a little box, no gold line and the scroll gutter reserved", () => {
     const medium = mediaBlock(MEDIUM);
     const active = ruleBody(medium, `  ${auto} .platform-nav-link:is(.platform-nav-active, .platform-nav-section-active)`);
     expect(active).toMatch(/width: 44px;/);
@@ -423,7 +423,7 @@ describe("1024–1179px sem escolha: o 1º quadro já é o rail que o JS desenha
     expect(ruleBody(medium, `  ${auto} .platform-sidebar-nav`)).toMatch(/scrollbar-gutter: stable;/);
   });
 
-  it("é o mesmo desenho do rail recolhido, e vence o gatilho ativo (mesma especificidade, vem depois)", () => {
+  it("it is the same design as the collapsed rail, and wins over the active trigger (same specificity, comes later)", () => {
     expect(css).toMatch(/\.platform-sidebar\.sidebar-collapsed \.platform-nav-link\.platform-nav-active \{\s*background: #ffffff !important;/);
     expect(css).toMatch(/\.platform-sidebar\.sidebar-collapsed \.platform-sidebar-nav \{[^}]*scrollbar-gutter: stable;/);
     expect(css.indexOf(`${auto} .platform-nav-link:is(.platform-nav-active`)).toBeGreaterThan(
@@ -432,9 +432,9 @@ describe("1024–1179px sem escolha: o 1º quadro já é o rail que o JS desenha
   });
 });
 
-describe("tablet com o cookie 'expanded': o HTML do servidor já é o rail", () => {
-  // As regras da faixa média valem, no tablet, para QUALQUER grade não
-  // recolhida — não só sem cookie. Mesmo corpo, seletor mais largo.
+describe("tablet with the 'expanded' cookie: the server HTML is already the rail", () => {
+  // The mid-range rules apply, on the tablet, to ANY grid that is not
+  // collapsed — not only without a cookie. Same body, wider selector.
   const suffixes = [
     " .platform-sidebar-panel",
     " :is(.platform-nav-section-items, .platform-nav-section-chevron, .platform-sidebar-brand__lockup-link)",
@@ -447,29 +447,29 @@ describe("tablet com o cookie 'expanded': o HTML do servidor já é o rail", () 
     " .platform-nav-active::before",
   ];
 
-  it.each(suffixes)("%s: mesma regra da faixa média, para .platform-grid:not(.platform-grid--collapsed)", (suffix) => {
+  it.each(suffixes)("%s: same mid-range rule, for .platform-grid:not(.platform-grid--collapsed)", (suffix) => {
     const medium = ruleBody(mediaBlock(MEDIUM), `  .platform-grid--auto:not(.platform-grid--collapsed)${suffix}`);
     const tablet = ruleBody(mediaBlock(TABLET), `  .platform-grid:not(.platform-grid--collapsed)${suffix}`);
     expect(tablet).toBe(medium);
   });
 
-  it("a marca larga e os itens dos grupos somem: nada vaza por cima da barra do topo", () => {
+  it("the wide brand mark and the group items disappear: nothing spills over the top bar", () => {
     const hide = ruleBody(
       mediaBlock(TABLET),
       "  .platform-grid:not(.platform-grid--collapsed) :is(.platform-nav-section-items, .platform-nav-section-chevron, .platform-sidebar-brand__lockup-link)",
     );
     expect(hide).toMatch(/display: none;/);
-    // E o servidor manda mesmo a marca larga nesse caso (é o que precisava sumir).
+    // And the server does send the wide brand mark in that case (that is what had to disappear).
     expect(serverRender("expanded").querySelector(".platform-sidebar-brand__lockup-link")).not.toBeNull();
   });
 });
 
-describe("a dica do rail: uma por vez, e some quando a lista rola", () => {
+describe("the rail hint: one at a time, and it goes away when the list scrolls", () => {
   function tipped() {
     return sidebar().querySelectorAll(".platform-nav-link[style]");
   }
 
-  it("o mouse num item apaga a dica do item com foco do teclado (e vice-versa)", () => {
+  it("the mouse on an item clears the hint of the keyboard-focused item (and vice versa)", () => {
     setCookie("collapsed");
     render(shell());
     const students = screen.getByRole("link", { name: "Students" });
@@ -485,7 +485,7 @@ describe("a dica do rail: uma por vez, e some quando a lista rola", () => {
     expect(tipped()).toHaveLength(1);
   });
 
-  it("rolar a lista apaga a dica (ela ficaria parada no lugar velho)", () => {
+  it("scrolling the list clears the hint (it would stay stuck in the old place)", () => {
     setCookie("collapsed");
     render(shell());
     fireEvent.mouseOver(screen.getByRole("link", { name: "Students" }));
@@ -494,7 +494,7 @@ describe("a dica do rail: uma por vez, e some quando a lista rola", () => {
     expect(tipped()).toHaveLength(0);
   });
 
-  it("aberta, passar o mouse num item não mede nada; só o ☰ (a única dica aberta) mede", () => {
+  it("when open, hovering an item measures nothing; only the ☰ (the only open hint) measures", () => {
     render(shell());
     expect(sidebar()).toHaveClass("sidebar-expanded");
     const nav = screen.getByRole("navigation", { name: "Workspace" });
@@ -508,8 +508,8 @@ describe("a dica do rail: uma por vez, e some quando a lista rola", () => {
   });
 });
 
-describe("a Ajuda do rail depois da gaveta", () => {
-  it("fechar a gaveta não deixa a Ajuda do rail dizendo 'expandida'", () => {
+describe("the rail's Help after the drawer", () => {
+  it("closing the drawer does not leave the rail's Help saying 'expanded'", () => {
     viewport(1100);
     render(shell());
     const help = within(sidebar() as HTMLElement).getByRole("button", { name: "Help" });
@@ -522,13 +522,13 @@ describe("a Ajuda do rail depois da gaveta", () => {
   });
 });
 
-describe("a chave velha do localStorage", () => {
+describe("the old localStorage key", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     localStorage.clear();
   });
 
-  it("é apagada quando o módulo da barra chega ao navegador", async () => {
+  it("is erased when the sidebar module reaches the browser", async () => {
     localStorage.setItem("skillset_sidebar_state", "collapsed");
     vi.resetModules();
     const fresh = await import("@/lib/ui/sidebar-state");
@@ -536,7 +536,7 @@ describe("a chave velha do localStorage", () => {
     expect(localStorage.getItem("skillset_sidebar_state")).toBeNull();
   });
 
-  it("armazenamento bloqueado não derruba a página", async () => {
+  it("blocked storage does not bring the page down", async () => {
     vi.spyOn(Storage.prototype, "removeItem").mockImplementation(() => {
       throw new DOMException("blocked", "SecurityError");
     });
