@@ -630,3 +630,103 @@ describe("revoked session", () => {
     },
   );
 });
+
+// The root layout resolves the signed-in session for the first HTML only when
+// this proxy says it has just verified it (lib/auth/session-checked). A server
+// component cannot save a rotated token, so the signal must exist exactly when
+// the session was touched here, and must never be something a client can send.
+describe("session-checked signal for the root layout", () => {
+  const SIGNAL = "x-middleware-request-x-skillset-session-checked";
+
+  function stubSession({
+    user = { id: "user-fixture" } as { id: string } | null,
+    allowed = true,
+    refresh = false,
+  } = {}) {
+    vi.resetModules();
+    mocks.getSupabaseClientConfig.mockReturnValue({
+      url: "https://project.example.test",
+      anonKey: "public-test-fixture",
+    });
+    mocks.createServerClient.mockImplementation((_url: string, _key: string, options: { cookies: CookieMethodsServer }) => ({
+      auth: {
+        getUser: async () => {
+          if (refresh) {
+            await options.cookies.setAll!(
+              [{ name: "audit-session", value: "renewed-fixture", options: { path: "/" } }],
+              { "Cache-Control": "private, no-store" },
+            );
+          }
+          return { data: { user }, error: null };
+        },
+        signOut: async () => {
+          await options.cookies.setAll!([{ name: "audit-session", value: "", options: { path: "/", maxAge: 0 } }], {});
+          return { error: null };
+        },
+      },
+      rpc: async () => ({ data: allowed, error: null }),
+    }));
+  }
+
+  function request(path: string, headers: Record<string, string> = {}) {
+    return new NextRequest(`https://www.skillsetmind.com${path}`, {
+      headers: { host: "www.skillsetmind.com", cookie: "audit-session=old-fixture", ...headers },
+    });
+  }
+
+  it("is forwarded once the session was verified", async () => {
+    stubSession();
+    const { proxy } = await import("@/proxy");
+    const response = await proxy(request("/teach"));
+
+    expect(response.headers.get(SIGNAL)).toBe("1");
+    // The rest of what the proxy forwards is still there.
+    expect(response.headers.get("x-middleware-request-x-nonce")).toBeTruthy();
+    expect(response.headers.get("content-security-policy")).toContain("script-src 'self' 'nonce-");
+  });
+
+  it("keeps the rotated cookie and the anti-cache headers of a refresh", async () => {
+    stubSession({ refresh: true });
+    const { proxy } = await import("@/proxy");
+    const response = await proxy(request("/teach"));
+
+    expect(response.headers.get(SIGNAL)).toBe("1");
+    expect(response.cookies.get("audit-session")).toMatchObject({ value: "renewed-fixture" });
+    expect(response.headers.get("cache-control")).toContain("no-store");
+    // The page render that follows reads the renewed cookie, not the old one.
+    expect(response.headers.get("x-middleware-request-cookie")).toContain("renewed-fixture");
+  });
+
+  it("is absent for a visitor with no session, even if the client sends it", async () => {
+    stubSession({ user: null });
+    const { proxy } = await import("@/proxy");
+    const response = await proxy(request("/teach", { "x-skillset-session-checked": "1" }));
+
+    expect(response.headers.get(SIGNAL)).toBeNull();
+    // Deleted from what is forwarded, not passed through.
+    expect(response.headers.get("x-middleware-override-headers") ?? "").not.toContain("x-skillset-session-checked");
+  });
+
+  it("is absent when the session was just ended as revoked", async () => {
+    stubSession({ allowed: false });
+    const { proxy } = await import("@/proxy");
+    const response = await proxy(new NextRequest("https://www.skillsetmind.com/api/learn/progress", {
+      method: "POST",
+      headers: { host: "www.skillsetmind.com", cookie: "audit-session=old-fixture", origin: "https://www.skillsetmind.com" },
+    }));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get(SIGNAL)).toBeNull();
+  });
+
+  it("is absent on a request the proxy routes without touching the session, whatever the client sends", async () => {
+    stubSession();
+    mocks.resolveHostToUid.mockResolvedValue("teacher-fixture");
+    const { proxy } = await import("@/proxy");
+    const response = await proxy(new NextRequest("https://teacher.example.test/", {
+      headers: { host: "teacher.example.test", "x-skillset-session-checked": "1" },
+    }));
+
+    expect(response.headers.get(SIGNAL)).toBeNull();
+  });
+});

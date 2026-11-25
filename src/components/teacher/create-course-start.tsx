@@ -13,7 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 
 import { CourseCategorySelect } from "@/components/teacher/course-category-select";
 import { InlineHelp } from "@/components/shared/inline-help";
@@ -57,6 +57,8 @@ const formatIcons: Record<TeacherCourseProductFormat, LucideIcon> = {
   ebook: FileDown,
 };
 
+const noSubscription = () => () => {};
+
 export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateCourseStartProps) {
   const router = useRouter();
   const { t } = useTranslation();
@@ -88,7 +90,11 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
   const isLiveEvent = productFormat === "live_event";
   const startsAt = eventDate && eventTime ? new Date(`${eventDate}T${eventTime}`) : null;
   const startsAtValid = Boolean(startsAt && Number.isFinite(startsAt.getTime()));
-  // Today's date in the creator's time zone: the date field's minimum.
+  // Today's date in the creator's time zone: the date field's minimum. Only
+  // in the browser: on the server "today" is the server's date, and a minimum
+  // rendered there would stay on the field after hydration (an evening in the
+  // Americas could not pick today).
+  const inBrowser = useSyncExternalStore(noSubscription, () => true, () => false);
   const today = new Date(now - new Date(now).getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
   const linkIsValid = !eventLink.trim() || isValidExternalEventUrl(eventLink.trim());
   // Each condition that blocks submit, with the text that says what to do.
@@ -340,7 +346,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
                     {t("courseCreation.eventDate")}
                     <input
                       type="date"
-                      min={today}
+                      min={inBrowser ? today : undefined}
                       value={eventDate}
                       onChange={(event) => setEventDate(event.target.value)}
                       className="field-input"

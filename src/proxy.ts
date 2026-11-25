@@ -8,6 +8,7 @@ import {
   normaliseHostHeader,
 } from "@/domain/host-routing";
 import { getAuthErrorRoute } from "@/lib/auth/routing";
+import { SESSION_CHECKED_HEADER } from "@/lib/auth/session-checked";
 import { resolveHostToUid } from "@/lib/domains/resolve-host";
 import { notifyOps } from "@/lib/ops/alert";
 import { buildContentSecurityPolicy } from "@/lib/security/csp";
@@ -195,6 +196,8 @@ export async function proxy(request: NextRequest) {
   const nonce = crypto.randomUUID().replaceAll("-", "");
   const csp = buildContentSecurityPolicy(nonce);
   const requestHeaders = new Headers(request.headers);
+  // Ours to set, further down. Whatever the client sent under this name goes.
+  requestHeaders.delete(SESSION_CHECKED_HEADER);
   requestHeaders.set("x-nonce", nonce);
   // Next reads the request CSP to apply this nonce to its own bootstrap scripts.
   requestHeaders.set("content-security-policy", csp);
@@ -294,6 +297,23 @@ export async function proxy(request: NextRequest) {
       login.headers.set("Cache-Control", "private, no-store");
       return secure(login);
     }
+  }
+
+  if (user && !revoked) {
+    // The session was verified just now, and a token about to expire was
+    // already rotated into the cookies above. Say so to the root layout, which
+    // resolves the session for the first HTML only on this signal (see
+    // lib/auth/session-checked). The forwarded headers are fixed when the
+    // response is built, so it is rebuilt, keeping what setAll put on it.
+    requestHeaders.set(SESSION_CHECKED_HEADER, "1");
+    const checked = NextResponse.next({ request: { headers: requestHeaders } });
+    for (const cookie of response.cookies.getAll()) {
+      checked.cookies.set(cookie);
+    }
+    for (const [name, value] of Object.entries(sessionHeaders)) {
+      checked.headers.set(name, value);
+    }
+    response = checked;
   }
 
   return secure(response);
