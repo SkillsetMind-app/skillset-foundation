@@ -34,6 +34,8 @@ import type { CourseReadinessAccount } from "@/domain/course-readiness";
 import type { Order } from "@/domain/order";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { subscribeToTeacherOrders } from "@/lib/data/orders";
+import { rowToTeacherCourse } from "@/lib/data/published-courses";
+import type { StudioSeed } from "@/lib/data/server/studio-home";
 import { subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
 import { logSubscriptionError } from "@/lib/data/subscription-error";
 
@@ -70,14 +72,38 @@ function saveNextStepsHeight(userId: string, height: number) {
   }
 }
 
-export function TeacherStudioDashboard() {
+// Seeds already drawn once on this page load (see where the seed is read).
+const spentSeeds = new Set<string>();
+
+function sameCourses(left: TeacherCourse[], right: TeacherCourse[]): boolean {
+  return left.length === right.length && JSON.stringify(left) === JSON.stringify(right);
+}
+
+export function TeacherStudioDashboard({ seed = null }: { seed?: StudioSeed | null } = {}) {
   const { user } = useAuth();
   const { t } = useTranslation();
+  // The products and publish gates the server read for this page load, so the
+  // first HTML already has "Next steps" and "My products" where they will
+  // stay. Two conditions, both about not drawing what is no longer the truth:
+  // - only for the account they were read for: after an account switch in the
+  //   same tab this prop still holds the previous person's products;
+  // - only once: the Back button restores this page from the router's cache
+  //   with the same data, by then out of date. That mount reads fresh, as before.
+  const [seeded] = useState(() =>
+    seed && user?.uid === seed.uid && !spentSeeds.has(seed.id) ? seed : null,
+  );
+  useEffect(() => {
+    if (seed) spentSeeds.add(seed.id);
+  }, [seed]);
+  // Until the browser's own read answers, the products on screen came from the server.
+  const showingSeed = useRef(seeded !== null);
   // The same gates the builder and Manage read: payouts, and verification
   // only when the platform requires it.
-  const { account, loaded: gatesLoaded, verificationStatus } = usePublishGates(user);
-  const [courses, setCourses] = useState<TeacherCourse[]>([]);
-  const [coursesLoaded, setCoursesLoaded] = useState(false);
+  const { account, loaded: gatesLoaded, verificationStatus } = usePublishGates(user, seeded?.gates ?? null);
+  const [courses, setCourses] = useState<TeacherCourse[]>(() =>
+    seeded ? seeded.courseRows.map(rowToTeacherCourse) : [],
+  );
+  const [coursesLoaded, setCoursesLoaded] = useState(seeded !== null);
   const [coursesFailed, setCoursesFailed] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   // A read that failed must not look like zero revenue: the tiles say
@@ -99,12 +125,18 @@ export function TeacherStudioDashboard() {
     const current = subscribeToTeacherCourses(
       user.uid,
       (nextCourses) => {
-        setCourses(nextCourses);
+        showingSeed.current = false;
+        // Right after a seeded load the browser reads the same products again:
+        // keeping the array keeps every block below from rendering twice.
+        setCourses((current) => (sameCourses(current, nextCourses) ? current : nextCourses));
         setCoursesFailed(false);
         setCoursesLoaded(true);
       },
       (error) => {
         logSubscriptionError("TeacherStudioDashboard.courses")(error);
+        // The products on screen were read by the server moments ago: a
+        // re-read that fails is no reason to replace them with an error.
+        if (showingSeed.current) return;
         setCoursesFailed(true);
         setCoursesLoaded(true);
       }
