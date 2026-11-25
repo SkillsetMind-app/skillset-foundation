@@ -21,8 +21,8 @@ vi.mock("@/lib/data/course-events", () => ({
   createCourseEvent: mocks.createCourseEvent,
 }));
 
-// O evento ao vivo recusa data passada: o relogio fica parado num dia antes
-// das datas dos testes, que assim nao vencem.
+// The live event refuses a past date: the clock is frozen on a day before
+// the test dates, so they do not expire.
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-10-01T12:00:00"));
@@ -48,14 +48,14 @@ function fillBasics(title = "Clinical performance foundations") {
   selectPrimaryCategory();
 }
 
-describe("CreateCourseStart — tela 1: o que voce vai entregar", () => {
+describe("CreateCourseStart — screen 1: what you will deliver", () => {
   beforeEach(() => {
     mocks.createTeacherCourse.mockReset().mockResolvedValue("course-123");
     mocks.createCourseEvent.mockReset().mockResolvedValue("event-1");
     mocks.push.mockReset();
   });
 
-  it("mostra quatro tipos, cada um com a sua frase, e nada de grátis, assinatura ou programa", () => {
+  it("shows four kinds, each with its own sentence, and nothing about free, subscription or program", () => {
     render(<CreateCourseStart ownerId="teacher-1" />);
 
     expect(screen.getByRole("heading", { name: "What will you deliver?" })).toBeInTheDocument();
@@ -71,11 +71,11 @@ describe("CreateCourseStart — tela 1: o que voce vai entregar", () => {
     expect(screen.getByText("A workshop or class on a set date, by Zoom or Meet.")).toBeInTheDocument();
     expect(screen.getByText("A file people download: PDF, slides, workbook.")).toBeInTheDocument();
     expect(screen.queryByText(/Guided program|Free program|Subscription/)).toBeNull();
-    // O nome vem na tela 2.
+    // The name comes on screen 2.
     expect(screen.queryByLabelText("Name")).toBeNull();
   });
 
-  it("clicar num cartao escolhe, avanca e leva o foco ao titulo da tela 2", async () => {
+  it("clicking a card picks it, advances and moves focus to the title of screen 2", async () => {
     render(<CreateCourseStart ownerId="teacher-1" />);
 
     fireEvent.click(screen.getByRole("button", { name: /^Community/ }));
@@ -85,11 +85,11 @@ describe("CreateCourseStart — tela 1: o que voce vai entregar", () => {
     expect(screen.getByLabelText("Name")).toBeInTheDocument();
   });
 
-  it("Continue avanca com o tipo ja marcado; Back volta e devolve o foco a tela 1", async () => {
+  it("Continue advances with the type already selected; Back goes back and returns focus to screen 1", async () => {
     render(<CreateCourseStart ownerId="teacher-1" initialFormat="ebook" />);
 
     expect(screen.getByRole("button", { name: /^Digital download/ })).toHaveAttribute("aria-pressed", "true");
-    // Na primeira pintura o foco nao e roubado.
+    // On first paint focus is not stolen.
     expect(screen.getByRole("heading", { name: "What will you deliver?" })).not.toHaveFocus();
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     expect(await screen.findByRole("heading", { name: "Name your digital download" })).toHaveFocus();
@@ -101,7 +101,7 @@ describe("CreateCourseStart — tela 1: o que voce vai entregar", () => {
     expect(screen.getByRole("button", { name: /^Digital download/ })).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("o rail marca Format feito ao passar para a tela 2", () => {
+  it("the rail marks Format as done when moving to screen 2", () => {
     render(<CreateCourseStart ownerId="teacher-1" />);
 
     const rail = screen.getByRole("list", { name: "Product creation progress" });
@@ -117,7 +117,7 @@ describe("CreateCourseStart — tela 1: o que voce vai entregar", () => {
   });
 });
 
-describe("CreateCourseStart — tela 2 grava o tipo", () => {
+describe("CreateCourseStart — screen 2 saves the type", () => {
   beforeEach(() => {
     mocks.createTeacherCourse.mockReset().mockResolvedValue("course-123");
     mocks.createCourseEvent.mockReset().mockResolvedValue("event-1");
@@ -129,7 +129,7 @@ describe("CreateCourseStart — tela 2 grava o tipo", () => {
     ["Community", "community", "subscription_monthly", true, "Module 1", "Lesson 1"],
     ["Digital download", "ebook", "one_time", false, "Download", "Clinical performance foundations"],
   ] as const)(
-    "%s: grava product_format e abre o conteudo",
+    "%s: saves product_format and opens the content",
     async (card, productFormat, paymentType, communityEnabled, moduleTitle, lessonTitle) => {
       render(<CreateCourseStart ownerId="teacher-1" />);
 
@@ -156,7 +156,7 @@ describe("CreateCourseStart — tela 2 grava o tipo", () => {
     },
   );
 
-  it("evento ao vivo: data e hora na mesma tela; o link pode ficar para depois", async () => {
+  it("live event: date and time on the same screen; the link can wait until later", async () => {
     render(<CreateCourseStart ownerId="teacher-1" />);
 
     fireEvent.click(screen.getByRole("button", { name: /^Live event/ }));
@@ -194,7 +194,7 @@ describe("CreateCourseStart — tela 2 grava o tipo", () => {
     expect(mocks.push).toHaveBeenCalledWith("/teach/builder?courseId=course-123&tab=content&created=1");
   });
 
-  it("evento ao vivo: link digitado precisa ser um endereco completo", () => {
+  it("live event: a typed link must be a full address", () => {
     render(<CreateCourseStart ownerId="teacher-1" initialFormat="live_event" />);
 
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
@@ -212,7 +212,7 @@ describe("CreateCourseStart — tela 2 grava o tipo", () => {
     expect(screen.getByRole("button", { name: /^Create/ })).toBeEnabled();
   });
 
-  it("evento ao vivo: hora que ja passou trava o envio, e o campo de data comeca hoje", () => {
+  it("live event: a time that has passed blocks submitting, and the date field starts today", () => {
     render(<CreateCourseStart ownerId="teacher-1" initialFormat="live_event" />);
 
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
@@ -229,7 +229,7 @@ describe("CreateCourseStart — tela 2 grava o tipo", () => {
     expect(create).toBeEnabled();
   });
 
-  it("evento ao vivo: se a hora passa com a tela aberta, o envio confere de novo", async () => {
+  it("live event: if the time passes with the screen open, submitting checks again", async () => {
     render(<CreateCourseStart ownerId="teacher-1" initialFormat="live_event" />);
 
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
@@ -253,7 +253,7 @@ describe("CreateCourseStart — tela 2 grava o tipo", () => {
     expect(screen.queryByLabelText("Zoom or Meet link")).toBeNull();
   });
 
-  it("nomeia cada condicao pendente, e some quando todas sao atendidas", async () => {
+  it("names each pending condition, and disappears when all are met", async () => {
     render(<CreateCourseStart ownerId="teacher-1" />);
 
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
@@ -270,8 +270,8 @@ describe("CreateCourseStart — tela 2 grava o tipo", () => {
     });
   });
 
-  // Criar o produto e um dos dois marcos: latao (nao o navy de toda acao).
-  it("o botao de criar e o de latao grande com seta", () => {
+  // Creating the product is one of the two milestones: brass (not the navy of every action).
+  it("the create button is the large brass one with an arrow", () => {
     render(<CreateCourseStart ownerId="teacher-1" />);
 
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
@@ -282,7 +282,7 @@ describe("CreateCourseStart — tela 2 grava o tipo", () => {
     expect(submit.querySelector("svg")).not.toBeNull();
   });
 
-  it("o campo de texto se chama Description; nada de promise", () => {
+  it("the text field is called Description; no promise", () => {
     render(<CreateCourseStart ownerId="teacher-1" />);
 
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
@@ -292,13 +292,13 @@ describe("CreateCourseStart — tela 2 grava o tipo", () => {
   });
 });
 
-// A criacao pergunta so o tipo e o nome. "Como as pessoas vao pagar?" e uma
-// pergunta so, feita uma vez, na etapa de preco do construtor.
-describe("CreateCourseStart — sem pergunta de pagamento", () => {
-  it.each(["Course", "Community", "Live event", "Digital download"])("%s: nenhuma das duas telas pergunta como pagar", (card) => {
+// Creation asks only the kind and the name. "How will people pay?" is a
+// single question, asked once, in the builder's price step.
+describe("CreateCourseStart — no payment question", () => {
+  it.each(["Course", "Community", "Live event", "Digital download"])("%s: neither of the two screens asks how to pay", (card) => {
     render(<CreateCourseStart ownerId="teacher-1" />);
-    // A frase de apoio da tela 1 pode dizer que isso se decide em Preco; o
-    // que nao pode existir e a pergunta, nem um botao ou campo para responder.
+    // Screen 1's supporting sentence may say this is decided in Price; what
+    // cannot exist is the question, nor a button or field to answer it.
     const asksToPay = /how will people pay|how often to charge|charge every|billing interval|payment model/i;
     const answersPayment = /free|paid|one payment|monthly|yearly|subscription/i;
     const paymentControls = () => [

@@ -80,8 +80,8 @@ describe("ES-11 communication with real locale state", () => {
   it("localizes empty inbox and relocalizes its load error", () => {
     state.messagesError = true;
     mount(<TeacherMessagesInbox />);
-    // Falha não é "você não tem mensagens": o vazio só aparece quando a
-    // leitura respondeu vazia.
+    // A failure is not "you have no messages": the empty state only appears when the
+    // read came back empty.
     expect(screen.queryByText("Aún no hay mensajes de alumnos")).not.toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent("No pudimos cargar los mensajes de tus alumnos.");
     expect(screen.getByRole("button", { name: "Intentar de nuevo" })).toBeInTheDocument();
@@ -191,8 +191,8 @@ describe("ES-11 communication with real locale state", () => {
     expect(screen.getByText(en)).toBeInTheDocument();
   });
 
-  // F-11: as duas leituras que falhavam eram um beco (so recarregar a pagina).
-  it.each(["courseError", "postsError"] as const)("%s: o erro da casa e 'Try again' le de novo", async (failure) => {
+  // F-11: the two reads that failed were a dead end (the only way out was reloading the page).
+  it.each(["courseError", "postsError"] as const)("%s: the app's own error shows 'Try again' and it reads again", async (failure) => {
     state[failure] = true;
     mount(<TeacherCommunityInbox courseId="course/$&" />);
     expect(await screen.findByRole("alert")).toBeInTheDocument();

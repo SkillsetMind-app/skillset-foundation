@@ -133,18 +133,18 @@ function DomainCard({
     <Card tone="soft" padding="sm" shadow={false} className="grid grid-cols-1 gap-3">
       <div className="flex flex-wrap items-center gap-3">
         <Globe className="h-4 w-4 shrink-0 text-[var(--color-ink-soft)]" />
-        {/* basis-48: a 375px o endereço ficava com 71px ao lado do selo
-            ("courses.d…"); com a base ele ocupa a linha e o selo desce. */}
+        {/* basis-48: at 375px the address got 71px next to the badge
+            ("courses.d…"); with the basis it takes the row and the badge drops below. */}
         <span className="min-w-0 flex-1 basis-48 truncate font-semibold text-[var(--color-ink)]">
           {domain.hostname}
         </span>
-        {/* O chip da casa: a cor carrega a mesma informação do rótulo, no
-            mesmo vocabulário do resto do estúdio, e acompanha o tema escuro —
-            a paleta crua do Tailwind (bg-amber-100...) não acompanhava. */}
+        {/* The house chip: the color carries the same information as the label, in the
+            same vocabulary as the rest of the studio, and follows the dark theme —
+            Tailwind's raw palette (bg-amber-100...) did not. */}
         <StatusChip status={domain.status} label={t(`teach.customDomains.status.${domain.status}`)} className="max-w-full whitespace-normal!" />
       </div>
 
-      {/* F-07: era uma frase vermelha solta, sem ícone e sem anúncio. */}
+      {/* F-07: it was a loose red sentence, with no icon and no announcement. */}
       {domain.status === "error" && domain.error_reason ? (
         <InlineAlert tone="error">{t(domainErrorKey(domain.error_reason, "setup"))}</InlineAlert>
       ) : null}
@@ -180,10 +180,10 @@ function DomainCard({
             {t("teach.customDomains.recheck")}
           </Button>
         ) : null}
-        {/* Confirmação + folga do vizinho (mesmo remédio do #129). Este botão
-            era gêmeo do "Check again" — o que o professor martela enquanto o
-            DNS propaga — a 8px dele, e derrubava o domínio em um clique, sem
-            desfazer: certificado descartado e DNS inteiro para refazer. */}
+        {/* Confirmation + spacing from the neighbor (same remedy as #129). This button
+            was a twin of "Check again" — the one the teacher hammers while
+            DNS propagates — at 8px from it, and it dropped the domain in one click, with no
+            undo: certificate discarded and the whole DNS to redo. */}
         <Button
           variant="danger"
           disabled={busy}
@@ -195,10 +195,10 @@ function DomainCard({
         </Button>
       </div>
 
-      {/* A janela NÃO espera o DELETE: a rota espera a API da Vercel sem
-          prazo, e esperar ali travaria a página inteira (Esc e Cancel
-          incluídos). Fecha na hora; o botão do cartão fica ocupado pelo
-          busyId e o erro continua aparecendo no cartão, como antes. */}
+      {/* The dialog does NOT wait for the DELETE: the route waits for the Vercel API with no
+          deadline, and waiting there would freeze the whole page (Esc and Cancel
+          included). It closes right away; the card's button stays busy through
+          busyId and the error keeps showing on the card, as before. */}
       {asking ? (
         <ConfirmDialog
           title={t("teach.customDomains.disconnectTitle")}
@@ -405,10 +405,10 @@ export function CustomDomainsPanel() {
           </div>
 
           <form className="mt-5 grid gap-2" onSubmit={handleAdd}>
-            {/* O erro do domínio recusado era um <p> solto no fim do
-                formulário: sem ligação com o campo e sem anúncio nenhum. Quem
-                usa leitor de tela digitava "https://meusite.com", apertava
-                Connect e não recebia absolutamente nada. */}
+            {/* The refused-domain error was a loose <p> at the end of the
+                form: not tied to the field and with no announcement at all. Someone who
+                uses a screen reader typed "https://meusite.com", pressed
+                Connect and got absolutely nothing back. */}
             <Field id="custom-domain-hostname" label={t("teach.customDomains.addLabel")} error={error ? t(error) : undefined}>
               {(a11y) => (
                 <div className="flex flex-wrap items-center gap-2">

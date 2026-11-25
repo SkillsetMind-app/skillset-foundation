@@ -9,25 +9,25 @@ import { Button } from "@/components/ui";
 import { callTeachAi, loadTeachAi, teachAiErrorText } from "@/lib/ai/teach-ai-client";
 import type { QuizQuestion } from "@/lib/ai/lesson-text";
 
-// Quiz da aula no estúdio: a IA escreve a partir da legenda; o professor edita
-// texto, troca a resposta certa, apaga pergunta e publica. Publicado, o aluno
-// vê "Check your understanding" abaixo da aula.
+// Lesson quiz in the studio: the AI writes it from the caption; the teacher edits the
+// text, changes the right answer, deletes a question and publishes. Once published, the learner
+// sees "Check your understanding" below the lesson.
 
 type Quiz = { questions: QuizQuestion[]; status: "draft" | "published" };
 
 export function LessonAiQuiz({ courseId, lessonId, assetId }: { courseId: string; lessonId: string; assetId: string }) {
   const { t } = useTranslation();
   const { ask, dialog: confirmDialog } = useConfirm();
-  // undefined = carregando; "error" = não deu para ler (não oferece gerar por cima).
+  // undefined = loading; "error" = could not be read (does not offer to generate over it).
   const [quiz, setQuiz] = useState<Quiz | null | undefined | "error">(undefined);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
-  // O erro guarda o pedido que falhou: "Try again" repete exatamente ele.
+  // The error keeps the request that failed: "Try again" repeats exactly that one.
   const [notice, setNotice] = useState<
     { kind: "ok"; text: string } | { kind: "error"; text: string; retry: () => void } | null
   >(null);
-  // Cada tentativa de leitura. Sem ela, um quiz que não carregou deixava o
-  // painel só com a frase de erro, sem nenhum botão.
+  // Each read attempt. Without it, a quiz that failed to load left the
+  // panel with only the error sentence, with no button.
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
@@ -85,8 +85,8 @@ export function LessonAiQuiz({ courseId, lessonId, assetId }: { courseId: string
     dropStaleRetry();
   }
 
-  // Editou depois da falha: repetir o pedido antigo gravaria as perguntas
-  // velhas por cima das novas. O erro sai; Save usa o quiz da tela.
+  // Edited after the failure: repeating the old request would save the old
+  // questions over the new ones. The error goes away; Save uses the quiz on screen.
   function dropStaleRetry() {
     setNotice((current) => (current?.kind === "error" ? null : current));
   }
@@ -101,8 +101,8 @@ export function LessonAiQuiz({ courseId, lessonId, assetId }: { courseId: string
       <h4 id="lesson-ai-quiz-title" className="text-sm font-semibold">{t("creatorEditor.lesson.ai.quizTitle")}</h4>
       <p className="text-sm text-[var(--color-ink-soft)]">{t("creatorEditor.lesson.ai.quizHelp")}</p>
 
-      {/* A forma do que vem (o botão de gerar), não uma frase solta (F-03).
-          O aria-busy da seção já diz que está carregando. */}
+      {/* The shape of what comes next (the generate button), not a loose sentence (F-03).
+          The section's aria-busy already says it is loading. */}
       {quiz === undefined ? (
         <div className="animate-pulse">
           <span className="sr-only">{t("creatorEditor.lesson.ai.loading")}</span>
@@ -172,7 +172,7 @@ export function LessonAiQuiz({ courseId, lessonId, assetId }: { courseId: string
               const generate = () => {
                 void run({ action: "generateQuiz" }, "generate", t("creatorEditor.lesson.ai.quizGenerated"));
               };
-              // Perguntas novas substituem as editadas e tiram o quiz do ar até publicar de novo.
+              // New questions replace the edited ones and take the quiz offline until it is published again.
               if (!current) return generate();
               ask({
                 title: t("creatorEditor.lesson.ai.confirmRegenerateQuizTitle"),

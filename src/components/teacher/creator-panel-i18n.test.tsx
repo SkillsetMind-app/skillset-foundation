@@ -16,10 +16,10 @@ import type {
 import type { subscribeToUserProfile } from "@/lib/data/user-profiles";
 import { LOCALE_COOKIE } from "@/lib/i18n/config";
 
-// O que a pessoa sofria: com o idioma em espanhol, o painel do produto, a
-// lista de produtos e a Home do criador seguiam em ingles. Estas provas
-// renderizam as tres telas dentro do I18nProvider em "es" e conferem alguns
-// rotulos por tela. O conteudo autoral (titulo do curso) fica como esta.
+// What the person suffered: with the language in Spanish, the product panel, the
+// product list and the creator Home stayed in English. These tests
+// render the three screens inside the I18nProvider in "es" and check a few
+// labels per screen. The authored content (course title) stays as it is.
 
 const mocks = vi.hoisted(() => {
   const course: TeacherCourse = {
@@ -63,8 +63,8 @@ const mocks = vi.hoisted(() => {
     subscribeToTeacherCourses: vi.fn<typeof subscribeToTeacherCourses>(),
     subscribeToUserProfile: vi.fn<typeof subscribeToUserProfile>(),
     setOwnCourseFeatured: vi.fn<typeof setOwnCourseFeatured>(),
-    // O MESMO objeto em todo render: um usuario novo por render reinscreve os
-    // efeitos e entra em laco.
+    // The SAME object on every render: a new user per render resubscribes the
+    // effects and loops.
     user: { uid: "teacher-1", displayName: "Patricia Simón", roles: ["teacher"] },
     router: { push: vi.fn(), replace: vi.fn(), refresh: vi.fn() },
     searchParams: new URLSearchParams(),
@@ -244,8 +244,8 @@ afterEach(() => {
     : `${LOCALE_COOKIE}=; path=/; max-age=0`;
 });
 
-describe("painel do criador em espanhol", () => {
-  it("painel do produto: menu, lista de publicacao e destaque falam espanhol", async () => {
+describe("creator panel in Spanish", () => {
+  it("product panel: menu, publish list and featured placement speak Spanish", async () => {
     renderEs(<CourseManageHub courseId="course-1" />);
 
     const menu = await screen.findByRole("navigation", {
@@ -259,7 +259,7 @@ describe("painel do criador em espanhol", () => {
     );
     expect(screen.getByRole("heading", { name: "Lista de publicación" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Destacar este curso" })).toBeInTheDocument();
-    // Titulo do curso e conteudo autoral: fica como o professor escreveu.
+    // Course title and authored content: stays as the teacher wrote it.
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
       "Fundamentos de facilitación",
     );
@@ -281,7 +281,7 @@ describe("painel do criador em espanhol", () => {
     expect(mocks.setOwnCourseFeatured).not.toHaveBeenCalled();
   });
 
-  it("como vai o produto: os numeros e o estado vazio falam espanhol", async () => {
+  it("how the product is doing: the numbers and the empty state speak Spanish", async () => {
     renderEs(<CourseManageHub courseId="course-1" />);
 
     expect(
@@ -298,7 +298,7 @@ describe("painel do criador em espanhol", () => {
     expect(screen.getAllByRole("link", { name: "Revisar y publicar" }).length).toBeGreaterThan(0);
   });
 
-  it("lista de produtos: cabecalho, colunas, acoes e filtros falam espanhol", async () => {
+  it("product list: header, columns, actions and filters speak Spanish", async () => {
     renderEs(<TeacherCourseStudio />);
 
     const table = await screen.findByRole("table", { name: "Productos" });
@@ -317,7 +317,7 @@ describe("painel do criador em espanhol", () => {
     ).toBeInTheDocument();
   });
 
-  it("home do criador: proximos passos, produtos, formatos e marcos falam espanhol", async () => {
+  it("creator home: next steps, products, formats and milestones speak Spanish", async () => {
     const view = renderEs(<TeacherStudioDashboard />);
 
     const steps = await screen.findByRole("list", { name: "Próximos pasos del creador" });
@@ -325,16 +325,16 @@ describe("painel do criador em espanhol", () => {
       screen.getByRole("heading", { name: "Prepárate para tu primera venta" }),
     ).toBeInTheDocument();
     expect(within(steps).getByText("Crea un producto")).toBeInTheDocument();
-    // Rascunho de venda avulsa: o Stripe e trava do publish.
-    // O passo aberto traz o proprio botao, com o mesmo nome do passo.
+    // One-time sale draft: Stripe is a publish blocker.
+    // The open step brings its own button, with the same name as the step.
     expect(within(steps).getByText("Conectar Stripe", { selector: "strong" })).toBeInTheDocument();
     expect(within(steps).getByRole("link", { name: /Conectar Stripe/ })).toHaveClass("button-solid");
     expect(within(steps).getByText("Publica tu producto")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Productos en tu espacio" })).toBeInTheDocument();
-    // Filtro, nao abas: o seletor segmentado (botoes com aria-pressed).
+    // A filter, not tabs: the segmented selector (buttons with aria-pressed).
     expect(screen.getByRole("button", { name: "Borradores" })).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByRole("button", { name: "En venta" })).toBeInTheDocument();
-    // A prova olha so a secao de formatos: os quatro tipos da criacao.
+    // The test looks only at the formats section: the four kinds of creation.
     const formats = screen
       .getByRole("heading", { name: "Elige un formato de producto" })
       .closest("section") as HTMLElement;
@@ -347,7 +347,7 @@ describe("painel do criador em espanhol", () => {
       "/teach/builder?newCourse=1&format=live_event",
     );
     expect(within(formats).queryByRole("link", { name: /Programa guiado/ })).toBeNull();
-    // Os marcos repetiam a lista de passos: sairam, antes e depois do publish.
+    // The milestones repeated the step list: they are gone, before and after publish.
     expect(screen.queryByRole("heading", { name: "Hitos del creador" })).toBeNull();
     view.unmount();
 
@@ -358,12 +358,12 @@ describe("painel do criador em espanhol", () => {
   });
 
   it.each([
-    // Cheio: o Starter aponta para os planos; Pro (topo da oferta) e o Plus
-    // aposentado apontam para "Fale conosco", nunca para um beco sem saida.
+    // Full: Starter points to the plans; Pro (top of the offer) and the retired
+    // Plus point to "Contact us", never to a dead end.
     { planId: "starter", planName: "Starter", limit: 1, next: "plans" },
     { planId: "pro", planName: "Pro", limit: 5, next: "contact" },
     { planId: "plus", planName: "Enterprise", limit: 5, next: "contact" },
-  ] as const)("destaques no $planName: quota e idioma acompanham os dados sem escrita", async ({
+  ] as const)("featured placements on $planName: quota and language follow the data without writes", async ({
     planId, planName, limit, next,
   }) => {
     const literalTitle = "LOCAL QA $& $$ {plan} — Autor";
@@ -422,7 +422,7 @@ describe("painel do criador em espanhol", () => {
     expect(mocks.setOwnCourseFeatured).not.toHaveBeenCalled();
   });
 
-  it("downgrade para Free permite remover destaque e espera o stream durante a troca de idioma", async () => {
+  it("downgrade to Free allows removing featured placement and waits for the stream during the language switch", async () => {
     const literalTitle = "LOCAL QA $& $$ {plan} — Autor";
     mocks.course = { ...mocks.course, title: literalTitle, status: "published", featured: true };
     mocks.courses = [mocks.course];
@@ -465,7 +465,7 @@ describe("painel do criador em espanhol", () => {
     if (!onCourse) throw new Error("Missing course subscription");
     act(() => {
       mocks.course = { ...mocks.course, featured: false };
-      // A lista ampla ainda contem a flag anterior: vale a atualizacao individual.
+      // The wide list still holds the earlier flag: the individual update applies.
       onCourse(mocks.course);
     });
     expectFreeHighlight("en");
@@ -481,8 +481,8 @@ describe("painel do criador em espanhol", () => {
     expect(mocks.setOwnCourseFeatured).toHaveBeenCalledExactlyOnceWith("course-1", false);
   });
 
-  // A recusa do banco vinha crua, em ingles de desenvolvedor, mesmo em espanhol.
-  // Agora: a frase da casa com o que fazer; o texto cru so no recolhido.
+  // The database's refusal came raw, in developer English, even in Spanish.
+  // Now: the house sentence with what to do; the raw text only in the collapsed part.
   it.each([
     [
       "You are using all 5 marketplace highlights included in your plan. Remove one first, or request an expansion.",
@@ -491,11 +491,11 @@ describe("painel do criador em espanhol", () => {
     ["Sign in to manage your marketplace highlights.", "Tu sesión expiró. Vuelve a iniciar sesión para gestionar tus destacados."],
     ["Only a published course can be highlighted in the marketplace.", "Solo un curso publicado puede destacarse. Publica este curso primero."],
     ["That course was not found in your account.", "Recarga la página e inténtalo de nuevo. Si continúa, contacta con soporte."],
-  ])("a recusa '%s' sai na frase traduzida, com o texto cru recolhido", async (raw, sentence) => {
+  ])("the refusal '%s' comes out in the translated sentence, with the raw text collapsed", async (raw, sentence) => {
     mocks.course = { ...mocks.course, status: "published", featured: false };
     mocks.courses = [mocks.course];
     mocks.profile = { ...mocks.profile, currentPlanId: "pro" };
-    // Como o supabase-js devolve: objeto com message, nao Error.
+    // As supabase-js returns it: an object with message, not an Error.
     mocks.setOwnCourseFeatured.mockRejectedValueOnce({ message: raw, code: "P0001" });
     renderEs(<CourseManageHub courseId="course-1" />);
 

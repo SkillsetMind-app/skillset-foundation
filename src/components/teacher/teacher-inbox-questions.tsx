@@ -18,20 +18,20 @@ type State =
   | { status: "error" }
   | { status: "ready"; questions: Question[] };
 
-// A metade "comunidade" da Caixa de entrada: as perguntas que esperam pelo
-// professor em todos os produtos com comunidade ligada. A resposta continua
-// sendo dada na caixa de cada curso (/teach/courses/<id>/community), que ja
-// marca a resposta aceita; aqui so se ve o que falta e se chega la com um
-// clique. A caixa do curso nao tem endereco por pergunta (la as que esperam
-// ficam no topo), entao "Answer" leva para a caixa do curso.
+// The "community" half of the Inbox: the questions waiting for the
+// teacher across all products with the community turned on. The answer is still
+// given in each course's inbox (/teach/courses/<id>/community), which already
+// marks the accepted answer; here you only see what is missing and get there with one
+// click. The course inbox has no address per question (there the ones waiting
+// stay on top), so "Answer" leads to the course inbox.
 //
-// A lista de quem espera vem da MESMA leitura do numero da barra
-// (loadTeacherInbox); o texto das perguntas so e lido aqui.
+// The list of who is waiting comes from the SAME read as the number in the bar
+// (loadTeacherInbox); the text of the questions is only read here.
 export function TeacherInboxQuestions() {
   const { user } = useAuth();
   const { t, locale } = useTranslation();
   const [state, setState] = useState<State>({ status: "loading" });
-  // "Try again" pede a mesma leitura de novo.
+  // "Try again" asks for the same read again.
   const [attempt, setAttempt] = useState(0);
   const uid = user?.uid ?? null;
 
@@ -78,8 +78,8 @@ export function TeacherInboxQuestions() {
         ) : null}
       </h2>
 
-      {/* Enquanto le, o cartao mostra a forma das linhas (antes ficava so o
-          titulo, sem numero nem frase, ate a lista pular para dentro). */}
+      {/* While reading, the card shows the shape of the rows (before only the
+          title stayed, with no number or sentence, until the list jumped in). */}
       {state.status === "loading" ? (
         <div aria-busy="true" className="mt-3 grid gap-2">
           <p role="status" className="sr-only">
@@ -127,7 +127,7 @@ export function TeacherInboxQuestions() {
               </div>
               <Link
                 href={`/teach/courses/${encodeURIComponent(post.courseSlug)}/community`}
-                // Contorno: dez perguntas eram dez botoes fortes na mesma tela.
+                // Outline: ten questions were ten strong buttons on the same screen.
                 className="button-outline min-h-11 px-4 text-sm"
               >
                 {t("teach.inboxPage.answer")}

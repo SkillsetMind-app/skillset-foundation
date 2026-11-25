@@ -5,16 +5,16 @@ import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { TeacherWalletPanel } from "@/components/teacher/teacher-wallet-panel";
 import type { PayoutLedgerEntry } from "@/domain/payout-ledger";
 
-// O que a pessoa sofria: com a interface em espanhol, a carteira do professor
-// continuava 100% em ingles — cabecalho, saldo, estado da Stripe, os quatro
-// tiles, os extratos e cada linha do ledger. Esta prova renderiza o painel
-// dentro do I18nProvider em "es" e confere, literal por literal, que nenhum dos
-// textos antigos sobrou e que os novos em espanhol aparecem.
+// What the person suffered: with the interface in Spanish, the teacher's wallet
+// stayed 100% in English — header, balance, Stripe status, the four
+// tiles, the statements and every ledger row. This proof renders the panel
+// inside the I18nProvider in "es" and checks, literal by literal, that none of the
+// old texts is left and that the new Spanish ones appear.
 
-// Referencias ESTAVEIS de proposito: o painel assina perfil e ledger com
-// `[user]` na dependencia e guarda o resultado em estado. Devolver objeto novo
-// a cada render refaz o efeito, que troca o estado, que renderiza de novo — um
-// laco sincrono dentro do act() do React que nem o testTimeout interrompe.
+// STABLE references on purpose: the panel subscribes to profile and ledger with
+// `[user]` in the dependency and keeps the result in state. Returning a new object
+// on every render reruns the effect, which changes the state, which renders again — a
+// synchronous loop inside React's act() that not even the testTimeout interrupts.
 const mocks = vi.hoisted(() => ({
   user: {
     uid: "teacher-1",
@@ -71,7 +71,7 @@ vi.mock("@/lib/data/payout-ledger", () => ({
   },
 }));
 
-// Os produtos do professor (o nome em cada linha do extrato) nao vem aqui.
+// The teacher's products (the name on each statement row) do not come here.
 vi.mock("@/components/teacher/use-teacher-inbox-count", () => ({
   loadTeacherInbox: () => Promise.resolve({ courses: [], questions: [], threads: 0 }),
 }));
@@ -86,16 +86,16 @@ vi.mock("@/lib/payments/connect", () => ({
     Promise.resolve({ chargesEnabled: false, payoutsEnabled: false }),
 }));
 
-// O onboarding embutido da Stripe tem inicializacao assincrona propria e traz
-// texto da propria Stripe, que nao e nosso para traduzir.
+// Stripe's embedded onboarding has its own asynchronous initialization and brings
+// Stripe's own text, which is not ours to translate.
 vi.mock("@/components/teacher/teacher-connect-onboarding", () => ({
   TeacherConnectOnboarding: () => <div data-testid="stripe-onboarding" />,
 }));
 
 afterEach(cleanup);
 
-// Os literais da tela em ingles (os de hoje e os que ja sairam). Se algum
-// aparecer com a tela em espanhol, a prova cai.
+// The literals of the English screen (today's and those that already went away). If any
+// shows up with the screen in Spanish, the proof fails.
 const INGLES_ANTIGO = [
   "Payouts & tax",
   "Your earnings, your payout setup",
@@ -128,8 +128,8 @@ const INGLES_ANTIGO = [
   "Recorded",
 ];
 
-describe("carteira do professor em espanhol", () => {
-  it("nao sobra nenhum dos textos antigos em ingles", () => {
+describe("teacher wallet in Spanish", () => {
+  it("none of the old English texts is left", () => {
     render(
       <I18nProvider initialLocale="es">
         <TeacherWalletPanel />
@@ -139,14 +139,14 @@ describe("carteira do professor em espanhol", () => {
     for (const literal of INGLES_ANTIGO) {
       expect(
         screen.queryAllByText(literal),
-        `texto antigo: ${literal}`,
+        `old text: ${literal}`,
       ).toHaveLength(0);
     }
   });
 
-  // A lista acima so prova algo se a tela em ingles mostra esses textos hoje:
-  // o titulo e a linha do extrato mudaram neste pacote, e a lista mudou junto.
-  it("os literais da lista aparecem na tela em ingles", () => {
+  // The list above only proves something if the English screen shows these texts today:
+  // the title and the statement row changed in this package, and the list changed with them.
+  it("the list literals appear on the English screen", () => {
     render(
       <I18nProvider initialLocale="en">
         <TeacherWalletPanel />
@@ -157,16 +157,16 @@ describe("carteira do professor em espanhol", () => {
     expect(screen.getByText("Order #ORD-1")).toBeInTheDocument();
   });
 
-  it("mostra o cabecalho, o saldo, o estado da Stripe e os tiles em espanhol", () => {
+  it("shows the header, the balance, the Stripe status and the tiles in Spanish", () => {
     render(
       <I18nProvider initialLocale="es">
         <TeacherWalletPanel />
       </I18nProvider>,
     );
 
-    // Cabecalho e cartao do saldo.
-    // O rotulo "Ganancias" em cima do titulo so repetia o nome da barra: saiu,
-    // como nas telas irmas. O h1 e so o titulo, sem ponto e sem o "?" dentro.
+    // Header and balance card.
+    // The label "Ganancias" above the title only repeated the bar's name: it went away,
+    // like on the sibling screens. The h1 is only the title, with no period and no "?" inside.
     expect(screen.queryByText("Ganancias", { selector: "p" })).toBeNull();
     expect(screen.queryByText("Pagos e impuestos")).toBeNull();
     expect(
@@ -183,16 +183,16 @@ describe("carteira do professor em espanhol", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Ver ventas" })).toBeInTheDocument();
 
-    // Cartao do destino dos pagamentos.
+    // Payout destination card.
     expect(screen.getByText("Destino de los pagos")).toBeInTheDocument();
-    // O titulo era "Stripe Connect" fixo no codigo, em toda lingua: nome do
-    // produto da Stripe, nao do que a pessoa tem.
-    // h2 logo abaixo do h1 da pagina (antes pulava para h3).
+    // The title was a fixed "Stripe Connect" in the code, in every language: Stripe's
+    // product name, not what the person has.
+    // h2 right below the page's h1 (before it jumped to h3).
     expect(screen.getByRole("heading", { level: 2, name: "Tu cuenta de Stripe" })).toBeInTheDocument();
     expect(screen.queryByText("Stripe Connect")).toBeNull();
     expect(screen.getByText("Sin conectar")).toBeInTheDocument();
-    // Sem conta, as tres linhas de estado ("Sin crear", "Pendiente",
-    // "Pendiente") nao aparecem: so repetiam o selo "Sin conectar".
+    // With no account, the three status rows ("Sin crear", "Pendiente",
+    // "Pendiente") do not appear: they only repeated the "Sin conectar" badge.
     for (const row of ["Cuenta conectada", "Sin crear", "Cobros", "Pendiente"]) {
       expect(screen.queryByText(row), row).toBeNull();
     }
@@ -210,7 +210,7 @@ describe("carteira do professor em espanhol", () => {
       expect(screen.getByText(tile), tile).toBeInTheDocument();
     }
 
-    // Configuracao da Stripe ainda pendente.
+    // Stripe setup still pending.
     expect(screen.getByText("Configurar los pagos")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", {
@@ -219,7 +219,7 @@ describe("carteira do professor em espanhol", () => {
     ).toBeInTheDocument();
   });
 
-  it("com a conta criada, as linhas de estado aparecem em espanhol e ha um botao de atualizar so", () => {
+  it("with the account created, the status rows appear in Spanish and there is only one refresh button", () => {
     const profile = mocks.profile;
     mocks.profile = { stripeConnectedAccountId: "acct_1234567890" };
     try {
@@ -231,12 +231,12 @@ describe("carteira do professor em espanhol", () => {
 
       expect(screen.getByText("Cuenta conectada")).toBeInTheDocument();
       expect(screen.getByText("Cobros")).toBeInTheDocument();
-      // "Pendiente" aparece nos cobros e nos pagos.
+      // "Pendiente" appears in the charges and in the payouts.
       expect(screen.getAllByText("Pendiente")).toHaveLength(2);
       expect(screen.queryByText("Sin crear")).toBeNull();
       cleanup();
 
-      // Conta pronta: eram dois botoes de atualizar (no saldo e na conta).
+      // Account ready: there used to be two refresh buttons (on the balance and on the account).
       mocks.profile = {
         stripeConnectedAccountId: "acct_1234567890",
         stripeConnectChargesEnabled: true,
@@ -253,7 +253,7 @@ describe("carteira do professor em espanhol", () => {
     }
   });
 
-  it("mostra os extratos e a linha do ledger em espanhol", () => {
+  it("shows the statements and the ledger row in Spanish", () => {
     render(
       <I18nProvider initialLocale="es">
         <TeacherWalletPanel />
@@ -264,20 +264,20 @@ describe("carteira do professor em espanhol", () => {
     expect(
       screen.getByRole("heading", { level: 2, name: "Registro de ingresos reciente." }),
     ).toBeInTheDocument();
-    // O "Exportar tras el primer pago" era desligado para sempre: saiu.
+    // The "Exportar tras el primer pago" was disabled forever: it went away.
     expect(
       screen.queryByRole("button", { name: "Exportar tras el primer pago" }),
     ).toBeNull();
-    // Sem conta Stripe conectada, "Abrir mi Stripe" so dava erro: nao aparece.
+    // With no connected Stripe account, "Abrir mi Stripe" only gave an error: it does not appear.
     expect(screen.queryByRole("button", { name: "Abrir mi Stripe" })).toBeNull();
 
-    // A linha do proprio movimento: o codigo curto do pedido (sem o nome do
-    // produto, que aqui nao foi lido) e a situacao; o id do pagamento saiu.
+    // The ledger row itself: the short order code (without the product name,
+    // which was not read here) and the status; the payment id went away.
     expect(screen.getByText("Pedido #ORD-1")).toBeInTheDocument();
     expect(screen.queryByText("Pago pay-1")).toBeNull();
     expect(screen.getByText("Registrado")).toBeInTheDocument();
-    // Data e valor na lingua da tela: a data saia sempre em ingles e o neto
-    // como "USD 42.38".
+    // Date and amount in the screen's language: the date always came out in English and the net
+    // as "USD 42.38".
     expect(screen.queryByText("Sep 1, 2026")).toBeNull();
     expect(screen.getByText(/^1 sept?\.? 2026$/)).toBeInTheDocument();
     expect(screen.getAllByText(/^42,38\sUS\$$/).length).toBeGreaterThan(0);
@@ -286,9 +286,9 @@ describe("carteira do professor em espanhol", () => {
     expect(screen.getByText("Centro fiscal")).toBeInTheDocument();
   });
 
-  // Sem nenhum movimento nao ha moeda para afirmar: o neto diz so "0" (com
-  // movimento numa moeda so, o zero sai nela; ver creator-ops.test).
-  it("sem nenhuma venda, o neto estimado diz 0 sem inventar moeda", () => {
+  // With no movement there is no currency to assert: the net says just "0" (with
+  // movement in a single currency, the zero comes out in it; see creator-ops.test).
+  it("with no sales, the estimated net says 0 without inventing a currency", () => {
     const ledger = mocks.ledger;
     mocks.ledger = [];
     try {

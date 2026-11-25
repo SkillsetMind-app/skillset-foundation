@@ -3,10 +3,10 @@ import { describe, expect, it } from "vitest";
 
 import { MetricCard } from "@/components/teacher/metric-card";
 
-// O quadro de numero unico do estudio: numero em algarismos de largura fixa,
-// "Unavailable" sem cara de numero, e dt/dd quando mora num <dl>.
+// The studio's single-number card: number in fixed-width digits,
+// "Unavailable" without looking like a number, and dt/dd when it lives in a <dl>.
 describe("MetricCard", () => {
-  it("escreve o numero em .num e a dica embaixo", () => {
+  it("writes the number in .num and the hint below", () => {
     render(<MetricCard label="Paid sales" value="3" hint="Last 30 days" />);
     const value = screen.getByText("3");
     expect(value).toHaveClass("num");
@@ -14,12 +14,12 @@ describe("MetricCard", () => {
     expect(screen.getByText("Last 30 days")).toBeInTheDocument();
   });
 
-  it("'Unavailable' nao usa o estilo de numero", () => {
+  it("'Unavailable' does not use the number style", () => {
     render(<MetricCard label="Revenue" value="Unavailable" unavailable />);
     expect(screen.getByText("Unavailable")).not.toHaveClass("num");
   });
 
-  it("dentro de um <dl> vira dt/dd, com o esqueleto enquanto carrega", () => {
+  it("inside a <dl> it becomes dt/dd, with the skeleton while loading", () => {
     const { container } = render(
       <dl>
         <MetricCard labelAs="dt" label="Upcoming" value={2} hint="Still ahead" srOnlyHint loading />

@@ -5,10 +5,10 @@ import { CourseOverviewPanel } from "@/components/teacher/course-overview-panel"
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { getMyCourseStudents } from "@/lib/data/enrollments";
 
-// A leitura dos alunos falhava em silencio (so log): o esqueleto do painel
-// pulsava para sempre. Agora a falha vira erro com "Try again", que le de novo.
+// Reading the learners failed silently (log only): the panel skeleton
+// pulsed forever. Now the failure becomes an error with "Try again", which reads again.
 
-// Trocar o objeto do usuario rele os alunos (o efeito depende dele).
+// Changing the user object rereads the learners (the effect depends on it).
 const viewer = vi.hoisted(() => ({ current: { uid: "teacher-1" } }));
 vi.mock("@/components/auth/auth-provider", () => ({ useAuth: () => ({ user: viewer.current }) }));
 vi.mock("@/components/teacher/studio-recent-activity", () => ({ StudioRecentActivity: () => null }));
@@ -40,8 +40,8 @@ it("a failed students read ends in an error with Try again, never an endless ske
   expect(getMyCourseStudents).toHaveBeenCalledTimes(2);
 });
 
-// Uma leitura boa limpa a falha anterior, e uma releitura que falha nao troca
-// os numeros que ja estao na tela pelo erro.
+// A good read clears the previous failure, and a reread that fails does not replace
+// the numbers already on the screen with the error.
 it("a later good read clears the error, and a later failed read keeps the numbers", async () => {
   vi.mocked(getMyCourseStudents).mockRejectedValueOnce(new Error("network"));
   const { rerender } = render(<CourseOverviewPanel course={course} />);

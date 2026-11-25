@@ -203,9 +203,9 @@ function ConnectOnboardingFlow({
   useEffect(() => {
     themeRef.current = resolvedTheme;
   }, [resolvedTheme]);
-  // Mesmo motivo para o idioma: sem `locale` a Stripe adivinha pelo navegador e
-  // servia o KYC em portugues dentro de uma pagina em ingles. Ref para o init,
-  // `update()` abaixo para a troca ao vivo.
+  // Same reason for the language: without `locale` Stripe guesses from the browser and
+  // served the KYC in Portuguese inside an English page. Ref for the init,
+  // `update()` below for the live switch.
   const localeRef = useRef(locale);
   useEffect(() => {
     localeRef.current = locale;
@@ -250,7 +250,7 @@ function ConnectOnboardingFlow({
           // Inherit SkillsetMind brand colors (light/dark) so the embedded UI doesn't
           // look like a foreign Stripe widget plopped onto the page.
           appearance: buildConnectAppearance(themeRef.current),
-          // Idioma da INTERFACE, nao o do navegador.
+          // The INTERFACE language, not the browser's.
           locale: localeRef.current,
         });
         if (!cancelled) {
@@ -326,8 +326,8 @@ function ConnectOnboardingFlow({
         <p role="alert" className="text-sm leading-7 text-[var(--color-ink-soft)]">
           {t(`connectOnboarding.error.${key}`)}
         </p>
-        {/* O codigo da resposta e so para o suporte, recolhido; era
-            "Reference: HTTP 409" no meio da frase. */}
+        {/* The response code is only for support, collapsed; it used to be
+            "Reference: HTTP 409" in the middle of the sentence. */}
         {error.status ? <SupportDetails code={error.status} className="mt-2" /> : null}
         <div className="mt-4 flex flex-wrap gap-2">
           {key === "country" && onChooseAgain ? (
@@ -430,8 +430,8 @@ function ConnectOnboardingFlow({
 
   if (!connect) {
     return (
-      // O lugar do formulario da Stripe guardado, com esqueleto: era uma
-      // frase numa caixa baixa que pulava quando o cadastro chegava.
+      // The Stripe form's spot is reserved, with a skeleton: it used to be a
+      // sentence in a short box that jumped when the signup form arrived.
       <div className="overflow-hidden rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)]">
         <StripeFrameSkeleton label={t("connectOnboarding.preparing")} />
       </div>

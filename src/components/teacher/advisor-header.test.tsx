@@ -29,7 +29,7 @@ vi.mock("@/components/auth/auth-provider", () => ({
 vi.mock("@/lib/advisor/config", () => ({ get isAdvisorEnabled() { return viewer.enabled; } }));
 // Keep the layout/gate/Advisor composition real; only the server verdict is fixed.
 vi.mock("@/lib/data/creator-verification", () => ({ fetchCreatorActivationBlocked: vi.fn().mockResolvedValue(false) }));
-// O layout lê o cookie da barra no servidor (cookies() fora de pedido falha no jsdom).
+// The layout reads the sidebar cookie on the server (cookies() outside a request fails in jsdom).
 vi.mock("@/components/platform/sidebar-preference-layout", () => ({
   default: ({ children }: { children: ReactNode }) => children,
 }));
@@ -103,8 +103,8 @@ afterEach(() => {
   document.cookie = "skillset.locale.v1=; max-age=0; path=/";
 });
 
-describe("Advisor no cabecalho sem cobrir o conteudo", () => {
-  it.each([768, 1024, 1440])("coloca o unico gatilho no cabecalho antes do sino em %i px", async currentWidth => {
+describe("Advisor in the header without covering the content", () => {
+  it.each([768, 1024, 1440])("puts the single trigger in the header before the bell at %i px", async currentWidth => {
     width = currentWidth;
     await renderStudio();
     const header = screen.getByRole("banner");
@@ -116,7 +116,7 @@ describe("Advisor no cabecalho sem cobrir o conteudo", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it.each([320, 390, 767])("preserva o unico gatilho flutuante no celular em %i px", async currentWidth => {
+  it.each([320, 390, 767])("keeps the single floating trigger on phones at %i px", async currentWidth => {
     width = currentWidth;
     await renderStudio();
     const trigger = screen.getByRole("button", { name: "Open studio advisor" });
@@ -124,7 +124,7 @@ describe("Advisor no cabecalho sem cobrir o conteudo", () => {
     expect(screen.getByRole("banner")).not.toContainElement(trigger);
   });
 
-  it.each([false, true])("mantem o acesso no cabecalho da previa, inclusive whitelabel=%s", async branded => {
+  it.each([false, true])("keeps access in the preview header, including whitelabel=%s", async branded => {
     viewer.pathname = "/teach/builder/course-1/preview";
     await renderStudio(<MemberAreaShell brand={branded ? { name: "Local brand" } : null}><p>Preview</p></MemberAreaShell>);
     const header = screen.getByRole("banner");
@@ -136,7 +136,7 @@ describe("Advisor no cabecalho sem cobrir o conteudo", () => {
     }
   });
 
-  it("nao injeta Advisor na sala do aluno, mesmo se o usuario tambem for professor", () => {
+  it("does not inject the Advisor into the learner room, even if the user is also a teacher", () => {
     viewer.pathname = "/learn/courses/course-1";
     render(<MemberAreaShell><p>Student classroom</p></MemberAreaShell>);
     expect(screen.queryByRole("button", { name: /advisor/i })).toBeNull();
@@ -144,7 +144,7 @@ describe("Advisor no cabecalho sem cobrir o conteudo", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it.each(["signed-out", "student", "disabled"])("preserva a pagina e bloqueia o Advisor: %s", async condition => {
+  it.each(["signed-out", "student", "disabled"])("keeps the page and blocks the Advisor: %s", async condition => {
     if (condition === "signed-out") viewer.uid = null;
     if (condition === "student") viewer.roles = ["student"];
     if (condition === "disabled") viewer.enabled = false;
@@ -155,7 +155,7 @@ describe("Advisor no cabecalho sem cobrir o conteudo", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("troca o cabecalho da pagina e preserva painel, rascunho e uma unica leitura do historico", async () => {
+  it("swaps the page header and keeps the panel, draft and a single history read", async () => {
     const view = await renderStudio(<PlatformHeader key="home" />);
     await openAdvisor();
     const composer = screen.getByRole("textbox", { name: "Message to studio advisor" });
@@ -170,7 +170,7 @@ describe("Advisor no cabecalho sem cobrir o conteudo", () => {
     expect(fetchMock).toHaveBeenCalledOnce();
   });
 
-  it.each([[390, 768], [1440, 390]])("resize %i→%i conserva o compositor e Escape devolve foco ao gatilho visivel", async (from, to) => {
+  it.each([[390, 768], [1440, 390]])("resize %i→%i keeps the composer and Escape returns focus to the visible trigger", async (from, to) => {
     width = from;
     await renderStudio();
     await openAdvisor();
@@ -184,16 +184,16 @@ describe("Advisor no cabecalho sem cobrir o conteudo", () => {
     expect(fetchMock).toHaveBeenCalledOnce();
   });
 
-  // O painel abria no rodape, a ~500px do botao no topo. Com o gatilho no
-  // cabecalho ele cai 8px abaixo do botao, preso a direita dele; no celular,
-  // onde o botao flutua embaixo, segue embaixo.
-  it.each([[1024, true], [390, false]])("em %i px o painel abre junto do botao do topo: %s", async (currentWidth, anchored) => {
+  // The panel used to open at the bottom, ~500px from the button at the top. With the trigger in the
+  // header it drops 8px below the button, pinned to its right side; on phones,
+  // where the button floats at the bottom, it stays at the bottom.
+  it.each([[1024, true], [390, false]])("at %i px the panel opens next to the top button: %s", async (currentWidth, anchored) => {
     width = currentWidth;
     await renderStudio();
     const trigger = screen.getByRole("button", { name: "Open studio advisor" });
     vi.spyOn(trigger.parentElement!, "getBoundingClientRect").mockReturnValue(DOMRect.fromRect({ x: 700, y: 10, width: 44, height: 44 }));
-    // A barra do topo termina em 65px: o painel comeca 8px abaixo DELA, nao
-    // do botao (que termina em 54px, dentro da barra).
+    // The top bar ends at 65px: the panel starts 8px below IT, not
+    // below the button (which ends at 54px, inside the bar).
     const bar = screen.getByRole("banner");
     vi.spyOn(bar, "getBoundingClientRect").mockReturnValue(DOMRect.fromRect({ x: 0, y: 0, width: 1024, height: 65 }));
     await openAdvisor();
@@ -201,7 +201,7 @@ describe("Advisor no cabecalho sem cobrir o conteudo", () => {
     const float = panel.parentElement!;
     expect(float.classList.contains("floating-action--anchored")).toBe(anchored);
     expect(panel.classList.contains("motion-drop-in")).toBe(anchored);
-    // No celular abria seco; agora sobe 8px como a gaveta.
+    // On phones it used to appear abruptly; now it rises 8px like the drawer.
     expect(panel.classList.contains("motion-panel-in")).toBe(!anchored);
     if (anchored) {
       expect(bar).toHaveClass("platform-topbar");
@@ -212,7 +212,7 @@ describe("Advisor no cabecalho sem cobrir o conteudo", () => {
     }
   });
 
-  it("preserva foco do gatilho fechado quando ele muda entre cabecalho e celular", async () => {
+  it("keeps focus on the closed trigger when it moves between header and phone", async () => {
     await renderStudio();
     act(() => screen.getByRole("button", { name: "Open studio advisor" }).focus());
     resize(390);
@@ -221,7 +221,7 @@ describe("Advisor no cabecalho sem cobrir o conteudo", () => {
     expect(within(screen.getByRole("banner")).getByRole("button", { name: "Open studio advisor" })).toHaveFocus();
   });
 
-  it("traduz controles e saudacao em ES sem traduzir o historico ou perder o rascunho", async () => {
+  it("translates controls and greeting in ES without translating the history or losing the draft", async () => {
     await renderStudio();
     await openAdvisor();
     fireEvent.change(screen.getByRole("textbox", { name: "Message to studio advisor" }), { target: { value: "My own words" } });
@@ -237,7 +237,7 @@ describe("Advisor no cabecalho sem cobrir o conteudo", () => {
     expect(within(screen.getByRole("banner")).getByRole("button", { name: "Abrir el asesor del estudio" })).toHaveFocus();
   });
 
-  it("traduz as sugestoes iniciais, preservando o texto escolhido como mensagem autoral", async () => {
+  it("translates the initial suggestions, keeping the chosen text as a user-written message", async () => {
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({ conversationId: null, messages: [] }) });
     await renderStudio(<PlatformHeader />, "es");
     fireEvent.click(screen.getByRole("button", { name: "Abrir el asesor del estudio" }));
@@ -250,7 +250,7 @@ describe("Advisor no cabecalho sem cobrir o conteudo", () => {
     expect(body.messages).toEqual([{ role: "user", content: "¿Cómo debería fijar el precio de mi primer curso?" }]);
   });
 
-  it("atualiza o aviso local ao trocar idioma e conserva explicacoes recebidas do servidor", async () => {
+  it("updates the local notice when the language changes and keeps explanations received from the server", async () => {
     await renderStudio();
     await openAdvisor();
     fetchMock.mockResolvedValue({ ok: false, status: 429, json: async () => ({}) });

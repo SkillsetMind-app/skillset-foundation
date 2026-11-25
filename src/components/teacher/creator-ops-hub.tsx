@@ -45,7 +45,7 @@ const periodSubtitleKey: Record<ReportPeriod, string> = {
 };
 
 // Chart totals stay in en-US, like the home revenue chart; KPIs and the table
-// follow the interface language. A moeda e a do grafico (era USD fixo).
+// follow the interface language. The currency is the chart's (it used to be fixed USD).
 const WHOLE = { minimumFractionDigits: 0, maximumFractionDigits: 0 };
 
 export function CreatorOpsHub() {
@@ -59,7 +59,7 @@ export function CreatorOpsHub() {
   const [subscriptionsState, setSubscriptionsState] =
     useState<ReadState>("loading");
   const [period, setPeriod] = useState<ReportPeriod>("30d");
-  // "Try again" assina de novo as mesmas tres leituras.
+  // "Try again" subscribes again to the same three reads.
   const [attempt, setAttempt] = useState(0);
   const readFailed =
     ordersState === "error" || ledgersState === "error" || subscriptionsState === "error";
@@ -98,14 +98,14 @@ export function CreatorOpsHub() {
   }, [user, attempt]);
 
   function retryReads() {
-    // So o que falhou volta a "carregando"; o que ja veio fica na tela.
+    // Only what failed goes back to "loading"; what already came stays on screen.
     setOrdersState((state) => (state === "error" ? "loading" : state));
     setLedgersState((state) => (state === "error" ? "loading" : state));
     setSubscriptionsState((state) => (state === "error" ? "loading" : state));
     setAttempt((current) => current + 1);
   }
 
-  // Moedas lado a lado com " · " (o " + " de antes lia como soma).
+  // Currencies side by side with " · " (the earlier " + " read as a sum).
   const moneyBreakdown = (values: CurrencyAmount[]): string =>
     values.length
       ? formatMoneyBreakdown(values, locale, null, WHOLE)
@@ -117,19 +117,19 @@ export function CreatorOpsHub() {
       month: "short",
       day: "numeric",
     });
-    // Pago ou com reembolso parcial (conta o que ficou com o professor).
+    // Paid or with a partial refund (counts what stayed with the teacher).
     const paidOrders = orders.filter(isRevenueOrder);
-    // A janela sai dos pedidos pagos porque "All" precisa saber onde a loja
-    // comecou; os KPIs e o grafico usam a MESMA janela, entao a linha e o
-    // numero nunca contam periodos diferentes.
+    // The window comes from the paid orders because "All" needs to know where the store
+    // began; the KPIs and the chart use the SAME window, so the line and the
+    // number never count different periods.
     const window = resolveReportWindow(paidOrders, period);
     const ordersInPeriod = orders.filter((order) =>
       isWithinWindow(order.createdAt, window),
     );
     const paidInPeriod = paidOrders.filter((order) => isWithinWindow(order.createdAt, window));
-    // Uma moeda no grafico (a de mais pedidos com dinheiro no periodo; empate:
-    // alfabetica); as outras vao numa linha embaixo. Nada soma moedas. Sem
-    // venda no periodo, o eixo fica na unica moeda que o professor ja vendeu.
+    // One currency on the chart (the one with the most orders with money in the period; tie:
+    // alphabetical); the others go on a line below. Nothing sums currencies. With no
+    // sale in the period, the axis stays on the only currency the teacher has ever sold in.
     const currencies = groupPaidOrdersByCurrency(paidInPeriod);
     const everSold = groupPaidOrdersByCurrency(paidOrders);
     const chartCurrency =
@@ -137,7 +137,7 @@ export function CreatorOpsHub() {
     const ledgersInPeriod = ledgers.filter((entry) =>
       isWithinWindow(entry.createdAt, window),
     );
-    // MRR e uma foto de hoje, nao um acumulado: ele le a carteira inteira.
+    // MRR is a snapshot of today, not an accumulation: it reads the whole wallet.
     const subscriptionMetrics = calculateCreatorSubscriptionMetrics(
       subscriptions,
       [],
@@ -172,7 +172,7 @@ export function CreatorOpsHub() {
   }, [orders, ledgers, subscriptions, period, locale]);
 
   const { snap, refund, series, products, chartCurrency, otherCurrencies } = report;
-  // A serie ja e de uma moeda so: a soma dos baldes e o total dela.
+  // The series is already one currency: the sum of the buckets is its total.
   const chartTotalMinor = series.reduce((sum, point) => sum + point.grossMinor, 0);
 
   const columns = {
@@ -244,8 +244,8 @@ export function CreatorOpsHub() {
             option === "all" ? t("teach.insights.rangeAllTab") : option
           }
         />
-        {/* As linhas saem dos pedidos: sem a leitura pronta, zero linhas nao
-            quer dizer "nada vendido". */}
+        {/* The rows come from the orders: without the read ready, zero rows does not
+            mean "nothing sold". */}
         <ExportTableButton
           rows={exportRows}
           filename="skillset-reports"
@@ -254,8 +254,8 @@ export function CreatorOpsHub() {
         />
       </div>
 
-      {/* F-11: a leitura que falhava so deixava "Unavailable" nos quadros,
-          sem aviso e sem caminho de volta alem de recarregar a pagina. */}
+      {/* F-11: the read that failed only left "Unavailable" in the frames,
+          with no notice and no way back other than reloading the page. */}
       {readFailed ? (
         <div className="grid gap-3">
           <InlineAlert tone="error">{t("teach.reports.loadError")}</InlineAlert>

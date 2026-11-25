@@ -39,10 +39,10 @@ import { logSubscriptionError } from "@/lib/data/subscription-error";
 
 type ProductFilter = "all" | "draft" | "published" | "in_review" | "other";
 
-// O bloco "Next steps" so entra quando cursos e travas chegam, ~0,6 s depois da
-// lista de produtos: no celular "My products" descia 632px na frente de quem ia
-// tocar. A altura que o bloco teve na ultima visita (neste aparelho, nesta
-// largura de tela) fica reservada enquanto os dados chegam.
+// The "Next steps" block only enters when courses and gates arrive, ~0.6 s after the
+// product list: on the phone "My products" dropped 632px in front of whoever was about to
+// tap. The height the block had on the last visit (on this device, at this
+// screen width) stays reserved while the data arrives.
 const NEXT_STEPS_HEIGHT_KEY = "skillset.studio.nextStepsHeight.v1";
 const EMPTY_SUBSCRIBE = () => () => {};
 
@@ -51,8 +51,8 @@ function readNextStepsHeight(userId: string): number {
   try {
     const saved = JSON.parse(window.localStorage.getItem(NEXT_STEPS_HEIGHT_KEY) ?? "null");
     if (saved?.uid !== userId || typeof saved.h !== "number" || typeof saved.w !== "number") return 0;
-    // Outra largura (celular deitado, janela redimensionada) quebra o texto em
-    // outras linhas: a altura guardada nao vale mais.
+    // A different width (phone in landscape, resized window) breaks the text into
+    // other lines: the saved height is no longer valid.
     return Math.abs(saved.w - window.innerWidth) <= 48 ? saved.h : 0;
   } catch {
     return 0;
@@ -66,26 +66,26 @@ function saveNextStepsHeight(userId: string, height: number) {
       JSON.stringify({ uid: userId, w: window.innerWidth, h: height }),
     );
   } catch {
-    // ponytail: armazenamento bloqueado (modo privado): o bloco so nao reserva o espaco.
+    // ponytail: storage blocked (private mode): the block just does not reserve the space.
   }
 }
 
 export function TeacherStudioDashboard() {
   const { user } = useAuth();
   const { t } = useTranslation();
-  // As mesmas travas que o construtor e o Manage leem: payouts, e verificacao
-  // so quando a plataforma exige.
+  // The same gates the builder and Manage read: payouts, and verification
+  // only when the platform requires it.
   const { account, loaded: gatesLoaded, verificationStatus } = usePublishGates(user);
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
   const [coursesLoaded, setCoursesLoaded] = useState(false);
   const [coursesFailed, setCoursesFailed] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
-  // Leitura que falhou nao pode parecer receita zero: os quadros dizem
-  // "Unavailable" (como Ganhos), e enquanto carrega ficam no esqueleto.
+  // A read that failed must not look like zero revenue: the tiles say
+  // "Unavailable" (like Earnings), and while loading they stay on the skeleton.
   const [ordersState, setOrdersState] = useState<"loading" | "ready" | "error">("loading");
   const firstName = user?.displayName?.trim().split(/\s+/)[0] ?? "";
-  // A taxa unica de ativacao vem do mesmo hook (o MESMO predicado que o
-  // servidor aplica no publish, falha aberta): uma leitura so por visita.
+  // The one-time activation fee comes from the same hook (the SAME predicate the
+  // server applies on publish, fails open): one read per visit.
   const activationBlocked = account.activationBlocked ?? false;
 
   const coursesSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
@@ -121,8 +121,8 @@ export function TeacherStudioDashboard() {
       return;
     }
 
-    // Cursos, pedidos e perfil eram lidos 3x, 3x e 2x por /teach: cada bloco
-    // da Home abria a propria leitura. Agora a Home le uma vez e repassa.
+    // Courses, orders and profile were read 3x, 3x and 2x per /teach: each block
+    // of the Home opened its own read. Now the Home reads once and passes it down.
     const current = subscribeToTeacherOrders(
       user.uid,
       (nextOrders) => {
@@ -141,9 +141,9 @@ export function TeacherStudioDashboard() {
     };
   }, [user]);
 
-  // A leitura que falhou ganha "Try again" (antes a saida era recarregar a
-  // pagina): le de novo pelo mesmo canal, so o que falhou, e enquanto isso o
-  // bloco volta ao esqueleto.
+  // A read that failed gets "Try again" (before, the way out was reloading the
+  // page): it re-reads through the same channel, only what failed, and meanwhile the
+  // block goes back to the skeleton.
   const readFailed = coursesFailed || ordersState === "error";
   function retryLoad() {
     if (coursesFailed) {
@@ -157,18 +157,18 @@ export function TeacherStudioDashboard() {
     }
   }
 
-  // "inactive" e um curso que ja esteve no ar (o admin tirou): ja houve publish.
+  // "inactive" is a course that was once live (the admin took it down): it has already been published.
   const launched = courses.some(
     (course) => course.status === "published" || course.status === "inactive"
   );
-  // Arquivado tambem e "inactive": saiu da venda e nao cobra Stripe.
+  // Archived is also "inactive": it left sale and does not charge Stripe.
   const needsStripe = courses.some(
     (course) => course.status !== "inactive" && sellsPaid(course)
   );
-  // Primeira visita, sem produto: o vazio da lista guarda o UNICO botao forte.
-  // Filtros, formatos e o "New product" solido disputavam com ele.
-  // Leitura que falhou nao e "sem produto": nada de convite a criar um
-  // produto repetido embaixo do erro.
+  // First visit, no product: the list's empty state holds the ONLY strong button.
+  // Filters, formats and the solid "New product" competed with it.
+  // A read that failed is not "no product": no invitation to create a
+  // repeated product under the error.
   const noProducts = coursesLoaded && courses.length === 0 && !coursesFailed;
   const greetingKey = !coursesLoaded
     ? "hello"
@@ -177,9 +177,9 @@ export function TeacherStudioDashboard() {
       : "welcome";
 
   return (
-    // grid-cols-1 = minmax(0, 1fr): sem ele a coluna crescia ate a largura dos
-    // filtros de "My products" (rolam por dentro) e a 375px a tela inteira
-    // passava 35px da borda, cortando titulo, texto e o "67%".
+    // grid-cols-1 = minmax(0, 1fr): without it the column grew to the width of the
+    // "My products" filters (they scroll inside) and at 375px the whole screen
+    // went 35px past the edge, cutting the title, text and the "67%".
     <div className="grid grid-cols-1 gap-8">
       {user ? (
         <TeacherWelcomeTour
@@ -189,18 +189,18 @@ export function TeacherStudioDashboard() {
           hasProducts={courses.length > 0}
         />
       ) : null}
-      {/* Uma manchete por tela. O olho da pagina era "Producer home" em
-          versalete APOIADO por "Welcome back, {name}" logo abaixo: dois
-          titulos disputando a mesma linha de leitura, e o de cima nem
-          nomeava a tela ("Home" ja esta na barra e na trilha do topo). */}
-      {/* "Welcome back" so para quem ja tem produto: na 1a visita a frase
-          era falsa. Enquanto a lista carrega vale "Welcome", que nunca
-          mente. Antes de a lista chegar nao da para saber qual das duas e
-          verdade: vale "Hello", que nao afirma nada. Se a assinatura de
-          cursos falhar, fica o "Welcome back" de antes. */}
-      {/* O mesmo cabecalho das telas irmas (era 36px sem serifa so aqui).
-          So "New product": o "Storefront" daqui levava ao mesmo editor do
-          "Edit storefront" do cartao da vitrine, logo abaixo. */}
+      {/* One headline per screen. The page's eye was "Producer home" in
+          small caps SUPPORTED by "Welcome back, {name}" right below: two
+          titles competing for the same reading line, and the top one did not even
+          name the screen ("Home" is already in the bar and in the top trail). */}
+      {/* "Welcome back" only for those who already have a product: on the 1st visit the sentence
+          was false. While the list loads, "Welcome" applies, which never
+          lies. Before the list arrives we cannot know which of the two is
+          true: "Hello" applies, which claims nothing. If the courses
+          subscription fails, the earlier "Welcome back" stays. */}
+      {/* The same header as the sibling screens (it was 36px with no serif, only here).
+          Only "New product": the "Storefront" here led to the same editor as the
+          "Edit storefront" of the storefront card, right below. */}
       <PlatformPageHeader
         title={
           firstName
@@ -253,13 +253,13 @@ export function TeacherStudioDashboard() {
         ) : null}
       </div>
 
-      {/* Os formatos sao atalhos para quem ja tem produto; o primeiro produto
-          ja escolhe o formato na tela de criacao. */}
+      {/* The formats are shortcuts for those who already have a product; the first product
+          already chooses the format on the creation screen. */}
       {courses.length > 0 ? <StudioSellFormatsSection /> : null}
 
-      {/* Os marcos ("Creator milestones") repetiam os mesmos passos da lista
-          acima, e o cartao "Finish your Stripe setup" da lista de atencao
-          repetia o passo do Stripe: a pendencia agora aparece uma vez so. */}
+      {/* The milestones ("Creator milestones") repeated the same steps as the list
+          above, and the "Finish your Stripe setup" card of the attention list
+          repeated the Stripe step: the pending item now shows up only once. */}
       <TeacherOverviewMetrics
         courses={courses}
         orders={orders}
@@ -283,8 +283,8 @@ function StudioNextSteps({
 }: {
   userId: string;
   courses: TeacherCourse[];
-  // Cursos e travas carregados. Antes disso a lista ainda pode ganhar ou perder
-  // passos (verificacao exigida, plano, Stripe): o bloco nao aparece.
+  // Courses and gates loaded. Before that the list can still gain or lose
+  // steps (required verification, plan, Stripe): the block does not show up.
   ready: boolean;
   account: CourseReadinessAccount;
   verificationStatus: string | null;
@@ -293,10 +293,10 @@ function StudioNextSteps({
   launched: boolean;
 }) {
   const { t } = useTranslation();
-  // Os passos sao as travas reais do publish (getCourseReadiness via
-  // usePublishGates): o Stripe so para produto pago, a verificacao so quando a
-  // plataforma exige. Antes o passo 2 cobrava verificacao APROVADA de todo
-  // mundo, nao havia passo de publicar e a barra parava em 67%.
+  // The steps are the real publish gates (getCourseReadiness via
+  // usePublishGates): Stripe only for a paid product, verification only when the
+  // platform requires it. Before, step 2 demanded APPROVED verification from
+  // everyone, there was no publish step and the bar stopped at 67%.
   const steps = [
     {
       id: "create",
@@ -306,10 +306,10 @@ function StudioNextSteps({
       done: courses.length > 0,
       action: t("creatorPanel.createProduct"),
     },
-    // O plano vem DEPOIS de criar: o teste gratis so e exigido para publicar, e
-    // pedir o cartao a quem ainda nao montou nada era o primeiro passo da casa.
-    // O botao abre os cartoes de plano (/account/plans); antes abria a pagina
-    // de recibos de aluno (/account/billing), a tres cliques do teste.
+    // The plan comes AFTER creating: the free trial is only required to publish, and
+    // asking for the card from someone who has not built anything yet was the house's first step.
+    // The button opens the plan cards (/account/plans); before it opened the page
+    // of learner receipts (/account/billing), three clicks from the trial.
     ...(account.planRequired
       ? [{
           id: "plan",
@@ -325,8 +325,8 @@ function StudioNextSteps({
           {
             id: "payouts",
             label: t("platform.banner.connectPayoutsCta"),
-            // A frase da antiga faixa amarela fixa do topo do /teach: o
-            // comprador paga NA conta do professor.
+            // The sentence from the old fixed yellow strip at the top of /teach: the
+            // buyer pays INTO the teacher's account.
             detail: t("platform.banner.connectPayouts"),
             href: "/account/payments#stripe-connect",
             done: account.payoutsReady,
@@ -342,8 +342,8 @@ function StudioNextSteps({
             detail: t("creatorEditor.readiness.items.verification.hint"),
             href: "/teach/verification",
             done: account.verificationApproved,
-            // Em analise nao se "comeca" de novo; pedido de ajuste ou recusa
-            // se resolve editando a solicitacao.
+            // Under review there is no "starting" again; an adjustment request or rejection
+            // is resolved by editing the request.
             action: t(
               verificationStatus === "pending"
                 ? "professionalBadge.inReview"
@@ -357,8 +357,8 @@ function StudioNextSteps({
     {
       id: "publish",
       label: t("creatorPanel.home.steps.publish"),
-      // Com a taxa exigida e nao paga, o servidor recusa o publish sem ela: a
-      // Home avisa antes, com o mesmo "Activate and publish" do construtor.
+      // With the fee required and unpaid, the server refuses publish without it: the
+      // Home warns beforehand, with the same "Activate and publish" as the builder.
       detail: activationBlocked
         ? t("creatorPanel.home.steps.publishActivateDetail").replace(
             "{amount}",
@@ -381,32 +381,32 @@ function StudioNextSteps({
   const progressText = t("creatorPanel.home.nextSteps.progress")
     .replace("{done}", () => String(completeCount))
     .replace("{total}", () => String(steps.length));
-  // O passo aberto ganha o destaque e o botao, no proprio lugar. Antes um
-  // painel ao lado ("Recommended now") repetia o titulo e a frase dele, e com
-  // tudo feito recomendava "Publish your product" a quem ja tinha publicado.
+  // The open step gets the highlight and the button, in its own place. Before, a
+  // side panel ("Recommended now") repeated its title and sentence, and with
+  // everything done it recommended "Publish your product" to someone who had already published.
   const openStep = steps.find((step) => !step.done);
-  // O check se desenha e o selo cresce so no passo que ficou pronto com a
-  // Home aberta; quem chega com tudo pronto ve tudo parado.
+  // The check draws itself and the badge grows only on the step that became ready with the
+  // Home open; whoever arrives with everything ready sees everything still.
   const justDone = useJustDone(steps.filter((step) => step.done).map((step) => step.id), ready);
   const visible = ready && (Boolean(openStep) || justDone.size > 0);
   const reserved = useSyncExternalStore(EMPTY_SUBSCRIBE, () => readNextStepsHeight(userId), () => 0);
   const sectionRef = useRef<HTMLElement>(null);
-  // Tudo que muda a altura do bloco: passos que entram ou saem (o do plano
-  // volta a ser lido quando a janela ganha foco), feitos, e textos (a taxa de
-  // ativacao chega depois e alonga a frase do publish).
+  // Everything that changes the block's height: steps that enter or leave (the plan one
+  // is read again when the window gets focus), done ones, and texts (the activation
+  // fee arrives later and lengthens the publish sentence).
   const hasOpenStep = Boolean(openStep);
   const layoutKey = steps.map((step) => `${step.id}:${step.done}:${step.detail}:${step.action}`).join("|");
-  // Guarda a altura de hoje para a proxima visita. Sem passo aberto, 0: o
-  // ultimo passo feito com a Home aberta deixa o bloco na tela, mas na proxima
-  // visita ele ja nao aparece, e o lugar reservado sumiria num salto.
+  // Saves today's height for the next visit. With no open step, 0: the
+  // last step done with the Home open leaves the block on screen, but on the next
+  // visit it no longer shows up, and the reserved place would vanish in a jump.
   useEffect(() => {
     if (ready && userId) saveNextStepsHeight(userId, hasOpenStep ? (sectionRef.current?.offsetHeight ?? 0) : 0);
   }, [ready, userId, visible, hasOpenStep, layoutKey]);
 
-  // Antes de cursos e travas chegarem a lista vazia abria "Create a product" e,
-  // para quem ja tem tudo pronto, o bloco aparecia e sumia a cada visita: nada
-  // ate `ready`. Tudo pronto ao abrir a Home: o bloco sai da tela. Se o ultimo
-  // passo ficou pronto com a Home aberta, ele fica ate a proxima visita.
+  // Before courses and gates arrive the empty list opened "Create a product" and,
+  // for someone with everything ready, the block appeared and vanished on every visit: nothing
+  // until `ready`. Everything ready on opening the Home: the block leaves the screen. If the last
+  // step became ready with the Home open, it stays until the next visit.
   if (!ready) {
     return reserved > 0 ? (
       <div
@@ -445,8 +445,8 @@ function StudioNextSteps({
                 {t("creatorPanel.home.nextSteps.title")}
               </h2>
             </div>
-            {/* aria-hidden: a barra abaixo diz o "2 of 3" (nome) e a
-                porcentagem (valor); sem isso o leitor de tela lia duas vezes. */}
+            {/* aria-hidden: the bar below says the "2 of 3" (name) and the
+                percentage (value); without this the screen reader read it twice. */}
             <div aria-hidden="true" className="text-right">
               <p className="text-2xl font-semibold tabular-nums text-[var(--color-primary)]">
                 {`${progress}%`}
@@ -455,11 +455,11 @@ function StudioNextSteps({
             </div>
           </div>
 
-          {/* A barra compartilhada, a mesma do aluno: progresso e conquista.
-              O "2 of 3" logo acima e o numero que acompanha a barra. */}
+          {/* The shared bar, the same as the learner's: progress and achievement.
+              The "2 of 3" right above is the number that goes with the bar. */}
           <div className="mt-4 flex items-center gap-2">
             <ProgressBar value={progress} label={progressText} className="flex-1" />
-            {/* O marco: a barra chegou ao fim. */}
+            {/* The milestone: the bar reached the end. */}
             {progress === 100 ? <MilestoneSeal animate={justDone.size > 0} /> : null}
           </div>
 
@@ -489,10 +489,10 @@ function StudioNextSteps({
 
               return (
                 <li key={step.id} aria-current={current ? "step" : undefined}>
-                  {/* Criar o 1o produto nao ganha botao aqui: o vazio da lista
-                      de produtos, logo abaixo, ja e o botao forte da tela. */}
-                  {/* Linha no topo, nao na esquerda: borda colorida de lado e
-                      o cartao que o padrao do desenho proibe. */}
+                  {/* Creating the 1st product gets no button here: the product list's empty state,
+                      right below, is already the screen's strong button. */}
+                  {/* Line on top, not on the left: a colored border on the side is
+                      the card that the design pattern forbids. */}
                   {current && step.id !== "create" ? (
                     <div className={`flex h-full min-h-24 flex-col items-start border-t-2 px-3 pb-2 pt-3 ${rule}`}>
                       {body}
@@ -567,9 +567,9 @@ function StudioProductsSection({
         ) : null}
       </div>
 
-      {/* Cinco filtros sobre uma lista vazia so faziam barulho na 1a visita. */}
-      {/* Filtro, nao abas de secao: o seletor segmentado da casa (o mesmo do
-          periodo), no lugar da barra sublinhada feita a mao so aqui. */}
+      {/* Five filters over an empty list only made noise on the 1st visit. */}
+      {/* A filter, not section tabs: the house segmented selector (the same as the
+          period), in place of the underlined bar made by hand only here. */}
       {courses.length > 0 ? (
         <div className="mt-4">
           <PeriodTabs
@@ -583,9 +583,9 @@ function StudioProductsSection({
       ) : null}
 
       {!coursesLoaded ? (
-        // O esqueleto tem a forma do cartao que vem (capa 16:9, tipo, titulo,
-        // linha de aulas): era um bloco de 128px para um cartao de ~260px, e a
-        // secao dobrava de altura quando os produtos chegavam.
+        // The skeleton has the shape of the card to come (16:9 cover, type, title,
+        // lessons line): it was a 128px block for a ~260px card, and the
+        // section doubled in height when the products arrived.
         <div role="status" className="mt-3">
           <span className="sr-only">{t("creatorPanel.products.loading")}</span>
           <div aria-hidden="true" className="grid animate-pulse gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -600,11 +600,11 @@ function StudioProductsSection({
           </div>
         </div>
       ) : courses.length === 0 && coursesFailed ? (
-        // A leitura falhou: o erro com "Try again" acima basta (como na Midia).
+        // The read failed: the error with "Try again" above is enough (as in Media).
         null
       ) : courses.length === 0 ? (
-        // Nenhum produto ainda: a cena do primeiro produto e o unico botao
-        // latao da Home (o marco), no lugar da faixa tracejada de uma frase.
+        // No product yet: the first-product scene is the only brass button
+        // on the Home (the milestone), in place of the one-sentence dashed strip.
         <EmptyState
           as="h3"
           art={<SpotArt scene="firstProduct" />}
@@ -621,13 +621,13 @@ function StudioProductsSection({
           className="mt-3"
         />
       ) : filtered.length === 0 ? (
-        // So a frase, na caixa vazia da casa (a mesma do "primeiro produto"
-        // logo acima): o "New product" do cabecalho ja cria, e um segundo
-        // botao solido aqui disputava com ele.
+        // Just the sentence, in the house's empty box (the same as the "first product"
+        // right above): the header's "New product" already creates, and a second
+        // solid button here competed with it.
         <EmptyState as="h3" title={t("creatorPanel.home.products.empty")} className="mt-3" />
       ) : (
-        // motion-stagger: os cartoes sobem em escada (40ms cada) quando os
-        // dados chegam; a lista so monta depois do esqueleto.
+        // motion-stagger: the cards rise in a staircase (40ms each) when the
+        // data arrives; the list only mounts after the skeleton.
         <ul className="motion-stagger mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {filtered.slice(0, 4).map((course, index) => (
             <li key={course.id} style={{ "--i": index } as CSSProperties}>
@@ -635,10 +635,10 @@ function StudioProductsSection({
                 href={`/teach/courses/${encodeURIComponent(course.id)}/manage`}
                 className="motion-hover-lift flex h-full min-h-36 flex-col rounded-lg border border-[var(--color-line)] bg-white p-4 transition hover:border-[var(--color-primary-light)] hover:shadow-sm"
               >
-                {/* A mesma miniatura 16:9 da lista de produtos (/teach/builder):
-                    a capa quando existe, o mesmo icone quando nao existe. Sem a
-                    capa o card era so texto e o professor nao reconhecia o
-                    proprio produto. */}
+                {/* The same 16:9 thumbnail as the product list (/teach/builder):
+                    the cover when it exists, the same icon when it does not. Without the
+                    cover the card was just text and the teacher did not recognize their
+                    own product. */}
                 <div className="mb-3 grid aspect-video w-full place-items-center overflow-hidden rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
                   {course.coverImageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -655,8 +655,8 @@ function StudioProductsSection({
                   <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
                     {t(productTypeKey(course))}
                   </span>
-                  {/* Era texto dourado para todo status: "Published" e "Needs
-                      changes" saiam iguais. O chip da cor a cada um. */}
+                  {/* It was gold text for every status: "Published" and "Needs
+                      changes" came out the same. The chip gives each its own color. */}
                   <StatusChip status={course.status || "draft"} />
                 </div>
                 <h3 className="mt-3 line-clamp-2 text-sm font-semibold leading-5 text-[var(--color-ink)]">
@@ -684,8 +684,8 @@ function StudioProductsSection({
 
 function StudioSellFormatsSection() {
   const { t } = useTranslation();
-  // Os mesmos quatro tipos da tela de criacao, com os mesmos textos. Gratis,
-  // assinatura e programa guiado deixaram de ser tipo (sao preco e ritmo).
+  // The same four types as the creation screen, with the same texts. Free,
+  // subscription and guided program stopped being a type (they are price and pace).
   const formats: Array<{
     title: string;
     detail: string;
@@ -717,8 +717,8 @@ function StudioSellFormatsSection() {
       >
         {t("creatorPanel.home.formats.title")}
       </h2>
-      {/* Quatro colunas so no xl, como os cartoes e os marcos desta tela: em
-          lg (1024px) com a barra aberta cada formato ficava com ~176px. */}
+      {/* Four columns only at xl, like the cards and milestones on this screen: at
+          lg (1024px) with the sidebar open each format ended up ~176px. */}
       <ul className="mt-5 grid gap-px overflow-hidden rounded-md border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-2 xl:grid-cols-4">
         {formats.map((format) => {
           const Icon = format.icon;
@@ -753,15 +753,15 @@ function StudioSellFormatsSection() {
   );
 }
 
-// A leitura de getCourseReadiness: sem paymentType gravado, preco 0 e Free.
-// Fora do Free so se publica com preco, e preco exige os payouts do Stripe.
+// The reading of getCourseReadiness: with no paymentType recorded, price 0 is Free.
+// Outside Free, you only publish with a price, and a price requires Stripe payouts.
 function sellsPaid(course: TeacherCourse) {
   return (course.paymentType ?? (course.priceAmountMinor === 0 ? "free" : "one_time")) !== "free";
 }
 
 // Data code -> dictionary key; the card shares the format names above.
-// O selo do cartao e o tipo gravado na criacao (courses.product_format).
-// Gratis e assinatura sao preco, nao tipo.
+// The card badge is the type recorded at creation (courses.product_format).
+// Free and subscription are price, not type.
 function productTypeKey(course: TeacherCourse) {
   return `courseCreation.types.${course.productFormat ?? "course"}.label`;
 }

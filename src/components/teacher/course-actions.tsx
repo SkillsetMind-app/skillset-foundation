@@ -16,23 +16,23 @@ import {
   type DeleteOrArchiveOutcome,
 } from "@/lib/data/teacher-courses";
 
-// As duas pecas que a lista de produtos e o hub do curso dividem. Antes cada
-// tela tinha (ou nao tinha) a sua: o menu ⋮ so existia na lista, o hub nao
-// tinha acao nenhuma, e apagar era privilegio de rascunho. Uma acao so, no
-// mesmo lugar da Hotmart, precisa de um componente so.
+// The two pieces that the product list and the course hub share. Before, each
+// screen had (or did not have) its own: the ⋮ menu only existed in the list, the hub had
+// no action at all, and deleting was a draft-only privilege. One action, in the
+// same place as Hotmart, needs only one component.
 
-// Largura do menu (w-56). Fixa de proposito: medir o DOM depois de abrir
-// custaria um segundo render so para descobrir um numero que nao muda.
+// Menu width (w-56). Fixed on purpose: measuring the DOM after opening
+// would cost a second render just to find a number that does not change.
 const MENU_WIDTH_PX = 224;
-// Folga minima entre o menu e a borda da janela.
+// Minimum gap between the menu and the edge of the window.
 const MENU_MARGIN_PX = 8;
 const MENU_ITEM = '[role="menuitem"]';
 
 /**
- * Casca do menu de acoes: gatilho so-icone, fecha no Escape e no clique fora,
- * devolve o foco ao gatilho. Os ITENS vem de quem chama — a lista oferece
- * editar/ver como aluno/excluir, o hub oferece novo produto/ver como
- * aluno/excluir.
+ * Shell of the actions menu: icon-only trigger, closes on Escape and on an outside click,
+ * returns focus to the trigger. The ITEMS come from the caller — the list offers
+ * edit/view as learner/delete, the hub offers new product/view as
+ * learner/delete.
  */
 export function CourseActionsMenu({
   courseTitle,
@@ -45,12 +45,12 @@ export function CourseActionsMenu({
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  // No celular e no tablet a lista vira cartao e o gatilho fica encostado na
-  // borda ESQUERDA; um menu ancorado a direita dele nascia com o lado esquerdo
-  // fora da tela (QA visual em producao, 08/09). Ao abrir, o menu e posto onde
-  // cabe: alinhado a direita do gatilho quando da (desktop), senao empurrado
-  // para dentro da janela — pelos DOIS lados, porque a 390 px com titulo longo
-  // ou em espanhol o gatilho pode cair no meio da linha (revisao do Codex).
+  // On phones and tablets the list becomes cards and the trigger sits against the
+  // LEFT edge; a menu anchored to its right side was born with its left side
+  // off screen (visual QA in production, Sep 8). On open, the menu is placed where it
+  // fits: aligned to the right of the trigger when possible (desktop), otherwise pushed
+  // into the window — from BOTH sides, because at 390 px with a long title
+  // or in Spanish the trigger can land in the middle of the row (Codex review).
   const [menuLeftPx, setMenuLeftPx] = useState<number | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -61,8 +61,8 @@ export function CourseActionsMenu({
       return;
     }
 
-    // Menu aberto = foco no 1º item; antes ficava no gatilho e as setas não
-    // tinham onde agir.
+    // Menu open = focus on the 1st item; before, it stayed on the trigger and the arrows
+    // had nowhere to act.
     menuRef.current?.querySelector<HTMLElement>(MENU_ITEM)?.focus({ preventScroll: true });
 
     function handlePointerDown(event: MouseEvent) {
@@ -89,8 +89,8 @@ export function CourseActionsMenu({
   return (
     <div
       ref={wrapperRef}
-      // Tab para fora do menu fecha: o foco já começa dentro dele, e o menu
-      // aberto ficava por cima do que recebeu o foco.
+      // Tab out of the menu closes it: focus already starts inside it, and the open
+      // menu used to stay on top of whatever received focus.
       onBlur={(event) => {
         const next = event.relatedTarget;
         if (open && next instanceof Node && !event.currentTarget.contains(next)) {
@@ -123,9 +123,9 @@ export function CourseActionsMenu({
       </button>
 
       {open ? (
-        // Um clique em QUALQUER item fecha o menu e devolve o foco ao gatilho;
-        // quem abre um modal logo em seguida rouba o foco no efeito, depois do
-        // commit, entao a ordem continua sendo menu -> modal.
+        // A click on ANY item closes the menu and returns focus to the trigger;
+        // whoever opens a modal right after steals focus in the effect, after the
+        // commit, so the order is still menu -> modal.
         <div
           ref={menuRef}
           role="menu"
@@ -146,11 +146,11 @@ export function CourseActionsMenu({
 }
 
 /**
- * Confirmacao de excluir/arquivar. Pergunta ao servidor quantos compradores o
- * curso tem ANTES de mostrar o texto, porque as duas respostas sao diferentes
- * demais para caber numa frase so: sem comprador o curso some; com comprador
- * ele sai da loja e quem pagou continua com acesso. Quem decide o destino de
- * verdade e a RPC — este componente so precisa nao mentir sobre ele.
+ * Confirmation for delete/archive. It asks the server how many buyers the
+ * course has BEFORE showing the text, because the two answers are too different
+ * to fit in a single sentence: with no buyer the course disappears; with a buyer
+ * it leaves the storefront and whoever paid keeps access. The RPC is what
+ * really decides the outcome — this component only needs not to lie about it.
  */
 export function DeleteOrArchiveCourseDialog({
   courseId,
@@ -168,7 +168,7 @@ export function DeleteOrArchiveCourseDialog({
   const [audience, setAudience] = useState<{ enrollments: number; orders: number; subscriptions: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
-  // "Try again" da contagem: relê SÓ a contagem (getCourseAudience), nunca o apagar.
+  // The count's "Try again": re-reads ONLY the count (getCourseAudience), never the delete.
   const [audienceAttempt, setAudienceAttempt] = useState(0);
   useModalFocus(dialogRef, true);
 
@@ -179,9 +179,9 @@ export function DeleteOrArchiveCourseDialog({
         if (live) setAudience(next);
       })
       .catch(() => {
-        // Sem a contagem nao da para escolher o texto honesto, e o modal nao
-        // pode chutar o mais tranquilizador: fecha e deixa o erro na tela de
-        // quem chamou, em vez de prometer arquivamento e apagar o curso.
+        // Without the count the honest text cannot be chosen, and the modal must not
+        // guess the most reassuring one: it closes and leaves the error on the caller's
+        // screen, instead of promising archiving and deleting the course.
         if (live) setFailed(true);
       });
     return () => {
@@ -189,8 +189,8 @@ export function DeleteOrArchiveCourseDialog({
     };
   }, [courseId, audienceAttempt]);
 
-  // Volta às linhas de espera do texto; o botão de confirmar segue travado
-  // (sem contagem) até a contagem chegar, como na primeira leitura.
+  // Back to the text's wait rows; the confirm button stays locked
+  // (no count) until the count arrives, as on the first read.
   function retryAudience() {
     setFailed(false);
     setAudienceAttempt((attempt) => attempt + 1);
@@ -207,8 +207,8 @@ export function DeleteOrArchiveCourseDialog({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [busy, onCancel]);
 
-  // A pagina de tras nao rola enquanto a janela esta aberta. No estudio quem
-  // rola e o .platform-content, nao o body: travar o body nao segurava nada.
+  // The page behind does not scroll while the dialog is open. In the studio what
+  // scrolls is .platform-content, not the body: locking the body held nothing.
   useEffect(() => {
     const scroller = document.querySelector<HTMLElement>(".platform-content") ?? document.body;
     const previousOverflow = scroller.style.overflow;
@@ -218,11 +218,11 @@ export function DeleteOrArchiveCourseDialog({
     };
   }, []);
 
-  // Assinatura tambem e comprador: o servidor arquiva, entao o texto promete arquivar.
+  // A subscription is also a buyer: the server archives, so the text promises archiving.
   const hasAudience = audience !== null && audience.enrollments + audience.orders + audience.subscriptions > 0;
   const prefix = hasAudience ? "creatorPanel.products.archive" : "creatorPanel.products.delete";
-  // Sem a contagem, nem "apagar" nem "arquivar": o modal abria em vermelho
-  // dizendo Delete e virava Archive em azul quando a resposta chegava.
+  // Without the count, neither "delete" nor "archive": the modal opened in red
+  // saying Delete and turned into blue Archive when the answer arrived.
   const known = audience !== null;
 
   async function handleConfirm() {
@@ -253,8 +253,8 @@ export function DeleteOrArchiveCourseDialog({
         aria-label={t("creatorPanel.products.delete.aria").replace("{title}", () => courseTitle)}
         className="dialog-panel modal-panel modal-panel-scroll relative outline-none"
       >
-        {/* O X é o Cancelar: some enquanto apaga ou arquiva, quando o
-            Cancelar também trava. */}
+        {/* The X is the Cancel: it goes away while deleting or archiving, when
+            Cancel is also locked. */}
         {busy ? null : (
           <button
             type="button"
@@ -269,13 +269,13 @@ export function DeleteOrArchiveCourseDialog({
         <p className={`pr-10 text-xs font-bold uppercase tracking-[0.2em] ${known ? "text-[var(--color-danger-fg)]" : "text-[var(--color-ink-muted)]"}`}>
           {known ? t(`${prefix}.eyebrow`) : t("creatorPanel.products.removeEyebrow")}
         </p>
-        {/* Título no desenho das outras janelas (serifa, 24px), como no
-            ConfirmDialog; era Manrope semibold só aqui e no 2FA. */}
+        {/* Title in the design of the other dialogs (serif, 24px), as in
+            ConfirmDialog; it was Manrope semibold only here and in 2FA. */}
         <h2 className="display-title mt-2 pr-10 text-2xl leading-tight text-[var(--color-primary)]">
           {known ? t(`${prefix}.title`).replace("{title}", () => courseTitle) : courseTitle}
         </h2>
-        {/* Altura do texto mais longo (o de apagar, com a lista e o aviso dos
-            arquivos): os botoes nao pulam quando a contagem chega. */}
+        {/* Height of the longest text (the delete one, with the list and the files
+            warning): the buttons do not jump when the count arrives. */}
         <div className="min-h-[27rem] sm:min-h-[21rem]">
         {known ? (
           <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
@@ -290,16 +290,16 @@ export function DeleteOrArchiveCourseDialog({
         )}
 
         {hasAudience ? (
-          // O "Importante" da Hotmart: a frase que o professor precisa ler
-          // antes de decidir nao pode dividir peso com o resto do texto.
-          // O ícone de aviso agora vem do próprio InlineAlert (um só).
+          // Hotmart's "Important": the sentence the teacher needs to read
+          // before deciding cannot share weight with the rest of the text.
+          // The warning icon now comes from InlineAlert itself (just one).
           <InlineAlert tone="warning" className="mt-4">
             {t("creatorPanel.products.archive.callout")}
           </InlineAlert>
         ) : audience !== null ? (
-          // O que some junto, dito antes do clique: a migration 20261008030000
-          // apaga tudo isto, e a limpeza tira arquivos e videos a partir de um
-          // dia depois, de hora em hora, em lotes.
+          // What goes away with it, said before the click: migration 20261008030000
+          // deletes all of this, and the cleanup removes files and videos starting one
+          // day later, hourly, in batches.
           <>
             <p className="mt-3 text-sm font-semibold text-[var(--color-ink)]">
               {t("creatorPanel.products.delete.consequences.lead")}
@@ -315,12 +315,12 @@ export function DeleteOrArchiveCourseDialog({
           </>
         ) : null}
 
-        {/* Sem contagem, o confirmar está travado: a falha só pode ser da LEITURA,
-            e só ela ganha "Try again". A falha de apagar segue como era. */}
+        {/* Without the count, confirm is locked: the failure can only be from the READ,
+            and only it gets "Try again". The delete failure stays as it was. */}
         {failed && !known ? (
           <LoadErrorAlert className="mt-4" onRetry={retryAudience} focusRef={dialogRef}>
-            {/* Frase própria da contagem: a do apagar ao lado do "Try again" fazia
-                pensar que o botão tentava apagar de novo. */}
+            {/* The count's own sentence: the delete one next to "Try again" made
+                people think the button tried to delete again. */}
             {t("creatorPanel.products.audienceError")}
           </LoadErrorAlert>
         ) : failed ? (
@@ -331,9 +331,9 @@ export function DeleteOrArchiveCourseDialog({
         </div>
         </div>
 
-        {/* O rodapé da casa: filete em cima e, abaixo do sm, empilha com a
-            ação em cima e o Cancelar embaixo (antes ficavam lado a lado e
-            quebravam soltos). Do sm em diante pode quebrar, como antes. */}
+        {/* The app's footer: a hairline on top and, below sm, it stacks with the
+            action on top and Cancel below (before they sat side by side and
+            wrapped loosely). From sm up it may wrap, as before. */}
         <div className="dialog-footer flex-wrap">
           <button
             type="button"
@@ -347,8 +347,8 @@ export function DeleteOrArchiveCourseDialog({
             type="button"
             onClick={() => void handleConfirm()}
             disabled={busy || !known}
-            // Apagar e para sempre: vermelho cheio. Arquivar volta atras: azul.
-            // Antes da contagem, contorno neutro: nem um nem outro.
+            // Deleting is forever: solid red. Archiving can be undone: blue.
+            // Before the count, a neutral outline: neither one nor the other.
             className={`${!known ? "button-outline" : hasAudience ? "button-solid" : "button-danger button-danger-solid"} px-4 text-sm`}
           >
             <BusyLabel

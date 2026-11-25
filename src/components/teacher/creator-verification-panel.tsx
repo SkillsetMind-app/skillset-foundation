@@ -50,7 +50,7 @@ const validationErrorKeys = new Map([
   ["Use a valid https:// professional link (max 300 characters).", "invalidSecureLink"],
 ]);
 
-// A pele de todo campo da plataforma (44px, borda que aparece no branco).
+// The skin of every platform field (44px, a border that shows up on white).
 const inputClass = "field-input";
 
 function DetailRow({ label, value }: { label: string; value: string }) {
@@ -236,13 +236,13 @@ export function CreatorVerificationPanel() {
   };
 
   return (
-    // T-01: o cabecalho ocupa a largura da pagina e alinha a esquerda com o das
-    // telas irmas; so os cartoes de baixo (o primeiro filho e o cabecalho)
-    // ficam na coluna de 768px. Antes o mx-auto centrava os dois juntos.
+    // T-01: the header takes the full page width and aligns left with the one on the
+    // sibling screens; only the cards below (the first child is the header)
+    // stay in the 768px column. Before, mx-auto centered both together.
     <div className="grid w-full gap-6 [&>:not(:first-child)]:max-w-3xl">
-      {/* O cabecalho das telas irmas, fora do cartao: o titulo era um 24px em
-          serifa dentro dele, com o rotulo generico "Teacher studio" em cima. O
-          selo de status vai para o lado do titulo. */}
+      {/* The sibling screens' header, outside the card: the title used to be a 24px
+          serif inside it, with the generic "Teacher studio" label on top. The
+          status badge moves to the side of the title. */}
       <PlatformPageHeader
         title={t(`${copy}.title`)}
         actions={caseLoaded && verificationCase ? (
@@ -275,8 +275,8 @@ export function CreatorVerificationPanel() {
         ) : null}
       </Card>
 
-      {/* O cartao que vem (aprovado, em revisao ou o formulario) carregando
-          no proprio formato, em vez de um cartao com uma frase. */}
+      {/* The card that comes next (approved, under review or the form) loading
+          in its own shape, instead of a card with one sentence. */}
       {!caseLoaded ? <CardPageSkeleton label={t(`${copy}.loading`)} header={false} /> : null}
 
       {caseLoaded && status === "approved" ? (
@@ -489,15 +489,15 @@ export function CreatorVerificationPanel() {
               )}
             </Field>
             </fieldset>
-            {/* O erro do envio era um <p> vermelho solto: quem usa leitor de
-                tela mandava o formulário e não ouvia nada. */}
+            {/* The submit error used to be a loose red <p>: someone using a screen
+                reader submitted the form and heard nothing. */}
             {submitError ? (
               <InlineAlert tone="error">{t(`${copy}.errors.${submitError}`)}</InlineAlert>
             ) : null}
             <div>
-              {/* Duas esperas (tirar o documento, enviar): a de dentro guarda
-                  as duas na mesma célula, e a de fora guarda o rótulo de
-                  repouso. O botão fica com a largura do maior dos quatro. */}
+              {/* Two waits (taking the document, submitting): the inner one keeps
+                  both in the same cell, and the outer one keeps the resting label. The
+                  button takes the width of the widest of the four. */}
               <Button type="submit" disabled={submitting || cleaningDocument}>
                 <BusyLabel
                   busy={submitting || cleaningDocument}

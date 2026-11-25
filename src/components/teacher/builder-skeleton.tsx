@@ -1,20 +1,20 @@
 /**
- * Carregando o construtor (catálogo de movimento, item 9): blocos do tamanho
- * do que vem — cabeçalho, trilho de etapas e o painel da aba — no lugar de uma
- * linha de texto solta. O texto continua lá, para o leitor de tela. O pulso é
- * o `animate-pulse` do Tailwind; "reduzir movimento" o para no bloco global.
- * Sem "use client": serve ao fallback do Suspense (servidor) e ao construtor.
+ * Loading the builder (motion catalog, item 9): blocks the size
+ * of what is coming — header, step rail and the tab panel — in place of a
+ * loose line of text. The text is still there, for the screen reader. The pulse is
+ * Tailwind's `animate-pulse`; "reduce motion" stops it in the global block.
+ * No "use client": serves the Suspense fallback (server) and the builder.
  */
 const block = "bg-[var(--color-surface-strong)]";
 
 /**
- * As linhas da lista de produtos carregando. Mora aqui para a lista e o
- * fallback da rota desenharem a mesma coisa; antes era um <div> genérico com
- * aria-label (ignorado pelo leitor de tela) dentro de teacher-course-studio.
+ * The rows of the product list while loading. It lives here so the list and the
+ * route fallback draw the same thing; before, it was a generic <div> with
+ * aria-label (ignored by the screen reader) inside teacher-course-studio.
  */
 export function ProductRowsSkeleton({ label }: { label?: string }) {
-  // F-19: a linha inteira pulsava em surface-soft, sem cantos; agora é a linha
-  // de verdade (capa 16:9 + título e categoria) no osso da casa.
+  // F-19: the whole row pulsed in surface-soft, with no corners; now it is the real
+  // row (16:9 cover + title and category) in the app's skeleton style.
   const rows = (
     <div aria-hidden="true" className="grid animate-pulse gap-0">
       {[1, 2, 3].map((item) => (
@@ -37,10 +37,10 @@ export function ProductRowsSkeleton({ label }: { label?: string }) {
 }
 
 /**
- * /teach/builder sem curso é a LISTA: o fallback da rota mostrava o esqueleto
- * do editor (cabeçalho, cinco etapas, formulário) e depois trocava pelo da
- * lista — dois pulos antes da tabela. Este tem a forma da lista: cabeçalho com
- * o botão, a fileira de busca e filtros, e as linhas.
+ * /teach/builder with no course is the LIST: the route fallback showed the editor
+ * skeleton (header, five steps, form) and then swapped it for the list's
+ * — two jumps before the table. This one has the shape of the list: header with
+ * the button, the search and filters row, and the rows.
  */
 export function ProductListSkeleton({ label }: { label: string }) {
   return (
@@ -68,11 +68,11 @@ export function ProductListSkeleton({ label }: { label: string }) {
 }
 
 /**
- * Uma tabela carregando (Vendas, Alunos, alunos do produto): os quadros de
- * numero quando a tela tem, a fileira de busca e filtros, a linha da contagem
- * e as linhas na altura de uma linha de verdade. Antes era "Loading your
- * sales..." num cartao, e filtros, contagem e linhas entravam de uma vez,
- * empurrando tudo para baixo.
+ * A table while loading (Sales, Learners, product learners): the number
+ * boxes when the screen has them, the search and filters row, the count line
+ * and the rows at the height of a real row. Before it was "Loading your
+ * sales..." in a card, and filters, count and rows all came in at once,
+ * pushing everything down.
  */
 export function TableSkeleton({
   label,
@@ -116,9 +116,9 @@ export function TableSkeleton({
 }
 
 /**
- * Uma pilha de cartões carregando (Mídia, Eventos): cartões
- * no lugar e no contorno dos de verdade, com a miniatura quando a tela tem.
- * Antes era uma frase cinza num cartão, e a lista entrava empurrando a página.
+ * A stack of cards while loading (Media, Events): cards
+ * in the place and outline of the real ones, with the thumbnail when the screen has it.
+ * Before it was a gray sentence in a card, and the list came in pushing the page.
  */
 export function CardStackSkeleton({
   label,
@@ -151,8 +151,8 @@ export function CardStackSkeleton({
 }
 
 /**
- * O detalhe de uma venda carregando: a volta, a coluna dos cartoes (valor,
- * cliente, pagamento) e o cartao do curso ao lado, no mesmo grid da tela.
+ * The detail of a sale while loading: the back link, the column of cards (amount,
+ * customer, payment) and the course card beside it, in the same grid as the screen.
  */
 export function SaleDetailSkeleton({ label }: { label: string }) {
   const card = "rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-6";
@@ -183,8 +183,8 @@ export function SaleDetailSkeleton({ label }: { label: string }) {
 }
 
 /**
- * Uma tela de cartao (Verificacao) carregando: o titulo e o cartao com texto e
- * botao. `header={false}` quando o titulo ja esta na tela e so o cartao vem.
+ * A card screen (Verification) while loading: the title and the card with text and
+ * button. `header={false}` when the title is already on screen and only the card comes.
  */
 export function CardPageSkeleton({ label, header = true }: { label: string; header?: boolean }) {
   return (
@@ -205,11 +205,11 @@ export function CardPageSkeleton({ label, header = true }: { label: string; head
 }
 
 /**
- * O lugar do formulario da Stripe (assinatura, ativacao, repasses) enquanto
- * ele nao chega: a caixa ja nasce com a altura do formulario e um esqueleto
- * dentro. Antes era "Preparing..." numa caixa de ~90px que pulava para ~600px
- * quando o iframe chegava, empurrando a pagina. Sem aria-busy junto do
- * role="status": alguns leitores de tela seguram o anuncio enquanto ele vale.
+ * The place of the Stripe form (subscription, activation, payouts) while
+ * it has not arrived: the box is born with the form's height and a skeleton
+ * inside. Before it was "Preparing..." in a ~90px box that jumped to ~600px
+ * when the iframe arrived, pushing the page. No aria-busy next to
+ * role="status": some screen readers hold the announcement while it applies.
  */
 export function StripeFrameSkeleton({ label }: { label: string }) {
   return (

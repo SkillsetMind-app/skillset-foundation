@@ -8,29 +8,29 @@ import {
   topSkillsetCurrencies,
 } from "@/lib/payments/currencies";
 
-// Um só seletor de moeda para o construtor e para Gerenciar → Preços e ofertas.
+// A single currency select for the builder and for Manage → Prices and offers.
 //
 // POR QUE ISTO EXISTE
 //
-// O construtor tinha um <select> com "USD - US Dollar", "BRL - Brazilian Real"…
-// numa coluna fixa de 140px. Um select nunca fica mais estreito que a sua opção
-// mais larga, então ele empurrava a borda e saía do cartão em telas médias e
-// grandes. E em Gerenciar → Preços a moeda era um campo de texto livre de três
-// letras: aceitava "ABC", que o Stripe recusa na hora de cobrar.
+// The builder had a <select> with "USD - US Dollar", "BRL - Brazilian Real"…
+// in a fixed 140px column. A select is never narrower than its widest option,
+// so it pushed the border out and left the card on medium and
+// large screens. And in Manage → Prices the currency was a free text field of three
+// letters: it accepted "ABC", which Stripe rejects at charge time.
 //
-// Aqui: `w-full min-w-0` deixa o select encolher junto com a coluna, e as duas
-// telas passam a oferecer exatamente a lista que o Stripe aceita.
+// Here: `w-full min-w-0` lets the select shrink along with the column, and both
+// screens now offer exactly the list Stripe accepts.
 //
-// E a opção ESCOLHIDA mostra só o código. Um <select> fechado exibe o texto da
-// opção selecionada: com "USD - US Dollar" ali, a moeda escolhida chegava
-// cortada no meio do nome ("USD - US Dol…") numa coluna estreita. Mostrando só
-// "USD" ela cabe inteira. As demais opções seguem com código + nome — que é o
-// que a pessoa precisa ler para ESCOLHER; a que ela já escolheu, não.
+// And the CHOSEN option shows only the code. A closed <select> displays the text of the
+// selected option: with "USD - US Dollar" there, the chosen currency arrived
+// cut off in the middle of the name ("USD - US Dol…") in a narrow column. Showing only
+// "USD" it fits whole. The other options keep code + name — which is what
+// the person needs to read to CHOOSE; the one already chosen, not.
 const secondaryCurrencies = supportedStripeCurrencies.filter(
   (currency) => !(topSkillsetCurrencies as readonly string[]).includes(currency),
 );
 
-// O campo da casa; apagado como os outros campos .field-input travados.
+// The house field; dimmed like the other locked .field-input fields.
 export const currencySelectClassName =
   "field-input w-full min-w-0 disabled:cursor-not-allowed disabled:opacity-60";
 
@@ -79,8 +79,8 @@ export function CurrencySelect({
   );
 }
 
-/** Fechado, o <select> mostra o texto da opção escolhida — então ela é só o
- *  código. Todas as outras trazem código + nome. */
+/** Closed, the <select> shows the text of the chosen option — so it is only the
+ *  code. All the others carry code + name. */
 function optionLabel(item: string, selected: string, locale: string): string {
   return item === selected ? item : `${item} - ${getCurrencyLabel(item, locale)}`;
 }

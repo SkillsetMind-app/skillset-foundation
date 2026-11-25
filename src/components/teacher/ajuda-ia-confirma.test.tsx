@@ -9,9 +9,9 @@ import { LessonAiCaptions } from "@/components/teacher/lesson-ai-captions";
 import { LessonAiQuiz } from "@/components/teacher/lesson-ai-quiz";
 import { callTeachAi, loadTeachAi } from "@/lib/ai/teach-ai-client";
 
-// As ajudas de IA perguntavam no window.confirm antes de substituir ou tirar
-// o que o professor ja tinha. Agora perguntam na janela da plataforma, com a
-// mesma frase, e so o confirmar chama a IA (uma vez).
+// The AI helpers asked through window.confirm before replacing or removing
+// what the teacher already had. Now they ask in the platform dialog, with the
+// same sentence, and only confirming calls the AI (once).
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
@@ -40,8 +40,8 @@ afterEach(() => {
   restoreDialogs();
 });
 
-describe("ajudas de IA: confirmar na janela da plataforma", () => {
-  it("usar a descricao sugerida por cima da atual pergunta antes e aplica uma vez", async () => {
+describe("AI helpers: confirm in the platform dialog", () => {
+  it("using the suggested description over the current one asks first and applies once", async () => {
     vi.mocked(callTeachAi).mockResolvedValue({
       ok: true,
       status: 200,
@@ -61,7 +61,7 @@ describe("ajudas de IA: confirmar na janela da plataforma", () => {
     expect(onUseDescription).toHaveBeenCalledExactlyOnceWith("A new description");
   });
 
-  it("tirar o quiz pergunta antes e chama a IA uma vez so no confirmar", async () => {
+  it("removing the quiz asks first and calls the AI only once, on confirm", async () => {
     vi.mocked(loadTeachAi).mockResolvedValue({
       ok: true,
       status: 200,
@@ -82,8 +82,8 @@ describe("ajudas de IA: confirmar na janela da plataforma", () => {
     expect(callTeachAi).toHaveBeenCalledWith(expect.objectContaining({ action: "removeQuiz" }));
   });
 
-  // Os dois caminhos que gastam: gerar de novo conta as horas de IA outra vez.
-  it("gerar as legendas de novo nao manda nada antes do confirmar e manda uma vez depois", async () => {
+  // The two paths that spend: generating again counts the AI hours again.
+  it("generating the captions again sends nothing before confirming and sends once after", async () => {
     vi.mocked(loadTeachAi).mockResolvedValue({
       ok: true,
       status: 200,
@@ -109,7 +109,7 @@ describe("ajudas de IA: confirmar na janela da plataforma", () => {
     expect(callTeachAi).toHaveBeenCalledWith(expect.objectContaining({ action: "transcribe", language: "en" }));
   });
 
-  it("escrever um quiz novo por cima nao manda nada antes do confirmar e manda uma vez depois", async () => {
+  it("writing a new quiz over the existing one sends nothing before confirming and sends once after", async () => {
     vi.mocked(loadTeachAi).mockResolvedValue({
       ok: true,
       status: 200,
@@ -129,7 +129,7 @@ describe("ajudas de IA: confirmar na janela da plataforma", () => {
     expect(callTeachAi).toHaveBeenCalledWith(expect.objectContaining({ action: "generateQuiz" }));
   });
 
-  it("tirar a legenda pergunta antes e chama a IA uma vez so no confirmar", async () => {
+  it("removing the caption asks first and calls the AI only once, on confirm", async () => {
     vi.mocked(loadTeachAi).mockResolvedValue({
       ok: true,
       status: 200,
@@ -150,9 +150,9 @@ describe("ajudas de IA: confirmar na janela da plataforma", () => {
     expect(callTeachAi).toHaveBeenCalledWith(expect.objectContaining({ action: "removeCaption", language: "en" }));
   });
 
-  // A Bunny ja tinha legenda neste idioma, feita fora da ferramenta: publicar
-  // a substitui. Pergunta antes; cancelar nao manda nada nem mostra erro.
-  it("publicar por cima da legenda que ja estava no video pergunta antes e so substitui no confirmar", async () => {
+  // Bunny already had a caption in this language, made outside the tool: publishing
+  // replaces it. It asks first; cancelling sends nothing and shows no error.
+  it("publishing over the caption already on the video asks first and only replaces on confirm", async () => {
     vi.mocked(loadTeachAi).mockResolvedValue({
       ok: true,
       status: 200,

@@ -125,11 +125,11 @@ export function CourseCategorySelect({
             return (
               <label
                 key={item}
-                // O `title` mora AQUI, no rótulo visível, e não mais no input.
-                // O input é `sr-only` — 1px recortado —, então o texto que
-                // explicava por que o clique não faz nada estava preso num
-                // elemento que o mouse nunca alcança: a última categoria
-                // simplesmente não respondia, sem uma palavra de explicação.
+                // The `title` lives HERE, on the visible label, and no longer on the input.
+                // The input is `sr-only` — clipped to 1px —, so the text that
+                // explained why the click does nothing was stuck on an
+                // element the mouse never reaches: the last category
+                // simply did not respond, without a word of explanation.
                 title={
                   isRequiredSelection
                     ? t("creatorEditor.categorySelect.keepOne")
@@ -166,8 +166,8 @@ export function CourseCategorySelect({
               </label>
             );
           })}
-          {/* Dica visível, não só `title`: no celular não existe hover, e a
-              regra ("a última não sai") é justamente a que trava o clique. */}
+          {/* Visible hint, not only `title`: on the phone there is no hover, and the
+              rule ("the last one does not go out") is exactly the one that blocks the click. */}
           {selected.length === 1 ? (
             <p className="px-3 py-2 text-[11px] leading-4 text-[var(--color-ink-muted)]">
               {t("creatorEditor.categorySelect.swapHelp")}

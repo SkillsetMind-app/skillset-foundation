@@ -48,17 +48,17 @@ export function TeacherMediaLibrary() {
   const [search, setSearch] = useState("");
   const [coursesFailed, setCoursesFailed] = useState(false);
   const [isLoadingCourses, setIsLoadingCourses] = useState(true);
-  // Para qual curso a lista de arquivos chegou (ou falhou). Antes a lista
-  // dizia "no files" antes de os arquivos chegarem e, ao trocar de curso,
-  // mostrava os do curso anterior ate a lista nova vir.
+  // Which course the file list arrived for (or failed). Before, the list
+  // said "no files" before the files arrived and, when switching course,
+  // showed the previous course's files until the new list came.
   const [assetsFor, setAssetsFor] = useState<string | null>(null);
   const [assetsFailedFor, setAssetsFailedFor] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
   const coursesSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
   const assetsSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
 
-  // So o usuario nas dependencias: escolher outro curso desligava e religava
-  // o canal dos cursos e relia a lista inteira, sem nada ter mudado.
+  // Only the user in the dependencies: choosing another course used to turn off and on
+  // the courses channel and re-read the whole list, with nothing having changed.
   useEffect(() => {
     if (!user) {
       return;
@@ -114,8 +114,8 @@ export function TeacherMediaLibrary() {
       ? "teacherMedia.assetsError"
       : "";
 
-  // "Try again" le de novo pelos mesmos canais. A releitura dos arquivos e
-  // silenciosa quando falha (o aviso fica), por isso o botao espera a resposta.
+  // "Try again" re-reads through the same channels. Re-reading the files is
+  // silent when it fails (the notice stays), so the button waits for the response.
   function retryLoad() {
     setRetrying(true);
     void Promise.allSettled([
@@ -141,8 +141,8 @@ export function TeacherMediaLibrary() {
 
   return (
     <div className="grid gap-6">
-      {/* O titulo da pagina era um h3 dentro do cartao (a tela nao tinha
-          h1). Agora e o cabecalho das telas irmas, fora do cartao. */}
+      {/* The page title was an h3 inside the card (the screen had no
+          h1). Now it is the header of the sibling screens, outside the card. */}
       <PlatformPageHeader
         title={t("teacherMedia.title")}
         description={t("teacherMedia.description")}
@@ -150,8 +150,8 @@ export function TeacherMediaLibrary() {
           selectedCourse ? (
             <Link
               href={`/teach/builder?courseId=${selectedCourse.id}`}
-              // Contorno: o vazio da biblioteca ja tem o botao forte para o
-              // mesmo lugar.
+              // Outline: the library's empty state already has the strong button for the
+              // same place.
               className={buttonClasses({ variant: "outline" })}
             >
               {t("teacherMedia.upload")}
@@ -243,12 +243,12 @@ export function TeacherMediaLibrary() {
       ) : null}
 
       <div className="mt-6 grid gap-3">
-        {/* Cartões do arquivo (miniatura + nome) no lugar da frase num cartão,
-            que depois virava a lista inteira de uma vez. */}
+        {/* File cards (thumbnail + name) in place of a sentence in a card,
+            that later became the whole list at once. */}
         {isLoadingCourses ? (
           <CardStackSkeleton label={t("teacherMedia.loading")} thumb />
         ) : courses.length === 0 ? (
-          // Falha nao e "voce nao tem curso": o erro acima com "Try again" basta.
+          // A failure is not "you have no course": the error above with "Try again" is enough.
           coursesFailed ? null : <EmptyState
             as="h2"
             eyebrow={t("teacherMedia.noCourse")}
@@ -266,13 +266,13 @@ export function TeacherMediaLibrary() {
             }
           />
         ) : assetsFor !== selectedCourseId ? (
-          // Os arquivos deste curso ainda nao chegaram (ou falharam: o erro
-          // acima diz). Nada de "no files" antes de saber.
+          // This course's files have not arrived yet (or failed: the error
+          // above says so). No "no files" before we know.
           assetsFailed ? null : <CardStackSkeleton label={t("teacherMedia.loadingAssets")} thumb />
         ) : assets.length > 0 && filteredAssets.length === 0 ? (
-          // Ha arquivos, so nenhum bate com a busca ou o tipo: nao e a
-          // primeira vez ("Upload from the builder."), e "nenhum resultado"
-          // com o caminho de volta.
+          // There are files, but none matches the search or the type: this is not
+          // the first time ("Upload from the builder."), it is "no results"
+          // with the way back.
           <div className="grid justify-items-start gap-3 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4">
             <p role="status" className="text-sm leading-6 text-[var(--color-ink-soft)]">{t("teacherMedia.noMatches")}</p>
             <button
@@ -311,9 +311,9 @@ export function TeacherMediaLibrary() {
             >
               <div className="grid h-20 w-20 place-items-center overflow-hidden rounded-md border border-[var(--color-line)] bg-white text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
                 {asset.downloadUrl && asset.contentType.startsWith("image/") ? (
-                  // Capas e thumbnails vivem no bucket público, então a URL já
-                  // está na linha. Sem a miniatura, três capas chamadas
-                  // IMG_4821.jpg eram três quadrados idênticos escritos "image".
+                  // Covers and thumbnails live in the public bucket, so the URL is already
+                  // on the row. Without the thumbnail, three covers named
+                  // IMG_4821.jpg were three identical squares labeled "image".
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={asset.downloadUrl}
@@ -333,8 +333,8 @@ export function TeacherMediaLibrary() {
                 </p>
               </div>
               <div className="flex flex-wrap items-start gap-2 md:justify-end">
-                {/* "Preview" só vale para vídeo (a aula de amostra), como no
-                    estúdio. Material marcado no passado continua fechado. */}
+                {/* "Preview" only applies to video (the sample lesson), as in the
+                    studio. Material marked as a preview in the past stays closed. */}
                 <span className="rounded-chip bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
                   {t(asset.isPreview && isVideoAssetKind(asset.kind) ? "teacherMedia.preview" : "teacherMedia.private")}
                 </span>

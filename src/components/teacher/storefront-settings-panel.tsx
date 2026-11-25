@@ -86,18 +86,18 @@ function StorefrontImageUpload({
   const uploadLabel = t(`teach.storefrontEditor.image.${kind === "logo" ? "uploadLogo" : "uploadHero"}`);
   const removeLabel = t(`teach.storefrontEditor.image.${kind === "logo" ? "removeLogo" : "removeHero"}`);
 
-  // A casca única de imagem (B-05), como a capa da área de membros. O envio,
-  // os tipos, o limite e o que se guarda seguem no painel. As URLs vêm do
-  // Storage do app: a casca usa <img>, que aceita a query de cache-busting.
+  // The single image shell (B-05), like the cover of the members area. The upload,
+  // the types, the limit and what gets stored stay in the panel. The URLs come from the
+  // app's Storage: the shell uses <img>, which accepts the cache-busting query.
   return (
     <ImageUploadField
       title={label}
       help={`${description} ${t("teach.storefrontEditor.image.requirements")}.`}
-      // Mesmas molduras de antes: logo 1:1 inteiro, com folga; capa 16:7.
+      // Same frames as before: logo 1:1 whole, with some padding; cover 16:7.
       preview={kind === "logo"
         ? { src: imageUrl, alt: "", frame: "aspect-square w-24", contain: true }
         : { src: imageUrl, alt: "", frame: "aspect-[16/7] w-full max-w-[200px]" }}
-      // F-20: rótulo estável; o andamento fica só na nota abaixo.
+      // F-20: stable label; the progress stays only in the note below.
       triggerLabel={t(`teach.storefrontEditor.image.${imageUrl ? "replace" : "upload"}`)}
       input={{
         accept: allowedAvatarTypes.join(","),
@@ -105,16 +105,16 @@ function StorefrontImageUpload({
         "aria-label": uploadLabel,
         onChange: (event) => {
           const file = event.target.files?.[0] ?? null;
-          // Zera a escolha: o mesmo arquivo pode ser escolhido de novo.
+          // Reset the choice: the same file can be chosen again.
           event.target.value = "";
           onChange(file);
         },
       }}
-      // Fora da vista durante o envio inteiro: o andamento só chega depois
-      // do primeiro aviso do envio, e até lá a casca ainda mostraria o Remove.
+      // Out of view during the whole upload: the progress only arrives after
+      // the first upload notice, and until then the shell would still show Remove.
       remove={isUploading ? undefined : { label: removeLabel, onClick: onRemove }}
       progress={progress}
-      // O erro nasce ao lado do botão que o disparou, anunciado ao leitor de tela.
+      // The error appears next to the button that triggered it, announced to the screen reader.
       error={error}
       className="border-t border-[var(--color-line)] pt-4"
     />
@@ -149,7 +149,7 @@ export function StorefrontSettingsPanel() {
   const [uploadProgress, setUploadProgress] = useState<
     Partial<Record<StorefrontImageKind, UploadAvatarProgress>>
   >({});
-  // Por que o Save esta desligado (alem de "salvando", que o rotulo ja diz).
+  // Why Save is disabled (besides "saving", which the label already says).
   const saveBlockedKey = uploadingImages.size > 0
     ? "saveWaitUpload"
     : !coursesReady
@@ -158,15 +158,15 @@ export function StorefrontSettingsPanel() {
   const [pendingImageRemovals, setPendingImageRemovals] = useState<
     ReadonlySet<StorefrontImageKind>
   >(() => new Set());
-  // Falha de imagem fica no campo dela; `error` é só para carregar/salvar.
+  // An image failure stays in its field; `error` is only for load/save.
   const [imageErrors, setImageErrors] = useState<
     Partial<Record<StorefrontImageKind, StorefrontImageError>>
   >({});
   const [error, setError] = useState<StorefrontError>("");
   const [success, setSuccess] = useState<StorefrontSuccess>("");
-  // Qualquer edição depois de salvar tira o "Storefront saved.": a frase só
-  // vale para o que foi gravado. Os avisos neutros ("salve para publicar")
-  // continuam verdadeiros e ficam.
+  // Any edit after saving removes the "Storefront saved." message: the sentence only
+  // holds for what was saved. The neutral notices ("save to publish")
+  // are still true and stay.
   const clearSaved = () => setSuccess((current) => (current === "saved" ? "" : current));
 
   function setImageError(kind: StorefrontImageKind, message: StorefrontImageError) {
@@ -250,9 +250,9 @@ export function StorefrontSettingsPanel() {
     };
   }, [user]);
 
-  // "Try again" le de novo pelo mesmo canal (reload), como nas outras telas:
-  // sem o intervalo entre sair e entrar de novo no Realtime e sem uma segunda
-  // leitura de graca.
+  // "Try again" reads again through the same channel (reload), as on the other screens:
+  // without the gap between leaving and rejoining Realtime and without a second
+  // read for free.
   function retryCourses() {
     setCourseLoadState("loading");
     void coursesSubscription.current?.reload();
@@ -445,9 +445,9 @@ export function StorefrontSettingsPanel() {
   }
 
   if (isLoading) {
-    // A forma da tela (título, prévia da vitrine, campos) no lugar da frase
-    // solta, que depois virava a tela inteira de uma vez. A frase fica para o
-    // leitor de tela.
+    // The shape of the screen (title, storefront preview, fields) in place of the loose
+    // sentence, which later became the whole screen at once. The sentence is left for the
+    // screen reader.
     const bone = "rounded-md bg-[var(--color-surface-strong)]";
     return (
       <section className="settings-section-card">
@@ -459,10 +459,10 @@ export function StorefrontSettingsPanel() {
               <div className={`h-4 w-full max-w-xl ${bone}`} />
             </div>
             <div className={`h-32 ${bone}`} />
-            {/* Os mesmos dois cartoes do formulario (cor, logo, capa, tema e
-                frase; depois a ordem dos cursos) e o botao. Com tres campos
-                so, o esqueleto tinha 531px para ~1.690px no celular, e o
-                cartao "Your own domain" logo abaixo saltava para fora da tela. */}
+            {/* The same two cards as the form (color, logo, cover, theme and
+                sentence; then the course order) and the button. With only three fields,
+                the skeleton was 531px against ~1,690px on a phone, and the
+                "Your own domain" card right below jumped off the screen. */}
             <div className="grid gap-4 rounded-lg border border-[var(--color-line)] p-4">
               {["h-11", "h-28", "h-28", "h-11", "h-24"].map((height, item) => (
                 <div key={item} className="grid gap-2">
@@ -473,7 +473,7 @@ export function StorefrontSettingsPanel() {
             </div>
             <div className="grid gap-2 rounded-lg border border-[var(--color-line)] p-4">
               <div className={`h-3 w-36 ${bone}`} />
-              {/* Os mesmos 2 blocos de h-16 que o cartao mostra enquanto os cursos chegam. */}
+              {/* The same 2 h-16 blocks that the card shows while the courses arrive. */}
               {[0, 1].map((item) => (
                 <div key={item} className={`h-16 ${bone}`} />
               ))}
@@ -510,15 +510,15 @@ export function StorefrontSettingsPanel() {
       ? accentColor.trim()
       : defaultAccentColor;
 
-  // A vitrine so esta no ar quando ha curso publicado nela — mesma regra do
-  // cartao da Home e do de Marketing. Enquanto nao ha, a frase sobre o passo
-  // posterior continua verdadeira; com curso publicado ela virava mentira.
+  // The storefront is only live when there is a published course in it — same rule as the
+  // Home and Marketing cards. While there is none, the sentence about the later step
+  // stays true; with a published course it would become a lie.
   const isPublished = publishedCourses.length > 0;
   const publicPath = user ? instructorPagePath(user.uid, username) : "";
 
   return (
     <section className="settings-section-card">
-      {/* Titulo de cartao, sem repetir o rotulo "Teacher Studio" da pagina. */}
+      {/* Card title, without repeating the page's "Teacher Studio" label. */}
       <SectionHeader
         size="card"
         title={t("teach.storefrontEditor.title")}
@@ -554,8 +554,8 @@ export function StorefrontSettingsPanel() {
       />
 
       {/* Live brand preview — how your storefront header reads at a glance.
-          Com nome acessivel: era um bloco anonimo, e quem usa leitor de tela
-          nao tinha como saber que aquilo era a previa da vitrine. */}
+          With an accessible name: it was an anonymous block, and anyone using a screen reader
+          had no way to know that it was the storefront preview. */}
       <section
         aria-label={t("teach.storefrontPage.previewLabel")}
         className="mt-6 overflow-hidden rounded-lg border border-[var(--color-line)] shadow-[var(--shadow-soft)]"
@@ -585,8 +585,8 @@ export function StorefrontSettingsPanel() {
             <span className="mt-1 block max-w-md truncate text-sm text-white/70">
               {tagline.trim() || t("teach.storefrontEditor.taglinePlaceholder")}
             </span>
-            {/* A previa mentia por omissao: mostrava marca e nada do catalogo,
-                que e o que o comprador realmente ve na vitrine. */}
+            {/* The preview lied by omission: it showed the brand and none of the catalog,
+                which is what the buyer actually sees on the storefront. */}
             {coursesReady ? <span className="mt-2 block max-w-md truncate text-xs text-white/60">
               {orderedCourses.length === 0
                 ? t("teach.storefrontPage.previewNoCourse")
@@ -604,8 +604,8 @@ export function StorefrontSettingsPanel() {
         <div className="h-1.5" style={{ background: previewAccent }} />
       </section>
 
-      {/* onChange no form: pega a mudança de qualquer campo (cor, tema, frase,
-          imagem) sem mexer no que cada campo grava. */}
+      {/* onChange on the form: catches the change of any field (color, theme, sentence,
+          image) without touching what each field saves. */}
       <form className="mt-6 grid gap-5" onSubmit={handleSubmit} onChange={clearSaved}>
         <Card tone="soft" padding="sm" shadow={false} className="grid gap-4">
           <p className="text-sm font-semibold text-[var(--color-ink)]">
@@ -714,7 +714,7 @@ export function StorefrontSettingsPanel() {
           </div>
 
           {courseLoadState === "loading" ? (
-            // Duas linhas no lugar das linhas de curso, em vez da frase solta.
+            // Two lines in place of the course lines, instead of the loose sentence.
             <div role="status" className="grid gap-2">
               <span className="sr-only">{t("publicCourses.loadingCourses")}</span>
               {[0, 1].map((item) => (
@@ -800,8 +800,8 @@ export function StorefrontSettingsPanel() {
           </InlineAlert>
         ) : null}
 
-        {/* A caixa azul fica só para o aviso neutro ("imagem enviada, salve
-            para publicar"); o "salvo" vai para o lado do botão, sem empurrá-lo. */}
+        {/* The blue box is kept only for the neutral notice ("image uploaded, save
+            to publish"); the "saved" message goes next to the button, without pushing it. */}
         {success && success !== "saved" ? (
           <p className="info-notice">{t(`teach.storefrontEditor.feedback.${success}`)}</p>
         ) : null}
@@ -818,8 +818,8 @@ export function StorefrontSettingsPanel() {
               busyText={t("teach.storefrontEditor.saving")}
             />
           </Button>
-          {/* O botao ficava cinza sem dizer por que (imagem subindo, produtos
-              ainda carregando): agora a razao fica ao lado dele. */}
+          {/* The button used to turn gray without saying why (image uploading, products
+              still loading): now the reason sits next to it. */}
           {saveBlockedKey && !isSaving ? (
             <p id="storefront-save-reason" className="text-xs leading-5 text-[var(--color-ink-soft)]">
               {t(`teach.storefrontEditor.${saveBlockedKey}`)}

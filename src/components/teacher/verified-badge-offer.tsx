@@ -9,7 +9,7 @@ import { VerifiedSeal, verifiedLabelClass, verifiedLabelTextClass } from "@/comp
 import { buttonClasses } from "@/components/ui";
 import { brand } from "@/data/brand";
 
-/** "Agora não" adia por 21 dias; depois da 3ª recusa a oferta não volta. */
+/** "Not now" postpones for 21 days; after the 3rd refusal the offer does not come back. */
 export const BADGE_OFFER_SNOOZE_MS = 21 * 24 * 60 * 60 * 1000;
 export const BADGE_OFFER_MAX_DISMISSALS = 3;
 
@@ -29,7 +29,7 @@ function readOffer(uid: string): OfferMemory {
   }
 }
 
-/** A oferta aparece agora? Storage bloqueado = aparece (e "Agora não" vale na sessão). */
+/** Does the offer show up now? Storage blocked = it shows (and "Not now" lasts for the session). */
 export function badgeOfferDue(uid: string, now: number): boolean {
   const memory = readOffer(uid);
   return memory.dismissals < BADGE_OFFER_MAX_DISMISSALS && now >= memory.snoozedUntil;
@@ -43,22 +43,22 @@ export function snoozeBadgeOffer(uid: string, now: number): void {
       snoozedUntil: now + BADGE_OFFER_SNOOZE_MS,
     }));
   } catch {
-    // Storage bloqueado: some só nesta visita.
+    // Storage blocked: it only goes away on this visit.
   }
 }
 
 const noSubscription = () => () => {};
 
 /**
- * Oferta do selo na tela de sucesso da publicação. Não bloqueia nada: é um
- * cartão abaixo do link do curso, com prévia do nome do professor já com o
- * selo. Só para quem não pediu (`none`) ou teve o pedido recusado
- * (`rejected`); quem está em análise, em ajuste ou aprovado não vê, e status
- * desconhecido (`null`: leitura falhou ou não chegou) também não.
+  * Offer of the badge on the publish success screen. It blocks nothing: it is a
+  * card below the course link, with a preview of the teacher's name already with the
+  * badge. Only for whoever did not ask (`none`) or had the request rejected
+  * (`rejected`); whoever is under review, in adjustment or approved does not see it, and unknown
+  * status (`null`: read failed or did not arrive) does not either.
  *
- * `onDismiss`: para onde o foco vai quando "Agora não" some com o cartão.
+  * `onDismiss`: where focus goes when "Not now" removes the card.
  *
- * Nunca promete alunos, vendas ou destaque: o selo é cosmético.
+  * Never promises learners, sales or featured placement: the badge is cosmetic.
  */
 export function VerifiedBadgeOffer({
   uid,
@@ -76,7 +76,7 @@ export function VerifiedBadgeOffer({
   const { t } = useTranslation();
   const titleId = useId();
   const [dismissed, setDismissed] = useState(false);
-  // Servidor e 1º render: escondido (o storage só existe no navegador).
+  // Server and 1st render: hidden (storage only exists in the browser).
   const due = useSyncExternalStore(noSubscription, () => badgeOfferDue(uid, Date.now()), () => false);
 
   if (!due || dismissed || (verificationStatus !== "none" && verificationStatus !== "rejected")) {
@@ -89,8 +89,8 @@ export function VerifiedBadgeOffer({
     <aside
       aria-labelledby={titleId}
       data-verified-badge-offer=""
-      // Sem a faixa dourada na esquerda (cartao com borda colorida de lado e
-      // padrao proibido): a borda fina comum basta.
+      // Without the gold strip on the left (card with a colored border on the side and a
+      // forbidden pattern): the plain thin border is enough.
       className="mt-4 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4"
     >
       <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">
@@ -101,7 +101,7 @@ export function VerifiedBadgeOffer({
       </h3>
       <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">{t("verifiedBadge.offer.body")}</p>
 
-      {/* Prévia do cabeçalho do perfil: o próprio nome, já com o selo. */}
+      {/* Header preview of the profile: the name itself, already with the badge. */}
       <figure className="mt-3 rounded-md border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] px-3 py-3">
         <figcaption className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-ink-muted)]">
           {t("verifiedBadge.offer.preview")}
@@ -126,13 +126,13 @@ export function VerifiedBadgeOffer({
           type="button"
           onClick={() => {
             snoozeBadgeOffer(uid, Date.now());
-            // Antes de o botão sumir: o foco não pode cair no <body>.
+            // Before the button disappears: focus must not fall on the <body>.
             onDismiss?.();
             setDismissed(true);
           }}
           className={buttonClasses({ variant: "ghost", size: "sm" }, "min-h-11")}
         >
-          {/* No <span>: `button { font: inherit }` ignora a fonte do botão. */}
+          {/* On the <span>: `button { font: inherit }` ignores the button's font. */}
           <span className="text-xs font-semibold">{t("verifiedBadge.offer.notNow")}</span>
         </button>
       </div>

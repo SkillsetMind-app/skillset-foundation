@@ -87,8 +87,8 @@ function renderWithLocale(locale: "en" | "es" = "en") {
 
 async function changeLocale(locale: "en" | "es") {
   fireEvent.click(screen.getByRole("button", { name: `Use ${locale.toUpperCase()}` }));
-  // O efeito de carga agenda um timer de 0 ms. Deixá-lo executar faz a
-  // contagem detectar uma reinscrição indevida causada pela troca de idioma.
+  // The load effect schedules a 0 ms timer. Letting it run makes the
+  // count detect an improper resubscription caused by the language switch.
   await act(async () => {
     await new Promise<void>((resolve) => window.setTimeout(resolve, 0));
   });
@@ -98,14 +98,14 @@ function requestCount(method = "GET") {
   return fetchMock.mock.calls.filter(([, init]) => (init?.method ?? "GET") === method).length;
 }
 
-// "Disconnect" pergunta na janela da plataforma (não mais no window.confirm).
-// O jsdom não tem showModal/close: o stub do beforeEach faz o mínimo que o
-// navegador faz.
+// "Disconnect" asks in the platform dialog (no longer window.confirm).
+// jsdom has no showModal/close: the beforeEach stub does the minimum the
+// browser does.
 const originalShow = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal");
 const originalClose = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "close");
 
-// Clica e, se a pergunta abrir, confirma depois da trava do toque duplo: o
-// caminho do antigo OK. Devolve a janela (ou null, quando nada perguntou).
+// Clicks and, if the question opens, confirms after the double-tap guard: the
+// path of the old OK. Returns the dialog (or null, when nothing asked).
 function press(button: HTMLElement) {
   fireEvent.click(button);
   const dialog = screen.queryByRole("dialog");
@@ -129,8 +129,8 @@ describe("CustomDomainsPanel", () => {
       jsonResponse({ domains, quota: { used: 3, limit: 3 }, configured: true }),
     );
     vi.stubGlobal("fetch", fetchMock);
-    // Só o Date é falso: o confirmar da janela ignora cliques nos primeiros
-    // CONFIRM_GUARD_MS; os setTimeout reais continuam servindo o findBy.
+    // Only Date is fake: the dialog's confirm ignores clicks in the first
+    // CONFIRM_GUARD_MS; the real setTimeouts keep serving findBy.
     vi.useFakeTimers({ toFake: ["Date"] });
     Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value() { this.setAttribute("open", ""); } });
     Object.defineProperty(HTMLDialogElement.prototype, "close", { configurable: true, value() { if (!this.hasAttribute("open")) return; this.removeAttribute("open"); this.dispatchEvent(new Event("close")); } });
@@ -147,10 +147,10 @@ describe("CustomDomainsPanel", () => {
     else Reflect.deleteProperty(HTMLDialogElement.prototype, "close");
   });
 
-  // P-26: o painel pintava o status com bg-amber-100/bg-emerald-100/bg-red-100 —
-  // paleta crua que não acompanha o tema escuro e usa um vocabulário que
-  // nenhuma outra tela do estúdio usa. O chip da casa já resolvia tudo isso.
-  it("usa o StatusChip da casa para o status de cada domínio", async () => {
+  // P-26: the panel painted the status with bg-amber-100/bg-emerald-100/bg-red-100 —
+  // a raw palette that does not follow the dark theme and uses a vocabulary that
+  // no other studio screen uses. The house chip already solved all of that.
+  it("uses the house StatusChip for the status of each domain", async () => {
     const { container } = render(<CustomDomainsPanel />);
 
     await screen.findByText("aulas.exemplo.com");
@@ -167,11 +167,11 @@ describe("CustomDomainsPanel", () => {
     expect(container.innerHTML).not.toMatch(/bg-(amber|emerald|red)-\d{2,3}/);
   });
 
-  // P-07: "Disconnect" derrubava o domínio em um clique, sem confirmação, a
-  // 8px do "Check again" que o professor martela enquanto o DNS propaga.
-  it("pede confirmação antes de desconectar o domínio", async () => {
+  // P-07: "Disconnect" dropped the domain in one click, with no confirmation, 8px
+  // from the "Check again" that the teacher hammers while DNS propagates.
+  it("asks for confirmation before disconnecting the domain", async () => {
     const nativeConfirm = vi.spyOn(window, "confirm");
-    // O DELETE fica pendurado, como numa Vercel lenta.
+    // The DELETE hangs, as on a slow Vercel.
     const removal = deferredResponse();
     fetchMock.mockImplementation(async (_url, init) =>
       init?.method === "DELETE"
@@ -185,19 +185,19 @@ describe("CustomDomainsPanel", () => {
     const [disconnect] = screen.getAllByRole("button", { name: /Disconnect/ });
     fireEvent.click(disconnect);
 
-    // (a) a frase de sempre, agora na janela da plataforma;
+    // (a) the usual sentence, now in the platform dialog;
     const dialog = screen.getByRole("dialog", { name: "Disconnect this domain?" });
     expect(dialog).toHaveTextContent(
       "Disconnect aulas.exemplo.com? Students go back to the platform address, and the DNS setup starts over if you reconnect it.",
     );
     expect(nativeConfirm).not.toHaveBeenCalled();
-    // (b) desistir não desconecta nada;
+    // (b) giving up disconnects nothing;
     fireEvent.click(within(dialog).getByRole("button", { name: "Keep domain" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(requestCount("DELETE")).toBe(0);
 
-    // (c) confirmar manda um DELETE só, do domínio do cartão. O clique colado
-    // na abertura (toque duplo) e o segundo clique são descartados.
+    // (c) confirming sends a single DELETE, for the card's domain. The click stuck
+    // to the opening (double tap) and the second click are discarded.
     fireEvent.click(disconnect);
     const again = screen.getByRole("dialog", { name: "Disconnect this domain?" });
     fireEvent.click(within(again).getByRole("button", { name: "Disconnect domain" }));
@@ -209,8 +209,8 @@ describe("CustomDomainsPanel", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/teach/domains/dom-1", {
       method: "DELETE",
     });
-    // A janela não espera o DELETE (que pode demorar minutos): fecha na hora
-    // e a página volta a responder. Quem fica ocupado é só o cartão.
+    // The dialog does not wait for the DELETE (which can take minutes): it closes right away
+    // and the page responds again. Only the card stays busy.
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     const card = domainCard("aulas.exemplo.com");
     expect(card.getByRole("button", { name: "Disconnect" })).toBeDisabled();
@@ -222,7 +222,7 @@ describe("CustomDomainsPanel", () => {
     expect(requestCount("DELETE")).toBe(1);
   });
 
-  it("veste Disconnect como ação de perigo, não como gêmeo do Check again", async () => {
+  it("styles Disconnect as a danger action, not as a twin of Check again", async () => {
     render(<CustomDomainsPanel />);
     await screen.findByText("aulas.exemplo.com");
 
@@ -232,7 +232,7 @@ describe("CustomDomainsPanel", () => {
     expect(recheck).toHaveClass("button-outline");
   });
 
-  it.each(["en", "es"] as const)("apresenta os quatro estados em %s e troca idioma sem recarregar os dados", async (locale) => {
+  it.each(["en", "es"] as const)("shows the four states in %s and switches language without reloading the data", async (locale) => {
     const verification: DomainFixture = {
       ...domains[0], id: "dom-txt", hostname: "verify.example.com", status: "pending_verification",
       verification_name: "_vercel", verification_value: "local-qa-txt",
@@ -293,7 +293,7 @@ describe("CustomDomainsPanel", () => {
       name: "quota disponível sem domínios", payload: domainPayload([], { used: 0, limit: 3 }), form: "enabled",
       en: "0 of 3 used", es: "0 de 3 utilizados",
     },
-  ])("distingue $name em EN/ES sem mudar quota ou habilitar ação proibida", async (scenario) => {
+  ])("distinguishes $name in EN/ES without changing the quota or enabling a forbidden action", async (scenario) => {
     fetchMock.mockResolvedValue(jsonResponse(scenario.payload));
     renderWithLocale();
     await screen.findByText(scenario.en);
@@ -317,8 +317,8 @@ describe("CustomDomainsPanel", () => {
     expect(requestCount("DELETE")).toBe(0);
   });
 
-  // Quota desconhecida não é quota zero. Começar em EN isola essa falha da tradução.
-  it.each(["HTTP", "rede"] as const)("mantém a carga pendente e o erro de GET (%s) distintos de plano sem domínio", async (failure) => {
+  // Unknown quota is not zero quota. Starting in EN isolates this failure from the translation.
+  it.each(["HTTP", "rede"] as const)("keeps the pending load and the GET error (%s) distinct from a plan with no domain", async (failure) => {
     const pending = deferredResponse();
     fetchMock.mockReturnValue(pending.promise);
     renderWithLocale();
@@ -345,7 +345,7 @@ describe("CustomDomainsPanel", () => {
     expect(requestCount("DELETE")).toBe(0);
   });
 
-  it("permite repetir a carga inicial após falha e anuncia a tentativa sem GET extra ao trocar idioma", async () => {
+  it("lets the initial load be repeated after a failure and announces the attempt with no extra GET when switching language", async () => {
     const retry = deferredResponse();
     fetchMock.mockResolvedValueOnce(jsonResponse({ error: "local-qa-load-failure" }, 503));
     fetchMock.mockReturnValueOnce(retry.promise);
@@ -391,13 +391,13 @@ describe("CustomDomainsPanel", () => {
     { reason: "malformed", input: "192.168.0.1", es: "Eso no parece un dominio. Ejemplo: tunombre.com" },
     { reason: "single_label", input: "mysite", es: "Incluye la terminación, por ejemplo tunombre.com en lugar de tunombre" },
     { reason: "reserved", input: "anything.skillsetmind.com", es: "Ese dominio pertenece a la plataforma y no se puede registrar." },
-  ] satisfies Array<{ reason: DomainRejection; input: string; es: string }>)("recusa $reason antes de POST e retraduz o erro associado sem perder o texto", async ({ reason, input, es }) => {
+  ] satisfies Array<{ reason: DomainRejection; input: string; es: string }>)("rejects $reason before the POST and re-translates the related error without losing the text", async ({ reason, input, es }) => {
     fetchMock.mockResolvedValue(jsonResponse(domainPayload()));
     renderWithLocale();
     const hostname = await screen.findByRole("textbox", { name: "Add a domain" });
     expect(parseCustomDomain(input)).toEqual({ ok: false, reason });
     fireEvent.change(hostname, { target: { value: input } });
-    // O envio direto também cobre a guarda de vazio, mesmo com o botão desabilitado.
+    // Submitting directly also covers the empty guard, even with the button disabled.
     fireEvent.submit(screen.getByRole("button", { name: "Connect" }).closest("form")!);
     expect(screen.getByRole("alert")).toHaveTextContent(domainRejectionMessage[reason]);
     expect(hostname).toHaveAttribute("aria-invalid", "true");
@@ -410,7 +410,7 @@ describe("CustomDomainsPanel", () => {
     expect(requestCount("POST")).toBe(0);
   });
 
-  it("mantém hostname e busy durante EN↔ES e envia apenas o domínio normalizado", async () => {
+  it("keeps the hostname and busy state during EN↔ES and sends only the normalized domain", async () => {
     const addition = deferredResponse();
     const saved: DomainFixture = { ...domains[0], id: "dom-new", hostname: "miescuela.example.com" };
     fetchMock.mockResolvedValue(jsonResponse(domainPayload([saved])));
@@ -453,7 +453,7 @@ describe("CustomDomainsPanel", () => {
     { status: 400, body: { error: "Invalid request body." }, en: "Could not add that domain.", es: "No pudimos añadir ese dominio." },
     { status: 403, body: { error: "local-qa-unknown-permission-error" }, en: "Could not add that domain.", es: "No pudimos añadir ese dominio." },
     { status: 502, body: { status: "error", errorReason: "That domain is already connected somewhere else." }, en: "That domain is already connected somewhere else.", es: "Ese dominio ya está conectado en otro lugar." },
-  ])("localiza erro de conexão HTTP $status ($en), preserva rascunho e não infere plano pelo status", async ({ status, body, en, es }) => {
+  ])("localizes connection error HTTP $status ($en), preserves the draft and does not infer the plan from the status", async ({ status, body, en, es }) => {
     fetchMock.mockResolvedValue(jsonResponse(domainPayload()));
     fetchMock.mockResolvedValueOnce(jsonResponse(domainPayload()));
     fetchMock.mockResolvedValueOnce(jsonResponse(body, status));
@@ -473,7 +473,7 @@ describe("CustomDomainsPanel", () => {
     expect(requestCount("POST")).toBe(1);
   });
 
-  it("mostra erro de rede no idioma atual quando a conexão termina após a troca", async () => {
+  it("shows a network error in the current language when the connection ends after the switch", async () => {
     const addition = deferredResponse();
     fetchMock.mockResolvedValueOnce(jsonResponse(domainPayload()));
     fetchMock.mockReturnValueOnce(addition.promise);
@@ -507,7 +507,7 @@ describe("CustomDomainsPanel", () => {
       },
       name: "_vercel.local-qa", value: "local-qa-proof=$$;$&;literal",
     },
-  ])("traduz o nome acessível da cópia de $type sem alterar um caractere dos dados DNS", async ({ row, type, name, value }) => {
+  ])("translates the accessible name of the $type copy without changing a single character of the DNS data", async ({ row, type, name, value }) => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal("navigator", { clipboard: { writeText } });
     fetchMock.mockResolvedValue(jsonResponse(domainPayload([row])));
@@ -542,7 +542,7 @@ describe("CustomDomainsPanel", () => {
     { reason: "The platform could not reach the domain provider. Support has been notified.", en: "The platform could not reach the domain provider. Support has been notified.", es: "La plataforma no pudo contactar con el proveedor de dominios. Se ha avisado a soporte." },
     { reason: "The domain could not be set up. Check the spelling and try again.", en: "The domain could not be set up. Check the spelling and try again.", es: "No se pudo configurar el dominio. Comprueba la escritura e inténtalo de nuevo." },
     { reason: "local-qa-unknown-provider-detail", en: "The domain could not be set up. Check the spelling and try again.", es: "No se pudo configurar el dominio. Comprueba la escritura e inténtalo de nuevo." },
-  ])("apresenta motivo de erro do domínio com tradução e fallback ($reason)", async ({ reason, en, es }) => {
+  ])("shows the domain error reason with translation and fallback ($reason)", async ({ reason, en, es }) => {
     const row = { ...domains[2], error_reason: reason };
     fetchMock.mockResolvedValue(jsonResponse(domainPayload([row])));
     renderWithLocale("es");
@@ -557,8 +557,8 @@ describe("CustomDomainsPanel", () => {
     expect(requestCount("DELETE")).toBe(0);
   });
 
-  // CourseShareLink já anuncia a recusa e conserva o dado para cópia manual.
-  it("anuncia recusa do clipboard em EN/ES, conserva o TXT literal e permite tentar novamente", async () => {
+  // CourseShareLink already announces the refusal and keeps the data for manual copy.
+  it("announces the clipboard refusal in EN/ES, keeps the literal TXT and allows trying again", async () => {
     const value = "LOCAL QA $$ $& TXT that must remain available";
     const writeText = vi.fn().mockResolvedValue(undefined)
       .mockRejectedValueOnce(new DOMException("LOCAL QA clipboard denied", "NotAllowedError"));
@@ -591,7 +591,7 @@ describe("CustomDomainsPanel", () => {
     expect(requestCount("DELETE")).toBe(0);
   });
 
-  it("preserva contexto ao cancelar e mantém desconexão ocupada durante EN↔ES sem DELETE duplicado", async () => {
+  it("preserves context on cancel and keeps the disconnect busy during EN↔ES with no duplicate DELETE", async () => {
     const removal = deferredResponse();
     fetchMock.mockResolvedValue(jsonResponse(domainPayload([domains[1]])));
     fetchMock.mockResolvedValueOnce(jsonResponse(domainPayload(domains.slice(0, 2))));
@@ -632,7 +632,7 @@ describe("CustomDomainsPanel", () => {
     expect(requestCount("DELETE")).toBe(1);
   });
 
-  it("preserva rascunho e busy na nova verificação e apresenta o status retornado no idioma atual", async () => {
+  it("preserves the draft and busy state on the new check and shows the returned status in the current language", async () => {
     const recheck = deferredResponse();
     fetchMock.mockResolvedValue(jsonResponse(domainPayload([{ ...domains[0], status: "active" }])));
     fetchMock.mockResolvedValueOnce(jsonResponse(domainPayload([domains[0]])));
@@ -656,13 +656,13 @@ describe("CustomDomainsPanel", () => {
     expect(requestCount("POST")).toBe(1);
   });
 
-  // A API retorna erro HTTP sem lançar. Uma recarga bem-sucedida não torna a mutação bem-sucedida.
+  // The API returns an HTTP error without throwing. A successful reload does not make the mutation successful.
   it.each([
     { method: "POST", action: "Check again", status: 404, body: { error: "Domain not found." }, en: "Domain not found.", es: "No se encontró el dominio." },
     { method: "POST", action: "Check again", status: 403, body: { error: "local-qa-unknown-recheck-error" }, en: "Could not check that domain again.", es: "No pudimos volver a comprobar ese dominio." },
     { method: "DELETE", action: "Disconnect", status: 400, body: { error: "Could not remove that domain." }, en: "Could not remove that domain.", es: "No pudimos desconectar ese dominio." },
     { method: "DELETE", action: "Disconnect", status: 403, body: { error: "local-qa-unknown-remove-error" }, en: "Could not remove that domain.", es: "No pudimos desconectar ese dominio." },
-  ])("não apresenta sucesso falso em $method HTTP $status e conserva contexto ao trocar idioma", async ({ method, action, status, body, en, es }) => {
+  ])("does not show false success on $method HTTP $status and keeps context when switching language", async ({ method, action, status, body, en, es }) => {
     const mutation = deferredResponse();
     fetchMock.mockResolvedValue(jsonResponse(domainPayload([domains[0]])));
     fetchMock.mockResolvedValueOnce(jsonResponse(domainPayload([domains[0]])));
@@ -695,7 +695,7 @@ describe("CustomDomainsPanel", () => {
   it.each([
     { method: "POST", action: "Check again" },
     { method: "DELETE", action: "Disconnect" },
-  ])("reconcilia $method 404 com quota cheia sem anunciar sucesso da operação", async ({ method, action }) => {
+  ])("reconciles $method 404 with a full quota without announcing success for the operation", async ({ method, action }) => {
     fetchMock.mockResolvedValueOnce(jsonResponse(domainPayload([domains[0]], { used: 1, limit: 1 })));
     fetchMock.mockResolvedValueOnce(jsonResponse({ error: "Domain not found." }, 404));
     fetchMock.mockResolvedValueOnce(jsonResponse(domainPayload([], { used: 0, limit: 1 })));
@@ -723,7 +723,7 @@ describe("CustomDomainsPanel", () => {
   it.each([
     { method: "POST", action: "Check again", en: "Could not check that domain again.", es: "No pudimos volver a comprobar ese dominio." },
     { method: "DELETE", action: "Disconnect", en: "Could not remove that domain.", es: "No pudimos desconectar ese dominio." },
-  ])("associa a recusa de $method ao cartão acionado, preservando o campo de adicionar válido em EN/ES", async ({ method, action, en, es }) => {
+  ])("ties the $method refusal to the triggered card, preserving the valid add field in EN/ES", async ({ method, action, en, es }) => {
     const mutation = deferredResponse();
     fetchMock.mockResolvedValueOnce(jsonResponse(domainPayload(domains.slice(0, 2))));
     fetchMock.mockReturnValueOnce(mutation.promise);
@@ -747,7 +747,7 @@ describe("CustomDomainsPanel", () => {
     }
   });
 
-  describe("atualização da lista após resposta de domínio", () => {
+  describe("list update after a domain response", () => {
     const refreshCopy = {
       en: "Could not refresh domains. The list may be out of date.",
       es: "No pudimos actualizar los dominios. La lista puede estar desactualizada.",
@@ -771,7 +771,7 @@ describe("CustomDomainsPanel", () => {
       { operation: "recheck", method: "POST", action: "Check again" },
       { operation: "remove", method: "DELETE", action: "Disconnect" },
     ] as const).flatMap((scenario) => (["HTTP", "rede"] as const).map((failure) => ({ ...scenario, failure }))))(
-      "recupera GET com falha $failure após $operation aceito sem repetir a mutação em EN↔ES",
+      "recovers a failed GET $failure after an accepted $operation without repeating the mutation in EN↔ES",
       async ({ operation, method, action, failure }) => {
         const mutation = deferredResponse();
         const failedRead = deferredResponse();
@@ -855,8 +855,8 @@ describe("CustomDomainsPanel", () => {
         await waitFor(() => expect(hostname.closest("section")).toHaveAttribute("aria-busy", "false"));
         for (const locale of ["en", "es"] as const) {
           await changeLocale(locale);
-          // O aviso de releitura saiu. O recheck termina em "Problem": o único
-          // aviso que sobra é o do próprio cartão (F-07: InlineAlert de erro).
+          // The re-read notice is gone. The recheck ends in "Problem": the only
+          // notice left is the card's own (F-07: error InlineAlert).
           expect(screen.queryByText(refreshCopy[locale])).not.toBeInTheDocument();
           expect(screen.queryAllByRole("alert")).toHaveLength(operation === "recheck" ? 1 : 0);
           if (operation === "recheck") {
@@ -872,12 +872,12 @@ describe("CustomDomainsPanel", () => {
           else expect(domainCard(target.hostname).getByText(locale === "es" ? "Problema" : "Problem")).toBeInTheDocument();
           expectDomainTraffic(3, [write]);
         }
-        // Só desconectar pergunta antes.
+        // Only disconnecting asks first.
         expect(Boolean(asked)).toBe(operation === "remove");
       },
     );
 
-    it.each(["en", "es"] as const)("preserva foco do Retry na espera e falha em %s e devolve contexto após sucesso", async (locale) => {
+    it.each(["en", "es"] as const)("preserves the Retry focus while waiting and on failure in %s and restores context after success", async (locale) => {
       const failedRetry = deferredResponse();
       const finalRetry = deferredResponse();
       const write: Mutation = { url: `/api/teach/domains/${domains[0].id}`, method: "POST" };
@@ -927,7 +927,7 @@ describe("CustomDomainsPanel", () => {
       expectDomainTraffic(4, [write]);
     });
 
-    it("preserva foco que saiu do Retry para o rascunho antes de recuperar a leitura", async () => {
+    it("preserves focus that moved from Retry to the draft before the read recovers", async () => {
       const retry = deferredResponse();
       const write: Mutation = { url: `/api/teach/domains/${domains[0].id}`, method: "POST" };
       fetchMock.mockResolvedValueOnce(jsonResponse(domainPayload([domains[0]])));
@@ -951,7 +951,7 @@ describe("CustomDomainsPanel", () => {
       expectDomainTraffic(3, [write]);
     });
 
-    it("libera quota cheia somente após o GET de recuperação de DELETE aceito", async () => {
+    it("frees a full quota only after the recovery GET following an accepted DELETE", async () => {
       const retry = deferredResponse();
       const write: Mutation = { url: `/api/teach/domains/${domains[0].id}`, method: "DELETE" };
       fetchMock.mockResolvedValueOnce(jsonResponse(domainPayload([domains[0]], { used: 1, limit: 1 })));
@@ -980,7 +980,7 @@ describe("CustomDomainsPanel", () => {
       expect(asked).not.toBeNull();
     });
 
-    it("mantém snapshot e rascunho quando o retry falha antes da leitura seguinte recuperar", async () => {
+    it("keeps the snapshot and draft when the retry fails before the next read recovers", async () => {
       const failedRetry = deferredResponse();
       const finalRetry = deferredResponse();
       const write: Mutation = { url: `/api/teach/domains/${domains[0].id}`, method: "POST" };
@@ -1014,7 +1014,7 @@ describe("CustomDomainsPanel", () => {
       expectDomainTraffic(4, [write]);
     });
 
-    it("limpa só a falha de leitura no retry sem apagar validação legítima de Add", async () => {
+    it("clears only the read failure on retry without erasing a legitimate Add validation", async () => {
       const retry = deferredResponse();
       const write: Mutation = { url: `/api/teach/domains/${domains[0].id}`, method: "POST" };
       fetchMock.mockResolvedValueOnce(jsonResponse(domainPayload([domains[0]])));
@@ -1051,7 +1051,7 @@ describe("CustomDomainsPanel", () => {
     it.each([
       { method: "POST", action: "Check again" },
       { method: "DELETE", action: "Disconnect" },
-    ] as const)("recupera a leitura após $method 404 sem sucesso ou mutação repetida", async ({ method, action }) => {
+    ] as const)("recovers the read after $method 404 without success or a repeated mutation", async ({ method, action }) => {
       const retry = deferredResponse();
       const write: Mutation = { url: `/api/teach/domains/${domains[0].id}`, method };
       fetchMock.mockResolvedValueOnce(jsonResponse(domainPayload([domains[0]], { used: 1, limit: 1 })));

@@ -6,23 +6,23 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 /**
- * Pergunta antes de uma ação que não volta, na janela da plataforma no lugar
- * do window.confirm (a caixa cinza do navegador, sem a marca, com "OK /
- * Cancel" que não diz o que acontece). `ask` guarda a pergunta; a janela monta
- * só enquanto ela existe e `run` roda uma vez, no confirmar: é o mesmo código
- * que rodava quando o confirm() devolvia true. `acknowledge`: aviso de um
- * botão só (era o window.alert).
+  * Asks before an action that cannot be undone, in the platform's dialog in place
+  * of window.confirm (the browser's gray box, unbranded, with an "OK /
+  * Cancel" that does not say what happens). `ask` stores the question; the dialog mounts
+  * only while it exists and `run` runs once, on confirm: it is the same code
+  * that ran when confirm() returned true. `acknowledge`: a one-button
+  * notice (it was window.alert).
  */
 export type ConfirmRequest = {
   title: string;
-  /** A frase que já existia no window.confirm. */
+  /** The sentence that already existed in window.confirm. */
   body: string;
   confirmLabel: string;
   cancelLabel?: string;
   danger?: boolean;
   acknowledge?: boolean;
   run: () => unknown;
-  /** Fechou sem confirmar (Cancelar, Esc). Opcional. */
+  /** Closed without confirming (Cancel, Esc). Optional. */
   onCancel?: () => void;
 };
 
@@ -33,9 +33,9 @@ export function useConfirm(): {
 } {
   const { t } = useTranslation();
   const [request, setRequest] = useState<ConfirmRequest | null>(null);
-  // A janela chama onClose nos dois desfechos; isto separa o "confirmou" do
-  // "desistiu". Só vira true quando o run termina sem erro (com erro a
-  // janela fica aberta).
+  // The dialog calls onClose in both outcomes; this separates "confirmed" from
+  // "gave up". It only becomes true when run finishes with no error (on error the
+  // dialog stays open).
   const confirmedRef = useRef(false);
   return {
     ask: setRequest,

@@ -36,8 +36,8 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-// O evento ao vivo recusa data passada: o relogio fica parado num dia antes
-// das datas dos testes, que assim nao vencem.
+// The live event refuses a past date: the clock is frozen on a day before
+// the test dates, so they do not expire.
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-10-01T12:00:00"));

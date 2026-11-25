@@ -4,12 +4,12 @@ import { afterEach, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { TeacherConnectOnboarding } from "@/components/teacher/teacher-connect-onboarding";
 
-// O KYC embutido da Stripe saia no idioma do NAVEGADOR: "Adicionar dados para
-// comecar a aceitar dinheiro" no meio de uma pagina em ingles. Agora o idioma
-// da INTERFACE vai junto na inicializacao.
+// Stripe's embedded KYC came out in the BROWSER's language: "Adicionar dados para
+// comecar a aceitar dinheiro" in the middle of an English page. Now the INTERFACE
+// language goes along at initialization.
 
-// Guarda so o locale, nao o objeto inteiro de init: o `appearance` levaria
-// dezenas de variaveis de tema para dentro da mensagem de erro do assert.
+// Keeps only the locale, not the whole init object: `appearance` would carry
+// dozens of theme variables into the assert's error message.
 const mocks = vi.hoisted(() => {
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = "pk_test_earnings";
   return { initialized: false, locale: undefined as unknown };
@@ -50,7 +50,7 @@ afterEach(() => {
   mocks.locale = undefined;
 });
 
-it("passa o idioma da INTERFACE para o componente embutido da Stripe", async () => {
+it("passes the INTERFACE language to Stripe's embedded component", async () => {
   render(
     <I18nProvider initialLocale="es">
       <TeacherConnectOnboarding />

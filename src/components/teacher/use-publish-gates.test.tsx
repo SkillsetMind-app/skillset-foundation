@@ -52,22 +52,22 @@ describe("creator plan gate", () => {
   });
 });
 
-// O status do selo decide a oferta e a linha do estúdio. Sem leitura não há
-// status: null, e ninguém oferece o selo a quem talvez já o tenha.
+// The badge status decides the offer and the studio row. With no read there is
+// no status: null, and nobody offers the badge to someone who may already have it.
 describe("verificationStatus", () => {
-  it("é null antes de a leitura chegar", () => {
+  it("is null before the read arrives", () => {
     const { result } = renderHook(() => usePublishGates({ uid: "teacher-1" }));
     expect(result.current.verificationStatus).toBeNull();
   });
 
-  it("fica null quando a leitura falha", async () => {
+  it("stays null when the read fails", async () => {
     mocks.fail = true;
     const { result } = renderHook(() => usePublishGates({ uid: "teacher-1" }));
     await waitFor(() => expect(result.current.loaded).toBe(true));
     expect(result.current.verificationStatus).toBeNull();
   });
 
-  it("traz o status lido, e 'none' quando o perfil não tem nenhum", async () => {
+  it("brings the status read, and 'none' when the profile has none", async () => {
     mocks.profile = { creatorVerificationStatus: "rejected" };
     const first = renderHook(() => usePublishGates({ uid: "teacher-1" }));
     await waitFor(() => expect(first.result.current.verificationStatus).toBe("rejected"));

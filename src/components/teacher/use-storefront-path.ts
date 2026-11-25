@@ -6,12 +6,12 @@ import { instructorPagePath } from "@/domain/user-profile";
 import { getPublicProfile } from "@/lib/data/user-profiles";
 
 /**
- * Endereço público da vitrine de `uid`, para as telas do estúdio que mostram
- * ou copiam o link: `/@usuario` quando o perfil público tem @, senão
- * `/instructors/{uid}` (que também é o valor até a leitura responder).
+  * Public address of the storefront of `uid`, for the studio screens that show
+  * or copy the link: `/@username` when the public profile has an @, otherwise
+  * `/instructors/{uid}` (which is also the value until the read answers).
  *
- * Lê `public_profiles` uma vez: é o @ que a página pública conhece. Falha de
- * leitura mantém o link pelo uid, que continua funcionando.
+  * Reads `public_profiles` once: it is the @ the public page knows. A read
+  * failure keeps the link by uid, which keeps working.
  */
 export function useStorefrontPath(uid: string): string {
   const [username, setUsername] = useState<string | null>(null);

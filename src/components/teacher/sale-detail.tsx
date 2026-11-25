@@ -127,7 +127,7 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-  // "Try again" assina de novo a mesma leitura (antes a saida era recarregar).
+  // "Try again" subscribes to the same read again (before, the only way out was reloading).
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
@@ -153,7 +153,7 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
       <section className="settings-section-card">
         <InlineAlert tone="error">{t(error || "saleDetail.notFound")}</InlineAlert>
         <div className="mt-5 flex flex-wrap gap-3">
-          {/* So a falha de leitura tenta de novo; venda que nao existe nao. */}
+          {/* Only a read failure retries; a sale that does not exist does not. */}
           {error ? (
             <button
               type="button"
@@ -186,15 +186,15 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
   );
   const creatorNetMinor = order.amountMinor - platformFeeMinor;
   const refundedMinor = order.refundedAmountMinor ?? 0;
-  // O numero grande e o que ficou com o professor, a mesma conta dos Ganhos
-  // (orderRevenueMinor: valor menos o devolvido). Reembolsada inteira,
-  // pendente, falha ou cancelada nao e receita: sem numero grande, so os tres
-  // valores pequenos, como antes.
-  // A taxa fica COMO FOI COBRADA, sobre o valor cheio no checkout. Um
-  // reembolso pela SkillsetMind (refund_application_fee) devolve a taxa na
-  // proporcao, mas o pedido nao guarda quanto voltou (e um reembolso feito
-  // direto na Stripe pode nao devolver): o liquido mostrado e o piso, nunca
-  // mais do que ficou.
+  // The big number is what the teacher kept, the same calculation as Earnings
+  // (orderRevenueMinor: amount minus what was returned). Fully refunded,
+  // pending, failed or canceled is not revenue: no big number, only the three
+  // small values, as before.
+  // The fee stays AS CHARGED, on the full amount at checkout. A
+  // refund through SkillsetMind (refund_application_fee) returns the fee
+  // proportionally, but the order does not store how much came back (and a refund made
+  // directly in Stripe may not return it): the net shown is the floor, never
+  // more than what was kept.
   const keptMinor = orderRevenueMinor(order);
   const headlineMinor = keptMinor === null ? null : keptMinor - platformFeeMinor;
   const money = (amountMinor: number) => formatMoney(amountMinor, order.currency, locale);
@@ -216,7 +216,7 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
 
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
-      {/* Nao havia volta para Vendas: so o menu, ou o Inicio no erro. */}
+      {/* There was no way back to Sales: only the menu, or Home on error. */}
       <Link
         href="/teach/sales"
         className="inline-flex min-h-11 w-fit items-center gap-2 text-sm font-semibold text-[var(--color-primary)] hover:underline lg:col-span-2"
@@ -225,8 +225,8 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
         {t("saleDetail.back")}
       </Link>
       <div className="grid gap-5">
-        {/* O que o professor recebe e o numero grande; o codigo do pedido
-            era a maior letra da tela (36px em serifa) e o liquido, a menor. */}
+        {/* What the teacher receives is the big number; the order code
+            was the largest text on the screen (36px serif) and the net amount the smallest. */}
         <section className="settings-section-card">
           <div className="flex flex-wrap items-center gap-3">
             <h2 className="text-sm font-semibold text-[var(--color-ink-soft)]">
@@ -339,9 +339,9 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
             >
               {t("saleDetail.viewEnrollment")}
             </Link>
-            {/* Os dois e-mails do suporte sao links de texto: eram quatro
-                botoes iguais, e os dois que abrem o e-mail pareciam acoes da
-                venda. */}
+            {/* The two support emails are text links: they used to be four
+                identical buttons, and the two that open the email looked like actions on the
+                sale. */}
             <a href="mailto:support@skillsetmind.com" className={textLink}>
               <Mail aria-hidden="true" size={14} />
               {t("saleDetail.support")}
@@ -367,8 +367,8 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
           <h3 className="mt-3 text-lg font-bold leading-7 text-[var(--color-ink)]">
             {order.courseTitle}
           </h3>
-          {/* Codigo, slug e moeda so servem para o suporte: recolhidos, e
-              ainda selecionaveis para colar num chamado. */}
+          {/* Code, slug and currency are only useful to support: collapsed, and
+              still selectable to paste into a ticket. */}
           <SupportDetails className="mt-3">
             <p>{t("saleDetail.courseId")} {order.courseId}</p>
             <p>{t("saleDetail.slug")} {order.courseSlug}</p>

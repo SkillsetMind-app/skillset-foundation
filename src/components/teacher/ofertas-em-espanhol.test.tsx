@@ -4,11 +4,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { CourseOffersPanel } from "@/components/teacher/course-offers-panel";
 
-// O que a pessoa sofria: com a interface em espanhol, o painel de ofertas do
-// curso seguia inteiro em ingles — titulo, formulario, estado vazio, tipos de
-// pagamento e as marcas da linha de cada oferta. Estas provas renderizam o
-// painel dentro do I18nProvider em "es" e conferem, literal por literal, que
-// nenhum dos textos antigos sobrou e que os novos em espanhol aparecem.
+// What the person suffered: with the interface in Spanish, the course offers
+// panel was still entirely in English — title, form, empty state, payment
+// types and the marks on each offer's row. These tests render the
+// panel inside the I18nProvider in "es" and check, literal by literal, that
+// none of the old texts is left and that the new Spanish ones appear.
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: () => {} }),
@@ -19,7 +19,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-// Os literais que a tela mostrava antes deste PR. Se algum voltar, a prova cai.
+// The literals the screen showed before this PR. If any comes back, the test fails.
 const INGLES_ANTIGO_LISTA = [
   "Other prices",
   "Offers & prices",
@@ -52,10 +52,10 @@ const INGLES_ANTIGO_FORMULARIO = [
 
 function semIngles(literais: string[]) {
   for (const literal of literais) {
-    expect(screen.queryByText(literal), `texto antigo: ${literal}`).toBeNull();
+    expect(screen.queryByText(literal), `old text: ${literal}`).toBeNull();
     expect(
       screen.queryByLabelText(literal),
-      `rotulo antigo: ${literal}`,
+      `old label: ${literal}`,
     ).toBeNull();
   }
 }
@@ -68,8 +68,8 @@ function renderEs(courseId = "course-1") {
   );
 }
 
-describe("painel de ofertas em espanhol", () => {
-  it("a lista de ofertas nao tem mais nenhum texto em ingles", async () => {
+describe("offers panel in Spanish", () => {
+  it("the offers list no longer has any English text", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => ({
@@ -107,7 +107,7 @@ describe("painel de ofertas em espanhol", () => {
 
     renderEs();
 
-    // O titulo identifica a secao sem repetir um paragrafo de instrucoes.
+    // The title identifies the section without repeating an instructions paragraph.
     expect(await screen.findByText("Otros precios")).toBeInTheDocument();
     expect(
       screen.queryByText(
@@ -115,31 +115,31 @@ describe("painel de ofertas em espanhol", () => {
       ),
     ).not.toBeInTheDocument();
 
-    // Marca da oferta padrao e o botao que abre o formulario. A lista chega
-    // depois do fetch: esperar, senao a asserção corre na frente do carregamento
-    // (falhava quando dois arquivos dividiam o mesmo fork).
+    // Mark of the default offer and the button that opens the form. The list arrives
+    // after the fetch: wait, otherwise the assertion runs ahead of loading
+    // (it failed when two files shared the same fork).
     expect(await screen.findByText("precio principal")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Agregar otro precio" }),
     ).toBeInTheDocument();
 
-    // Linha da oferta ativa: preco, tipo de pagamento e codigo publico.
+    // Row of the active offer: price, payment type and public code.
     const ativa = screen.getByText("precio principal").closest("li");
     expect(ativa?.textContent).toContain("Pago único");
     expect(ativa?.textContent).toContain("código LAUNCH");
 
-    // Linha da oferta sem preco e inativa.
+    // Row of the offer with no price and inactive.
     const inativa = screen.getByText("Sin precio", { exact: false });
     expect(inativa.textContent).toContain("inactivo");
 
-    // Rotulo do link de checkout da oferta: a linha leva so o "Copiar enlace",
-    // com o nome da oferta no nome do botao.
+    // Label of the offer's checkout link: the row carries only "Copiar enlace",
+    // with the offer name in the button name.
     expect(screen.getByRole("button", { name: "Copiar enlace de página de pago de Launch" })).toHaveTextContent("Copiar enlace");
 
     semIngles(INGLES_ANTIGO_LISTA);
   });
 
-  it("o formulario de nova oferta nao tem mais nenhum texto em ingles", async () => {
+  it("the new offer form no longer has any English text", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => ({ ok: true, json: async () => ({ offers: [] }) })),
@@ -147,7 +147,7 @@ describe("painel de ofertas em espanhol", () => {
 
     renderEs();
 
-    // Sem oferta nenhuma o formulario ja vem aberto, junto do estado vazio.
+    // With no offer at all the form already comes open, next to the empty state.
     const nome = await screen.findByLabelText("Nombre de este precio");
     expect(nome).toHaveValue("Otro precio");
     expect(
@@ -182,7 +182,7 @@ describe("painel de ofertas em espanhol", () => {
       screen.getByRole("button", { name: "Agregar precio" }),
     ).toBeInTheDocument();
 
-    // O nome inicial em ingles tambem sumiu do campo.
+    // The initial English name also disappeared from the field.
     expect(nome).not.toHaveValue("Standard offer");
     semIngles(INGLES_ANTIGO_FORMULARIO);
   });

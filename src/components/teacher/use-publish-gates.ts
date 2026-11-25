@@ -9,19 +9,19 @@ import {
 import { subscribeToUserProfile } from "@/lib/data/user-profiles";
 import { fetchCreatorPlanRequired } from "@/lib/data/creator-plan";
 
-// As travas de publicacao que sao do professor, nao do curso: payouts do
-// Stripe e verificacao profissional. So o Manage as carregava, entao a
-// porcentagem dele nunca batia com a do construtor num curso pago. O mesmo
-// hook alimenta as duas telas para que a lista seja uma so.
+// The publish gates that belong to the teacher, not to the course: Stripe
+// payouts and professional verification. Only Manage loaded them, so its
+// percentage never matched the builder's on a paid course. The same
+// hook feeds both screens so the list is a single one.
 export function usePublishGates(user: { uid: string } | null | undefined): {
   account: CourseReadinessAccount;
   planId: PlanId;
-  // As leituras responderam (com dado ou erro). Antes disso `account`
-  // traz os valores falsos iniciais, e quem conta passos pisca.
+  // The reads answered (with data or an error). Before that `account`
+  // carries the initial false values, and whoever counts steps flickers.
   loaded: boolean;
-  /** null até a leitura chegar, e quando ela falha: sem status, sem oferta do selo. */
+  /** null until the read arrives, and when it fails: no status, no badge offer. */
   verificationStatus: string | null;
-  /** País da conta Stripe Connect (ex.: "MX"); null sem conta ou sem leitura. */
+  /** Country of the Stripe Connect account (e.g. "MX"); null with no account or no read. */
   stripeConnectCountry: string | null;
 } {
   const [payoutsReady, setPayoutsReady] = useState(false);
@@ -91,8 +91,8 @@ export function usePublishGates(user: { uid: string } | null | undefined): {
     };
   }, []);
 
-  // Mesmo predicado do gatilho de publicar. Leitura falha aberta: sem resposta
-  // o item some e publish_teacher_course continua recusando no servidor.
+  // Same predicate as the publish trigger. A failed read fails open: with no answer
+  // the item goes away and publish_teacher_course keeps refusing on the server.
   useEffect(() => {
     if (!uid) {
       return;

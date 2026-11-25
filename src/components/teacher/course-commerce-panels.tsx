@@ -48,7 +48,7 @@ const taxRegionKeys: Record<TaxRegion, string> = {
   Other: "courseCommerce.regionother",
 };
 
-// O campo da casa (globals.css): a borda fina de antes sumia no cartão branco.
+// The app's standard field (globals.css): the thin border from before vanished on the white card.
 const inputClass = "field-input";
 
 export function PanelCard({
@@ -89,9 +89,9 @@ function GateNotice() {
 }
 
 /**
- * O erro interrompe o leitor de tela, embaixo do formulário. O "salvo" não
- * mora mais aqui: era uma caixa verde embaixo do formulário, outro desenho de
- * sucesso; agora é o SavedNote na linha do botão (F-05).
+ * The error interrupts the screen reader, below the form. The "saved" note no
+ * longer lives here: it was a green box below the form, another success
+ * design; now it is the SavedNote on the button's row (F-05).
  */
 function FeedbackError({ error }: { error: string }) {
   const { t } = useTranslation();
@@ -252,7 +252,7 @@ export function CouponsPanel({
       description={t("courseCommerce.couponsHelp")}
     >
       {activationBlocked ? <GateNotice /> : null}
-      {/* Mexeu num campo, o "Coupon created" de antes já não fala deste. */}
+      {/* Touched a field, the earlier "Coupon created" no longer speaks about this one. */}
       <form onSubmit={handleCreate} onChange={() => setNotice("")} className="mt-4 grid gap-3 sm:grid-cols-2">
         <Field id="coupon-code" label={t("courseCommerce.code")} required>
           {(a11y) => (
@@ -356,8 +356,8 @@ export function CouponsPanel({
                   ) : null}
                   {confirmingDeleteId === coupon.id ? (
                     <>
-                      {/* Confirmar a exclusão era um botão de latão: apagar
-                          vestido de conquista. */}
+                      {/* Confirming the deletion was a brass button: deleting
+                          dressed up as an achievement. */}
                       <Button
                         variant="danger"
                         size="sm"
@@ -466,7 +466,7 @@ export function TaxPanel({ courseId }: { courseId: string }) {
       title={t("courseCommerce.tax")}
       description={t("courseCommerce.taxHelp")}
     >
-      {/* Mexeu num campo depois de salvar: o "salvo" sai, era sobre o valor anterior. */}
+      {/* Touched a field after saving: the "saved" note goes away, it was about the previous value. */}
       <form onSubmit={handleSave} onChange={() => setNotice("")} className="mt-4 grid gap-3">
         <label className="flex items-center gap-3">
           <input

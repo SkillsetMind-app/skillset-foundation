@@ -10,11 +10,11 @@ const ok = {
 };
 
 describe("getAutosaveBlockedReason", () => {
-  // O pior modo de falha do builder era silencioso: com um campo inválido o
-  // autosave parava e a tela mostrava o MESMO selo cinza "Unsaved changes" que
-  // aparece no debounce normal de 1,8s. O professor seguia montando módulos
-  // achando que estava gravando, e perdia tudo ao recarregar.
-  it("não bloqueia quando o rascunho está válido", () => {
+  // The worst failure mode of the builder was silent: with an invalid field the
+  // autosave stopped and the screen showed the SAME gray "Unsaved changes" badge that
+  // appears in the normal 1.8s debounce. The teacher kept building modules
+  // thinking it was saving, and lost everything on reload.
+  it("does not block when the draft is valid", () => {
     expect(getAutosaveBlockedReason(ok)).toBeNull();
   });
 
@@ -22,22 +22,22 @@ describe("getAutosaveBlockedReason", () => {
     [{ priceFieldIsValid: false }, "price"],
     [{ installmentsAreValid: false }, "installments"],
     [{ draftStructureError: true }, "structure"],
-  ])("nomeia o bloqueio em vez de só parar (%o)", (override, expected) => {
+  ])("names the blocker instead of just stopping (%o)", (override, expected) => {
     const reason = getAutosaveBlockedReason({ ...ok, ...override });
     expect(reason).toBe(expected);
   });
 
-  // Curso publicado/arquivado não é editável: não há rascunho para perder, e
-  // um alarme aqui seria ruído permanente na barra do topo.
-  it("fica calado quando o curso não é editável", () => {
+  // A published/archived course is not editable: there is no draft to lose, and
+  // an alarm here would be permanent noise in the top bar.
+  it("stays quiet when the course is not editable", () => {
     expect(
       getAutosaveBlockedReason({ ...ok, isEditable: false, priceFieldIsValid: false }),
     ).toBeNull();
   });
 
-  // Preço é o primeiro gate, e é o que o professor mais mexe: quando mais de um
-  // campo está inválido, a mensagem aponta esse — não um genérico.
-  it("aponta o preço quando mais de um campo está inválido", () => {
+  // Price is the first gate, and it is what the teacher touches most: when more than one
+  // field is invalid, the message points to it — not to a generic one.
+  it("points to the price when more than one field is invalid", () => {
     expect(
       getAutosaveBlockedReason({
         ...ok,

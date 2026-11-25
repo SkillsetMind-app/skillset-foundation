@@ -4,18 +4,18 @@ import type { ReactNode } from "react";
 import { Card } from "@/components/ui";
 
 /**
- * O quadro de numero do estudio, um desenho so. Eram sete: azul com numero de
- * 36px na Home, cinza de 24px em Relatorios, peso 900 em Ganhos, faixa sem
- * cartao em Eventos... e nenhum com algarismos de largura fixa, entao numeros
- * em fila nao se alinhavam. Cartao branco, rotulo de 12px em maiusculas,
- * numero em `.num` (tabular) de 24px, dica opcional de 12px.
+ * The studio's number card, a single design. There used to be seven: blue with a
+ * 36px number on Home, gray with 24px on Reports, weight 900 on Earnings, a strip with no
+ * card on Events... and none with fixed-width digits, so numbers
+ * in a row did not line up. White card, 12px uppercase label,
+ * number in `.num` (tabular) at 24px, optional 12px hint.
  *
- * O valor vem pronto de quem chama: cada tela sabe quando o numero e
- * "Unavailable" (leitura que falhou nunca vira zero). `unavailable` so muda a
- * cara, para a palavra nao parecer um numero.
+ * The value comes ready from the caller: each screen knows when the number is
+ * "Unavailable" (a failed read never becomes zero). `unavailable` only changes the
+ * look, so the word does not look like a number.
  *
- * `labelAs="dt"`: o quadro mora num <dl> e vira dt/dd; senao o rotulo e o
- * elemento pedido (p, h2, h3), conforme a ordem de titulos da tela.
+ * `labelAs="dt"`: the card lives in a <dl> and becomes dt/dd; otherwise the label is the
+ * requested element (p, h2, h3), following the screen's heading order.
  */
 export function MetricCard({
   label,
@@ -36,7 +36,7 @@ export function MetricCard({
   loading?: boolean;
   unavailable?: boolean;
   labelAs?: "p" | "dt" | "h2" | "h3";
-  /** A dica so para o leitor de tela (faixas estreitas, como Eventos). */
+  /** The hint is for screen readers only (narrow strips, like Events). */
   srOnlyHint?: boolean;
 }) {
   const Item = Label === "dt" ? "dd" : "p";
@@ -47,7 +47,7 @@ export function MetricCard({
   );
   return (
     <Card as={Label === "dt" ? "div" : "article"} padding="sm">
-      {/* Num <dl> o dt fica filho direto do grupo: o icone so existe fora dele. */}
+      {/* In a <dl> the dt is a direct child of the group: the icon only exists outside it. */}
       {Icon ? (
         <div className="flex items-start justify-between gap-3">
           {title}

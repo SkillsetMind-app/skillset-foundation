@@ -35,8 +35,8 @@ const revenueRangeSubtitleKey: Record<RevenueRange, string> = {
   all: "teach.insights.rangeAll",
 };
 
-// Valores inteiros e em en-US, como o grafico sempre escreveu; a moeda e a
-// de cada valor (era USD fixo: R$100 + $20 saiam "$120").
+// Whole numbers and in en-US, as the chart has always written them; the currency is that
+// of each value (it was fixed USD: R$100 + $20 came out "$120").
 const WHOLE = { minimumFractionDigits: 0, maximumFractionDigits: 0 };
 
 type ActivityItem = {
@@ -49,8 +49,8 @@ type ActivityItem = {
 
 // The Home loads courses, orders and the profile once and passes them down;
 // this block used to open its own three subscriptions on top of the Home's.
-// O Stripe pendente saiu daqui: era a 4a vez que a mesma pendencia aparecia na
-// Home. O passo "Connect Stripe" da lista de passos e o dono dela.
+// The pending Stripe left here: it was the 4th time the same pending item showed up on the
+// Home. The "Connect Stripe" step of the steps list is its owner.
 export function TeacherStudioInsights({
   courses,
   orders,
@@ -61,14 +61,14 @@ export function TeacherStudioInsights({
   const { locale, t } = useTranslation();
   const [revenueRange, setRevenueRange] = useState<RevenueRange>("12m");
 
-  // Pago ou com reembolso parcial (conta o que ficou): o reembolso parcial
-  // sumia da receita.
+  // Paid or partially refunded (counts what was left): the partial refund
+  // vanished from revenue.
   const paidOrders = orders.filter(isRevenueOrder);
-  // Historico de venda = existe pedido pago, nao "entrou dinheiro": um pedido
-  // pago de valor zero (produto gratis) ja e historico e merece o grafico.
+  // Sale history = a paid order exists, not "money came in": a paid order
+  // of zero value (free product) is already history and deserves the chart.
   const hasSales = paidOrders.length > 0;
-  // Nada soma moedas diferentes. O grafico desenha UMA: a de mais pedidos no
-  // periodo (empate: ordem alfabetica); as outras ficam numa linha embaixo.
+  // Nothing adds different currencies. The chart draws ONE: the one with the most orders in
+  // the period (tie: alphabetical order); the others go on a line below.
   const revenue = useMemo(
     () => {
       const monthFormatter = new Intl.DateTimeFormat(locale, { month: "short" });
@@ -83,10 +83,10 @@ export function TeacherStudioInsights({
       return {
         currency: charted,
         points: buildRevenueSeries(paidOrders, window, (date) => monthFormatter.format(date), charted),
-        // O total segue sendo o de sempre (todo o historico), so que da moeda
-        // desenhada.
+        // The total is still the usual one (all history), only in the currency
+        // being drawn.
         totalMinor: allTime.find((group) => group.currency === charted)?.totalMinor ?? 0,
-        // So moedas com dinheiro: um "$0" na linha das outras moedas nao diz nada.
+        // Only currencies with money: a "$0" on the other-currencies line says nothing.
         others: allTime
           .filter((group) => group.currency !== charted && group.totalMinor !== 0)
           .map((group) => ({ currency: group.currency, amountMinor: group.totalMinor }))
@@ -103,10 +103,10 @@ export function TeacherStudioInsights({
 
   return (
     <div className="grid gap-8">
-      {/* Grafico de receita e Top courses so depois da 1a venda. Sem
-          nenhuma venda esse bloco era ~700px de nada: um grafico vazio
-          dizendo "No revenue yet" e uma lista vazia. Os 4 tiles acima
-          ficam sempre, com as dicas de vazio que ja tem. */}
+      {/* Revenue chart and Top courses only after the 1st sale. With no
+          sale this block was ~700px of nothing: an empty chart
+          saying "No revenue yet" and an empty list. The 4 tiles above
+          always stay, with the empty-state hints they already have. */}
       {hasSales ? (
         <section className="studio-dashboard-grid">
           <RevenueChart
@@ -142,7 +142,7 @@ export function TeacherStudioInsights({
           <aside className="grid gap-5">
             <div className="dash-card p-5">
               <div className="flex items-center justify-between gap-3">
-                {/* Titulo de cartao no texto da casa: a serifa e so do h1. */}
+                {/* Card title in the house text: the serif is only for the h1. */}
                 <h3 className="text-lg font-semibold text-[var(--color-primary)]">
                   {t("teach.insights.topCourses")}
                 </h3>
@@ -188,7 +188,7 @@ export function TeacherStudioInsights({
       ) : null}
 
       <section>
-        {/* .sec-head e .eyebrow.brand nao tinham CSS: o h2 saia sem estilo. */}
+        {/* .sec-head and .eyebrow.brand had no CSS: the h2 came out unstyled. */}
         <h2 className="text-xl font-semibold text-[var(--color-primary)]">
           {t("teach.insights.activityTitle")}
         </h2>
@@ -220,8 +220,8 @@ function RichEmptyLine({ title, detail }: { title: string; detail: string }) {
   );
 }
 
-// Receita de cada produto por moeda, cada uma no proprio valor. A ordem usa a
-// moeda do grafico, para nao comparar reais com dolares.
+// Revenue of each product by currency, each in its own value. The order uses the
+// chart's currency, so as not to compare reais with dollars.
 function buildTopCourses(courses: TeacherCourse[], paidOrders: Order[], chartedCurrency: string) {
   const byCourse = new Map<string, Order[]>();
 
@@ -246,8 +246,8 @@ function buildTopCourses(courses: TeacherCourse[], paidOrders: Order[], chartedC
         chartedMinor: groups.find((group) => group.currency === chartedCurrency)?.totalMinor ?? 0,
       };
     })
-    // Pedidos antes de aulas: um produto que so vendeu em outra moeda nao cai
-    // abaixo de um que nunca vendeu.
+    // Orders before lessons: a product that only sold in another currency does not fall
+    // below one that never sold.
     .sort(
       (a, b) =>
         b.chartedMinor - a.chartedMinor || b.orders - a.orders || b.lessonCount - a.lessonCount,

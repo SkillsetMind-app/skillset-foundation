@@ -41,9 +41,9 @@ const productFilters: Array<{ id: ProductFilter; labelKey: string }> = [
   { id: "draft", labelKey: "creatorPanel.filters.drafts" },
   { id: "in_review", labelKey: "creatorPanel.products.filterLegacyReview" },
   { id: "published", labelKey: "creatorPanel.products.filterLive" },
-  // O modal de arquivar promete "voce pode restaurar depois em Archived". Sem
-  // esta entrada a promessa nao tinha onde ser cumprida: 'inactive' so aparecia
-  // dentro de "Needs attention", que e outra coisa.
+  // The archive modal promises "you can restore it later in Archived". Without
+  // this entry the promise had nowhere to be fulfilled: 'inactive' only showed up
+  // inside "Needs attention", which is something else.
   { id: "inactive", labelKey: "creatorPanel.products.filterArchived" },
   { id: "attention", labelKey: "creatorPanel.filters.needsAttention" },
 ];
@@ -67,8 +67,8 @@ const workspaceShortcuts = [
     href: "/teach/marketing",
     icon: Megaphone,
   },
-  // "Coupons" saiu: levava para /teach/coupons, que volta para esta mesma
-  // pagina. Os cupons ficam dentro de cada produto.
+  // "Coupons" is gone: it led to /teach/coupons, which goes back to this same
+  // page. Coupons live inside each product.
 ] as const;
 
 function filterMatches(course: TeacherCourse, filter: ProductFilter) {
@@ -107,9 +107,9 @@ function ProductActionsMenu({
       >
         {t("creatorPanel.products.actions.viewAsStudent")}
       </Link>
-      {/* Sem porteiro de status: a mesma acao do hub, e o servidor decide se o
-          curso some ou vai para o arquivo. Antes o item sumia para tudo que
-          nao fosse rascunho, e o professor ficava sem saida. */}
+      {/* No status gate: the same action as the hub, and the server decides whether the
+          course disappears or goes to the archive. Before, the item vanished for everything that
+          was not a draft, and the teacher was left with no way out. */}
       <button
         type="button"
         role="menuitem"
@@ -134,9 +134,9 @@ export function TeacherCourseStudio({
   const router = useRouter();
   const searchParams = useSearchParams();
   const productView = searchParams.get("view") === "communities" ? "communities" : "products";
-  // A busca do topo manda para /teach/builder?q=: a lista ja chega filtrada.
-  // Uma busca nova com a lista aberta troca o ?q= sem remontar a tela, por
-  // isso o campo acompanha a URL quando ela muda (e so entao).
+  // The top search sends to /teach/builder?q=: the list already arrives filtered.
+  // A new search with the list open changes ?q= without remounting the screen, so
+  // the field follows the URL when it changes (and only then).
   const urlQuery = searchParams.get("q") ?? "";
   const [seededQuery, setSeededQuery] = useState(urlQuery);
   const [courseQuery, setCourseQuery] = useState(urlQuery);
@@ -200,8 +200,8 @@ export function TeacherCourseStudio({
     }
   }
 
-  // ponytail: rele quando a lista em tempo real muda, que e exatamente quando
-  // um produto some. Falhou: esconde a lista, que e so informativa.
+  // ponytail: re-reads when the real-time list changes, which is exactly when
+  // a product disappears. Failed: hides the list, which is only informational.
   useEffect(() => {
     if (!user) {
       return;
@@ -260,8 +260,8 @@ export function TeacherCourseStudio({
         </Link>
       </header>
 
-      {/* "Try again" lê de novo pelo mesmo canal (sem desligar e religar);
-          o erro só sai quando a lista chega. */}
+      {/* "Try again" reads again through the same channel (without unsubscribing and resubscribing);
+          the error only goes away when the list arrives. */}
       {errorKey ? (
         <div className="grid gap-3">
           <InlineAlert tone="error">{t(errorKey)}</InlineAlert>
@@ -303,8 +303,8 @@ export function TeacherCourseStudio({
 
         <div className="mt-4 grid gap-3 md:grid-cols-[minmax(220px,1fr)_minmax(150px,auto)_minmax(170px,auto)] md:items-end">
           <ListingSearchBar
-            // O campo guarda o rascunho dele; uma busca nova pelo topo o remonta
-            // com o texto novo.
+            // The field keeps its own draft; a new search from the top remounts it
+            // with the new text.
             key={seededQuery}
             value={courseQuery}
             onChange={setCourseQuery}
@@ -327,7 +327,7 @@ export function TeacherCourseStudio({
                     : "/teach/builder",
                 )
               }
-              // h-11: o .field-input dá 45px; a busca ao lado tem 44.
+              // h-11: .field-input gives 45px; the search next to it is 44.
               className="field-input h-11 normal-case tracking-normal"
             >
               <option value="products">{t("creatorPanel.products.eyebrow")}</option>
@@ -351,8 +351,8 @@ export function TeacherCourseStudio({
           </label>
         </div>
 
-        {/* Apagado, mas arquivos e videos ainda na fila (status pending). Nao e
-            clicavel: o produto ja nao existe. */}
+        {/* Deleted, but files and videos still in the queue (pending status). Not
+            clickable: the product no longer exists. */}
         {beingDeleted.length > 0 ? (
           <ul
             aria-label={t("creatorPanel.products.beingDeleted.aria")}
@@ -379,8 +379,8 @@ export function TeacherCourseStudio({
           {isLoadingCourses ? (
             <ProductRowsSkeleton label={t("creatorPanel.products.loadingAria")} />
           ) : errorKey && courses.length === 0 ? (
-            // A leitura falhou e nada chegou: o erro com "Try again" acima
-            // basta. "No products yet" embaixo dele afirmava o que nao se sabe.
+            // The read failed and nothing arrived: the error with "Try again" above
+            // is enough. "No products yet" below it claimed what is not known.
             null
           ) : courses.length === 0 ||
             (productView === "communities" &&
@@ -438,9 +438,9 @@ export function TeacherCourseStudio({
                   </th>
                 </tr>
               </thead>
-              {/* motion-stagger: as linhas sobem em escada quando a lista chega
-                  (a tabela so monta depois do esqueleto); da 6a em diante,
-                  juntas, para a entrada inteira caber em 400ms. */}
+              {/* motion-stagger: the rows rise in a staircase when the list arrives
+                  (the table only mounts after the skeleton); from the 6th on,
+                  together, so the whole entrance fits in 400ms. */}
               <tbody className="motion-stagger block divide-y divide-[var(--color-line)] lg:table-row-group">
                 {visibleCourses.map((course, index) => (
                   <tr
@@ -573,8 +573,8 @@ export function TeacherCourseStudio({
           courseId={confirmingDeleteCourse.id}
           courseTitle={confirmingDeleteCourse.title || t("creatorPanel.untitledProduct")}
           onCancel={() => setConfirmingDeleteId(null)}
-          // A lista ja escuta `courses` em tempo real: o curso apagado sai
-          // sozinho e o arquivado troca de chip. So o modal precisa fechar.
+          // The list already listens to `courses` in real time: the deleted course leaves
+          // on its own and the archived one changes chip. Only the modal needs to close.
           onDone={() => setConfirmingDeleteId(null)}
         />
       ) : null}

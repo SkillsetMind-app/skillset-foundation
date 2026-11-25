@@ -11,8 +11,8 @@ function stubOffers() {
     { id: "o3", name: "Expired", active: false, prices: [price] },
   ] }) })));
 }
-// Cada linha de preco leva so o "Copy link" (a caixa inteira fica em Promo
-// links): o link que ele copia e a prova do codigo / id da oferta.
+// Each price row only carries the "Copy link" (the whole box stays in Promo
+// links): the link it copies is the proof of the offer's code / id.
 async function copiedUrl(name: string) {
   const writeText = vi.fn().mockResolvedValue(undefined);
   vi.stubGlobal("navigator", { clipboard: { writeText } });
@@ -20,15 +20,15 @@ async function copiedUrl(name: string) {
   await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
   return writeText.mock.calls[0][0];
 }
-// jsdom serve em localhost: fora de produção o link de oferta fica relativo,
-// para que um preview nunca publique um host que só resolve em produção.
+// jsdom serves on localhost: outside production the offer link stays relative,
+// so a preview never publishes a host that only resolves in production.
 it("shares checkout by public code or offer ID, never inactive offers", async () => {
   stubOffers();
   render(<CourseOffersPanel courseId="course-1" courseTitle="Launch course" />);
   expect(await copiedUrl("Launch")).toBe("/courses/course-1/checkout?offer=LAUNCH");
   expect(await copiedUrl("Standard")).toBe("/courses/course-1/checkout?offerId=o2");
   expect(screen.queryByRole("button", { name: /Expired/ })).not.toBeInTheDocument();
-  // Sem caixa de link por linha: nem Abrir nem Compartilhar.
+    // No link box per row: neither Open nor Share.
   expect(screen.queryByRole("link", { name: /payment page/ })).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: /^Share / })).not.toBeInTheDocument();
   const section = screen.getByRole("heading", { level: 2 }).parentElement;
@@ -44,9 +44,9 @@ it("publishes offer links on pay.skillsetmind.com in production, code and ID pre
   expect(screen.queryByRole("button", { name: /Expired/ })).not.toBeInTheDocument();
 });
 
-// O formulario nascia sempre com 97 USD avulso: num curso por assinatura de
-// R$29 a tela pedia para confirmar um preco que nao era o do curso.
-it("o formulario de oferta nasce com o preco do proprio curso", async () => {
+// The form always started with a one-time 97 USD: in a course on a
+// R$29 subscription the screen asked to confirm a price that was not the course's.
+it("the offer form starts with the course's own price", async () => {
   vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ offers: [] }) })));
   render(
     <CourseOffersPanel
@@ -67,13 +67,13 @@ it("o formulario de oferta nasce com o preco do proprio curso", async () => {
   expect(screen.getByLabelText("Currency")).toHaveValue("BRL");
 });
 
-// "Adicionar outro preco" fica dentro da forma de pagar da etapa de preco:
-// nunca um segundo "Payment type" com as quatro respostas.
+// "Add another price" stays inside the payment type chosen in the pricing step:
+// never a second "Payment type" with the four answers.
 function pricing(paymentType: "one_time" | "subscription_monthly" | "subscription_yearly" | null, amountMinor: number) {
   return { free: paymentType === null, paymentType, amountMinor, currency: "USD", installmentsMax: null };
 }
 
-it("mensalidade: o outro preco e mensal ou o plano anual, nada de pagamento unico ou gratis", async () => {
+it("monthly: the other price is monthly or the yearly plan, never one-time payment or free", async () => {
   vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ offers: [] }) })));
   render(<CourseOffersPanel courseId="course-1" courseTitle="Launch course" coursePricing={pricing("subscription_monthly", 2900)} />);
 
@@ -84,7 +84,7 @@ it("mensalidade: o outro preco e mensal ou o plano anual, nada de pagamento unic
   ]);
 });
 
-it("pagamento unico: o outro preco e outro valor unico, sem escolher forma de pagar", async () => {
+it("one-time payment: the other price is another one-time amount, with no way to pick how to pay", async () => {
   vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ offers: [] }) })));
   render(<CourseOffersPanel courseId="course-1" courseTitle="Launch course" coursePricing={pricing("one_time", 9900)} />);
 
@@ -93,7 +93,7 @@ it("pagamento unico: o outro preco e outro valor unico, sem escolher forma de pa
   expect(screen.getByRole("button", { name: "Add price" })).toBeInTheDocument();
 });
 
-it("curso gratuito: nao tem outro preco, e a tela diz onde mudar", async () => {
+it("free course: has no other price, and the screen says where to change it", async () => {
   vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ offers: [] }) })));
   render(<CourseOffersPanel courseId="course-1" courseTitle="Launch course" coursePricing={pricing(null, 0)} />);
 
@@ -102,10 +102,10 @@ it("curso gratuito: nao tem outro preco, e a tela diz onde mudar", async () => {
   expect(screen.queryByRole("button", { name: "Add another price" })).not.toBeInTheDocument();
 });
 
-// "Add the yearly plan" na etapa de preco abre o formulario ja pronto. O anual
-// e um preco a mais: nao vira o principal, e sem principal a tela avisa que o
-// preco atual vira o principal antes.
-it("plano anual vindo da etapa de preco: formulario aberto, anual e nao principal", async () => {
+// "Add the yearly plan" at the pricing step opens the form already filled in. The yearly one
+// is an extra price: it does not become the main one, and without a main one the screen warns that the
+// current price becomes the main one first.
+it("annual plan coming from the price step: form open, annual and not primary", async () => {
   vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ offers: [] }) })));
   render(
     <CourseOffersPanel
@@ -120,17 +120,17 @@ it("plano anual vindo da etapa de preco: formulario aberto, anual e nao principa
   expect(screen.getByLabelText("Name of this price")).toHaveValue("Yearly plan");
   expect(screen.getByLabelText("How often they pay")).toHaveValue("subscription_yearly");
   expect(screen.getByLabelText("Make this the main price on your page")).not.toBeChecked();
-  // Com prefill o formulario ja nasce aberto, entao o findBy acima resolve antes
-  // de as ofertas carregarem; o aviso so aparece depois (!loading). getBy aqui
-  // dependia da corrida com o fetch e falhava no CI.
+    // With prefill the form is already born open, so the findBy above resolves before
+    // the offers load; the warning only appears afterwards (!loading). getBy here
+    // depended on the race with the fetch and failed in CI.
   expect(await screen.findByText(/^Your page keeps charging \D*29[.,]00 \(Monthly membership\): that price becomes the main price first/)).toBeInTheDocument();
 });
 
-// O anual sozinho virava o preco da pagina: o checkout cobra o principal ou,
-// sem principal, o primeiro preco ativo (resolveCoursePrice). Enviar o
-// formulario pronto num produto sem preco nenhum aqui grava antes o mensal
-// atual como principal, e a pagina continua cobrando o mensal.
-it("plano anual sem preco principal: o mensal vira o principal antes e o checkout segue no mensal", async () => {
+// The yearly one alone became the page price: the checkout charges the main one or,
+// without a main one, the first active price (resolveCoursePrice). Submitting the
+// ready form on a product with no price at all here first saves the current monthly
+// one as the main one, and the page keeps charging the monthly one.
+it("yearly plan without a main price: the monthly one becomes the main one first and the checkout stays on the monthly one", async () => {
   const saved: ProductOffer[] = [];
   const posts: Record<string, unknown>[] = [];
   vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => {
@@ -169,7 +169,7 @@ it("plano anual sem preco principal: o mensal vira o principal antes e o checkou
   expect(resolveCoursePrice(course, saved)).toMatchObject({ amountMinor: 2900, paymentType: "subscription_monthly" });
 });
 
-it("plano anual num produto de pagamento unico: o pedido e ignorado", async () => {
+it("annual plan on a one-time payment product: the request is ignored", async () => {
   vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ offers: [] }) })));
   render(
     <CourseOffersPanel
@@ -184,8 +184,8 @@ it("plano anual num produto de pagamento unico: o pedido e ignorado", async () =
   expect(screen.getByLabelText("Make this the main price on your page")).toBeChecked();
 });
 
-// Com oferta criada, o formulario empurrava a lista real para baixo.
-it("com ofertas, a lista vem antes e o formulario fica atras de Add another price", async () => {
+// With an offer created, the form pushed the real list down.
+it("with offers, the list comes first and the form sits behind Add another price", async () => {
   stubOffers();
   render(<CourseOffersPanel courseId="course-1" courseTitle="Launch course" />);
 
@@ -194,7 +194,7 @@ it("com ofertas, a lista vem antes e o formulario fica atras de Add another pric
 
   const toggle = screen.getByRole("button", { name: "Add another price" });
   const list = screen.getByRole("list");
-  // compareDocumentPosition: 4 = o segundo no vem DEPOIS do primeiro.
+  // compareDocumentPosition: 4 = the second node comes AFTER the first.
   expect(list.compareDocumentPosition(toggle)).toBe(Node.DOCUMENT_POSITION_PRECEDING);
 
   fireEvent.click(toggle);
@@ -203,7 +203,7 @@ it("com ofertas, a lista vem antes e o formulario fica atras de Add another pric
   expect(list.compareDocumentPosition(amount)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
 });
 
-it("sem nenhuma oferta, o formulario continua aberto e nao ha botao Add another price", async () => {
+it("with no offer at all, the form stays open and there is no Add another price button", async () => {
   vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ offers: [] }) })));
   render(<CourseOffersPanel courseId="course-1" courseTitle="Launch course" />);
 
@@ -211,15 +211,15 @@ it("sem nenhuma oferta, o formulario continua aberto e nao ha botao Add another 
   expect(screen.queryByRole("button", { name: "Add another price" })).not.toBeInTheDocument();
 });
 
-// A mensagem crua da rota (ingles, as vezes tecnica) ia direto para a tela e
-// nao era anunciada. Agora sai a frase da casa, num alerta.
+// The raw route message (English, sometimes technical) went straight to the screen and
+// was not announced. Now the house phrase comes out, in an alert.
 it.each([
   ["Pay the one-time activation fee to activate your creator account.", "Pay the one-time activation fee before adding a price."],
   ["A paid offer must have a positive price.", "Enter a valid price."],
-  // O limite de tentativas diz para esperar, nao "nao deu".
+    // The attempts limit says to wait, not "it did not work".
   ["Too many attempts. Please wait before trying again.", "Too many attempts in a row. Wait a moment and try again."],
   ["duplicate key value violates unique constraint", "Could not add this price."],
-])("criar falha com %s: frase da casa, anunciada", async (raw, shown) => {
+])("create fails with %s: house phrase, announced", async (raw, shown) => {
   vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) =>
     init?.method === "POST"
       ? { ok: false, json: async () => ({ error: raw }) }
@@ -230,16 +230,16 @@ it.each([
   if (raw !== shown) expect(screen.queryByText(raw)).not.toBeInTheDocument();
 });
 
-it("a lista que a rota nao leu vira erro de leitura, nao 'nenhum preco'", async () => {
+it("a list the route did not read becomes a read error, not 'no price'", async () => {
   vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ offers: [], warning: "Offers are unavailable." }) })));
   render(<CourseOffersPanel courseId="course-1" courseTitle="Launch course" />);
   expect(await screen.findByRole("alert")).toHaveTextContent("Could not load your prices.");
   expect(screen.queryByText("Offers are unavailable.")).not.toBeInTheDocument();
 });
 
-// F-11: sem a lista, a tela não sabe se há preço. Não abre o formulário de
-// criar (gravaria outro preço principal) e "Try again" lê de novo.
-it("lista que nao carregou: sem formulario de criar, e Try again le de novo", async () => {
+// F-11: without the list, the screen does not know whether there is a price. It does not open the
+// create form (it would save another main price) and "Try again" reads again.
+it("list that did not load: no create form, and Try again reads it again", async () => {
   const fetchMock = vi.fn(async () => ({ ok: false, json: async () => ({ error: "boom" }) }));
   vi.stubGlobal("fetch", fetchMock);
   render(<CourseOffersPanel courseId="course-1" courseTitle="Launch course" />);

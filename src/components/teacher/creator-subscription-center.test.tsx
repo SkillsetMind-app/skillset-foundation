@@ -11,13 +11,13 @@ import type { PayoutLedgerEntry } from "@/domain/payout-ledger";
 import type { SubscriberProfile } from "@/lib/data/user-profiles";
 import type { TeacherCourse } from "@/domain/teacher-course";
 
-// O valor como o formatador da casa escreve (moeda do proprio valor, no idioma).
-// O espaco duro do espanhol ("99,00 BRL") vira espaco comum, como o getByText
-// normaliza o texto da tela.
+// The amount as the house formatter writes it (the amount's own currency, in the language).
+// The Spanish non-breaking space ("99,00 BRL") becomes a regular space, as getByText
+// normalizes the text on the screen.
 const money = (locale: string, value: number, currency: string) =>
   new Intl.NumberFormat(locale, { style: "currency", currency }).format(value).replace(/\s/g, " ");
 
-// Referências estáveis: trocar idioma não equivale a trocar usuário/dados.
+// Stable references: changing language is not the same as changing user/data.
 const reads = vi.hoisted(() => ({
   user: { uid: "teacher-1" },
   subscriptions: vi.fn(), courses: vi.fn(), orders: vi.fn(), ledgers: vi.fn(), profiles: vi.fn(),
@@ -176,8 +176,8 @@ describe("CreatorSubscriptionCenterView", () => {
     );
 
     fireEvent.click(screen.getByRole("tab", { name: "Renewals" }));
-    // Pelo produto e pela data; o id fica recolhido em "Details for support",
-    // selecionavel, para a Stripe e o suporte.
+    // By product and date; the id stays collapsed in "Details for support",
+    // selectable, for Stripe and support.
     expect(screen.getByText("Clinical Focus renewal · Jul 15, 2026")).toBeInTheDocument();
     const renewalId = screen.getByText("Renewal ID: in-1");
     expect(renewalId).toHaveClass("select-all");
@@ -207,8 +207,8 @@ describe("CreatorSubscriptionCenterView", () => {
   });
 });
 
-describe("jornada de assinaturas no idioma da pessoa", () => {
-  it("troca EN↔ES conservando busca, filtro, aba, autores, datas e valores", () => {
+describe("subscriptions journey in the person's language", () => {
+  it("switches EN↔ES keeping search, filter, tab, authors, dates and amounts", () => {
     const subscriptions: CreatorCourseSubscription[] = [
       { ...subscription, cancelAtPeriodEnd: true, priceAmountMinor: 9900, currency: "BRL" },
       { ...subscription, id: "annual", userId: "annual", interval: "year", status: "past_due", pastDue: true, priceAmountMinor: 120000, currency: "USD" },
@@ -218,7 +218,7 @@ describe("jornada de assinaturas no idioma da pessoa", () => {
     mountView({ subscriptions }, "en");
     fireEvent.change(screen.getByLabelText("Search subscribers"), { target: { value: "Maria" } });
     fireEvent.change(screen.getByLabelText("Filter subscriber status"), { target: { value: "canceling" } });
-    // Uma moeda de cada vez, sem "+" (nada soma moedas).
+    // One currency at a time, with no "+" (nothing sums currencies).
     expect(screen.getByText(`${money("en", 99, "BRL")} · ${money("en", 100, "USD")}`)).toBeVisible();
     expect(screen.getByText("2 active")).toBeVisible();
     expect(screen.getByText("25%")).toBeVisible();
@@ -255,7 +255,7 @@ describe("jornada de assinaturas no idioma da pessoa", () => {
     ["unpaid", "Sin pagar"], ["canceled", "Cancelado"], ["incomplete", "Incompleta"],
     ["incomplete_expired", "Incompleta y vencida"], ["paused", "En pausa"],
   ] as const;
-  it.each(subscriptionStatuses)("traduz %s preservando o estado e a variante", (status, label) => {
+  it.each(subscriptionStatuses)("translates %s preserving the state and the variant", (status, label) => {
     const { container } = mountView({ subscriptions: [{ ...subscription, status }] }, "en");
     const before = [...container.querySelectorAll("[data-status]")].map((chip) => [chip.getAttribute("data-status"), chip.className]);
     fireEvent.click(screen.getByRole("button", { name: "Cambiar a español" }));
@@ -269,7 +269,7 @@ describe("jornada de assinaturas no idioma da pessoa", () => {
     ["all", ["active", "trialing", "past_due", "unpaid", "canceled", "incomplete", "incomplete_expired", "paused"]],
     ["active", ["active", "trialing"]], ["attention", ["past_due", "unpaid"]],
     ["canceling", ["active"]], ["ended", ["canceled", "incomplete_expired", "paused"]],
-  ] as const)("mantém o agrupamento do filtro %s em espanhol", (filter, expected) => {
+  ] as const)("keeps the grouping of the %s filter in Spanish", (filter, expected) => {
     const subscriptions = subscriptionStatuses.map(([status], index) => ({ ...subscription, id: `s-${index}`, status, cancelAtPeriodEnd: status === "active" }));
     const { container } = mountView({ subscriptions });
     fireEvent.change(screen.getByLabelText("Filtrar el estado de los suscriptores"), { target: { value: filter } });
@@ -280,7 +280,7 @@ describe("jornada de assinaturas no idioma da pessoa", () => {
     ["settled", "Registrado"], ["in_release", "Registrado"], ["releasing", "Registrado"],
     ["released", "Registrado"], ["released_advance", "Registrado"], ["disputed", "En disputa"],
     ["refunded", "Reembolsado"], ["partially_refunded", "Reembolso parcial"],
-  ] as const)("traduz a renovação %s mantendo o valor e o estado", (status, label) => {
+  ] as const)("translates the %s renewal while keeping the value and the state", (status, label) => {
     const { container } = mountView({ ledgers: [{ ...ledger, status }] });
     fireEvent.click(screen.getByRole("tab", { name: "Renovaciones" }));
     expect(screen.getByText(label)).toBeVisible();
@@ -288,14 +288,14 @@ describe("jornada de assinaturas no idioma da pessoa", () => {
     expect(screen.getByText(`Bruto ${money("es", 99, "BRL")}`)).toBeVisible();
   });
 
-  it("preserva um estado futuro sem exibir uma chave de tradução", () => {
+  it("preserves a future state without showing a translation key", () => {
     const { container } = mountView({ subscriptions: [{ ...subscription, status: "future_mode" }] });
     const chips = [...container.querySelectorAll('[data-status="future_mode"]')];
     expect(chips).toHaveLength(2);
     chips.forEach((chip) => expect(chip).toHaveTextContent(/future mode/i));
   });
 
-  it("traduz frequência anual e a data ausente sem mudar o preço normalizado", () => {
+  it("translates annual frequency and the missing date without changing the normalized price", () => {
     mountView({ subscriptions: [{ ...subscription, interval: "year", currentPeriodEnd: null }] });
     expect(screen.getAllByText("Anual")).toHaveLength(2);
     expect(screen.getAllByText("Se renueva Fecha pendiente")).toHaveLength(2);
@@ -304,10 +304,10 @@ describe("jornada de assinaturas no idioma da pessoa", () => {
     expect(screen.getByText(/1 contrato anterior con precio basado en el historial de facturas/)).toBeVisible();
   });
 
-  it("usa a máscara localizada e preserva ID e título históricos literais", () => {
+  it("uses the localized mask and preserves the literal historical ID and title", () => {
     mountView({ profiles: [], orders: [], ledgers: [{ ...ledger, id: "in-$&-{id}", courseId: "course-$&-{date}", createdAt: null }] });
-    // Sem nome, a mascara sai uma vez por celula (cartao do celular e tabela),
-    // nao duas vezes na mesma celula.
+    // With no name, the mask appears once per cell (phone card and table),
+    // not twice in the same cell.
     expect(screen.getAllByText("Estudiante ...rner-1")).toHaveLength(2);
     fireEvent.click(screen.getByRole("tab", { name: "Renovaciones" }));
     expect(screen.getByText("Renovación de course-$&-{date} · Fecha pendiente")).toBeVisible();
@@ -315,7 +315,7 @@ describe("jornada de assinaturas no idioma da pessoa", () => {
     expect(screen.getByText("Suscriptor histórico")).toBeVisible();
   });
 
-  it("distingue falta de produto, de assinantes, de resultados e de renovações", () => {
+  it("tells apart no products, no subscribers, no results and no renewals", () => {
     const noProducts = mountView({ subscriptions: [], courses: [] });
     expect(screen.getByText("Todavía no hay productos de suscripción.")).toBeVisible();
     expect(screen.getByRole("link", { name: "Crear producto de suscripción" })).toHaveAttribute("href", "/teach/builder");
@@ -334,7 +334,7 @@ describe("jornada de assinaturas no idioma da pessoa", () => {
     expect(screen.getByText(money("es", 99, "BRL"))).toBeVisible();
   });
 
-  it.each(["loading", "error"] as const)("traduz o estado financeiro %s", (financialState) => {
+  it.each(["loading", "error"] as const)("translates the financial state %s", (financialState) => {
     mountView({ financialState });
     expect(screen.getByText(financialState === "loading"
       ? "Cargando los precios registrados de los contratos"
@@ -345,7 +345,7 @@ describe("jornada de assinaturas no idioma da pessoa", () => {
       : "El historial de renovaciones no está disponible.")).toBeVisible();
   });
 
-  it("pluraliza contagens e avisos reais de contratos legados e sem preço", () => {
+  it("pluralizes counts and real notices for legacy and priceless contracts", () => {
     const subscriptions: CreatorCourseSubscription[] = [
       { ...subscription, cancelAtPeriodEnd: true },
       { ...subscription, id: "legacy-2", cancelAtPeriodEnd: true },
@@ -361,7 +361,7 @@ describe("jornada de assinaturas no idioma da pessoa", () => {
   });
 });
 
-describe("data do ciclo em CreatorSubscriptionCenterView", () => {
+describe("cycle date in CreatorSubscriptionCenterView", () => {
   function expectCycleInBothLayouts(text: string) {
     const articles = screen.getAllByRole("article")
       .filter((article) => within(article).queryByText("Maria Silva"));
@@ -382,7 +382,7 @@ describe("data do ciclo em CreatorSubscriptionCenterView", () => {
       }))),
   ];
 
-  it.each(cycleCases)("apresenta $status com cancelAtPeriodEnd=$cancelAtPeriodEnd nos dois layouts em EN→ES", ({ status, cancelAtPeriodEnd, english, spanish }) => {
+  it.each(cycleCases)("shows $status with cancelAtPeriodEnd=$cancelAtPeriodEnd in both layouts in EN→ES", ({ status, cancelAtPeriodEnd, english, spanish }) => {
     const { container } = mountView({ subscriptions: [{ ...subscription, status, cancelAtPeriodEnd }] }, "en");
     expectCycleInBothLayouts(`${english} Aug 15, 2026`);
     if (english === "Period end") {
@@ -400,7 +400,7 @@ describe("data do ciclo em CreatorSubscriptionCenterView", () => {
       .toEqual([status, status]);
   });
 
-  it("usa cabeçalho neutro para a data do ciclo, inclusive em contratos encerrados", () => {
+  it("uses a neutral header for the cycle date, including for ended contracts", () => {
     mountView({ subscriptions: [{ ...subscription, status: "canceled", cancelAtPeriodEnd: true }] }, "en");
     expect(screen.getByRole("columnheader", { name: "Cycle date" })).toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: "Next event" })).not.toBeInTheDocument();
@@ -410,7 +410,7 @@ describe("data do ciclo em CreatorSubscriptionCenterView", () => {
     expect(screen.queryByRole("columnheader", { name: "Próximo evento" })).not.toBeInTheDocument();
   });
 
-  it.each([null, "not-a-date"])("preserva o fallback da data %s sem inventar renovação ou término", (currentPeriodEnd) => {
+  it.each([null, "not-a-date"])("preserves the date fallback %s without inventing a renewal or end", (currentPeriodEnd) => {
     mountView({ subscriptions: [{ ...subscription, status: "canceled", cancelAtPeriodEnd: true, currentPeriodEnd }] }, "en");
     expectCycleInBothLayouts("Period end Date pending");
     expect(screen.queryAllByText(/^(Renews|Cancels) /)).toHaveLength(0);
@@ -421,7 +421,7 @@ describe("data do ciclo em CreatorSubscriptionCenterView", () => {
     expect(screen.queryByText(/Aug 15, 2026|15 ago 2026/)).not.toBeInTheDocument();
   });
 
-  it("conserva contratos, métricas, busca e filtro ao traduzir a data final sem novas leituras", async () => {
+  it("keeps contracts, metrics, search and filter when translating the end date, with no new reads", async () => {
     const contracts: CreatorCourseSubscription[] = [
       { ...subscription, priceAmountMinor: 9900, currency: "BRL" },
       { ...subscription, id: "sub-ended-$&", status: "canceled", cancelAtPeriodEnd: true, updatedAt: "2026-09-07T15:00:00Z" },
@@ -458,8 +458,8 @@ describe("data do ciclo em CreatorSubscriptionCenterView", () => {
   });
 });
 
-describe("troca de idioma sem novas leituras de assinaturas", () => {
-  it("conserva as subscriptions e a leitura de perfis depois de carregar", async () => {
+describe("language switch with no new subscription reads", () => {
+  it("keeps the subscriptions and the profiles read after loading", async () => {
     await mountCenter();
     await waitFor(() => expect(screen.getAllByText("Maria Silva")).toHaveLength(2));
     const counts = readCounts();
@@ -477,7 +477,7 @@ describe("troca de idioma sem novas leituras de assinaturas", () => {
     ["courses", "We could not load subscription products.", "No pudimos cargar los productos de suscripción."],
     ["orders", "Renewal order details are temporarily unavailable.", "Los detalles de los pedidos de renovación no están disponibles temporalmente."],
     ["ledgers", "Renewal payout details are temporarily unavailable.", "Los detalles de los pagos de renovación no están disponibles temporalmente."],
-  ] as const)("o erro de %s acompanha o idioma sem novo contrato por mensagem", async (source, english, spanish) => {
+  ] as const)("the %s error follows the language without a new contract per message", async (source, english, spanish) => {
     reads[source].mockImplementation((_uid, _next, onError) => { onError(new Error("Opaque fixture error: wording changed")); return () => {}; });
     await mountCenter();
     await waitFor(() => expect(screen.getByText(english)).toBeVisible());
@@ -489,9 +489,9 @@ describe("troca de idioma sem novas leituras de assinaturas", () => {
     expect(screen.queryByText("Opaque fixture error: wording changed")).toBeNull();
   });
 
-  // Erro de leitura era beco: a frase e nenhum botão, e a frase ficava na tela
-  // mesmo depois que a leitura voltava (era o "último erro" guardado).
-  it("assinantes que falham: Try again lê de novo só eles, e o aviso some quando voltam", async () => {
+  // A read error was a dead end: the sentence and no button, and the sentence stayed on screen
+  // even after the read came back (it was the stored "last error").
+  it("failing subscribers: Try again re-reads only them, and the notice goes away when they come back", async () => {
     let deliver: (next: CourseSubscription[]) => void = () => {};
     const reload = vi.fn(async () => deliver(viewProps.subscriptions));
     reads.subscriptions.mockImplementation((_uid, next, onError) => {
@@ -511,7 +511,7 @@ describe("troca de idioma sem novas leituras de assinaturas", () => {
     expect(screen.getAllByText("Maria Silva").length).toBeGreaterThan(0);
   });
 
-  it("renovações que falham: o aviso com Try again fica em cima e some com a releitura", async () => {
+  it("renewals that fail: the notice with Try again stays on top and goes away with the re-read", async () => {
     let deliver: (next: Order[]) => void = () => {};
     const reload = vi.fn(async () => deliver(viewProps.orders));
     reads.orders.mockImplementation((_uid, next, onError) => {
@@ -531,7 +531,7 @@ describe("troca de idioma sem novas leituras de assinaturas", () => {
     expect(screen.getByText("Clinical Focus renewal · Jul 15, 2026")).toBeInTheDocument();
   });
 
-  it("enquanto as renovações chegam, linhas no formato da renovação, não uma frase", () => {
+  it("while renewals arrive, rows in the renewal format, not a sentence", () => {
     mountView({ financialState: "loading" }, "en");
     fireEvent.click(screen.getByRole("tab", { name: "Renewals" }));
     const waiting = screen.getByRole("status");
@@ -539,7 +539,7 @@ describe("troca de idioma sem novas leituras de assinaturas", () => {
     expect(waiting.querySelectorAll("[aria-hidden=true]")).toHaveLength(3);
   });
 
-  it("traduz o carregamento sem reiniciar a conexão", async () => {
+  it("translates the loading state without restarting the connection", async () => {
     reads.subscriptions.mockImplementation(() => reads.closeSubscriptions);
     reads.courses.mockImplementation(() => reads.closeCourses);
     await mountCenter();

@@ -6,9 +6,9 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import { Button, InlineAlert } from "@/components/ui";
 
 /**
- * Erro com saída: a frase no vermelho de erro (anunciada) e, embaixo, um
- * "Try again" que repete o MESMO pedido. Antes o erro saía no cinza do sucesso
- * e a pessoa não tinha o que clicar além de recarregar a página.
+ * Error with a way out: the sentence in the error red (announced) and, below, a
+ * "Try again" that repeats the SAME request. Before, the error came out in the success gray
+ * and the person had nothing to click besides reloading the page.
  */
 export function RetryAlert({
   text,
@@ -18,7 +18,7 @@ export function RetryAlert({
 }: {
   text: string;
   onRetry?: () => void;
-  /** Tentando de novo: o aviso fica, e o botão mostra a espera. */
+  /** Trying again: the notice stays, and the button shows the wait. */
   busy?: boolean;
   className?: string;
 }) {
@@ -27,7 +27,7 @@ export function RetryAlert({
     <div className={`grid justify-items-start gap-2 ${className}`}>
       <InlineAlert tone="error">{text}</InlineAlert>
       {onRetry ? (
-        // O mesmo "Try again" nas duas faces; só o anel entra, no lugar já guardado.
+        // The same "Try again" on both faces; only the ring comes in, in the already reserved spot.
         <Button variant="outline" loading={busy} busyLabel={t("saveStatus.retry")} onClick={onRetry}>
           {t("saveStatus.retry")}
         </Button>
@@ -37,12 +37,12 @@ export function RetryAlert({
 }
 
 /**
- * A linha ao lado do "Save" dos editores de botão (texto de venda e página de
- * venda). Ela só diz o que é verdade: "Unsaved changes" assim que o que está na
- * tela difere do último valor gravado, a frase de salvo só quando é igual, e o
- * erro com "Try again". Enquanto grava não diz nada: o próprio botão já diz
- * "Saving...". Antes o "Saved." ficava na tela enquanto a pessoa voltava a
- * digitar, e o que não estava salvo parecia salvo.
+ * The line next to the "Save" of the button editors (sales text and sales
+ * page). It only says what is true: "Unsaved changes" as soon as what is on
+ * screen differs from the last saved value, the saved sentence only when they are equal, and the
+ * error with "Try again". While saving it says nothing: the button itself already says
+ * "Saving...". Before, "Saved." stayed on screen while the person went back to
+ * typing, and what was not saved looked saved.
  */
 export function SaveStatusLine({
   saving,
@@ -53,7 +53,7 @@ export function SaveStatusLine({
 }: {
   saving: boolean;
   dirty: boolean;
-  /** Só depois de uma gravação que deu certo nesta visita. */
+  /** Only after a save that succeeded in this visit. */
   savedText?: string;
   errorText?: string;
   onRetry: () => void;
@@ -74,10 +74,10 @@ export function SaveStatusLine({
 }
 
 /**
- * O "salvo" dos formulários do professor e da conta: check verde e a frase, na
- * mesma linha do botão que gravou. Antes cada painel tinha o seu (caixa azul,
- * caixa verde, texto cinza), e três deles nasciam ACIMA do botão, empurrando-o
- * uns 48px para baixo logo depois do clique. O erro continua no InlineAlert.
+ * The "saved" message of the teacher and account forms: a green check and the sentence, on the
+ * same line as the button that saved. Before, each panel had its own (blue box,
+ * green box, gray text), and three of them showed up ABOVE the button, pushing it
+ * about 48px down right after the click. The error stays in the InlineAlert.
  */
 export function SavedNote({ text }: { text: string }) {
   return (

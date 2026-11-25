@@ -20,10 +20,10 @@ const uploadLessonVideoToBunny = vi.fn<(input: unknown) => Promise<void>>(
 let currentAssets: CourseAsset[] = [];
 let emitAssets: (assets: CourseAsset[]) => void;
 let emitLoadError: (error: Error) => void;
-// "wait" segura a primeira entrega dos arquivos; "fail" simula erro de carga.
+// "wait" holds the first delivery of the files; "fail" simulates a load error.
 let subscribeOutcome: "emit" | "wait" | "fail" = "emit";
-// Recarga avulsa (reload) devolvendo o que o servidor tem. Desligada por padrão
-// para não mexer nos testes que entregam a lista à mão com emitAssets.
+// Standalone reload (reload) returning what the server has. Off by default
+// so it does not disturb the tests that deliver the list by hand with emitAssets.
 let reloadServesCurrentAssets = false;
 const subscribed = vi.fn();
 const router = vi.hoisted(() => ({ refresh: vi.fn() }));
@@ -46,9 +46,9 @@ vi.mock("@/components/learn/trusted-embed-player", () => ({
 }));
 
 vi.mock("@/lib/data/course-assets", () => ({
-  // A classe é usada com `instanceof` no catch do modal para distinguir
-  // cancelamento (desfecho normal) de falha real. Sem ela no mock, o acesso
-  // dispara unhandled rejection e o teste passa por sorte.
+  // The class is used with `instanceof` in the modal's catch to tell
+  // cancellation (a normal outcome) from a real failure. Without it in the mock, the access
+  // triggers an unhandled rejection and the test passes by luck.
   CourseAssetUploadCancelled: class CourseAssetUploadCancelled extends Error {
     constructor() {
       super("upload-cancelled");
@@ -77,8 +77,8 @@ vi.mock("@/lib/data/course-assets", () => ({
   },
 }));
 
-// Sem Bunny no teste: o envio segue pelo Supabase Storage, que é o caminho que
-// roda quando a integração de vídeo ainda não foi ligada num ambiente.
+// No Bunny in the test: the upload goes through Supabase Storage, which is the path that
+// runs when the video integration has not been turned on in an environment yet.
 const bunnyConfig = vi.hoisted(() => ({ isBunnyConfigured: false }));
 vi.mock("@/lib/bunny/config", () => bunnyConfig);
 
@@ -176,21 +176,21 @@ function chooseVideoFile(name = "aula.mp4") {
   return file;
 }
 
-// So a estrategia "time_drip_custom" le os dias de espera por aula
-// (src/domain/drip-policy.ts). Nas outras o campo nao fazia nada.
-describe("LessonContentModal — dias de espera", () => {
+// Only the "time_drip_custom" strategy reads the wait days per lesson
+// (src/domain/drip-policy.ts). In the others the field did nothing.
+describe("LessonContentModal — wait days", () => {
   beforeEach(() => {
     currentAssets = [];
     vi.clearAllMocks();
   });
 
-  it("esconde os dias de espera quando a estrategia do curso nao os usa", () => {
+  it("hides the wait days when the course strategy does not use them", () => {
     renderModal({ dripDelayDays: 7 }, "Módulo 1", false, "instant");
     fireEvent.click(screen.getByRole("tab", { name: /^Settings/ }));
     const toggle = screen.getByRole("switch", { name: "Use this lesson as the free preview" });
     expect(toggle).toBeInTheDocument();
-    // B-22 / C-13: a mesma chave da Conta, e a linha inteira (com o texto) é o
-    // controle, então o alvo passa dos 44px.
+    // B-22 / C-13: the same toggle as in Account, and the whole row (with the text) is the
+    // control, so the target goes beyond 44px.
     expect(toggle).toHaveClass("lesson-modal-setting");
     expect(toggle).toHaveTextContent("Free preview");
     expect(toggle).toHaveAccessibleDescription(/Make this lesson visible before purchase/);
@@ -198,22 +198,22 @@ describe("LessonContentModal — dias de espera", () => {
     expect(screen.queryByDisplayValue("7")).not.toBeInTheDocument();
   });
 
-  it("mostra os dias de espera na liberacao por aula", () => {
+  it("shows the wait days in per-lesson release", () => {
     renderModal({ dripDelayDays: 7 }, "Módulo 1", false, "time_drip_custom");
     fireEvent.click(screen.getByRole("tab", { name: /^Settings/ }));
     expect(screen.getByDisplayValue("7")).toBeInTheDocument();
   });
 });
 
-// C-04: eram botoes com aria-current e sem setas. C-13: so o trilho da chave
-// respondia; o texto ao lado nao.
-describe("LessonContentModal — abas e chave da previa", () => {
+// C-04: they were buttons with aria-current and no arrows. C-13: only the toggle track
+// responded; the text beside it did not.
+describe("LessonContentModal — tabs and preview toggle", () => {
   beforeEach(() => {
     currentAssets = [];
     vi.clearAllMocks();
   });
 
-  it("a barra e um tablist: so a aba aberta entra no Tab e o painel diz de qual aba e", () => {
+  it("the bar is a tablist: only the open tab enters the Tab order and the panel says which tab it belongs to", () => {
     renderModal();
     const tabs = within(screen.getByRole("tablist", { name: "Lesson setup" })).getAllByRole("tab");
     expect(tabs).toHaveLength(4);
@@ -229,7 +229,7 @@ describe("LessonContentModal — abas e chave da previa", () => {
     expect(panel).toHaveAttribute("aria-labelledby", video.id);
   });
 
-  it("setas, Home e End levam o foco sem abrir a aba nem perder o arquivo escolhido", () => {
+  it("arrows, Home and End move focus without opening the tab or losing the chosen file", () => {
     renderModal();
     chooseVideoFile();
     const [video, description, materials, settings] = within(screen.getByRole("tablist")).getAllByRole("tab");
@@ -244,7 +244,7 @@ describe("LessonContentModal — abas e chave da previa", () => {
     expect(settings).toHaveFocus();
     fireEvent.keyDown(settings, { key: "Home" });
     expect(video).toHaveFocus();
-    // Passar pela barra nao trocou de aba: o video escolhido continua la.
+    // Passing through the bar did not switch tabs: the chosen video is still there.
     expect(video).toHaveAttribute("aria-selected", "true");
     expect(video.querySelector(".lesson-modal__tab-dot")).toHaveAttribute("data-tone", "busy");
 
@@ -254,7 +254,7 @@ describe("LessonContentModal — abas e chave da previa", () => {
     expect(screen.getByRole("tabpanel")).toHaveAttribute("aria-labelledby", materials.id);
   });
 
-  it("tocar no texto da previa gratis liga a chave, como na Conta", () => {
+  it("tapping the free preview text turns on the toggle, as in Account", () => {
     const { onSetFreePreview } = renderModal();
     fireEvent.click(screen.getByRole("tab", { name: /^Settings/ }));
     const toggle = screen.getByRole("switch", { name: "Use this lesson as the free preview" });
@@ -266,14 +266,14 @@ describe("LessonContentModal — abas e chave da previa", () => {
   });
 });
 
-// F-12: "Upload file" ficava apagado sem dizer que faltava escolher o arquivo.
-describe("LessonContentModal — envio sem arquivo", () => {
+// F-12: "Upload file" was dimmed without saying that a file still had to be chosen.
+describe("LessonContentModal — upload with no file", () => {
   beforeEach(() => {
     currentAssets = [];
     vi.clearAllMocks();
   });
 
-  it("o Upload file apagado diz que falta o arquivo, e a frase sai quando ele vem", () => {
+  it("the dimmed Upload file says the file is missing, and the sentence goes away when it comes", () => {
     renderModal({}, "Módulo 1", true);
     fireEvent.click(screen.getByRole("tab", { name: /^Materials/ }));
     const upload = screen.getByRole("button", { name: "Upload file" });
@@ -287,9 +287,9 @@ describe("LessonContentModal — envio sem arquivo", () => {
   });
 });
 
-// Decisao de 14/09: a descricao da aula e UM campo de texto simples, gravado no
-// campo protegido (contentText). A nota publica antiga nunca e apagada.
-describe("LessonContentModal — descricao", () => {
+// Decision of Sept 14: the lesson description is ONE plain text field, saved in the
+// protected field (contentText). The old public note is never deleted.
+describe("LessonContentModal — description", () => {
   const oldNoteLabel = "Old public note (shown to students above the description; anyone can read it)";
 
   beforeEach(() => {
@@ -297,7 +297,7 @@ describe("LessonContentModal — descricao", () => {
     vi.clearAllMocks();
   });
 
-  it("a descricao grava no texto protegido e a nota publica antiga fica recolhida", () => {
+  it("the description saves to the protected text and the old public note stays collapsed", () => {
     const { onUpdateLesson } = renderModal({ description: "old", contentText: null });
     fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
 
@@ -318,7 +318,7 @@ describe("LessonContentModal — descricao", () => {
     );
   });
 
-  it("a nota antiga continua editavel e some quando a aula nao tem nota", () => {
+  it("the old note stays editable and goes away when the lesson has no note", () => {
     const { onUpdateLesson, unmount } = renderModal({ description: "old", contentText: "corpo" });
     fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
 
@@ -335,9 +335,9 @@ describe("LessonContentModal — descricao", () => {
     expect(screen.queryByText(oldNoteLabel)).not.toBeInTheDocument();
   });
 
-  // Apagar a nota antiga desmontava o campo no mesmo toque: o professor nao
-  // conseguia redigitar nem desfazer, e o autosave gravava "".
-  it("apagar a nota antiga nao some com o campo", () => {
+  // Deleting the old note unmounted the field on the same tap: the teacher could not
+  // retype or undo, and autosave saved "".
+  it("deleting the old note does not remove the field", () => {
     const { onUpdateLesson } = renderModal({ description: "old", contentText: null }, "Módulo 1", true);
     fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
     const note = () => screen.queryByRole("textbox", { name: oldNoteLabel, hidden: true });
@@ -349,8 +349,8 @@ describe("LessonContentModal — descricao", () => {
     expect(onUpdateLesson).toHaveBeenLastCalledWith({ description: "de volta" });
   });
 
-  // O texto da aula de previa gratis e lido por qualquer um na pagina do curso.
-  it("na aula de previa gratis a ajuda avisa que o texto e publico", () => {
+  // The text of a free preview lesson is read by anyone on the course page.
+  it("on a free preview lesson the help warns that the text is public", () => {
     const { unmount } = renderModal({}, "Módulo 1", false, "instant", true);
     fireEvent.click(screen.getByRole("tab", { name: /^Description/ }));
     expect(screen.getByText(/anyone can read this text on the course page/)).toBeInTheDocument();
@@ -363,9 +363,9 @@ describe("LessonContentModal — descricao", () => {
   });
 });
 
-// Decisao de 14/09: um video por aula, envio OU link do YouTube/Vimeo, nunca
-// os dois. Trocar e explicito e nunca apaga um course_assets.
-describe("LessonContentModal — um video por aula", () => {
+// Decision of Sept 14: one video per lesson, an upload OR a YouTube/Vimeo link, never
+// both. Replacing is explicit and never deletes a course_assets.
+describe("LessonContentModal — one video per lesson", () => {
   const linkField = () => screen.queryByRole("textbox", { name: "YouTube or Vimeo URL" }) as HTMLElement;
   const drive = "https://drive.example.test/file/d/abc/view";
   const youtube = "https://www.youtube.com/watch?v=abc";
@@ -384,7 +384,7 @@ describe("LessonContentModal — um video por aula", () => {
     restoreDialogs();
   });
 
-  it("com video enviado, o campo de link so aparece depois de Replace with link", () => {
+  it("with an uploaded video, the link field only appears after Replace with link", () => {
     currentAssets = [videoAsset()];
     renderModal({ videoSource: "upload" });
 
@@ -395,7 +395,7 @@ describe("LessonContentModal — um video por aula", () => {
     expect(screen.queryByLabelText("Lesson video")).not.toBeInTheDocument();
   });
 
-  it("link que nao e YouTube nem Vimeo mostra erro e nao grava", () => {
+  it("a link that is not YouTube or Vimeo shows an error and does not save", () => {
     const { onUpdateLesson } = renderModal();
     fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
 
@@ -407,9 +407,9 @@ describe("LessonContentModal — um video por aula", () => {
     expect(onUpdateLesson).not.toHaveBeenCalled();
   });
 
-  // O host precisa ser do YouTube ou do Vimeo: e a lista que getTrustedLessonEmbed
-  // aceita. O player e mock, nada e buscado.
-  it("trocar para link grava fonte e link juntos e nunca apaga o envio", () => {
+  // The host must be YouTube or Vimeo: it is the list that getTrustedLessonEmbed
+  // accepts. The player is a mock, nothing is fetched.
+  it("switching to a link saves source and link together and never deletes the upload", () => {
     currentAssets = [videoAsset()];
     const { onUpdateLesson } = renderModal({ videoSource: "upload" });
     fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
@@ -422,18 +422,18 @@ describe("LessonContentModal — um video por aula", () => {
       externalUrl: vimeo,
     });
     expect(deleteCourseAsset).not.toHaveBeenCalled();
-    // O envio antigo segue listado, com o proprio botao de apagar.
+    // The old upload stays listed, with its own delete button.
     expect(screen.getByRole("button", { name: /delete/i })).toBeInTheDocument();
   });
 
-  it("link antigo que nao e video aparece so leitura como Old link", async () => {
+  it("an old link that is not a video appears read-only as Old link", async () => {
     const { onUpdateLesson } = renderModal({ externalUrl: drive }, "Módulo 1", true);
 
     const old = screen.getByRole("region", { name: "Old link" });
     expect(old).toHaveTextContent(drive);
     expect(screen.queryByDisplayValue(drive)).not.toBeInTheDocument();
 
-    // O campo de link comeca vazio; digitar e apagar nao tira o link antigo.
+    // The link field starts empty; typing and deleting does not remove the old link.
     fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
     expect(linkField()).toHaveValue("");
     fireEvent.change(linkField(), { target: { value: "abc" } });
@@ -447,15 +447,15 @@ describe("LessonContentModal — um video por aula", () => {
     expect(onUpdateLesson).not.toHaveBeenCalled();
     clickConfirm(asking, "Remove old link");
     expect(onUpdateLesson).toHaveBeenCalledExactlyOnceWith({ externalUrl: null });
-    // A secao some com o link: o foco vai para um botao que fica e o aviso
-    // sai pelo role="status".
+    // The section goes away with the link: focus moves to a button that stays and the notice
+    // is announced through role="status".
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Remove this link?" })).toBeNull());
     expect(screen.queryByRole("region", { name: "Old link" })).not.toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole("button", { name: "Replace with upload" })).toHaveFocus());
     expect(screen.getByRole("status")).toHaveTextContent("Old link removed.");
   });
 
-  it("recusar a confirmacao de tirar o link antigo nao muda nada", () => {
+  it("declining the confirmation to remove the old link changes nothing", () => {
     const { onUpdateLesson } = renderModal({ externalUrl: drive }, "Módulo 1", true);
 
     fireEvent.click(screen.getByRole("button", { name: "Remove old link" }));
@@ -467,13 +467,13 @@ describe("LessonContentModal — um video por aula", () => {
     expect(screen.getByRole("status")).toBeEmptyDOMElement();
   });
 
-  // O primeiro link aceito sobrescrevia o link antigo sem perguntar: a unica
-  // confirmacao estava no botao de tirar.
-  // A troca pelo link pergunta na janela da plataforma (era o window.confirm).
+  // The first accepted link overwrote the old link without asking: the only
+  // confirmation was on the remove button.
+  // Replacing with the link asks in the platform dialog (it used to be window.confirm).
   const replaceAsk = () => screen.queryByRole("dialog", { name: "Remove this link?" });
   const declineReplace = () => fireEvent.click(within(replaceAsk()!).getByRole("button", { name: "Cancel" }));
 
-  it("link do Vimeo numa aula com link antigo pede a confirmacao antes de gravar", async () => {
+  it("a Vimeo link on a lesson with an old link asks for confirmation before saving", async () => {
     const nativeConfirm = vi.spyOn(window, "confirm");
     const { onUpdateLesson } = renderModal({ externalUrl: drive }, "Módulo 1", true);
     const notice = "Link not saved. The old link stays.";
@@ -484,14 +484,14 @@ describe("LessonContentModal — um video por aula", () => {
     expect(replaceAsk()).toHaveAccessibleDescription("Remove the old link? Students will lose the button that opens it.");
     expect(onUpdateLesson).not.toHaveBeenCalled();
     expect(screen.getByRole("region", { name: "Old link" })).toHaveTextContent(drive);
-    // Com a pergunta aberta o aviso "nao salvo" ainda nao sai: o leitor de
-    // tela o lia enquanto o professor era perguntado.
+    // With the question open, the "not saved" notice is not announced yet: the screen
+    // reader was reading it while the teacher was being asked.
     expect(screen.getByRole("status")).toBeEmptyDOMElement();
     declineReplace();
     expect(replaceAsk()).toBeNull();
     expect(onUpdateLesson).not.toHaveBeenCalled();
-    // Recusou: o campo volta ao salvo e avisa. Sair de novo (X, aba, troca)
-    // nao pergunta outra vez nem come o clique.
+    // Declined: the field goes back to the saved value and warns. Leaving again (X, tab, switch)
+    // does not ask a second time or eat the click.
     expect(linkField()).toHaveValue("");
     expect(screen.getByRole("status")).toHaveTextContent(notice);
     expect(screen.getByRole("region", { name: "Old link" })).toHaveTextContent(drive);
@@ -499,14 +499,14 @@ describe("LessonContentModal — um video por aula", () => {
     fireEvent.blur(linkField());
     expect(replaceAsk()).toBeNull();
 
-    // A segunda recusa vira um no novo no status, para ser anunciada de novo.
+    // The second refusal becomes a new node in the status, so it is announced again.
     fireEvent.change(linkField(), { target: { value: vimeo } });
     fireEvent.blur(linkField());
     expect(replaceAsk()).not.toBeNull();
     declineReplace();
     expect(screen.getByText(notice)).not.toBe(firstNotice);
 
-    // Confirmou: grava uma vez so, depois do confirmar.
+    // Confirmed: saves just once, after the confirmation.
     fireEvent.change(linkField(), { target: { value: vimeo } });
     fireEvent.blur(linkField());
     expect(onUpdateLesson).not.toHaveBeenCalled();
@@ -515,16 +515,16 @@ describe("LessonContentModal — um video por aula", () => {
     await waitFor(() => expect(replaceAsk()).toBeNull());
     expect(onUpdateLesson).toHaveBeenCalledOnce();
     expect(screen.queryByRole("region", { name: "Old link" })).not.toBeInTheDocument();
-    // O campo mostra o link gravado: o blur seguinte nao o apaga.
+    // The field shows the saved link: the next blur does not erase it.
     expect(linkField()).toHaveValue(vimeo);
     fireEvent.blur(linkField());
     expect(onUpdateLesson).toHaveBeenCalledOnce();
-    // Gravou: o aviso de "nao salvo" sai.
+    // Saved: the "not saved" notice goes away.
     expect(screen.getByRole("status")).toBeEmptyDOMElement();
     expect(nativeConfirm).not.toHaveBeenCalled();
   });
 
-  it("o aviso de link nao salvo some depois de tirar o link antigo e ao trocar de aba", () => {
+  it("the unsaved link notice goes away after removing the old link and when switching tabs", () => {
     renderModal({ externalUrl: drive }, "Módulo 1", true);
     fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
     fireEvent.change(linkField(), { target: { value: vimeo } });
@@ -540,9 +540,9 @@ describe("LessonContentModal — um video por aula", () => {
     expect(screen.getByRole("status")).toBeEmptyDOMElement();
   });
 
-  // A troca so mexia na tela: com a midia de destino ja salva, o aluno
-  // continuava vendo a fonte antiga.
-  it("com envio e link salvos, trocar grava a fonte e o aluno ve a troca, sem apagar nada", () => {
+  // The swap only touched the screen: with the target media already saved, the learner
+  // kept seeing the old source.
+  it("with an upload and a link saved, swapping saves the source and the learner sees the swap, deleting nothing", () => {
     currentAssets = [videoAsset()];
     const { onUpdateLesson, lesson } = renderModal(
       { videoSource: "youtube", externalUrl: youtube, durationMinutes: 12, contentText: "corpo" },
@@ -551,7 +551,7 @@ describe("LessonContentModal — um video por aula", () => {
     );
     const saved = () =>
       Object.assign({}, lesson, ...onUpdateLesson.mock.calls.map(([patch]) => patch)) as TeacherLesson;
-    // O mesmo calculo do player da area de membros (enrolled-course-workspace).
+    // The same calculation as the members area player (enrolled-course-workspace).
     const learnerSees = () =>
       resolveLessonVideoSource({ declared: saved().videoSource, hasVideoAsset: true, hasTrustedEmbed: true });
     expect(learnerSees()).toBe("youtube");
@@ -569,7 +569,7 @@ describe("LessonContentModal — um video por aula", () => {
     expect(deleteCourseAsset).not.toHaveBeenCalled();
   });
 
-  it("sem a midia de destino, trocar fica so na tela ate um link ou um envio", () => {
+  it("without the target media, swapping stays on the screen only until a link or an upload", () => {
     const { onUpdateLesson, unmount } = renderModal({ videoSource: "youtube", externalUrl: youtube });
     fireEvent.click(screen.getByRole("button", { name: "Replace with upload" }));
     expect(onUpdateLesson).not.toHaveBeenCalled();
@@ -581,9 +581,9 @@ describe("LessonContentModal — um video por aula", () => {
     expect(second.onUpdateLesson).not.toHaveBeenCalled();
   });
 
-  // O modo era rederivado dos dados salvos a cada render: apagar o link
-  // mandava a aba de volta ao envio e tirava o campo que o professor digitava.
-  it("apagar o link de uma aula do YouTube mantem o campo na tela", () => {
+  // The mode was re-derived from the saved data on every render: deleting the link
+  // sent the tab back to upload and removed the field the teacher was typing in.
+  it("deleting the link of a YouTube lesson keeps the field on the screen", () => {
     const { onUpdateLesson } = renderModal({ videoSource: "youtube", externalUrl: youtube }, "Módulo 1", true);
     expect(linkField()).toHaveValue(youtube);
 
@@ -599,9 +599,9 @@ describe("LessonContentModal — um video por aula", () => {
     expect(onUpdateLesson).toHaveBeenLastCalledWith({ videoSource: "youtube", externalUrl: vimeo });
   });
 
-  // Esc e clique fora desmontam o campo sem um blur que chegue ao React 19: o
-  // link digitado e nunca desfocado se perdia ao fechar.
-  it("Esc e clique fora gravam o link digitado antes de fechar", () => {
+  // Esc and clicking outside unmount the field without a blur that reaches React 19: the
+  // typed, never-blurred link was lost on close.
+  it("Esc and clicking outside save the typed link before closing", () => {
     const first = renderModal();
     fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
     fireEvent.change(linkField(), { target: { value: vimeo } });
@@ -619,9 +619,9 @@ describe("LessonContentModal — um video por aula", () => {
     expect(second.onClose).toHaveBeenCalledOnce();
   });
 
-  // A pagina publica do curso so le "upload" da fonte gravada: com a fonte em
-  // null, o video da previa gratis sumia da pagina de vendas.
-  it("apagar o link com um envio salvo grava a fonte no envio, nao em null", () => {
+  // The public course page only reads "upload" from the saved source: with the source as
+  // null, the free preview video vanished from the sales page.
+  it("deleting the link with a saved upload saves the source as the upload, not null", () => {
     currentAssets = [videoAsset()];
     const { onUpdateLesson, lesson } = renderModal({ videoSource: "youtube", externalUrl: youtube }, "Módulo 1", true);
 
@@ -630,7 +630,7 @@ describe("LessonContentModal — um video por aula", () => {
 
     expect(onUpdateLesson).toHaveBeenCalledExactlyOnceWith({ externalUrl: null, videoSource: "upload" });
     const saved = { ...lesson, ...onUpdateLesson.mock.calls[0][0] } as TeacherLesson;
-    // O mesmo calculo da previa na pagina de vendas (creator-course-detail).
+    // The same calculation as the preview on the sales page (creator-course-detail).
     expect(resolveLessonVideoSource({
       declared: saved.videoSource,
       hasVideoAsset: saved.videoSource === "upload",
@@ -639,8 +639,8 @@ describe("LessonContentModal — um video por aula", () => {
     expect(deleteCourseAsset).not.toHaveBeenCalled();
   });
 
-  // Fechar calado perdia o link: recusado, ou com a troca nao confirmada.
-  it("Esc com link recusado deixa o estudio aberto e mostra o erro", () => {
+  // Closing silently lost the link: declined, or with the swap unconfirmed.
+  it("Esc with a declined link leaves the studio open and shows the error", () => {
     const { onUpdateLesson, onClose } = renderModal();
     fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
     fireEvent.change(linkField(), { target: { value: "https://example.test/v.mp4" } });
@@ -652,19 +652,19 @@ describe("LessonContentModal — um video por aula", () => {
     expect(onUpdateLesson).not.toHaveBeenCalled();
   });
 
-  it("Esc e Cancelar na confirmacao deixam o estudio aberto; o Esc seguinte fecha", () => {
+  it("Esc and Cancel on the confirmation leave the studio open; the next Esc closes", () => {
     const { onUpdateLesson, onClose } = renderModal({ externalUrl: drive }, "Módulo 1", true);
     fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
     fireEvent.change(linkField(), { target: { value: vimeo } });
 
-    // O Esc que abriu a pergunta sai cancelado (preventDefault): no navegador,
-    // sem isso, o mesmo Esc fechava a janela recem-aberta.
+    // The Esc that opened the question comes out canceled (preventDefault): in the browser,
+    // without it, the same Esc closed the freshly opened dialog.
     expect(fireEvent.keyDown(linkField(), { key: "Escape" })).toBe(false);
     expect(replaceAsk()).not.toBeNull();
     expect(onClose).not.toHaveBeenCalled();
     expect(onUpdateLesson).not.toHaveBeenCalled();
     expect(screen.getByRole("status")).toBeEmptyDOMElement();
-    // Com a pergunta aberta, o Esc e dela: o estudio nao fecha por baixo.
+    // With the question open, Esc belongs to it: the studio does not close underneath.
     fireEvent.keyDown(linkField(), { key: "Escape" });
     expect(onClose).not.toHaveBeenCalled();
     declineReplace();
@@ -672,15 +672,15 @@ describe("LessonContentModal — um video por aula", () => {
     expect(onUpdateLesson).not.toHaveBeenCalled();
     expect(screen.getByRole("status")).toHaveTextContent("Link not saved. The old link stays.");
 
-    // O campo voltou ao salvo: nada mais a perder, o Esc seguinte fecha.
+    // The field went back to the saved value: nothing left to lose, the next Esc closes.
     fireEvent.keyDown(linkField(), { key: "Escape" });
     expect(replaceAsk()).toBeNull();
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  // Antes de os arquivos chegarem, primaryVideo e null: apagar o link gravava
-  // a fonte em null mesmo com um envio salvo.
-  it("antes de os arquivos da aula chegarem, o link e so leitura e apagar nao grava nada", () => {
+  // Before the files arrive, primaryVideo is null: deleting the link saved
+  // the source as null even with an upload saved.
+  it("before the lesson files arrive, the link is read-only and deleting saves nothing", () => {
     subscribeOutcome = "wait";
     currentAssets = [videoAsset()];
     const { onUpdateLesson } = renderModal({ videoSource: "youtube", externalUrl: youtube }, "Módulo 1", true);
@@ -698,7 +698,7 @@ describe("LessonContentModal — um video por aula", () => {
     expect(onUpdateLesson).toHaveBeenCalledExactlyOnceWith({ externalUrl: null, videoSource: "upload" });
   });
 
-  it("se os arquivos da aula nao carregam, o link fica so leitura com o erro de carga", () => {
+  it("if the lesson files do not load, the link stays read-only with the load error", () => {
     subscribeOutcome = "fail";
     const { onUpdateLesson } = renderModal({ videoSource: "youtube", externalUrl: youtube });
 
@@ -709,9 +709,9 @@ describe("LessonContentModal — um video por aula", () => {
     expect(onUpdateLesson).not.toHaveBeenCalled();
   });
 
-  // resetUploadState limpava o erro de carga: depois de "Replace with link" ou
-  // de uma troca de aba, o aviso voltava a "Loading..." para sempre.
-  it("o erro de carga continua na tela depois de trocar de modo e de aba", () => {
+  // resetUploadState cleared the load error: after "Replace with link" or
+  // a tab switch, the notice went back to "Loading..." forever.
+  it("the load error stays on screen after switching mode and tab", () => {
     subscribeOutcome = "fail";
     const { onUpdateLesson } = renderModal();
     fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
@@ -724,9 +724,9 @@ describe("LessonContentModal — um video por aula", () => {
     expect(onUpdateLesson).not.toHaveBeenCalled();
   });
 
-  // "Replace with upload" antes de os arquivos chegarem nao gravava a fonte: o
-  // estudio mostrava o envio e o aluno continuava com o link.
-  it("Replace with upload antes da carga grava a fonte no envio quando os arquivos chegam", () => {
+  // "Replace with upload" before the files arrived did not save the source: the
+  // studio showed the upload and the learner kept the link.
+  it("Replace with upload before the load saves the source as the upload when the files arrive", () => {
     subscribeOutcome = "wait";
     currentAssets = [videoAsset()];
     const { onUpdateLesson, lesson } = renderModal({ videoSource: "youtube", externalUrl: youtube }, "Módulo 1", true);
@@ -738,13 +738,13 @@ describe("LessonContentModal — um video por aula", () => {
     expect(onUpdateLesson).toHaveBeenCalledExactlyOnceWith({ videoSource: "upload" });
     const saved = { ...lesson, ...onUpdateLesson.mock.calls[0][0] } as TeacherLesson;
     expect(saved.externalUrl).toBe(youtube);
-    // O mesmo calculo do player da area de membros (enrolled-course-workspace).
+    // The same calculation as the members area player (enrolled-course-workspace).
     expect(resolveLessonVideoSource({ declared: saved.videoSource, hasVideoAsset: true, hasTrustedEmbed: true }))
       .toBe("upload");
     expect(deleteCourseAsset).not.toHaveBeenCalled();
   });
 
-  it("se a carga falha, ou o professor volta para o link, a escolha do envio nao grava nada", () => {
+  it("if the load fails, or the teacher goes back to the link, choosing the upload saves nothing", () => {
     subscribeOutcome = "fail";
     currentAssets = [videoAsset()];
     const failed = renderModal({ videoSource: "youtube", externalUrl: youtube });
@@ -760,9 +760,9 @@ describe("LessonContentModal — um video por aula", () => {
     expect(back.onUpdateLesson).not.toHaveBeenCalled();
   });
 
-  // Antes da carga o modo link e so o plano B da tela. "Replace with upload" e
-  // depois "Replace with link" gravava "youtube" e tirava o aluno do envio.
-  it("ida e volta envio/link antes da carga nao tira o aluno do envio", () => {
+  // Before the load, link mode is just the screen's plan B. "Replace with upload" and
+  // then "Replace with link" saved "youtube" and took the learner off the upload.
+  it("going back and forth upload/link before the load does not take the learner off the upload", () => {
     subscribeOutcome = "wait";
     currentAssets = [videoAsset()];
     const { onUpdateLesson } = renderModal({ videoSource: "upload", externalUrl: youtube }, "Módulo 1", true);
@@ -773,14 +773,14 @@ describe("LessonContentModal — um video por aula", () => {
 
     act(() => emitAssets(currentAssets));
     expect(onUpdateLesson).not.toHaveBeenCalled();
-    // O aluno segue no envio: a previa mostra o arquivo, nao o embed.
+    // The learner stays on the upload: the preview shows the file, not the embed.
     expect(screen.getByTestId("storage-preview")).toBeInTheDocument();
     expect(screen.queryByTestId("embed-preview")).not.toBeInTheDocument();
   });
 
-  // Depois de uma carga boa, um recarregamento em tempo real que falhava
-  // deixava o alerta fixo ao lado de uma lista que continuava na tela.
-  it("uma carga boa seguida de um recarregamento que falha nao mostra alerta de carga", () => {
+  // After a good load, a realtime reload that failed
+  // left the alert pinned beside a list that stayed on screen.
+  it("a good load followed by a reload that fails does not show a load alert", () => {
     currentAssets = [videoAsset()];
     renderModal({ videoSource: "upload" });
     expect(screen.getByRole("button", { name: "Upload file" })).toBeInTheDocument();
@@ -791,7 +791,7 @@ describe("LessonContentModal — um video por aula", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("o erro de carga e anunciado: no campo de link, ligado a ele, e no modo envio", () => {
+  it("the load error is announced: in the link field, tied to it, and in upload mode", () => {
     subscribeOutcome = "fail";
     const linkMode = renderModal({ videoSource: "youtube", externalUrl: youtube });
     const hint = screen.getByText("We could not load lesson assets.");
@@ -799,14 +799,14 @@ describe("LessonContentModal — um video por aula", () => {
     expect(linkField()).toHaveAccessibleDescription(/^We could not load lesson assets\. YouTube and Vimeo videos/);
     linkMode.unmount();
 
-    // Sem link, a aba abre no modo envio: o aviso tambem aparece ali.
+    // With no link, the tab opens in upload mode: the notice shows up there too.
     renderModal();
     expect(screen.getByRole("status")).toHaveTextContent("We could not load lesson assets.");
   });
 
-  // F-11: a falha da lista era um beco (so a frase). "Try again" le de novo
-  // pela mesma recarga; o foco fica na janela quando o botao some.
-  it("o erro de carga tem Try again, que le os arquivos de novo", async () => {
+  // F-11: the list failure was a dead end (only the sentence). "Try again" re-reads
+  // through the same reload; focus stays in the dialog when the button goes away.
+  it("the load error has Try again, which reads the files again", async () => {
     subscribeOutcome = "fail";
     reloadServesCurrentAssets = true;
     currentAssets = [videoAsset()];
@@ -842,9 +842,9 @@ describe("LessonContentModal — video tab", () => {
     restoreDialogs();
   });
 
-  // Tirar o link antigo no meio de um envio sumia com o botao focado e o foco
-  // caia no body (o botao de troca fica desabilitado); o aviso nunca saia.
-  it("durante um envio, Remove old link fica desabilitado", async () => {
+  // Removing the old link in the middle of an upload made the focused button vanish and focus
+  // fell to the body (the swap button is disabled); the notice was never announced.
+  it("during an upload, Remove old link is disabled", async () => {
     let finish!: () => void;
     uploadCourseAsset.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
     renderModal({ externalUrl: "https://drive.example.test/file/d/abc/view" });
@@ -872,7 +872,7 @@ describe("LessonContentModal — video tab", () => {
     expect(preview).toHaveAttribute("controls");
     expect(preview).not.toHaveAttribute("autoplay");
     expect(URL.createObjectURL).toHaveBeenCalledExactlyOnceWith(file);
-    // Um video por aula: com o envio na tela, o campo de link nao aparece.
+    // One video per lesson: with the upload on screen, the link field does not appear.
     expect(screen.queryByLabelText("YouTube or Vimeo URL")).not.toBeInTheDocument();
     expect(form.compareDocumentPosition(screen.getByRole("button", { name: "Replace with link" })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(onUpdateLesson).not.toHaveBeenCalled();
@@ -914,16 +914,16 @@ describe("LessonContentModal — video tab", () => {
     expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:local-aula.mp4");
   });
 
-  // A queixa do dono: ao enviar, um bloco enorme tomava a tela (botao de
-  // 1.453 px, previa de ponta a ponta). Durante o envio o cartao fica com nome,
-  // andamento, uma barra e Cancelar; as abas dizem por que travaram.
-  it("durante o envio o cartao fica compacto e a frase explica as abas travadas", async () => {
+  // The owner's complaint: on upload, a huge block took over the screen (a
+  // 1,453 px button, a full-width preview). During the upload the card keeps the name,
+  // progress, a bar and Cancel; the tabs say why they are locked.
+  it("during the upload the card is compact and the sentence explains the locked tabs", async () => {
     let finish!: () => void;
     uploadCourseAsset.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
     renderModal();
     chooseVideoFile("minha aula.mp4");
     const videoTab = screen.getByRole("tab", { name: /^Video/ });
-    // Meio cheio (forma, nao so cor) e a palavra no title para quem usa mouse.
+    // Half full (shape, not just color) and the word in the title for mouse users.
     expect(videoTab.querySelector(".lesson-modal__tab-dot")).toHaveAttribute("data-tone", "busy");
     expect(videoTab.querySelector(".lesson-modal__tab-dot")).toHaveAttribute("title", "Selected");
     expect(screen.queryByText("Tabs unlock when the upload finishes.")).not.toBeInTheDocument();
@@ -933,29 +933,29 @@ describe("LessonContentModal — video tab", () => {
 
     const progress = await screen.findByRole("progressbar", { name: "Uploading..." });
     const form = progress.closest("form")!;
-    // O botao focado some: sem Cancelar neste envio, o foco vai para o andamento.
+    // The focused button goes away: with no Cancel on this upload, focus goes to the progress.
     expect(within(form).getByRole("status")).toHaveFocus();
     expect(within(form).getByText(/minha aula\.mp4/)).toBeInTheDocument();
     expect(within(form).getAllByRole("progressbar")).toHaveLength(1);
-    // O botao de enviar so repetia "Uploading...": sai da vista, o campo fica montado.
+    // The upload button only repeated "Uploading...": it leaves the view, the field stays mounted.
     expect(within(form).queryByRole("button", { name: "Uploading..." })).not.toBeInTheDocument();
     expect(within(form).queryByRole("combobox", { name: "Video type" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("Lesson video")).toBeInTheDocument();
     expect(screen.getByText("Tabs unlock when the upload finishes.")).toBeInTheDocument();
-    // A etiqueta da aba nao troca mais de palavra visivel (e de largura).
+    // The tab label no longer changes its visible word (or its width).
     expect(within(videoTab).queryByText("Uploading...")?.className).toBe("sr-only");
 
     await act(async () => { finish(); });
     expect(screen.queryByText("Tabs unlock when the upload finishes.")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Upload file" })).toBeVisible();
-    // Sem arquivo novo o envio fica desligado: o foco volta ao campo de arquivo.
+    // With no new file the upload stays off: focus goes back to the file field.
     expect(screen.getByLabelText("Lesson video")).toHaveFocus();
   });
 
-  // F-04: o botão do rodapé diz "Uploading..." enquanto o arquivo sobe, mas
-  // os dois rótulos ficam na mesma célula: a largura não muda, e o nome é
-  // sempre o que está à vista.
-  it("o botao do rodape diz Uploading... durante o envio sem trocar de largura", async () => {
+  // F-04: the footer button says "Uploading..." while the file goes up, but
+  // both labels sit in the same cell: the width does not change, and the name is
+  // always the one in view.
+  it("the footer button says Uploading... during the upload without changing width", async () => {
     let finish!: () => void;
     uploadCourseAsset.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
     renderModal();
@@ -976,11 +976,11 @@ describe("LessonContentModal — video tab", () => {
     expect(done).toBeEnabled();
   });
 
-  // O Delete da lista de arquivos espera sem mudar de largura: as duas faces
-  // na mesma célula. Só depois de a regra cinza e maiúscula da lista sair de
-  // `.lesson-modal-assets span` para `.lesson-modal-assets__meta` (globals.css),
-  // senão cada face virava um bloco cinza e as duas empilhavam.
-  it("o Delete da lista de arquivos guarda os dois rotulos na mesma celula e se chama pelo que esta a vista", async () => {
+  // The Delete in the file list waits without changing width: both faces
+  // in the same cell. Only after the gray uppercase rule of the list moved from
+  // `.lesson-modal-assets span` to `.lesson-modal-assets__meta` (globals.css),
+  // otherwise each face became a gray block and the two stacked.
+  it("the Delete in the file list keeps both labels in the same cell and is named by what is in view", async () => {
     currentAssets = [videoAsset()];
     let finish!: () => void;
     deleteCourseAsset.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
@@ -992,7 +992,7 @@ describe("LessonContentModal — video tab", () => {
     expect(waiting).toHaveAttribute("aria-hidden", "true");
     expect(idle.parentElement).toBe(waiting.parentElement);
     expect(idle.parentElement).toHaveClass("inline-grid");
-    // Nenhum span do botão leva a classe da linha de detalhe.
+    // No span in the button carries the detail-line class.
     expect(remove.querySelector(".lesson-modal-assets__meta")).toBeNull();
 
     fireEvent.click(remove);
@@ -1006,9 +1006,9 @@ describe("LessonContentModal — video tab", () => {
     await act(async () => { finish(); });
   });
 
-  // A linha de detalhe (tipo e tamanho) continua com a classe que leva o
-  // cinza maiúsculo; os span de fora dela não.
-  it("a linha de detalhe do arquivo leva lesson-modal-assets__meta", () => {
+  // The detail line (type and size) keeps the class that carries the
+  // gray uppercase; the spans outside it do not.
+  it("the file detail line carries lesson-modal-assets__meta", () => {
     currentAssets = [videoAsset()];
     renderModal();
     const list = document.querySelector(".lesson-modal-assets") as HTMLElement;
@@ -1017,9 +1017,9 @@ describe("LessonContentModal — video tab", () => {
     expect(meta[0].textContent).toMatch(/ - /);
   });
 
-  // Na aba de materiais o nome é editável: as três linhas que a regra antiga
-  // pintava (rótulo do nome, tipo e tamanho, nome original) levam a classe.
-  it("na aba de materiais, com nome editado, as tres linhas de detalhe levam lesson-modal-assets__meta", () => {
+  // On the materials tab the name is editable: the three lines the old rule
+  // painted (name label, type and size, original name) carry the class.
+  it("on the materials tab, with an edited name, the three detail lines carry lesson-modal-assets__meta", () => {
     currentAssets = [videoAsset({
       id: "material-1", kind: "lesson_material", contentType: "application/pdf", fileName: "apostila.pdf", title: "Apostila final",
     })];
@@ -1034,9 +1034,9 @@ describe("LessonContentModal — video tab", () => {
     expect(within(list).getByRole("button", { name: "Delete" }).querySelector(".lesson-modal-assets__meta")).toBeNull();
   });
 
-  // Lido como texto (o jsdom não aplica o globals.css): nenhuma regra da lista
-  // alcança um span qualquer, e o cinza maiúsculo em bloco fica na classe.
-  it("o globals.css pinta so a linha de detalhe da lista, nao todo span", () => {
+  // Read as text (jsdom does not apply globals.css): no rule in the list
+  // reaches an arbitrary span, and the block-level gray uppercase stays in the class.
+  it("globals.css paints only the detail line of the list, not every span", () => {
     const css = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8")
       .replace(/\r\n/g, "\n")
       .replace(/\/\*[\s\S]*?\*\//g, "");
@@ -1048,12 +1048,12 @@ describe("LessonContentModal — video tab", () => {
       expect(selector, selector).not.toMatch(/(^|[\s>+~])span(?![\w-])/);
     }
     expect(css).toMatch(/\.lesson-modal-assets strong,\s*\.lesson-modal-assets__meta\s*\{\s*display: block;\s*\}/);
-    // A regra própria (não a do grupo acima, que vem depois de uma vírgula).
+    // The rule itself (not the group one above, which comes after a comma).
     const meta = css.match(/\}\s*\.lesson-modal-assets__meta \{([^}]*)\}/)?.[1];
     expect(meta).toMatch(/color: var\(--color-ink-soft\);[\s\S]*font-size: 0\.6875rem;[\s\S]*text-transform: uppercase;/);
   });
 
-  it("o foco vai para Cancelar quando o envio comeca e volta ao campo quando ele e cancelado", async () => {
+  it("focus goes to Cancel when the upload starts and back to the field when it is canceled", async () => {
     bunnyConfig.isBunnyConfigured = true;
     const { CourseAssetUploadCancelled } = await import("@/lib/data/course-assets");
     let fail!: (error: Error) => void;
@@ -1072,11 +1072,11 @@ describe("LessonContentModal — video tab", () => {
     expect(cancelButton).toHaveFocus();
     await act(async () => { fireEvent.click(cancelButton); });
     expect(cancel).toHaveBeenCalledOnce();
-    // Aula sem video: o cartao sai e volta a area de soltar, com o foco nela.
+    // Lesson with no video: the card goes away and the drop area comes back, with focus on it.
     await waitFor(() => expect(screen.getByLabelText("Upload a lesson video")).toHaveFocus());
   });
 
-  it("numa aula com video, cancelar devolve o foco ao campo de arquivo do cartao", async () => {
+  it("on a lesson with a video, canceling returns focus to the card's file field", async () => {
     currentAssets = [videoAsset()];
     bunnyConfig.isBunnyConfigured = true;
     const { CourseAssetUploadCancelled } = await import("@/lib/data/course-assets");
@@ -1098,14 +1098,14 @@ describe("LessonContentModal — video tab", () => {
     await waitFor(() => expect(screen.getByLabelText("Lesson video")).toHaveFocus());
   });
 
-  // A aba Settings dizia "Preview" ou "Private"; sem a marca, so quem abria a
-  // aba sabia que a aula esta aberta ao publico.
+  // The Settings tab said "Preview" or "Private"; without the mark, only whoever opened the
+  // tab knew the lesson is open to the public.
   it.each([[true, "Preview", "on"], [false, "Private", "off"]] as const)(
-    "a aba Settings mostra se a aula e previa gratis (%s)",
+    "the Settings tab shows whether the lesson is a free preview (%s)",
     (isFreePreview, label, tone) => {
       renderModal({}, "Módulo 1", false, "instant", isFreePreview);
       const settings = screen.getByRole("tab", { name: /^Settings/ });
-      // O leitor de tela ouve o estado junto com o nome da aba.
+      // The screen reader hears the state along with the tab name.
       expect(settings).toHaveAccessibleName(new RegExp(`${label}$`));
       const mark = settings.querySelector(".lesson-modal__tab-dot");
       expect(mark).toHaveAttribute("data-tone", tone);
@@ -1194,7 +1194,7 @@ describe("LessonContentModal — video tab", () => {
         target: { value: "Descrição autoral — não traduzir" },
       });
       fireEvent.click(screen.getByRole("tab", { name: /^Video/ }));
-      // A aula tem link do YouTube: a aba abre no link, e o envio e uma troca explicita.
+      // The lesson has a YouTube link: the tab opens on the link, and the upload is an explicit swap.
       fireEvent.click(screen.getByRole("button", { name: "Replace with upload" }));
       const file = chooseVideoFile("Aula $& — ação.mp4");
       const fileInput = screen.getByLabelText("Lesson video");
@@ -1207,7 +1207,7 @@ describe("LessonContentModal — video tab", () => {
       expect(screen.getByRole("button", { name: "Cancelar subida" })).toBeEnabled();
       expect(screen.getByLabelText("Video de la lección")).toBe(fileInput);
       expect(screen.getByText(/Aula \$& — ação\.mp4/)).toBeInTheDocument();
-      // O link salvo nunca foi tocado pela troca nem pelo envio.
+      // The saved link was never touched by the swap or by the upload.
       expect(onUpdateLesson).not.toHaveBeenCalledWith(expect.objectContaining({ externalUrl: expect.anything() }));
       for (const name of [/^Video/, /^Descripción/, /^Materiales/, /^Ajustes/]) {
         expect(screen.getByRole("tab", { name })).toBeDisabled();
@@ -1262,9 +1262,9 @@ describe("LessonContentModal — video tab", () => {
     expect(uploadCourseAsset).not.toHaveBeenCalled();
   });
 
-  it("o material enviado aparece na lista sem esperar evento do Realtime", async () => {
-    // course_assets não está na publicação do Realtime: nenhum emitAssets aqui,
-    // só a recarga que o próprio estúdio pede depois do envio.
+  it("the uploaded material appears in the list without waiting for a Realtime event", async () => {
+    // course_assets is not in the Realtime publication: no emitAssets here,
+    // only the reload the studio itself asks for after the upload.
     reloadServesCurrentAssets = true;
     uploadCourseAsset.mockImplementationOnce(async () => {
       currentAssets = [videoAsset({
@@ -1279,7 +1279,7 @@ describe("LessonContentModal — video tab", () => {
         target: { files: [new File(["pdf"], "apostila.pdf", { type: "application/pdf" })] },
       });
       fireEvent.click(screen.getByRole("button", { name: "Upload file" }));
-      // O nome do material agora é um campo editável (o nome que o aluno vê).
+      // The material name is now an editable field (the name the learner sees).
       expect(await screen.findByDisplayValue("apostila.pdf")).toBeInTheDocument();
     } finally {
       reloadServesCurrentAssets = false;
@@ -1342,10 +1342,10 @@ describe("LessonContentModal — video tab", () => {
     expect(screen.getByText("Uploads save immediately. Text and settings save with the course draft.")).toBeInTheDocument();
   });
 
-  // O achado P-01 da auditoria: sem este teste, remover o que abre o painel
-  // deixa o professor sem nenhum caminho para enviar vídeo, e a suíte fica
-  // verde. O formulário de envio é a única porta — Materials e Settings criam
-  // lesson_material e lesson_thumbnail, nunca o vídeo da aula.
+  // Audit finding P-01: without this test, removing what opens the panel
+  // leaves the teacher with no path to upload a video, and the suite stays
+  // green. The upload form is the only door — Materials and Settings create
+  // lesson_material and lesson_thumbnail, never the lesson video.
   it("reveals the upload form as soon as a file is chosen on a brand-new lesson", () => {
     renderModal();
 
@@ -1364,7 +1364,7 @@ describe("LessonContentModal — video tab", () => {
       externalUrl: "https://www.youtube.com/watch?v=abc",
     });
 
-    // Um video por aula: o envio aparece pela troca explicita.
+    // One video per lesson: the upload appears through the explicit swap.
     fireEvent.click(screen.getByRole("button", { name: "Replace with upload" }));
     chooseVideoFile();
 
@@ -1373,8 +1373,8 @@ describe("LessonContentModal — video tab", () => {
     ).toBeInTheDocument();
   });
 
-  // Escolher o arquivo não pode gravar a fonte: é isso que deixava a aula vazia
-  // para quem já tinha pago quando o professor desistia do envio.
+  // Choosing the file must not save the source: that is what left the lesson empty
+  // for someone who had already paid when the teacher gave up on the upload.
   it("does not declare the source when the file is only chosen", () => {
     const { onUpdateLesson } = renderModal();
 
@@ -1502,8 +1502,8 @@ describe("LessonContentModal — video tab", () => {
     },
   );
 
-  // O mesmo buraco entrando pela porta dos fundos: apagar o último vídeo
-  // deixava `videoSource` prometendo um arquivo que não existe mais.
+  // The same hole coming in through the back door: deleting the last video
+  // left `videoSource` promising a file that no longer exists.
   it("clears the declared upload source when the last video asset is deleted", async () => {
     currentAssets = [videoAsset()];
 
@@ -1513,7 +1513,7 @@ describe("LessonContentModal — video tab", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: /delete/i }));
-    // Nada sai antes do confirmar na janela; confirmar apaga uma vez.
+    // Nothing goes out before the confirm in the dialog; confirming deletes once.
     const asking = screen.getByRole("dialog", { name: "Delete this file?" });
     expect(deleteCourseAsset).not.toHaveBeenCalled();
     clickConfirm(asking, "Delete file");
@@ -1540,12 +1540,12 @@ describe("LessonContentModal — video tab", () => {
     expect(onUpdateLesson).not.toHaveBeenCalled();
   });
 
-  // Sem Bunny, o vídeo vai para o Supabase Storage, cujo teto do plano é
-  // ~50 MB. O validador recusa antes de qualquer byte sair — este é o único
-  // caminho de recusa por tamanho aqui; um segundo ramo, inalcançável, foi
-  // removido. Se o validador voltar a aceitar o teto do bucket (500 MB), o
-  // arquivo chega ao envio e este teste fica vermelho.
-  it("recusa um vídeo acima do teto do plano antes de enviar", async () => {
+  // Without Bunny, the video goes to Supabase Storage, whose plan ceiling is
+  // ~50 MB. The validator refuses before any byte leaves — this is the only
+  // size-refusal path here; a second, unreachable branch was
+  // removed. If the validator goes back to accepting the bucket ceiling (500 MB), the
+  // file reaches the upload and this test turns red.
+  it("refuses a video above the plan ceiling before uploading", async () => {
     renderModal();
 
     const big = new File(["video-bytes"], "aula.mp4", { type: "video/mp4" });
@@ -1565,7 +1565,7 @@ describe("LessonContentModal — video tab", () => {
 // Video on Bunny: the studio asks for the processing state every 10 s until it
 // is ready or failed, and writes the duration once when it is ready. fetch is
 // mocked: nothing reaches the app route or Bunny.
-describe("LessonContentModal — processamento na Bunny", () => {
+describe("LessonContentModal — processing on Bunny", () => {
   type Reply = { status: number | null; encodeProgress: number | null; lengthSeconds: number | null };
   const fetchMock = vi.fn();
   const replyWith = (...replies: Reply[]) => {

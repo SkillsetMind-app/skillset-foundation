@@ -31,9 +31,9 @@ export function LandingImageField({
 }) {
   const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
-  // Tamanho do arquivo em envio (null = nada subindo): a nota de andamento, a
-  // mesma das capas do construtor, diz "Sending..." e o tamanho, porque este
-  // envio não informa porcentagem.
+  // Size of the file being uploaded (null = nothing uploading): the progress note, the
+  // same as on the builder covers, says "Sending..." and the size, because this
+  // upload does not report a percentage.
   const [uploadingBytes, setUploadingBytes] = useState<number | null>(null);
   const uploading = uploadingBytes !== null;
   const [error, setError] = useState("");
@@ -66,11 +66,11 @@ export function LandingImageField({
   }
 
   return (
-    // O grupo leva o nome do bloco: com duas imagens na página, cada "Or paste
-    // a link" diz de qual imagem é.
+    // The group carries the block's name: with two images on the page, each "Or paste
+    // a link" says which image it is for.
     <div role="group" aria-label={label} className="grid gap-3">
-      {/* A casca de imagem das capas do construtor (B-05): prévia de 200px,
-          botão de rótulo fixo, nota de envio, erro e "Remove". */}
+      {/* The image shell of the builder covers (B-05): 200px preview,
+          fixed-label button, upload note, error and "Remove". */}
       <ImageUploadField
         title={label}
         help={t("teacherLanding.upload.rules").replace("{limit}", () => limit)}

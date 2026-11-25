@@ -34,20 +34,20 @@ function renderOffer(
 
 const offer = () => document.querySelector("[data-verified-badge-offer]");
 
-describe("quem vê a oferta", () => {
-  it.each(["none", "rejected"])("status %s vê", (status) => {
+describe("who sees the offer", () => {
+  it.each(["none", "rejected"])("status %s sees it", (status) => {
     renderOffer(status);
     expect(offer()).not.toBeNull();
   });
 
-  // null = a leitura do perfil falhou ou não chegou: na dúvida, não oferece.
-  it.each(["pending", "needs_changes", "approved", null])("status %s não vê", (status) => {
+  // null = the profile read failed or did not arrive: when in doubt, it does not offer.
+  it.each(["pending", "needs_changes", "approved", null])("status %s does not see it", (status) => {
     renderOffer(status);
     expect(offer()).toBeNull();
   });
 });
 
-it("prévia com o próprio nome e o selo, e o botão leva ao pedido de verificação", () => {
+it("preview with the own name and the badge, and the button leads to the verification request", () => {
   renderOffer();
   const preview = screen.getByText("Preview").closest("figure")!;
   expect(preview).toHaveTextContent("Ana Souza");
@@ -56,7 +56,7 @@ it("prévia com o próprio nome e o selo, e o botão leva ao pedido de verifica�
   expect(screen.getByRole("link", { name: "Get it free (≈3 min)" })).toHaveAttribute("href", "/teach/verification");
 });
 
-it("diz que o selo só aparece depois da aprovação", () => {
+it("says the badge only shows up after approval", () => {
   renderOffer();
   expect(offer()).toHaveTextContent("after approval");
   cleanup();
@@ -64,20 +64,20 @@ it("diz que o selo só aparece depois da aprovação", () => {
   expect(offer()).toHaveTextContent("tras la aprobación");
 });
 
-it("em espanhol", () => {
+it("in Spanish", () => {
   renderOffer("none", { locale: "es" });
   expect(screen.getByRole("link", { name: "Obtenerlo gratis (≈3 min)" })).toHaveAttribute("href", "/teach/verification");
   expect(screen.getByRole("button", { name: "Ahora no" })).toBeInTheDocument();
   expect(screen.getByText("Profesional verificado")).toBeInTheDocument();
 });
 
-it("nunca promete alunos, vendas ou destaque", () => {
+it("never promises learners, sales or featured placement", () => {
   renderOffer();
   expect(offer()!.textContent).not.toMatch(/student|sale|rank|featured|boost|certif|endors/i);
 });
 
-describe("Agora não", () => {
-  it("o foco vai para onde quem chama mandar, não some com o cartão", () => {
+describe("Not now", () => {
+  it("focus goes where the caller sends it, it does not vanish with the card", () => {
     const target = document.createElement("p");
     target.tabIndex = -1;
     document.body.appendChild(target);
@@ -92,13 +92,13 @@ describe("Agora não", () => {
     target.remove();
   });
 
-  it("adia por 21 dias, por uid", () => {
+  it("postpones for 21 days, per uid", () => {
     renderOffer();
     fireEvent.click(screen.getByRole("button", { name: "Not now" }));
     expect(offer()).toBeNull();
     expect(BADGE_OFFER_SNOOZE_MS).toBe(21 * DAY);
 
-    // Outro professor no mesmo navegador não herda o adiamento.
+    // Another teacher in the same browser does not inherit the postponement.
     cleanup();
     renderOffer("none", { uid: "teacher-2" });
     expect(offer()).not.toBeNull();
@@ -114,11 +114,11 @@ describe("Agora não", () => {
     expect(offer()).not.toBeNull();
   });
 
-  it("depois da 3ª recusa não volta mais", () => {
+  it("after the 3rd refusal it never comes back", () => {
     for (let round = 0; round < 3; round += 1) {
       vi.spyOn(Date, "now").mockReturnValue(NOW + round * 22 * DAY);
       renderOffer();
-      expect(offer(), `rodada ${round + 1}`).not.toBeNull();
+      expect(offer(), `round ${round + 1}`).not.toBeNull();
       fireEvent.click(screen.getByRole("button", { name: "Not now" }));
       cleanup();
     }
@@ -128,7 +128,7 @@ describe("Agora não", () => {
     expect(offer()).toBeNull();
   });
 
-  it("com o storage bloqueado a oferta aparece e o Agora não esconde nesta visita", () => {
+  it("with storage blocked the offer shows up and Not now hides it on this visit", () => {
     vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
       throw new Error("blocked");
     });

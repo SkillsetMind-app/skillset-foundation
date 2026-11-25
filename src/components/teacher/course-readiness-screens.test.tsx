@@ -14,8 +14,8 @@ import { fetchCourseAssets, subscribeToCourseAssets, uploadCourseAsset } from "@
 import { track } from "@/lib/posthog/events";
 
 const mocks = vi.hoisted(() => {
-  // Fusivel: um laco de render nao estoura o timeout do vitest, come memoria
-  // ate matar o processo. Contamos as inscricoes e explodimos cedo.
+  // Fuse: a render loop does not hit the vitest timeout, it eats memory
+  // until the process dies. We count the subscriptions and blow up early.
   const subscriptionCounts = new Map<string, number>();
   function fused<A extends unknown[]>(name: string, impl: (...args: A) => () => void) {
     return (...args: A) => {
@@ -28,8 +28,8 @@ const mocks = vi.hoisted(() => {
     };
   }
 
-  // Mesmo curso para as duas telas: titulo, resumo, categoria e um modulo
-  // prontos; sem aula e sem preco. Venda avulsa sem parcelamento.
+  // Same course for both screens: title, summary, category and one module
+  // ready; no lesson and no price. One-time sale without installments.
   const course: TeacherCourse = {
     id: "course-1",
     ownerId: "teacher-1",
@@ -50,8 +50,8 @@ const mocks = vi.hoisted(() => {
     resetSubscriptionCounts: () => subscriptionCounts.clear(),
     getSubscriptionCounts: () => new Map(subscriptionCounts),
     course,
-    // O MESMO objeto em todo render: um usuario novo por render reinscreve
-    // os efeitos e entra em laco.
+    // The SAME object on every render: a new user per render resubscribes
+    // the effects and loops.
     user: { uid: "teacher-1" },
     router: { push: vi.fn(), replace: vi.fn(), refresh: vi.fn() },
     searchParams: new URLSearchParams("courseId=course-1"),
@@ -102,14 +102,14 @@ vi.mock("@/lib/data/user-profiles", () => ({
     },
   ),
 }));
-// Pais da conta Stripe do professor: so o parcelamento (Mexico) le.
+// Country of the teacher's Stripe account: only installments (Mexico) read it.
 const profileExtra = vi.hoisted((): {
   currentPlanId?: string;
   stripeConnectCountry?: string;
   stripeConnectChargesEnabled?: boolean;
   stripeConnectPayoutsEnabled?: boolean;
 } => ({}));
-// hold: o perfil (payouts, verificacao) so chega quando o teste chamar release.
+// hold: the profile (payouts, verification) only arrives when the test calls release.
 const profileGate = vi.hoisted(() => ({
   hold: false,
   release: null as null | (() => void),
@@ -140,8 +140,8 @@ vi.mock("@/lib/data/course-assets", () => ({
   uploadCourseAsset: vi.fn(),
 }));
 
-// As sessoes do evento ao vivo (construtor e Manage leem a mesma lista).
-// hold: a lista so chega quando o teste chamar `held` (uma ida a rede).
+// The live event sessions (builder and Manage read the same list).
+// hold: the list only arrives when the test calls `held` (one network round trip).
 const sessions = vi.hoisted(() => ({
   list: [] as CourseEvent[],
   hold: false,
@@ -158,20 +158,20 @@ vi.mock("@/lib/data/course-events", () => ({
   },
 }));
 
-// Upload de capa depende de APIs de browser que o jsdom nao tem e nao entra
-// na conta de readiness.
+// Cover upload depends on browser APIs that jsdom does not have and it is not
+// part of the readiness count.
 vi.mock("@/components/teacher/course-asset-uploader", () => ({
-  // So o aviso de "apagou um arquivo": o erro da releitura sai embaixo dela.
+  // Only the "deleted a file" notice: the re-read error shows below it.
   CourseAssetUploader: ({ onAssetDeleted }: { onAssetDeleted?: () => void }) => (
     <button type="button" onClick={onAssetDeleted}>Fake asset deleted</button>
   ),
 }));
 
-// O painel do produto (numeros, atividade, manutencao) le pedidos, matriculas,
-// cupons, avaliacoes e perguntas. Nada disso muda a porcentagem que este
-// arquivo mede, e tem prova propria em course-overview-panel.test.tsx. O
-// marcador existe para a prova de ORDEM: onde o painel cai em relacao ao
-// checklist e decisao do hub, nao do painel.
+// The product panel (numbers, activity, upkeep) reads orders, enrollments,
+// coupons, reviews and questions. None of that changes the percentage this
+// file measures, and it has its own tests in course-overview-panel.test.tsx. The
+// marker exists for the ORDER test: where the panel falls relative to the
+// checklist and the hub's decision, not the panel's content.
 vi.mock("@/components/teacher/course-overview-panel", async (importOriginal) => ({
   ...await importOriginal<typeof import("@/components/teacher/course-overview-panel")>(),
   CourseOverviewPanel: () => <div data-testid="course-overview-panel" />,
@@ -202,7 +202,7 @@ function renderBuilder(tab = "details") {
   );
 }
 
-// Os links de pagamentos levam a volta para a aba Publish deste curso.
+// The payment links bring the learner back to this course's Publish tab.
 const PAYOUTS_WITH_RETURN = `/account/payments?returnTo=${encodeURIComponent("/teach/builder?courseId=course-1&tab=review")}#stripe-connect`;
 
 async function publishProduct() {
@@ -211,8 +211,8 @@ async function publishProduct() {
   fireEvent.click(button);
 }
 
-// Nenhum preco em Outros precos: a etapa de preco do construtor mostra os
-// cartoes. Sem a lista, ela nao mostra preco nenhum.
+// No price in Other prices: the builder's price step shows the
+// cards. Without the list, it shows no price at all.
 let restoreDialogs = () => {};
 beforeEach(() => {
   plan.required = false;
@@ -227,10 +227,10 @@ afterEach(() => {
   restoreDialogs();
 });
 
-// O professor via, para o mesmo curso, 71% no chip do construtor, 40% na
-// barra logo abaixo do chip e 50% no Manage. Cada tela tinha regra propria.
-// Agora as tres leem a mesma funcao e mostram o mesmo numero.
-describe("o que falta para publicar: um numero so em todas as telas", () => {
+// For the same course the teacher saw 71% on the builder chip, 40% on the
+// bar right below the chip and 50% in Manage. Each screen had its own rule.
+// Now all three read the same function and show the same number.
+describe("what is missing to publish: a single number on every screen", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.resetSubscriptionCounts();
@@ -273,8 +273,8 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(screen.getByRole("navigation", { name: "Pasos para crear el curso" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: heading })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: mocks.course.title })).toBeInTheDocument();
-    // Um "Save draft" (o do topo) e o "Publish product" so na aba Publish: o
-    // rodape repetia os dois embaixo de toda aba.
+    // One "Save draft" (the top one) and "Publish product" only on the Publish tab: the
+    // footer used to repeat both under every tab.
     expect(screen.getAllByRole("button", { name: "Guardar borrador" })).toHaveLength(1);
     if (tab === "review") {
       expect(screen.getByRole("button", { name: "Publicar producto" })).toBeDisabled();
@@ -327,8 +327,8 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     await act(async () => {});
     const price = screen.getByRole("textbox", { name: "Price" });
     fireEvent.change(price, { target: { value: "invalid" } });
-    // A faixa "ainda nao publicado" tambem e role="status" (vem do InlineAlert),
-    // entao o anuncio se acha pelo proprio texto e a prova e estar numa regiao viva.
+    // The "not published yet" banner is also role="status" (it comes from InlineAlert),
+    // so the announcement is found by its own text and the proof is being inside a live region.
     expect(screen.getByText(/fix the price/).closest('[role="status"]')).not.toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
     expect(screen.getByText(/corrige el precio/).closest('[role="status"]')).not.toBeNull();
@@ -336,8 +336,8 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(price).toHaveValue("invalid");
     act(() => vi.advanceTimersByTime(5000));
     expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
-    // Publicar mora so na aba Publish: la, com o mesmo rascunho, ele segue
-    // apagado.
+    // Publishing lives only on the Publish tab: there, with the same draft, it stays
+    // disabled.
     expect(screen.queryByRole("button", { name: "Publicar producto" })).toBeNull();
     mocks.searchParams.set("tab", "review");
     view.rerender(
@@ -347,22 +347,22 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
       </I18nProvider>,
     );
     expect(screen.getByRole("button", { name: "Publicar producto" })).toBeDisabled();
-    // O motivo diz o que fazer: corrigir o preco, nao "terminar os itens".
+    // The reason says what to do: fix the price, not "finish the items".
     expect(screen.getByRole("button", { name: "Publicar producto" })).toHaveAccessibleDescription(
       "Corrige el precio en Precios para publicar.",
     );
     expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
   });
 
-  // O aviso do preco caia no cartao do rodape, telas abaixo do campo.
-  it("preco invalido no Save draft: o aviso sai no proprio campo, nao no topo", async () => {
+  // The price warning used to land on the footer card, screens below the field.
+  it("invalid price on Save draft: the notice is announced on the field itself, not at the top", async () => {
     renderBuilder("pricing");
     const price = await screen.findByRole("textbox", { name: "Price" });
     fireEvent.change(price, { target: { value: "invalid" } });
     fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
 
     const message = "Use a valid non-negative price, or leave the field empty.";
-    // O foco vai ao campo (no celular ele pode estar fora da tela).
+    // Focus goes to the field (on a phone it may be off screen).
     expect(price).toHaveFocus();
     expect(price).toHaveAttribute("aria-invalid", "true");
     expect(price).toHaveAccessibleDescription(message);
@@ -371,7 +371,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(document.querySelector(".course-builder-hero")?.nextElementSibling?.getAttribute("role")).not.toBe("alert");
     expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
 
-    // Corrigiu: o aviso sai sem esperar outro clique.
+    // Fixed it: the warning goes away without waiting for another click.
     fireEvent.change(price, { target: { value: "49" } });
     expect(screen.queryByRole("alert")).toBeNull();
     expect(price).not.toHaveAttribute("aria-invalid");
@@ -400,8 +400,8 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(subscribeToTeacherCourse).toHaveBeenCalledOnce();
   });
 
-  // A liberacao das aulas morava na aba de preco ("Interval days" ao lado da
-  // moeda). Agora fica onde as aulas sao montadas, com rotulo simples.
+  // Lesson release used to live on the price tab ("Interval days" next to the
+  // currency). Now it sits where the lessons are built, with a plain label.
   it("keeps the canonical release values in Curriculum when their labels change", async () => {
     vi.useFakeTimers();
     renderBuilder("content");
@@ -439,14 +439,14 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
     fireEvent.click(screen.getByRole("button", { name: "Eliminar" }));
     const related = count === 0 ? "" : count === 1 ? " y su 1 lección" : " y sus 2 lecciones";
-    // A frase de antes, agora na janela da plataforma; cancelar nao apaga.
+    // The earlier sentence, now in the platform dialog; cancel does not delete.
     const dialog = screen.getByRole("dialog", { name: "¿Eliminar este módulo?" });
     expect(dialog).toHaveAccessibleDescription(`¿Eliminar el módulo "${title}"${related}? No se podrá deshacer después del guardado automático.`);
     expect(within(dialog).getByRole("button", { name: "Eliminar módulo" })).toHaveClass("button-danger-solid");
     fireEvent.click(within(dialog).getByRole("button", { name: "Cancelar" }));
     expect(screen.queryByRole("dialog")).toBeNull();
-    // A linha do modulo mostra o nome literal e quantas aulas ele tem; as
-    // aulas em si moram na pagina do modulo (?module=M).
+    // The module row shows the literal name and how many lessons it has; the
+    // lessons themselves live on the module page (?module=M).
     const row = document.querySelector("#builder-sec-modules article") as HTMLElement;
     expect(row.querySelector("strong")?.textContent).toBe(title);
     expect(within(row).getByText(count === 1 ? "1 lección" : `${count} lecciones`)).toBeInTheDocument();
@@ -454,7 +454,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(subscribeToTeacherCourse).toHaveBeenCalledOnce();
   });
 
-  it("confirmar na janela apaga o modulo uma vez, e so depois do confirmar", async () => {
+  it("confirming in the dialog deletes the module once, and only after the confirm", async () => {
     renderBuilder("content");
     await screen.findByRole("heading", { name: mocks.course.title });
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
@@ -468,8 +468,8 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
   it("localizes an existing module validation error and retains the unsaved module fields", async () => {
     renderBuilder("content");
     await screen.findByRole("heading", { name: mocks.course.title });
-    // O formulario do modulo e um pedido na lista; a aula nasce na pagina do
-    // modulo (?module=M), entao os dois formularios nao dividem mais a tela.
+    // The module form is an order on the list; the lesson is born on the module
+    // page (?module=M), so the two forms no longer share the screen.
     fireEvent.click(screen.getByRole("button", { name: "Add module" }));
     const description = screen.getByRole("textbox", { name: "Module description" });
     fireEvent.change(description, { target: { value: "Descripción $$ $& sin enviar" } });
@@ -484,7 +484,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
 
   it.each(["save", "publish"] as const)("keeps the activation recovery link after a %s error changes language", async (operation) => {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
-      // A aula precisa de conteudo para o Publish destravar (item lessonMedia).
+      // The lesson needs content for Publish to unlock (lessonMedia item).
       emit({ ...mocks.course, paymentType: "free", priceAmountMinor: 0, modules: [{ id: "m1", title: "Start here", lessons: [{ id: "l1", title: "Welcome", description: "", type: "text", contentText: "Read this first." }] }] });
       return Object.assign(() => {}, { reload: async () => {} });
     });
@@ -497,7 +497,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
       ? screen.getAllByRole("button", { name: "Save draft" })[0]
       : screen.getByRole("button", { name: "Publish product" }));
     await screen.findByRole("link", { name: "Activate storefront" });
-    // O aviso sai perto do botao clicado, nao no cartao do fim da pagina.
+    // The notice shows near the clicked button, not on the card at the end of the page.
     const alert = screen.getByRole("alert");
     if (operation === "save") {
       expect(document.querySelector(".course-builder-hero")?.nextElementSibling).toBe(alert);
@@ -530,8 +530,8 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Añade un video, texto o archivo a cada lección antes de publicar.");
   });
 
-  // F-04: publicando, o botão diz "Publishing..." sem mudar de largura: o
-  // rótulo de repouso fica na mesma célula, invisível e fora do nome.
+  // F-04: while publishing, the button says "Publishing..." without changing width: the
+  // resting label stays in the same cell, invisible and outside the name.
   it("publishing keeps both labels in place and names the button by the visible one", async () => {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emit({ ...mocks.course, paymentType: "free", priceAmountMinor: 0, modules: [{ id: "m1", title: "Start here", lessons: [{ id: "l1", title: "Welcome", description: "", type: "text", contentText: "Read this first." }] }] });
@@ -558,9 +558,9 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(await screen.findByRole("button", { name: "Publish product" })).toBe(idle);
   });
 
-  // O botão apagado sempre diz por quê: no curso de outra pessoa ele apagava
-  // em silêncio (a frase dependia só da prontidão).
-  it("curso de outra pessoa: o Publish apagado diz que só o dono publica", async () => {
+  // The disabled button always says why: on someone else's course it used to be disabled
+  // in silence (the sentence depended only on readiness).
+  it("someone else's course: the disabled Publish says only the owner publishes", async () => {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emit({ ...mocks.course, ownerId: "another-teacher", paymentType: "free", priceAmountMinor: 0, modules: [{ id: "m1", title: "Start here", lessons: [{ id: "l1", title: "Welcome", description: "", type: "text", contentText: "Read this first." }] }] });
       return Object.assign(() => {}, { reload: async () => {} });
@@ -573,9 +573,9 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(publish).toHaveAccessibleDescription("Only the course owner can publish it.");
   });
 
-  // O "Save draft" do topo não vira "Saving..." (o selo ao lado já diz): só o
-  // anel entra, no lugar que a face da espera já guardava, então o botão não
-  // empurra Manage e Preview. O nome é o mesmo nos dois estados.
+  // The top "Save draft" does not turn into "Saving..." (the badge beside it already says so): only the
+  // ring comes in, in the spot the waiting face already kept, so the button does not
+  // push Manage and Preview. The name is the same in both states.
   it("Save draft keeps the ring's place and its name while saving", async () => {
     let finishSave = () => {};
     vi.mocked(updateTeacherCourseBuilder).mockImplementationOnce(() => new Promise<void>((resolve) => { finishSave = resolve; }));
@@ -594,8 +594,8 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(screen.getByRole("button", { name: "Save draft" })).toBe(save);
   });
 
-  // Os tipos novos tem recusas proprias no servidor: cada uma diz o que falta,
-  // em vez do generico "try again".
+  // The new kinds have their own refusals on the server: each says what is missing,
+  // instead of the generic "try again".
   it.each([
     [
       "Schedule the live session before publishing.",
@@ -668,7 +668,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     await act(async () => finishSave());
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     act(() => emitCourse({ ...mocks.course, ...payload }));
-    // A aula abre como pagina (?lesson=L), nao como modal: segue a URL pedida.
+    // The lesson opens as a page (?lesson=L), not as a modal: it follows the requested URL.
     const opened = new URL(String(mocks.router.push.mock.calls.at(-1)?.[0]), "https://example.test");
     expect(opened.searchParams.get("lesson")).toBe(payload.modules?.[0].lessons[0].id);
     mocks.searchParams.set("lesson", opened.searchParams.get("lesson") ?? "");
@@ -696,7 +696,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     const input = screen.getByLabelText("Upload cover");
     fireEvent.change(input, { target: { files: [file] } });
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
-    // Rotulo fixo durante o envio: o estado e so a nota de progresso.
+    // Fixed label while sending: the state is only the progress note.
     expect(screen.getByLabelText("Subir portada")).toBe(input);
     expect(screen.queryByText("Subiendo...")).toBeNull();
     expect(input).toBeDisabled();
@@ -709,7 +709,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(subscribeToTeacherCourse).toHaveBeenCalledOnce();
   });
 
-  // B-05: a capa do curso usa a casca única; o accept e o teto seguem os dela.
+  // B-05: the course cover uses the single shell; the accept list and the ceiling follow its own.
   it("keeps the course-cover accept and refuses a file over the upload limit before sending", async () => {
     renderBuilder();
     await screen.findByRole("heading", { name: mocks.course.title });
@@ -730,7 +730,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     const leave = document.createElement("a");
     leave.href = "/teach";
     leave.textContent = "Leave fixture";
-    // Quem navegaria (o Link do Next): so recebe o clique se a guarda soltar.
+    // Whoever would navigate (Next's Link): only gets the click if the guard lets it go.
     const followed = vi.fn((event: MouseEvent) => event.preventDefault());
     leave.addEventListener("click", followed);
     container.appendChild(leave);
@@ -748,8 +748,8 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
   });
 
-  // A janela nao segura o clique como o confirm() segurava: confirmado, o
-  // mesmo link recebe o clique uma vez e segue (o Link do Next navega).
+  // The dialog does not hold the click the way confirm() did: once confirmed, the
+  // same link gets the click once and goes on (Next's Link navigates).
   it("confirmar a saida repete o clique no link uma vez so", async () => {
     const { container } = renderBuilder();
     await screen.findByRole("heading", { name: mocks.course.title });
@@ -766,9 +766,9 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  // O link saiu da tela enquanto a janela estava aberta: confirmado, a saida
-  // vai pelo endereco dele, uma vez.
-  it("confirmar a saida com o link fora da tela navega pelo endereco", async () => {
+  // The link left the screen while the dialog was open: once confirmed, the exit
+  // goes through its address, once.
+  it("confirming the exit with the link off screen navigates by address", async () => {
     mocks.router.push.mockClear();
     const { container } = renderBuilder();
     await screen.findByRole("heading", { name: mocks.course.title });
@@ -803,8 +803,8 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(unsubscribe).toHaveBeenCalledOnce();
   });
 
-  // jsdom serve em localhost, que é "fora de produção": o checkout fica relativo
-  // (o host curto só resolve em produção) e a página do produto segue em www.
+  // jsdom serves on localhost, which is "outside production": checkout stays relative
+  // (the short host only resolves in production) and the product page stays on www.
   it("offers permanent checkout and product page links in Promo links", async () => {
     mocks.searchParams.set("section", "links");
     render(<CourseManageHub courseId="course-1" />);
@@ -1147,7 +1147,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
         expect(link.tagName).toBe("A");
         expect(link).toHaveAttribute("href", "/teach/builder/course-1/preview");
         expect(link).toHaveAttribute("target", "_blank");
-        // A prévia fecha a própria aba ao sair: precisa saber quem a abriu.
+        // The preview closes its own tab on exit: it needs to know who opened it.
         expect(link).toHaveAttribute("rel", "opener");
         fireEvent.click(link);
       }
@@ -1236,7 +1236,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     await act(async () => fireEvent.change(screen.getByLabelText("Upload cover"), { target: { files: [new File(["image"], "cover.png", { type: "image/png" })] } }));
     act(() => emitAssets([{ id: "new-cover", courseId: "course-1", ownerId: "teacher-1", kind: "members_cover", fileName: "cover.png", contentType: "image/png", size: 5, storagePath: "fixture/cover.png", downloadUrl: "/fixture-cover.png", isPreview: false, lessonId: null }]));
     expect(screen.getByRole("img", { name: `${authorTitle} members cover` })).toHaveAttribute("src", "/fixture-cover.png");
-    // Sem o selo "Cover set" (B-05): a prévia e o "Replace cover" dizem que há capa.
+    // Without the "Cover set" badge (B-05): the preview and "Replace cover" say there is a cover.
     expect(screen.getByLabelText("Replace cover")).toHaveAttribute("type", "file");
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
     expect(screen.getByRole("img", { name: `Portada del área de miembros de ${authorTitle}` })).toHaveAttribute("src", "/fixture-cover.png");
@@ -1248,9 +1248,9 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(subscribeToCourseAssets).toHaveBeenCalledOnce();
   });
 
-  // O rodape saiu: o erro da biblioteca sai embaixo dela, e com ela fechada,
-  // no topo da pagina.
-  it("biblioteca de midia: a falha ao reler os arquivos sai embaixo dela", async () => {
+  // The footer is gone: the library error shows below it, and with it closed,
+  // at the top of the page.
+  it("media library: the failure to reload the files is announced below it", async () => {
     renderBuilder();
     await screen.findByRole("heading", { name: mocks.course.title });
     fireEvent.click(screen.getByRole("button", { name: "Open media library" }));
@@ -1264,9 +1264,9 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(document.querySelector(".course-builder-hero")?.nextElementSibling).toBe(screen.getByRole("alert"));
   });
 
-  // A chave da comunidade era feita a mao (48x28, botao por `left`): agora e a
-  // mesma da Conta. E a linha inteira e a chave: o texto ao lado tambem liga.
-  it("comunidade: a chave da Conta liga e desliga com o mesmo estado", async () => {
+  // The community switch was hand-made (48x28, button positioned by `left`): now it is the
+  // same one as Account. And the whole row is the switch: the text beside it toggles too.
+  it("community: the Account switch turns on and off with the same state", async () => {
     renderMembers();
     const toggle = await screen.findByRole("switch", { name: "Enable course community" });
     expect(toggle).toHaveAttribute("aria-checked", "false");
@@ -1280,38 +1280,38 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(screen.getByText("Community is on. Students see a Community section in this course.")).toBeInTheDocument();
   });
 
-  it("a funcao pura e a referencia: 4 de 6 checks, 67%", () => {
+  it("the pure function is the reference: 4 of 6 checks, 67%", () => {
     expect(expected.doneCount).toBe(4);
     expect(expected.total).toBe(6);
     expect(expected.percent).toBe(67);
   });
 
-  it("construtor: a prontidao aparece uma vez, no stepper, com a barra em 67%", async () => {
+  it("builder: readiness shows once, in the stepper, with the bar at 67%", async () => {
     render(<CourseBuilderStudio />);
 
     await screen.findByRole("heading", { name: "Clinical performance foundations" });
 
-    // O titulo chega antes da consulta do plano; esperar a porcentagem final.
-    // Uma linha so: o chip do topo e o cartao do rodape repetiam o numero.
+    // The title arrives before the plan query; wait for the final percentage.
+    // One line only: the top chip and the footer card used to repeat the number.
     expect(
       await screen.findByText(`${expected.doneCount} of ${expected.total} checks · ${expected.percent}%`),
     ).toBeInTheDocument();
     expect(screen.queryAllByText(new RegExp(`${expected.percent}%`))).toHaveLength(1);
-    // Uma leitura so: a frase e o nome da barra; a linha visivel fica fora da
-    // arvore de acessibilidade para o leitor de tela nao repeti-la.
+    // One reading only: the sentence is the bar's name; the visible line stays out of the
+    // accessibility tree so the screen reader does not repeat it.
     const checksLine = screen.getByText(`${expected.doneCount} of ${expected.total} checks · ${expected.percent}%`);
     expect(checksLine).toHaveAttribute("aria-hidden", "true");
     expect(screen.getByRole("progressbar", { name: checksLine.textContent! })).toBeInTheDocument();
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", String(expected.percent));
 
-    // O proximo passo sai uma vez, no stepper; o rodape nao repete a lista.
+    // The next step shows once, in the stepper; the footer does not repeat the list.
     expect(screen.getAllByText("Add at least one lesson.")).toHaveLength(1);
     expect(screen.queryByText("Set a price above $0, or choose Free.")).toBeNull();
     expect(screen.queryByRole("button", { name: "Publish product" })).toBeNull();
     cleanup();
 
-    // As pendencias moram na aba Publish, da mesma lista, e o Publish apagado
-    // diz por que.
+    // The pending items live on the Publish tab, from the same list, and the disabled Publish
+    // says why.
     mocks.searchParams.set("tab", "review");
     render(<CourseBuilderStudio />);
     await screen.findByRole("heading", { name: "Clinical performance foundations" });
@@ -1406,12 +1406,12 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(mocks.router.replace).not.toHaveBeenCalled();
   });
 
-  // Um curso podia ser publicado com aulas vazias. O Publish do construtor
-  // agora trava e diz qual aula falta; com conteudo nas duas, destrava.
+  // A course could be published with empty lessons. The builder's Publish
+  // now locks and says which lesson is missing; with content in both, it unlocks.
   it.each([
     ["uma aula vazia", false],
     ["conteudo nas duas", true],
-  ] as const)("construtor: Publish com %s", async (_case, filled) => {
+  ] as const)("builder: Publish with %s", async (_case, filled) => {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emit({
         ...mocks.course,
@@ -1442,7 +1442,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(publishTeacherCourse).not.toHaveBeenCalled();
   });
 
-  it("Manage: barra e contagem mostram os mesmos 67% e as mesmas pendencias", async () => {
+  it("Manage: bar and count show the same 67% and the same pending items", async () => {
     render(<CourseManageHub courseId="course-1" />);
 
     await screen.findByText("Publish checklist");
@@ -1453,7 +1453,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", String(expected.percent));
-    // Uma leitura so: a frase e o nome da barra, e a linha visivel fica escondida.
+    // One reading only: the sentence is the bar's name, and the visible line stays hidden.
     const stepsLine = screen.getByText(`${expected.doneCount} of ${expected.total} required steps done · ${expected.percent}% ready`);
     expect(stepsLine).toHaveAttribute("aria-hidden", "true");
     expect(screen.getByRole("progressbar", { name: stepsLine.textContent! })).toBeInTheDocument();
@@ -1465,9 +1465,9 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     ).toBeInTheDocument();
   });
 
-  // O Manage nao lia a lista de arquivos e tirava "conteudo em toda aula": o
-  // mesmo curso dava 83% la e 71% no construtor.
-  it("aula vazia: construtor e Manage mostram o mesmo numero, com o mesmo item", async () => {
+  // Manage did not read the file list and dropped "content in every lesson": the
+  // same course gave 83% there and 71% in the builder.
+  it("empty lesson: builder and Manage show the same number, with the same item", async () => {
     const withEmptyLesson: TeacherCourse = {
       ...mocks.course,
       modules: [{ id: "m1", title: "Start here", lessons: [
@@ -1499,9 +1499,9 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "71");
   });
 
-  // B-15: sem a lista de arquivos o Manage dava outro número que o construtor
-  // (e a falha era engolida). Agora espera com "—%", e a falha tem "Try again".
-  it("Manage: sem a lista de arquivos, —% no lugar do numero e Try again", async () => {
+  // B-15: without the file list, Manage gave a different number than the builder
+  // (and the failure was swallowed). Now it waits with "—%", and the failure has "Try again".
+  it("Manage: without the file list, —% in place of the number and Try again", async () => {
     const withLesson: TeacherCourse = {
       ...mocks.course,
       modules: [{ id: "m1", title: "Start here", lessons: [
@@ -1527,10 +1527,10 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
   });
 });
 
-// Corte 1 da criacao simples: quem escolhe Gratis nao passa pela aba de preco
-// inteira, o parcelamento morto some, a liberacao das aulas sai do preco e a
-// cobranca recorrente diz "cobrar todo mes / todo ano".
-describe("aba de preco sem o que nao se aplica", () => {
+// Cut 1 of simple creation: whoever picks Free does not go through the whole
+// price tab, the dead installments disappear, lesson release leaves pricing and
+// recurring charge says "charge every month / every year".
+describe("price tab without what does not apply", () => {
   const freeCourse: TeacherCourse = { ...mocks.course, paymentType: "free", priceAmountMinor: 0 };
 
   function emit(course: TeacherCourse) {
@@ -1554,7 +1554,7 @@ describe("aba de preco sem o que nao se aplica", () => {
     vi.restoreAllMocks();
   });
 
-  it("produto gratis: a frase 'This product is free' toma o lugar dos campos de preco, nao dos cartoes", async () => {
+  it("free product: the phrase 'This product is free' takes the place of the price fields, not of the cards", async () => {
     emit(freeCourse);
     renderBuilder("pricing");
     await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
@@ -1568,9 +1568,9 @@ describe("aba de preco sem o que nao se aplica", () => {
     expect(screen.getByRole("button", { name: /Monthly membership/ })).toBeInTheDocument();
   });
 
-  // Teclado e leitor de tela: antes o grupo de cartoes inteiro desmontava ao
-  // escolher Gratis (e a frase ao voltar para pago), e o foco caia no <body>.
-  it("trocar entre Gratis e pago deixa o foco no cartao clicado e so os campos de preco somem e voltam", async () => {
+  // Keyboard and screen reader: before, the whole group of cards unmounted when
+  // picking Free (and the sentence when going back to paid), and focus fell on <body>.
+  it("switching between Free and paid keeps focus on the clicked card and only the price fields disappear and come back", async () => {
     renderBuilder("pricing");
     await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
 
@@ -1592,21 +1592,21 @@ describe("aba de preco sem o que nao se aplica", () => {
     expect(screen.getByRole("combobox", { name: "Currency" })).toBeInTheDocument();
   });
 
-  it("produto gratis: o checklist de publicar nao pede preco", async () => {
+  it("free product: the publish checklist does not ask for a price", async () => {
     emit(freeCourse);
     renderBuilder("review");
     await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
 
     expect(screen.queryByText(/Set a paid price/)).not.toBeInTheDocument();
     expect(screen.queryByText("Pricing", { selector: "p" })).not.toBeInTheDocument();
-    // A venda sem item dizia "Sale available · 0 of 0"; os outros grupos
-    // continuam com a contagem.
+    // A sale with no items said "Sale available · 0 of 0"; the other groups
+    // keep the count.
     expect(document.querySelector('[data-readiness-group="sale"] p')).toHaveTextContent(/^Sale available$/);
     expect(document.querySelector('[data-readiness-group="content"] p')).toHaveTextContent(/^Content saved · \d+ of \d+$/);
     expect(screen.queryByText(/0 of 0/)).not.toBeInTheDocument();
   });
 
-  it("produto pago: uma pergunta, a mensalidade diz que se repete e a frase fixa separa parcelar de mensalidade", async () => {
+  it("paid product: one question, the monthly fee says it repeats and the fixed sentence separates installments from monthly fee", async () => {
     renderBuilder("pricing");
     await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
 
@@ -1617,14 +1617,14 @@ describe("aba de preco sem o que nao se aplica", () => {
     expect(screen.queryByText(/subscription|Payment model|Marketplace setup|billing interval/i)).not.toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Price" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Free preview lesson" })).toBeInTheDocument();
-    // F-12: sem aula o seletor fica apagado e diz por quê.
+    // F-12: with no lesson the selector stays disabled and says why.
     expect(screen.getByRole("combobox", { name: "Free preview lesson" })).toBeDisabled();
     expect(screen.getByRole("combobox", { name: "Free preview lesson" }))
       .toHaveAccessibleDescription("Add a lesson in Curriculum first, then pick it here.");
   });
 
   // F-12: no teto de resultados o "Add" apagava calado.
-  it("resultados no teto: o Add apagado diz o limite", async () => {
+  it("results at the cap: the disabled Add states the limit", async () => {
     renderBuilder("details");
     await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
     const add = screen.getByRole("button", { name: "Add learning outcome" });
@@ -1636,7 +1636,7 @@ describe("aba de preco sem o que nao se aplica", () => {
   it.each([
     ["flag desligada, conta do Mexico", undefined, "MX"],
     ["flag ligada, conta dos EUA", "true", "US"],
-  ])("parcelamento fica escondido: %s", async (_case, flag, country) => {
+  ])("installments stay hidden: %s", async (_case, flag, country) => {
     if (flag) vi.stubEnv("NEXT_PUBLIC_PAYMENTS_CARD_INSTALLMENTS_ENABLED", flag);
     profileExtra.stripeConnectCountry = country;
     renderBuilder("pricing");
@@ -1648,10 +1648,10 @@ describe("aba de preco sem o que nao se aplica", () => {
     expect(screen.queryByText(/Stripe requires/)).not.toBeInTheDocument();
   });
 
-  // A mesma regra do checkout (canSplitPayments): flag, MXN e conta do
-  // Mexico. Com a conta certa e a moeda errada a opcao tambem nao existe, em
-  // vez de aparecer desligada pedindo para trocar a moeda.
-  it("parcelamento aparece so com flag ligada, conta do Mexico e MXN, com a previa das parcelas", async () => {
+  // Same rule as checkout (canSplitPayments): flag, MXN and a Mexico
+  // account. With the right account and the wrong currency the option does not exist either,
+  // instead of showing up disabled asking to change the currency.
+  it("installments only show with the flag on, a Mexico account and MXN, with the installments preview", async () => {
     vi.stubEnv("NEXT_PUBLIC_PAYMENTS_CARD_INSTALLMENTS_ENABLED", "true");
     profileExtra.stripeConnectCountry = "MX";
     renderBuilder("pricing");
@@ -1668,12 +1668,12 @@ describe("aba de preco sem o que nao se aplica", () => {
     expect(screen.getByText(`3x of ${new Intl.NumberFormat("en", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(100)}`)).toBeInTheDocument();
     expect(screen.queryByText(/Mexican card|card issuer|not a subscription/)).not.toBeInTheDocument();
 
-    // Mensalidade nao parcela: a opcao some.
+    // A monthly fee does not split into installments: the option disappears.
     fireEvent.click(screen.getByRole("button", { name: /Monthly membership/ }));
     expect(screen.queryByRole("checkbox", { name: "Let them split it into payments" })).not.toBeInTheDocument();
   });
 
-  it("a liberacao das aulas mora no conteudo, nao no preco", async () => {
+  it("lesson release lives in the content, not in the price", async () => {
     renderBuilder("pricing");
     await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
 
@@ -1686,15 +1686,15 @@ describe("aba de preco sem o que nao se aplica", () => {
     expect(screen.getByRole("heading", { name: "When lessons open" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Lesson release" })).toHaveValue("instant");
 
-    // O intervalo padrao e 1: "Release lessons every 1 days" saia errado.
+    // The default interval is 1: "Release lessons every 1 days" came out wrong.
     fireEvent.change(screen.getByRole("combobox", { name: "Lesson release" }), { target: { value: "time_drip_lesson" } });
     expect(screen.getByRole("textbox", { name: "Days between releases" })).toHaveValue("1");
     expect(screen.queryByText(/Release (lessons|modules) every/)).not.toBeInTheDocument();
   });
 
-  // O atalho "Add a short welcome lesson" da Agenda chega com ?welcome=1: o
-  // primeiro modulo ja vem com o nome preenchido.
-  it("atalho da aula de boas-vindas: o primeiro modulo nasce com o nome Welcome", async () => {
+  // The "Add a short welcome lesson" shortcut from the Agenda arrives with ?welcome=1: the
+  // first module already comes with its name filled in.
+  it("welcome lesson shortcut: the first module is created with the name Welcome", async () => {
     emit({ ...mocks.course, modules: [] });
     mocks.searchParams.set("welcome", "1");
     renderBuilder("content");
@@ -1702,8 +1702,8 @@ describe("aba de preco sem o que nao se aplica", () => {
 
     expect(screen.getByRole("textbox", { name: "Module title" })).toHaveValue("Welcome");
 
-    // Preenchido uma vez, o parametro sai da URL (replace, sem nova entrada no
-    // historico). Recarregar a URL que ficou nao preenche outro "Welcome".
+    // Filled once, the parameter leaves the URL (replace, no new history
+    // entry). Reloading the URL that was left does not fill in another "Welcome".
     expect(mocks.router.replace).toHaveBeenCalledOnce();
     const [href, options] = vi.mocked(mocks.router.replace).mock.calls[0];
     const next = new URL(String(href), "https://app.test");
@@ -1722,7 +1722,7 @@ describe("aba de preco sem o que nao se aplica", () => {
     expect(mocks.router.replace).toHaveBeenCalledOnce();
   });
 
-  it("detalhes chama o texto de Description", async () => {
+  it("details calls the text Description", async () => {
     renderBuilder("details");
     await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
 
@@ -1730,7 +1730,7 @@ describe("aba de preco sem o que nao se aplica", () => {
     expect(screen.queryByText(/summary/i)).not.toBeInTheDocument();
   });
 
-  it("rodape: Continue cheio, grande e com seta; Back contornado", async () => {
+  it("footer: Continue filled, large and with an arrow; Back outlined", async () => {
     renderBuilder("pricing");
     await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
 
@@ -1743,12 +1743,12 @@ describe("aba de preco sem o que nao se aplica", () => {
   });
 });
 
-// O professor de um curso ainda nao publicado abria o Painel e via tres caixas
-// vazias — "ninguem comprou este produto ainda", "precisa da sua atencao" e
-// "atividade recente" — antes de chegar no que ele foi procurar: o que falta
-// para publicar. E cada linha do checklist so descrevia a pendencia, sem levar
-// a lugar nenhum.
-describe("Painel: o que falta para publicar vem primeiro e cada linha leva a algum lugar", () => {
+// The teacher of a course not yet published opened the Panel and saw three empty boxes
+// — "nobody bought this product yet", "needs your attention" and
+// "recent activity" — before reaching what they came for: what is missing
+// to publish. And each checklist row only described the pending item, without taking
+// them anywhere.
+describe("Dashboard: what is missing to publish comes first and each row leads somewhere", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.resetSubscriptionCounts();
@@ -1765,18 +1765,18 @@ describe("Painel: o que falta para publicar vem primeiro e cada linha leva a alg
 
   function checklistCard() {
     const card = screen.getByText("Publish checklist").closest("section");
-    if (!card) throw new Error("checklist card nao montou");
+    if (!card) throw new Error("checklist card did not mount");
     return card;
   }
 
-  it("rascunho: o checklist vem ANTES do painel; publicado: depois", async () => {
+  it("draft: the checklist comes BEFORE the panel; published: after", async () => {
     const { unmount } = render(<CourseManageHub courseId="course-1" />);
     await screen.findByText("Publish checklist");
 
     const draftOrder = checklistCard().compareDocumentPosition(
       screen.getByTestId("course-overview-panel"),
     );
-    // FOLLOWING = o painel vem DEPOIS do checklist no DOM (e na tela).
+    // FOLLOWING = the panel comes AFTER the checklist in the DOM (and on screen).
     expect(draftOrder & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     unmount();
 
@@ -1793,7 +1793,7 @@ describe("Painel: o que falta para publicar vem primeiro e cada linha leva a alg
     expect(liveOrder & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
   });
 
-  it("cada linha leva a tela que EDITA o campo, e nao duplica o link da verificacao", async () => {
+  it("each row leads to the screen that EDITS the field, and does not duplicate the verification link", async () => {
     render(<CourseManageHub courseId="course-1" />);
     await screen.findByText("Publish checklist");
     const card = checklistCard();
@@ -1807,39 +1807,39 @@ describe("Painel: o que falta para publicar vem primeiro e cada linha leva a alg
     expect(hrefOf("Cover image")).toBe("/teach/builder?courseId=course-1&tab=details");
     expect(hrefOf("Lesson")).toBe("/teach/builder?courseId=course-1&tab=content");
     expect(hrefOf("Pricing")).toBe("/teach/builder?courseId=course-1&tab=pricing");
-    // Resultados de aprendizagem tem editor de verdade DENTRO do hub.
+    // Learning outcomes have a real editor INSIDE the hub.
     expect(hrefOf("Learning outcomes")).toBe(
       "/teach/courses/course-1/manage?section=page",
     );
-    // A verificacao ja tem o proprio link na dica: nao ganha um segundo.
+    // Verification already has its own link in the hint: it does not get a second one.
     expect(within(card).getByRole("link", { name: "Open verification" })).toBeInTheDocument();
     expect(within(card).queryByLabelText(/^Edit Professional verification$/)).toBeNull();
   });
 
-  // O mesmo desenho do construtor: check desenhado verde (com "Done" para o
-  // leitor de tela) e circulo vazio, e a mesma barra de latao. Antes era um
-  // "✓" digitado numa bolinha azul e uma barra azul mais grossa.
-  it("linha concluida tem o check verde do construtor; linha pendente, o circulo vazio", async () => {
+  // The same drawing as the builder: a drawn green check (with "Done" for the
+  // screen reader) and an empty circle, and the same brass bar. Before it was a
+  // typed "✓" in a blue dot and a thicker blue bar.
+  it("completed row has the builder's green check; pending row, the empty circle", async () => {
     render(<CourseManageHub courseId="course-1" />);
     await screen.findByText("Publish checklist");
     const card = checklistCard();
 
-    // "Module" esta feito (o curso tem um modulo); "Lesson" nao.
+    // "Module" is done (the course has one module); "Lesson" is not.
     const done = card.querySelector<HTMLElement>('[data-readiness-item="module"]')!;
     const pending = card.querySelector<HTMLElement>('[data-readiness-item="lesson"]')!;
     expect(done.querySelector("[data-drawn-check]")).not.toBeNull();
     expect(done).toHaveTextContent(/^Done: /);
     expect(done).not.toHaveTextContent("✓");
     expect(pending.querySelector("[data-drawn-check]")).toBeNull();
-    // A barra compartilhada: preenchimento no latão de texto (contraste 3:1).
+    // The shared bar: fill in the text brass (3:1 contrast).
     expect(screen.getByRole("progressbar").firstElementChild).toHaveClass("bg-[var(--color-accent-fg)]");
   });
 });
 
-// A taxa de ativacao so aparecia como erro do banco DEPOIS do clique em Publish,
-// o item de payouts nao levava a lugar nenhum e o sucesso nao dava o link para
-// divulgar. Agora tudo isso aparece na aba Publish, antes e depois do clique.
-describe("publicar sem surpresa", () => {
+// The activation fee only showed up as a database error AFTER clicking Publish,
+// the payouts item did not lead anywhere and success did not give the link to
+// share. Now all of that shows on the Publish tab, before and after the click.
+describe("publish without surprise", () => {
   const readyFreeCourse: TeacherCourse = {
     ...mocks.course,
     paymentType: "free",
@@ -1924,14 +1924,14 @@ describe("publicar sem surpresa", () => {
     expect(screen.getByRole("button", { name: "Copy my page link" })).toBeInTheDocument();
   });
 
-  // O pico da jornada era um paragrafo cinza igual ao "Draft saved.". Agora e
-  // um painel com a cena "Publicado!" e o foco no botao latao de copiar.
+  // The peak of the journey was a gray paragraph just like "Draft saved.". Now it is
+  // a panel with the "Published!" scene and focus on the brass copy button.
   describe("o painel Publicado!", () => {
     beforeEach(() => {
       window.localStorage.clear();
     });
 
-    it("troca o paragrafo cinza pela cena e leva o foco ao 'Copy my page link'", async () => {
+    it("swaps the gray paragraph for the scene and moves focus to 'Copy my page link'", async () => {
       vi.mocked(publishTeacherCourse).mockResolvedValueOnce(undefined as never);
       const { container } = renderBuilder("review");
       await publishProduct();
@@ -1939,18 +1939,18 @@ describe("publicar sem surpresa", () => {
       const copy = await screen.findByRole("button", { name: "Copy my page link" });
       await waitFor(() => expect(copy).toHaveFocus());
       expect(copy).toHaveClass("button-accent");
-      // O botao le o titulo e a frase do painel para quem chega pelo foco.
+      // The button reads the panel's title and sentence for whoever arrives by focus.
       expect(copy).toHaveAccessibleDescription(/It's live\. Your product page is open to everyone/);
 
       const panel = screen.getByRole("region", { name: "It's live." });
       expect(panel).toHaveClass("published-panel", "is-celebrating");
       expect(panel.querySelector('svg[data-scene="published"]')).toHaveAttribute("aria-hidden", "true");
       expect(container.querySelector(".info-notice")).toBeNull();
-      // Um latao por tela: o "Publish product" sai enquanto o painel esta ali.
+      // One brass per screen: "Publish product" leaves while the panel is there.
       expect(screen.queryByRole("button", { name: "Publish product" })).toBeNull();
     });
 
-    it("festeja uma vez por produto: publicar de novo mostra o painel parado", async () => {
+    it("celebrates once per product: publishing again shows the still panel", async () => {
       window.localStorage.setItem("skillsetmind.publishedCelebrated.course-1", "1");
       vi.mocked(publishTeacherCourse).mockResolvedValueOnce(undefined as never);
       renderBuilder("review");
@@ -1972,8 +1972,8 @@ describe("publicar sem surpresa", () => {
     expect(blocked).toHaveBeenCalledWith({ course_id: "course-1", reason: "payouts" });
   });
 
-  // Quem nunca assinou ia para os recibos ("Manage plan"): agora vai aos
-  // planos, como na Home do professor. Quem tem plano segue gerenciando.
+  // Whoever never subscribed went to the receipts ("Manage plan"): now they go to the
+  // plans, as on the teacher's Home. Whoever has a plan keeps managing.
   it.each([
     ["free", "See plans", "/account/plans"],
     ["pro", "Manage plan", "/account/billing?tab=subscriptions"],
@@ -2061,9 +2061,9 @@ describe("item de payouts no construtor", () => {
   });
 });
 
-// Cada pendencia do Publish leva ao lugar de resolver; produto no ar nao
-// mostra um "Publish product" apagado e mudo.
-describe("aba Publish: cada pendencia tem para onde ir", () => {
+// Each Publish pending item leads to the place to fix it; a product that is live does not
+// show a disabled, mute "Publish product".
+describe("Publish tab: each pending item has somewhere to go", () => {
   afterEach(() => {
     cleanup();
     mocks.searchParams.delete("tab");
@@ -2071,7 +2071,7 @@ describe("aba Publish: cada pendencia tem para onde ir", () => {
     vi.restoreAllMocks();
   });
 
-  it("o item de preco leva a aba Pricing, e o nome do item vai no botao", async () => {
+  it("the price item leads to the Pricing tab, and the item name goes on the button", async () => {
     renderBuilder("review");
     await screen.findByRole("heading", { name: mocks.course.title });
     const fix = await screen.findByRole("button", { name: "Go to Pricing: Pricing" });
@@ -2082,7 +2082,7 @@ describe("aba Publish: cada pendencia tem para onde ir", () => {
     );
   });
 
-  it("conteudo faltando abre a primeira aula sem conteudo", async () => {
+  it("missing content opens the first lesson without content", async () => {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emit({
         ...mocks.course,
@@ -2102,7 +2102,7 @@ describe("aba Publish: cada pendencia tem para onde ir", () => {
     );
   });
 
-  it("produto no ar diz que nao precisa publicar de novo, sem botao apagado", async () => {
+  it("live product says it does not need to be published again, with no disabled button", async () => {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emit({ ...mocks.course, status: "published" });
       return Object.assign(() => {}, { reload: async () => {} });
@@ -2115,9 +2115,9 @@ describe("aba Publish: cada pendencia tem para onde ir", () => {
   });
 });
 
-// O Manage chegava a 100% com o construtor dizendo "nao esta pronto": nao
-// conhecia a sessao do evento ao vivo nem o arquivo do e-book.
-describe("Manage: o que o tipo entrega entra na porcentagem", () => {
+// Manage reached 100% with the builder saying "not ready": it did not
+// know the live event session nor the e-book file.
+describe("Manage: what the type delivers counts toward the percentage", () => {
   afterEach(() => {
     cleanup();
     sessions.list = [];
@@ -2143,7 +2143,7 @@ describe("Manage: o que o tipo entrega entra na porcentagem", () => {
 
   const free = { paymentType: "free" as const, priceAmountMinor: 0 };
 
-  it("evento ao vivo: a sessao por vir e um item, pendente ate existir", async () => {
+  it("live event: the upcoming session is an item, pending until it exists", async () => {
     const event = { ...mocks.course, ...free, productFormat: "live_event" as const, modules: [], lessonCount: 0 };
     const pending = renderHub(event);
     await screen.findByRole("heading", { name: event.title });
@@ -2163,7 +2163,7 @@ describe("Manage: o que o tipo entrega entra na porcentagem", () => {
     await waitFor(() => expect(done(row(ready.container, "session"))).toBe(true));
   });
 
-  it("e-book: o arquivo na aula do produto e um item", async () => {
+  it("e-book: the file in the product's lesson is an item", async () => {
     const ebook = {
       ...mocks.course,
       ...free,
@@ -2189,9 +2189,9 @@ describe("Manage: o que o tipo entrega entra na porcentagem", () => {
   });
 });
 
-// Criar o produto redirecionava em silencio. Agora a tela de criar manda
-// ?created=1 e o construtor mostra a faixa de marco uma vez.
-describe("faixa de marco depois de criar (created=1)", () => {
+// Creating the product used to redirect in silence. Now the create screen sends
+// ?created=1 and the builder shows the milestone banner once.
+describe("milestone banner after creating (created=1)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.resetSubscriptionCounts();
@@ -2205,7 +2205,7 @@ describe("faixa de marco depois de criar (created=1)", () => {
     vi.useRealTimers();
   });
 
-  it("aparece com o proximo passo do curso e tira o parametro da URL", async () => {
+  it("shows with the course's next step and removes the URL parameter", async () => {
     renderBuilder("content");
 
     const text = await screen.findByText("Draft saved. Next: your first lesson.");
@@ -2218,7 +2218,7 @@ describe("faixa de marco depois de criar (created=1)", () => {
     );
   });
 
-  it("fecha no X e nao volta", async () => {
+  it("closes on the X and does not come back", async () => {
     renderBuilder("content");
     await screen.findByText("Draft saved. Next: your first lesson.");
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
@@ -2227,7 +2227,7 @@ describe("faixa de marco depois de criar (created=1)", () => {
 
   const STRIP = "Draft saved. Next: your first lesson.";
 
-  it("some sozinha em 4 segundos", () => {
+  it("disappears by itself in 4 seconds", () => {
     vi.useFakeTimers();
     renderBuilder("content");
     act(() => vi.advanceTimersByTime(0));
@@ -2238,21 +2238,21 @@ describe("faixa de marco depois de criar (created=1)", () => {
     expect(screen.queryByText(STRIP)).toBeNull();
   });
 
-  // NVDA e JAWS nao anunciam uma regiao viva que ja nasce preenchida.
-  it("a regiao role=status ja esta montada, vazia, quando o texto entra", () => {
+  // NVDA and JAWS do not announce a live region that is born already filled.
+  it("the role=status region is already mounted, empty, when the text enters", () => {
     vi.useFakeTimers();
     renderBuilder("content");
     const region = screen.getAllByRole("status").find((node) => node.classList.contains("absolute"))!;
     expect(region).toBeEmptyDOMElement();
     act(() => vi.advanceTimersByTime(0));
     expect(region).toHaveTextContent(STRIP);
-    // Fechada, a regiao continua ali, so sem conteudo.
+    // Closed, the region is still there, just without content.
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(region).toBeInTheDocument();
     expect(region).toBeEmptyDOMElement();
   });
 
-  it("para o relogio com o ponteiro ou o foco na faixa", () => {
+  it("stops the clock with the pointer or focus on the banner", () => {
     vi.useFakeTimers();
     renderBuilder("content");
     act(() => vi.advanceTimersByTime(0));
@@ -2263,7 +2263,7 @@ describe("faixa de marco depois de criar (created=1)", () => {
     expect(screen.getByText(STRIP)).toBeInTheDocument();
     fireEvent.mouseLeave(strip);
 
-    // Foco no X: a faixa nao some debaixo dele (o foco cairia no <body>).
+    // Focus on the X: the banner does not vanish from under it (focus would fall on <body>).
     const close = screen.getByRole("button", { name: "Close" });
     act(() => close.focus());
     act(() => vi.advanceTimersByTime(10_000));
@@ -2277,9 +2277,9 @@ describe("faixa de marco depois de criar (created=1)", () => {
     expect(screen.queryByText(STRIP)).toBeNull();
   });
 
-  // O curso nasce com "Modulo 1, Aula 1": a faixa vira atalho para ela e nao
-  // some sozinha (em 4s o botao saia de alcance).
-  it("com a aula que ja existe, a faixa leva a ela e fica ate ser usada", () => {
+  // The course is born with "Module 1, Lesson 1": the banner becomes a shortcut to it and does not
+  // disappear on its own (after 4s the button went out of reach).
+  it("with the lesson that already exists, the banner leads to it and stays until used", () => {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emit({ ...mocks.course, modules: [{ id: "m1", title: "Module 1", lessons: [{ id: "l1", title: "Lesson 1", description: "", type: "video" }] }] });
       return Object.assign(() => {}, { reload: async () => {} });
@@ -2291,7 +2291,7 @@ describe("faixa de marco depois de criar (created=1)", () => {
     act(() => vi.advanceTimersByTime(10_000));
     expect(screen.getByText(STRIP)).toBeInTheDocument();
     fireEvent.click(open);
-    // (O ?created=1 sai pelo router.replace, que aqui e um mock.)
+    // (?created=1 is removed by router.replace, which here is a mock.)
     expect(mocks.router.push).toHaveBeenCalledWith(
       expect.stringMatching(/^\/teach\/builder\?courseId=course-1&.*tab=content&module=m1&lesson=l1$/),
       { scroll: false },
@@ -2299,9 +2299,9 @@ describe("faixa de marco depois de criar (created=1)", () => {
     expect(screen.queryByText(STRIP)).toBeNull();
   });
 
-  // Presa no pe da tela, a faixa cobria o "Continue to…" e o rodape das
-  // outras abas: fora da aba de conteudo ela sai.
-  it("sai ao trocar para outra aba", async () => {
+  // Pinned to the foot of the screen, the banner covered "Continue to…" and the footer of the
+  // other tabs: outside the content tab it goes away.
+  it("leaves when switching to another tab", async () => {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emit({ ...mocks.course, modules: [{ id: "m1", title: "Module 1", lessons: [{ id: "l1", title: "Lesson 1", description: "", type: "video" }] }] });
       return Object.assign(() => {}, { reload: async () => {} });
@@ -2316,7 +2316,7 @@ describe("faixa de marco depois de criar (created=1)", () => {
       </I18nProvider>,
     );
     expect(screen.queryByText(STRIP)).toBeNull();
-    // E nao volta ao retornar para o conteudo.
+    // And it does not come back when returning to the content.
     mocks.searchParams.set("tab", "content");
     view.rerender(
       <I18nProvider initialLocale="en">
@@ -2327,9 +2327,9 @@ describe("faixa de marco depois de criar (created=1)", () => {
     expect(screen.queryByText(STRIP)).toBeNull();
   });
 
-  // A comunidade nao tem "post de boas-vindas" no construtor; preco existe
-  // em todo tipo.
-  it("na comunidade, o proximo passo e o preco", async () => {
+  // The community has no "welcome post" in the builder; price exists
+  // in every kind.
+  it("in the community, the next step is the price", async () => {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emit({ ...mocks.course, productFormat: "community", communityEnabled: true });
       return Object.assign(() => {}, { reload: async () => {} });
@@ -2338,10 +2338,10 @@ describe("faixa de marco depois de criar (created=1)", () => {
     expect(await screen.findByText("Draft saved. Next: set your price.")).toBeInTheDocument();
   });
 
-  // A frase do evento depende das sessoes, que chegam uma ida a rede depois
-  // do curso. Antes a faixa dizia "agende" a quem ja tinha agendado e trocava
-  // a frase na cara do leitor de tela.
-  describe("evento ao vivo: espera as sessoes antes de falar", () => {
+  // The event sentence depends on the sessions, which arrive one network round trip after
+  // the course. Before, the banner said "schedule" to someone who had already scheduled and swapped
+  // the sentence in front of the screen reader.
+  describe("live event: waits for the sessions before speaking", () => {
     const liveEvent = {
       ...mocks.course,
       paymentType: "free" as const,
@@ -2370,7 +2370,7 @@ describe("faixa de marco depois de criar (created=1)", () => {
       sessions.held = null;
     });
 
-    it("com sessao marcada: so fala depois da lista, e diz que ja esta no calendario", () => {
+    it("with a scheduled session: speaks only after the list, and says it is already on the calendar", () => {
       vi.useFakeTimers();
       renderBuilder("content");
       act(() => vi.advanceTimersByTime(0));
@@ -2382,7 +2382,7 @@ describe("faixa de marco depois de criar (created=1)", () => {
       expect(screen.queryByText("Draft saved. Next: schedule your session.")).toBeNull();
     });
 
-    it("sem sessao: so fala depois da lista, e pede para agendar", () => {
+    it("without a session: speaks only after the list, and asks to schedule", () => {
       vi.useFakeTimers();
       renderBuilder("content");
       act(() => vi.advanceTimersByTime(0));
@@ -2395,7 +2395,7 @@ describe("faixa de marco depois de criar (created=1)", () => {
   });
 });
 
-// Onda D, consertos da revisao: movimento so na MUDANCA, nunca na carga.
+// Wave D, review fixes: motion only on CHANGE, never on load.
 describe("movimento so na mudanca", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -2419,14 +2419,14 @@ describe("movimento so na mudanca", () => {
       return Object.assign(() => {}, { reload: async () => {} });
     });
   const payoutsRow = () => screen.getAllByText("Stripe payouts")[0].closest("li")!;
-  // As leituras por promessa (flag de verificacao, arquivos do curso) voltam.
+  // The promise-based reads (verification flag, course files) are back.
   const settle = () => act(async () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
 
-  // P1: abrir ?tab=review com o perfil chegando depois do curso acendia
-  // "Stripe payouts" em latao sem ninguem ter feito nada.
-  it("o perfil que chega atrasado nao acende linha nem desenha check", async () => {
+  // P1: opening ?tab=review with the profile arriving after the course lit up
+  // "Stripe payouts" in brass with nobody having done anything.
+  it("the profile that arrives late does not light up a row or draw a check", async () => {
     profileGate.hold = true;
     Object.assign(profileExtra, { stripeConnectChargesEnabled: true, stripeConnectPayoutsEnabled: true });
     paid();
@@ -2441,14 +2441,14 @@ describe("movimento so na mudanca", () => {
     expect(container.querySelector(".drawn-check")).toBeNull();
   });
 
-  it("o que fica pronto com a aba aberta acende uma vez e o check se desenha", async () => {
+  it("what becomes ready with the tab open lights up once and the check draws itself", async () => {
     paid();
     const { container } = renderBuilder("review");
     await screen.findByRole("heading", { name: mocks.course.title });
     await settle();
     expect(container.querySelector(".is-just-done")).toBeNull();
 
-    // O Stripe terminou o cadastro em outra aba: o perfil chega de novo.
+    // Stripe finished the signup in another tab: the profile arrives again.
     act(() => profileGate.onData!({
       creatorVerificationStatus: "none",
       currentPlanId: "free",
@@ -2459,9 +2459,9 @@ describe("movimento so na mudanca", () => {
     expect(payoutsRow().querySelector(".drawn-check")).not.toBeNull();
   });
 
-  // P9: o painel entrava subindo na primeira carga tambem (e o check da
-  // trilha se redesenhava a cada visita).
-  it("o painel so entra subindo na troca de aba; a carga entra parada", async () => {
+  // P9: the panel came in sliding up on the first load too (and the trail's check
+  // redrew itself on every visit).
+  it("the panel only slides up on a tab switch; the initial load enters still", async () => {
     const view = renderBuilder("details");
     await screen.findByRole("heading", { name: mocks.course.title });
     await settle();
@@ -2478,9 +2478,9 @@ describe("movimento so na mudanca", () => {
     expect(view.container.querySelector(".motion-panel-in")).not.toBeNull();
   });
 
-  // P6: com 0 modulos o vazio dizia "Add your first lesson", mas a unica acao
-  // na tela e o formulario "Add your first module" (aberto sozinho).
-  it("curso sem modulo: o vazio diz o mesmo que a acao logo abaixo", async () => {
+  // P6: with 0 modules the empty state said "Add your first lesson", but the only action
+  // on the screen is the "Add your first module" form (opened on its own).
+  it("course without a module: the empty state says the same as the action right below", async () => {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emit({ ...mocks.course, modules: [] });
       return Object.assign(() => {}, { reload: async () => {} });
@@ -2492,14 +2492,14 @@ describe("movimento so na mudanca", () => {
     expect(screen.queryByText("Add your first lesson.")).toBeNull();
   });
 
-  // C2: publicar espera a rede e os campos seguem editaveis. Quem voltou a
-  // digitar no titulo nao pode ter as teclas roubadas pelo botao latao.
-  it("publicar nao rouba o foco de quem voltou a digitar no titulo", async () => {
+  // C2: publishing waits for the network and the fields stay editable. Whoever went back to
+  // typing in the title must not have the keys stolen by the brass button.
+  it("publishing does not steal focus from someone who went back to typing in the title", async () => {
     let finishPublish: () => void = () => undefined;
     vi.mocked(publishTeacherCourse).mockImplementationOnce(
       () => new Promise<never>((resolve) => { finishPublish = () => resolve(undefined as never); }),
     );
-    // Gratis e com uma aula de texto: o Publish destrava.
+    // Free and with one text lesson: Publish unlocks.
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emit({
         ...mocks.course,
@@ -2513,7 +2513,7 @@ describe("movimento so na mudanca", () => {
     await publishProduct();
     await waitFor(() => expect(publishTeacherCourse).toHaveBeenCalled());
 
-    // Enquanto a rede responde: aba Details, clique no titulo.
+    // While the network responds: Details tab, click on the title.
     mocks.searchParams.set("tab", "details");
     view.rerender(
       <I18nProvider initialLocale="en">
@@ -2525,8 +2525,8 @@ describe("movimento so na mudanca", () => {
     title.focus();
     await act(async () => finishPublish());
 
-    // Publicou com outra aba na tela: o painel sai no topo dessa aba (a aba
-    // nao troca debaixo de quem digita) e o foco fica no titulo.
+    // Published with another tab on screen: the panel goes at the top of that tab (the tab
+    // does not switch under someone typing) and focus stays on the title.
     const copy = await screen.findByRole("button", { name: "Copy my page link" });
     expect(title).toHaveFocus();
     expect(copy).not.toHaveFocus();

@@ -76,9 +76,9 @@ vi.mock("@/lib/data/teacher-courses", () => ({
   ) => {
     mocks.subscribeCalls += 1;
     if (mocks.subscribeCalls > 20) {
-      throw new Error("subscribeToTeacherCourses entrou em loop de render");
+      throw new Error("subscribeToTeacherCourses went into a render loop");
     }
-    // failNextReads > 0: a leitura falha (no canal ou no reload) antes de dar certo.
+    // failNextReads > 0: the read fails (on the channel or on reload) before it succeeds.
     const read = () => {
       if (mocks.failNextReads > 0) {
         mocks.failNextReads -= 1;
@@ -101,7 +101,7 @@ async function renderStudio() {
   return screen.findByRole("table", { name: "Products" });
 }
 
-describe("TeacherCourseStudio — lista de produtos", () => {
+describe("TeacherCourseStudio — product list", () => {
   beforeEach(() => {
     mocks.deleteOrArchiveCourse.mockReset();
     mocks.deleteOrArchiveCourse.mockResolvedValue({ outcome: "deleted" });
@@ -115,17 +115,17 @@ describe("TeacherCourseStudio — lista de produtos", () => {
     mocks.params = {};
   });
 
-  // F-11: a leitura que falhou tinha so "Please refresh". Agora "Try again" le
-  // de novo pelo mesmo canal, e o erro sai quando a lista chega.
+  // F-11: the read that failed only had "Please refresh". Now "Try again" reads
+  // again through the same channel, and the error goes away when the list arrives.
   it("offers Try again after a failed read and clears the error when the list arrives", async () => {
     mocks.failNextReads = 1;
     render(<TeacherCourseStudio />);
 
     expect(await screen.findByRole("alert")).toHaveTextContent("We could not load your products.");
-    // Sem lista lida, "No products yet" afirmaria o que não se sabe.
+    // With no list read, "No products yet" would claim what is not known.
     expect(screen.queryByText("No products yet")).toBeNull();
     expect(screen.queryByRole("link", { name: /Create product/ })).toBeNull();
-    // A frase não manda mais recarregar a página: o botão está ao lado.
+    // The sentence no longer tells people to reload the page: the button is next to it.
     expect(screen.getByRole("alert")).not.toHaveTextContent(/refresh/i);
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
 
@@ -135,8 +135,8 @@ describe("TeacherCourseStudio — lista de produtos", () => {
     expect(mocks.subscribeCalls).toBe(1);
   });
 
-  // A releitura que falha de novo: o botão espera com o anel no lugar que a
-  // face da espera já guardava, com o mesmo nome, e volta ao repouso.
+  // The re-read that fails again: the button waits with the ring in the spot that the
+  // wait face already reserved, with the same name, and goes back to rest.
   it("Try again keeps its name and the ring's place while it reads again", async () => {
     mocks.failNextReads = 2;
     render(<TeacherCourseStudio />);
@@ -150,10 +150,10 @@ describe("TeacherCourseStudio — lista de produtos", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("We could not load your products.");
   });
 
-  // A busca do topo do professor ("Search your products") recarregava a Home
-  // igual. Agora cai aqui com ?q= e a lista ja chega filtrada; uma busca nova
-  // com a lista aberta troca o filtro sem remontar a tela.
-  it("chega filtrada pelo ?q= da busca do topo e acompanha uma busca nova", async () => {
+  // The teacher's top search ("Search your products") used to reload Home
+  // the same. Now it lands here with ?q= and the list arrives already filtered; a new search
+  // with the list open changes the filter without remounting the screen.
+  it("arrives filtered by the ?q= from the top search and follows a new search", async () => {
     mocks.params = { q: "mentoring" };
     const { rerender } = render(<TeacherCourseStudio />);
     const table = await screen.findByRole("table", { name: "Products" });
@@ -170,8 +170,8 @@ describe("TeacherCourseStudio — lista de produtos", () => {
     expect(within(table).queryByText("Mentoring essentials")).toBeNull();
   });
 
-  // A pessoa recebia tres colunas sem nome e quarenta botoes em dez produtos.
-  // O cabecalho e a acao principal unica tornam cada linha legivel e estavel.
+  // The person got three unnamed columns and forty buttons across ten products.
+  // The header and the single primary action make each row readable and stable.
   it("shows desktop column headers and keeps one primary action per course", async () => {
     const table = await renderStudio();
 
@@ -198,8 +198,8 @@ describe("TeacherCourseStudio — lista de produtos", () => {
     expect(within(menu).queryByRole("menuitem", { name: "Duplicate" })).not.toBeInTheDocument();
   });
 
-  // Confirmar no lugar dos botoes fazia a linha mudar de largura e empurrava
-  // o restante da tabela. A decisao destrutiva agora vive numa janela propria.
+  // Confirming in place of the buttons made the row change width and pushed
+  // the rest of the table. The destructive decision now lives in its own dialog.
   it("opens delete confirmation in a dialog without replacing row actions", async () => {
     const table = await renderStudio();
     const courseRow = within(table).getByRole("row", { name: /Facilitation foundations/i });
@@ -225,11 +225,11 @@ describe("TeacherCourseStudio — lista de produtos", () => {
     expect(menuTrigger).toHaveFocus();
   });
 
-  // Os atalhos de navegacao ocupavam a primeira faixa e escondiam o assunto
-  // da pagina. No DOM, a lista precisa vir antes deles para leitura e teclado.
-  // Onda G2b: o produto apagado sai da tabela na hora, mas arquivos e videos
-  // saem a partir de um dia depois, em lotes. Ate la (fila pending) ele
-  // aparece fora da tabela, com o selo.
+  // The navigation shortcuts took the first strip and hid the subject
+  // of the page. In the DOM, the list has to come before them for reading and keyboard.
+  // Wave G2b: the deleted product leaves the table right away, but files and videos
+  // are removed starting a day later, in batches. Until then (pending queue) it
+  // shows up outside the table, with the badge.
   it("shows products still being deleted with the chip, outside the table and not clickable", async () => {
     mocks.getMyCoursesBeingDeleted.mockResolvedValue([
       { courseId: "gone-1", title: "Old workshop", requestedAt: "2026-10-08T10:00:00Z" },

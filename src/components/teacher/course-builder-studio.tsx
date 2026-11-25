@@ -200,9 +200,9 @@ const dripStrategies: { value: DripStrategy; label: string; detail: string }[] =
   },
 ];
 
-// "Como as pessoas vao pagar?": tres cartoes, cada um com um exemplo em
-// numeros na moeda escolhida. No evento ao vivo o pagamento unico se chama
-// Ingresso.
+// "How will people pay?": three cards, each with an example in numbers in the
+// chosen currency. For a live event the one-time payment is called Ticket
+// (Ingresso).
 const paymentChoiceIcons = {
   free: Gift,
   one_payment: CreditCard,
@@ -214,11 +214,11 @@ const paymentChoiceExamples: Record<PaymentChoice, number> = {
   one_payment: 300,
   membership: 29,
 };
-// Ate quantas parcelas: 2 a 12, mais o valor ja gravado se for outro.
+// Up to how many installments: 2 to 12, plus the saved value if it is another one.
 const splitPaymentCounts = Array.from({ length: 11 }, (_, index) => index + 2);
 
-// Ctrl/Cmd/Shift/Alt ou botao que nao e o esquerdo: o navegador abre outra aba
-// e esta aqui nao navega. Nada que dependa de "a pessoa saiu daqui" pode rodar.
+// Ctrl/Cmd/Shift/Alt or a button that is not the left one: the browser opens
+// another tab and this one does not navigate. Nothing that depends on "the person left here" may run.
 function isPlainLeftClick(event: {
   button: number;
   metaKey: boolean;
@@ -235,13 +235,13 @@ function isPlainLeftClick(event: {
   );
 }
 
-// Tipo proprio no arrastar: soltar texto qualquer numa linha de modulo nao
-// move nada.
+// Own type on drag: dropping any random text on a module row does not
+// move anything.
 const lessonDragType = "application/x-skillset-lesson";
 
-// Liberacao que recalcula a posicao da aula a cada leitura (lesson_is_released
-// no banco e getLessonUnlockState): mover muda quando a aula abre e pode
-// trancar de novo quem ja tinha acesso. time_drip_custom usa o dia de cada aula.
+// Release that recalculates the lesson's position on every read (lesson_is_released
+// in the database and getLessonUnlockState): moving changes when the lesson opens and can
+// lock out again someone who already had access. time_drip_custom uses each lesson's own day.
 const positionalDripStrategies: ReadonlySet<DripStrategy> = new Set<DripStrategy>([
   "sequential_progress",
   "time_drip_module",
@@ -449,7 +449,7 @@ function builderDraftSignatureFromCourse(course: TeacherCourse): string {
           ? String(course.priceAmountMinor / 100)
           : "",
       currency: course.currency ?? defaultSkillsetCurrency,
-      // Sem forma gravada, sem valor e gratis: e como o checkout e o banco leem.
+      // No saved form, no value, and free: that is how checkout and the database read it.
       paymentType:
         course.paymentType ?? (course.priceAmountMinor ? "one_time" : "free"),
       installmentsEnabled: Boolean(course.installmentsEnabled),
@@ -475,9 +475,9 @@ export function CourseBuilderStudio() {
   const courseId = searchParams.get("courseId");
   const uploadManager = useLessonUpload();
   const requestedTab = searchParams.get("tab");
-  // Aula com envio em curso: a pagina dela continua na tela (mesma instancia,
-  // barra de progresso intacta) e a aba de conteudo fica ativa ate o envio
-  // acabar, mesmo que a URL mude (voltar do navegador). Depois volta a seguir a URL.
+  // Lesson with an upload in progress: its page stays on screen (same instance,
+  // progress bar intact) and the content tab stays active until the upload
+  // finishes, even if the URL changes (browser back). Then it follows the URL again.
   const [uploadingLesson, setUploadingLesson] = useState<
     { moduleId: string; lessonId: string; failed?: boolean } | null
   >(null);
@@ -493,15 +493,15 @@ export function CourseBuilderStudio() {
       : "details";
   const selectTab = useCallback(
     (nextTab: BuilderTab) => {
-      // Trocar de aba no meio de um envio desmontaria o estudio e deixaria o
-      // envio sem dono.
+      // Switching tabs in the middle of an upload would unmount the studio and leave the
+      // upload without an owner.
       if (uploadingLesson) {
         return;
       }
       const params = new URLSearchParams(searchParams.toString());
       params.set("tab", nextTab);
-      // Fora da aba de conteudo a aula nao esta aberta: sem ?lesson, a lista de
-      // arquivos do curso volta a ser buscada e a prontidao do Publish ve o que mudou.
+      // Outside the content tab the lesson is not open: without ?lesson, the course's
+      // file list is fetched again and the Publish readiness sees what changed.
       if (nextTab !== "content") {
         params.delete("lesson");
       }
@@ -509,10 +509,10 @@ export function CourseBuilderStudio() {
     },
     [router, searchParams, uploadingLesson],
   );
-  // Pagina do modulo: so a URL muda (?module=M), como nas abas. Sem rota nova,
-  // o modulo divide o rascunho, o autosave e o botao Salvar com o resto.
+  // Module page: only the URL changes (?module=M), as with the tabs. No new route,
+  // the module shares the draft, the autosave and the Save button with the rest.
   const requestedModuleId = searchParams.get("module");
-  // Pagina da aula (?lesson=L ao lado do ?module=M): a mesma ideia do modulo.
+  // Lesson page (?lesson=L next to ?module=M): the same idea as the module.
   const requestedLessonId = searchParams.get("lesson");
   function builderModuleHref(moduleId: string | null) {
     const params = new URLSearchParams(searchParams.toString());
@@ -533,8 +533,8 @@ export function CourseBuilderStudio() {
     return `/teach/builder?${params.toString()}`;
   }
   const { user } = useAuth();
-  // Payouts e verificacao: so o Manage sabia; aqui a pessoa clicava em
-  // Publish e descobria pelo erro do servidor.
+  // Payouts and verification: only Manage knew about them; here the person clicked
+  // Publish and found out from the server error.
   const {
     account: publishGates,
     planId,
@@ -542,16 +542,16 @@ export function CourseBuilderStudio() {
     verificationStatus,
     stripeConnectCountry,
   } = usePublishGates(user);
-  // "Agora nao" na oferta do selo devolve o foco ao titulo do painel "Publicado!".
+  // "Not now" on the verified badge offer returns focus to the title of the "Published!" panel.
   const successNoticeRef = useRef<HTMLHeadingElement>(null);
-  // Apagar modulo/aula, mover com liberacao por posicao e sair com rascunho
-  // sujo perguntam na janela da plataforma (era o window.confirm).
+  // Deleting a module/lesson, moving with position-based release, and leaving with a
+  // dirty draft ask in the platform dialog (it used to be window.confirm).
   const { ask, dialog: confirmDialog } = useConfirm();
-  // Saida ja confirmada: o clique repetido no mesmo link passa pela guarda.
+  // Exit already confirmed: the repeated click on the same link goes through the guard.
   const leaveConfirmedRef = useRef(false);
   const [course, setCourse] = useState<TeacherCourse | null>(null);
-  // O que o produto entrega (courses.product_format): muda a aba de conteudo
-  // e o que publicar cobra, como em publish_teacher_course.
+  // What the product delivers (courses.product_format): it changes the content tab
+  // and what publishing checks, as in publish_teacher_course.
   const productFormat = course?.productFormat ?? "course";
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
@@ -567,9 +567,9 @@ export function CourseBuilderStudio() {
     useState<TeacherCoursePaymentType>("one_time");
   const [installmentsEnabled, setInstallmentsEnabled] = useState(false);
   const [installmentsMax, setInstallmentsMax] = useState("12");
-  // "Oferecer tambem plano anual": o valor do ano so serve para a conta da
-  // economia e para levar ao "Adicionar outro preco" (Ofertas); a etapa de
-  // preco nao grava um segundo preco escondido.
+  // "Also offer an annual plan": the yearly value only serves for the savings
+  // calculation and to lead to "Add another price" (Offers); the price step
+  // does not save a hidden second price.
   const [yearlyPlanOpen, setYearlyPlanOpen] = useState(false);
   const [yearlyAmount, setYearlyAmount] = useState("");
   const [dripStrategy, setDripStrategy] = useState<DripStrategy>("instant");
@@ -583,13 +583,13 @@ export function CourseBuilderStudio() {
   const [membersSubtitle, setMembersSubtitle] = useState("");
   const [membersDescription, setMembersDescription] = useState("");
   const [communityEnabled, setCommunityEnabled] = useState(false);
-  // ?welcome=1 vem do atalho da Agenda ("Add a short welcome lesson"): o
-  // primeiro modulo ja nasce com nome.
+  // ?welcome=1 comes from the Agenda shortcut ("Add a short welcome lesson"): the
+  // first module is born with a name.
   const [moduleTitle, setModuleTitle] = useState(() =>
     searchParams.get("welcome") === "1" ? t("creatorEditor.builder.curriculum.welcomeModule") : "",
   );
-  // O nome ja entrou no formulario: o parametro sai da URL para uma recarga
-  // (ou a troca de aba, que copia os parametros) nao abrir outro "Welcome".
+  // The name is already in the form: the parameter leaves the URL so a reload
+  // (or a tab switch, which copies the parameters) does not open another "Welcome".
   useEffect(() => {
     if (searchParams.get("welcome") !== "1") {
       return;
@@ -603,27 +603,27 @@ export function CourseBuilderStudio() {
   const [lessonModuleId, setLessonModuleId] = useState("");
   const [lessonTitle, setLessonTitle] = useState("");
   const [lessonIsFreePreview, setLessonIsFreePreview] = useState(false);
-  // Os dois formularios agora sao pedidos, nao paisagem: a lista de modulos e
-  // que abre a aba. Cada modulo e uma linha; o clique abre a pagina dele.
+  // The two forms are now requests, not scenery: the module list is
+  // what opens the tab. Each module is one row; clicking opens its page.
   const [isModuleFormRequested, setIsModuleFormOpen] = useState(false);
   const [lessonFormModuleId, setLessonFormModuleId] = useState("");
-  // Seletor "Move to module…" por aula: escolher so marca o destino e o botao
-  // Move aplica (no Chrome/Edge as setas do teclado disparam change na hora).
+  // "Move to module…" selector per lesson: choosing only marks the destination and the
+  // Move button applies it (in Chrome/Edge the keyboard arrows fire change right away).
   const [moveTargets, setMoveTargets] = useState<Record<string, string>>({});
   const [moveStatus, setMoveStatus] = useState<{ moduleId: string; text: string } | null>(null);
-  // Modulo onde a aula entrou: "Lesson added" so na pagina dele. Mover limpa o
-  // `success`, entao a linha sempre mostra o aviso mais novo.
+  // Module where the lesson landed: "Lesson added" only on its page. Moving clears
+  // `success`, so the row always shows the newest notice.
   const [lessonAddedIn, setLessonAddedIn] = useState<string | null>(null);
-  // Lista de modulos: o anuncio do Up/Down e a linha que recebe a aula arrastada.
+  // Module list: the Up/Down announcement and the row that receives the dragged lesson.
   const [reorderStatus, setReorderStatus] = useState("");
   const [dragOverModuleId, setDragOverModuleId] = useState<string | null>(null);
-  // "Mais acoes" aberto (uma aula por vez) na pagina do modulo.
+  // "More actions" open (one lesson at a time) on the module page.
   const [lessonMenuId, setLessonMenuId] = useState<string | null>(null);
   const [isMediaLibraryOpen, setIsMediaLibraryOpen] = useState(false);
   const [error, setError] = useState<BuilderError | null>(null);
-  // Onde o erro aparece: perto do botao que o causou. Num cartao so, no fim
-  // da pagina, o "Save draft" do topo parecia nao fazer nada. O rodape saiu:
-  // o que nao vem do Publish nem da biblioteca de midia cai no topo.
+  // Where the error appears: near the button that caused it. In a single card at the
+  // end of the page, the top "Save draft" seemed to do nothing. The footer is gone:
+  // whatever does not come from Publish or the media library goes to the top.
   const [errorSlot, setErrorSlot] = useState<"hero" | "publish" | "media">("hero");
   const [success, setSuccess] = useState<"lessonAdded" | "draftSaved" | "published" | null>(null);
   const errorMessage = error
@@ -633,11 +633,11 @@ export function CourseBuilderStudio() {
       .replace("{zero}", () => formatZeroPrice(currency))
     : null;
   const [isLoading, setIsLoading] = useState(true);
-  // ?created=1 vem da tela de criar (catalogo de movimento, item 7): a faixa
-  // "Rascunho salvo. Proximo: ..." aparece uma vez, quando o curso termina de
-  // carregar. O parametro sai da URL nessa hora, para uma recarga ou a troca
-  // de aba (que copia os parametros) nao repetir o marco. Some em 4s ou no X
-  // (o relogio mora em CreatedStrip).
+  // ?created=1 comes from the create screen (motion catalog, item 7): the strip
+  // "Draft saved. Next: ..." appears once, when the course finishes
+  // loading. The parameter leaves the URL at that moment, so a reload or a tab
+  // switch (which copies the parameters) does not repeat the milestone. It goes away after 4s or on the X
+  // (the clock lives in CreatedStrip).
   const [createdStripOpen, setCreatedStripOpen] = useState(
     () => searchParams.get("created") === "1",
   );
@@ -652,9 +652,9 @@ export function CourseBuilderStudio() {
   }, [isLoading, router, searchParams]);
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // A aula aberta vem da URL (?module=M&lesson=L), como o modulo: o voltar do
-  // navegador funciona. Aula que nao existe (mais) nesse modulo cai na pagina
-  // do modulo, nunca numa tela vazia.
+  // The open lesson comes from the URL (?module=M&lesson=L), like the module: the browser
+  // back button works. A lesson that does not (any longer) exist in that module falls to the
+  // module page, never to an empty screen.
   const urlLessonStudio: ActiveLessonStudio =
     requestedModuleId
     && requestedLessonId
@@ -665,7 +665,7 @@ export function CourseBuilderStudio() {
     )
       ? { moduleId: requestedModuleId, lessonId: requestedLessonId }
       : null;
-  // Com envio em curso, a aula do envio manda (a URL pode ter mudado).
+  // With an upload in progress, the upload's lesson wins (the URL may have changed).
   const activeLessonStudio: ActiveLessonStudio =
     uploadingLesson
     && modules.some(
@@ -675,9 +675,9 @@ export function CourseBuilderStudio() {
     )
       ? uploadingLesson
       : urlLessonStudio;
-  // Envio que falhou com a URL em outro lugar: a pagina da aula fica ate a URL
-  // voltar para ela (router.replace) e so entao solta, sem remontar, com o erro
-  // na tela.
+  // Upload that failed with the URL somewhere else: the lesson page stays until the URL
+  // goes back to it (router.replace) and only then lets go, without remounting, with the error
+  // on screen.
   if (
     uploadingLesson?.failed
     && requestedTab === "content"
@@ -686,21 +686,21 @@ export function CourseBuilderStudio() {
     setUploadingLesson(null);
   }
   const activeLessonId = activeLessonStudio?.lessonId ?? null;
-  // A faixa "proximo: sua primeira aula" sai quando uma aula abre, por
-  // qualquer caminho (ali ela ja cumpriu o papel), e fora da aba de conteudo:
-  // presa no pe da tela, ela cobria o "Continue to…" e os botoes do rodape.
+  // The "next: your first lesson" strip goes away when a lesson opens, by
+  // any path (it has done its job by then), and outside the content tab:
+  // stuck at the bottom of the screen, it covered "Continue to…" and the footer buttons.
   if (createdStripOpen && (activeLessonId || activeTab !== "content")) {
     setCreatedStripOpen(false);
   }
-  // Abre a pagina da aula recem-criada quando o eco confirma o save. Refeita a
-  // cada render para ver a URL atual.
+  // Opens the page of the newly created lesson when the echo confirms the save. Redone on
+  // every render to see the current URL.
   const openPendingLessonRef = useRef<(target: { moduleId: string; lessonId: string }) => void>(
     () => {},
   );
   const [courseAssets, setCourseAssets] = useState<CourseAsset[]>([]);
-  // So com a lista de arquivos na mao a prontidao cobra conteudo em toda aula:
-  // antes (ou se a busca falhar) o item fica de fora, como no Manage, em vez de
-  // acusar de vazia uma aula que so tem envio ou PDF.
+  // Only with the file list in hand does readiness require content in every lesson:
+  // before that (or if the fetch fails) the item is left out, as in Manage, instead of
+  // accusing a lesson of being empty when it only has an upload or a PDF.
   const [courseAssetsLoaded, setCourseAssetsLoaded] = useState(false);
   const [autosaveState, setAutosaveState] =
     useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -721,38 +721,38 @@ export function CourseBuilderStudio() {
   // triggers a render, and it is read/cleared only inside an event handler or
   // an effect — never during render — to stay clear of react-hooks/refs.
   const pendingScrollRef = useRef<string | null>(null);
-  // Navegacao de modulo pedida pela pessoa (linha, trilha ou modulo novo).
-  // Nula na primeira hidratacao: abrir o builder ja num modulo nao rouba foco.
+  // Module navigation requested by the person (row, breadcrumb or new module).
+  // Null on the first hydration: opening the builder already in a module does not steal focus.
   const moduleNavigationRef = useRef<{ returnTo: string | null } | null>(null);
-  // Espelho de `draftIsDirty` para o callback do realtime, que nao ve o render.
+  // Mirror of `draftIsDirty` for the realtime callback, which does not see the render.
   const draftDirtyRef = useRef(false);
-  // Ultimo snapshot que chegou com rascunho sujo e ficou de fora. Vale se o
-  // rascunho voltar a ficar limpo sem save nosso; um save nosso o descarta.
+  // Last snapshot that arrived while the draft was dirty and was left out. It applies if the
+  // draft becomes clean again without a save of ours; a save of ours discards it.
   const skippedSnapshotRef = useRef<TeacherCourse | null>(null);
-  // Rascunho local para o callback do realtime: so abre estudio de aula que
-  // ainda existe aqui.
+  // Local draft for the realtime callback: it only opens the studio of a lesson that
+  // still exists here.
   const localModulesRef = useRef<TeacherCourseModule[]>([]);
-  // Saves nossos no ar (autosave, Salvar, Publicar). Aqui em cima porque o
-  // efeito do snapshot pulado tambem le.
+  // Saves of ours in flight (autosave, Save, Publish). Up here because the
+  // skipped-snapshot effect also reads it.
   const inFlightSavesRef = useRef(0);
-  // Timer do debounce do autosave, para a descarga ao sair poder cancela-lo.
+  // Autosave debounce timer, so the flush on exit can cancel it.
   const autosaveTimerRef = useRef<number | undefined>(undefined);
-  // Estudio aberto: grava (sem prompt) o link digitado e ainda sem blur.
+  // Open studio: saves (without a prompt) the typed link that has not blurred yet.
   const studioLeaveFlushRef = useRef<(() => void) | null>(null);
-  // Descarga ao sair, refeita a cada render para ver o estado atual.
+  // Flush on exit, redone on every render to see the current state.
   const flushOnLeaveRef = useRef<(withStudio: boolean) => void>(() => {});
-  // Buscas da lista de arquivos do curso: vale so a mais recente. Um contador,
-  // e nao "cancelar ao mudar dependencia": abrir a aula logo depois (link
-  // direto, quando os modulos chegam) descartava a primeira busca para sempre.
+  // Fetches of the course file list: only the latest counts. A counter,
+  // and not "cancel on dependency change": opening the lesson right after (direct
+  // link, when the modules arrive) used to discard the first fetch forever.
   const assetsRequestRef = useRef(0);
-  // Busca o curso de novo sem esperar o Realtime. O construtor so sabe que um
-  // modulo/aula foi gravado pelo snapshot do curso; com o eco do Realtime como
-  // unica fonte, o upload da capa do modulo e o botao de video da aula nova
-  // ficaram travados enquanto o Realtime recusava o canal (06/10).
+  // Fetches the course again without waiting for Realtime. The builder only knows that a
+  // module/lesson was saved from the course snapshot; with the Realtime echo as the
+  // only source, the module cover upload and the new lesson's video button
+  // stayed stuck while Realtime refused the channel (Oct 6).
   const courseReloadRef = useRef<(() => Promise<void>) | null>(null);
 
-  // Copia o snapshot do servidor para o rascunho. So setters (estaveis), entao
-  // serve ao callback do realtime e ao efeito que aplica o snapshot pulado.
+  // Copies the server snapshot into the draft. Only setters (stable), so it
+  // serves the realtime callback and the effect that applies the skipped snapshot.
   const applyServerDraft = useCallback((nextCourse: TeacherCourse) => {
     setTitle(nextCourse.title);
     setSummary(nextCourse.summary);
@@ -785,8 +785,8 @@ export function CourseBuilderStudio() {
     setMembersSubtitle(nextCourse.membersSubtitle ?? "");
     setMembersDescription(nextCourse.membersDescription ?? "");
     setCommunityEnabled(nextCourse.communityEnabled ?? false);
-    // Todo snapshot passa aqui, inclusive o eco do nosso autosave. Voltar
-    // sempre para o 1o modulo mandava a aula seguinte para o modulo errado.
+    // Every snapshot comes through here, including the echo of our autosave. Always
+    // going back to the 1st module sent the next lesson to the wrong module.
     setLessonModuleId((current) =>
       nextCourse.modules?.some((module) => module.id === current)
         ? current
@@ -831,28 +831,28 @@ export function CourseBuilderStudio() {
           )
         ) {
           pendingLessonStudioRef.current = null;
-          // Aula que ja nao existe no rascunho (apagada antes do eco): abrir o
-          // estudio dela deixava um estudio "fantasma", sem modal, que travava
-          // a abertura da proxima aula e a recarga dos arquivos do curso.
+          // A lesson that no longer exists in the draft (deleted before the echo): opening
+          // its studio left a "ghost" studio, without a modal, which blocked
+          // opening the next lesson and reloading the course files.
           const stillInDraft = localModulesRef.current.some(
             (module) =>
               module.id === pendingStudio.moduleId &&
               module.lessons.some((lesson) => lesson.id === pendingStudio.lessonId),
           );
           if (stillInDraft) {
-            // Nunca troca uma aula ja aberta: o estudio e por id de aula, e trocar
-            // no meio de um envio perderia a barra de progresso e a trava de sair.
+            // Never swaps an already open lesson: the studio is per lesson id, and swapping
+            // in the middle of an upload would lose the progress bar and the leave lock.
             openPendingLessonRef.current(pendingStudio);
             setSuccess(null);
           }
         }
 
-        // O snapshot pode chegar atras do rascunho: eco de um save anterior com
-        // autosave no ar, debounce correndo ou aula/modulo recem-criado. Antes,
-        // sobrescrever apagava a edicao local e o autosave nunca a regravava.
-        // Com rascunho sujo, o local manda e o proximo autosave grava por cima.
-        // ponytail: local vence enquanto houver edicao pendente, ate sobre
-        // mudanca de outra aba; resolver conflito entre abas se virar caso real.
+        // The snapshot may arrive behind the draft: echo of an earlier save with an
+        // autosave in flight, a debounce running, or a newly created lesson/module. Before,
+        // overwriting erased the local edit and the autosave never saved it again.
+        // With a dirty draft, the local one wins and the next autosave writes over it.
+        // ponytail: local wins while there is a pending edit, even over a
+        // change from another tab; resolve conflicts between tabs if it becomes a real case.
         if (draftDirtyRef.current) {
           skippedSnapshotRef.current = nextCourse;
           return;
@@ -879,8 +879,8 @@ export function CourseBuilderStudio() {
   // Phoenix allows one join per topic per socket — so the builder refreshes on
   // mount and whenever the studio closes (the only place lesson videos change).
   useEffect(() => {
-    // Com a aula aberta na aba de conteudo, o estudio cuida dos arquivos (e
-    // avisa por onAssetsChanged). Em qualquer outra aba a lista e buscada.
+    // With the lesson open on the content tab, the studio takes care of the files (and
+    // notifies through onAssetsChanged). On any other tab the list is fetched.
     if (!courseId || (activeTab === "content" && activeLessonId)) {
       return;
     }
@@ -898,9 +898,9 @@ export function CourseBuilderStudio() {
       });
   }, [courseId, activeTab, activeLessonId]);
 
-  // Evento ao vivo: a sessao agendada e o conteudo. Mesma leitura da Agenda,
-  // so as sessoes deste produto ainda de pe e por vir: a que ja passou nao
-  // se vende (publish_teacher_course cobra o mesmo).
+  // Live event: the scheduled session is the content. Same read as the Agenda,
+  // only this product's sessions that are still standing and upcoming: one that has already passed is not
+  // sold (publish_teacher_course checks the same).
   const [courseSessions, setCourseSessions] = useState<CourseEvent[] | null>(null);
   const ownerUid = user?.uid;
   useEffect(() => {
@@ -910,7 +910,7 @@ export function CourseBuilderStudio() {
     return subscribeToTeacherCourseEvents(
       ownerUid,
       (events) => setCourseSessions(upcomingSessionsOf(events, courseId, Date.now())),
-      // Sem a lista, o item some da prontidao e o servidor segue cobrando.
+      // Without the list, the item disappears from readiness and the server keeps checking.
       () => {},
     );
   }, [ownerUid, courseId, productFormat]);
@@ -938,17 +938,17 @@ export function CourseBuilderStudio() {
   }, [courseAssets]);
 
   const isOwner = course && user?.uid === course.ownerId;
-  // Quem abre o curso de outra pessoa (equipe da plataforma) nao le os precos:
-  // a rota so responde ao dono. Sem isto a etapa dizia "Couldn't load your
-  // prices." com um "Try again" que nunca funcionaria.
+  // Someone opening another person's course (platform staff) does not read the prices:
+  // the route only answers the owner. Without this the step said "Couldn't load your
+  // prices." with a "Try again" that would never work.
   const viewingOthersCourse = Boolean(course && user && user.uid !== course.ownerId);
   const isEditable = Boolean(isOwner && course && teacherCanEditCourse(course.status));
   const canPublish = Boolean(
     isOwner && course && teacherCanPublishCourse(course.status),
   );
-  // Parcelar so aparece onde funciona, pela mesma regra do checkout: flag
-  // ligada, venda em MXN e conta Stripe do Mexico. Fora disso a opcao nao
-  // existe na tela (o valor gravado fica como esta).
+  // Installments only appear where they work, by the same rule as checkout: flag
+  // on, sale in MXN, and a Mexican Stripe account. Outside that the option does not
+  // exist on screen (the saved value stays as it is).
   const showSplitPayments =
     paymentType === "one_time"
     && canSplitPayments({
@@ -956,20 +956,20 @@ export function CourseBuilderStudio() {
       currency,
       stripeAccountCountry: stripeConnectCountry,
     });
-  // Com preco em Outros precos, o checkout cobra a oferta principal
-  // (resolveCoursePrice), nao estes campos: a etapa de preco so mostra o que a
-  // pagina cobra e leva para la. null = ainda nao sabe: sem saber o preco
-  // principal, os cartoes nao aparecem (mudariam so o construtor). Rele ao
-  // voltar para a aba: outra aba pode ter criado o preco principal.
+  // With a price in Other prices, checkout charges the main offer
+  // (resolveCoursePrice), not these fields: the price step only shows what the
+  // page charges and leads there. null = does not know yet: without knowing the main
+  // price, the cards do not appear (they would only change the builder). Re-reads on
+  // returning to the tab: another tab may have created the main price.
   const [checkoutOffers, setCheckoutOffers] = useState<ProductOffer[] | null>(null);
   const [offersFailed, setOffersFailed] = useState(false);
-  // "Try again" da falha: a mesma leitura, de novo (antes só recarregando a página).
+  // The failure's "Try again": the same read, again (before, only by reloading the page).
   const [offersAttempt, setOffersAttempt] = useState(0);
-  // De que curso é a lista na tela: uma releitura que falha não apaga a lista
-  // boa do MESMO curso (a regra de toda lista); de outro curso, apaga.
+  // Which course the list on screen belongs to: a re-read that fails does not erase the good
+  // list of the SAME course (the rule for every list); for another course, it erases.
   const offersCourseRef = useRef<string | null>(null);
-  // Com a lista na tela, o "Try again" não tira o aviso enquanto lê: ele fica,
-  // com o botão em espera, até a resposta. Sem lista, volta o esqueleto.
+  // With the list on screen, "Try again" does not remove the notice while it reads: it stays,
+  // with the button waiting, until the response. Without a list, the skeleton returns.
   const [offersRetrying, setOffersRetrying] = useState(false);
   const retryOffers = () => {
     if (checkoutOffers) {
@@ -990,7 +990,7 @@ export function CourseBuilderStudio() {
       fetch(`/api/teach/offers?courseId=${encodeURIComponent(courseId)}`, { credentials: "include" })
         .then((res) => (res.ok ? res.json() : null))
         .then((data: { offers?: Omit<ProductOffer, "courseId">[]; warning?: string } | null) => {
-          // A rota devolve 200 com warning quando a leitura falha: nao e "sem ofertas".
+          // The route returns 200 with a warning when the read fails: that is not "no offers".
           if (!data || data.warning || !Array.isArray(data.offers)) {
             throw new Error("offers unavailable");
           }
@@ -1003,8 +1003,8 @@ export function CourseBuilderStudio() {
         })
         .catch(() => {
           if (alive && request === latest) {
-            // A releitura do foco falhava e apagava os cartoes que estavam
-            // certos na tela. So a tela muda: o checkout le o preco no servidor.
+            // The focus re-read used to fail and erase the cards that were
+            // right on screen. Only the screen changes: checkout reads the price on the server.
             if (offersCourseRef.current !== courseId) setCheckoutOffers(null);
             setOffersFailed(true);
             setOffersRetrying(false);
@@ -1025,16 +1025,16 @@ export function CourseBuilderStudio() {
       document.removeEventListener("visibilitychange", loadWhenVisible);
     };
   }, [courseId, offersAttempt, viewingOthersCourse]);
-  // No curso de outra pessoa a lista nunca e lida: uma lista que sobrou do
-  // curso aberto antes nao pode valer para este.
+  // On another person's course the list is never read: a list left over from the
+  // course opened before cannot apply to this one.
   const offerPrice = course && checkoutOffers && !viewingOthersCourse ? resolveCoursePrice(course, checkoutOffers) : null;
   const chargedByOffer = offerPrice?.source === "offer" ? offerPrice : null;
   const paymentChoice = paymentChoiceOf(paymentType);
   const paymentChoices = paymentChoicesFor(productFormat, paymentChoice);
   const paymentChoiceFits = paymentTypeFitsFormat(productFormat, paymentType);
   const lessonCount = countCourseLessons(modules);
-  // "1 module", "2 modules": a tela dizia "1 modules, 1 lessons" (QA visual em
-  // producao, 08/09). O singular tem chave propria, como no hub do curso.
+  // "1 module", "2 modules": the screen used to say "1 modules, 1 lessons" (visual QA in
+  // production, Sept 8). The singular has its own key, as in the course hub.
   const modulesLabel = countLabel(
     t,
     "creatorEditor.builder.summary.modulesOne",
@@ -1047,26 +1047,26 @@ export function CourseBuilderStudio() {
     "creatorEditor.builder.summary.lessons",
     lessonCount,
   );
-  // Curso sem nenhum modulo abre ja com o formulario: nao ha lista para olhar.
+  // A course with no module opens already with the form: there is no list to look at.
   const isModuleFormOpen = isModuleFormRequested || modules.length === 0;
-  // Id desconhecido ou de modulo apagado cai na lista, nunca em tela vazia.
+  // An unknown id, or one of a deleted module, falls to the list, never to an empty screen.
   const activeModuleIndex = requestedModuleId
     ? modules.findIndex((module) => module.id === requestedModuleId)
     : -1;
   const activeModule = activeModuleIndex >= 0 ? modules[activeModuleIndex] : null;
   const activeModuleId = activeModule?.id ?? null;
-  // Trocou de modulo (clique, voltar, avancar): o aviso de "movida" era do
-  // modulo anterior e sai. Ajuste no render, o padrao do React para estado que
-  // depende do valor anterior, em vez de setState num efeito.
+  // Switched module (click, back, forward): the "moved" notice belonged to the
+  // previous module and goes away. Adjustment during render, React's pattern for state that
+  // depends on the previous value, instead of setState in an effect.
   const [moveStatusScope, setMoveStatusScope] = useState(activeModuleId);
   if (moveStatusScope !== activeModuleId) {
     setMoveStatusScope(activeModuleId);
     setMoveStatus(null);
   }
 
-  // Os links usam scroll={false}; sem isto o foco caia no <body> e o topo da
-  // pagina do modulo ficava fora da tela. Abrir: rola ate o cartao e foca o
-  // titulo. Voltar: foca a linha do modulo de onde a pessoa saiu.
+  // The links use scroll={false}; without this, focus fell on <body> and the top of the
+  // module page was off screen. Opening: scrolls to the card and focuses the
+  // title. Going back: focuses the row of the module the person came from.
   useEffect(() => {
     const navigation = moduleNavigationRef.current;
     if (!navigation || typeof document === "undefined") {
@@ -1085,10 +1085,10 @@ export function CourseBuilderStudio() {
       ?.focus();
   }, [activeModuleId]);
 
-  // A mesma regra (#373) para a pagina da aula. Entrar: rola ate o cartao e
-  // foca o titulo da aula. Sair (Done, trilha, voltar): foca o botao da aula de
-  // onde a pessoa saiu. Nunca na primeira carga: link direto ou recarga nao
-  // roubam o foco.
+  // The same rule (#373) for the lesson page. Entering: scrolls to the card and
+  // focuses the lesson title. Leaving (Done, breadcrumb, back): focuses the button of the lesson the
+  // person came from. Never on the first load: a direct link or a reload does not
+  // steal focus.
   const lessonFocusRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
     if (isLoading || typeof document === "undefined") {
@@ -1117,10 +1117,10 @@ export function CourseBuilderStudio() {
     })),
   );
   const parsedPriceAmountMinor = parsePriceAmountMinor(priceAmount);
-  // Produto no ar, cobrado e sem valor: gravar isso abria a entrada gratis
-  // (create_free_course_enrollment le preco nulo como zero). Nao salva ate ter
-  // valor ou virar Gratis. Com oferta cobrando, o campo nem aparece e a
-  // entrada gratis ja e recusada pelo preco pago.
+  // Live product, charged, and with no value: saving that opened free enrollment
+  // (create_free_course_enrollment reads a null price as zero). It does not save until it has a
+  // value or becomes Free. With a charging offer, the field does not even appear and
+  // free enrollment is already refused because of the paid price.
   const liveWithoutPrice =
     !chargedByOffer
     && course?.status === "published"
@@ -1193,14 +1193,14 @@ export function CourseBuilderStudio() {
       communityEnabled,
     ],
   );
-  // Uma lista so de "o que falta para publicar", a mesma da aba Publish e do
-  // Manage. Antes o construtor montava duas listas proprias e a barra do
-  // cabecalho media outra coisa (estagios): tres numeros para um curso so.
-  // Le do payload normalizado, entao um preco digitado errado conta como
-  // preco ausente, igual ao que o servidor gravaria.
-  // Aula sem video, texto nem arquivo trava o Publish. O servidor cobra a
-  // mesma regra em publish_teacher_course (20260927020000); aqui a pessoa ve
-  // antes de clicar quais aulas faltam.
+  // A single list of "what is missing to publish", the same as the Publish tab and
+  // Manage. Before, the builder assembled two lists of its own and the header
+  // bar measured something else (stages): three numbers for a single course.
+  // Reads from the normalized payload, so a wrongly typed price counts as
+  // a missing price, same as what the server would save.
+  // A lesson with no video, text or file blocks Publish. The server checks the
+  // same rule in publish_teacher_course (20260927020000); here the person sees
+  // before clicking which lessons are missing.
   const lessonIdsWithMedia = useMemo(
     () => (courseAssetsLoaded ? getLessonIdsWithMedia(builderDraftPayload.modules, courseAssets) : undefined),
     [courseAssetsLoaded, builderDraftPayload.modules, courseAssets],
@@ -1220,32 +1220,32 @@ export function CourseBuilderStudio() {
     publishGates,
     t,
   );
-  // A linha "4 of 7 checks · 57%" e o nome da barra que a acompanha.
+  // The line "4 of 7 checks · 57%" is the name of the bar that goes with it.
   const readinessText = t("creatorEditor.builder.summary.checks")
     .replace("{done}", () => String(readiness.doneCount))
     .replace("{total}", () => String(readiness.total))
     .replace("{percent}", () => String(readiness.percent));
-  // Falta so a taxa: o botao principal vira "Activate and publish" e leva ao
-  // checkout com este curso, para a volta cair de novo aqui.
+  // Only the fee is missing: the main button becomes "Activate and publish" and leads to
+  // checkout with this course, so the return lands back here.
   const needsActivation = readiness.pending.some((item) => item.id === "activation");
   const readyToPublish = readiness.pending.every((item) => item.id === "activation");
   const activateHref = `/teach/activate?courseId=${encodeURIComponent(courseId ?? "")}`;
   const starterLesson = modules[0]?.lessons[0];
-  // Pagamentos prontos, a carteira oferece a volta para esta aba Publish.
+  // Payments ready, the wallet offers the way back to this Publish tab.
   const payoutsHref = `/account/payments?returnTo=${encodeURIComponent(
     `/teach/builder?courseId=${encodeURIComponent(courseId ?? "")}&tab=review`,
   )}#stripe-connect`;
-  // Produto no ar nao publica de novo (teacherCanPublishCourse): no lugar do
-  // "Publish product" apagado e mudo, a frase que diz por que.
+  // A live product does not publish again (teacherCanPublishCourse): in place of
+  // a disabled, mute "Publish product", the sentence that says why.
   const isLive = course?.status === "published";
-  // Quem nunca assinou vai aos planos (o teste gratis mora la), como na Home do
-  // professor; "Manage plan" abria os recibos. Quem ja teve plano gerencia.
+  // Someone who never subscribed goes to the plans (the free trial lives there), as on the
+  // teacher Home; "Manage plan" opened the receipts. Someone who already had a plan manages it.
   const planLink = planId === "free"
     ? { href: "/account/plans", label: t("billingCheckout.seePlans") }
     : { href: "/account/billing?tab=subscriptions", label: t("creatorEditor.builder.publish.managePlan") };
-  // Erro de preco ou de parcelas sai no proprio campo quando ele esta na tela
-  // (aria-invalid + a frase ligada por aria-describedby); fora da aba de
-  // preco, no alerta perto do botao clicado.
+  // A price or installments error appears on the field itself when it is on screen
+  // (aria-invalid + the sentence linked by aria-describedby); outside the
+  // price tab, in the alert near the clicked button.
   const priceFieldShown = activeTab === "pricing" && Boolean(checkoutOffers) && !chargedByOffer && paymentChoice !== "free";
   const priceFieldError = priceFieldShown
     && (error?.code === "price" || error?.code === "livePrice" || error?.code === "paidPrice");
@@ -1254,7 +1254,7 @@ export function CourseBuilderStudio() {
   const activeLessonStudioModule = activeLessonStudio
     ? modules.find((module) => module.id === activeLessonStudio.moduleId) ?? null
     : null;
-  // A aula do e-book: a primeira que existir (o produto nasce com uma).
+  // The e-book's lesson: the first one that exists (the product is born with one).
   const ebookModule = productFormat === "ebook"
     ? modules.find((module) => module.lessons.length > 0)
     : undefined;
@@ -1268,7 +1268,7 @@ export function CourseBuilderStudio() {
   const activeLessonStudioModuleIndex = activeLessonStudioModule
     ? modules.findIndex((module) => module.id === activeLessonStudioModule.id)
     : -1;
-  // Mesma condicao que escolhe renderLessonPage() na aba Curriculum.
+  // Same condition that picks renderLessonPage() on the Curriculum tab.
   const isLessonPage = activeTab === "content" && !(ebookLesson && ebookModule) && Boolean(activeLessonStudioLesson);
   const activeLessonStudioLessonIndex =
     activeLessonStudioModule && activeLessonStudioLesson
@@ -1284,8 +1284,8 @@ export function CourseBuilderStudio() {
       module.lessons.map((lesson) => lesson.id),
     ) ?? [],
   );
-  // O resumo diz o que a pagina cobra: com preco principal, ele; sem saber
-  // ainda, nenhum preco.
+  // The summary says what the page charges: with a main price, that one; without knowing
+  // yet, no price.
   const summaryPrice = chargedByOffer
     ? { type: chargedByOffer.paymentType, amountMinor: chargedByOffer.amountMinor, currency: chargedByOffer.currency }
     : { type: paymentType, amountMinor: parsedPriceAmountMinor, currency };
@@ -1307,8 +1307,8 @@ export function CourseBuilderStudio() {
             maximumFractionDigits: 0,
           }).format(summaryPrice.amountMinor / 100)}${priceIntervalSuffix}`
         : t("creatorEditor.builder.summary.setPrice");
-  // Valor na moeda escolhida: os exemplos dos cartoes, a previa das parcelas
-  // e a economia do anual. Centavos so quando existem ("3x of $100").
+  // Value in the chosen currency: the card examples, the installments preview
+  // and the annual savings. Cents only when they exist ("3x of $100").
   const formatMoney = (amountMinor: number, moneyCurrency = currency) =>
     new Intl.NumberFormat(locale, {
       style: "currency",
@@ -1316,7 +1316,7 @@ export function CourseBuilderStudio() {
       minimumFractionDigits: amountMinor % 100 === 0 ? 0 : 2,
       maximumFractionDigits: 2,
     }).format(amountMinor / 100);
-  // Sem aula ainda o seletor fica apagado: a linha embaixo diz por quê (F-12).
+  // With no lesson yet the selector is dimmed: the line below says why (F-12).
   const previewNeedsLesson = isEditable && allLessons.length === 0;
   const previewLessonField = (
     <div className="mt-4 grid gap-2">
@@ -1337,7 +1337,7 @@ export function CourseBuilderStudio() {
         ))}
       </select>
     </label>
-    {/* Fora do <label>: dentro, a frase entraria no nome do campo. */}
+    {/* Outside the <label>: inside, the sentence would enter the field's name. */}
     {previewNeedsLesson ? (
       <p id="builder-preview-needs-lesson" className="text-xs text-[var(--color-ink-soft)]">
         {t("creatorEditor.builder.pricing.previewNeedsLesson")}
@@ -1348,8 +1348,8 @@ export function CourseBuilderStudio() {
   const splitCountOptions = [...new Set([...splitPaymentCounts, Number(installmentsMax)])]
     .filter((count) => Number.isInteger(count) && count >= 1)
     .sort((left, right) => left - right);
-  // A mesma conta do checkout (buildInstallmentPlan): o maior numero de
-  // parcelas e quanto fica cada uma.
+  // The same calculation as checkout (buildInstallmentPlan): the largest number of
+  // installments and how much each one comes to.
   const lastSplit = parsedPriceAmountMinor
     ? buildInstallmentPlan({
         amountMinor: parsedPriceAmountMinor,
@@ -1377,7 +1377,7 @@ export function CourseBuilderStudio() {
     // Members-area customization is optional; the learner workspace falls back
     // to the course title, cover, and light theme.
     members: true,
-    // Curso: modulo e aula. Os outros tipos: o que a prontidao cobra deles.
+    // Course: module and lesson. The other types: what readiness checks for them.
     content: productFormat === "course"
       ? modules.length > 0 && lessonCount > 0
       : readiness.items.every((item) => item.group !== "content" || item.optional || item.done),
@@ -1397,10 +1397,10 @@ export function CourseBuilderStudio() {
   const activeStageId =
     builderStages.find((stage) => stage.target === activeTab)?.id ??
     builderStages[0].id;
-  // "Acabou de ficar pronto" so conta depois que todas as leituras voltaram:
-  // payouts e verificacao, os arquivos do curso e, no evento, as sessoes.
-  // Antes disso os falsos iniciais virariam festa ao chegar (abrir
-  // ?tab=review acendia "Stripe payouts" sem ninguem ter feito nada).
+  // "Just became ready" only counts after all the reads have come back:
+  // payouts and verification, the course files, and, for the event, the sessions.
+  // Before that the initial falses would turn into a celebration on arrival (opening
+  // ?tab=review lit up "Stripe payouts" with nobody having done anything).
   const readinessLoaded =
     gatesLoaded &&
     courseAssetsLoaded &&
@@ -1413,8 +1413,8 @@ export function CourseBuilderStudio() {
     readiness.items.filter((item) => item.done).map((item) => item.id),
     readinessLoaded,
   );
-  // A aba de abertura e a linha de base: so a TROCA de aba anima o painel. A
-  // primeira carga entra parada (nada de opacidade 0 no que vira LCP).
+  // The opening tab is the baseline: only SWITCHING tabs animates the panel. The
+  // first load enters still (no opacity 0 on what becomes LCP).
   const panelIn = useJustDone([activeTab]).has(activeTab) ? "motion-panel-in" : "";
   const totalDurationMinutes = allLessons.reduce(
     (sum, lesson) => sum + (lesson.durationMinutes ?? 0),
@@ -1444,25 +1444,25 @@ export function CourseBuilderStudio() {
   useEffect(() => {
     draftDirtyRef.current = draftIsDirty;
     const skipped = skippedSnapshotRef.current;
-    // Com save nosso no ar, o guardado pode ser o eco dele mesmo: aplicar
-    // ressuscitava o save e engolia uma volta exata ao estado anterior. O
-    // sucesso descarta o guardado; a falha o aplica (em persistDraft).
+    // With a save of ours in flight, the stored one may be its own echo: applying it
+    // revived the save and swallowed an exact return to the previous state. Success
+    // discards the stored one; failure applies it (in persistDraft).
     if (draftIsDirty || !skipped || inFlightSavesRef.current > 0) {
       return;
     }
-    // O rascunho voltou a ficar limpo sem save nosso (desfez a edicao, ou o
-    // autosave foi bloqueado/falhou e a pessoa voltou atras). O servidor pode
-    // ter coisa mais nova, de outra aba ou da pagina de vendas no Manage, que
-    // usa a mesma RPC de troca total. Sem isto, a proxima edicao qualquer
-    // gravava a copia velha inteira por cima.
+    // The draft became clean again without a save of ours (the edit was undone, or the
+    // autosave was blocked/failed and the person went back). The server may have
+    // something newer, from another tab or from the sales page in Manage, which
+    // uses the same full-replace RPC. Without this, the next edit of any kind
+    // would write the whole old copy over it.
     skippedSnapshotRef.current = null;
-    // Assincrono: setState direto no corpo do efeito e vetado (react-hooks).
-    // O microtask confere de novo: entre agendar e rodar, uma edicao pode ter
-    // comitado (o React esvazia os efeitos pendentes antes do render de uma
-    // digitacao). Aplicar as cegas trocava essa edicao pelo snapshot velho e
-    // marcava como salvo. Sujo, ou com save no ar, o snapshot volta ao
-    // guardado (sem trocar um mais novo): o proximo save bem-sucedido o
-    // descarta, e um save que falha o aplica (em persistDraft).
+    // Asynchronous: setState directly in the effect body is forbidden (react-hooks).
+    // The microtask checks again: between scheduling and running, an edit may have
+    // committed (React flushes pending effects before the render of a
+    // keystroke). Applying blindly swapped that edit for the old snapshot and
+    // marked it as saved. Dirty, or with a save in flight, the snapshot goes back to the
+    // stored one (without replacing a newer one): the next successful save
+    // discards it, and a save that fails applies it (in persistDraft).
     queueMicrotask(() => {
       if (draftDirtyRef.current || inFlightSavesRef.current > 0) {
         skippedSnapshotRef.current ??= skipped;
@@ -1478,12 +1478,12 @@ export function CourseBuilderStudio() {
     const reconciled = reconcileLessonVideoSelections(courseId, modules);
     if (JSON.stringify(reconciled) !== JSON.stringify(modules)) setModules(reconciled);
   }
-  // Preço e parcelas só ficam inválidos por digitação (a hidratação sempre
-  // produz valor válido ou vazio). Um preço inválido que normaliza para o mesmo
-  // valor da base ("invalid" e vazio viram null) não muda a assinatura, e o
-  // estúdio dizia "All changes saved" com o campo errado na tela. O bloqueio
-  // desses campos é visível mesmo sem diferença na assinatura; estrutura segue
-  // exigindo rascunho sujo, porque pode vir assim do banco.
+  // Price and installments only become invalid through typing (hydration always
+  // produces a valid value or an empty one). An invalid price that normalizes to the same
+  // value as the base ("invalid" and empty both become null) does not change the signature, and the
+  // studio said "All changes saved" with the wrong field on screen. The block on
+  // these fields is visible even without a difference in the signature; structure still
+  // requires a dirty draft, because it can come that way from the database.
   const typedFieldBlocksSave =
     savedSignature !== null
     && (autosaveBlockedReason === "price" || autosaveBlockedReason === "installments");
@@ -1498,8 +1498,8 @@ export function CourseBuilderStudio() {
             ? "pending"
             : "saved";
 
-  // Clicar no cartao ja escolhido nao muda nada: um produto antigo que cobra
-  // por ano continua anual dentro de "Mensalidade".
+  // Clicking the already chosen card changes nothing: an old product that charges
+  // yearly stays yearly inside "Membership".
   function handlePaymentChoiceChange(nextChoice: PaymentChoice) {
     if (nextChoice !== paymentChoice) {
       handlePaymentTypeChange(paymentTypeOfChoice(nextChoice));
@@ -1513,7 +1513,7 @@ export function CourseBuilderStudio() {
 
     setPaymentType(nextPaymentType);
 
-    // Saindo do Gratis o campo nascia com "0"; vazio mostra o exemplo.
+    // Leaving Free, the field used to start with "0"; empty shows the example.
     if (paymentType === "free" && nextPaymentType !== "free" && priceAmount.trim() === "0") {
       setPriceAmount("");
     }
@@ -1557,10 +1557,10 @@ export function CourseBuilderStudio() {
     const nextTitle = moduleTitle.trim();
 
     if (!nextTitle) {
-      // Erro LOCAL do formulário, não o `error` compartilhado do estúdio: aquele
-      // é renderizado ~600 linhas abaixo daqui, três telas de rolagem longe do
-      // botão. Clicar em "Add module" sem título parecia não fazer nada, e a
-      // explicação estava fora da tela.
+      // LOCAL form error, not the studio's shared `error`: that one
+      // is rendered ~600 lines below here, three screens of scrolling away from the
+      // button. Clicking "Add module" without a title seemed to do nothing, and the
+      // explanation was off screen.
       setModuleError(true);
       return;
     }
@@ -1579,7 +1579,7 @@ export function CourseBuilderStudio() {
     setLessonModuleId(nextModule.id);
     setModuleTitle("");
     setModuleSummary("");
-    // O modulo recem-criado abre na pagina dele: e nele que a proxima aula entra.
+    // The newly created module opens on its page: that is where the next lesson goes.
     moduleNavigationRef.current = { returnTo: null };
     router.push(builderModuleHref(nextModule.id), { scroll: false });
     setIsModuleFormOpen(false);
@@ -1587,11 +1587,11 @@ export function CourseBuilderStudio() {
     setSuccess(null);
   }
 
-  // A porta única para escolher a aula de amostra: página da aula, seletor da
-  // aba Pricing, menu da linha e caixa de aula nova. Só a página da aula
-  // sincronizava os vídeos; nas outras três a loja respondia "Video
-  // unavailable" para a amostra, e ao trocar de A para B os vídeos de A
-  // seguiam marcados como amostra (is_preview) e os de B não. "" = nenhuma.
+  // The single door for choosing the sample lesson: lesson page, Pricing
+  // tab selector, row menu and new lesson box. Only the lesson page
+  // synced the videos; on the other three the storefront answered "Video
+  // unavailable" for the sample, and when switching from A to B the videos of A
+  // stayed marked as sample (is_preview) and those of B did not. "" = none.
   function chooseFreePreviewLesson(next: string) {
     if (next === freePreviewLessonId) {
       return;
@@ -1600,20 +1600,20 @@ export function CourseBuilderStudio() {
     if (!course) {
       return;
     }
-    // A flag do curso sozinha não abre o vídeo para quem ainda não
-    // comprou: a busca anônima filtra por is_preview no asset. Sem este
-    // passo, marcar a prévia depois do upload deixava a loja com
-    // "Video unavailable" e nenhum aviso no estúdio.
+    // The course flag alone does not open the video for someone who has not
+    // bought yet: the anonymous fetch filters by is_preview on the asset. Without this
+    // step, marking the preview after the upload left the storefront with
+    // "Video unavailable" and no notice in the studio.
     void syncLessonPreviewAssets(course.id, next).catch(() => {
-      // Falha aqui não pode derrubar o builder. Nada mais refaz esta
-      // sincronia (o publish não a chama): a amostra fica em "Video
-      // unavailable" até o professor escolhê-la de novo, e nada mais depende dela.
+      // A failure here must not take the builder down. Nothing else redoes this
+      // sync (publish does not call it): the sample stays at "Video
+      // unavailable" until the teacher chooses it again, and nothing else depends on it.
     });
   }
 
   function openLessonForm(moduleId: string) {
-    // `lessonModuleId` era o select "Choose module"; agora quem responde por ele
-    // e a linha do modulo, e `handleAddLesson` segue igual.
+    // `lessonModuleId` used to be the "Choose module" select; now the module row
+    // answers for it, and `handleAddLesson` stays the same.
     setLessonFormModuleId(moduleId);
     setLessonModuleId(moduleId);
   }
@@ -1625,7 +1625,7 @@ export function CourseBuilderStudio() {
       return;
     }
 
-    // O modulo do formulario aberto manda; `lessonModuleId` fica de reserva.
+    // The open form's module wins; `lessonModuleId` stays as a fallback.
     const targetModuleId = lessonFormModuleId || lessonModuleId;
 
     if (!targetModuleId) {
@@ -1642,8 +1642,8 @@ export function CourseBuilderStudio() {
 
     const nextLessonId = createLocalId("lesson");
 
-    // Aula nova nasce so com o titulo: tipo, drip, nota, texto e link sairam
-    // do formulario (decisao de 14/09). O conteudo entra em "Edit content".
+    // A new lesson is born with only the title: type, drip, note, text and link left
+    // the form (decision of Sept 14). The content goes in "Edit content".
     setModules((current) =>
       current.map((module) =>
         module.id === targetModuleId
@@ -1667,7 +1667,7 @@ export function CourseBuilderStudio() {
       ),
     );
     if (lessonIsFreePreview) {
-      // A aula nova ainda não tem vídeo, mas a sincronia fecha o da anterior.
+      // The new lesson has no video yet, but the sync closes out the previous one's.
       chooseFreePreviewLesson(nextLessonId);
     }
     setLessonTitle("");
@@ -1716,8 +1716,8 @@ export function CourseBuilderStudio() {
     refreshCourseAssets(slot);
   }
 
-  // A biblioteca de midia pede "media": a falha sai embaixo dela, onde se
-  // apagou ou enviou o arquivo. Aula e capa do modulo caem no topo.
+  // The media library asks for "media": the failure shows below it, where the file
+  // was deleted or uploaded. Lesson and module cover go to the top.
   function refreshCourseAssets(slot: "hero" | "media" = "hero") {
     if (!courseId) return;
     const request = ++assetsRequestRef.current;
@@ -1734,8 +1734,8 @@ export function CourseBuilderStudio() {
       });
   }
 
-  // "Moved X to position N": Up/Down trocavam as linhas sem movimento e sem
-  // anuncio (so mover para outro modulo anunciava).
+  // "Moved X to position N": Up/Down used to swap the rows without motion and without an
+  // announcement (only moving to another module announced).
   function movedTo(title: string, position: number) {
     return t("creatorEditor.builder.curriculum.movedTo")
       .replace("{title}", () => title)
@@ -1786,8 +1786,8 @@ export function CourseBuilderStudio() {
     });
   }
 
-  // Roda depois da janela de confirmar: le o estado de agora (atualizacoes
-  // funcionais), nao o capturado no clique.
+  // Runs after the confirm dialog: reads the current state (functional updates),
+  // not the one captured at click time.
   function removeModule(moduleId: string) {
     setModules((currentModules) => {
       const deletedModule = currentModules.find((module) => module.id === moduleId);
@@ -1804,7 +1804,7 @@ export function CourseBuilderStudio() {
       pendingLessonStudioRef.current = null;
     }
     setSuccess(null);
-    // A linha (e o botao que tinha o foco) some: o foco vai para o titulo da aba.
+    // The row (and the button that had focus) goes away: focus goes to the tab title.
     window.setTimeout(() => document.getElementById("builder-panel-heading")?.focus(), 0);
   }
 
@@ -1831,8 +1831,8 @@ export function CourseBuilderStudio() {
             }
           : module,
       );
-    // Ja no ref, sem esperar o render: a descarga ao sair (com o builder
-    // desmontando) le daqui o link que o estudio acabou de gravar.
+    // Already in the ref, without waiting for the render: the flush on exit (with the builder
+    // unmounting) reads from here the link the studio just saved.
     localModulesRef.current = applyPatch(localModulesRef.current);
     setModules(applyPatch);
     setSuccess(null);
@@ -1847,7 +1847,7 @@ export function CourseBuilderStudio() {
     const index = lessons.findIndex((lesson) => lesson.id === lessonId);
     const target = direction === "up" ? index - 1 : index + 1;
     if (index >= 0 && target >= 0 && target < lessons.length) {
-      // A regiao da pagina do modulo que ja anuncia o "Move to module".
+      // The region of the module page that already announces "Move to module".
       setMoveStatus({ moduleId, text: movedTo(lessons[index].title || t("creatorEditor.lesson.untitled"), target + 1) });
     }
     setModules((currentModules) =>
@@ -1868,25 +1868,25 @@ export function CourseBuilderStudio() {
     setSuccess(null);
   }
 
-  // Mover para outro modulo: vai para o fim dele, como o mesmo objeto (mesmo
-  // id). O estudio a abrir (aula recem-criada) passa a mirar o modulo novo;
-  // senao procuraria a aula no modulo antigo e ficaria sem aula. (Mover so
-  // existe na pagina do modulo e na lista: nunca com a pagina da aula aberta.)
-  // `onMoved` roda so se a aula mudou de modulo (o botao Move limpa o destino,
-  // anuncia e leva o foco).
+  // Move to another module: goes to the end of it, as the same object (same
+  // id). The studio about to open (newly created lesson) now targets the new module;
+  // otherwise it would look for the lesson in the old module and be left without a lesson. (Moving only
+  // exists on the module page and in the list: never with the lesson page open.)
+  // `onMoved` runs only if the lesson changed module (the Move button clears the destination,
+  // announces and takes the focus).
   function moveLessonToModule(lessonId: string, targetModuleId: string, onMoved?: () => void) {
     if (!isEditable) {
       return;
     }
 
-    // Aula que nao e deste curso (arrastada de outra aba): nada muda, e nem
-    // aparece a confirmacao.
+    // A lesson that is not from this course (dragged from another tab): nothing changes, and the
+    // confirmation does not even appear.
     if (!modules.some((module) => module.lessons.some((lesson) => lesson.id === lessonId))) {
       return;
     }
 
     const target = modules.find((module) => module.id === targetModuleId);
-    // Ja esta nesse modulo (ex.: soltou na propria linha): nada muda.
+    // Already in that module (e.g., dropped on its own row): nothing changes.
     if (!target || target.lessons.some((lesson) => lesson.id === lessonId)) {
       return;
     }
@@ -1904,11 +1904,11 @@ export function CourseBuilderStudio() {
       setSuccess(null);
     };
 
-    // ponytail: com liberacao por posicao, mover pode trancar de novo quem ja
-    // tinha acesso, porque a posicao e recalculada a cada leitura. Por ora a
-    // pessoa confirma; a correcao de raiz (aula concluida conta como liberada,
-    // no drip-policy.ts e em lesson_is_released) precisa de migration e fica
-    // agendada a parte.
+    // ponytail: with position-based release, moving can lock out again someone who already
+    // had access, because the position is recalculated on every read. For now the
+    // person confirms; the root fix (a completed lesson counts as released,
+    // in drip-policy.ts and in lesson_is_released) needs a migration and is
+    // scheduled separately.
     if (positionalDripStrategies.has(dripStrategy)) {
       ask({
         title: t("creatorEditor.builder.confirm.moveTitle"),
@@ -1916,8 +1916,8 @@ export function CourseBuilderStudio() {
         confirmLabel: t("creatorEditor.builder.confirm.moveAction"),
         run: () => {
           move();
-          // Com a janela aberta o resto da pagina e inerte: o foco que
-          // `onMoved` leva so pega depois que ela fecha.
+          // With the dialog open the rest of the page is inert: the focus that
+          // `onMoved` brings only lands after it closes.
           window.setTimeout(() => onMoved?.(), 0);
         },
       });
@@ -1960,23 +1960,23 @@ export function CourseBuilderStudio() {
       ),
     );
 
-    // Depois da janela: o estado de agora, nao o capturado no clique.
+    // After the dialog: the current state, not the one captured at click time.
     setFreePreviewLessonId((current) => (current === lessonId ? "" : current));
 
-    // Aula apagada antes do eco do save que a levou: o eco nao pode abrir o
-    // estudio dela.
+    // A lesson deleted before the echo of the save that carried it: the echo cannot open its
+    // studio.
     if (pendingLessonStudioRef.current?.lessonId === lessonId) {
       pendingLessonStudioRef.current = null;
     }
 
     setSuccess(null);
-    // A linha (e o botao que tinha o foco) some: o foco vai para o titulo do modulo.
+    // The row (and the button that had focus) goes away: focus goes to the module title.
     window.setTimeout(() => document.getElementById("builder-module-heading")?.focus(), 0);
   }
 
-  // Autosave e o botao Salvar podem estar no ar ao mesmo tempo. O selo so vira
-  // "Saved" quando a ULTIMA gravacao pendente volta; antes, a primeira a voltar
-  // pintava "Saved" com a outra ainda no ar.
+  // Autosave and the Save button can be in flight at the same time. The badge only becomes
+  // "Saved" when the LAST pending write comes back; before, the first one to come back
+  // painted "Saved" with the other still in flight.
   const persistDraft = useCallback(
     async (
       signature: string,
@@ -1992,21 +1992,21 @@ export function CourseBuilderStudio() {
       try {
         await updateTeacherCourseBuilder(courseId, payload);
         setSavedSignature(signature);
-        // O servidor agora tem o nosso rascunho; o proximo eco traz o resto.
+        // The server now has our draft; the next echo brings the rest.
         skippedSnapshotRef.current = null;
         if (inFlightSavesRef.current === 1) {
           setAutosaveState("saved");
-          // Ultimo save no ar: busca o curso em vez de esperar o eco. O contador
-          // de geracao do subscribe descarta uma resposta mais velha que o eco.
-          // ponytail: com o Realtime saudavel, eco e recarga buscam duas vezes;
-          // tirar a recarga so se o custo aparecer.
+          // Last save in flight: fetches the course instead of waiting for the echo. The
+          // subscribe generation counter discards a response older than the echo.
+          // ponytail: with a healthy Realtime, echo and reload fetch twice;
+          // remove the reload only if the cost shows up.
           void courseReloadRef.current?.();
         }
       } finally {
         inFlightSavesRef.current -= 1;
-        // Save nosso falhou com o rascunho limpo: o snapshot guardado durante
-        // o save (que o efeito nao aplica com save no ar) vale agora. No
-        // sucesso ele ja foi descartado acima, entao aqui nao sobra nada.
+        // A save of ours failed with the draft clean: the snapshot stored during
+        // the save (which the effect does not apply with a save in flight) counts now. On
+        // success it was already discarded above, so nothing is left here.
         const skipped = skippedSnapshotRef.current;
         if (inFlightSavesRef.current === 0 && skipped && !draftDirtyRef.current) {
           skippedSnapshotRef.current = null;
@@ -2017,10 +2017,10 @@ export function CourseBuilderStudio() {
     [courseId, applyServerDraft],
   );
 
-  // Pagina do modulo (?module=M). Funcao de render, nao componente: le o mesmo
-  // estado do builder, entao nao existe segunda copia do rascunho.
-  // Evento ao vivo: a sessao vem antes das aulas, que viram a gravacao
-  // opcional (replay). Marcar e editar continuam na Agenda.
+  // Module page (?module=M). A render function, not a component: it reads the same
+  // builder state, so there is no second copy of the draft.
+  // Live event: the session comes before the lessons, which become the optional
+  // recording (replay). Marking and editing remain in the Agenda.
   function renderLiveSession() {
     if (productFormat !== "live_event" || !courseId) {
       return null;
@@ -2070,8 +2070,8 @@ export function CourseBuilderStudio() {
     );
   }
 
-  // E-book: so o envio de arquivos da aula que nasceu com o produto. O
-  // comprador baixa ali; modulo, aula e video nao aparecem.
+  // E-book: only the file upload of the lesson that was born with the product. The
+  // buyer downloads there; module, lesson and video do not appear.
   function renderEbookFiles(lessonModule: TeacherCourseModule, lesson: TeacherLesson) {
     if (!course) {
       return null;
@@ -2098,9 +2098,9 @@ export function CourseBuilderStudio() {
     );
   }
 
-  // Pagina da aula (?module=M&lesson=L): o corpo do estudio na propria pagina,
-  // com a trilha Curso > Modulo > Aula no lugar do modal. Mesmo rascunho,
-  // mesmo autosave e mesmo Salvar do resto do builder.
+  // Lesson page (?module=M&lesson=L): the studio body on the page itself,
+  // with the Course > Module > Lesson breadcrumb in place of the modal. Same draft,
+  // same autosave and same Save as the rest of the builder.
   function renderLessonPage() {
     if (!course || !activeLessonStudioModule || !activeLessonStudioLesson) {
       return null;
@@ -2110,8 +2110,8 @@ export function CourseBuilderStudio() {
 
     return (
       <LessonContentModal
-        // Uma instancia por aula: o estado do estudio (aba, envio, se a
-        // nota publica antiga aparece) nao vaza de uma aula para outra.
+        // One instance per lesson: the studio state (tab, upload, whether the old
+        // public note appears) does not leak from one lesson to another.
         key={lesson.id}
         variant="page"
         crumbs={{
@@ -2132,16 +2132,16 @@ export function CourseBuilderStudio() {
         isEditable={isEditable}
         isFreePreview={freePreviewLessonId === lesson.id}
         dripStrategy={dripStrategy}
-        // Done troca a entrada do historico: modulo > aula > modulo nao se acumula.
+        // Done replaces the history entry: module > lesson > module does not pile up.
         onClose={() => router.replace(builderModuleHref(lessonModule.id), { scroll: false })}
         onUploadingChange={(uploading, failed) => {
           if (uploading) {
             setUploadingLesson({ moduleId: lessonModule.id, lessonId: lesson.id });
             return;
           }
-          // Falhou com a URL em outro lugar (ex.: voltar do navegador): a URL
-          // volta para a aula antes de soltar; senao a pagina com o erro sumia
-          // antes de aparecer.
+          // Failed with the URL somewhere else (e.g., browser back): the URL
+          // goes back to the lesson before letting go; otherwise the page with the error vanished
+          // before it appeared.
           const urlPointsHere = requestedTab === "content" && urlLessonStudio?.lessonId === lesson.id;
           if (failed && !urlPointsHere) {
             setUploadingLesson({ moduleId: lessonModule.id, lessonId: lesson.id, failed: true });
@@ -2160,7 +2160,7 @@ export function CourseBuilderStudio() {
   function renderModulePage(module: TeacherCourseModule, moduleIndex: number) {
     const isLessonFormOpen = lessonFormModuleId === module.id;
     const moduleName = module.title || t("creatorEditor.builder.curriculum.untitledModule");
-    // Primeira aula JÁ SALVA do módulo: a rota de IA confere o dono por ela.
+    // First ALREADY SAVED lesson of the module: the AI route checks the owner through it.
     const savedCourseId = course?.id;
     const savedFirstLessonId = course?.modules.find((saved) => saved.id === module.id)?.lessons[0]?.id;
 
@@ -2194,7 +2194,7 @@ export function CourseBuilderStudio() {
             <MembersCoverField
               course={course}
               moduleId={module.id}
-              // O upload precisa do id do modulo ja gravado no servidor.
+              // The upload needs the module id already saved on the server.
               isEditable={isEditable && course.modules.some((saved) => saved.id === module.id)}
               coverUrl={getSafeMediaUrl(getModuleCoverAsset(module, courseAssets)?.downloadUrl)}
               onUploaded={(assetId) => updateModuleCover(module.id, assetId)}
@@ -2229,7 +2229,7 @@ export function CourseBuilderStudio() {
                 className="field-input w-full resize-none disabled:cursor-not-allowed disabled:opacity-60"
               />
             </label>
-            {/* A rota confere o dono por uma aula JÁ SALVA do módulo. */}
+            {/* The route checks the owner through an ALREADY SAVED lesson of the module. */}
             {isTeacherAiEnabled && isEditable && savedCourseId && savedFirstLessonId ? (
               <AiSuggest
                 courseId={savedCourseId}
@@ -2251,9 +2251,9 @@ export function CourseBuilderStudio() {
             .replace("{count}", () => String(module.lessons.length))}
         </p>
 
-        {/* Liberacao por posicao (sequencia, por modulo, por aula): mover muda
-            quando a aula abre e qual vem antes. Avisa antes, e o mover pede
-            confirmacao. Com dia proprio por aula (custom), nada muda. */}
+        {/* Position-based release (sequence, per module, per lesson): moving changes
+            when the lesson opens and which one comes before. It warns beforehand, and the move asks for
+            confirmation. With a custom day per lesson (custom), nothing changes. */}
         {positionalDripStrategies.has(dripStrategy) && modules.length > 1 && module.lessons.length > 0 ? (
           <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
             {t("creatorEditor.builder.curriculum.moveDripWarning")}
@@ -2274,10 +2274,10 @@ export function CourseBuilderStudio() {
             </p>
           )
         ) : (
-          // Uma linha por aula (era um cartao de 3 linhas com 8 a 9 controles
-          // e um botao cheio em cada): numero, titulo, a acao principal em
-          // contorno, subir/descer e o resto em "Mais acoes", que abre logo
-          // abaixo da linha (nada flutua para fora da tela).
+          // One row per lesson (it used to be a 3-line card with 8 to 9 controls
+          // and a filled button on each): number, title, the main action as an
+          // outline, up/down, and the rest in "More actions", which opens right
+          // below the row (nothing floats off screen).
           <ol className="divide-y divide-[var(--color-line)] rounded-lg border border-[var(--color-line)] bg-white">
           {module.lessons.map((lesson, lessonIndex) => {
             const lessonName = lesson.title || t("creatorEditor.builder.curriculum.untitledLesson");
@@ -2288,9 +2288,9 @@ export function CourseBuilderStudio() {
                 <span aria-hidden="true" className="w-6 shrink-0 text-xs font-bold tabular-nums text-[var(--color-ink-muted)]">
                   {String(lessonIndex + 1).padStart(2, "0")}
                 </span>
-                {/* A linha mostra so o titulo: tipo, dias de espera, nota,
-                    texto e link sairam da tela (decisao de 14/09), mas
-                    continuam no dado — updateLesson so aplica o patch. */}
+                {/* The row shows only the title: type, wait days, note,
+                    text and link left the screen (decision of Sept 14), but
+                    stay in the data — updateLesson only applies the patch. */}
                 <input
                   value={lesson.title}
                   onChange={(event) =>
@@ -2300,8 +2300,8 @@ export function CourseBuilderStudio() {
                   }
                   disabled={!isEditable}
                   aria-label={t("creatorEditor.builder.curriculum.lessonTitle")}
-                  // Borda clara em repouso: sem ela o titulo parecia texto
-                  // solto, nao um campo que se edita ali mesmo.
+                  // Light border at rest: without it the title looked like loose
+                  // text, not a field you edit right there.
                   className="min-h-11 min-w-0 flex-1 basis-48 rounded-md border border-[var(--color-line)] bg-white px-2 text-sm font-semibold text-[var(--color-ink)] outline-none hover:border-[var(--color-field-border)] focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                 />
                 {freePreviewLessonId === lesson.id ? (
@@ -2406,8 +2406,8 @@ export function CourseBuilderStudio() {
                       ? t("creatorEditor.builder.curriculum.previewSelected")
                       : t("creatorEditor.builder.curriculum.markPreview")}
                   </button>
-                  {/* Caminho de teclado (e o acessivel) para mudar de modulo:
-                      o seletor so marca o destino e o botao Move aplica. */}
+                  {/* Keyboard path (and the accessible one) to change module:
+                      the selector only marks the destination and the Move button applies it. */}
                   {modules.length > 1 ? (
                     <>
                       <select
@@ -2454,12 +2454,12 @@ export function CourseBuilderStudio() {
                                 .replace("{title}", () => lessonName)
                                 .replace("{module}", () => target.title || t("creatorEditor.builder.curriculum.untitledModule")),
                             });
-                            // A linha sai desta pagina: o foco vai para o titulo do modulo.
+                            // The row leaves this page: focus goes to the module title.
                             document.getElementById("builder-module-heading")?.focus();
                           });
                         }}
-                        // So com um destino que ainda existe e nao e o proprio
-                        // modulo (o destino marcado pode ter sido apagado).
+                        // Only with a destination that still exists and is not the module
+                        // itself (the marked destination may have been deleted).
                         disabled={
                           !isEditable
                           || !modules.some((item) => item.id === moveTargets[lesson.id] && item.id !== module.id)
@@ -2490,11 +2490,11 @@ export function CourseBuilderStudio() {
           </ol>
         )}
 
-        {/* "Add lesson" mora no fim da lista, onde a aula nova entra. O
-            formulario abria acima da lista e o "Lesson added" saia no
-            rodape, telas abaixo. A linha de aviso e a da lista (mover, subir,
-            descer, aula nova) e fica sempre na tela: o leitor de tela so
-            anuncia mudanca de texto numa regiao que ja existia. */}
+        {/* "Add lesson" lives at the end of the list, where the new lesson goes in. The
+            form used to open above the list and "Lesson added" came out in the
+            footer, screens below. The notice row is the list's row (move, up,
+            down, new lesson) and always stays on screen: the screen reader only
+            announces a text change in a region that already existed. */}
         <div className="grid gap-2">
           <p role="status" className="text-xs font-semibold text-[var(--color-primary)]">
             {success === "lessonAdded" && lessonAddedIn === module.id
@@ -2519,7 +2519,7 @@ export function CourseBuilderStudio() {
               value={lessonTitle}
               onChange={(event) => {
                 setLessonTitle(event.target.value);
-                // O aviso sai assim que ha titulo, sem esperar outro clique.
+                // The notice goes away as soon as there is a title, without waiting for another click.
                 if (error?.code === "lessonTitle" && event.target.value.trim()) {
                   setError(null);
                 }
@@ -2531,13 +2531,13 @@ export function CourseBuilderStudio() {
               placeholder={t("creatorEditor.builder.curriculum.lessonTitle")}
               className="field-input min-w-0 disabled:cursor-not-allowed disabled:opacity-60"
             />
-            {/* Como no formulario do modulo: o aviso sai aqui, nao no rodape. */}
+            {/* As in the module form: the notice appears here, not in the footer. */}
             {error?.code === "lessonTitle" ? (
               <p id={`lesson-title-error-${module.id}`} role="alert" className="text-xs font-semibold text-[var(--color-danger-fg)]">
                 {errorMessage}
               </p>
             ) : null}
-            {/* Previa gratis e a minoria dos casos: fica a um clique daqui. */}
+            {/* A free preview is the minority of cases: it stays one click away from here. */}
             <details className="rounded-md border fine-rule bg-[var(--color-surface-soft)] px-4 py-3">
               <summary className="cursor-pointer text-xs font-semibold text-[var(--color-ink-soft)]">
                 {t("creatorEditor.builder.curriculum.moreOptions")}
@@ -2600,8 +2600,8 @@ export function CourseBuilderStudio() {
     setError(null);
     setSuccess(null);
 
-    // Com o campo na tela, o foco vai ate ele: no celular o aviso do campo
-    // ficava abaixo da dobra e o Save parecia nao fazer nada.
+    // With the field on screen, focus goes to it: on the phone the field's notice
+    // was below the fold and Save seemed to do nothing.
     if (!priceFieldIsValid) {
       setError({ code: liveWithoutPrice ? "livePrice" : "price" });
       if (priceFieldShown) {
@@ -2702,8 +2702,8 @@ export function CourseBuilderStudio() {
       setSuccess("published");
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : "";
-      // O que cada tipo cobra (publish_teacher_course) tem a sua mensagem: a
-      // sessao do evento, o arquivo do e-book, a comunidade ligada.
+      // What each type checks (publish_teacher_course) has its own message: the
+      // event's session, the e-book's file, the linked community.
       const code = message.includes("creator_plan_required")
         ? "plan"
         : message.toLowerCase().includes("every lesson needs")
@@ -2808,31 +2808,31 @@ export function CourseBuilderStudio() {
     runAutosave,
   ]);
 
-  // Sair pelo voltar/avancar do navegador, gesto do trackpad ou Alt+Esquerda
-  // desmonta o builder sem clique em link: o timer de 1,8 s morria junto e a
-  // edicao ia com ele (beforeunload nao dispara no App Router). A descarga manda
-  // o rascunho pendente na hora, pelo mesmo persistDraft do autosave.
+  // Leaving through the browser's back/forward, a trackpad gesture or Alt+Left
+  // unmounts the builder without a link click: the 1.8 s timer died with it and the
+  // edit went with it (beforeunload does not fire in the App Router). The flush sends
+  // the pending draft right away, through the same persistDraft as the autosave.
   useEffect(() => {
     flushOnLeaveRef.current = (withStudio) => {
       try {
-        // Link digitado no estudio e ainda sem blur vai primeiro, sem prompt.
-        // So saindo de verdade: com a aba apenas escondida, a pessoa volta ao
-        // campo e decide ela mesma.
+        // A link typed in the studio and not yet blurred goes first, without a prompt.
+        // Only when actually leaving: with the tab merely hidden, the person returns to the
+        // field and decides for themselves.
         if (withStudio) {
           studioLeaveFlushRef.current?.();
         }
-        // Save, autosave ou Publicar no ar: nao comeca uma segunda troca total
-        // (o Publicar pausa o autosave de proposito entre gravar e publicar).
-        // O caminho no ar e o autosave normal levam o resto.
-        // ponytail: desmontar de verdade com save no ar pula a descarga, e o
-        // que foi editado depois dele se perde; enfileirar se virar caso real.
+        // Save, autosave or Publish in flight: do not start a second full replace
+        // (Publish pauses the autosave on purpose between saving and publishing).
+        // The in-flight path and the normal autosave carry the rest.
+        // ponytail: truly unmounting with a save in flight skips the flush, and what
+        // was edited after it is lost; queue it if it becomes a real case.
         if (isAutosavingRef.current || inFlightSavesRef.current > 0 || isSaving || isSubmitting) {
           return;
         }
         if (!courseId || !canAutosaveDraft || savedSignature === null) {
           return;
         }
-        // Modulos do ref: ja trazem o link que acabou de ser gravado acima.
+        // Modules from the ref: they already carry the link that was just saved above.
         const payload = {
           ...builderDraftPayload,
           modules: sanitizeModules(localModulesRef.current),
@@ -2842,21 +2842,21 @@ export function CourseBuilderStudio() {
           return;
         }
         window.clearTimeout(autosaveTimerRef.current);
-        // Pelo runAutosave (que chama o persistDraft): o save fica marcado como
-        // o autosave no ar, e um timer novo com o mesmo payload nao o reenvia.
-        // Ele ja trata o erro, entao nada escapa daqui.
+        // Through runAutosave (which calls persistDraft): the save is marked as
+        // the autosave in flight, and a new timer with the same payload does not resend it.
+        // It already handles the error, so nothing escapes from here.
         void runAutosave(signature, payload);
       } catch {
-        // Sair nunca pode quebrar a desmontagem.
+        // Leaving must never break the unmount.
       }
     };
   });
 
-  // pagehide cobre fechar/recarregar e o bfcache; visibilitychange('hidden')
-  // chega antes, e e o unico aviso confiavel no celular. Aba escondida nao mexe
-  // no estudio: trocar de app e voltar nao pode apagar o link digitado.
-  // ponytail: fechar a aba de verdade pode cortar o fetch no meio; fetch com
-  // keepalive no cliente Supabase se isso aparecer em producao.
+  // pagehide covers closing/reloading and the bfcache; visibilitychange('hidden')
+  // arrives earlier, and is the only reliable signal on the phone. A hidden tab does not touch
+  // the studio: switching apps and coming back must not erase the typed link.
+  // ponytail: really closing the tab can cut the fetch short; fetch with
+  // keepalive in the Supabase client if that shows up in production.
   useEffect(() => {
     const flush = () => flushOnLeaveRef.current(true);
     const flushWhenHidden = () => {
@@ -2872,9 +2872,9 @@ export function CourseBuilderStudio() {
     };
   }, []);
 
-  // Layout, nao passivo: na desmontagem o React limpa o pai antes dos filhos,
-  // entao o handle do link do estudio (efeito de layout do filho) ainda existe
-  // aqui. Numa limpeza passiva ele ja teria sido solto.
+  // Layout, not passive: on unmount React cleans up the parent before the children,
+  // so the studio's link handle (the child's layout effect) still exists
+  // here. In a passive cleanup it would already have been released.
   useLayoutEffect(() => {
     const flushRef = flushOnLeaveRef;
     return () => flushRef.current(true);
@@ -2899,26 +2899,26 @@ export function CourseBuilderStudio() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [draftIsDirty, uploadingLesson]);
 
-  // O `beforeunload` acima só existe para o navegador: fechar a aba, recarregar,
-  // voltar. Ele NÃO dispara em navegação client-side do App Router — e é por ali
-  // que se sai daqui na prática, clicando "Courses", "Sales" ou o logo na
-  // barra lateral. O componente desmontava, o timer de 1,8s morria com ele e o
-  // rascunho ia junto, sem uma palavra.
+  // The `beforeunload` above only exists for the browser: closing the tab, reloading,
+  // going back. It does NOT fire on client-side navigation in the App Router, and that is
+  // how people actually leave here, by clicking "Courses", "Sales" or the logo in the
+  // sidebar. The component unmounted, the 1.8s timer died with it and the
+  // draft went along, without a word.
   //
-  // Captura no document, antes de o Link do Next tratar o clique. Só intercepta
-  // link que sai desta página; âncora interna (#builder-sec-…), target=_blank
-  // e clique modificado (ctrl/cmd/meio, que abre em outra aba e não desmonta
-  // nada) seguem direto.
+  // Capture on the document, before Next's Link handles the click. It only intercepts a
+  // link that leaves this page; an internal anchor (#builder-sec-…), target=_blank
+  // and a modified click (ctrl/cmd/middle, which opens in another tab and unmounts
+  // nothing) go straight through.
   useEffect(() => {
-    // Rascunho sujo ou envio em curso: sem a camada do antigo modal, a barra
-    // lateral e os links da marca ficam clicaveis no meio de um envio.
+    // Dirty draft or upload in progress: without the old modal's layer, the sidebar
+    // and the brand links stay clickable in the middle of an upload.
     if ((!draftIsDirty && !uploadingLesson) || typeof document === "undefined") {
       return;
     }
 
     const handleClickCapture = (event: MouseEvent) => {
-      // O clique que a janela de sair repete depois do "Leave anyway": segue
-      // para o Link como seguia quando o confirm() devolvia true.
+      // The click that the leave dialog repeats after "Leave anyway": goes on
+      // to the Link as it did when confirm() returned true.
       if (leaveConfirmedRef.current) {
         leaveConfirmedRef.current = false;
         return;
@@ -2939,12 +2939,12 @@ export function CourseBuilderStudio() {
       if (destination.origin !== window.location.origin) {
         return;
       }
-      // Envio em curso: sair desmontaria o builder e o envio seguiria sem dono
-      // (sucesso sem onde gravar, erro sem onde aparecer). Bloqueia e avisa.
+      // Upload in progress: leaving would unmount the builder and the upload would go on ownerless
+      // (success with nowhere to save, error with nowhere to show). Blocks and warns.
       if (uploadingLesson) {
         event.preventDefault();
         event.stopPropagation();
-        // So avisa, com um botao: a saida continua bloqueada e o envio segue.
+        // Only warns, with a button: the exit stays blocked and the upload goes on.
         ask({
           title: t("creatorEditor.builder.confirm.uploadTitle"),
           body: t("creatorEditor.builder.confirm.uploadInProgress"),
@@ -2959,9 +2959,9 @@ export function CourseBuilderStudio() {
         return;
       }
 
-      // A janela nao segura o clique como o confirm() segurava: o clique para
-      // aqui e, confirmado, e repetido no mesmo link (o Link do Next navega
-      // como navegaria). Link que sumiu da tela: vai pelo endereco.
+      // The dialog does not hold the click the way confirm() held it: the click stops
+      // here and, once confirmed, is repeated on the same link (Next's Link navigates
+      // as it would have). A link that vanished from the screen: goes by the address.
       event.preventDefault();
       event.stopPropagation();
       ask({
@@ -2971,7 +2971,7 @@ export function CourseBuilderStudio() {
         cancelLabel: t("creatorEditor.builder.confirm.stay"),
         danger: true,
         run: () => {
-          // Depois de a janela fechar: com ela aberta a pagina e inerte.
+          // After the dialog closes: with it open the page is inert.
           window.setTimeout(() => {
             if (anchor.isConnected) {
               leaveConfirmedRef.current = true;
@@ -3000,7 +3000,7 @@ export function CourseBuilderStudio() {
     }
     pendingScrollRef.current = null;
     window.requestAnimationFrame(() => {
-      // O bloco de reduzir movimento do CSS nao alcanca a rolagem pedida em JS.
+      // The CSS reduced-motion block does not reach the scroll requested from JS.
       document.getElementById(anchor)?.scrollIntoView({
         behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
           ? "auto"
@@ -3016,11 +3016,11 @@ export function CourseBuilderStudio() {
     scrollPendingSectionIntoView();
   }, [activeTab, scrollPendingSectionIntoView]);
 
-  // No celular as cinco etapas viram uma faixa que rola de lado (globals.css):
-  // a etapa aberta vem para o meio e a borda direita esmaece enquanto houver
-  // etapa escondida, como nas abas da sala (classroom-tabs.tsx). Só mexe no
-  // scrollLeft da própria faixa, nunca na rolagem da página. isLoading: a faixa
-  // só existe depois da carga.
+  // On the phone the five steps become a strip that scrolls sideways (globals.css):
+  // the open step comes to the middle and the right edge fades while there is a
+  // hidden step, as in the classroom tabs (classroom-tabs.tsx). It only touches
+  // the strip's own scrollLeft, never the page scroll. isLoading: the strip
+  // only exists after loading.
   const stepsRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const row = stepsRef.current;
@@ -3042,7 +3042,7 @@ export function CourseBuilderStudio() {
       window.removeEventListener("resize", mark);
     };
   }, [activeStageId, isLoading]);
-  // A ajuda da etapa, no celular, fica atrás de "More about this step".
+  // The step's help, on the phone, sits behind "More about this step".
   const [stepHelpOpen, setStepHelpOpen] = useState(false);
 
   if (!courseId) {
@@ -3071,11 +3071,11 @@ export function CourseBuilderStudio() {
     );
   }
 
-  // O marco da jornada: latão, com ícone, e o carregando dentro do botão. Mora
-  // só no fim da aba Publish, onde a pessoa termina (o rodapé repetia).
-  // Cada pendencia do Publish leva ao lugar de resolver: a aba e o campo (a
-  // mesma ancora do stepper), ou a primeira aula ainda sem conteudo. Plano e
-  // pagamentos tem link proprio; verificacao e ativacao, nao (null).
+  // The journey milestone: brass, with an icon, and the loading state inside the button. It lives
+  // only at the end of the Publish tab, where the person finishes (the footer repeated it).
+  // Each Publish pending item leads to the place to resolve it: the tab and the field (the
+  // same anchor as the stepper), or the first lesson still without content. Plan and
+  // payments have their own link; verification and activation do not (null).
   function readinessFix(itemId: string): { label: string; go: () => void } | null {
     const anchors: Record<string, [BuilderTab, string]> = {
       title: ["details", "builder-sec-basics"],
@@ -3101,7 +3101,7 @@ export function CourseBuilderStudio() {
       }
       return {
         label: t("creatorEditor.builder.publish.openLesson"),
-        // Aula ainda sem eco do save nao tem pagina: abre o modulo dela.
+        // A lesson still without an echo of the save has no page: opens its module.
         go: () => router.push(
           savedLessonIds.has(lesson.id) ? builderLessonHref(emptyModule.id, lesson.id) : builderModuleHref(emptyModule.id),
           { scroll: false },
@@ -3125,12 +3125,12 @@ export function CourseBuilderStudio() {
     };
   }
 
-  // O botao apagado sempre diz por que. Antes a frase dependia so da
-  // prontidao: com o preco digitado invalido, ou abrindo o curso de outra
-  // pessoa, o botao apagava em silencio.
-  // Do mais especifico ao mais geral: quem nao e dono nao tem o que terminar;
-  // o preco digitado invalido tambem reprova a prontidao, e "corrija o preco"
-  // diz o que fazer melhor que "termine os itens".
+  // The disabled button always says why. Before, the sentence depended only on
+  // readiness: with an invalid typed price, or when opening another
+  // person's course, the button went disabled in silence.
+  // From the most specific to the most general: someone who is not the owner has nothing to finish;
+  // the invalid typed price also fails readiness, and "fix the price"
+  // says what to do better than "finish the items".
   const publishReasonKey = isLive || success === "published"
     ? null
     : viewingOthersCourse
@@ -3157,7 +3157,7 @@ export function CourseBuilderStudio() {
         void publishCourse();
       }}
       disabled={!canPublish || !readyToPublish || !priceFieldIsValid}
-      // O botao apagado diz por que: a frase ao lado dele.
+      // The disabled button says why: the sentence next to it.
       aria-describedby={showPublishReason ? "builder-publish-reason" : undefined}
       className="w-full sm:w-auto"
     >
@@ -3167,9 +3167,9 @@ export function CourseBuilderStudio() {
     </Button>
   );
 
-  // Um alerta so, renderizado no lugar de errorSlot. O titulo vazio da aula
-  // nova fica no proprio formulario dela; preco e parcelas, no campo, quando
-  // o campo esta na tela.
+  // A single alert, rendered in place of errorSlot. The empty title of the new
+  // lesson stays in its own form; price and installments, on the field, when
+  // the field is on screen.
   const builderErrorAlert = error && error.code !== "lessonTitle" && !priceFieldError && !installmentsFieldError ? (
     <InlineAlert tone="error">
       <p>{errorMessage}</p>
@@ -3194,11 +3194,11 @@ export function CourseBuilderStudio() {
       ) : null}
     </InlineAlert>
   ) : null;
-  // Publicou: o pico da jornada. O link para divulgar sai aqui mesmo, sem ir
-  // ao Manage. Mora na aba Publish, no lugar do botao; se a pessoa trocou de
-  // aba enquanto publicava, sai no topo da aba em que ela esta, em vez de
-  // trocar a aba debaixo de quem digita. O botao latao de copiar so pega o
-  // foco quando nada esta focado (CourseShareLink), entao nao rouba teclas.
+  // Published: the peak of the journey. The link to share appears right here, without going
+  // to Manage. It lives on the Publish tab, in place of the button; if the person switched
+  // tabs while publishing, it appears at the top of the tab they are on, instead of
+  // switching the tab under someone who is typing. The brass copy button only takes
+  // focus when nothing is focused (CourseShareLink), so it does not steal keys.
   const publishedPanel = success === "published" ? (
     <>
       {courseId ? (
@@ -3208,8 +3208,8 @@ export function CourseBuilderStudio() {
           headingRef={successNoticeRef}
         />
       ) : null}
-      {/* Depois de publicar, e só aí: a oferta do selo, sem travar nada.
-          Status null (leitura falhou ou não chegou) não oferece. */}
+      {/* After publishing, and only then: the verified badge offer, blocking nothing.
+          Status null (the read failed or has not arrived) does not offer it. */}
       {user ? (
         <VerifiedBadgeOffer
           uid={user.uid}
@@ -3221,7 +3221,7 @@ export function CourseBuilderStudio() {
       ) : null}
     </>
   ) : null;
-  // Lugar fora da tela (Publish em outra aba, biblioteca fechada): o topo.
+  // A place off screen (Publish on another tab, library closed): the top.
   const heroShowsError = errorSlot === "hero"
     || (errorSlot === "publish" && activeTab !== "review")
     || (errorSlot === "media" && !isMediaLibraryOpen);
@@ -3232,10 +3232,10 @@ export function CourseBuilderStudio() {
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <StatusChip status={course?.status ?? "draft"} />
-            {/* Cada estado uma vez: a faixa azul repetia o "Draft" do selo e o
-                "% ready" repetia o stepper. Fica a frase curta ao lado do selo.
-                Rascunho e "ajustes pedidos" nunca chegaram ao marketplace;
-                "inativo" pode ter aluno matriculado e fica de fora. */}
+            {/* Each state once: the blue strip repeated the badge's "Draft" and the
+                "% ready" repeated the stepper. What stays is the short sentence next to the badge.
+                Draft and "changes requested" never reached the marketplace;
+                "inactive" may have an enrolled learner and stays out. */}
             {course?.status === "draft" || course?.status === "needs_changes" ? (
               <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
                 {t("creatorEditor.builder.shell.unpublished")}
@@ -3245,22 +3245,22 @@ export function CourseBuilderStudio() {
               <BuilderSaveStatus
                 state={displayedSaveStatus}
                 blockedReason={autosaveBlockedReason}
-                // Ao abrir o curso o chip ja diz "Saved" sem ninguem ter
-                // salvado: o verde so acende depois de uma gravacao de verdade.
+                // When opening the course the chip already says "Saved" with nobody having
+                // saved: the green only lights up after a real write.
                 justSaved={autosaveState === "saved"}
               />
             ) : null}
           </div>
-          {/* No celular o rótulo sai: o primeiro campo ficava ~800px abaixo
-              do topo, e o título logo abaixo já diz onde se está. */}
+          {/* On the phone the label goes away: the first field was ~800px below
+              the top, and the title right below already says where you are. */}
           <p className="mt-6 text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)] max-sm:hidden">
             {t("creatorEditor.builder.shell.title")}
           </p>
-          {/* h1, não h2: esta é a única página do builder e o título do curso é
-              o assunto dela. Enquanto era h2, /teach/builder não tinha h1
-              nenhum — quem navega por cabeçalho (leitor de tela, atalho de
-              navegação) entrava numa página sem título anunciado, e a árvore
-              de headings começava direto no nível 2. */}
+          {/* h1, not h2: this is the builder's only page and the course title is
+              its subject. While it was h2, /teach/builder had no h1
+              at all — someone navigating by heading (screen reader, navigation
+              shortcut) entered a page without an announced title, and the heading
+              tree started right at level 2. */}
           <h1 className="mt-3 break-words text-2xl font-semibold leading-tight text-[var(--color-ink)] sm:text-3xl">
             {title.trim() || t("creatorEditor.members.untitled")}
           </h1>
@@ -3272,11 +3272,11 @@ export function CourseBuilderStudio() {
           >
             {t("creatorEditor.builder.navigation.manage")}
           </Link>
-          {/* rel="opener": a prévia sabe que veio daqui, e o "Exit preview"
-              fecha a aba em vez de abrir um segundo construtor nela
-              (course-preview-shell.tsx). A prévia guarda esta aba e zera
-              window.opener ao montar: página de outra origem aberta depois
-              naquela aba não alcança esta. */}
+          {/* rel="opener": the preview knows it came from here, and "Exit preview"
+              closes the tab instead of opening a second builder in it
+              (course-preview-shell.tsx). The preview keeps this tab and zeroes
+              window.opener on mount: a page from another origin opened later
+              in that tab cannot reach this one. */}
           <Link
             href={`/teach/builder/${courseId}/preview`}
             target="_blank"
@@ -3287,10 +3287,10 @@ export function CourseBuilderStudio() {
             {t("creatorEditor.preview.open")}
             <span className="sr-only"> {t("account.opensNewTab")}</span>
           </Link>
-          {/* Contorno, nao navy: o curso ja salva sozinho e o selo ao lado diz
-              o estado. O rotulo nao vira "Saving..." (o selo ja diz): a face
-              da espera repete o "Save draft" com o anel, e o lugar do anel
-              fica guardado, entao o botao nao empurra Manage e Preview. */}
+          {/* Outline, not navy: the course already saves on its own and the badge next to it says
+              the state. The label does not become "Saving..." (the badge already says it): the
+              waiting face repeats "Save draft" with the ring, and the ring's place
+              is reserved, so the button does not push Manage and Preview. */}
           <Button
             variant="outline"
             loading={isSaving}
@@ -3306,7 +3306,7 @@ export function CourseBuilderStudio() {
         </div>
       </section>
       {heroShowsError ? builderErrorAlert : null}
-      {/* O "Save draft" e um so, aqui em cima: a confirmacao sai embaixo dele. */}
+      {/* There is a single "Save draft", up here: the confirmation appears below it. */}
       {success === "draftSaved" ? (
         <p className="motion-rise-in info-notice">
           {t("creatorEditor.builder.success.draftSaved")}
@@ -3320,8 +3320,8 @@ export function CourseBuilderStudio() {
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)] max-sm:hidden">
               {t("creatorEditor.builder.navigation.creation")}
             </p>
-            {/* Duas linhas, nao reticencias: a unica dica do proximo passo saia
-                cortada ("Upload a cover — it fronts the pro..."). */}
+            {/* Two lines, not an ellipsis: the only hint for the next step came out
+                cut off ("Upload a cover — it fronts the pro..."). */}
             <p className="mt-1 line-clamp-2 text-sm font-semibold leading-snug text-[var(--color-ink-soft)]">
               {t("creatorEditor.builder.navigation.next")}{" "}
               <span className="text-[var(--color-primary)]">
@@ -3330,18 +3330,18 @@ export function CourseBuilderStudio() {
             </p>
           </div>
           <div className="course-builder-stepper__meter">
-            {/* A prontidao mora so aqui, numa linha: o "71%" aparecia tres
-                vezes (chip do topo, esta linha e o cartao do rodape). */}
-            {/* aria-hidden: a barra logo abaixo já diz esta frase (é o nome
-                dela) e o valor; sem isso o leitor de tela lia tudo duas vezes. */}
+            {/* Readiness lives only here, on one line: the "71%" appeared three
+                times (top chip, this line and the footer card). */}
+            {/* aria-hidden: the bar right below already says this sentence (it is its
+                name) and the value; without this the screen reader read everything twice. */}
             <p aria-hidden="true" className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
               {readinessText}
             </p>
-            {/* A barra media estagios (5) e o chip media checks (7): 40% e
-                71% no mesmo cabecalho para o mesmo curso. Agora os tres leem
-                o mesmo numero. */}
-            {/* A barra compartilhada (latão de texto, trilho que segue o tema),
-                a mesma do painel do curso e da área do aluno. */}
+            {/* The bar measured stages (5) and the chip measured checks (7): 40% and
+                71% in the same header for the same course. Now all three read
+                the same number. */}
+            {/* The shared bar (brass text, track that follows the theme),
+                the same as the course panel and the learner area. */}
             <div className="mt-2 flex items-center gap-2">
               <ProgressBar value={readiness.percent} label={readinessText} className="flex-1" />
               {readiness.percent === 100 ? <MilestoneSeal animate={justDoneReadiness.size > 0} /> : null}
@@ -3386,16 +3386,16 @@ export function CourseBuilderStudio() {
       </nav>
 
       <section className="course-builder-panel">
-          {/* key: trocar de aba remonta o cabecalho e a animacao roda de novo.
-              Na pagina da aula ele sai: "Build the curriculum." e as contagens
-              ficavam entre o construtor e a aula, e a trilha ja diz onde se esta. */}
+          {/* key: switching tabs remounts the header and the animation runs again.
+              On the lesson page it goes away: "Build the curriculum." and the counts
+              sat between the builder and the lesson, and the breadcrumb already says where you are. */}
           {isLessonPage ? null : (
           <div key={activeTab} className={`${panelIn} flex flex-wrap items-start justify-between gap-4 pb-4`}>
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
                 {activeTab === "members" ? t("creatorEditor.members.step") : t(builderTabs[selectedTabIndex]?.label ?? "creatorEditor.builder.shell.shortTitle")}
               </p>
-              {/* Alvo do foco quando a linha que o tinha some (modulo apagado). */}
+              {/* Focus target when the row that had it goes away (deleted module). */}
               <h3 id="builder-panel-heading" tabIndex={-1} className="mt-2 text-xl font-semibold leading-tight text-[var(--color-ink)] outline-none">
                 {activeTab === "details"
                   ? t("creatorEditor.builder.steps.details.heading")
@@ -3411,9 +3411,9 @@ export function CourseBuilderStudio() {
                         ? t("creatorEditor.builder.steps.pricing.heading")
                         : t("creatorEditor.builder.steps.review.heading")}
               </h3>
-              {/* No celular a ajuda da etapa fica fechada atrás deste botão: o
-                  parágrafo empurrava o primeiro campo mais uma tela para baixo.
-                  Do sm para cima o botão some e a ajuda fica aberta. */}
+              {/* On the phone the step's help stays closed behind this button: the
+                  paragraph pushed the first field one more screen down.
+                  From sm up the button goes away and the help stays open. */}
               <button
                 type="button"
                 aria-expanded={stepHelpOpen}
@@ -3453,7 +3453,7 @@ export function CourseBuilderStudio() {
               </div>
             </div>
             <div className="grid gap-2 text-right text-xs font-semibold text-[var(--color-ink-soft)]">
-              {/* O e-book nao mostra modulo nem aula. */}
+              {/* The e-book shows no module or lesson. */}
               {productFormat === "ebook" ? null : (
                 <>
                   <span>{modulesLabel}</span>
@@ -3628,7 +3628,7 @@ export function CourseBuilderStudio() {
                 {t("creatorEditor.builder.details.addOutcome")}
               </button>
             ) : null}
-            {/* No teto o "Add" apaga: a frase diz por quê (F-12). */}
+            {/* At the cap, "Add" dims: the sentence says why (F-12). */}
             {isEditable && learningOutcomes.length >= MAX_LEARNING_OUTCOMES ? (
               <p id="builder-outcomes-max" className="text-xs text-[var(--color-ink-soft)]">
                 {t("creatorEditor.builder.details.outcomesMax").replace("{max}", () => String(MAX_LEARNING_OUTCOMES))}
@@ -3678,9 +3678,9 @@ export function CourseBuilderStudio() {
 
         {activeTab === "members" && course ? (
           <div className={`${panelIn} rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4`}>
-            {/* A linha inteira e a chave, como na Conta e no estudio da aula:
-                antes so o alvo de 44px em volta do trilho respondia e o texto
-                ao lado nao. O trilho e a .settings-toggle da casa. */}
+            {/* The whole row is the switch, as in Account and in the lesson studio:
+                before, only the 44px target around the track responded and the text
+                next to it did not. The track is the app's standard .settings-toggle. */}
             <button
               type="button"
               role="switch"
@@ -3730,10 +3730,10 @@ export function CourseBuilderStudio() {
             {viewingOthersCourse ? (
               <InlineAlert tone="info">{t("creatorEditor.builder.pricing.ownerOnly")}</InlineAlert>
             ) : !checkoutOffers ? (
-              // Sem a lista de precos, o preco principal e desconhecido: nada
-              // de cartoes por cima dele. Enquanto ela chega, blocos do tamanho
-              // dos cartoes guardam o lugar (antes o painel ficava so com a nota
-              // de rodape e os cartoes entravam empurrando tudo).
+              // Without the price list, the main price is unknown: no
+              // cards on top of it. While it arrives, blocks the size of the
+              // cards hold the place (before, the panel had only the footnote
+              // and the cards came in pushing everything).
               offersFailed ? (
                 <RetryAlert
                   text={t("creatorEditor.builder.pricing.offersFailed")}
@@ -3751,8 +3751,8 @@ export function CourseBuilderStudio() {
                 </div>
               )
             ) : chargedByOffer ? (
-              // A pagina cobra a oferta principal: cartoes e campos aqui
-              // mudariam so o construtor, e o checkout seguiria cobrando ela.
+              // The page charges the main offer: cards and fields here
+              // would only change the builder, and checkout would keep charging it.
               <>
                 <p className="text-base font-semibold text-[var(--color-ink)]">
                   {t("creatorEditor.builder.pricing.question")}
@@ -3772,9 +3772,9 @@ export function CourseBuilderStudio() {
               </>
             ) : (
             <>
-            {/* Uma pergunta so, feita uma vez. Os campos de cada cartao so
-                aparecem depois da escolha; os cartoes ficam montados e o foco
-                continua no cartao clicado. */}
+            {/* A single question, asked once. The fields of each card only
+                appear after the choice; the cards stay mounted and focus
+                stays on the clicked card. */}
             <PlanSelectorCards
               label={
                 <span className="flex items-center gap-2 text-base">
@@ -3815,12 +3815,12 @@ export function CourseBuilderStudio() {
               </p>
             ) : (
               <>
-                {/* A coluna da moeda era 140px fixos. Um <select> nunca fica mais
-                    estreito que a sua opção mais larga ("BRL - Brazilian Real"),
-                    então ele empurrava a borda e saía do cartão em telas médias e
-                    grandes. minmax(0, …) nas duas colunas deixa a grade encolher, e o
-                    min-w-0 do próprio select (em CurrencySelect) deixa o controle
-                    acompanhar a coluna em vez de a coluna acompanhar o controle. */}
+                {/* The currency column used to be a fixed 140px. A <select> never gets narrower
+                    than its widest option ("BRL - Brazilian Real"),
+                    so it pushed the edge and left the card on medium and
+                    large screens. minmax(0, …) on both columns lets the grid shrink, and the
+                    select's own min-w-0 (in CurrencySelect) lets the control
+                    follow the column instead of the column following the control. */}
                 <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,200px)]">
                   <div className="grid min-w-0 content-start gap-2">
                   <label className="grid min-w-0 gap-2 text-sm font-semibold text-[var(--color-ink)]">
@@ -3836,7 +3836,7 @@ export function CourseBuilderStudio() {
                       value={priceAmount}
                       onChange={(event) => {
                         setPriceAmount(event.target.value);
-                        // O aviso do campo sai ao corrigir, sem esperar outro Save.
+                        // The field's notice goes away on correction, without waiting for another Save.
                         if (priceFieldError) {
                           setError(null);
                         }
@@ -3849,7 +3849,7 @@ export function CourseBuilderStudio() {
                       className="field-input min-w-0 disabled:cursor-not-allowed disabled:opacity-60"
                     />
                   </label>
-                  {/* Fora do label: dentro dele a frase entraria no nome do campo. */}
+                  {/* Outside the label: inside it the sentence would enter the field's name. */}
                   {priceFieldError ? (
                     <p id="builder-price-error" role="alert" className="text-xs font-semibold text-[var(--color-danger-fg)]">
                       {errorMessage}
@@ -3871,8 +3871,8 @@ export function CourseBuilderStudio() {
                   </label>
                 </div>
                 {paymentType === "subscription_yearly" ? (
-                  // Produto antigo que cobra uma vez por ano: continua assim.
-                  // Passar para mensal limpa o valor, que era o do ano.
+                  // An old product that charges once a year: stays that way.
+                  // Switching to monthly clears the value, which was the yearly one.
                   <div className="mt-3 flex flex-wrap items-center gap-3">
                     <p className="text-sm text-[var(--color-ink)]">
                       {t("creatorEditor.builder.pricing.yearlyOnly")}
@@ -3977,8 +3977,8 @@ export function CourseBuilderStudio() {
                         <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
                           {t("creatorEditor.builder.pricing.yearlyWhere")}
                         </p>
-                        {/* So com o mensal ja gravado: o Manage le o curso salvo e,
-                            com o valor antigo, abria outro preco principal. */}
+                        {/* Only with the monthly already saved: Manage reads the saved course and,
+                            with the old value, opened another main price. */}
                         {courseId && yearlyAmountMinor && displayedSaveStatus === "saved" ? (
                           <Link
                             href={`/teach/courses/${encodeURIComponent(courseId)}/manage?section=pricing&addPrice=yearly&amount=${yearlyAmountMinor}`}
@@ -4008,22 +4008,22 @@ export function CourseBuilderStudio() {
 
         {activeTab === "content" ? (
         <div className={`${panelIn} mt-6 grid gap-4`}>
-          {/* A lista vem primeiro. Antes, a estrutura do curso era a ultima
-              coisa da aba: dois formularios grandes sempre abertos ("Add
-              module" e "Add lesson", com um select "Choose module") ficavam
-              acima dela. */}
+          {/* The list comes first. Before, the course structure was the last
+              thing on the tab: two large always-open forms ("Add
+              module" and "Add lesson", with a "Choose module" select) sat
+              above it. */}
           <div
             id="builder-sec-modules"
             className="scroll-mt-24"
           >
-            {/* O e-book vem antes da pagina da aula: o link "Open" do envio
-                leva ?module&lesson, e a aula dele nao tem pagina propria. */}
+            {/* The e-book comes before the lesson page: the upload's "Open" link
+                leads to ?module&lesson, and its lesson has no page of its own. */}
             {ebookLesson && ebookModule ? renderEbookFiles(ebookModule, ebookLesson) : activeLessonStudioLesson ? renderLessonPage() : activeModule ? renderModulePage(activeModule, activeModuleIndex) : (
             <>
             {renderLiveSession()}
-            {/* So no curso: comunidade, evento e e-book tem a propria acao.
-                Sem modulo, a unica acao e o formulario "Add your first module"
-                logo abaixo (aberto sozinho): o vazio diz o mesmo. */}
+            {/* Only on the course: community, event and e-book have their own action.
+                With no module, the only action is the "Add your first module" form
+                right below (opened on its own): the empty state says the same. */}
             {modules.length === 0 && productFormat === "course" ? (
               <EmptyState
                 as="h4"
@@ -4112,8 +4112,8 @@ export function CourseBuilderStudio() {
               </form>
             ) : null}
 
-            {/* Sempre montada: o leitor de tela so anuncia mudanca numa regiao
-                que ja existia. */}
+            {/* Always mounted: the screen reader only announces a change in a region
+                that already existed. */}
             <p role="status" className="sr-only">{reorderStatus}</p>
             <div className="mt-4 grid gap-2">
               {modules.map((module, moduleIndex) => {
@@ -4121,9 +4121,9 @@ export function CourseBuilderStudio() {
                 return (
                   <article
                     key={module.id}
-                    // Soltar aqui uma aula arrastada a leva para o fim deste modulo.
+                    // Dropping a dragged lesson here takes it to the end of this module.
                     onDragOver={(event) => {
-                      // So aceita o arrastar de uma aula; texto ou arquivo nao.
+                      // Only accepts dragging a lesson; text or a file does not.
                       if (isEditable && Array.from(event.dataTransfer.types).includes(lessonDragType)) {
                         event.preventDefault();
                         setDragOverModuleId(module.id);
@@ -4142,7 +4142,7 @@ export function CourseBuilderStudio() {
                         moveLessonToModule(lessonId, module.id);
                       }
                     }}
-                    // A linha que vai receber a aula se marca (antes nada mudava).
+                    // The row that is going to receive the lesson is marked (before, nothing changed).
                     className={`flex flex-wrap items-center gap-3 rounded-lg border border-[var(--color-line)] p-3 ${
                       dragOverModuleId === module.id
                         ? "bg-white outline-2 outline-offset-2 outline-dashed outline-[color:var(--color-brass)]"
@@ -4158,14 +4158,14 @@ export function CourseBuilderStudio() {
                           moduleNavigationRef.current = { returnTo: null };
                         }
                       }}
-                      // basis-48 como o campo do titulo da aula: a 375px o nome
-                      // do modulo ficava com 31px ("Fo…") espremido pelos tres
-                      // botoes; agora ele ocupa a linha e os botoes descem.
+                      // basis-48 like the lesson title field: at 375px the module
+                      // name was left with 31px ("Fo…") squeezed by the three
+                      // buttons; now it takes the row and the buttons drop below.
                       className="flex min-h-11 min-w-0 flex-1 basis-48 items-center gap-3 rounded-md"
                     >
-                      {/* A capa vertical 2:3 em miniatura (32x48), com o canto
-                          das outras capas: era um círculo aqui e um retângulo
-                          na página do módulo. */}
+                      {/* The 2:3 vertical cover in miniature (32x48), with the corner
+                          of the other covers: it was a circle here and a rectangle
+                          on the module page. */}
                       <span className="flex h-12 w-8 shrink-0 items-center justify-center overflow-hidden rounded-sm border border-[var(--color-line)] bg-white text-[var(--color-ink-soft)]">
                         {coverUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element -- module cover is an arbitrary CourseAsset URL
@@ -4204,8 +4204,8 @@ export function CourseBuilderStudio() {
                       >
                         {t("creatorEditor.builder.curriculum.down")}
                       </button>
-                      {/* Longe do Down: a 8 px e do mesmo tamanho, errar o
-                          toque apagava o modulo. */}
+                      {/* Far from Down: at 8 px and the same size, missing the
+                          tap deleted the module. */}
                       <button
                         type="button"
                         onClick={() => deleteModule(module.id)}
@@ -4216,9 +4216,9 @@ export function CourseBuilderStudio() {
                       </button>
                     </div>
                     {isEditable && modules.length > 1 && module.lessons.length > 0 ? (
-                      // Caminho do mouse; o acessivel e o seletor da pagina do
-                      // modulo. No toque o arrastar nao existe: as etiquetas
-                      // somem em vez de parecer que respondem.
+                      // Mouse path; the accessible one is the selector on the module
+                      // page. On touch dragging does not exist: the labels
+                      // go away instead of seeming to respond.
                       <ul aria-hidden="true" className="flex basis-full flex-wrap gap-1.5 pointer-coarse:hidden">
                         {module.lessons.map((lesson) => (
                           <li key={lesson.id}>
@@ -4228,7 +4228,7 @@ export function CourseBuilderStudio() {
                                 event.dataTransfer.setData(lessonDragType, lesson.id);
                                 event.dataTransfer.effectAllowed = "move";
                               }}
-                              // Arrasto cancelado (Esc, soltou fora): a marca sai.
+                              // Drag canceled (Esc, dropped outside): the mark goes away.
                               onDragEnd={() => setDragOverModuleId(null)}
                               title={t("creatorEditor.builder.curriculum.dragLessonHint")}
                               className="inline-flex cursor-grab rounded-md border border-[var(--color-line)] bg-white px-2 py-1 text-xs text-[var(--color-ink-soft)]"
@@ -4243,9 +4243,9 @@ export function CourseBuilderStudio() {
                 );
               })}
             </div>
-            {/* A liberacao das aulas morava na aba de preco, com "Interval
-                days" ao lado da moeda. E ritmo de aula, nao cobranca: fica
-                aqui, embaixo da lista de modulos, com rotulo simples. */}
+            {/* Lesson release used to live on the price tab, with "Interval
+                days" next to the currency. It is lesson rhythm, not billing: it stays
+                here, below the module list, with a simple label. */}
             <section
               id="builder-sec-release"
               aria-labelledby="builder-release-title"
@@ -4273,8 +4273,8 @@ export function CourseBuilderStudio() {
                   </select>
                 </label>
                 {dripStrategy === "time_drip_lesson" || dripStrategy === "time_drip_module" ? (
-                  // "Release lessons every [1] days": com o padrao 1 a frase saia
-                  // errada. Um rotulo de campo nao depende do numero.
+                  // "Release lessons every [1] days": with the default 1 the sentence came out
+                  // wrong. A field label does not depend on the number.
                   <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
                     {t("creatorEditor.builder.release.interval")}
                     <input
@@ -4305,8 +4305,8 @@ export function CourseBuilderStudio() {
             id="builder-sec-review"
             className={`${panelIn} mt-6 scroll-mt-24 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-5`}
           >
-            {/* O titulo do painel ja diz "Publish to the marketplace.": um
-                segundo titulo de 30 px logo abaixo repetia a mesma coisa. */}
+            {/* The panel title already says "Publish to the marketplace.": a
+                second 30 px title right below repeated the same thing. */}
             <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
               {t("creatorEditor.builder.publish.title")}
               <InlineHelp
@@ -4322,9 +4322,9 @@ export function CourseBuilderStudio() {
               renderItem={(item) => (
                 <ChecklistRow key={item.id} id={item.id} done={item.done} ready={readinessLoaded}>
                   {(justDone) => (<>
-                  {/* Pendente era texto dourado e feito era um "✓" digitado: o
-                      latão marcava problema. Feito = check verde (6.51:1) com
-                      "Done" para o leitor de tela; pendente = círculo vazio. */}
+                  {/* Pending was gold text and done was a typed "✓": the
+                      brass marked a problem. Done = green check (6.51:1) with
+                      "Done" for the screen reader; pending = empty circle. */}
                   <p className={`flex items-center gap-2 text-sm font-semibold ${item.done ? "text-[var(--color-success-fg)]" : "text-[var(--color-ink)]"}`}>
                     {item.done ? (
                       <>
@@ -4344,8 +4344,8 @@ export function CourseBuilderStudio() {
                   {item.done ? null : (
                     <p className="mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">
                       {item.hint}
-                      {/* Mesmo destino do Manage: sem ele a pessoa lia "termine
-                          o cadastro" e nao tinha onde clicar. */}
+                      {/* Same destination as Manage: without it the person read "finish
+                          the setup" and had nowhere to click. */}
                       {item.id === "plan" ? (
                         <Link href={planLink.href} className="ml-1 font-semibold text-[var(--color-primary)] underline">
                           {planLink.label}
@@ -4366,8 +4366,8 @@ export function CourseBuilderStudio() {
                   {(() => {
                     const fix = item.done ? null : readinessFix(item.id);
                     return fix ? (
-                      // Varios "Fix in Details" na lista: o nome do item vai
-                      // junto para o leitor de tela.
+                      // Several "Fix in Details" in the list: the item's name goes
+                      // along for the screen reader.
                       <button
                         type="button"
                         onClick={fix.go}
@@ -4388,15 +4388,15 @@ export function CourseBuilderStudio() {
           </div>
         ) : null}
 
-        {/* Aba Publish: a recusa do Publish sai logo acima do botao. */}
+        {/* Publish tab: the Publish refusal appears right above the button. */}
         {errorSlot === "publish" && activeTab === "review" && builderErrorAlert ? (
           <div className="mt-6">{builderErrorAlert}</div>
         ) : null}
 
         {activeTab === "review" ? publishedPanel : null}
 
-        {/* Na pagina da aula a saida e o "Back to module" dela: Back/Continue
-            do construtor empilhavam uma terceira barra de acoes. */}
+        {/* On the lesson page the exit is its "Back to module": the builder's Back/Continue
+            stacked a third action bar. */}
         {isLessonPage ? null : (
         <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-line)] pt-6">
           <button
@@ -4434,8 +4434,8 @@ export function CourseBuilderStudio() {
               <ArrowRight aria-hidden="true" size={16} strokeWidth={2} />
             </button>
           ) : (
-            // A aba Publish terminava num texto; o botão de publicar ficava no
-            // cartão do rodapé, que no celular vem depois do resumo inteiro.
+            // The Publish tab ended in text; the publish button stayed in the
+            // footer card, which on the phone comes after the whole summary.
             <div className="flex w-full flex-wrap items-center justify-end gap-3 sm:w-auto">
               {showPublishReason ? (
                 <span id="builder-publish-reason" className="text-xs font-semibold text-[var(--color-ink-soft)]">
@@ -4449,10 +4449,10 @@ export function CourseBuilderStudio() {
         )}
       </section>
 
-      {/* O rodape so leva para fora e para a biblioteca. A prontidao e as
-          pendencias moram na aba Publish (com o "Go to..." de cada uma), o
-          "Save draft" no topo e o "Publish product" na aba Publish: aqui
-          repetiam tudo embaixo de toda aba. */}
+      {/* The footer only leads outward and to the library. Readiness and the
+          pending items live on the Publish tab (with each one's "Go to..."), the
+          "Save draft" at the top and the "Publish product" on the Publish tab: here they
+          repeated everything below every tab. */}
       <div className="course-builder-footer">
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-line)] pt-4">
           <Link
@@ -4462,9 +4462,9 @@ export function CourseBuilderStudio() {
             <ArrowLeft aria-hidden="true" size={14} strokeWidth={2} />
             {t("creatorEditor.builder.navigation.studio")}
           </Link>
-          {/* A biblioteca inteira (upload de capa + lista de arquivos) vinha
-              aberta embaixo de toda aba e sozinha respondia por boa parte dos
-              3.138 px da aba de conteudo. Agora e um clique de quem precisa. */}
+          {/* The whole library (cover upload + file list) used to come
+              open below every tab and alone accounted for a good part of the
+              3,138 px of the content tab. Now it is one click for whoever needs it. */}
           {course ? (
             <button
               type="button"
@@ -4491,9 +4491,9 @@ export function CourseBuilderStudio() {
         ) : null}
       </div>
       <CreatedStrip
-        // Evento ao vivo: espera as sessoes chegarem, senao a faixa diria
-        // "agende sua sessao" a quem ja agendou e trocaria a frase na cara do
-        // leitor de tela. Se a leitura falhar, a faixa nao aparece.
+        // Live event: waits for the sessions to arrive, otherwise the strip would say
+        // "schedule your session" to someone who already did and would change the sentence in front of the
+        // screen reader. If the read fails, the strip does not appear.
         message={
           createdStripOpen && course && (productFormat !== "live_event" || courseSessions !== null)
             ? t(`creatorEditor.builder.created.${
@@ -4501,7 +4501,7 @@ export function CourseBuilderStudio() {
               }`)
             : null
         }
-        // O curso nasce com "Modulo 1, Aula 1": a faixa abre essa aula.
+        // The course is born with "Module 1, Lesson 1": the strip opens that lesson.
         action={productFormat === "course" && starterLesson && savedLessonIds.has(starterLesson.id) ? {
           label: t("creatorEditor.builder.created.openLesson"),
           onClick: () => {
@@ -4517,11 +4517,11 @@ export function CourseBuilderStudio() {
 }
 
 /**
- * Linha do checklist de publicar (catalogo de movimento, item 5). O que fica
- * pronto COM a aba aberta acende em latao claro uma vez e o check se desenha;
- * o que ja estava pronto quando a aba abriu nao pisca, senao abrir a aba
- * viraria festa. A foto de "pronto" so e tirada com `ready` (as leituras de
- * payouts, verificacao, arquivos e sessoes de volta).
+ * Row of the publish checklist (motion catalog, item 5). What becomes
+ * ready WITH the tab open lights up in light brass once and the check draws itself;
+ * what was already ready when the tab opened does not blink, otherwise opening the tab
+ * would become a party. The "ready" snapshot is only taken with `ready` (the reads of
+ * payouts, verification, files and sessions are back).
  */
 function ChecklistRow({
   id,
@@ -4545,15 +4545,15 @@ function ChecklistRow({
 }
 
 /**
- * A faixa "Rascunho salvo. Proximo: ..." (catalogo de movimento, item 7).
- * - A regiao `role="status"` fica sempre montada e so o conteudo entra, um
- *   tique depois: NVDA e JAWS nao anunciam uma regiao viva que ja nasce
- *   preenchida.
- * - Some em 4s, mas o relogio para enquanto o ponteiro ou o foco estao nela
- *   (sem isso o foco no X caia no <body> quando a faixa sumia).
- * - `absolute` sem tamanho: vazia, nao ocupa linha nem gap na grade do
- *   construtor. Nao `fixed`: fixed cria contexto de empilhamento e prenderia
- *   o z-index 60 da faixa dentro dele.
+ * The strip "Draft saved. Next: ..." (motion catalog, item 7).
+ * - The `role="status"` region stays always mounted and only the content enters, one
+ *   tick later: NVDA and JAWS do not announce a live region that is born
+ *   already filled.
+ * - It goes away in 4s, but the clock stops while the pointer or focus is on it
+ *   (without that, focus on the X fell on <body> when the strip disappeared).
+ * - `absolute` with no size: empty, it takes no row or gap in the builder
+ *   grid. Not `fixed`: fixed creates a stacking context and would trap
+ *   the strip's z-index 60 inside it.
  */
 function CreatedStrip({
   message,
@@ -4561,8 +4561,8 @@ function CreatedStrip({
   onClose,
 }: {
   message: string | null;
-  // O atalho do proximo passo. Com ele a faixa nao some sozinha: sai no X ou
-  // no atalho (sumir em 4s deixava o botao fora de alcance).
+  // The next-step shortcut. With it the strip does not go away on its own: it leaves on the X or
+  // on the shortcut (disappearing in 4s left the button out of reach).
   action?: { label: string; onClick: () => void };
   onClose: () => void;
 }) {
@@ -4570,9 +4570,9 @@ function CreatedStrip({
   const [shown, setShown] = useState(false);
   const [held, setHeld] = useState(false);
   const sticky = Boolean(action);
-  // Os dois relogios saem juntos: o tique que poe o texto na regiao ja
-  // montada e os 4s ate sumir (que nao corre enquanto `held`). Soltar a
-  // faixa recomeca os 4s.
+  // The two clocks leave together: the tick that puts the text in the already
+  // mounted region and the 4s until it disappears (which does not run while `held`).
+  // Releasing the strip restarts the 4s.
   useEffect(() => {
     if (!message) {
       return;
@@ -4623,10 +4623,10 @@ function CreatedStrip({
 }
 
 /**
- * O painel "Publicado!" (catalogo de movimento, item 8), no lugar do paragrafo
- * cinza igual ao "Draft saved.". O selo carimba, a gravura acende e o botao
- * latao "Copy my page link" recebe o foco. Uma festa por produto: publicar de
- * novo o mesmo curso mostra o painel parado.
+ * The "Published!" panel (motion catalog, item 8), in place of the gray paragraph
+ * like "Draft saved.". The badge stamps, the engraving lights up and the brass
+ * "Copy my page link" button receives focus. One party per product: publishing
+ * the same course again shows the panel still.
  */
 function PublishedPanel({
   courseId,
@@ -4640,9 +4640,9 @@ function PublishedPanel({
   const { t } = useTranslation();
   const id = useId();
   const storageKey = `skillsetmind.publishedCelebrated.${courseId}`;
-  // So le no inicializador; quem grava e o efeito. No StrictMode o
-  // inicializador roda duas vezes antes de qualquer efeito, entao as duas
-  // leituras concordam.
+  // Only reads in the initializer; the effect is what writes. In StrictMode the
+  // initializer runs twice before any effect, so the two
+  // reads agree.
   const [celebrate] = useState(() => {
     try {
       return !window.localStorage.getItem(storageKey);
@@ -4694,17 +4694,17 @@ function PublishedPanel({
 }
 
 /**
- * O QUE, exatamente, está impedindo o autosave — ou `null` quando nada impede.
+ * WHAT, exactly, is blocking the autosave — or `null` when nothing is.
  *
- * Antes isto era só um booleano (`canAutosaveDraft`), e por isso o pior modo de
- * falha deste editor era silencioso: com um preço malformado (ou um limite de
- * parcelas inválido, ou um módulo sem aula) o autosave simplesmente parava, e o
- * único sinal na tela era o mesmo selo cinza "Unsaved changes" que também
- * aparece durante o debounce normal de 1,8s. O professor seguia montando
- * módulos e aulas achando que estava tudo gravado — e perdia tudo ao recarregar.
+ * Before this was just a boolean (`canAutosaveDraft`), and so the worst failure
+ * mode of this editor was silent: with a malformed price (or an invalid
+ * installments limit, or a module with no lesson) the autosave simply stopped, and the
+ * only sign on screen was the same gray "Unsaved changes" badge that also
+ * appears during the normal 1.8s debounce. The teacher kept building
+ * modules and lessons thinking everything was saved — and lost it all on reload.
  *
- * `canAutosaveDraft` passou a DERIVAR daqui, e não o contrário: assim um gate
- * novo não entra sem trazer junto o texto que diz ao professor o que corrigir.
+ * `canAutosaveDraft` now DERIVES from here, not the other way around: that way a
+ * new gate does not come in without bringing the text that tells the teacher what to fix.
  */
 type AutosaveBlockedReason = "price" | "installments" | "structure";
 
@@ -4715,8 +4715,8 @@ export function getAutosaveBlockedReason(input: {
   draftStructureError: boolean;
 }): AutosaveBlockedReason | null {
   if (!input.isEditable) {
-    // Curso não editável não tem rascunho para perder — não há bloqueio a
-    // anunciar, e alarmar aqui seria ruído.
+    // A course that is not editable has no draft to lose — there is no block to
+    // announce, and alarming here would be noise.
     return null;
   }
   if (!input.priceFieldIsValid) {
@@ -4731,9 +4731,9 @@ export function getAutosaveBlockedReason(input: {
   return null;
 }
 
-// Os dois chips de falha do salvar ("Not saving", "Save failed"): o fundo é o
-// token de erro, não o vermelho a 6% escrito à mão, que no tema escuro sumia
-// no cartão (F-07).
+// The two failure chips of the save ("Not saving", "Save failed"): the background is the
+// error token, not the hand-written 6% red, which in the dark theme vanished
+// on the card (F-07).
 const dangerChipClass =
   "inline-flex items-center gap-1.5 rounded-chip border border-[rgba(178,34,52,0.22)] bg-[var(--color-danger-soft)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-danger-fg)]";
 
@@ -4744,13 +4744,13 @@ function BuilderSaveStatus({
 }: {
   state: "pending" | "saving" | "saved" | "error" | "blocked";
   blockedReason?: AutosaveBlockedReason | null;
-  /** Uma gravacao acabou de voltar: o chip entra e o verde acende 1,5s. */
+  /** A write just came back: the chip enters and the green lights up for 1.5s. */
   justSaved?: boolean;
 }) {
   const { t } = useTranslation();
-  // Autosave parado por campo inválido. Precisa ser visualmente diferente do
-  // "Unsaved changes" neutro — este estado não passa sozinho, e continuar
-  // digitando só aumenta o que vai se perder.
+  // Autosave stopped by an invalid field. It must look different from the neutral
+  // "Unsaved changes" — this state does not pass on its own, and continuing to
+  // type only increases what will be lost.
   if (state === "blocked") {
     return (
       <span
@@ -4789,8 +4789,8 @@ function BuilderSaveStatus({
   }
 
   if (state === "error") {
-    // Anunciado como o "Not saving": antes a falha do salvar sozinho entrava
-    // no topo calada para o leitor de tela.
+    // Announced like the "Not saving": before, an autosave failure showed up at
+    // the top without the screen reader saying anything.
     return (
       <span role="status" className={dangerChipClass}>
         <CloudOff aria-hidden="true" size={12} strokeWidth={2} />
@@ -4819,7 +4819,7 @@ function CourseCoverField({
 }: {
   course: TeacherCourse;
   isEditable: boolean;
-  /** A previa vem de course.coverImageUrl: quem chama busca o curso de novo. */
+  /** The preview comes from course.coverImageUrl: the caller fetches the course again. */
   onUploaded?: () => void;
 }) {
   const { t } = useTranslation();
@@ -4859,8 +4859,8 @@ function CourseCoverField({
       });
       onUploaded?.();
     } catch (uploadError) {
-      // O motivo real (teto de tamanho, permissão, conexão) já vem pronto do
-      // domínio; o texto genérico mandava conferir "propriedade do curso".
+      // The real reason (size cap, permission, connection) already comes ready from the
+      // domain; the generic text told people to check "course ownership".
       setError({ kind: "upload", cause: uploadError });
     } finally {
       setIsUploading(false);
@@ -4963,8 +4963,8 @@ function MembersAreaTab({
     return () => observer.disconnect();
   }, []);
 
-  // course_assets nao esta na publicacao do Realtime: depois do upload a
-  // previa busca a lista de novo, senao a capa nova so aparecia ao recarregar.
+  // course_assets is not in the Realtime publication: after the upload the
+  // preview fetches the list again, otherwise the new cover only appeared on reload.
   const assetsReloadRef = useRef<(() => Promise<void>) | null>(null);
   useEffect(() => {
     const subscription = subscribeToCourseAssets(course.id, setAssets, () => undefined);
@@ -5123,7 +5123,7 @@ function MembersAreaTab({
             />
           </div>
         </div>
-        {/* rel="opener": o mesmo motivo do "Preview" do topo. */}
+        {/* rel="opener": the same reason as the top "Preview". */}
         <Link
           href={`/teach/builder/${courseId}/preview`}
           target="_blank"
@@ -5180,8 +5180,8 @@ function MembersCoverField({
     setError(null);
     setProgress(null);
 
-    // Capa do módulo: foto de origem até 10 MB, recusada na hora (antes de
-    // abrir a imagem). As recusas ficam síncronas, como eram.
+    // Module cover: source photo up to 10 MB, refused right away (before
+    // opening the image). Refusals stay synchronous, as they were.
     if (moduleId && file.size > MAX_SOURCE_IMAGE_BYTES) {
       setError({ kind: "too-large" });
       setFileInputKey((current) => current + 1);
@@ -5195,14 +5195,14 @@ function MembersCoverField({
     }
 
     setIsUploading(true);
-    // A compressao da capa do modulo vem antes do envio e o rotulo nao diz mais
-    // "Uploading...": a nota de envio ja aparece no clique, sem porcentagem.
+    // The module cover compression comes before the upload and the label no longer says
+    // "Uploading...": the upload note already appears on click, without a percentage.
     setProgress({ bytesTransferred: 0, totalBytes: file.size, percent: null, state: "running" });
 
     try {
-      // Capa do módulo: recorte vertical 2:3 comprimido no navegador (10 MB
-      // entram, uns 300 KB saem). Se não der para comprimir, sobe o original.
-      // A capa da área de membros sobe como veio.
+      // Module cover: 2:3 vertical crop compressed in the browser (10 MB
+      // go in, about 300 KB come out). If it cannot be compressed, the original goes up.
+      // The members area cover goes up as it came.
       const upload = moduleId ? await compressImage(file).catch(() => file) : file;
       const assetId = await uploadCourseAsset({
         courseId: course.id,
@@ -5225,7 +5225,7 @@ function MembersCoverField({
 
   return (
     <ImageUploadField
-      // Na página do módulo a capa mora numa coluna, sem moldura própria.
+      // On the module page the cover lives in a column, without a frame of its own.
       className={moduleId ? undefined : "rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"}
       title={title}
       help={t(moduleId ? "creatorEditor.assets.presets.module" : "creatorEditor.members.coverHelp").replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))}

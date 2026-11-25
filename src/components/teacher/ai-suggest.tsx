@@ -8,8 +8,8 @@ import { useConfirm } from "@/components/teacher/use-confirm";
 import { Button } from "@/components/ui";
 import { callTeachAi, teachAiErrorText } from "@/lib/ai/teach-ai-client";
 
-// "Suggest with AI" para título e descrição da aula ou do módulo. A IA lê a
-// transcrição (legenda) e devolve até 3 de cada; "Use" só preenche o campo.
+// "Suggest with AI" for a lesson or module title and description. The AI reads the
+// transcript (captions) and returns up to 3 of each; "Use" only fills in the field.
 export function AiSuggest({
   courseId,
   lessonId,
@@ -22,12 +22,12 @@ export function AiSuggest({
   onUseDescription,
 }: {
   courseId: string;
-  /** Uma aula do curso: a rota confere o dono por ela (no módulo, a 1ª aula dele). */
+  /** A lesson of the course: the route checks the owner through it (for a module, its 1st lesson). */
   lessonId: string;
   assetId?: string;
   moduleId?: string;
   target: "lesson" | "module";
-  /** Texto atual da descrição: se houver, "Use" pergunta antes de substituir. */
+  /** Current description text: if there is one, "Use" asks before replacing it. */
   currentDescription?: string | null;
   disabled?: boolean;
   onUseTitle: (title: string) => void;
@@ -37,7 +37,7 @@ export function AiSuggest({
   const { ask, dialog: confirmDialog } = useConfirm();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  // Erro tem lugar e cor próprios: antes saía no mesmo cinza do "Suggestions ready".
+  // Errors have their own place and color: before, they came out in the same gray as "Suggestions ready".
   const [error, setError] = useState("");
   const [suggestions, setSuggestions] = useState<{ titles: string[]; descriptions: string[] } | null>(null);
 
@@ -60,7 +60,7 @@ export function AiSuggest({
       onUseDescription(value);
       setMessage(t("creatorEditor.lesson.ai.used"));
     };
-    // A descrição da aula é o texto inteiro dela: não some sem o professor querer.
+    // The lesson description is its whole text: it does not vanish unless the teacher wants it to.
     if (!currentDescription?.trim()) return apply();
     ask({
       title: t("creatorEditor.lesson.ai.confirmReplaceDescriptionTitle"),

@@ -25,11 +25,11 @@ import { getMyCourseStudents, type CourseStudent } from "@/lib/data/enrollments"
 import { subscribeToTeacherOrders } from "@/lib/data/orders";
 import { logSubscriptionError } from "@/lib/data/subscription-error";
 
-// O que a pessoa sofria: a aba "Panel" do produto so tinha a lista de o-que-
-// falta-para-publicar. Um produto ja publicado abria numa tela que nao dizia
-// quantos alunos entraram, quanto entrou de dinheiro, quantos terminaram, nem
-// o que esta quebrado — o professor tinha de sair para o painel de vendas, para
-// a aba de alunos e para a de cupons, e juntar de cabeca.
+// What the person went through: the product's "Panel" tab only had the what's-
+// left-to-publish list. An already published product opened on a screen that did not say
+// how many learners came in, how much money came in, how many finished, nor
+// what is broken — the teacher had to leave for the sales panel, for
+// the learners tab and for the coupons one, and put it together in their head.
 
 function formatMoney(amountMinor: number, currency: string) {
   return new Intl.NumberFormat("en", { style: "currency", currency }).format(
@@ -37,8 +37,8 @@ function formatMoney(amountMinor: number, currency: string) {
   );
 }
 
-// O mesmo tile do Painel serve o resumo de precos do hub: um numero grande por
-// card em vez de quatro linhas iguais.
+// The same tile as the Panel serves the hub's price summary: one big number per
+// card instead of four identical rows.
 export function StatCard({
   label,
   value,
@@ -75,7 +75,7 @@ export function CourseOverviewPanelView({
   stats: CourseOverviewStats;
   issues: CourseMaintenanceIssue[];
   loading: boolean;
-  /** A leitura dos alunos falhou: erro com "Try again" no lugar dos números. */
+    /** Reading the learners failed: error with "Try again" in place of the numbers. */
   onRetryStudents?: () => void;
   children?: React.ReactNode;
 }) {
@@ -163,7 +163,7 @@ export function CourseOverviewPanelView({
       </div>
 
       {onRetryStudents ? (
-        // Sem a lista de alunos os quatro números seriam inventados (zero).
+                // Without the learner list the four numbers would be made up (zero).
         <RetryAlert text={t("creatorPanel.overview.studentsError")} onRetry={onRetryStudents} />
       ) : loading ? (
         <div
@@ -177,9 +177,9 @@ export function CourseOverviewPanelView({
           ))}
         </div>
       ) : (
-        // Produto sem venda nenhuma nao ganha uma grade de zeros fingindo ser
-        // medicao: quatro "0" leem como resultado ruim, nao como "ainda nao
-        // comecou".
+                // A product with no sale at all does not get a grid of zeros pretending to be
+                // a measurement: four "0" read as a bad result, not as "it has not
+                // started yet".
         <EmptyState
           as="h3"
           title={t("creatorPanel.overview.emptyTitle")}
@@ -251,8 +251,8 @@ export function CourseOverviewPanel({ course }: { course: TeacherCourse }) {
   const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [students, setStudents] = useState<CourseStudent[] | null>(null);
-  // A falha só ia para o log: `students` ficava null e o esqueleto pulsava
-  // para sempre. Agora vira erro com "Try again", que lê de novo.
+    // The failure only went to the log: `students` stayed null and the skeleton pulsed
+    // forever. Now it becomes an error with "Try again", which reads again.
   const [studentsFailed, setStudentsFailed] = useState(false);
   const [studentsAttempt, setStudentsAttempt] = useState(0);
   const [assets, setAssets] = useState<CourseAsset[] | null>(null);
@@ -297,9 +297,9 @@ export function CourseOverviewPanel({ course }: { course: TeacherCourse }) {
   useEffect(() => {
     let alive = true;
 
-    // Leitura unica: os assets so mudam quando o professor edita a aula, e
-    // essa edicao acontece noutra tela. Uma falha aqui deixa `assets` em null,
-    // e a regra de "aula sem conteudo" simplesmente nao opina.
+        // Single read: the assets only change when the teacher edits the lesson, and
+        // that edit happens on another screen. A failure here leaves `assets` as null,
+        // and the "lesson without content" rule simply gives no opinion.
     void fetchCourseAssets(course.id)
       .then((next) => {
         if (alive) setAssets(next);
@@ -335,8 +335,8 @@ export function CourseOverviewPanel({ course }: { course: TeacherCourse }) {
       stats={stats}
       issues={issues}
       loading={students === null}
-      // Só sem números na tela: uma releitura que falha não apaga os que já
-      // estão ali (eles seguem valendo até a próxima leitura boa).
+            // Only with no numbers on the screen: a reread that fails does not erase the ones already
+            // there (they stay valid until the next good read).
       onRetryStudents={
         studentsFailed && students === null
           ? () => {

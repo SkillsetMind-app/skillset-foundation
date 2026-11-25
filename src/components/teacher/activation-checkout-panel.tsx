@@ -145,9 +145,9 @@ export function ActivationCheckoutPanel({ courseId = null }: { courseId?: string
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
       <Card padding="none" className="overflow-hidden">
-        {/* F-07: a caixa de erro da casa (ícone, fundo que aparece no tema
-            escuro, anúncio). Só a casca mudou: textos, condições e destinos
-            são os mesmos. */}
+        {/* F-07: the app's own error box (icon, background that shows up in the dark
+            theme, announcement). Only the shell changed: texts, conditions and destinations
+            are the same. */}
         {error ? (
           <InlineAlert tone="error" className="m-6"
             title={error.verificationRequired
@@ -161,8 +161,8 @@ export function ActivationCheckoutPanel({ courseId = null }: { courseId?: string
                 ? t("creatorPanel.activationGate.verificationBody")
                 : t(`activationCheckout.error.${error.key}`)}
             </p>
-            {/* A frase acima diz o que fazer; o codigo da resposta fica so
-                para o suporte, recolhido (era "Reference: HTTP 409"). */}
+            {/* The sentence above says what to do; the response code is kept only
+                for support, collapsed (it used to be "Reference: HTTP 409"). */}
             {error.status && error.key !== "alreadyActive" ? <SupportDetails code={error.status} className="mt-2" /> : null}
             <Link href={error.verificationRequired ? "/teach/verification" : studioHref} className={buttonClasses({ variant: "outline" }, "mt-4")}>
               {error.verificationRequired
@@ -183,8 +183,8 @@ export function ActivationCheckoutPanel({ courseId = null }: { courseId?: string
 
       <Card as="aside" padding="none" className="h-fit p-5">
         <Eyebrow>{t("activationCheckout.activating")}</Eyebrow>
-        {/* A serifa fica so no titulo da pagina; aqui o texto da casa, e o
-            preco em algarismos de largura fixa, como no cartao de plano. */}
+        {/* The serif font is only for the page title; here it is the app's regular text, and the
+            price uses fixed-width digits, like on the plan card. */}
         <h2 className="mt-2 text-xl font-semibold leading-snug text-[var(--color-primary)]">
           {t("activationCheckout.storefrontBefore")}<BrandName />{t("activationCheckout.storefrontAfter")}
         </h2>

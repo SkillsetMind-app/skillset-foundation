@@ -3,13 +3,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 
-// A pagina de relatorios mostrava menos relatorio que a home: 3 tiles de
-// todo-o-sempre, sem periodo, sem grafico e sem visao por produto. Aqui o
-// periodo padrao (30d) recorta os pedidos, os 4 KPIs saem desse recorte, o
-// grafico e o MESMO da home e a tabela vem ordenada pela receita.
+// The reports page showed less than the home: 3 all-time tiles,
+// with no period, no chart and no per-product view. Here the
+// default period (30d) trims the orders, the 4 KPIs come from that slice, the
+// chart is the SAME as the home's and the table comes sorted by revenue.
 
-// Referencia estavel por render: um array novo a cada chamada do mock
-// realimenta o efeito e trava o act() em laco.
+// Stable reference per render: a new array on every mock call
+// feeds the effect again and locks act() in a loop.
 const mocks = vi.hoisted(() => ({
   orders: [] as unknown[],
   ledgers: [] as unknown[],
@@ -78,7 +78,7 @@ import { TeacherStudioInsights } from "@/components/teacher/teacher-studio-insig
 import type { Order } from "@/domain/order";
 import type { TeacherCourse } from "@/domain/teacher-course";
 
-// Na home os dados chegam por props (a Home le uma vez e repassa).
+// On the home the data arrives through props (Home reads once and passes it down).
 function HomeInsights() {
   return (
     <TeacherStudioInsights
@@ -104,7 +104,7 @@ function order(fields: Record<string, unknown>) {
 
 beforeEach(() => {
   mocks.ordersRead = "ready";
-  // Tres pagos + um reembolsado dentro dos 30 dias, e um pago velho fora deles.
+  // Three paid + one refunded within the 30 days, and one old paid order outside them.
   mocks.orders = [
     order({
       id: "o1",
@@ -162,7 +162,7 @@ beforeEach(() => {
       currency: "USD",
       createdAt: daysAgo(2),
     },
-    // Fora do periodo: nao pode entrar na receita liquida de 30 dias.
+    // Outside the period: it must not enter the 30-day net revenue.
     {
       id: "l2",
       teacherId: "teacher-1",
@@ -198,11 +198,11 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("Relatorios do professor", () => {
-  it("os 4 KPIs contam so o periodo aberto, e o reembolso vira taxa", async () => {
+describe("Teacher reports", () => {
+  it("the 4 KPIs count only the open period, and the refund becomes a rate", async () => {
     render(<CreatorOpsHub />);
 
-    // 3 pagos em 30 dias; o pedido de 200 dias atras fica de fora.
+    // 3 paid in 30 days; the order from 200 days ago stays out.
     expect(await screen.findByText("Sales")).toBeInTheDocument();
     expect(screen.getByText("3")).toBeInTheDocument();
 
@@ -210,8 +210,8 @@ describe("Relatorios do professor", () => {
     expect(screen.getByText("Refund rate")).toBeInTheDocument();
     expect(screen.getByText("25%")).toBeInTheDocument();
 
-    // Receita liquida do razao do periodo: 39.000 minor. Os 800.000 do
-    // lancamento velho nao entram.
+    // Net revenue from the period ledger: 39,000 minor. The 800,000 from the
+    // old ledger entry do not count.
     expect(screen.getByText("Net revenue")).toBeInTheDocument();
     expect(screen.getByText("$390")).toBeInTheDocument();
 
@@ -219,7 +219,7 @@ describe("Relatorios do professor", () => {
     expect(screen.getByText("$30")).toBeInTheDocument();
   });
 
-  it("o grafico de receita esta nos relatorios e continua na home", async () => {
+  it("the revenue chart is in the reports and stays on the home", async () => {
     const reports = render(<CreatorOpsHub />);
     expect(
       await screen.findByRole("img", { name: "Teacher revenue chart" }),
@@ -232,14 +232,14 @@ describe("Relatorios do professor", () => {
     ).toBeInTheDocument();
   });
 
-  it("a tabela por produto vem ordenada pela receita, com os reembolsos do periodo", async () => {
+  it("the per-product table comes sorted by revenue, with the period's refunds", async () => {
     render(<CreatorOpsHub />);
 
     const table = await screen.findByRole("table");
     const rows = within(table).getAllByRole("row").slice(1);
 
     expect(rows).toHaveLength(2);
-    // produto / pedidos / receita / reembolsos
+    // product / orders / revenue / refunds
     expect(
       rows.map((row) =>
         within(row)
@@ -248,13 +248,13 @@ describe("Relatorios do professor", () => {
       ),
     ).toEqual([
       ["Deep Hypnosis", "2", "$400", "0"],
-      // Breathwork rende menos e vem depois, com o reembolso contado a parte.
+      // Breathwork earns less and comes after, with the refund counted separately.
       ["Breathwork Basics", "1", "$50", "1"],
     ]);
   });
 
-  // R$100 e $20 viravam um "$120" no grafico dos relatorios.
-  it("duas moedas: o grafico desenha uma, diz as outras e a tabela separa as linhas", async () => {
+  // R$100 and $20 turned into a "$120" on the reports chart.
+  it("two currencies: the chart draws one, names the others and the table separates the rows", async () => {
     mocks.orders = [
       order({ id: "b1", status: "paid", courseId: "c1", courseTitle: "Deep Hypnosis", amountMinor: 10_000, currency: "BRL", createdAt: daysAgo(2) }),
       order({ id: "b2", status: "paid", courseId: "c1", courseTitle: "Deep Hypnosis", amountMinor: 10_000, currency: "BRL", createdAt: daysAgo(3) }),
@@ -263,18 +263,18 @@ describe("Relatorios do professor", () => {
 
     render(<CreatorOpsHub />);
 
-    // BRL tem mais pedidos no periodo: e a moeda do grafico.
+    // BRL has more orders in the period: it is the chart's currency.
     const chart = (await screen.findByRole("img", { name: "Teacher revenue chart" })).closest<HTMLElement>(".studio-chart-card")!;
     expect(within(chart).getByText("R$200", { selector: "strong" })).toBeInTheDocument();
     expect(within(chart).getByText("Other currencies are not in this chart: $20.")).toBeInTheDocument();
     const rows = within(screen.getByRole("table")).getAllByRole("row").slice(1);
     expect(rows.map((row) => within(row).getAllByRole("cell")[2].textContent)).toEqual(["R$200", "$20"]);
     expect(document.body.textContent).not.toMatch(/\$220|R\$220|BRL 220|USD 220/);
-    // As moedas lado a lado com " · ": o " + " de antes lia como soma.
+    // The currencies side by side with " · ": the earlier " + " read as a sum.
     expect(document.body.textContent).not.toMatch(/\d \+ /);
   });
 
-  it("reembolso parcial: $100 com $30 devolvidos conta $70 no grafico e na tabela", async () => {
+  it("partial refund: $100 with $30 returned counts as $70 on the chart and the table", async () => {
     mocks.orders = [
       order({ id: "p1", status: "partially_refunded", courseId: "c1", courseTitle: "Deep Hypnosis", amountMinor: 10_000, refundedAmountMinor: 3_000, createdAt: daysAgo(2) }),
     ];
@@ -287,11 +287,11 @@ describe("Relatorios do professor", () => {
     expect(within(row).getAllByRole("cell").map((cell) => cell.textContent)).toEqual(["Deep Hypnosis", "1", "$70", "1"]);
   });
 
-  // Carregando ou com erro, o grafico dizia "No revenue in this period".
+  // While loading or on error, the chart said "No revenue in this period".
   it.each([
     ["loading", "Loading..."],
     ["error", "Unavailable"],
-  ] as const)("pedidos em '%s': o grafico nao afirma receita zero", async (read, label) => {
+  ] as const)("for orders in '%s': the chart does not claim zero revenue", async (read, label) => {
     mocks.ordersRead = read;
 
     render(<CreatorOpsHub />);
@@ -301,8 +301,8 @@ describe("Relatorios do professor", () => {
     expect(within(chart).queryByText("No revenue in this period")).toBeNull();
   });
 
-  // F-11: so "Unavailable" nos quadros, sem aviso nem saida alem de recarregar.
-  it("leitura que falha avisa e 'Try again' le de novo", async () => {
+  // F-11: only "Unavailable" in the boxes, with no notice and no way out other than reloading.
+  it("a read that fails shows a notice and 'Try again' reads again", async () => {
     mocks.ordersRead = "error";
     render(<CreatorOpsHub />);
 
@@ -313,7 +313,7 @@ describe("Relatorios do professor", () => {
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
   });
 
-  it("sem nenhuma linha, o export nao fica clicavel", async () => {
+  it("with no rows, the export is not clickable", async () => {
     mocks.orders = [];
     mocks.ledgers = [];
 
@@ -329,7 +329,7 @@ function ChangeLanguage() {
   return <button onClick={() => setLocale("es")}>Cambiar a español</button>;
 }
 
-describe("datas dos gráficos no idioma da pessoa", () => {
+describe("chart dates in the person's language", () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date(2026, 8, 8, 12));
@@ -347,26 +347,26 @@ describe("datas dos gráficos no idioma da pessoa", () => {
     { name: "home mensal", Component: HomeInsights, period: "12m", englishLabel: "Oct", spanishLabel: "oct" },
   ];
 
-  it.each(charts)("$name já abre com datas em espanhol", ({ Component, period, spanishLabel, englishLabel }) => {
+  it.each(charts)("$name already opens with dates in Spanish", ({ Component, period, spanishLabel, englishLabel }) => {
     render(<I18nProvider initialLocale="es"><Component /></I18nProvider>);
     fireEvent.click(screen.getByRole("button", { name: period }));
 
-    // Os rotulos do eixo moram em HTML em volta do SVG (12px em qualquer
-    // largura), dentro do mesmo quadro do grafico.
+    // The axis labels live in HTML around the SVG (12px at any
+    // width), inside the same frame as the chart.
     const chart = screen.getByRole("img").closest<HTMLElement>(".studio-chart-canvas")!;
     expect(within(chart).getByText(spanishLabel)).toBeInTheDocument();
     expect(within(chart).queryByText(englishLabel)).not.toBeInTheDocument();
     expect(within(chart.closest<HTMLElement>(".studio-chart-card")!).getByText("$200", { selector: "strong" })).toBeVisible();
   });
 
-  it.each(charts)("$name acompanha EN→ES sem trocar período, dados ou total", ({ Component, period, spanishLabel, englishLabel }) => {
+  it.each(charts)("$name follows EN→ES without changing period, data or total", ({ Component, period, spanishLabel, englishLabel }) => {
     render(<I18nProvider initialLocale="en"><ChangeLanguage /><Component /></I18nProvider>);
     fireEvent.click(screen.getByRole("button", { name: period }));
 
     const chart = screen.getByRole("img").closest<HTMLElement>(".studio-chart-canvas")!;
     expect(within(chart).getByText(englishLabel)).toBeInTheDocument();
     const geometry = [...chart.querySelectorAll("path")].map((path) => path.getAttribute("d"));
-    // Os pontos sao HTML (no desenho esticado um circulo viraria elipse).
+    // The points are HTML (in the stretched drawing a circle would become an ellipse).
     const points = chart.querySelectorAll("span.rounded-full").length;
     expect(points).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "Cambiar a español" }));
@@ -380,7 +380,7 @@ describe("datas dos gráficos no idioma da pessoa", () => {
     expect(screen.getAllByText("Deep Hypnosis").length).toBeGreaterThan(0);
   });
 
-  it("mantém os acentos nas orientações do relatório em espanhol", () => {
+  it("keeps the accents in the Spanish report guidance", () => {
     mocks.orders = [];
     render(<I18nProvider initialLocale="es"><CreatorOpsHub /></I18nProvider>);
 

@@ -35,7 +35,7 @@ describe.each(["en", "es"] as const)("Stripe dashboard button (%s)", (locale) =>
     fireEvent.click(button);
     expect(button).toHaveAttribute("aria-busy", "true");
     expect(button).toHaveAttribute("aria-disabled", "true");
-    // Os dois rótulos moram no botão (largura fixa); o nome é o que está à vista.
+    // Both labels live in the button (fixed width); the name is what is in view.
     expect(button).toHaveAccessibleName(copy(locale, "opening"));
     expect(button).toHaveFocus();
     fireEvent.click(button);

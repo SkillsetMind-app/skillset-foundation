@@ -118,8 +118,8 @@ beforeEach(() => {
   sb.tables.length = 0;
   sb.rows.length = 0;
   slowRender.on = false;
-  // Tirar uma seção pergunta na janela da plataforma (não mais no
-  // window.confirm). O jsdom não tem showModal/close: o stub faz o mínimo.
+  // Removing a section asks in the platform dialog (no longer
+  // window.confirm). jsdom has no showModal/close: the stub does the minimum.
   Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value() { this.setAttribute("open", ""); } });
   Object.defineProperty(HTMLDialogElement.prototype, "close", { configurable: true, value() { if (!this.hasAttribute("open")) return; this.removeAttribute("open"); this.dispatchEvent(new Event("close")); } });
 });
@@ -161,7 +161,7 @@ describe("sales page image upload while the creator keeps editing", () => {
   });
 
   it("drops and deletes the upload when its section was removed meanwhile", async () => {
-    // Só o Date é falso: o confirmar ignora cliques nos primeiros 500ms.
+    // Only Date is fake: the confirm ignores clicks in the first 500ms.
     vi.useFakeTimers({ toFake: ["Date"] });
     await mountEditor([hero(), about()]);
     pick(1);
@@ -169,7 +169,7 @@ describe("sales page image upload while the creator keeps editing", () => {
     fireEvent.click(screen.getByRole("button", { name: "Remove About you section" }));
     const dialog = screen.getByRole("dialog", { name: "Remove this section?" });
     expect(dialog).toHaveTextContent('Remove the "About you" section and everything written in it?');
-    // Desistir mantém a seção; confirmar a tira do rascunho.
+    // Giving up keeps the section; confirming removes it from the draft.
     fireEvent.click(within(dialog).getByRole("button", { name: "Keep section" }));
     expect(screen.getByRole("button", { name: "Remove About you section" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Remove About you section" }));
@@ -241,8 +241,8 @@ describe("sales page image cleanup", () => {
   });
 });
 
-// "Saved." ficava na tela enquanto a pessoa voltava a digitar: o que nao
-// estava gravado parecia gravado. A linha ao lado do Save diz so a verdade.
+// "Saved." stayed on screen while the person went back to typing: what was not
+// saved looked saved. The line next to Save now tells only the truth.
 describe("sales page save status", () => {
   it("says Unsaved changes after an edit, Saved. only while the page matches the save", async () => {
     await mountEditor([hero()]);
@@ -256,12 +256,12 @@ describe("sales page save status", () => {
     fireEvent.change(headline, { target: { value: "New title, again" } });
     expect(screen.getByRole("status")).toHaveTextContent("Unsaved changes");
     expect(screen.queryByText("Saved.")).not.toBeInTheDocument();
-    // Voltar ao texto gravado e verdade de novo: igual ao que o servidor tem.
+    // Going back to the saved text is true again: equal to what the server has.
     fireEvent.change(headline, { target: { value: "New title" } });
     expect(screen.getByRole("status")).toHaveTextContent("Saved.");
   });
 
-  // O modelo escolhido dizia so pela cor; o Save era uma caixa navy a mao.
+  // The chosen template was told only by color; Save was a hand-made navy box.
   it("template choices are pressed buttons and Save is the shared Button with a busy state", async () => {
     await mountEditor([hero()]);
     const classic = screen.getByRole("button", { name: "Classic" });

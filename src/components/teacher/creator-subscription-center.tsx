@@ -37,7 +37,7 @@ type SubscriberFilter = "all" | "active" | "attention" | "canceling" | "ended";
 type ReadState = "loading" | "ready" | "error";
 type ReadName = "subscriptions" | "courses" | "orders" | "ledgers";
 const copy = "teach.subscriptions";
-// O osso dos esqueletos da casa (surface-strong), pulsando so ele.
+// The base layer of the house skeletons (surface-strong); only that layer pulses.
 const bone = "animate-pulse rounded-md bg-[var(--color-surface-strong)]";
 
 export function CreatorSubscriptionCenter() {
@@ -52,10 +52,10 @@ export function CreatorSubscriptionCenter() {
   const [failed, setFailed] = useState({ subscriptions: false, courses: false });
   const [ordersState, setOrdersState] = useState<ReadState>("loading");
   const [ledgersState, setLedgersState] = useState<ReadState>("loading");
-  // Cada leitura guarda o proprio reload: o "Try again" le de novo so as que
-  // falharam, sem mexer no canal do tempo real.
+  // Each read keeps its own reload: "Try again" re-reads only the ones that
+  // failed, without touching the realtime channel.
   const reads = useRef<Partial<Record<ReadName, { reload?: () => Promise<void> }>>>({});
-  // Fica na tela nos dois desfechos (erro ou lista) e recebe o foco do clique.
+  // Stays on screen in both outcomes (error or list) and receives the focus from the click.
   const frameRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -143,8 +143,8 @@ export function CreatorSubscriptionCenter() {
     };
   }, [user, subscriptions]);
 
-  // A frase sai do estado de cada leitura, nao de um "ultimo erro" guardado:
-  // guardado, ele ficava na tela depois que a releitura dava certo.
+  // The sentence comes from the state of each read, not from a stored "last error":
+  // if it were stored, it stayed on screen after the re-read succeeded.
   const failedReads: ReadName[] = [
     ...(failed.subscriptions ? ["subscriptions" as const] : []),
     ...(failed.courses ? ["courses" as const] : []),
@@ -177,7 +177,7 @@ export function CreatorSubscriptionCenter() {
       {!loaded.subscriptions || !loaded.courses ? (
         <SubscriptionCenterLoading />
       ) : failed.subscriptions || failed.courses ? (
-        // Sem assinantes ou sem produtos nao ha o que mostrar: so o aviso.
+        // With no subscribers or no products there is nothing to show: only the notice.
         loadError
       ) : (
         <>
@@ -308,8 +308,8 @@ export function CreatorSubscriptionCenterView({
 
       <section className="border-y border-[var(--color-line)] py-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          {/* As abas da casa (setas, Home/End, a ativa na ordem do Tab), no
-              lugar dos dois botoes azuis cheios feitos so aqui. */}
+          {/* The house tabs (arrows, Home/End, the active one in Tab order), in place of
+              the two full blue buttons built only here. */}
           <HorizontalTabs
             className="min-w-0"
             tabs={[
@@ -450,8 +450,8 @@ export function CreatorSubscriptionCenterView({
         ) : (
           <div className="mt-5 grid gap-0">
             {financialState === "loading" ? (
-              // Linhas no formato da renovacao (produto e data, quem pagou,
-              // situacao e valor), no lugar de uma frase que depois virava a lista.
+              // Rows in the renewal format (product and date, who paid,
+              // status and amount), in place of a sentence that later became the list.
               <div role="status">
                 <span className="sr-only">{t(`${copy}.renewalsLoading`)}</span>
                 {[0, 1, 2].map((row) => (
@@ -480,10 +480,10 @@ export function CreatorSubscriptionCenterView({
               return (
                 <article key={renewal.id} className="flex flex-col justify-between gap-3 border-b border-[var(--color-line)] py-4 sm:flex-row sm:items-center">
                   <div>
-                    {/* O titulo era "Renewal {id cru}": agora o produto e a data. */}
+                    {/* The title used to be "Renewal {raw id}": now it is the product and the date. */}
                     <p className="text-sm font-bold text-[var(--color-primary)]">
-                      {/* Uma passada so: um titulo com "{date}" dentro nao e
-                          trocado de novo. */}
+                      {/* One pass only: a title with "{date}" inside is not
+                          replaced again. */}
                       {t(`${copy}.renewalLabel`).replace(/\{plan\}|\{date\}/g, (token) =>
                         token === "{plan}"
                           ? renewal.courseTitle
@@ -492,9 +492,9 @@ export function CreatorSubscriptionCenterView({
                     <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
                       {profile?.displayName || (renewal.userId ? maskLearner(renewal.userId, t("roles.learner")) : t(`${copy}.historicalSubscriber`))}
                     </p>
-                    {/* O id e a unica referencia da renovacao para a Stripe e o
-                        suporte (uma falha e a nova tentativa do mesmo dia so
-                        diferem por ele): recolhido e selecionavel. */}
+                    {/* The id is the only reference to the renewal for Stripe and
+                        support (a failure and the retry on the same day differ only
+                        by it): collapsed and selectable. */}
                     <SupportDetails>
                       <p className="select-all">{t(`${copy}.renewalId`).replace("{id}", () => renewal.id)}</p>
                     </SupportDetails>
@@ -542,8 +542,8 @@ function isRecurringCourse(course: TeacherCourse): boolean {
   return course.paymentType === "subscription_monthly" || course.paymentType === "subscription_yearly";
 }
 
-// Pelo formatador da casa, uma moeda de cada vez ("$49.00 · R$99.00"): era
-// "USD 49.00 + BRL 99.00", e o "+" sugeria uma soma de moedas.
+// Through the house formatter, one currency at a time ("$49.00 · R$99.00"): it was
+// "USD 49.00 + BRL 99.00", and the "+" suggested a sum of currencies.
 function formatMrr(values: Array<{ currency: string; amountMinor: number }>, emptyLabel: string, locale: string): string {
   return values.length ? formatMoneyBreakdown(values, locale, null) : emptyLabel;
 }
@@ -599,8 +599,8 @@ function maskLearner(userId: string, label: string): string {
   return `${label} ...${userId.slice(-6)}`;
 }
 
-// Sem nome, o aprendiz mascarado aparece uma vez so: antes "Learner ...a1b2c3"
-// saia no titulo e de novo na linha de baixo, na mesma celula.
+// With no name, the masked learner shows up only once: before, "Learner ...a1b2c3"
+// appeared in the title and again on the line below, in the same cell.
 function SubscriberName({ name, userId, label }: { name?: string; userId: string; label: string }) {
   return (
     <>

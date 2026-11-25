@@ -17,10 +17,10 @@ import {
 } from "@/lib/data/community-posts";
 
 /**
- * Mockup 5, 11d — para o professor a comunidade e uma caixa de entrada:
- * "Waiting for an answer · N" no topo (mais antiga primeiro, vermelha depois
- * de 24 h), a resposta escrita ali mesmo e ja marcada como A resposta; "Post
- * an update" fixa o aviso; "This week" em numeros.
+ * Mockup 5, 11d — for the teacher the community is an inbox:
+ * "Waiting for an answer · N" at the top (oldest first, red after
+ * 24 h), the answer written right there and already marked as The answer; "Post
+ * an update" pins the notice; "This week" in numbers.
  */
 
 const NOW = Date.parse("2026-09-02T12:00:00.000Z");
@@ -35,7 +35,7 @@ const mocks = vi.hoisted(() => ({
   commentsCallback: null as null | ((comments: CommunityComment[]) => void),
 }));
 
-// O I18nProvider chama useRouter() para o refresh ao trocar de idioma.
+// The I18nProvider calls useRouter() for the refresh when switching language.
 const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }));
 vi.mock("next/navigation", async (importOriginal) => ({
   ...await importOriginal<typeof import("next/navigation")>(),
@@ -128,7 +128,7 @@ async function renderInbox(locale?: "en" | "es") {
   return view;
 }
 
-describe("caixa de entrada da comunidade (professor)", () => {
+describe("community inbox (teacher)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers({ shouldAdvanceTime: true, now: NOW });
@@ -141,17 +141,17 @@ describe("caixa de entrada da comunidade (professor)", () => {
     vi.useRealTimers();
   });
 
-  it("cabecalho com membros, ativos na semana e a mediana de resposta do professor", async () => {
+  it("header with members, active this week and the teacher's median response time", async () => {
     await renderInbox();
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Leading Teams Through Change");
-    // 38 membros; ativos na semana = quem postou ou respondeu nos ultimos 7
-    // dias: student-2 (autor padrao), student-4 (Marcos) e owner-1 = 3;
-    // mediana entre 6h (q-done) e 2h (q-replied) = 4h.
+    // 38 members; active this week = those who posted or replied in the last 7
+    // days: student-2 (default author), student-4 (Marcos) and owner-1 = 3;
+    // median between 6h (q-done) and 2h (q-replied) = 4h.
     expect(screen.getByText(/38 members · 3 active this week · your median reply 4h/)).toBeInTheDocument();
   });
 
-  it("'Waiting for an answer' lista so as perguntas sem resposta do professor, mais antiga primeiro, vermelha depois de 24 h", async () => {
+  it("'Waiting for an answer' lists only the teacher's unanswered questions, oldest first, red after 24 h", async () => {
     await renderInbox();
 
     const waiting = screen.getByRole("region", { name: /Waiting for an answer/ });
@@ -168,7 +168,7 @@ describe("caixa de entrada da comunidade (professor)", () => {
     expect(within(waiting).queryByText("Do I lose progress if I skip?")).toBeNull();
   });
 
-  it("responder ali mesmo cria o comentario e ja marca como A resposta", async () => {
+  it("replying right there creates the comment and marks it as THE answer", async () => {
     await renderInbox();
 
     const card = screen.getByRole("article", { name: "How do you set a real deadline?" });
@@ -186,7 +186,7 @@ describe("caixa de entrada da comunidade (professor)", () => {
     await waitFor(() => expect(setCommunityPostAcceptedAnswer).toHaveBeenCalledWith("q-old", "comment-new"));
   });
 
-  it("desmarcar 'Mark as the answer' responde sem marcar", async () => {
+  it("unchecking 'Mark as the answer' replies without marking", async () => {
     await renderInbox();
 
     const card = screen.getByRole("article", { name: "How do you set a real deadline?" });
@@ -201,7 +201,7 @@ describe("caixa de entrada da comunidade (professor)", () => {
     expect(setCommunityPostAcceptedAnswer).not.toHaveBeenCalled();
   });
 
-  it("'Post an update' publica o aviso e o fixa no topo", async () => {
+  it("'Post an update' publishes the notice and pins it to the top", async () => {
     await renderInbox();
 
     fireEvent.click(screen.getByRole("button", { name: "Post an update" }));
@@ -218,21 +218,21 @@ describe("caixa de entrada da comunidade (professor)", () => {
     await waitFor(() => expect(setCommunityPostPinned).toHaveBeenCalledWith("post-new", true));
   });
 
-  it("'This week' conta posts, perguntas, compartilhamentos e ativos", async () => {
+  it("'This week' counts posts, questions, shares and active members", async () => {
     await renderInbox();
 
-    // Os 5 posts sao desta semana (o mais antigo tem 3 dias): 4 perguntas + 1 compartilhamento.
+    // The 5 posts are from this week (the oldest is 3 days old): 4 questions + 1 share.
     expect(screen.getByText("5 posts")).toBeInTheDocument();
     expect(screen.getByText("4 questions · 1 share")).toBeInTheDocument();
     expect(screen.getByText("3 of 38 active")).toBeInTheDocument();
   });
 
-  // O cartao chamava o formatador de hora sem `t` nem `locale`: em espanhol a
-  // hora da ultima resposta de aluno saia em ingles ("30m ago").
-  it("mostra a hora da ultima resposta de aluno no idioma da pessoa", async () => {
+  // The card called the time formatter without `t` or `locale`: in Spanish the
+  // time of the learner's last reply came out in English ("30m ago").
+  it("shows the time of the last learner reply in the person's language", async () => {
     await renderInbox("es");
 
-    // Em espanhol o cartao inteiro sai traduzido agora, nao so a hora.
+    // In Spanish the whole card now comes out translated, not just the time.
     const waiting = screen.getByRole("region", { name: /Esperando respuesta/ });
     const [oldest] = within(waiting).getAllByRole("article");
     // c-student respondeu q-old ha meia hora (NOW - HOUR / 2).
@@ -240,9 +240,9 @@ describe("caixa de entrada da comunidade (professor)", () => {
     expect(oldest).toHaveTextContent("Hace 30 min");
   });
 
-  // O banco recusa a gravacao com RATE_LIMIT (teto por hora, P2-9). A caixa
-  // pede para esperar, em vez do "tente de novo" generico que falharia de novo.
-  it("teto por hora do banco na resposta: pede para esperar e nao marca nada", async () => {
+  // The database refuses the write with RATE_LIMIT (hourly cap, P2-9). The inbox
+  // asks the person to wait, instead of the generic "try again" that would fail again.
+  it("database hourly cap on the reply: asks to wait and marks nothing", async () => {
     vi.mocked(createCommunityComment).mockRejectedValueOnce({ code: "P0001", message: "RATE_LIMIT" });
     await renderInbox("en");
 
@@ -258,7 +258,7 @@ describe("caixa de entrada da comunidade (professor)", () => {
     expect(setCommunityPostAcceptedAnswer).not.toHaveBeenCalled();
   });
 
-  it("teto por hora do banco no aviso: a mesma mensagem, em espanhol, sem fixar nada", async () => {
+  it("database hourly cap on the notice: the same message, in Spanish, pins nothing", async () => {
     vi.mocked(createCommunityPost).mockRejectedValueOnce({ code: "P0001", message: "RATE_LIMIT" });
     await renderInbox("es");
 
@@ -274,7 +274,7 @@ describe("caixa de entrada da comunidade (professor)", () => {
   });
 });
 
-describe("'All posts': o professor modera a propria comunidade", () => {
+describe("'All posts': the teacher moderates their own community", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers({ shouldAdvanceTime: true, now: NOW });
@@ -287,8 +287,8 @@ describe("'All posts': o professor modera a propria comunidade", () => {
     vi.useRealTimers();
   });
 
-  // A leitura (subscribeToCommunityPosts) ja entrega fixado no topo e o mais
-  // novo primeiro; a lista mostra nessa ordem.
+  // The read (subscribeToCommunityPosts) already delivers pinned posts on top and the newest
+  // first; the list shows them in that order.
   const update = post({ id: "update", category: "announcement", authorId: "owner-1", authorName: "Patrick S.", body: "Live on Friday.", pinned: true, createdAt: new Date(NOW - 4 * 24 * HOUR).toISOString() });
   const ordered = [update, posts[1], posts[4], posts[3], posts[0], posts[2]];
 
@@ -300,7 +300,7 @@ describe("'All posts': o professor modera a propria comunidade", () => {
     return screen.getByRole("region", { name: /All posts/ });
   }
 
-  it("lista todos os posts na ordem da leitura, com o fixado marcado e as respostas contadas", async () => {
+  it("lists all posts in the order of the read, with the pinned one marked and the replies counted", async () => {
     const all = await renderWithPinned();
 
     const rows = within(all).getAllByRole("listitem");
@@ -312,18 +312,18 @@ describe("'All posts': o professor modera a propria comunidade", () => {
     expect(rows[4]).toHaveTextContent("1 reply");
     expect(rows[5]).toHaveTextContent("Do I lose progress if I skip?");
     expect(within(all).getByRole("heading", { level: 2 })).toHaveTextContent(/^All posts\s*6$/);
-    // O dono modera; nao denuncia o proprio curso.
+    // The owner moderates; they do not report their own course.
     expect(within(all).queryByRole("button", { name: "Report" })).toBeNull();
   });
 
-  it("desafixar usa a mesma escrita que o banco ja permitia", async () => {
+  it("unpinning uses the same write the database already allowed", async () => {
     const all = await renderWithPinned();
 
     fireEvent.click(within(within(all).getAllByRole("listitem")[0]).getByRole("button", { name: "Unpin" }));
     expect(setCommunityPostPinned).toHaveBeenCalledExactlyOnceWith("update", false);
   });
 
-  it("apagar um post de aluno pede confirmacao e tira o post da lista e da fila", async () => {
+  it("deleting a learner's post asks for confirmation and removes the post from the list and the queue", async () => {
     const all = await renderWithPinned();
     const row = within(all).getAllByRole("listitem")[4];
 
@@ -337,7 +337,7 @@ describe("'All posts': o professor modera a propria comunidade", () => {
     expect(within(waiting).getAllByRole("article")).toHaveLength(1);
   });
 
-  it("'Open' abre a gaveta; la o professor apaga a resposta de um aluno", async () => {
+  it("'Open' opens the drawer; there the teacher deletes a learner's reply", async () => {
     const all = await renderWithPinned();
     const row = within(all).getAllByRole("listitem")[4];
 
@@ -359,8 +359,8 @@ describe("'All posts': o professor modera a propria comunidade", () => {
   });
 });
 
-describe("mediana de resposta do professor", () => {
-  it("so conta perguntas que o instrutor respondeu; sem nenhuma, nao ha numero", () => {
+describe("teacher's median response time", () => {
+  it("only counts questions the instructor answered; with none, there is no number", () => {
     expect(medianInstructorReplyHours(posts, comments, ["owner-1"])).toBe(4);
     expect(medianInstructorReplyHours(posts, [], ["owner-1"])).toBeNull();
   });

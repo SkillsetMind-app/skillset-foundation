@@ -9,25 +9,25 @@ import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 
 import { SaleList } from "./sale-list";
 
-// O que a pessoa sofria: com zero pedidos a pagina de vendas trocava tudo por
-// um card de vazio de 5 linhas. Sem periodo, sem busca, sem filtro, sem
-// exportar — e sem dizer de QUE recorte ela estava falando. Com pedidos,
-// devolver dinheiro exigia sair daqui e cacar o pagamento na Stripe na mao.
+// What the person suffered: with zero orders the sales page swapped everything for
+// a 5-line empty card. No period, no search, no filter, no
+// export — and no word on WHICH slice it was talking about. With orders,
+// refunding money meant leaving here and hunting for the payment in Stripe by hand.
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 const DAY = 24 * 60 * 60 * 1000;
 
 const mocks = vi.hoisted(() => ({
-  // O MESMO objeto em todo render: um usuario novo por render reinscreve o
-  // efeito e entra em laco.
+  // The SAME object on every render: a new user per render resubscribes the
+  // effect and loops.
   user: { uid: "teacher-1", displayName: "Patricia", roles: ["teacher"] },
   orders: [] as Order[],
   openStripe: vi.fn(),
-  // A primeira leitura falha; o "Try again" le de novo pelo mesmo canal.
+  // The first read fails; "Try again" reads again through the same channel.
   ordersFail: false,
   reload: vi.fn(),
-  // O canal ao vivo: uma releitura posterior que falha chega por aqui.
+  // The live channel: a later re-read that fails arrives through here.
   failLater: null as ((error: Error) => void) | null,
 }));
 
@@ -79,8 +79,8 @@ afterEach(() => {
 });
 
 describe("SaleList", () => {
-  // Falha nao e "sem vendas": o erro com "Try again", que le de novo pelo
-  // mesmo canal (antes a saida era recarregar a pagina).
+  // A failure is not "no sales": the error with "Try again", which reads again through the
+  // same channel (before, the only way out was reloading the page).
   it("a failed read shows the error with Try again, never the empty state", () => {
     mocks.ordersFail = true;
     render(<SaleList />);
@@ -92,8 +92,8 @@ describe("SaleList", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  // Uma releitura que falha com a tabela na tela nao apaga as vendas boas: o
-  // aviso com "Try again" vem por cima delas.
+  // A re-read that fails with the table on screen does not erase the good sales: the
+  // notice with "Try again" appears on top of them.
   it("a failed background re-read keeps the rows, with the alert and Try again above them", () => {
     mocks.orders = [order({})];
     render(<SaleList />);
@@ -106,7 +106,7 @@ describe("SaleList", () => {
     expect(screen.getByLabelText("Filter by period")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(mocks.reload).toHaveBeenCalledTimes(1);
-    // A tabela fica na tela enquanto le de novo (nada de voltar ao "carregando").
+    // The table stays on screen while it reads again (no going back to "loading").
     expect(screen.queryByRole("alert")).toBeNull();
     expect(screen.getAllByText("Facilitation Fundamentals").length).toBeGreaterThan(0);
   });
@@ -115,17 +115,17 @@ describe("SaleList", () => {
     render(<SaleList />);
 
     expect(screen.getByLabelText("Filter by period")).toHaveValue("30d");
-    // A busca tinha min-w-0: a 390 px virava uma caixa de 35 px entre os dois
-    // selects. Com um minimo ela quebra para a linha de baixo, inteira.
+    // The search had min-w-0: at 390 px it became a 35 px box between the two
+    // selects. With a minimum it wraps to the next line, at full width.
     expect(screen.getByLabelText("Search sales by course or order id")).toHaveClass(
       "min-w-[12rem]",
     );
     expect(screen.getByLabelText("Filter by status")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /export/i })).toBeDisabled();
 
-    // A pele padrao dos campos (borda de 1.5px que aparece no branco), sem a
-    // largura toda que quebraria a fileira. O modificador precisa vir depois
-    // do .field-input na folha para vencer o width: 100% dele.
+    // The default skin of the fields (a 1.5px border that shows on white), without the
+    // full width that would break the row. The modifier has to come after
+    // .field-input in the stylesheet to beat its width: 100%.
     for (const label of ["Filter by period", "Search sales by course or order id", "Filter by status"]) {
       expect(screen.getByLabelText(label), label).toHaveClass("field-input", "field-input--inline");
     }
@@ -134,20 +134,20 @@ describe("SaleList", () => {
     expect(inline).toBeGreaterThan(css.indexOf(".field-input {"));
     expect(css.slice(inline, css.indexOf("}", inline))).toMatch(/width: auto;[\s\S]*min-height: 44px;/);
 
-    // A linha de contagem diz o recorte: "0 orders between <de> e <ate>".
+    // The count line states the slice: "0 orders between <from> and <to>".
     expect(screen.getByText(/^0 orders between .+ and .+$/)).toBeInTheDocument();
 
-    // Nenhuma venda nunca: a cena do recibo e uma frase so, sem o paragrafo
-    // de 5 linhas sobre o modelo Stripe.
+    // No sales ever: the receipt scene is a single sentence, without the 5-line
+    // paragraph about the Stripe model.
     expect(screen.getByRole("heading", { name: "Your sales will show up here." })).toBeInTheDocument();
     expect(document.querySelector('svg[data-scene="noSales"]')).toHaveAttribute("aria-hidden", "true");
     expect(
       screen.getByRole("link", { name: "Go to your products" }),
     ).toBeInTheDocument();
     expect(screen.queryByText(/settlement and payout timing/i)).toBeNull();
-    // Sem nenhum pedido, "Open my Stripe" so podia devolver "conecte o Stripe".
+    // With no orders, "Open my Stripe" could only return "connect Stripe".
     expect(screen.queryByRole("button", { name: "Open my Stripe" })).toBeNull();
-    // E a frase que manda abrir o Stripe sai junto com o botao.
+    // And the sentence that tells people to open Stripe goes away with the button.
     expect(screen.queryByText(/Open your Stripe dashboard to find the payment/)).toBeNull();
   });
 
@@ -182,7 +182,7 @@ describe("SaleList", () => {
 
     expect(screen.getByText(/^2 orders between .+ and .+$/)).toBeInTheDocument();
 
-    // Antes: 50 cartoes soltos, sem colunas. Agora uma tabela com cabecalho.
+    // Before: 50 loose cards, no columns. Now a table with a header.
     const table = screen.getByRole("table", { name: "Your sales, newest first" });
     expect(
       within(table).getAllByRole("columnheader").map((head) => head.textContent),
@@ -191,7 +191,7 @@ describe("SaleList", () => {
     expect(rows).toHaveLength(2);
     expect(rows[0]).toHaveTextContent("Group Work");
     expect(rows[0]).toHaveTextContent("#ORDER-2");
-    // O produto e o cabecalho da linha e, de novo, o link da venda.
+    // The product is the row header and, again, the link to the sale.
     const product = within(rows[0]).getByRole("rowheader");
     expect(within(product).getByRole("link", { name: "Group Work" })).toHaveAttribute("href", "/teach/sales/order-2");
 
@@ -200,19 +200,19 @@ describe("SaleList", () => {
       "/teach/sales/order-2",
       "/teach/sales/order-1",
     ]);
-    // A ajuda de reembolso aparece uma vez, acima; nao repetida em cada linha.
+    // The refund help appears once, above; not repeated on every row.
     expect(screen.queryByRole("link", { name: "Refund options" })).toBeNull();
     expect(screen.getAllByText(/Open your Stripe dashboard to find the payment/)).toHaveLength(1);
 
-    // O chip, nao a opcao "Refunded" do filtro de status.
+    // The chip, not the "Refunded" option of the status filter.
     expect(
       within(table).getByText("Refunded", { selector: "span.status-chip" }),
     ).toHaveAttribute("data-status", "refunded");
     expect(screen.getByRole("button", { name: /export/i })).toBeEnabled();
   });
 
-  // Dinheiro: cada pedido na moeda dele, alinhado a direita, sem somar moedas.
-  // Reembolso parcial mostra o valor cobrado (como antes) e o selo do estado.
+  // Money: each order in its own currency, right-aligned, without adding currencies together.
+  // A partial refund shows the amount charged (as before) and the status badge.
   it("shows each amount in the order's own currency, right-aligned, with the refund state", () => {
     mocks.orders = [
       order({ id: "order-brl", amountMinor: 9900, currency: "BRL", createdAt: new Date(Date.now() - DAY).toISOString() }),
@@ -237,9 +237,9 @@ describe("SaleList", () => {
     expect(screen.queryByText(/\$219|\$90\.00/)).toBeNull();
   });
 
-  // A 360px a tabela de 640px escondia o valor e o unico link na rolagem
-  // lateral. Cartao estreito: cada venda vira um bloco com titulo-link, selo,
-  // data e valor; a tabela so aparece quando o cartao tem largura para ela.
+  // At 360px the 640px table hid the amount and the only link in the side
+  // scroll. Narrow card: each sale becomes a block with a title link, badge,
+  // date and amount; the table only appears when the card is wide enough for it.
   it("in a narrow card, shows each sale as a short block with the link and the amount", () => {
     mocks.orders = [
       order({ id: "order-a", courseTitle: "Group Work", amountMinor: 4900, createdAt: new Date(Date.now() - DAY).toISOString() }),
@@ -259,8 +259,8 @@ describe("SaleList", () => {
     expect(within(second).getByText("Partially refunded", { selector: "span.status-chip" })).toBeInTheDocument();
   });
 
-  // A tabela mostra "#1A2B3C4D"; o id guardado nao tem "#". Colar o codigo
-  // da tela tem que achar a venda, sem importar maiusculas.
+  // The table shows "#1A2B3C4D"; the stored id has no "#". Pasting the code
+  // from the screen has to find the sale, regardless of case.
   it("finds a sale by the short code shown in the table, with or without #", () => {
     mocks.orders = [
       order({ id: "order-abcd1234", courseTitle: "Group Work" }),

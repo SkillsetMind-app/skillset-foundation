@@ -6,10 +6,10 @@ import type { CourseAsset } from "@/domain/course-asset";
 import type { TeacherCourse, TeacherLesson } from "@/domain/teacher-course";
 
 /**
- * Estúdio da aula, aba Materials (e a tela do e-book, que é a mesma lista):
- *   - o professor dá nome ao arquivo e muda a ordem;
- *   - a caixa "Allow this file in the public preview" saiu (não fazia nada);
- *   - .epub, .xmind e .mm entram pelo seletor.
+ * Lesson studio, Materials tab (and the e-book screen, which is the same list):
+ *   - the teacher names the file and changes the order;
+ *   - the "Allow this file in the public preview" box is gone (it did nothing);
+ *   - .epub, .xmind and .mm come in through the picker.
  */
 const mocks = vi.hoisted(() => ({
   assets: [] as CourseAsset[],
@@ -74,8 +74,8 @@ beforeEach(() => {
   mocks.reload.mockResolvedValue(undefined);
 });
 
-describe("nome e ordem dos materiais", () => {
-  it("o professor renomeia o arquivo; o nome original continua visível", async () => {
+describe("name and order of materials", () => {
+  it("the teacher renames the file; the original name stays visible", async () => {
     renderModal(true);
 
     const fields = screen.getAllByLabelText("Name students see");
@@ -90,15 +90,15 @@ describe("nome e ordem dos materiais", () => {
     expect(mocks.rename).toHaveBeenCalledExactlyOnceWith("slides", "Slides");
     expect(mocks.reload).toHaveBeenCalled();
     expect(screen.getByText("Name saved.")).toBeInTheDocument();
-    // Embaixo do campo renomeado, não na caixa de envio acima da lista.
+    // Below the renamed field, not in the upload box above the list.
     expect(screen.getByText("Name saved.").closest("article")).toBe(fields[0].closest("article"));
     expect(screen.getByText("Name saved.")).toHaveAttribute("role", "status");
-    // Voltou a digitar: o "salvo" deixa de valer.
+    // Typing again: the "saved" no longer applies.
     fireEvent.change(screen.getAllByLabelText("Name students see")[0], { target: { value: "Slides 2" } });
     expect(screen.queryByText("Name saved.")).toBeNull();
   });
 
-  it("sair do campo sem mudar nada não grava", () => {
+  it("leaving the field without changing anything does not save", () => {
     renderModal(true);
 
     fireEvent.blur(screen.getAllByLabelText("Name students see")[1]);
@@ -106,7 +106,7 @@ describe("nome e ordem dos materiais", () => {
     expect(mocks.rename).not.toHaveBeenCalled();
   });
 
-  it("o professor sobe o arquivo na lista; só a nova ordem vai ao banco", async () => {
+  it("the teacher moves the file up the list; only the new order goes to the database", async () => {
     renderModal(true);
 
     expect(screen.getByRole("button", { name: 'Move "slides-v3.pdf" up' })).toHaveAttribute("aria-disabled", "true");
@@ -120,9 +120,9 @@ describe("nome e ordem dos materiais", () => {
     expect(screen.getByText("Order saved.")).toBeInTheDocument();
   });
 
-  // Quem usa o teclado: o botão em foco não pode virar `disabled` durante a
-  // gravação (o foco ia para o começo da página). Fica marcado e ignora o clique.
-  it("enquanto grava, as setas continuam focáveis e ignoram outro clique", async () => {
+  // Keyboard users: the focused button must not become `disabled` during
+  // saving (focus used to jump to the top of the page). It stays marked and ignores the click.
+  it("while saving, the arrows stay focusable and ignore another click", async () => {
     let finish!: () => void;
     mocks.saveOrder.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
     renderModal(true);
@@ -146,7 +146,7 @@ describe("nome e ordem dos materiais", () => {
     expect(document.activeElement).toBe(up);
   });
 
-  it("clique na seta da ponta da lista não faz nada", async () => {
+  it("clicking the arrow at the end of the list does nothing", async () => {
     renderModal(true);
 
     await act(async () => {
@@ -156,7 +156,7 @@ describe("nome e ordem dos materiais", () => {
     expect(mocks.saveOrder).not.toHaveBeenCalled();
   });
 
-  it("nome que não foi gravado (nenhuma linha mudou) avisa, sem dizer 'salvo'", async () => {
+  it("a name that was not saved (no row changed) warns, without saying 'saved'", async () => {
     mocks.rename.mockRejectedValueOnce(new Error("course-asset-not-updated"));
     renderModal(true);
     const field = screen.getAllByLabelText("Name students see")[0];
@@ -171,7 +171,7 @@ describe("nome e ordem dos materiais", () => {
     expect(screen.queryByText("Name saved.")).toBeNull();
   });
 
-  it("falha ao gravar a ordem avisa, sem fingir que salvou", async () => {
+  it("a failure saving the order warns, without pretending it saved", async () => {
     mocks.saveOrder.mockRejectedValueOnce(new Error("denied"));
     renderModal(true);
 
@@ -184,8 +184,8 @@ describe("nome e ordem dos materiais", () => {
   });
 });
 
-describe("envio de material", () => {
-  it("não há mais a caixa de prévia pública, em nenhuma aba", () => {
+describe("material upload", () => {
+  it("the public preview box is gone, in every tab", () => {
     renderModal();
     expect(screen.queryByRole("checkbox")).toBeNull();
     fireEvent.click(screen.getByRole("tab", { name: /^Materials/ }));
@@ -193,7 +193,7 @@ describe("envio de material", () => {
     expect(screen.queryByText(/public preview/i)).toBeNull();
   });
 
-  it.each(["mapa.xmind", "mapa.mm", "livro.epub"])("aceita %s e envia como material só de matriculado", async (name) => {
+  it.each(["mapa.xmind", "mapa.mm", "livro.epub"])("accepts %s and uploads it as an enrolled-only material", async (name) => {
     renderModal(true);
     const input = screen.getByLabelText("Lesson material");
     expect(input.getAttribute("accept")).toEqual(expect.stringContaining(`.${name.split(".").pop()}`));

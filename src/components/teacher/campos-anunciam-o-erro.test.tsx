@@ -3,11 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CouponsPanel } from "@/components/teacher/course-commerce-panels";
 
-// O painel de cupons passou a usar os primitivos. O que se prova aqui não é a
-// aparência: é a ligação que faltava. O erro de criar um cupom era um parágrafo
-// colorido sem papel nenhum — quem usa leitor de tela mandava o formulário e
-// não ouvia nada. E o rótulo do campo agora aponta para o controle por id, em
-// vez de embrulhá-lo, então a dica e o erro cabem no aria-describedby.
+// The coupons panel now uses the primitives. What is proved here is not the
+// appearance: it is the link that was missing. The error when creating a coupon was a
+// colored paragraph with no role — someone using a screen reader submitted the form and
+// heard nothing. And the field label now points to the control by id, instead
+// of wrapping it, so the hint and the error fit in aria-describedby.
 
 const mocks = vi.hoisted(() => ({
   createCourseCoupon: vi.fn(),
@@ -27,7 +27,7 @@ vi.mock("@/lib/data/subscription-error", () => ({
   logSubscriptionError: () => vi.fn(),
 }));
 
-describe("painel de cupons", () => {
+describe("coupons panel", () => {
   afterEach(() => {
     cleanup();
   });
@@ -43,7 +43,7 @@ describe("painel de cupons", () => {
     mocks.createCourseCoupon.mockReset();
   });
 
-  it("o rótulo aponta para o campo por id, e o campo diz se está inválido", () => {
+  it("the label points to the field by id, and the field says whether it is invalid", () => {
     render(<CouponsPanel courseId="course-1" activationBlocked={false} />);
 
     const code = screen.getByLabelText(/^Code/);
@@ -52,7 +52,7 @@ describe("painel de cupons", () => {
     expect(code).toBeRequired();
   });
 
-  it("o cupom recusado é anunciado, não só pintado", async () => {
+  it("the refused coupon is announced, not just painted", async () => {
     render(<CouponsPanel courseId="course-1" activationBlocked={false} />);
 
     fireEvent.change(screen.getByLabelText(/^Code/), { target: { value: "AB" } });

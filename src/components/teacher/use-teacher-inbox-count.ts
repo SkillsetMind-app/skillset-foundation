@@ -8,22 +8,22 @@ import { getMyCourseSummaries } from "@/lib/data/teacher-courses";
 
 export type TeacherInbox = {
   courses: Awaited<ReturnType<typeof getMyCourseSummaries>>;
-  /** Ids das perguntas sem resposta, so das comunidades LIGADAS. */
+  /** Ids of the unanswered questions, only from communities that are ON. */
   questions: string[];
-  /** Conversas em que o aluno falou por ultimo; null se a leitura falhou. */
+  /** Conversations where the learner spoke last; null if the read failed. */
   threads: number | null;
 };
 
 const inFlight = new Map<string, Promise<TeacherInbox>>();
 
 /**
- * O que espera pelo professor, lido UMA vez por vez: na pagina Inbox a casca
- * (o numero da barra) e a lista de perguntas pedem ao mesmo tempo e dividem a
- * mesma leitura. Curso com a comunidade desligada fica de fora: o aluno nao
- * tem onde perguntar, e o professor nao tem onde responder.
+  * What is waiting for the teacher, read ONCE at a time: on the Inbox page the shell
+  * (the bar number) and the question list ask at the same time and share the
+  * same read. A course with the community turned off is left out: the learner has
+  * nowhere to ask, and the teacher has nowhere to answer.
  *
- * ponytail: so junta pedidos simultaneos, sem cache; cada pagina le de novo.
- * Se o custo por clique pesar, o upgrade e guardar o resultado por um minuto.
+  * ponytail: only merges simultaneous requests, no cache; each page reads again.
+  * If the cost per click gets heavy, the upgrade is to keep the result for a minute.
  */
 export function loadTeacherInbox(teacherId: string): Promise<TeacherInbox> {
   const pending = inFlight.get(teacherId);
@@ -44,11 +44,11 @@ export function loadTeacherInbox(teacherId: string): Promise<TeacherInbox> {
 }
 
 /**
- * O numero ao lado de "Inbox" na barra do professor: perguntas da comunidade
- * sem resposta + conversas em que o aluno escreveu por ultimo. `null` desliga
- * (aluno, ou fora do lado do professor).
+  * The number beside "Inbox" in the teacher bar: unanswered community questions
+  * + conversations where the learner wrote last. `null` turns it off
+  * (learner, or outside the teacher side).
  *
- * Falhar nao mostra erro: a barra apenas fica sem o numero.
+  * Failing shows no error: the bar just stays without the number.
  */
 export function useTeacherInboxCount(teacherId: string | null): number | undefined {
   const [result, setResult] = useState<{ teacherId: string; count: number } | null>(null);
@@ -64,7 +64,7 @@ export function useTeacherInboxCount(teacherId: string | null): number | undefin
         if (alive && threads !== null) setResult({ teacherId, count: questions.length + threads });
       },
       () => {
-        // Sem numero; a Caixa de entrada continua a um clique.
+        // No number; the Inbox stays one click away.
       },
     );
 

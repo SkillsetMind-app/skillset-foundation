@@ -5,12 +5,12 @@ import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { TeacherWalletPanel } from "@/components/teacher/teacher-wallet-panel";
 import type { PayoutLedgerEntry } from "@/domain/payout-ledger";
 
-// O que o professor novo via em Ganhos: o bloco da conta vazio ate o
-// formulario cair, o extrato numa frase dentro de uma caixa, "Order {uuid}" e
-// "Payment pi_..." em cada linha, e falha de leitura sem saida (so recarregar
-// a pagina), dita duas vezes. O "?" da ajuda morava dentro do h1.
+// What the new teacher saw in Earnings: the account block empty until the
+// form dropped in, the statement as one sentence inside a box, "Order {uuid}" and
+// "Payment pi_..." on every row, and a read failure with no way out (only reloading
+// the page), said twice. The help "?" lived inside the h1.
 
-// Referencias ESTAVEIS: o painel assina perfil e ledger com `[user]`.
+// STABLE references: the panel subscribes to profile and ledger with `[user]`.
 const mocks = vi.hoisted(() => ({
   user: { uid: "teacher-1" },
   profile: { mode: "data" as "pending" | "data" | "error", value: {} as Record<string, unknown> },
@@ -92,25 +92,25 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-describe("ganhos: cabecalho das telas irmas", () => {
-  it.each(["en", "es"] as const)("o h1 e so o titulo, sem ponto final, e o '?' fica ao lado (%s)", async (locale) => {
+describe("earnings: header of the sibling screens", () => {
+  it.each(["en", "es"] as const)("the h1 is just the title, with no period, and the '?' sits beside it (%s)", async (locale) => {
     mount(locale);
     await act(async () => {});
     const title = locale === "en" ? "Your earnings, your payout setup" : "Tus ganancias, tu configuración de pagos";
-    // Nome exato: com o botao dentro, o nome do h1 levava "Help about ...".
+    // Exact name: with the button inside, the h1's name carried "Help about ...".
     const heading = screen.getByRole("heading", { level: 1, name: title });
     expect(within(heading).queryByRole("button")).toBeNull();
     const help = screen.getByRole("button", {
       name: locale === "en" ? "Help about Payout schedule" : "Ayuda sobre Calendario de pagos",
     });
     expect(heading.parentElement).toContainElement(help);
-    // O rotulo "Earnings" em cima so repetia o nome da barra.
+    // The "Earnings" label on top only repeated the name of the bar.
     expect(screen.queryByText(locale === "en" ? "Earnings" : "Ganancias", { selector: "p" })).toBeNull();
   });
 });
 
-describe("ganhos: bloco da conta de pagamentos", () => {
-  it("enquanto o perfil chega, o bloco tem a forma do primeiro passo, sem formulario", async () => {
+describe("earnings: payments account block", () => {
+  it("while the profile arrives, the block has the shape of the first step, with no form", async () => {
     mocks.profile.mode = "pending";
     mount();
     await act(async () => {});
@@ -122,9 +122,9 @@ describe("ganhos: bloco da conta de pagamentos", () => {
     expect(screen.queryByTestId("stripe-onboarding")).toBeNull();
   });
 
-  // O bloco da conta e o extrato esperam juntos na primeira visita: eram dois
-  // avisos falando ao mesmo tempo. Um so, da pagina, e ele se cala quando chega.
-  it("na primeira visita ha um aviso de espera so, e ele se cala quando tudo chega", async () => {
+  // The account block and the statement wait together on the first visit: they were two
+  // notices speaking at the same time. Just one, from the page, and it goes quiet when it arrives.
+  it("on the first visit there is a single waiting notice, and it goes quiet when everything arrives", async () => {
     mocks.profile.mode = "pending";
     mocks.ledger.mode = "pending";
     mount();
@@ -141,7 +141,7 @@ describe("ganhos: bloco da conta de pagamentos", () => {
     expect(waiting[0]).toHaveTextContent(/^$/);
   });
 
-  it("a renovacao do login (outro objeto, mesmo id) nao rele os produtos", async () => {
+  it("the login renewal (another object, same id) does not re-read the products", async () => {
     const view = mount();
     await act(async () => {});
     expect(mocks.inbox).toHaveBeenCalledTimes(1);
@@ -156,7 +156,7 @@ describe("ganhos: bloco da conta de pagamentos", () => {
     }
   });
 
-  it("perfil que falha: um aviso so, no bloco, com Try again que le de novo", async () => {
+  it("profile that fails: a single notice, in the block, with Try again that reads again", async () => {
     mocks.profile.mode = "error";
     mount();
     await act(async () => {});
@@ -164,12 +164,12 @@ describe("ganhos: bloco da conta de pagamentos", () => {
     expect(alerts).toHaveLength(1);
     expect(alerts[0]).toHaveTextContent("We could not load your payout profile.");
     expect(document.getElementById("stripe-connect")).toContainElement(alerts[0]);
-    // Sem perfil nao se sabe se ha conta: o selo nao diz "Not connected".
+    // Without a profile there is no way to know if there is an account: the badge does not say "Not connected".
     expect(screen.queryByText("Not connected")).toBeNull();
     expect(screen.getAllByText("Unavailable").length).toBeGreaterThan(0);
     expect(screen.queryByTestId("stripe-onboarding")).toBeNull();
 
-    // "Try again" so le o perfil de novo: nao chama a Stripe.
+    // "Try again" only re-reads the profile: it does not call Stripe.
     const stripeCalls = mocks.refresh.mock.calls.length;
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(mocks.reloadProfile).toHaveBeenCalledTimes(1);
@@ -181,9 +181,9 @@ describe("ganhos: bloco da conta de pagamentos", () => {
     expect(screen.getByTestId("stripe-onboarding")).toBeInTheDocument();
   });
 
-  it("a falha de atualizar a conta e o aviso de erro da casa; o sucesso, o de status", async () => {
+  it("a failure to refresh the account is the house error notice; success is the status one", async () => {
     mount();
-    // A conferencia silenciosa da visita ja passou; daqui em diante, o clique.
+    // The silent check of the visit has already passed; from here on, the click.
     await act(async () => {});
     expect(mocks.refresh).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("alert")).toBeNull();
@@ -201,8 +201,8 @@ describe("ganhos: bloco da conta de pagamentos", () => {
   });
 });
 
-describe("ganhos: extrato", () => {
-  it("enquanto o registro chega, linhas no formato do extrato, nao uma frase", async () => {
+describe("earnings: statement", () => {
+  it("while the ledger arrives, rows in the statement format, not a sentence", async () => {
     mocks.ledger.mode = "pending";
     mount();
     await act(async () => {});
@@ -214,7 +214,7 @@ describe("ganhos: extrato", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Loading your earnings and payout account...");
   });
 
-  it("cada linha diz o produto e o codigo curto do pedido, sem o id do pagamento", async () => {
+  it("each row says the product and the short order code, without the payment id", async () => {
     mocks.ledger.value = [entry];
     mocks.inbox.mockResolvedValue({ courses: [{ id: "course-1", title: "Stress Reset Program", communityEnabled: false }], questions: [], threads: 0 });
     mount();
@@ -226,7 +226,7 @@ describe("ganhos: extrato", () => {
     expect(row).not.toHaveTextContent("pi_3QxYz8Lk2mN4aB7c");
   });
 
-  it("sem o nome do produto, a linha fica com o codigo curto, como em Vendas", async () => {
+  it("with no product name, the row keeps the short code, as in Sales", async () => {
     mocks.ledger.value = [entry];
     mocks.inbox.mockRejectedValue(new Error("inbox read failed"));
     mount("es");
@@ -235,7 +235,7 @@ describe("ganhos: extrato", () => {
     expect(row).not.toHaveTextContent("pi_3QxYz8Lk2mN4aB7c");
   });
 
-  it("registro que falha: um aviso so, no extrato, com Try again; os numeros dizem Unavailable", async () => {
+  it("ledger read that fails: a single notice, in the statement, with Try again; the numbers say Unavailable", async () => {
     mocks.ledger.mode = "error";
     mount();
     await act(async () => {});

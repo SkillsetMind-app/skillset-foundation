@@ -8,8 +8,8 @@ import type { DripStrategy } from "@/domain/drip-policy";
 import type { TeacherCourse, TeacherLesson } from "@/domain/teacher-course";
 import { updateTeacherCourseBuilder } from "@/lib/data/teacher-courses";
 
-// Decisao do editor: mover a aula entre modulos, com alternativa de teclado,
-// sem trocar o id (video, materiais, progresso e comentarios vao junto).
+// Editor decision: move the lesson between modules, with a keyboard alternative,
+// without changing the id (video, materials, progress and comments go along).
 
 const mocks = vi.hoisted(() => ({
   course: null as TeacherCourse | null,
@@ -57,15 +57,15 @@ vi.mock("@/lib/data/course-assets", () => ({
 
 vi.mock("@/components/teacher/course-asset-uploader", () => ({ CourseAssetUploader: () => null }));
 
-// Marcador do estudio: importa PARA QUAL modulo e aula ele abre.
+// Studio marker: what matters is WHICH module and lesson it opens.
 vi.mock("@/components/teacher/lesson-content-modal", () => ({
   LessonContentModal: (props: { module: { id: string }; lesson: { title: string } }) => (
     <div role="dialog">{`${props.module.id}:${props.lesson.title}`}</div>
   ),
 }));
 
-// Campos que sairam da tela tem de viajar junto: a RPC de troca total zera o
-// que nao vier no payload.
+// Fields that left the screen must travel along: the full-replace RPC zeroes
+// whatever is not in the payload.
 function lesson(id: string, title: string): TeacherLesson {
   return {
     id,
@@ -130,8 +130,8 @@ const titlesOnPage = () =>
   within(card()).getAllByRole("textbox", { name: "Lesson title" }).map((input) => (input as HTMLInputElement).value);
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// DataTransfer de mentira: guarda o que foi posto e expoe os tipos, como o
-// navegador faz no dragover (onde o conteudo ainda nao pode ser lido).
+// Fake DataTransfer: it stores what was put in and exposes the types, as the
+// browser does on dragover (where the content cannot be read yet).
 function fakeDataTransfer() {
   const data = new Map<string, string>();
   return {
@@ -149,7 +149,7 @@ function rowOf(moduleId: string) {
   return card().querySelector(`[data-module-row="${moduleId}"]`)?.closest("article") as HTMLElement;
 }
 
-// Mover, previa gratis e apagar moram em "Mais acoes" da linha da aula.
+// Move, free preview and delete live in "More actions" on the lesson row.
 function openMore(title: string) {
   const more = screen.getByRole("button", { name: `More actions for "${title}"` });
   if (more.getAttribute("aria-expanded") !== "true") fireEvent.click(more);
@@ -163,7 +163,7 @@ function chooseAndMove(title: string, moduleId: string) {
   fireEvent.click(screen.getByRole("button", { name: `Move "${title}"` }));
 }
 
-describe("mover a aula entre modulos", () => {
+describe("moving a lesson between modules", () => {
   let restoreDialogs = () => {};
   beforeEach(() => {
     vi.clearAllMocks();
@@ -180,17 +180,17 @@ describe("mover a aula entre modulos", () => {
 
   const moveDialog = () => screen.queryByRole("dialog", { name: "Move this lesson?" });
 
-  it("o seletor e o botao Move levam L2 para o fim de M2 com o mesmo id, e o formulario e o estudio seguem no modulo certo", async () => {
+  it("the selector and the Move button take L2 to the end of M2 with the same id, and the form and the studio stay on the right module", async () => {
     openAt("courseId=course-1&tab=content&module=m1");
     const { rerender } = await renderBuilder();
 
     chooseAndMove("Second", "m2");
     expect(titlesOnPage()).toEqual(["Welcome"]);
-    // A linha saiu da pagina: foco no titulo do modulo e aviso do que mudou.
+    // The row left the page: focus on the module title and a notice of what changed.
     expect(document.activeElement).toBe(within(card()).getByRole("heading", { name: "Start here" }));
     expect(within(card()).getByRole("status")).toHaveTextContent('"Second" moved to Deep work.');
 
-    // O formulario da aula continua mirando o modulo aberto (M1).
+    // The lesson form still targets the open module (M1).
     fireEvent.click(screen.getByRole("button", { name: "Add lesson to module 1" }));
     const form = card().querySelector("form") as HTMLElement;
     fireEvent.change(within(form).getByRole("textbox", { name: "Lesson title" }), { target: { value: "Third" } });
@@ -202,20 +202,20 @@ describe("mover a aula entre modulos", () => {
     expect(lastPayload()?.modules?.[1].lessons[1]).toEqual(expect.objectContaining(lesson("l2", "Second")));
     expect(lastPayload()?.freePreviewLessonId).toBe("l2");
 
-    // Na pagina de M2, o estudio de L2 abre mirando M2.
+    // On M2's page, L2's studio opens targeting M2.
     openAt("courseId=course-1&tab=content&module=m2");
     rerender(tree());
     fireEvent.click(within(card()).getAllByRole("button", { name: "Add video" })[1]);
-    // A aula abre como pagina (?lesson=L): segue a URL que o builder pediu.
+    // The lesson opens as a page (?lesson=L): it follows the URL the builder asked for.
     const opened = String(mocks.router.push.mock.calls.at(-1)?.[0]);
     openAt(opened.slice(opened.indexOf("?") + 1));
     rerender(tree());
     expect(screen.getByRole("dialog")).toHaveTextContent("m2:Second");
   }, 10000);
 
-  // No Chrome/Edge, percorrer as opcoes com as setas dispara change na hora:
-  // quem navega pelo teclado movia a aula sem querer.
-  it("escolher no seletor (setas) nao move nada ate o botao Move", async () => {
+  // In Chrome/Edge, going through the options with the arrow keys fires change right away:
+  // whoever navigates by keyboard moved the lesson by accident.
+  it("choosing in the selector (arrow keys) moves nothing until the Move button", async () => {
     openAt("courseId=course-1&tab=content&module=m1");
     await renderBuilder();
 
@@ -229,7 +229,7 @@ describe("mover a aula entre modulos", () => {
     expect(titlesOnPage()).toEqual(["Welcome"]);
   });
 
-  it.each(positional)("com liberacao por posicao (%s), pede confirmacao nos dois caminhos e cancelar mantem a ordem", async (strategy) => {
+  it.each(positional)("with position-based release (%s), it asks for confirmation on both paths and canceling keeps the order", async (strategy) => {
     mocks.course = courseWith(strategy);
     openAt("courseId=course-1&tab=content&module=m1");
     const { rerender } = await renderBuilder();
@@ -252,9 +252,9 @@ describe("mover a aula entre modulos", () => {
     expect(within(rowOf("m2")).queryByText("Second")).not.toBeInTheDocument();
   });
 
-  // Confirmar roda o mesmo mover de antes, uma vez: a aula vai para o fim do
-  // destino, o aviso sai e o foco vai para o titulo do modulo.
-  it("com liberacao por posicao, confirmar na janela move uma vez e avisa", async () => {
+  // Confirming runs the same mover as before, once: the lesson goes to the end of the
+  // destination, the notice appears and focus goes to the module title.
+  it("with position-based release, confirming in the dialog moves once and notifies", async () => {
     mocks.course = courseWith("sequential_progress");
     openAt("courseId=course-1&tab=content&module=m1");
     await renderBuilder();
@@ -272,7 +272,7 @@ describe("mover a aula entre modulos", () => {
     expect(idsOf(1)).toEqual(["l3", "l2"]);
   }, 10000);
 
-  it.each(["time_drip_custom", "instant"] as DripStrategy[])("com %s, move sem perguntar", async (strategy) => {
+  it.each(["time_drip_custom", "instant"] as DripStrategy[])("with %s, it moves without asking", async (strategy) => {
     mocks.course = courseWith(strategy);
     openAt("courseId=course-1&tab=content&module=m1");
     await renderBuilder();
@@ -282,7 +282,7 @@ describe("mover a aula entre modulos", () => {
     expect(titlesOnPage()).toEqual(["Welcome"]);
   });
 
-  it("o aviso de liberacao aparece so com liberacao por posicao", async () => {
+  it("the release notice only appears with position-based release", async () => {
     for (const strategy of positional) {
       mocks.course = courseWith(strategy);
       openAt("courseId=course-1&tab=content&module=m1");
@@ -299,7 +299,7 @@ describe("mover a aula entre modulos", () => {
     }
   });
 
-  it("arrastar a aula para outro modulo na lista do curso usa o mesmo caminho", async () => {
+  it("dragging the lesson to another module in the course list uses the same path", async () => {
     await renderBuilder();
     const dataTransfer = fakeDataTransfer();
 
@@ -313,7 +313,7 @@ describe("mover a aula entre modulos", () => {
     expect(lastPayload()?.modules?.[1].lessons[1]).toEqual(expect.objectContaining(lesson("l2", "Second")));
   }, 10000);
 
-  it("soltar a aula no proprio modulo nao muda nada (nem pergunta)", async () => {
+  it("dropping the lesson in its own module changes nothing (and does not ask)", async () => {
     mocks.course = courseWith("sequential_progress");
     await renderBuilder();
     const dataTransfer = fakeDataTransfer();
@@ -327,23 +327,23 @@ describe("mover a aula entre modulos", () => {
     expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
   }, 10000);
 
-  it("arrastar texto qualquer nao e aceito pela linha do modulo", async () => {
+  it("dragging arbitrary text is not accepted by the module row", async () => {
     await renderBuilder();
     const text = { types: ["text/plain"], getData: (type: string) => (type === "text/plain" ? "l2" : "") };
 
-    // dragOver sem preventDefault = soltura recusada pelo navegador.
+    // dragOver without preventDefault = drop refused by the browser.
     expect(fireEvent.dragOver(rowOf("m2"), { dataTransfer: text })).toBe(true);
     fireEvent.drop(rowOf("m2"), { dataTransfer: text });
     expect(within(rowOf("m1")).getByText("Second")).toBeInTheDocument();
 
-    // O arrastar de uma aula e aceito.
+    // Dragging a lesson is accepted.
     const lessonDrag = fakeDataTransfer();
     fireEvent.dragStart(within(rowOf("m1")).getByText("Second"), { dataTransfer: lessonDrag });
     expect(fireEvent.dragOver(rowOf("m2"), { dataTransfer: lessonDrag })).toBe(false);
   });
 
-  // O leitor de tela so anuncia mudanca numa regiao que ja existia.
-  it("a regiao de aviso existe antes do primeiro mover, e so o texto muda", async () => {
+  // The screen reader only announces a change in a region that already existed.
+  it("the notice region exists before the first move, and only the text changes", async () => {
     openAt("courseId=course-1&tab=content&module=m1");
     await renderBuilder();
     const status = within(card()).getByRole("status");
@@ -354,7 +354,7 @@ describe("mover a aula entre modulos", () => {
     expect(status).toHaveTextContent('"Second" moved to Deep work.');
   });
 
-  it("trocar de modulo limpa o aviso, e Move so vale para um destino que ainda existe", async () => {
+  it("switching modules clears the notice, and Move only works for a destination that still exists", async () => {
     mocks.course = {
       ...courseWith(),
       modules: [...courseWith().modules, { id: "m3", title: "Wrap up", lessons: [] }],
@@ -370,7 +370,7 @@ describe("mover a aula entre modulos", () => {
     rerender(tree());
     expect(within(card()).getByRole("status")).toHaveTextContent("");
 
-    // Destino marcado e depois apagado: Move nao fica ativo para ele.
+    // Destination marked and then deleted: Move does not stay active for it.
     openMore("Second");
     fireEvent.change(screen.getByRole("combobox", { name: 'Move "Second" to another module' }), {
       target: { value: "m2" },
@@ -386,7 +386,7 @@ describe("mover a aula entre modulos", () => {
     expect(screen.getByRole("button", { name: 'Move "Second"' })).toBeDisabled();
   });
 
-  it("aula de outro curso (arrastada de outra aba) nao pede confirmacao nem move", async () => {
+  it("a lesson from another course (dragged from another tab) neither asks for confirmation nor moves", async () => {
     mocks.course = courseWith("sequential_progress");
     await renderBuilder();
     const foreign = fakeDataTransfer();
@@ -402,9 +402,9 @@ describe("mover a aula entre modulos", () => {
 });
 vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));
 
-// Up/Down trocavam as linhas em silencio e a linha que recebia a aula
-// arrastada nao se marcava. Agora: anuncio da nova posicao e marca no alvo.
-describe("reordenar: anuncio e marca de soltura", () => {
+// Up/Down swapped the rows silently and the row that received the dragged
+// lesson was not marked. Now: announcement of the new position and a mark on the target.
+describe("reordering: announcement and drop mark", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.course = courseWith();
@@ -412,9 +412,9 @@ describe("reordenar: anuncio e marca de soltura", () => {
   });
   afterEach(() => cleanup());
 
-  // "Lesson added" e o aviso de mover dividem a linha da lista: vale o mais
-  // novo, e "Lesson added" so na pagina do modulo onde a aula entrou.
-  it("aula nova e depois Up: a linha diz o mais novo, e so no modulo da aula", async () => {
+  // "Lesson added" and the move notice share the list row: the newest
+  // wins, and "Lesson added" only on the page of the module the lesson went into.
+  it("new lesson and then Up: the row shows the newest, and only in the lesson's module", async () => {
     openAt("courseId=course-1&tab=content&module=m1");
     const view = await renderBuilder();
     fireEvent.click(within(card()).getByRole("button", { name: "Add lesson to module 1" }));
@@ -427,7 +427,7 @@ describe("reordenar: anuncio e marca de soltura", () => {
     fireEvent.click(ups[ups.length - 1]);
     expect(within(card()).getByRole("status")).toHaveTextContent('"Fresh" moved to position 2.');
 
-    // De novo uma aula nova, e a pessoa abre outro modulo: la nao aparece.
+    // Again a new lesson, and the person opens another module: it does not appear there.
     fireEvent.change(within(form).getByRole("textbox", { name: "Lesson title" }), { target: { value: "Another" } });
     fireEvent.click(within(form).getByRole("button", { name: "Add lesson" }));
     expect(within(card()).getByRole("status")).toHaveTextContent("Lesson added");
@@ -437,7 +437,7 @@ describe("reordenar: anuncio e marca de soltura", () => {
     expect(within(card()).getByRole("status")).toHaveTextContent("");
   });
 
-  it("Up/Down anunciam a nova posicao, na lista e na pagina do modulo", async () => {
+  it("Up/Down announce the new position, in the list and on the module page", async () => {
     await renderBuilder();
     fireEvent.click(within(rowOf("m1")).getByRole("button", { name: "Down" }));
     expect(screen.getByText('"Start here" moved to position 2.')).toHaveAttribute("role", "status");
@@ -449,7 +449,7 @@ describe("reordenar: anuncio e marca de soltura", () => {
     expect(within(card()).getByRole("status")).toHaveTextContent('"Second" moved to position 1.');
   });
 
-  it("a linha que vai receber a aula arrastada se marca, e desmarca ao soltar", async () => {
+  it("the row about to receive the dragged lesson is marked, and unmarked on drop", async () => {
     await renderBuilder();
     const dataTransfer = fakeDataTransfer();
     fireEvent.dragStart(within(rowOf("m1")).getByText("Second"), { dataTransfer });

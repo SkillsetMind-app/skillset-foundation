@@ -5,10 +5,10 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 import { formatCourseAssetSize } from "@/domain/course-asset";
 import type { UploadCourseAssetProgress } from "@/lib/data/course-assets";
 
-// Uma só leitura do progresso para o painel de uploads e os campos de capa do
-// builder. Quando o transporte não informa porcentagem (Supabase Storage),
-// diz que está enviando e o tamanho — nunca uma barra parada em 0% que se lia
-// como "travou".
+// A single reading of progress for the uploads panel and the builder's cover
+// fields. When the transport does not report a percentage (Supabase Storage),
+// it says it is uploading and the size — never a bar stuck at 0% that read
+// as "stuck".
 export function UploadProgressNote({
   progress,
 }: {
@@ -33,9 +33,9 @@ export function UploadProgressNote({
       </div>
       {percent !== null ? (
         <>
-          {/* A barra da casa (ui/progress-bar), a mesma do <progress> de envio
-              (.upload-progress): 6px, trilho --color-line, latão de texto. Era
-              8px navy, com a largura animada até para quem pediu menos movimento. */}
+          {/* The house bar (ui/progress-bar), the same as the upload <progress>
+              (.upload-progress): 6px, --color-line track, brass text color. It was
+              8px navy, with the width animated even for whoever asked for less motion. */}
           <ProgressBar
             value={percent}
             label={t(`courseMedia.upload.${done ? "complete" : "uploading"}`)}
@@ -48,11 +48,11 @@ export function UploadProgressNote({
           </p>
         </>
       ) : !done ? (
-        // F-20: sem porcentagem a nota ficava parada e parecia travada. A
-        // barra indeterminada mostra que segue andando, sem inventar número.
+        // F-20: with no percentage the note sat still and looked stuck. The
+        // indeterminate bar shows it is still moving, without inventing a number.
         <div aria-hidden="true" className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--color-line)]">
-          {/* Largura e movimento vêm do globals.css (bloco F-20): 30% deslizando,
-              ou o trilho inteiro apagado com "reduzir movimento". */}
+          {/* Width and motion come from globals.css (F-20 block): 30% sliding,
+              or the whole track dimmed with "reduce motion". */}
           <div className="upload-indeterminate-fill h-full rounded-full bg-[var(--color-accent-fg)]" />
         </div>
       ) : null}

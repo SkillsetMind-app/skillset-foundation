@@ -63,7 +63,7 @@ describe("sale detail with real EN/ES dictionaries", () => {
     mocks.subscribe.mockImplementation((_id, callback) => { callback({ ...order, status }); return () => {}; });
     mount();
     expect(screen.getByText("Reembolso registrado")).toBeVisible();
-    // A comissao so volta quando o reembolso passa pela SkillsetMind.
+    // The commission only comes back when the refund goes through SkillsetMind.
     const refundDetail = screen.getByText(/Se descontó de tu propio saldo de Stripe/);
     expect(refundDetail).toHaveTextContent("Si el reembolso se hizo a través de SkillsetMind, se te devolvió la comisión de SkillsetMind");
     expect(refundDetail).toHaveTextContent("un reembolso hecho directamente en tu panel de Stripe no la devuelve");
@@ -72,8 +72,8 @@ describe("sale detail with real EN/ES dictionaries", () => {
     expect(screen.getByText("Refund recorded")).toBeVisible();
   });
 
-  // Antes o codigo do pedido era a maior letra da tela e o liquido tinha o
-  // tamanho do valor e da taxa; e nao havia volta para Vendas.
+  // Before, the order code was the largest text on the screen and the net amount was the
+  // size of the value and the fee; and there was no way back to Sales.
   it("makes the net the strongest figure, keeps the order code small and links back to sales", () => {
     mount();
     const net = screen.getByText("Neto antes de la comisión de Stripe").parentElement!.querySelector("p:last-child")!;
@@ -87,9 +87,9 @@ describe("sale detail with real EN/ES dictionaries", () => {
     expect(screen.getByRole("link", { name: "Back to sales" })).toHaveAttribute("href", "/teach/sales");
   });
 
-  // O numero grande nao pode mostrar dinheiro que nao ficou: reembolso parcial
-  // conta o valor menos o devolvido (como os Ganhos), e o que nao e receita
-  // (reembolsada inteira, pendente) nao tem numero grande.
+  // The big number cannot show money that was not kept: a partial refund
+  // counts the amount minus what was returned (like Earnings), and what is not revenue
+  // (fully refunded, pending) has no big number.
   describe("money by order state (EN)", () => {
     function show(overrides: Partial<Order>) {
       mocks.subscribe.mockImplementation((_id, callback) => { callback({ ...order, ...overrides }); return () => {}; });
@@ -156,7 +156,7 @@ describe("sale detail with real EN/ES dictionaries", () => {
   it("relocalizes loading and a later subscription error", async () => {
     mocks.subscribe.mockImplementation(() => () => {});
     mount();
-    // A espera e um esqueleto no formato da venda; a frase fica para o leitor de tela.
+    // The wait is a skeleton shaped like the sale; the sentence is left for the screen reader.
     const status = screen.getByRole("status");
     expect(status).toHaveAttribute("data-skeleton", "detail");
     expect(status).toHaveTextContent("Cargando venta...");
@@ -168,8 +168,8 @@ describe("sale detail with real EN/ES dictionaries", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("No pudimos cargar esta venta.");
   });
 
-  // F-11: a falha de leitura era um beco (so "Back to sales"); agora "Try
-  // again" assina a mesma leitura de novo. Venda que nao existe nao oferece.
+  // F-11: a read failure was a dead end (only "Back to sales"); now "Try
+  // again" subscribes to the same read again. A sale that does not exist does not offer it.
   it("load error offers Try again, which subscribes again and shows the sale", async () => {
     mocks.subscribe.mockImplementationOnce((_id, _callback, onError) => { onError(new Error("down")); return () => {}; });
     mount();

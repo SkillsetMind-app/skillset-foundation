@@ -13,10 +13,10 @@ import { SpotArt } from "@/components/ui/spot-art";
 import { getMyCourseStudents, type CourseStudent } from "@/lib/data/enrollments";
 import { getMyCourseSummaries } from "@/lib/data/teacher-courses";
 
-// A leitura ja traz todas as matriculas; a tela mostra 50 por vez, como Vendas.
+// The read already brings all enrollments; the screen shows 50 at a time, like Sales.
 const PAGE = 50;
 
-// Os mesmos recortes de acesso da lista por produto (course-student-roster).
+// The same access cuts as the per-product list (course-student-roster).
 const statusFilters = ["all", "active", "completed", "refunded", "revoked", "expired"] as const;
 type StatusFilter = (typeof statusFilters)[number];
 
@@ -25,10 +25,10 @@ type State =
   | { status: "error" }
   | { status: "ready"; students: CourseStudent[]; communities: Set<string> };
 
-// Todos os alunos de todos os produtos, numa lista so. Antes so existia a
-// lista por curso (painel do produto > Students); "Members & communities"
-// era, na verdade, uma lista de produtos. Cada linha leva para onde o
-// professor age: a lista de alunos do produto e a comunidade dele.
+// All learners of all products, in a single list. Before, only the
+// per-course list existed (product panel > Students); "Members & communities"
+// was, in fact, a list of products. Each row leads to where the
+// teacher acts: the product's learner list and its community.
 export function TeacherStudentsList() {
   const { user } = useAuth();
   const { t, locale } = useTranslation();
@@ -36,12 +36,12 @@ export function TeacherStudentsList() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [visibleCount, setVisibleCount] = useState(PAGE);
-  // Indice da primeira linha que o "Show N more" abriu: o foco vai para ela.
-  // Sem isso, o ultimo clique tirava o botao da tela e o foco caia no body.
+  // Index of the first row that "Show N more" opened: focus goes to it.
+  // Without this, the last click took the button off the screen and focus fell on the body.
   const [revealedFrom, setRevealedFrom] = useState<number | null>(null);
   const tbodyRef = useRef<HTMLTableSectionElement>(null);
-  // "Try again" pede a mesma leitura de novo (antes a saida era recarregar a
-  // pagina inteira).
+  // "Try again" asks for the same read again (before, the way out was reloading the
+  // whole page).
   const [attempt, setAttempt] = useState(0);
   const uid = user?.uid ?? null;
 
@@ -49,8 +49,8 @@ export function TeacherStudentsList() {
     if (revealedFrom !== null) tbodyRef.current?.rows[revealedFrom]?.focus();
   }, [revealedFrom]);
 
-  // Busca ou filtro novo recomeca nas primeiras 50: depois de abrir 300, ir e
-  // voltar no filtro desenhava as 300 de uma vez.
+  // A new search or filter starts over at the first 50: after opening 300, going
+  // back on the filter drew all 300 at once.
   const resetWindow = () => {
     setVisibleCount(PAGE);
     setRevealedFrom(null);
@@ -86,7 +86,7 @@ export function TeacherStudentsList() {
   }, [uid, attempt]);
 
   if (state.status === "loading") {
-    // Busca + filtro de acesso + Export: a mesma fileira que vem depois.
+    // Search + access filter + Export: the same row that comes after.
     return <TableSkeleton label={t("teach.studentsPage.loading")} controls={3} />;
   }
 
@@ -118,13 +118,13 @@ export function TeacherStudentsList() {
     );
   }
 
-  // Reembolsado, removido ou expirado continua na lista, com a situacao a
-  // vista, mas nao conta como aluno: a mesma regra da lista por produto.
+  // Refunded, removed or expired stays in the list, with the status in
+  // plain sight, but does not count as a learner: the same rule as the per-product list.
   const people = new Set(
     state.students.filter((student) => isActiveEnrollment(student.status)).map((student) => student.uid),
   ).size;
-  // Busca e filtro so no que ja veio (sem consulta nova): com 300 alunos,
-  // achar um nome era rolar 300 linhas.
+  // Search and filter only on what already came (no new query): with 300 learners,
+  // finding a name meant scrolling 300 rows.
   const needle = search.trim().toLowerCase();
   const matches = state.students.filter(
     (student) =>
@@ -134,8 +134,8 @@ export function TeacherStudentsList() {
   );
   const visible = matches.slice(0, visibleCount);
   const hiddenCount = matches.length - visible.length;
-  // T-18: o Export leva o recorte inteiro da busca e do filtro, nao so as 50
-  // linhas abertas, com as colunas da lista por produto (mais o produto).
+  // T-18: Export takes the whole cut of the search and the filter, not just the 50
+  // open rows, with the per-product list columns (plus the product).
   const exportRows = matches.map((student) => ({
     name: student.displayName,
     email: student.email,
@@ -187,8 +187,8 @@ export function TeacherStudentsList() {
         </select>
         <ExportTableButton rows={exportRows} filename="students" />
       </div>
-      {/* A regiao viva existe sempre: inserida ja com o texto, muitos leitores
-          de tela nao a anunciavam. */}
+      {/* The live region always exists: inserted already with the text, many screen
+          readers did not announce it. */}
       <p role="status" className={visible.length === 0 ? "mt-4 text-sm leading-6 text-[var(--color-ink-soft)]" : "sr-only"}>
         {visible.length === 0 ? t("teach.studentsPage.noMatches") : ""}
       </p>
@@ -218,9 +218,9 @@ export function TeacherStudentsList() {
                   className="border-b fine-rule last:border-b-0"
                 >
                   <td className="py-3 pr-4">
-                    {/* O nome abre o aluno na lista do produto. Antes eram um ou
-                        dois botoes de 44px iguais em toda linha: uma parede na
-                        ultima coluna. */}
+                    {/* The name opens the learner in the product's list. Before there were one or
+                        two identical 44px buttons on every row: a wall in the
+                        last column. */}
                     <Link
                       href={`/teach/courses/${course}/manage?section=students`}
                       className="block font-semibold text-[var(--color-primary)] underline decoration-[var(--color-line-strong)] underline-offset-4 hover:decoration-current pointer-coarse:relative pointer-coarse:-my-3 pointer-coarse:py-3"

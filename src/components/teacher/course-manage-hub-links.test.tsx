@@ -5,10 +5,10 @@ import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { CourseManageHub } from "@/components/teacher/course-manage-hub";
 import type { TeacherCourse } from "@/domain/teacher-course";
 
-// Os links de divulgacao sao o que o criador cola em anuncio, story e bio.
-// Faltava o terceiro: a vitrine publica dele. Este arquivo prova que os tres
-// cards existem, que cada um tem o trio de botoes, e que o endereco da vitrine
-// sai na mesma base publica da pagina do produto.
+// The promo links are what the creator pastes in an ad, story and bio.
+// The third was missing: their public storefront. This file proves the three
+// cards exist, that each has the trio of buttons, and that the storefront address
+// comes out on the same public base as the product page.
 
 const mocks = vi.hoisted(() => {
   const course: TeacherCourse = {
@@ -28,8 +28,8 @@ const mocks = vi.hoisted(() => {
 
   return {
     course,
-    // O MESMO objeto em todo render: um usuario novo por render reinscreve os
-    // efeitos e entra em laco.
+    // The SAME object on every render: a new user per render resubscribes the
+    // effects and loops.
     user: { uid: "teacher-1" },
     router: { push: vi.fn(), replace: vi.fn(), refresh: vi.fn() },
     searchParams: new URLSearchParams("section=links"),
@@ -71,13 +71,13 @@ vi.mock("@/lib/data/creator-verification", () => ({
   fetchCreatorActivationBlocked: () => Promise.resolve(false),
 }));
 
-// O painel do produto le pedidos, matriculas, cupons e avaliacoes. Nada disso
-// entra na secao de links e tem prova propria em course-overview-panel.test.tsx.
+// The product panel reads orders, enrollments, coupons and reviews. None of that
+// goes into the links section and it has its own tests in course-overview-panel.test.tsx.
 vi.mock("@/components/teacher/course-overview-panel", () => ({
   CourseOverviewPanel: () => null,
 }));
 
-// O checklist le a lista de arquivos (conteudo em toda aula), como o construtor.
+// The checklist reads the file list (content in every lesson), like the builder.
 vi.mock("@/lib/data/course-assets", () => ({
   fetchCourseAssets: () => Promise.resolve([]),
 }));
@@ -102,7 +102,7 @@ describe("promo links section", () => {
       expect(screen.getByRole("button", { name: `Share ${label}` })).toBeInTheDocument();
     }
 
-    // Tres cards, nem um a mais: cada card tem exatamente um "Copy ... link".
+    // Three cards, not one more: each card has exactly one "Copy ... link".
     expect(screen.getAllByRole("button", { name: /^Copy .+ link$/ })).toHaveLength(3);
   });
 
@@ -110,14 +110,14 @@ describe("promo links section", () => {
     mocks.publicProfile = null;
     renderLinks();
 
-    // A pagina do produto define a base publica; a vitrine tem de sair na mesma.
+    // The product page defines the public base; the storefront has to use the same one.
     const productPage = screen
       .getByRole("link", { name: "Open Product page" })
       .getAttribute("href")!;
     const base = productPage.slice(0, productPage.indexOf("/courses/"));
     expect(base).toBe("https://www.skillsetmind.com");
 
-    // Sem @ no perfil público: o endereço pelo uid.
+    // No @ on the public profile: the address by uid.
     const storefront = `${base}/instructors/${mocks.course.ownerId}`;
     expect(await screen.findByText(storefront)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open Storefront" })).toHaveAttribute(
@@ -126,7 +126,7 @@ describe("promo links section", () => {
     );
   });
 
-  // O link que o criador copia para a bio do Instagram é o /@usuario.
+  // The link the creator copies for the Instagram bio is /@user.
   it("uses the creator's @handle when the public profile has one", async () => {
     mocks.publicProfile = { username: "ana.souza" };
     renderLinks();
@@ -140,7 +140,7 @@ describe("promo links section", () => {
 });
 vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));
 
-// A secao aberta so mudava de cor: o leitor de tela nao sabia onde estava.
+// The open section only changed color: the screen reader did not know where it was.
 describe("manage section nav", () => {
   it("announces the open section with aria-current and only that one", () => {
     renderLinks();

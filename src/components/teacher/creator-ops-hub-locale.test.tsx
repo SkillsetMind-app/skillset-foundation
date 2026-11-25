@@ -49,9 +49,9 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-// Valores de KPI e da tabela pelo formatador da lingua ("$12,346" /
-// "12.346 US$"), fora o total do grafico (STRONG, sempre en-US). Intl pode
-// emitir NBSP: o texto exato evita a normalizacao de espaco do Testing Library.
+// KPI and table values through the language's formatter ("$12,346" /
+// "12.346 US$"), except the chart total (STRONG, always en-US). Intl may
+// emit NBSP: the exact text avoids Testing Library's space normalization.
 function kpiMoney(locale: "en" | "es", value: number, currency: string) {
   const expected = new Intl.NumberFormat(locale, {
     style: "currency",
@@ -87,7 +87,7 @@ describe("report currency follows the provider without changing amounts or expor
     const props = mocks.exportTable.mock.lastCall?.[0];
     expect(props).toMatchObject({
       filename: "skillset-reports",
-      // Pedidos lidos: Exportar ligado (so a leitura que falha o desliga, com motivo).
+      // Orders read: Export on (only the read that fails turns it off, with a reason).
       disabled: false,
       rows: [{ Producto: "Course title $&", Pedidos: 1, Ingresos: "12345.67", Moneda: "USD", Reembolsos: 0 }],
     });

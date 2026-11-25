@@ -23,12 +23,12 @@ import { countCourseAssets } from "@/lib/data/course-assets";
 import { subscribeToTeacherMessages } from "@/lib/data/course-messages";
 import { subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
 
-// O que a pessoa sofria: esta era a tela mais crua do painel — cinco linhas de
-// lista com um botao cada e nenhum estado. O professor abria Marketing e nao
-// sabia se a vitrine estava no ar, quantas mensagens esperavam resposta nem
-// quantos arquivos tinha na midia; precisava entrar em cada tela para
-// descobrir. Agora cada cartao responde a pergunta antes do clique, com dado
-// que ja existe (nenhuma consulta nova de servidor foi criada para isto).
+// What the person suffered: this was the rawest screen in the panel — five rows of
+// list with one button each and no state. The teacher opened Marketing and did not
+// know if the storefront was live, how many messages were waiting for a reply or
+// how many files they had in media; they had to enter each screen to
+// find out. Now each card answers the question before the click, with data
+// that already exists (no new server query was created for this).
 
 type ToolCard = {
   key: string;
@@ -37,7 +37,7 @@ type ToolCard = {
   href: string;
   action: string;
   icon: LucideIcon;
-  /** Linha de estado do cartao. `null` quando o dado nao existe barato. */
+  /** The card's state line. `null` when the data does not exist cheaply. */
   state: ReactNode;
 };
 
@@ -45,7 +45,7 @@ export function CreatorMarketingHub() {
   const { user } = useAuth();
   const { t } = useTranslation();
   const uid = user?.uid ?? "";
-  // /@usuario quando o perfil público tem @ (é o link que vai para a bio).
+  // /@user when the public profile has an @ (it is the link that goes in the bio).
   const storefrontPath = useStorefrontPath(uid);
 
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
@@ -53,8 +53,8 @@ export function CreatorMarketingHub() {
   const [messages, setMessages] = useState<CourseMessage[] | null>(null);
   const [mediaFiles, setMediaFiles] = useState<number | null>(null);
 
-  // Dependencia no uid (string) e nao no objeto do usuario: um objeto novo a
-  // cada render reinscreveria os efeitos em laco.
+  // Depends on the uid (string) and not on the user object: a new object on
+  // every render would resubscribe the effects in a loop.
   useEffect(() => {
     if (!uid) {
       return;
@@ -80,14 +80,14 @@ export function CreatorMarketingHub() {
     return subscribeToTeacherMessages(
       uid,
       setMessages,
-      // Sem mensagens carregadas o cartao mostra so o botao: numero errado e
-      // pior que numero nenhum.
+      // With no loaded messages the card shows only the button: a wrong number is
+      // worse than no number.
       () => setMessages(null),
     );
   }, [uid]);
 
-  // A chave em texto evita refazer a contagem a cada render por causa da
-  // identidade nova do array vindo da inscricao.
+  // The text key avoids redoing the count on every render because of the new
+  // identity of the array coming from the subscription.
   const courseIdsKey = courses.map((course) => course.id).join(",");
 
   useEffect(() => {
@@ -116,8 +116,8 @@ export function CreatorMarketingHub() {
   const publishedCount = courses.filter(
     (course) => course.status === "published",
   ).length;
-  // A vitrine existe sempre; o que muda e ter algo publicado nela. Dizer "no
-  // ar" com zero curso seria mentira, e e a mesma regra do cartao da Home.
+  // The storefront always exists; what changes is whether something is published on it. Saying "live"
+  // with zero courses would be a lie, and it is the same rule as the Home card.
   const isPublished = publishedCount > 0;
 
   const awaitingReply = useMemo(() => {
@@ -207,21 +207,21 @@ export function CreatorMarketingHub() {
       key: "coupons",
       title: t("teach.marketing.coupons.title"),
       description: t("teach.marketing.coupons.description"),
-      // Cupom mora dentro de cada produto: o cartao leva para a lista de
-      // produtos e diz isso no botao. (/teach/coupons so redireciona.)
+      // Coupon lives inside each product: the card leads to the product
+      // list and says so on the button. (/teach/coupons only redirects.)
       href: "/teach/builder",
       action: t("teach.marketing.coupons.action"),
       icon: BadgePercent,
-      // Nao existe cupom "do criador" para contar sem consulta nova. O cartao
-      // diz onde o ajuste vive, sem numero.
+      // There is no creator-level coupon to count without a new query. The card
+      // says where the setting lives, with no number.
       state: (
         <span className="text-xs text-[var(--color-ink-soft)]">
           {t("teach.marketing.state.couponsPerProduct")}
         </span>
       ),
     },
-    // "Integrations — See what's planned" saiu: nao ha pagina de integracoes,
-    // e o endereco antigo cai em Ganhos.
+    // "Integrations — See what's planned" is gone: there is no integrations page,
+    // and the old address lands on Earnings.
   ];
 
   return (
@@ -233,8 +233,8 @@ export function CreatorMarketingHub() {
       />
 
       <section aria-labelledby="marketing-tools-title">
-        {/* O "5 tools" saiu: a grade ja diz quantos sao, e o espaco vale mais
-            para o estado de cada cartao. */}
+        {/* The "5 tools" is gone: the grid already says how many there are, and the space is worth more
+            for each card's state. */}
         <h2 id="marketing-tools-title" className="text-lg font-semibold text-[var(--color-ink)]">
           {t("teach.marketing.sectionTitle")}
         </h2>
@@ -260,9 +260,9 @@ export function CreatorMarketingHub() {
                   </p>
                 </div>
                 {tool.state ? <div>{tool.state}</div> : null}
-                {/* mt-auto: os quatro botoes da fileira ficam na mesma linha,
-                    no pe do cartao, em vez de uma escada logo abaixo de cada
-                    texto. */}
+                {/* mt-auto: the four buttons of the row stay on the same line,
+                    at the foot of the card, instead of a staircase right below each
+                    text. */}
                 <Link
                   href={tool.href}
                   className={`${buttonClasses({ variant: "outline", size: "sm" })} mt-auto self-start`}
