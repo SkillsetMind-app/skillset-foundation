@@ -50,7 +50,7 @@ test Supabase project.
 4. **Review:** a person reads it. The PR gatekeeper ("porteiro", `.github/workflows/porteiro.yml`)
    posts a security score; it warns, it does not block.
 5. **The 5 required checks** must turn green: `Lint, typecheck, test,
-   build` and `RLS smoke tests (banco efêmero)` (in `.github/workflows/ci.yml`);
+   build` and `RLS smoke tests (ephemeral database)` (in `.github/workflows/ci.yml`);
    `Semgrep SAST`, `TruffleHog secrets scan` and `npm audit (high+)` (in
    `.github/workflows/security.yml`).
 6. **Merge:** the history of `main` uses squash merges (the PR becomes a single commit, with the
@@ -133,7 +133,7 @@ A migration is a SQL file that changes the structure of the database.
 - Write the smoke test (a quick check that the basics hold) with the same name and the ending `_smoke.sql` in
   `supabase/tests`, as almost every recent migration has, and always when the
   change touches access or money. It runs in the check
-  `RLS smoke tests (banco efêmero)`.
+  `RLS smoke tests (ephemeral database)`.
 - Changed the shape of a table? Update `src/lib/supabase/database.types.ts`.
 - Guards that read the SQL on every PR: `src/lib/supabase/rls-policy-guards.test.ts`
   and `src/lib/supabase/rpc-definition-guards.test.ts`.

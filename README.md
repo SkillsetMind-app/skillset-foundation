@@ -70,7 +70,7 @@ On a machine with little memory, run **one test file at a time**:
 4. **Review:** a person reads the change. The PR gatekeeper ("porteiro", an AI that reads the diff looking for security holes) posts a score on the PR; it warns, but it does not block.
 5. **Automated checks:** GitHub only allows the merge if these 5 checks pass:
    - `Lint, typecheck, test, build` — style, types, tests and build (`.github/workflows/ci.yml`);
-   - `RLS smoke tests (banco efêmero)` — tests the database access rules on a throwaway database (`.github/workflows/ci.yml`);
+   - `RLS smoke tests (ephemeral database)` — tests the database access rules on a throwaway database (`.github/workflows/ci.yml`);
    - `Semgrep SAST` — looks for unsafe code patterns (`.github/workflows/security.yml`);
    - `TruffleHog secrets scan` — looks for a leaked key or password in the code (`.github/workflows/security.yml`);
    - `npm audit (high+)` — looks for libraries with a known serious security flaw (`.github/workflows/security.yml`).
