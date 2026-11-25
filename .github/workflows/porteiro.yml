@@ -1,4 +1,4 @@
-name: Porteiro de PR
+name: PR gatekeeper
 
 # Reads the diff of each PR and asks GLM-5: "does this open any door?".
 # It does not replace Semgrep (known patterns); it catches wrong logic — the
@@ -10,9 +10,8 @@ name: Porteiro de PR
 #     memory intermittently and must not hide the verdict — nor the reverse.
 #   - PUBLIC repo: the PR comment and the log carry ONLY THE SCOREBOARD. The
 #     detail goes to the private channel (n8n ops-alert webhook -> Telegram).
-#   - No key => "NÃO ANALISADO" (NOT ANALYZED) and the check FAILS. Do not
-#     repeat the `exit 0` that left the RLS check green for two months without
-#     running.
+#   - No key => "NOT ANALYZED" and the check FAILS. Do not repeat the `exit 0`
+#     that left the RLS check green for two months without running.
 #   - A fork PR gets no secret => it falls into the case above. Do not use
 #     pull_request_target with a checkout of the fork to get around it: that
 #     is running untrusted code with the repo secrets in hand.
@@ -20,10 +19,15 @@ name: Porteiro de PR
 #     what this gate exists to read, and `npm audit` already covers it. It
 #     stays out.
 #
-# Mode: repository variable PORTEIRO_MODO, values: avisa (= warn, the default)
-# or barra (= block). In "barra", a blocking finding fails the check. It
-# starts in "avisa" until the analyzer passes an adversarial test (an
-# instruction planted in the diff).
+# Mode: repository variable PORTEIRO_MODO, values: warn (the default) or block;
+# the old values avisa (= warn) and barra (= block) are still accepted. In
+# "block", a blocking finding fails the check. It starts in "warn" until the
+# analyzer passes an adversarial test (an instruction planted in the diff).
+#
+# Interface across the merge: on a PR this file comes from the PR, but the
+# script comes from the default branch (step "Extract the gate from the default
+# branch"). Until the default branch has the English names, this file keeps
+# passing the old ones (--nomes, --placar, avisa), which both versions accept.
 
 on:
   pull_request:
@@ -39,7 +43,7 @@ permissions:
 
 jobs:
   porteiro:
-    name: Porteiro de PR (segurança, GLM-5)
+    name: PR gatekeeper (security, GLM-5)
     if: github.event.pull_request.draft == false && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     # 30: each reasoning reserve takes ~1 min per attempt (up to 3 caps).
@@ -65,7 +69,7 @@ jobs:
       # the test runs both.
       # --no-renames: `git mv src/proxy.ts src/proxy.png` becomes delete + create,
       # and the model reads the deleted code (a 100% rename carries no content).
-      - name: Diff do PR
+      - name: PR diff
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
           HEAD: ${{ github.event.pull_request.head.sha }}
@@ -82,8 +86,8 @@ jobs:
       # does — and an agent with write access opens internal PRs.
       # The base will not do either: whoever opens the PR picks the base branch,
       # and could point it at their own branch with a fake gate. And an old base
-      # (without the file, or from before --nomes) left the PR red with no
-      # analysis.
+      # (without the file, or from before the names flag) left the PR red with
+      # no analysis.
       # The default branch name comes from the repository metadata, which the PR
       # does not control. The named fetch guarantees the ref (never FETCH_HEAD),
       # and the read uses the FULL NAME refs/remotes/origin/...: with fetch-depth
@@ -98,18 +102,18 @@ jobs:
       # `git fetch` or `git cat-file` fail => the step fails => red check.
       # NO timeout-minutes on purpose: test_E takes the SMALLEST timeout-minutes
       # in the file as the cap of the chain. And the destination cannot be
-      # "$RUNNER_TEMP/pr.*": comandos_do_workflow() matches that pattern to run
+      # "$RUNNER_TEMP/pr.*": workflow_commands() matches that pattern to run
       # the real diff.
       # It does not close the hole by itself: this file is still the PR's copy.
-      - name: Extrai o portão do branch padrão
+      - name: Extract the gate from the default branch
         env:
-          PADRAO: ${{ github.event.repository.default_branch }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
-          git fetch --no-tags origin "+refs/heads/$PADRAO:refs/remotes/origin/$PADRAO"
-          mkdir -p "$RUNNER_TEMP/portao-do-padrao"
-          git cat-file blob "refs/remotes/origin/$PADRAO:scripts/porteiro.py" > "$RUNNER_TEMP/portao-do-padrao/porteiro.py"
-          echo "portão de origin/$PADRAO ($(git rev-parse --short "refs/remotes/origin/$PADRAO")): $(wc -c < "$RUNNER_TEMP/portao-do-padrao/porteiro.py") bytes"
+          git fetch --no-tags origin "+refs/heads/$DEFAULT_BRANCH:refs/remotes/origin/$DEFAULT_BRANCH"
+          mkdir -p "$RUNNER_TEMP/default-branch-gate"
+          git cat-file blob "refs/remotes/origin/$DEFAULT_BRANCH:scripts/porteiro.py" > "$RUNNER_TEMP/default-branch-gate/porteiro.py"
+          echo "gate from origin/$DEFAULT_BRANCH ($(git rev-parse --short "refs/remotes/origin/$DEFAULT_BRANCH")): $(wc -c < "$RUNNER_TEMP/default-branch-gate/porteiro.py") bytes"
 
       # continue-on-error: the scoreboard must be published even when the
       # verdict is "not analyzed" or "blocking". The final step replays the failure.
@@ -117,10 +121,11 @@ jobs:
       # down), it tries Kimi k3 -> Kimi k2.6 -> OpenAI. A secret that does not
       # exist arrives empty and the provider is skipped. vars.PORTEIRO_CADEIA
       # changes the order/models.
-      - name: Analisa com o GLM-5 (e reservas)
-        id: analisa
+      # --nomes/--placar: the old names of --names/--scoreboard (see the top).
+      - name: Analyze with GLM-5 (and fallbacks)
+        id: analyze
         continue-on-error: true
-        # The chain stops by itself at PRAZO_TOTAL (25 min, scripts/porteiro.py);
+        # The chain stops by itself at TOTAL_DEADLINE (25 min, scripts/porteiro.py);
         # 27 guarantees the scoreboard is still published within the job's 30.
         timeout-minutes: 27
         env:
@@ -138,25 +143,25 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_URL: ${{ github.event.pull_request.html_url }}
           REPO: ${{ github.repository }}
-        run: python3 "$RUNNER_TEMP/portao-do-padrao/porteiro.py" --diff "$RUNNER_TEMP/pr.diff" --nomes "$RUNNER_TEMP/pr.names" --placar "$RUNNER_TEMP/placar.md"
+        run: python3 "$RUNNER_TEMP/default-branch-gate/porteiro.py" --diff "$RUNNER_TEMP/pr.diff" --nomes "$RUNNER_TEMP/pr.names" --placar "$RUNNER_TEMP/scoreboard.md"
 
       # Only one comment per PR, updated on every push (--edit-last edits the
       # bot's own last comment; if there is none, it creates one).
-      - name: Publica o placar no PR
+      - name: Post the scoreboard on the PR
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
-          if [ ! -s "$RUNNER_TEMP/placar.md" ]; then
-            printf '### 🚪 Porteiro de PR\n\n❌ **NÃO ANALISADO** — o passo de análise não produziu placar.\n' > "$RUNNER_TEMP/placar.md"
+          if [ ! -s "$RUNNER_TEMP/scoreboard.md" ]; then
+            printf '### 🚪 PR gatekeeper\n\n❌ **NOT ANALYZED** — the analysis step produced no scoreboard.\n' > "$RUNNER_TEMP/scoreboard.md"
           fi
-          gh pr comment "$PR" --edit-last --body-file "$RUNNER_TEMP/placar.md" \
-            || gh pr comment "$PR" --body-file "$RUNNER_TEMP/placar.md"
+          gh pr comment "$PR" --edit-last --body-file "$RUNNER_TEMP/scoreboard.md" \
+            || gh pr comment "$PR" --body-file "$RUNNER_TEMP/scoreboard.md"
 
-      - name: Veredito
-        if: steps.analisa.outcome != 'success'
+      - name: Verdict
+        if: steps.analyze.outcome != 'success'
         run: |
-          echo "::error title=Porteiro de PR::veredito negativo — veja o placar no PR (detalhe no canal privado)"
+          echo "::error title=PR gatekeeper::negative verdict — see the scoreboard on the PR (detail in the private channel)"
           exit 1
