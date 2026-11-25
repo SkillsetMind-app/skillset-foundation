@@ -52,8 +52,8 @@ function clickGoogle() {
 // in ?plan= and ?cycle=, or already as returnTo (the "I already have an account" link on
 // signup). Only a teacher without a plan opens the card screen.
 describe("LoginForm with a plan chosen on /pricing", () => {
-  const cartao = "/account/billing/upgrade?plan=starter&cycle=yearly";
-  const comCartao = "returnTo=%2Faccount%2Fbilling%2Fupgrade%3Fplan%3Dstarter%26cycle%3Dyearly";
+  const card = "/account/billing/upgrade?plan=starter&cycle=yearly";
+  const withCard = "returnTo=%2Faccount%2Fbilling%2Fupgrade%3Fplan%3Dstarter%26cycle%3Dyearly";
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -79,16 +79,16 @@ describe("LoginForm with a plan chosen on /pricing", () => {
   }
 
   it.each([
-    ["professor sem plano abre o cartao", { onboardingCompleted: true, roles: ["teacher"] }, cartao],
+    ["professor sem plano abre o cartao", { onboardingCompleted: true, roles: ["teacher"] }, card],
     ["professor que ja tem plano segue para o estudio", { onboardingCompleted: true, roles: ["teacher"], currentPlanId: "basic" }, "/loading?next=route&path=teacher"],
-    ["quem ainda nao ensina ativa o ensino levando o plano", { onboardingCompleted: true, roles: ["student"] }, `/onboarding?path=teacher&${comCartao}`],
-    ["conta sem onboarding passa por ele levando o plano", { onboardingCompleted: false, roles: ["student"] }, `/loading?next=welcome&path=teacher&${comCartao}`],
-  ])("%s", async (_caso, profile, destino) => {
-    expect(await entrar(profile)).toBe(destino);
+    ["quem ainda nao ensina ativa o ensino levando o plano", { onboardingCompleted: true, roles: ["student"] }, `/onboarding?path=teacher&${withCard}`],
+    ["conta sem onboarding passa por ele levando o plano", { onboardingCompleted: false, roles: ["student"] }, `/loading?next=welcome&path=teacher&${withCard}`],
+  ])("%s", async (_caso, profile, redirectTarget) => {
+    expect(await entrar(profile)).toBe(redirectTarget);
   });
 
   it("whoever enters through the learner door does not open the card screen", async () => {
-    mocks.searchParams = new URLSearchParams({ path: "student", returnTo: cartao });
+    mocks.searchParams = new URLSearchParams({ path: "student", returnTo: card });
     expect(await entrar({ onboardingCompleted: true, roles: ["teacher"] })).toBe("/loading?next=route&path=student");
   });
 
@@ -102,7 +102,7 @@ describe("LoginForm with a plan chosen on /pricing", () => {
 
     clickGoogle();
 
-    expect(mocks.signInWithGoogle).toHaveBeenCalledWith(`/loading?next=welcome&path=teacher&${comCartao}`);
+    expect(mocks.signInWithGoogle).toHaveBeenCalledWith(`/loading?next=welcome&path=teacher&${withCard}`);
   });
 });
 

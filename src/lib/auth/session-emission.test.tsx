@@ -298,11 +298,11 @@ describe("listenToAuthState — renewing the session must not erase what the per
     harness.fire("USER_UPDATED", { user: supabaseUser });
     await flush();
 
-    const nomes = seen
+    const names = seen
       .filter((session) => session.status === "authenticated")
       .map((session) => session.user?.displayName);
 
-    expect(nomes).toEqual(["Teacher", "Teacher Renamed"]);
+    expect(names).toEqual(["Teacher", "Teacher Renamed"]);
   });
 
   it("does not repeat the sign-out: two SIGNED_OUT in a row emit only once", async () => {

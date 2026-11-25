@@ -38,7 +38,7 @@ vi.mock("@/lib/data/notifications", () => ({
   markAllNotificationsAsRead: vi.fn(async () => undefined),
 }));
 
-function aviso(extra: Partial<AppNotification> & Pick<AppNotification, "id" | "type">): AppNotification {
+function notice(extra: Partial<AppNotification> & Pick<AppNotification, "id" | "type">): AppNotification {
   return { title: "", body: "", read: false, ...extra };
 }
 
@@ -94,12 +94,12 @@ describe("the bell before, during and after the read", () => {
     // The button left the screen: focus went to the title, it did not fall onto the page.
     expect(screen.getByRole("heading", { name: "Notifications" })).toHaveFocus();
 
-    act(() => mocks.next?.([aviso({ id: "s", type: "support_reply", link: "/support" })]));
+    act(() => mocks.next?.([notice({ id: "s", type: "support_reply", link: "/support" })]));
     expect(hrefOf("Support replied to your request")).toBe("/support");
   });
 
   it("a re-read that fails with the list on screen keeps the list", () => {
-    mocks.rows = [aviso({ id: "s", type: "support_reply", link: "/support" })];
+    mocks.rows = [notice({ id: "s", type: "support_reply", link: "/support" })];
     openBell("en");
 
     act(() => mocks.fail?.(new Error("offline")));
@@ -112,7 +112,7 @@ describe("the bell before, during and after the read", () => {
   it("a 'Mark all read' that fails says so in the panel and leaves the notifications unread", async () => {
     const { markAllNotificationsAsRead } = await import("@/lib/data/notifications");
     vi.mocked(markAllNotificationsAsRead).mockRejectedValueOnce(new Error("offline"));
-    mocks.rows = [aviso({ id: "s", type: "support_reply", link: "/support" })];
+    mocks.rows = [notice({ id: "s", type: "support_reply", link: "/support" })];
     openBell("en");
 
     expect(screen.queryByRole("alert")).toBeNull();
@@ -157,7 +157,7 @@ describe("the bell before, during and after the read", () => {
   });
 
   it("the X closes and returns focus to the bell; the targets are 44px", () => {
-    mocks.rows = [aviso({ id: "s", type: "support_reply", link: "/support" })];
+    mocks.rows = [notice({ id: "s", type: "support_reply", link: "/support" })];
     openBell("en");
 
     expect(screen.getByRole("button", { name: "Mark all read" })).toHaveClass("min-h-11");
@@ -193,27 +193,27 @@ describe("the bell before, during and after the read", () => {
 describe("the bell with the reply notifications", () => {
   it("builds each sentence in Spanish and leads straight to the place of the reply", () => {
     mocks.rows = [
-      aviso({
+      notice({
         id: "q", type: "community_question", actorName: "Ana", body: "¿Cómo exporto la hoja?",
         link: "/teach/courses/c1/community", params: { postId: "p1", courseId: "c1" },
       }),
-      aviso({
+      notice({
         id: "c", type: "community_comment", actorName: "Bia", body: "Usa el botón exportar.",
         link: "/learn/courses/c1/community/q/p1", params: { postId: "p1", commentId: "k1", category: "question" },
       }),
-      aviso({
+      notice({
         id: "d", type: "community_comment", actorName: "Dani",
         link: "/learn/courses/c1/community/q/p2", params: { postId: "p2", commentId: "k2", category: "discussion" },
       }),
-      aviso({
+      notice({
         id: "r", type: "community_reply", actorName: "Caio",
         link: "/learn/courses/c1/community/q/p1", params: { postId: "p1", commentId: "k3", category: "question" },
       }),
-      aviso({
+      notice({
         id: "s", type: "support_reply", body: "No puedo cambiar mi correo",
         link: "/support", params: { ticketId: "t1" },
       }),
-      aviso({
+      notice({
         id: "m", type: "course_message", title: "New message from your teacher",
         body: "Prof: Hola", link: "/learn/courses/c1/messages",
       }),
@@ -234,11 +234,11 @@ describe("the bell with the reply notifications", () => {
 
   it("in English, and with 'Someone' when there is no name for whoever replied", () => {
     mocks.rows = [
-      aviso({
+      notice({
         id: "c", type: "community_comment", actorName: null,
         link: "/learn/courses/c1/community/q/p1", params: { category: "question" },
       }),
-      aviso({ id: "s", type: "support_reply", link: "/support" }),
+      notice({ id: "s", type: "support_reply", link: "/support" }),
     ];
     openBell("en");
 
@@ -247,7 +247,7 @@ describe("the bell with the reply notifications", () => {
   });
 
   it("a name with '$&' appears as it was written", () => {
-    mocks.rows = [aviso({ id: "q", type: "community_question", actorName: "A$&B", link: "/teach/courses/c1/community" })];
+    mocks.rows = [notice({ id: "q", type: "community_question", actorName: "A$&B", link: "/teach/courses/c1/community" })];
     openBell("en");
 
     expect(screen.getByText("A$&B asked a question in your course")).toBeTruthy();

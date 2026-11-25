@@ -38,16 +38,16 @@ describe("buildPageMetadata — card image", () => {
   // Before, og:image was ALWAYS the brand logo: every course in the catalog
   // produced a visually identical share card.
   it("uses the course cover when it is an absolute URL", () => {
-    const capa = "https://cdn.example.com/capa.jpg";
+    const cover = "https://cdn.example.com/capa.jpg";
     const meta = buildPageMetadata({
       title: "Curso",
       description: "Descrição",
       path: "/courses/abc",
-      image: capa,
+      image: cover,
     });
 
-    expect(meta.openGraph?.images).toEqual([{ url: capa }]);
-    expect(meta.twitter?.images).toEqual([capa]);
+    expect(meta.openGraph?.images).toEqual([{ url: cover }]);
+    expect(meta.twitter?.images).toEqual([cover]);
   });
 
   it("resolves a local path against the canonical host", () => {
@@ -66,12 +66,12 @@ describe("buildPageMetadata — card image", () => {
   // The default was the 1600×320 logo on a large card: WhatsApp and LinkedIn cut
   // the logo in half. The default is now the 1200×630 card from src/app/opengraph-image.
   it("falls back to the 1200×630 share card when the page has no image of its own", () => {
-    const semImagem = buildPageMetadata({
+    const withoutImage = buildPageMetadata({
       title: "Sobre",
       description: "Descrição",
       path: "/about",
     });
-    const comNull = buildPageMetadata({
+    const withNull = buildPageMetadata({
       title: "Sobre",
       description: "Descrição",
       path: "/about",
@@ -79,9 +79,9 @@ describe("buildPageMetadata — card image", () => {
     });
     const card = `${SITE_URL}/opengraph-image`;
 
-    expect(semImagem.openGraph?.images).toEqual(comNull.openGraph?.images);
-    expect(semImagem.openGraph?.images).toEqual([{ url: card, width: 1200, height: 630 }]);
-    expect(semImagem.twitter?.images).toEqual([card]);
+    expect(withoutImage.openGraph?.images).toEqual(withNull.openGraph?.images);
+    expect(withoutImage.openGraph?.images).toEqual([{ url: card, width: 1200, height: 630 }]);
+    expect(withoutImage.twitter?.images).toEqual([card]);
   });
 });
 

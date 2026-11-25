@@ -22,15 +22,15 @@ const css = readFileSync(
   "utf8",
 );
 
-function blocosDeMedia(): string[] {
-  const blocos: string[] = [];
-  const abre = /@media([^{]*)\{/g;
+function mediaBlocks(): string[] {
+  const blocks: string[] = [];
+  const opening = /@media([^{]*)\{/g;
   let match: RegExpExecArray | null;
 
-  while ((match = abre.exec(css)) !== null) {
-    const condicao = match[1];
+  while ((match = opening.exec(css)) !== null) {
+    const condition = match[1];
     let profundidade = 1;
-    let i = abre.lastIndex;
+    let i = opening.lastIndex;
 
     while (i < css.length && profundidade > 0) {
       if (css[i] === "{") profundidade += 1;
@@ -38,17 +38,17 @@ function blocosDeMedia(): string[] {
       i += 1;
     }
 
-    blocos.push(`@media${condicao}{${css.slice(abre.lastIndex, i)}`);
+    blocks.push(`@media${condition}{${css.slice(opening.lastIndex, i)}`);
   }
 
-  return blocos;
+  return blocks;
 }
 
 describe("16px floor on form fields on the phone", () => {
-  const pisos = blocosDeMedia().filter(
-    (bloco) =>
-      /(^|[\s,>])(input|textarea|select)\b/i.test(bloco)
-      && /font-size:\s*16px/i.test(bloco),
+  const pisos = mediaBlocks().filter(
+    (block) =>
+      /(^|[\s,>])(input|textarea|select)\b/i.test(block)
+      && /font-size:\s*16px/i.test(block),
   );
 
   it("there is a 16px floor for input, textarea and select", () => {
@@ -57,15 +57,15 @@ describe("16px floor on form fields on the phone", () => {
       "no media query enforces 16px on fields — Safari on iOS will zoom on focus",
     ).toBeGreaterThan(0);
 
-    const cobreOsTres = pisos.some(
-      (bloco) =>
-        /(^|[\s,>])input\b/i.test(bloco)
-        && /(^|[\s,>])textarea\b/i.test(bloco)
-        && /(^|[\s,>])select\b/i.test(bloco),
+    const coversAllThree = pisos.some(
+      (block) =>
+        /(^|[\s,>])input\b/i.test(block)
+        && /(^|[\s,>])textarea\b/i.test(block)
+        && /(^|[\s,>])select\b/i.test(block),
     );
 
     expect(
-      cobreOsTres,
+      coversAllThree,
       "the floor exists but does not cover the three field types that trigger zoom",
     ).toBe(true);
   });
@@ -75,12 +75,12 @@ describe("16px floor on form fields on the phone", () => {
     // iPhone in landscape, where the viewport is over 900px. A floor tied to
     // `max-width` leaves the login screen broken in landscape, which is how the
     // bug came back.
-    const porAparelho = pisos.some(
-      (bloco) => /pointer:\s*coarse/i.test(bloco) || /hover:\s*none/i.test(bloco),
+    const byDevice = pisos.some(
+      (block) => /pointer:\s*coarse/i.test(block) || /hover:\s*none/i.test(block),
     );
 
     expect(
-      porAparelho,
+      byDevice,
       "the floor is tied to max-width; the iPhone in landscape (>900px) is left out and still zooms",
     ).toBe(true);
   });
@@ -90,12 +90,12 @@ describe("16px floor on form fields on the phone", () => {
     // gets through because the floor's `:not()` gives (0,2,1). Without the
     // class reinforcement, the profile's Bio and Time zone stayed at 14px and
     // the iPhone zoomed.
-    const cobre = pisos.some(
-      (bloco) => /textarea\.field-input/.test(bloco) && /select\.field-input/.test(bloco),
+    const covers = pisos.some(
+      (block) => /textarea\.field-input/.test(block) && /select\.field-input/.test(block),
     );
 
     expect(
-      cobre,
+      covers,
       "the 16px floor does not reach textarea/select with .field-input — Safari on iOS will zoom",
     ).toBe(true);
   });
@@ -105,12 +105,12 @@ describe("16px floor on form fields on the phone", () => {
     // beats `.platform-sidebar-search input`, which is (0,1,1). A stylesheet
     // !important would trample every inline `style={{ fontSize }}` in the app
     // and would force the next legitimate override to be born with another.
-    const comImportant = pisos.filter((bloco) =>
-      /font-size:\s*16px\s*!important/i.test(bloco),
+    const withImportant = pisos.filter((block) =>
+      /font-size:\s*16px\s*!important/i.test(block),
     );
 
     expect(
-      comImportant,
+      withImportant,
       "the floor uses !important without needing it — it also overrides legitimate inline styles",
     ).toHaveLength(0);
   });

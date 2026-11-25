@@ -176,12 +176,12 @@ describe("lesson clock only with a duration", () => {
   });
 
   it("a lesson without a duration does not show the clock", () => {
-    const [aula] = course.modules[0].lessons;
-    const semDuracao = {
+    const [lesson] = course.modules[0].lessons;
+    const withoutDuration = {
       ...course,
-      modules: [{ ...course.modules[0], lessons: [{ ...aula, duration: "Self-paced" }] }],
+      modules: [{ ...course.modules[0], lessons: [{ ...lesson, duration: "Self-paced" }] }],
     } as Course;
-    render(<EnrolledCourseWorkspace course={semDuracao} previewMode />);
+    render(<EnrolledCourseWorkspace course={withoutDuration} previewMode />);
 
     expect(playerHeading()).toBe("Lesson one");
     expect(lessonClock()).toBeNull();
@@ -202,7 +202,7 @@ describe("lesson clock only with a duration", () => {
 describe("lesson text with links", () => {
   it("becomes a clickable link and keeps the line break", () => {
     mocks.searchParams = new URLSearchParams("lesson=l1");
-    const comLink = {
+    const withLink = {
       ...course,
       modules: [
         {
@@ -213,7 +213,7 @@ describe("lesson text with links", () => {
         },
       ],
     } as unknown as Course;
-    render(<EnrolledCourseWorkspace course={comLink} previewMode />);
+    render(<EnrolledCourseWorkspace course={withLink} previewMode />);
 
     const body = document.getElementById("member-lesson-content") as HTMLElement;
     const link = body.querySelector('a[href="https://a.com/x"]');
@@ -232,7 +232,7 @@ describe("player notice without a video follows the content, not the type", () =
       ?.querySelector(".member-video-empty h3")?.textContent;
   }
 
-  const semVideo = {
+  const withoutVideo = {
     ...course,
     modules: [
       {
@@ -250,7 +250,7 @@ describe("player notice without a video follows the content, not the type", () =
   // below". A reading lesson has no video box; the text comes right away.
   it("a text-only lesson has no empty video box", () => {
     mocks.searchParams = new URLSearchParams("lesson=l1");
-    render(<EnrolledCourseWorkspace course={semVideo} previewMode />);
+    render(<EnrolledCourseWorkspace course={withoutVideo} previewMode />);
 
     expect(playerHeading()).toBe("Leitura");
     expect(playerNotice()).toBeUndefined();
@@ -260,7 +260,7 @@ describe("player notice without a video follows the content, not the type", () =
 
   it("a lesson with no video and no text keeps the media notice", () => {
     mocks.searchParams = new URLSearchParams("lesson=l2");
-    render(<EnrolledCourseWorkspace course={semVideo} previewMode />);
+    render(<EnrolledCourseWorkspace course={withoutVideo} previewMode />);
 
     expect(playerHeading()).toBe("Vazia");
     expect(playerNotice()).toBe("Media not attached yet");
@@ -270,7 +270,7 @@ describe("player notice without a video follows the content, not the type", () =
   // turn "video not uploaded yet" into a "reading lesson".
   it("a video lesson with a summary and no media keeps the media notice", () => {
     mocks.searchParams = new URLSearchParams("lesson=l3");
-    render(<EnrolledCourseWorkspace course={semVideo} previewMode />);
+    render(<EnrolledCourseWorkspace course={withoutVideo} previewMode />);
 
     expect(playerHeading()).toBe("Video pendente");
     expect(playerNotice()).toBe("Media not attached yet");
@@ -281,7 +281,7 @@ describe("player notice without a video follows the content, not the type", () =
   it("with attachments still loading, shows loading, not missing media", () => {
     mocks.searchParams = new URLSearchParams("lesson=l3");
     // The default mock never responds: the attachments subscription stays pending.
-    render(<EnrolledCourseWorkspace course={semVideo} previewMode enableFirestoreAssets />);
+    render(<EnrolledCourseWorkspace course={withoutVideo} previewMode enableFirestoreAssets />);
 
     expect(playerNotice()).toBe("Loading lesson content...");
   });
@@ -293,7 +293,7 @@ describe("player notice without a video follows the content, not the type", () =
       return Object.assign(vi.fn(), { reload: vi.fn(async () => undefined) });
     });
     try {
-      render(<EnrolledCourseWorkspace course={semVideo} previewMode enableFirestoreAssets />);
+      render(<EnrolledCourseWorkspace course={withoutVideo} previewMode enableFirestoreAssets />);
 
       expect(playerNotice()).toBe("Media not attached yet");
     } finally {

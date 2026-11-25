@@ -12,8 +12,8 @@ import { describe, expect, it } from "vitest";
  * suite outside `src/` that no automation ran — the same disease they
  * diagnose.
  */
-const RAIZ = process.cwd();
-const leia = (rel: string) => readFileSync(join(RAIZ, rel), "utf8");
+const ROOT = process.cwd();
+const leia = (rel: string) => readFileSync(join(ROOT, rel), "utf8");
 
 describe("the RLS smoke tests must be run by some automation", () => {
   // The bug (A-03): there are 4 RLS smoke test files in supabase/tests/. One of
@@ -31,12 +31,12 @@ describe("the RLS smoke tests must be run by some automation", () => {
     const roda = /supabase\s+test|pgtap|pg_prove|supabase\/tests/;
     const scripts = JSON.parse(packageJson).scripts as Record<string, string>;
 
-    const porScript = Object.values(scripts).some((cmd) => roda.test(cmd));
-    const porCi = roda.test(ci);
-    const porVitest = /supabase\/tests/.test(vitestConfig);
+    const byScript = Object.values(scripts).some((cmd) => roda.test(cmd));
+    const byCi = roda.test(ci);
+    const byVitest = /supabase\/tests/.test(vitestConfig);
 
     expect(
-      porScript || porCi || porVitest,
+      byScript || byCi || byVitest,
       `no path runs the RLS tests. scripts: ${Object.keys(scripts).join(", ")}`,
     ).toBe(true);
   });
@@ -96,18 +96,18 @@ describe("HSTS with preload must not leak to the teacher's domain", () => {
   const cfg = leia("next.config.ts");
 
   it("the broad HSTS is only sent on the platform's own host", () => {
-    const indice = cfg.indexOf("Strict-Transport-Security");
-    expect(indice, "next.config.ts does not define Strict-Transport-Security").toBeGreaterThan(-1);
+    const index = cfg.indexOf("Strict-Transport-Security");
+    expect(index, "next.config.ts does not define Strict-Transport-Security").toBeGreaterThan(-1);
 
-    const bloco = cfg.slice(Math.max(0, indice - 900), indice + 300);
+    const block = cfg.slice(Math.max(0, index - 900), index + 300);
 
-    expect(/preload/.test(bloco), "test premise: the header includes preload").toBe(true);
+    expect(/preload/.test(block), "test premise: the header includes preload").toBe(true);
 
     // Next lets a header be conditioned on the host with `has: [{ type: "host" }]`.
-    const condicionadoPorHost = /has:\s*\[/.test(bloco) && /type:\s*"host"/.test(bloco);
+    const gatedByHost = /has:\s*\[/.test(block) && /type:\s*"host"/.test(block);
 
     expect(
-      condicionadoPorHost,
+      gatedByHost,
       "the header is sent with no host condition: the preload leaks to the teacher's domain",
     ).toBe(true);
   });

@@ -131,15 +131,15 @@ function renderEn(ui: ReactElement) {
 
 const MENU_TRIGGER = "More actions for Facilitation foundations";
 
-async function abreMenuDoHub() {
+async function openHubMenu() {
   renderEn(<CourseManageHub courseId="course-1" />);
   const trigger = await screen.findByRole("button", { name: MENU_TRIGGER });
   fireEvent.click(trigger);
   return screen.getByRole("menu", { name: "Actions for Facilitation foundations" });
 }
 
-async function abreModalDoHub() {
-  const menu = await abreMenuDoHub();
+async function openHubModal() {
+  const menu = await openHubMenu();
   fireEvent.click(within(menu).getByRole("menuitem", { name: "Delete course" }));
   const dialog = await screen.findByRole("dialog", { name: "Delete Facilitation foundations" });
   // The modal only enables the confirmation after it knows how many buyers exist.
@@ -163,12 +163,12 @@ describe("course hub — delete/archive entry point", () => {
   // Hotmart puts the action in the caret next to "Trocar Produto". Here it sits in the
   // same place: next to the product selector and "Edit in Builder".
   it("offers new product, preview and delete, in that order, in the header", async () => {
-    const menu = await abreMenuDoHub();
-    const itens = within(menu)
+    const menu = await openHubMenu();
+    const items = within(menu)
       .getAllByRole("menuitem")
       .map((item) => item.textContent);
 
-    expect(itens).toEqual(["New product", "Preview as a student", "Delete course"]);
+    expect(items).toEqual(["New product", "Preview as a student", "Delete course"]);
     expect(within(menu).getByRole("menuitem", { name: "New product" })).toHaveAttribute(
       "href",
       "/teach/builder?newCourse=1&format=course",
@@ -213,7 +213,7 @@ describe("the menu opens inward on the screen", () => {
   const GATILHO = 44;
 
   function simula(left: number, viewport: number) {
-    const janela = window.innerWidth;
+    const dialogPanel = window.innerWidth;
     window.innerWidth = viewport;
     const medida = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
       left,
@@ -228,21 +228,21 @@ describe("the menu opens inward on the screen", () => {
     } as DOMRect);
     return () => {
       medida.mockRestore();
-      window.innerWidth = janela;
+      window.innerWidth = dialogPanel;
     };
   }
 
   // Left edge of the menu in window coordinates: the trigger is at `left`
   // and the menu is positioned relative to it.
-  async function bordaEsquerdaDoMenu(left: number) {
-    const menu = await abreMenuDoHub();
+  async function menuLeftEdge(left: number) {
+    const menu = await openHubMenu();
     return left + Number.parseFloat(menu.style.left);
   }
 
   it("on the phone, with the trigger on the left edge, the menu starts 8 px from the edge", async () => {
     const desfaz = simula(95, 390);
     try {
-      expect(await bordaEsquerdaDoMenu(95)).toBe(8);
+      expect(await menuLeftEdge(95)).toBe(8);
     } finally {
       desfaz();
     }
@@ -251,7 +251,7 @@ describe("the menu opens inward on the screen", () => {
   it("on the phone, with the trigger on the right edge, the menu does not go past the window", async () => {
     const desfaz = simula(340, 390);
     try {
-      const x = await bordaEsquerdaDoMenu(340);
+      const x = await menuLeftEdge(340);
       expect(x + MENU).toBeLessThanOrEqual(390 - 8);
       expect(x).toBeGreaterThanOrEqual(8);
     } finally {
@@ -262,7 +262,7 @@ describe("the menu opens inward on the screen", () => {
   it("on desktop, with the trigger on the right edge, the menu aligns to its right", async () => {
     const desfaz = simula(1337, 1440);
     try {
-      expect((await bordaEsquerdaDoMenu(1337)) + MENU).toBe(1337 + GATILHO);
+      expect((await menuLeftEdge(1337)) + MENU).toBe(1337 + GATILHO);
     } finally {
       desfaz();
     }
@@ -275,7 +275,7 @@ describe("delete/archive dialog — the text follows the data", () => {
   it("while the count has not arrived, does not promise to delete or archive", async () => {
     let answer!: (audience: { enrollments: number; orders: number; subscriptions: number }) => void;
     mocks.getCourseAudience.mockReturnValue(new Promise((resolve) => { answer = resolve; }));
-    const menu = await abreMenuDoHub();
+    const menu = await openHubMenu();
     fireEvent.click(within(menu).getByRole("menuitem", { name: "Delete course" }));
     const dialog = await screen.findByRole("dialog", { name: "Delete Facilitation foundations" });
 
@@ -293,7 +293,7 @@ describe("delete/archive dialog — the text follows the data", () => {
   });
 
   it("with no buyer, warns that the deletion is permanent", async () => {
-    const dialog = await abreModalDoHub();
+    const dialog = await openHubModal();
 
     expect(within(dialog).getByText("Delete this course?")).toBeInTheDocument();
     expect(
@@ -308,7 +308,7 @@ describe("delete/archive dialog — the text follows the data", () => {
   // Wave G2b: what goes away with it is written before the click, and the final button
   // looks like danger (solid red), not a red outline on a white background.
   it("with no buyer, lists what goes away, says when the cleanup starts and confirms in solid red", async () => {
-    const dialog = await abreModalDoHub();
+    const dialog = await openHubModal();
 
     await within(dialog).findByText("This also deletes:");
     for (const item of [
@@ -332,7 +332,7 @@ describe("delete/archive dialog — the text follows the data", () => {
 
   it("with a buyer, does not promise to delete anything and confirms in blue", async () => {
     mocks.getCourseAudience.mockResolvedValue({ enrollments: 1, orders: 0, subscriptions: 0 });
-    const dialog = await abreModalDoHub();
+    const dialog = await openHubModal();
 
     const archive = await within(dialog).findByRole("button", { name: "Archive course" });
     expect(archive).toHaveClass("button-solid");
@@ -345,7 +345,7 @@ describe("delete/archive dialog — the text follows the data", () => {
   // the modal said "Yes, delete" and promised to delete files and videos.
   it("with only a subscription, also promises to archive, never delete", async () => {
     mocks.getCourseAudience.mockResolvedValue({ enrollments: 0, orders: 0, subscriptions: 1 });
-    const dialog = await abreModalDoHub();
+    const dialog = await openHubModal();
 
     expect(await within(dialog).findByRole("button", { name: "Archive course" })).toBeInTheDocument();
     expect(within(dialog).queryByRole("button", { name: "Yes, delete" })).toBeNull();
@@ -354,7 +354,7 @@ describe("delete/archive dialog — the text follows the data", () => {
 
   it("if the server refuses, says nothing was deleted (and no longer mentions draft)", async () => {
     mocks.deleteOrArchiveCourse.mockRejectedValue(new Error("23503"));
-    const dialog = await abreModalDoHub();
+    const dialog = await openHubModal();
     fireEvent.click(within(dialog).getByRole("button", { name: "Yes, delete" }));
 
     expect(
@@ -366,7 +366,7 @@ describe("delete/archive dialog — the text follows the data", () => {
 
   it("with a buyer, promises to archive and keep access for whoever paid", async () => {
     mocks.getCourseAudience.mockResolvedValue({ enrollments: 3, orders: 3, subscriptions: 0 });
-    const dialog = await abreModalDoHub();
+    const dialog = await openHubModal();
 
     await within(dialog).findByText("This course has students");
     expect(
@@ -384,7 +384,7 @@ describe("delete/archive dialog — the text follows the data", () => {
 
 describe("delete/archive modal — the header X", () => {
   it("closes like Cancel, deleting nothing", async () => {
-    const dialog = await abreModalDoHub();
+    const dialog = await openHubModal();
     const close = within(dialog).getByRole("button", { name: "Close" });
     expect(close).toHaveClass("button-icon");
 
@@ -397,7 +397,7 @@ describe("delete/archive modal — the header X", () => {
   it("disappears while deleting, when Cancel is also locked", async () => {
     let fail!: (reason: unknown) => void;
     mocks.deleteOrArchiveCourse.mockReturnValue(new Promise((_, reject) => { fail = reject; }));
-    const dialog = await abreModalDoHub();
+    const dialog = await openHubModal();
     fireEvent.click(within(dialog).getByRole("button", { name: "Yes, delete" }));
 
     await waitFor(() => expect(within(dialog).getByRole("button", { name: "Cancel" })).toBeDisabled());
@@ -414,7 +414,7 @@ describe("delete/archive modal — the header X", () => {
 
 describe("what happens after the action", () => {
   it("once deleted, the hub leaves the scene and goes back to the list", async () => {
-    const dialog = await abreModalDoHub();
+    const dialog = await openHubModal();
     fireEvent.click(within(dialog).getByRole("button", { name: "Yes, delete" }));
 
     await waitFor(() => expect(mocks.deleteOrArchiveCourse).toHaveBeenCalledWith("course-1"));
@@ -430,7 +430,7 @@ describe("what happens after the action", () => {
       orders: 3,
     });
 
-    const dialog = await abreModalDoHub();
+    const dialog = await openHubModal();
     fireEvent.click(within(dialog).getByRole("button", { name: "Archive course" }));
 
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());

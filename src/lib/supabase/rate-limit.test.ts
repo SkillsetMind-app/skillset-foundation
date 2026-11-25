@@ -50,10 +50,10 @@ describe("rateLimitKeyFromIp", () => {
 
   it("a different pepper gives a different bucket — the hash depends on the server secret", () => {
     vi.stubEnv("RATE_LIMIT_PEPPER", "pepper-a");
-    const primeiro = rateLimitKeyFromIp(requestFrom(IP), "csp");
+    const first = rateLimitKeyFromIp(requestFrom(IP), "csp");
 
     vi.stubEnv("RATE_LIMIT_PEPPER", "pepper-b");
-    expect(rateLimitKeyFromIp(requestFrom(IP), "csp")).not.toBe(primeiro);
+    expect(rateLimitKeyFromIp(requestFrom(IP), "csp")).not.toBe(first);
   });
 
   // Second half of A-28: the fallback must NOT be the service role. That key
@@ -65,12 +65,12 @@ describe("rateLimitKeyFromIp", () => {
     vi.stubEnv("RATE_LIMIT_PEPPER", "");
 
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service-role-a");
-    const comA = rateLimitKeyFromIp(requestFrom(IP), "csp");
+    const withA = rateLimitKeyFromIp(requestFrom(IP), "csp");
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service-role-b");
-    const comB = rateLimitKeyFromIp(requestFrom(IP), "csp");
+    const withB = rateLimitKeyFromIp(requestFrom(IP), "csp");
 
-    expect(comA).not.toBe(`csp_${plainSha256}`);
-    expect(comA).toBe(comB);
+    expect(withA).not.toBe(`csp_${plainSha256}`);
+    expect(withA).toBe(withB);
   });
 
   // The bug the pepper fix itself created: rateLimitKeyFromIp was evaluated as

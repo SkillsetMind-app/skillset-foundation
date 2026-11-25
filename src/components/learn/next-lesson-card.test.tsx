@@ -195,7 +195,7 @@ describe("the classroom uses the card instead of switching silently", () => {
     );
 
     // The rendered behavior (including the failure to save) is in
-    // conclusao-e-avanco.test.tsx; here only the shape of the video handler.
+    // completion-and-advance.test.tsx; here only the shape of the video handler.
     expect(handler).toContain("setNextUp(next)");
     expect(handler).not.toContain("selectLesson(");
   });
