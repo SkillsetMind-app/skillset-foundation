@@ -290,7 +290,7 @@ describe("add to calendar", () => {
   });
 
   it(".ics without a link carries no URL; a long line folds at up to 75 bytes without splitting an accent", () => {
-    const long = { ...event, title: "Café, très bon ".repeat(10) };
+    const long = { ...event, title: "Entrée à éclat ".repeat(10) };
     const ics = buildEventIcs(long, null, at(0))!;
     expect(ics).not.toContain("URL:");
     for (const line of ics.split("\r\n")) {
