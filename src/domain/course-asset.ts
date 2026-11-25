@@ -270,7 +270,7 @@ const materialTypesByExtension: Record<string, string> = {
  * running script, or that it only downloads. SVG, HTML and XML are left out: opened
  * through the signed link, their script ran on the storage domain. Mirror of
  * supabase/migrations/20261008020000_course_content_sem_conteudo_ativo.sql
- * (materiais-extensoes.test.ts checks it).
+ * (material-extensions.test.ts checks it).
  */
 export const courseContentMimeTypes: readonly string[] = [
   ...new Set([

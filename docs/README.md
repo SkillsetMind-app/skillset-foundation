@@ -34,6 +34,6 @@ root, then `docs/ARCHITECTURE.md`.
 - A new document goes into this index.
 - Plans, session reports, business strategy, investor material and
   security findings do **not** go into this repository: it is public.
-- The test `src/app/documentacao-caminhos.test.ts` checks that every path between
+- The test `src/app/documentation-paths.test.ts` checks that every path between
   backticks in this index, in `README.md`, in `docs/ARCHITECTURE.md` and in
   `docs/ONBOARDING.md` exists.

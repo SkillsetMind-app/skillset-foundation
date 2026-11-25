@@ -2,7 +2,7 @@
 
 The map of the system: where each part lives and how the parts talk to each other. Written for
 people who have never programmed and for people who have just arrived in the code. Every path between
-backticks really exists; the test `src/app/documentacao-caminhos.test.ts` fails
+backticks really exists; the test `src/app/documentation-paths.test.ts` fails
 if one of them stops existing.
 
 ## The view from above

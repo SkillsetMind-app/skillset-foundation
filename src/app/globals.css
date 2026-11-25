@@ -3514,7 +3514,7 @@ select:focus-visible {
 }
 
 @media (width < 1280px) {
-  /* The links stay in the menu up to 1279px: the math in barra-do-topo-cabe.test.ts
+  /* The links stay in the menu up to 1279px: the math in top-bar-fits.test.ts
      shows that at 1024px they and the buttons do not fit (signed in, or in Spanish). */
   .site-header__links {
     display: none;
@@ -3842,7 +3842,7 @@ html[data-view-as] .platform-shell-root {
 /* Below 1280px the side switch keeps only the icon (the name goes in the
    aria-label and the title). With the full text, from 768 to ~1180px, it pushed
    the language and the account menu off the screen: the column has overflow hidden and
-   the action group does not shrink. The math is in src/app/barra-do-topo-cabe.test.ts. */
+   the action group does not shrink. The math is in src/app/top-bar-fits.test.ts. */
 @media (max-width: 1279.98px) {
   .platform-topbar__switch {
     width: 44px;
@@ -8855,7 +8855,7 @@ button:hover > .dash-card,
 
 /* TABLET (768–1023px): always the rail, even for whoever opened the bar. Open,
    it would leave ~465px of content and the top bar does not fit (math in
-   src/app/barra-do-topo-cabe.test.ts). Before the rail this range fell into the
+   src/app/top-bar-fits.test.ts). Before the rail this range fell into the
    phone design, with the bottom bar on a 1000px screen. The ☰ goes away:
    here there is nothing to open — a group or Help opens the drawer. */
 @media (min-width: 768px) and (width < 1024px) {
