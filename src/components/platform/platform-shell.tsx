@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useId, useState, type ReactNode, type SyntheticEvent } from "react";
+import { Suspense, useId, useState, type ReactNode, type SyntheticEvent } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { MobileSidebarDrawer } from "@/components/platform/mobile-sidebar-drawer";
@@ -101,24 +101,34 @@ export function PlatformShell({
                 >
                   <SidebarToggle collapsed={isCollapsed} controls={navId} onToggle={toggle} />
                 </SidebarBrand>
-                <PlatformNav
-                  id={navId}
-                  collapsed={isCollapsed}
-                  currentNavigationHref={currentNavigationHref}
-                  navigationCounts={navigationCounts}
-                  onRequestExpand={(section) => {
-                    if (isRail) {
-                      setMobileNavSection(section);
-                      setMobileNavOpen(true);
-                    } else {
-                      toggle();
-                    }
-                  }}
-                />
+                {/* The three Suspense boundaries in this shell (the menu, the
+                    top bar and the page) are not waiting for anything. They
+                    mark where hydration may pause: each one hydrates on its
+                    own, in slices that give the main thread back, and the
+                    one being tapped goes first. Without them the whole
+                    workspace hydrates and runs its effects in one long task. */}
+                <Suspense>
+                  <PlatformNav
+                    id={navId}
+                    collapsed={isCollapsed}
+                    currentNavigationHref={currentNavigationHref}
+                    navigationCounts={navigationCounts}
+                    onRequestExpand={(section) => {
+                      if (isRail) {
+                        setMobileNavSection(section);
+                        setMobileNavOpen(true);
+                      } else {
+                        toggle();
+                      }
+                    }}
+                  />
+                </Suspense>
               </aside>
 
               <div className="platform-main-column">
-                <PlatformHeader currentNavigationHref={currentNavigationHref} searchHref={searchHref} />
+                <Suspense>
+                  <PlatformHeader currentNavigationHref={currentNavigationHref} searchHref={searchHref} />
+                </Suspense>
                 {/* A secao continua sendo a que rola (a barra de rolagem fica na
                     borda da janela); a moldura de dentro e que limita a largura. */}
                 <section className="platform-content">
@@ -175,7 +185,7 @@ export function PlatformShell({
                         ) : null}
                       </div>
                     )}
-                    {children}
+                    <Suspense>{children}</Suspense>
                   </div>
                 </section>
               </div>
